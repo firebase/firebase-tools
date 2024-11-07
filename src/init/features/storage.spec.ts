@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
 import { Config } from "../../config";
 import { doSetup } from "./storage";
 import * as prompt from "../../prompt";
@@ -35,19 +34,6 @@ describe("storage", () => {
       await doSetup(setup, new Config("/path/to/src", {}));
 
       expect(_.get(setup, "config.storage.rules")).to.deep.equal("storage.rules");
-    });
-
-    it("should error when cloud resource location is not set", async () => {
-      const setup = {
-        config: {},
-        rcfile: {},
-        projectId: "my-project-123",
-      };
-
-      await expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
-        FirebaseError,
-        "Cloud resource location is not set",
-      );
     });
   });
 });

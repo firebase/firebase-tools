@@ -16,6 +16,8 @@ import {
 import { checkIfFileExists, upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { dataConnectConfigs } from "./config";
+import { firstWhereDefined } from "../utils/signal";
 
 export function registerAdHoc(
   dataConnectService: DataConnectService,
@@ -47,6 +49,7 @@ export function registerAdHoc(
   async function schemaReadData(
     document: DocumentNode,
     ast: ObjectTypeDefinitionNode,
+    documentPath: string,
   ) {
     // TODO(rrousselGit) - this is a temporary solution due to the lack of a "schema".
     // As such, we hardcoded the list of allowed primitives.
@@ -62,8 +65,12 @@ export function registerAdHoc(
       "Any",
     ]);
 
-    const basePath = vscode.workspace.rootPath + "/dataconnect/";
-    const filePath = vscode.Uri.file(`${basePath}${ast.name.value}_read.gql`);
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    const dataconnectConfig =
+      configs.tryReadValue?.findEnclosingServiceForPath(documentPath);
+
+    const basePath = dataconnectConfig?.path;
+    const filePath = vscode.Uri.file(`${basePath}/${ast.name.value}_read.gql`);
 
     // Recursively build a query for the object type.
     // Returns undefined if the query is empty.
@@ -136,12 +143,20 @@ query {
    * File will be created (unsaved) in operations/ folder, with an auto-generated named based on the schema type
    * Mutation will be generated with all
    * */
-  async function schemaAddData(ast: ObjectTypeDefinitionNode) {
+  async function schemaAddData(
+    ast: ObjectTypeDefinitionNode,
+    documentPath: string,
+  ) {
     // generate content for the file
     const preamble =
       "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
-    const introspect = (await dataConnectService.introspect())?.data;
-    const schema = buildClientSchema(introspect!);
+
+    const introspect = await dataConnectService.introspect();
+    if (!introspect.data) {
+      vscode.window.showErrorMessage("Failed to generate mutation. Please check your compilation errors.");
+      return;
+    }
+    const schema = buildClientSchema(introspect.data);
     const dataType = schema.getType(`${ast.name.value}_Data`);
     if (!isInputObjectType(dataType)) return;
 
@@ -152,8 +167,14 @@ query {
       ),
     );
     const content = [preamble, adhocMutation].join("\n");
-    const basePath = vscode.workspace.rootPath + "/dataconnect/";
-    const filePath = vscode.Uri.file(`${basePath}${ast.name.value}_insert.gql`);
+
+    // get root where dataconnect.yaml lives
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    const dataconnectConfig =
+      configs.tryReadValue?.findEnclosingServiceForPath(documentPath);
+    const basePath = dataconnectConfig?.path;
+
+    const filePath = vscode.Uri.file(`${basePath}/${ast.name.value}_insert.gql`);
     const doesFileExist = await checkIfFileExists(filePath);
 
     if (!doesFileExist) {
@@ -202,7 +223,10 @@ query {
         selections: [
           {
             kind: Kind.FIELD,
-            name: { kind: Kind.NAME, value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert` },
+            name: {
+              kind: Kind.NAME,
+              value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert`,
+            },
             arguments: [
               {
                 kind: Kind.ARGUMENT,
@@ -251,16 +275,16 @@ query {
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",
-      (ast) => {
+      (ast, uri) => {
         telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.ADD_DATA);
-        schemaAddData(ast);
+        schemaAddData(ast, uri);
       },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaReadData",
-      (document, ast) => {
+      (document, ast, uri) => {
         telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.READ_DATA);
-        schemaReadData(document, ast);
+        schemaReadData(document, ast, uri);
       },
     ),
   );
