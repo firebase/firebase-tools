@@ -87,7 +87,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 14.0";
+export const supportedRange = "12 - 15.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -261,7 +261,7 @@ export async function build(
     headers.push(...headersFromMetaFiles);
 
     for (const route of pprRoutes) {
-      reasonsForBackend.add(`route with ppr ${route}`);
+      reasonsForBackend.add(`route with PPR ${route}`);
     }
 
     if (appPathsManifest) {
