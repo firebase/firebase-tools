@@ -18,8 +18,11 @@ import { createServer } from 'http';
 import type { ListenOptions } from 'net';
 import * as path from 'path';
 
-import express from 'express';
+import * as express from "express";
 import fetch from 'node-fetch';
+import { AnalyticsSession } from "../../track";
+import { ExperimentName } from "../../experiments";
+import * as http from "http";
 
 /*
   This file defines Node.js server-side logic for the Emulator UI.
@@ -33,72 +36,73 @@ import fetch from 'node-fetch';
 
   This file may NOT import any front-end code or types from src/.
 */
-// FIXME note to self zipdirpath is - check server.ts in firebase-tools-ui
-export function createApp(zipDirPath: string, env : ("DEV" | "PROD"), projectId : string, host : string | undefined, port: number, hubHost: string ) : Promise<express.Express> {
-    const app = express();
+// FIXME note that this is a facsimile class, and some items are passed in rather than fetched on purpose to keep logic similar to the local instance.
+export async function createApp(
+  zipDirPath: string,
+  projectId: string,
+  hubHost: string,
+  emulatorGaSession: AnalyticsSession | undefined,
+  listenOptions: ListenOptions[],
+  experiments: Array<ExperimentName>): Promise<http.Server> {
 
-    // Exposes the host and port of various emulators to facilitate accessing
-    // them using client SDKs. For features that involve multiple emulators or
-    // hard to accomplish using client SDKs, consider adding an API below.
-    app.get(
+  const app = express();
+  // Exposes the host and port of various emulators to facilitate accessing
+  // them using client SDKs. For features that involve multiple emulators or
+  // hard to accomplish using client SDKs, consider adding an API below.
+  app.get(
     '/api/config',
     jsonHandler(async () => {
-        const hubDiscoveryUrl = new URL(`http://${hubHost}/emulators`);
-        const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
-        const emulators = (await emulatorsRes.json()) as any;
+      const hubDiscoveryUrl = new URL(`http://${hubHost}/emulators`);
+      const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
+      const emulators = (await emulatorsRes.json()) as any;
 
-        const json = { projectId, experiments: [], ...emulators };
+      const json = { projectId, experiments: [], ...emulators };
 
-        // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
-        // for more detail
-        if (process.env.FIREBASE_GA_SESSION) {
-          json.analytics = JSON.parse(process.env.FIREBASE_GA_SESSION);
-        }
+      // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
+      // for more detail
+      if (emulatorGaSession) {
+        json.analytics = emulatorGaSession;
+      }
 
-        // pick up any experiments enabled with `firebase experiment:enable`
-        if (process.env.FIREBASE_ENABLED_EXPERIMENTS) {
-          json.experiments = JSON.parse(process.env.FIREBASE_ENABLED_EXPERIMENTS);
-        }
+      // pick up any experiments enabled with `firebase experiment:enable`
+      if (experiments) {
+        json.experiments = experiments;
+      }
 
-        return json;
+      return json;
     })
-    );
+  );
 
-    if (env == "PROD") {
-    const webDir = path.join(path.dirname(zipDirPath), '..', 'client');
-    app.use(express.static(webDir));
-    // Required for the router to work properly.
-    app.get('*', function (_, res) {
-        res.sendFile(path.join(webDir, 'index.html'));
+  const webDir = path.join(zipDirPath, 'client');
+  app.use(express.static(webDir));
+  // Required for the router to work properly.
+  app.get('*', function (_, res) {
+    res.sendFile(path.join(webDir, 'index.html'));
+  });
+
+  if(listenOptions.length == 0) {
+    console.error(`Failed to start UI server, listenOptions empty`);
+    process.exit(1);
+  }
+  var server =  null;
+  for (const opts of listenOptions) {
+    server = createServer(app).listen(opts);
+    server.once('listening', () => {
+      console.log(`Web / API server started at ${opts.host}:${opts.port}`);
     });
+    server.once('error', (err) => {
+      console.error(`Failed to start server at ${opts.host}:${opts.port}`);
+      console.error(err);
+      if (opts === listenOptions[0]) {
+        // If we failed to listen on the primary address, surface the error.
+        process.exit(1);
+      }
+    });
+  }
 
-    let listen: ListenOptions[];
-    if (process.env.LISTEN) { // FIXME what is this
-        listen = JSON.parse(process.env.LISTEN);
-    } else {
-        // Mainly used when starting in dev mode (without CLI).
-        host = host || '127.0.0.1';
-        const portValue = Number(port) || 5173;
-        listen = [{ host, port: portValue }];
-    }
-    for (const opts of listen) {
-        const server = createServer(app).listen(opts);
-        server.once('listening', () => {
-        console.log(`Web / API server started at ${opts.host}:${opts.port}`);
-        });
-        server.once('error', (err) => {
-        console.error(`Failed to start server at ${opts.host}:${opts.port}`);
-        console.error(err);
-        if (opts === listen[0]) {
-            // If we failed to listen on the primary address, surface the error.
-            process.exit(1);
-        }
-        });
-    }
-    }
-
-    return Promise.resolve(app)
+  return server!!
 }
+
 function jsonHandler(
   handler: (req: express.Request) => Promise<object>
 ): express.Handler {

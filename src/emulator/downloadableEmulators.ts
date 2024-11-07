@@ -280,7 +280,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     joinArgs: true,
     shell: true,
   },
-  ui: {
+  ui: { // FIXME
     binary: "node",
     args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
@@ -527,7 +527,7 @@ async function _runBinary(
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   const details = DownloadDetails[emulator];
-  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`]; // FIXME care about this for UI?
   if (pathOverride) {
     const logger = EmulatorLogger.forEmulator(emulator);
     logger.logLabeled(

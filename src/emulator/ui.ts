@@ -8,6 +8,7 @@ import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { createApp } from "./ui/server";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
+import { createDestroyer } from "../utils";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -16,7 +17,9 @@ export interface EmulatorUIOptions {
 }
 
 export class EmulatorUI implements EmulatorInstance {
-  constructor(private args: EmulatorUIOptions) {}
+
+  private destroyServer?: () => Promise<void>;
+  constructor(private args: EmulatorUIOptions) { }
 
   async start(): Promise<void> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
@@ -26,58 +29,24 @@ export class EmulatorUI implements EmulatorInstance {
         )}!`,
       );
     }
-    const { auto_download: autoDownload, projectId } = this.args;
-    const env: Partial<NodeJS.ProcessEnv> = {
-      LISTEN: JSON.stringify(ExpressBasedEmulator.listenOptionsFromSpecs(this.args.listen)),
-      GCLOUD_PROJECT: projectId,
-      [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.url(Emulators.HUB).host,
-    };
+    const { projectId } = this.args;
 
-    const session = emulatorSession();
-    if (session) {
-      env[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
-    }
-
-    const enabledExperiments = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
+    // FIXME Question: do we need GCLOUD_PROJECT: projectId, for anything?
+    const enabledExperiments: Array<ExperimentName> = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
       (experimentName) => isEnabled(experimentName),
     );
-    env[Constants.FIREBASE_ENABLED_EXPERIMENTS] = JSON.stringify(enabledExperiments); // FIXME pass in GA info
+    const downloadDetails = downloadableEmulators.DownloadDetails[Emulators.UI]; // FIXME Question: use getDownloadDetails to re-use path override? idk
+    await downloadableEmulators.downloadIfNecessary(Emulators.UI);
 
-    // return downloadableEmulators.start(Emulators.UI, { auto_download: autoDownload }, env);
-    const downloadDetails = downloadableEmulators.DownloadDetails[Emulators.UI];
-  const logger = EmulatorLogger.forEmulator(Emulators.UI);
-  await downloadableEmulators.downloadIfNecessary(Emulators.UI);
+    const server = await createApp(
+      downloadDetails.unzipDir!!,
+      projectId,
+      EmulatorRegistry.url(Emulators.HUB).host,
+      emulatorSession(),
+      ExpressBasedEmulator.listenOptionsFromSpecs(this.args.listen),
+      enabledExperiments);
+      this.destroyServer = createDestroyer(server);
 
- // FIXME check CI
-  // const hasEmulator = fs.existsSync(getExecPath(Emulators.UI));
-  // if (!hasEmulator || downloadDetails.opts.skipCache) {
-  //   if (args.auto_download) {
-  //     if (process.env.CI) {
-  //       utils.logWarning(
-  //         `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
-  //           targetName,
-  //         )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`,
-  //       );
-  //     }
-
-  //     await downloadEmulator(targetName);
-  //   } else {
-  //     utils.logWarning("Setup required, please run: firebase setup:emulators:" + targetName);
-  //     throw new FirebaseError("emulator not found");
-  //   }
-  // }
-
-  // const command = _getCommand(targetName, args);
-  // logger.log(
-  //   "DEBUG",
-  //   `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
-  // );
-  // return _runBinary(emulator, command, extraEnv);
-  // FIXME do some logging probs
-
-  // FIXME consider the host may be different? Should take it from the config methinks
-//export function createApp(zipDirPath: string, env : ("DEV" | "PROD"), projectId : string, host : string | undefined, port: string | undefined, hubHost: string ) : Promise<express.Express> {
-  await createApp("path", "PROD", projectId, "127.0.0.1", Constants.getDefaultPort(Emulators.UI), EmulatorRegistry.url(Emulators.HUB).host);
   }
 
   connect(): Promise<void> {
@@ -85,7 +54,10 @@ export class EmulatorUI implements EmulatorInstance {
   }
 
   stop(): Promise<void> {
-    return downloadableEmulators.stop(Emulators.UI); // FIXME consider stop
+    if (this.destroyServer) {
+      return this.destroyServer();
+    }
+    return Promise.resolve();
   }
 
   getInfo(): EmulatorInfo {
