@@ -10,13 +10,14 @@ Read more in our [Privacy Policy](https://policies.google.com/privacy?hl=en-US).
 `;
 
 export enum DATA_CONNECT_EVENT_NAME {
-  EXTENSION_START = "extension_start",
+  EXTENSION_USED = "extension_used",
   COMMAND_EXECUTION = "command_execution",
   DEPLOY_ALL = "deploy_all",
   DEPLOY_INDIVIDUAL = "deploy_individual",
   IDX_LOGIN = "idx_login",
   LOGIN = "login",
-  PROJECT_SELECT = "project_select",
+  PROJECT_SELECT_CLICKED = "project_select_clicked",
+  PROJECT_SELECTED = "project_selected",
   RUN_LOCAL = "run_local",
   RUN_PROD = "run_prod",
   ADD_DATA = "add_data",
@@ -177,7 +178,7 @@ class GA4TelemetrySender implements TelemetrySender {
     const idxPrepend = monospaceEnv.value.isMonospace ? "idx_" : "";
 
     if (!this.hasSentData) {
-      trackVSCode(`${idxPrepend}DATA_CONNECT_EVENT_NAME.EXTENSION_START`);
+      trackVSCode(`${idxPrepend}${DATA_CONNECT_EVENT_NAME.EXTENSION_USED}`);
       this.hasSentData = true;
     }
     trackVSCode(`${idxPrepend}${eventName}`, data as AnalyticsParams);

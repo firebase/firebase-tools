@@ -1,4 +1,4 @@
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, TelemetryLogger } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect, Signal } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
@@ -9,6 +9,7 @@ import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 import { User } from "../types/auth";
+import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -27,19 +28,22 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
   },
 ) as Signal<FirebaseProjectMetadata[] | undefined>;
 
-export function registerProject(broker: ExtensionBrokerImpl): Disposable {
+export function registerProject(
+  broker: ExtensionBrokerImpl,
+  telemetryLogger: TelemetryLogger,
+): Disposable {
   // For testing purposes.
   const demoProjectCommand = vscode.commands.registerCommand(
     `fdc-graphql.mock.project`,
     (projectId: string) => {
-          updateFirebaseRCProject({
-            projectAlias: projectId
-              ? {
-                  alias: "default",
-                  projectId,
-                }
-              : undefined,
-          });
+      updateFirebaseRCProject({
+        projectAlias: projectId
+          ? {
+              alias: "default",
+              projectId,
+            }
+          : undefined,
+      });
       broker.send("notifyProjectChanged", { projectId });
     },
   );
@@ -99,6 +103,10 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
         return;
       } else {
         try {
+          telemetryLogger.logUsage(
+            DATA_CONNECT_EVENT_NAME.PROJECT_SELECT_CLICKED,
+          );
+
           const projects = firstWhereDefined(userScopedProjects);
 
           const projectId =
@@ -112,6 +120,7 @@ export function registerProject(broker: ExtensionBrokerImpl): Disposable {
                 }
               : undefined,
           });
+          telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.PROJECT_SELECTED);
         } catch (e: any) {
           vscode.window.showErrorMessage(e.message);
         }
