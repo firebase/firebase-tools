@@ -22,6 +22,7 @@ import {
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
+import { getErrMsg } from "./error";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -120,8 +121,8 @@ async function checkCLIInstallation(): Promise<void> {
     } else {
       pluginLogger.info(`Checked firebase-tools, is up to date!`);
     }
-  } catch (err: any) {
-    pluginLogger.info(`Unable to check firebase-tools installation: ${err}`);
+  } catch (err: unknown) {
+    pluginLogger.info(`Unable to check firebase-tools installation: ${getErrMsg(err)}`);
   }
 
   if (message) {

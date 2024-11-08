@@ -3,7 +3,7 @@ import { ReadStream } from "fs";
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { Client } from "../apiv2";
 import { appDistributionOrigin } from "../api";
 import {
@@ -81,8 +81,8 @@ export class AppDistributionClient {
 
     try {
       await this.appDistroV1Client.patch(`/${releaseName}`, data, { queryParams });
-    } catch (err: any) {
-      throw new FirebaseError(`failed to update release notes with ${err?.message}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`failed to update release notes with ${getErrMsg(err)}`);
     }
 
     utils.logSuccess("added release notes successfully");
@@ -130,8 +130,8 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchAdd`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to add testers ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to add testers ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers created successfully`);
@@ -148,8 +148,8 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchRemove`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to remove testers ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to remove testers ${getErrMsg(err)}`);
     }
     return apiResponse.body;
   }
@@ -163,8 +163,8 @@ export class AppDistributionClient {
           alias === undefined ? `${projectName}/groups` : `${projectName}/groups?groupId=${alias}`,
         body: { displayName: displayName },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to create group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create group ${getErrMsg(err)}`);
     }
     return apiResponse.body;
   }
@@ -175,8 +175,8 @@ export class AppDistributionClient {
         method: "DELETE",
         path: groupName,
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to delete group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Group deleted successfully`);
@@ -189,8 +189,8 @@ export class AppDistributionClient {
         path: `${groupName}:batchJoin`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to add testers to group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to add testers to group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers added to group successfully`);
@@ -203,8 +203,8 @@ export class AppDistributionClient {
         path: `${groupName}:batchLeave`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to remove testers from group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to remove testers from group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers removed from group successfully`);
@@ -225,8 +225,8 @@ export class AppDistributionClient {
         },
       });
       return response.body;
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to create release test ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create release test ${getErrMsg(err)}`);
     }
   }
 

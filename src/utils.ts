@@ -19,7 +19,7 @@ import { stripVTControlCharacters } from "node:util";
 import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { promptOnce } from "./prompt";
@@ -399,8 +399,8 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err: any) {
-      return { state: "rejected", reason: err } as SettledPromiseRejected;
+    } catch (err: unknown) {
+      return { state: "rejected", reason: getError(err) } as SettledPromiseRejected;
     }
   });
   return Promise.all(wrappedPromises);
@@ -423,7 +423,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return promiseReject(err);
       }
     };
@@ -535,7 +535,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail();
     throw err;
   }
@@ -877,8 +877,8 @@ export function readFileFromDirectory(
 export function wrappedSafeLoad(source: string): any {
   try {
     return yaml.parse(source);
-  } catch (err: any) {
-    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+  } catch (err: unknown) {
+    throw new FirebaseError(`YAML Error: ${getErrMsg(err)}`, { original: getError(err) });
   }
 }
 

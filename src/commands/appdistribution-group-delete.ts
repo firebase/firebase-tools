@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 
@@ -14,8 +14,8 @@ export const command = new Command("appdistribution:group:delete <alias>")
     try {
       utils.logBullet(`Deleting group from project`);
       await appDistroClient.deleteGroup(`${projectName}/groups/${alias}`);
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to delete group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete group ${getErrMsg(err)}`);
     }
     utils.logSuccess(`Group ${alias} has successfully been deleted`);
   });
