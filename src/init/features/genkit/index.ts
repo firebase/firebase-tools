@@ -23,23 +23,35 @@ import { execFileSync } from "child_process";
 
 import { doSetup as functionsSetup } from "../functions";
 import { Config } from "../../../config";
-import { promptOnce } from "../../../prompt";
+import { confirm } from "../../../prompt";
 import { wrapSpawn } from "../../spawn";
 import { Options } from "../../../options";
 import { getProjectId } from "../../../projectUtils";
 import { ensure } from "../../../ensureApiEnabled";
 import { logger } from "../../../logger";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrMsg } from "../../../error";
+import { Setup } from "../..";
+import {
+  logLabeledBullet,
+  logLabeledError,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../../../utils";
+import { isObject } from "../../../extensions/types";
 
 interface GenkitInfo {
   genkitVersion: string;
-  sampleVersion: string;
+  templateVersion: string;
   useInit: boolean;
 }
 
+/**
+ * Determines which version and template to install
+ * @return a GenkitInfo object
+ */
 function getGenkitVersion(): GenkitInfo {
   let genkitVersion: string;
-  let sampleVersion: string | undefined;
+  let templateVersion: string | undefined;
   let useInit: boolean;
 
   // Allow the installed version to be set for dev purposes.
@@ -60,30 +72,42 @@ function getGenkitVersion(): GenkitInfo {
       "Please update your firebase-tools. Alternatively you can set a GENKIT_DEV_VERSION environment variable to choose a genkit version < 1.0.0",
     );
   } else if (semver.gte(genkitVersion, "0.6.0")) {
-    sampleVersion = "0.9.0";
+    templateVersion = "0.9.0";
     useInit = false;
   } else {
-    sampleVersion = "";
+    templateVersion = "";
     useInit = true;
   }
 
-  return { genkitVersion, sampleVersion, useInit };
+  return { genkitVersion, templateVersion, useInit };
+}
+
+/**
+ * GenkitSetup depends on functions setup.
+ */
+export interface GenkitSetup extends Setup {
+  functions?: {
+    source: string;
+    codebase: string;
+    languageChoice?: string;
+  };
+
+  [key: string]: unknown;
 }
 
 /**
  * doSetup is the entry point for setting up the genkit suite.
  */
-export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
+export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
   const genkitInfo = getGenkitVersion();
   if (setup.functions?.languageChoice !== "typescript") {
-    const continueFunctions = await promptOnce({
-      type: "confirm",
+    const continueFunctions = await confirm({
       message:
         "Genkit's Firebase integration uses Cloud Functions for Firebase with TypeScript. Initialize Functions to continue?",
       default: true,
     });
     if (!continueFunctions) {
-      logger.info("Stopped Genkit initialization");
+      logLabeledWarning("genkit", "Stopped Genkit initialization");
       return;
     }
 
@@ -94,19 +118,28 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     logger.info();
   }
 
+  if (!setup.functions) {
+    throw new FirebaseError("Failed to initialize Genkit prerequisite: Firebase functions");
+  }
+
   const projectDir = `${config.projectDir}/${setup.functions.source}`;
 
-  const installType = await promptOnce({
-    type: "list",
-    message: "Install the Genkit CLI globally or locally in this project?",
-    choices: [
-      { name: "Globally", value: "globally" },
-      { name: "Just this project", value: "project" },
-    ],
-  });
+  const installType = (
+    await inquirer.prompt<{ choice: string }>([
+      {
+        name: "choice",
+        type: "list",
+        message: "Install the Genkit CLI globally or locally in this project?",
+        choices: [
+          { name: "Globally", value: "globally" },
+          { name: "Just this project", value: "project" },
+        ],
+      },
+    ])
+  ).choice;
 
   try {
-    logger.info(`Installing Genkit CLI version ${genkitInfo.genkitVersion}`);
+    logLabeledBullet("genkit", `Installing Genkit CLI version ${genkitInfo.genkitVersion}`);
     if (installType === "globally") {
       if (genkitInfo.useInit) {
         await wrapSpawn("npm", ["install", "-g", `genkit@${genkitInfo.genkitVersion}`], projectDir);
@@ -147,50 +180,28 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
         );
       }
     }
-  } catch (e) {
-    logger.error("Genkit initialization failed...");
+  } catch (err) {
+    logLabeledError("genkit", `Genkit initialization failed: ${getErrMsg(err)}`);
     return;
   }
 }
 
-export type ModelProvider = "googleai" | "vertexai" | "ollama" | "none";
+export type ModelProvider = "googleai" | "vertexai" | "none";
 export type WriteMode = "keep" | "overwrite" | "merge";
 
 /**
- * Displays info about the selected model.
- * @param model selected model
+ * Enables the Vertex AI API on a best effort basis.
+ * @param options The options passed to the parent command
  */
-export function showModelInfo(model: ModelProvider) {
-  switch (model) {
-    case "ollama":
-      logger.info(
-        `If you don't have Ollama already installed and configured, refer to https://developers.google.com/genkit/plugins/ollama\n`,
-      );
-      break;
-  }
-}
-
-export async function ensureVertexApiEnabled(options: any): Promise<void> {
+export async function ensureVertexApiEnabled(options: Options): Promise<void> {
   const VERTEX_AI_URL = "https://aiplatform.googleapis.com";
   const projectId = getProjectId(options);
   if (!projectId) {
     return;
   }
-  return await ensure(projectId, VERTEX_AI_URL, "aiplatform", options.markdown);
-}
-
-/**
- * Shows a confirmation prompt.
- */
-export async function confirm(args: { default?: boolean; message?: string }): Promise<boolean> {
-  const message = args.message ?? `Do you wish to continue?`;
-  const answer = await inquirer.prompt({
-    type: "confirm",
-    name: "confirm",
-    message,
-    default: args.default,
-  });
-  return answer.confirm;
+  // If using markdown, enable it silently
+  const silently = typeof options.markdown === "boolean" && options.markdown;
+  return await ensure(projectId, VERTEX_AI_URL, "aiplatform", silently);
 }
 
 interface PluginInfo {
@@ -218,20 +229,15 @@ interface PromptOption {
 /** Model to plugin name. */
 function getModelOptions(genkitVersion: string): Record<ModelProvider, PromptOption> {
   const modelOptions: Record<ModelProvider, PromptOption> = {
-    googleai: {
-      label: "Google AI",
-      plugin: "@genkit-ai/googleai",
-      package: `@genkit-ai/googleai@${genkitVersion}`,
-    },
     vertexai: {
       label: "Google Cloud Vertex AI",
       plugin: "@genkit-ai/vertexai",
       package: `@genkit-ai/vertexai@${genkitVersion}`,
     },
-    ollama: {
-      label: "Ollama (e.g. Gemma)",
-      plugin: "genkitx-ollama",
-      package: `genkitx-ollama@${genkitVersion}`,
+    googleai: {
+      label: "Google AI",
+      plugin: "@genkit-ai/googleai",
+      package: `@genkit-ai/googleai@${genkitVersion}`,
     },
     none: { label: "None", plugin: undefined, package: undefined },
   };
@@ -256,23 +262,8 @@ const pluginToInfo: Record<string, PluginInfo> = {
     // Load the Vertex AI plugin. You can optionally specify your project ID
     // by passing in a config object; if you don't, the Vertex AI plugin uses
     // the value from the GCLOUD_PROJECT environment variable.
-    vertexAI({ location: 'us-central1' })`.trimStart(),
+    vertexAI({location: "us-central1"})`.trimStart(),
     model: "gemini15Flash",
-  },
-  "genkitx-ollama": {
-    imports: "ollama",
-    init: `
-    ollama({
-      // Ollama provides an interface to many open generative models. Here,
-      // we specify Google's Gemma model. The models you specify must already be
-      // downloaded and available to the Ollama server.
-      models: [{ name: 'gemma' }],
-      // The address of your Ollama API server. This is often a different host
-      // from your app backend (which runs Genkit), in order to run Ollama on
-      // a GPU-accelerated machine.
-      serverAddress: 'http://127.0.0.1:11434',
-    })`.trimStart(),
-    modelStr: "'ollama/gemma'",
   },
   "@genkit-ai/googleai": {
     imports: "googleAI",
@@ -291,7 +282,7 @@ const pluginToInfo: Record<string, PluginInfo> = {
 
 /** Basic packages required to use Genkit. */
 function getBasePackages(genkitVersion: string): string[] {
-  const basePackages = ["zod", "express", `genkit@${genkitVersion}`];
+  const basePackages = ["express", `genkit@${genkitVersion}`];
   return basePackages;
 }
 
@@ -300,10 +291,15 @@ const externalDevPackages = ["typescript", "tsx"];
 
 /**
  * Initializes a Genkit Node.js project.
- *
  * @param options command-line arguments
+ * @param genkitInfo Information about which version of genkit we are installing
+ * @param projectDir The project directory to install into.
  */
-export async function genkitSetup(options: Options, genkitInfo: GenkitInfo, projectDir: string) {
+export async function genkitSetup(
+  options: Options,
+  genkitInfo: GenkitInfo,
+  projectDir: string,
+): Promise<void> {
   // Choose a model
   const modelOptions = getModelOptions(genkitInfo.genkitVersion);
   const supportedModels = Object.keys(modelOptions) as ModelProvider[];
@@ -330,10 +326,10 @@ export async function genkitSetup(options: Options, genkitInfo: GenkitInfo, proj
   pluginPackages.push(`@genkit-ai/firebase@${genkitInfo.genkitVersion}`);
 
   if (modelOptions[model]?.plugin) {
-    plugins.push(modelOptions[model].plugin!);
+    plugins.push(modelOptions[model].plugin || "");
   }
   if (modelOptions[model]?.package) {
-    pluginPackages.push(modelOptions[model].package!);
+    pluginPackages.push(modelOptions[model].package || "");
   }
 
   // Compile NPM packages list.
@@ -355,19 +351,38 @@ export async function genkitSetup(options: Options, genkitInfo: GenkitInfo, proj
       default: true,
     }))
   ) {
-    generateSampleFile(modelOptions[model].plugin, plugins, projectDir, genkitInfo.sampleVersion);
+    generateSampleFile(modelOptions[model].plugin, plugins, projectDir, genkitInfo.templateVersion);
   }
-  showModelInfo(model);
 }
+
+// We only need to worry about the compilerOptions entry.
+interface TsConfig {
+  compilerOptions?: Record<string, unknown>;
+}
+
+// A typeguard for the results of JSON.parse(<user defined file>);
+export const isTsConfig = (value: unknown): value is TsConfig => {
+  if (!isObject(value) || (value.compilerOptions && !isObject(value.compilerOptions))) {
+    return false;
+  }
+
+  return true;
+};
 
 /**
  * Updates tsconfig.json with required flags for Genkit.
+ * @param nonInteractive if we rae asking the user questions
+ * @param projectDir the directory containing the tsconfig.json
  */
-async function updateTsConfig(nonInteractive: boolean, projectDir: string) {
+async function updateTsConfig(nonInteractive: boolean, projectDir: string): Promise<void> {
   const tsConfigPath = path.join(projectDir, "tsconfig.json");
-  let existingTsConfig = undefined;
+  let existingTsConfig: TsConfig | undefined = undefined;
   if (fs.existsSync(tsConfigPath)) {
-    existingTsConfig = JSON.parse(fs.readFileSync(tsConfigPath, "utf-8"));
+    const parsed: unknown = JSON.parse(fs.readFileSync(tsConfigPath, "utf-8"));
+    if (!isTsConfig(parsed)) {
+      throw new FirebaseError("Unable to parse existing tsconfig.json");
+    }
+    existingTsConfig = parsed;
   }
   let choice: WriteMode = "overwrite";
   if (!nonInteractive && existingTsConfig) {
@@ -389,7 +404,7 @@ async function updateTsConfig(nonInteractive: boolean, projectDir: string) {
       esModuleInterop: true,
     },
   };
-  logger.info("Updating tsconfig.json");
+  logLabeledBullet("genkit", "Updating tsconfig.json");
   let newTsConfig = {};
   switch (choice) {
     case "overwrite":
@@ -413,20 +428,21 @@ async function updateTsConfig(nonInteractive: boolean, projectDir: string) {
       };
       break;
     case "keep":
-      logger.warn("Skipped updating tsconfig.json");
+      logLabeledWarning("genkit", "Skipped updating tsconfig.json");
       return;
   }
   try {
     fs.writeFileSync(tsConfigPath, JSON.stringify(newTsConfig, null, 2));
-    logger.info("Successfully updated tsconfig.json");
+    logLabeledSuccess("genkit", "Successfully updated tsconfig.json");
   } catch (err) {
-    logger.error(`Failed to update tsconfig.json: ${err}`);
+    logLabeledError("genkit", `Failed to update tsconfig.json: ${getErrMsg(err)}`);
     process.exit(1);
   }
 }
 
 /**
  * Installs and saves NPM packages to package.json.
+ * @param projectDir The project directory.
  * @param packages List of NPM packages to install.
  * @param devPackages List of NPM dev packages to install.
  */
@@ -435,7 +451,7 @@ async function installNpmPackages(
   packages: string[],
   devPackages?: string[],
 ): Promise<void> {
-  logger.info("Installing NPM packages for genkit");
+  logLabeledBullet("genkit", "Installing NPM packages for genkit");
   try {
     if (packages.length) {
       await wrapSpawn("npm", ["install", ...packages, "--save"], projectDir);
@@ -443,9 +459,9 @@ async function installNpmPackages(
     if (devPackages?.length) {
       await wrapSpawn("npm", ["install", ...devPackages, "--save-dev"], projectDir);
     }
-    logger.info("Successfully installed NPM packages");
+    logLabeledSuccess("genkit", "Successfully installed NPM packages");
   } catch (err) {
-    logger.error(`Failed to install NPM packages: ${err}`);
+    logLabeledError("genkit", `Failed to install NPM packages: ${getErrMsg(err)}`);
     process.exit(1);
   }
 }
@@ -459,20 +475,22 @@ function generateSampleFile(
   modelPlugin: string | undefined,
   configPlugins: string[],
   projectDir: string,
-  sampleVersion: string,
-) {
-  const modelImport =
-    modelPlugin && pluginToInfo[modelPlugin].model
-      ? "\n" + generateImportStatement(pluginToInfo[modelPlugin].model!, modelPlugin) + "\n"
-      : "";
-  const modelImportComment =
-    modelPlugin && pluginToInfo[modelPlugin].modelImportComment
-      ? `\n${pluginToInfo[modelPlugin].modelImportComment}`
-      : "";
+  templateVersion: string,
+): void {
+  let modelImport = "";
+  if (modelPlugin && pluginToInfo[modelPlugin].model) {
+    const modelInfo = pluginToInfo[modelPlugin].model || "";
+    modelImport = "\n" + generateImportStatement(modelInfo, modelPlugin) + "\n";
+  }
+  let modelImportComment = "";
+  if (modelPlugin && pluginToInfo[modelPlugin].modelImportComment) {
+    const comment = pluginToInfo[modelPlugin].modelImportComment || "";
+    modelImportComment = `\n${comment}`;
+  }
   const commentedModelImport = `${modelImportComment}${modelImport}`;
   const templatePath = path.join(
     __dirname,
-    `../../../../templates/genkit/firebase.${sampleVersion}.template`,
+    `../../../../templates/genkit/firebase.${templateVersion}.template`,
   );
   const template = fs.readFileSync(templatePath, "utf8");
   const sample = renderConfig(
@@ -486,27 +504,46 @@ function generateSampleFile(
           : "'' /* TODO: Set a model. */",
       ),
   );
-  logger.info("Generating sample file");
+  logLabeledBullet("genkit", "Generating sample file");
   try {
     const samplePath = "src/genkit-sample.ts";
     fs.writeFileSync(path.join(projectDir, samplePath), sample, "utf8");
-    logger.info(`Successfully generated sample file (${samplePath})`);
+    logLabeledSuccess("genkit", `Successfully generated sample file (${samplePath})`);
   } catch (err) {
-    logger.error(`Failed to generate sample file: ${err}`);
+    logLabeledError("genkit", `Failed to generate sample file: ${getErrMsg(err)}`);
     process.exit(1);
   }
 }
 
+// We only need to worry about the scripts entry
+interface PackageJson {
+  scripts?: Record<string, string>;
+}
+
+// A typeguard for the results of JSON.parse(<potentially user defined file>);
+export const isPackageJson = (value: unknown): value is PackageJson => {
+  if (!isObject(value) || (value.scripts && !isObject(value.scripts))) {
+    return false;
+  }
+
+  return true;
+};
+
 /**
  * Updates package.json with Genkit-expected fields.
+ * @param nonInteractive a boolean that indicates if we are asking questions or not
+ * @param projectDir The directory to find the package.json file in.
  */
-async function updatePackageJson(nonInteractive: boolean, projectDir: string) {
+async function updatePackageJson(nonInteractive: boolean, projectDir: string): Promise<void> {
   const packageJsonPath = path.join(projectDir, "package.json");
   // package.json should exist before reaching this point.
   if (!fs.existsSync(packageJsonPath)) {
-    throw new Error("Failed to find package.json.");
+    throw new FirebaseError("Failed to find package.json.");
   }
-  const existingPackageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  const existingPackageJson: unknown = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  if (!isPackageJson(existingPackageJson)) {
+    throw new FirebaseError("Unable to parse existing package.json file");
+  }
   const choice = nonInteractive
     ? "overwrite"
     : await promptWriteMode("Would you like to update your package.json with suggested settings?");
@@ -517,7 +554,7 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string) {
       "genkit:stop": "genkit ui:stop",
     },
   };
-  logger.info("Updating package.json");
+  logLabeledBullet("genkit", "Updating package.json");
   let newPackageJson = {};
   switch (choice) {
     case "overwrite":
@@ -543,14 +580,14 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string) {
       };
       break;
     case "keep":
-      logger.warn("Skipped updating package.json");
+      logLabeledWarning("genkit", "Skipped updating package.json");
       return;
   }
   try {
     fs.writeFileSync(packageJsonPath, JSON.stringify(newPackageJson, null, 2));
-    logger.info("Successfully updated package.json");
+    logLabeledSuccess("genkit", "Successfully updated package.json");
   } catch (err) {
-    logger.error(`Failed to update package.json: ${err}`);
+    logLabeledError("genkit", `Failed to update package.json: ${getErrMsg(err)}`);
     process.exit(1);
   }
 }
@@ -573,12 +610,15 @@ function generateImportStatement(imports: string, name: string): string {
 
 /**
  * Prompts for what type of write to perform when there is a conflict.
+ * @param message The question to ask
+ * @param defaultOption The default WriteMode to highlight
+ * @return The writemode selected
  */
 export async function promptWriteMode(
   message: string,
   defaultOption: WriteMode = "merge",
 ): Promise<WriteMode> {
-  const answers = await inquirer.prompt([
+  const answer = await inquirer.prompt<{ option: WriteMode }>([
     {
       type: "list",
       name: "option",
@@ -591,5 +631,5 @@ export async function promptWriteMode(
       default: defaultOption,
     },
   ]);
-  return answers.option;
+  return answer.option;
 }

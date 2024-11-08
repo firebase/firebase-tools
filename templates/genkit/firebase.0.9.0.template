@@ -1,8 +1,6 @@
-import * as z from "zod";
-
 // Import the Genkit core libraries and plugins.
-import {genkit} from 'genkit';
-import {logger} from 'genkit/logging';
+import {genkit, z} from "genkit";
+import {logger} from "genkit/logging";
 $GENKIT_CONFIG_IMPORTS
 $GENKIT_MODEL_IMPORT
 
@@ -43,7 +41,7 @@ export const menuSuggestionFlow = onFlow(
     }),
   },
   async (subject) => {
-		// Construct a request and send it to the model API.
+    // Construct a request and send it to the model API.
     const prompt =
       `Suggest an item for the menu of a ${subject} themed restaurant`;
     const llmResponse = await ai.generate({
@@ -54,10 +52,10 @@ export const menuSuggestionFlow = onFlow(
       },
     });
 
-		// Handle the response from the model API. In this sample, we just
-		// convert it to a string, but more complicated flows might coerce the
-		// response into structured output or chain the response into another
-		// LLM call, etc.
+    // Handle the response from the model API. In this sample, we just
+    // convert it to a string, but more complicated flows might coerce the
+    // response into structured output or chain the response into another
+    // LLM call, etc.
     return llmResponse.text;
   }
 );
