@@ -1,0 +1,36 @@
+{
+  "conditions": [
+    {
+      "name": "web_users",
+      "expression": "device.os == 'web'",
+      "tagColor": "GREEN"
+    },
+    {
+      "name": "android_users",
+      "expression": "device.os == 'android'",
+      "tagColor": "BLUE"
+    }
+  ],
+  "parameters": {
+    "welcome_message": {
+      "defaultValue": {
+        "value": "Hi Welcome!"
+      },
+      "valueType": "STRING"
+    },
+    "discount_percentage": {
+      "defaultValue": {
+        "value": "10"
+      },
+      "conditionalValues": {
+        "web_users": {
+          "value": "15"
+        },
+        "android_users": {
+          "value": "5"
+        }
+      },
+      "valueType": "NUMBER"
+    }
+  }
+}

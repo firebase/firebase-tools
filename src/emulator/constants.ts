@@ -16,6 +16,7 @@ export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   eventarc: 9299,
   dataconnect: 9399,
   tasks: 9499,
+  remoteconfig:9499,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -34,6 +35,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   eventarc: true,
   dataconnect: false,
   tasks: true,
+  remoteconfig: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -52,6 +54,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   eventarc: "Eventarc Emulator",
   dataconnect: "Data Connect Emulator",
   tasks: "Cloud Tasks Emulator",
+  remoteconfig: "Remote Config Emulator",
 };
 
 export const DEFAULT_HOST = "localhost";

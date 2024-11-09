@@ -95,6 +95,7 @@ export class EmulatorRegistry {
       eventarc: 3.6,
       dataconnect: 3.7,
       tasks: 3.8,
+      remoteconfig: 3.9,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
