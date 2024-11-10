@@ -18,6 +18,8 @@ export interface Schema extends BaseResource {
 
   datasources: Datasource[];
   source: Source;
+  customTypes?: Record<string, CustomType>;
+  resolvers?: Record<string, string>;
 }
 
 export interface Connector extends BaseResource {
@@ -85,6 +87,8 @@ export interface GraphqlError {
 export interface BuildResult {
   errors?: GraphqlError[];
   metadata?: DeploymentMetadata;
+  customTypes?: Record<string, CustomType>;
+  resolvers?: Record<string, string>;
 }
 
 export interface DeploymentMetadata {
@@ -111,6 +115,15 @@ export interface DataConnectYaml {
 export interface SchemaYaml {
   source: string;
   datasource: DatasourceYaml;
+  customTypes?: Record<string, CustomType>;
+  resolvers?: Record<string, string>;
+}
+
+export interface CustomType {
+  sqlType: string;
+  graphqlType: string;
+  serialize: string;
+  parseValue: string;
 }
 
 export interface DatasourceYaml {

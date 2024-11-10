@@ -30,7 +30,9 @@ export async function getService(serviceName: string): Promise<types.Service> {
   return res.body;
 }
 
-export async function listAllServices(projectId: string): Promise<types.Service[]> {
+export async function listAllServices(
+  projectId: string,
+): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/-/services`,
   );
@@ -45,7 +47,8 @@ export async function createService(
   const op = await dataconnectClient().post<types.Service, types.Service>(
     `/projects/${projectId}/locations/${locationId}/services`,
     {
-      name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
+      name:
+        `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
     },
     {
       queryParams: {
@@ -72,7 +75,9 @@ async function deleteService(serviceName: string): Promise<types.Service> {
   return pollRes;
 }
 
-export async function deleteServiceAndChildResources(serviceName: string): Promise<void> {
+export async function deleteServiceAndChildResources(
+  serviceName: string,
+): Promise<void> {
   const connectors = await listConnectors(serviceName);
   await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
   try {
@@ -87,7 +92,9 @@ export async function deleteServiceAndChildResources(serviceName: string): Promi
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+export async function getSchema(
+  serviceName: string,
+): Promise<types.Schema | undefined> {
   try {
     const res = await dataconnectClient().get<types.Schema>(
       `${serviceName}/schemas/${types.SCHEMA_ID}`,
@@ -105,12 +112,20 @@ export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,
 ): Promise<types.Schema | undefined> {
-  const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
-    queryParams: {
-      allowMissing: "true",
-      validateOnly: validateOnly ? "true" : "false",
+  const op = await dataconnectClient().patch<types.Schema, types.Schema>(
+    `${schema.name}`,
+    {
+      ...schema,
+      customTypes: schema.customTypes,
+      resolvers: schema.resolvers,
     },
-  });
+    {
+      queryParams: {
+        allowMissing: "true",
+        validateOnly: validateOnly ? "true" : "false",
+      },
+    },
+  );
   if (validateOnly) {
     return;
   }
@@ -150,7 +165,10 @@ export async function deleteConnector(name: string): Promise<void> {
   return;
 }
 
-export async function listConnectors(serviceName: string, fields: string[] = []) {
+export async function listConnectors(
+  serviceName: string,
+  fields: string[] = [],
+) {
   const connectors: types.Connector[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{

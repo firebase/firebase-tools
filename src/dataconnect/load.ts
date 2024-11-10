@@ -45,6 +45,8 @@ export async function load(
       source: {
         files: schemaGQLs,
       },
+      customTypes: dataConnectYaml.schema.customTypes,
+      resolvers: dataConnectYaml.schema.resolvers,
     },
     dataConnectYaml,
     connectorInfo,
