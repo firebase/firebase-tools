@@ -399,8 +399,8 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err: unknown) {
-      return { state: "rejected", reason: getError(err) } as SettledPromiseRejected;
+    } catch (err: any) {
+      return { state: "rejected", reason: err } as SettledPromiseRejected;
     }
   });
   return Promise.all(wrappedPromises);
