@@ -121,8 +121,8 @@ async function checkCLIInstallation(): Promise<void> {
     } else {
       pluginLogger.info(`Checked firebase-tools, is up to date!`);
     }
-  } catch (err: unknown) {
-    pluginLogger.info(`Unable to check firebase-tools installation: ${getErrMsg(err)}`);
+  } catch (err: any) {
+    pluginLogger.info(`Unable to check firebase-tools installation: ${err}`);
   }
 
   if (message) {
