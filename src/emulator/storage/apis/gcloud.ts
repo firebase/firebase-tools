@@ -18,6 +18,9 @@ import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import { Query } from "express-serve-static-core";
 
+/**
+ *
+ */
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
@@ -115,10 +118,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   );
 
   gcloudStorageAPI.patch(
-    [
-      "/b/:bucketId/o/:objectId", 
-      "/storage/v1/b/:bucketId/o/:objectId",
-    ],
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
     async (req, res) => {
       let updatedMetadata: StoredFileMetadata;
       try {
@@ -137,7 +137,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         throw err;
       }
       return res.json(new CloudStorageObjectMetadata(updatedMetadata));
-    }
+    },
   );
 
   gcloudStorageAPI.get(["/b/:bucketId/o", "/storage/v1/b/:bucketId/o"], async (req, res) => {
