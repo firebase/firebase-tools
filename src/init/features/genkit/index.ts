@@ -550,8 +550,7 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
   const packageJson = {
     main: "lib/index.js",
     scripts: {
-      "genkit:start": "genkit ui:start && GENKIT_ENV=dev tsx --watch src/genkit-sample.ts",
-      "genkit:stop": "genkit ui:stop",
+      "genkit:start": "genkit start -- tsx --watch src/genkit-sample.ts"
     },
   };
   logLabeledBullet("genkit", "Updating package.json");

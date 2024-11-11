@@ -1,6 +1,5 @@
 // Import the Genkit core libraries and plugins.
 import {genkit, z} from "genkit";
-import {logger} from "genkit/logging";
 $GENKIT_CONFIG_IMPORTS
 $GENKIT_MODEL_IMPORT
 
@@ -8,9 +7,6 @@ $GENKIT_MODEL_IMPORT
 // Cloud Functions.
 import {firebaseAuth} from "@genkit-ai/firebase/auth";
 import {onFlow} from "@genkit-ai/firebase/functions";
-
-// Log debug output to tbe console.
-logger.setLogLevel("debug");
 
 const ai = genkit({
   plugins: [
