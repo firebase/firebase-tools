@@ -39,9 +39,11 @@ export class EmulatorUI extends ExpressBasedEmulator {
     }
     const app = await super.createExpressApp();
     const { projectId } = this.args;
-    const enabledExperiments: Array<ExperimentName> = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
-      (experimentName) => isEnabled(experimentName),
-    );
+    const enabledExperiments: Array<ExperimentName> =
+      (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>)
+        .filter(
+          (experimentName) => isEnabled(experimentName),
+        );
     const emulatorGaSession = emulatorSession();
 
     await downloadableEmulators.downloadIfNecessary(Emulators.UI);
