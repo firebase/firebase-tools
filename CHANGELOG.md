@@ -1,3 +1,0 @@
-- Fix Task Queue Emulator error handling to display error message properly. (#7916)
-- Fixed some misleading logs when using the Data Connect emulator with `FIREBASE_DATACONNECT_POSTGRESQL_STRING` set. (#7882)
-- Update the Firebase Data Connect local toolkit to v1.7.0, which includes support for `query` in mutations, `@check` for advanced authorization, and replaces `java.util.Date` with `com.google.firebase.dataconnect.LocalDate` for `Date` scalar fields and variables in Kotlin codegen. (#7936)
