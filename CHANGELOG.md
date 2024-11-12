@@ -1,0 +1,1 @@
+- Fixed some misleading logs when using the Data Connect emulator with `FIREBASE_DATACONNECT_POSTGRESQL_STRING` set.
