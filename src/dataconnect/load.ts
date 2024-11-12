@@ -11,6 +11,7 @@ export async function load(
   config: Config,
   sourceDirectory: string,
 ): Promise<ServiceInfo> {
+  // TODO: better error handling when config read fails
   const resolvedDir = config.path(sourceDirectory);
   const dataConnectYaml = await fileUtils.readDataConnectYaml(resolvedDir);
   const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
