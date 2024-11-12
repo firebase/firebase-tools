@@ -22,7 +22,6 @@ import {
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
-import { getErrMsg } from "./error";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
