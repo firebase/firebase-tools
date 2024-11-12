@@ -1,1 +1,1 @@
-- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
+- Fixed some misleading logs when using the Data Connect emulator with `FIREBASE_DATACONNECT_POSTGRESQL_STRING` set.
