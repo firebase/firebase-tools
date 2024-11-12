@@ -18,7 +18,6 @@ export interface EmulatorUIOptions {
 }
 
 export class EmulatorUI extends ExpressBasedEmulator {
-
   constructor(private args: EmulatorUIOptions) {
     super({
       listen: args.listen,
@@ -39,24 +38,24 @@ export class EmulatorUI extends ExpressBasedEmulator {
     }
     const app = await super.createExpressApp();
     const { projectId } = this.args;
-    const enabledExperiments: Array<ExperimentName> =
-      (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>)
-        .filter(
-          (experimentName) => isEnabled(experimentName),
-        );
+    const enabledExperiments: Array<ExperimentName> = (
+      Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>
+    ).filter((experimentName) => isEnabled(experimentName));
     const emulatorGaSession = emulatorSession();
 
     await downloadableEmulators.downloadIfNecessary(Emulators.UI);
     const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
-    const webDir = path.join(downloadDetails.unzipDir!!, 'client');
+    const webDir = path.join(downloadDetails.unzipDir!!, "client");
 
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
     // hard to accomplish using client SDKs, consider adding an API below.
     app.get(
-      '/api/config',
+      "/api/config",
       this.jsonHandler(async () => {
-        const hubDiscoveryUrl = new URL(`http://${EmulatorRegistry.url(Emulators.HUB).host}/emulators`);
+        const hubDiscoveryUrl = new URL(
+          `http://${EmulatorRegistry.url(Emulators.HUB).host}/emulators`,
+        );
         const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
         const emulators = (await emulatorsRes.json()) as any;
 
@@ -74,16 +73,16 @@ export class EmulatorUI extends ExpressBasedEmulator {
         }
 
         return json;
-      })
+      }),
     );
 
     app.use(express.static(webDir));
     // Required for the router to work properly.
-    app.get('*', function (_, res) {
-      res.sendFile(path.join(webDir, 'index.html'));
+    app.get("*", (_, res) => {
+      res.sendFile(path.join(webDir, "index.html"));
     });
 
-    return app
+    return app;
   }
 
   connect(): Promise<void> {
@@ -94,9 +93,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
     return Emulators.UI;
   }
 
-  jsonHandler(
-    handler: (req: express.Request) => Promise<object>
-  ): express.Handler {
+  jsonHandler(handler: (req: express.Request) => Promise<object>): express.Handler {
     return (req, res) => {
       handler(req).then(
         (body) => {
@@ -109,7 +106,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
             stack: err.stack,
             raw: err,
           });
-        }
+        },
       );
     };
   }
