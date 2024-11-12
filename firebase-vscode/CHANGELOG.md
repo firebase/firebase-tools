@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+
 ## 0.10.7
 
 - Updated internal firebase-tools dependency to 13.24.2
