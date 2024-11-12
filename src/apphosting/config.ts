@@ -44,7 +44,6 @@ export interface Config {
  * file.
  */
 export function discoverBackendRoot(cwd: string): string | null {
-  // Look for an apphosting.yaml to find backend root
   let dir = cwd;
 
   while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {

@@ -44,11 +44,11 @@ async function serve(
   backendRelativeDir?: string,
 ): Promise<void> {
   backendRelativeDir = backendRelativeDir ?? "./";
+
   const backendRoot = resolveProjectPath({}, backendRelativeDir);
-
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
-
   const environmentVariablesAsRecord: Record<string, string> = {};
+
   for (const env of apphostingLocalConfig.environmentVariables) {
     environmentVariablesAsRecord[env.variable] = env.value!;
   }
@@ -58,7 +58,6 @@ async function serve(
     PORT: port.toString(),
   };
 
-  logger.logLabeled("BULLET", Emulators.APPHOSTING, `backendRoot: ${backendRoot}`);
   if (startCommand) {
     logger.logLabeled(
       "BULLET",
