@@ -1,4 +1,7 @@
-import { EmulatorInstance, EmulatorInfo, Emulators, ListenSpec } from "./types";
+import * as express from "express";
+import * as path from "path";
+import fetch from "node-fetch";
+import { Emulators, ListenSpec } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
@@ -6,9 +9,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { Constants } from "./constants";
 import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
-import { createApp } from "./ui/server";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
-import { createDestroyer } from "../utils";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -16,12 +17,19 @@ export interface EmulatorUIOptions {
   auto_download?: boolean;
 }
 
-export class EmulatorUI implements EmulatorInstance {
+export class EmulatorUI extends ExpressBasedEmulator {
 
-  private destroyers = new Set<() => Promise<void>>();
-  constructor(private args: EmulatorUIOptions) { }
+  constructor(private args: EmulatorUIOptions) {
+    super({
+      listen: args.listen,
+    });
+  }
 
-  async start(): Promise<void> {
+  override async start(): Promise<void> {
+    await super.start();
+  }
+
+  protected override async createExpressApp(): Promise<express.Express> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
       throw new FirebaseError(
         `Cannot start ${Constants.description(Emulators.UI)} without ${Constants.description(
@@ -29,49 +37,78 @@ export class EmulatorUI implements EmulatorInstance {
         )}!`,
       );
     }
+    const app = await super.createExpressApp();
     const { projectId } = this.args;
-
-    // FIXME Question: do we need GCLOUD_PROJECT: projectId, for anything?
     const enabledExperiments: Array<ExperimentName> = (Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>).filter(
       (experimentName) => isEnabled(experimentName),
     );
-    const downloadDetails = downloadableEmulators.DownloadDetails[Emulators.UI]; // FIXME Question: use getDownloadDetails to re-use path override? idk
-    await downloadableEmulators.downloadIfNecessary(Emulators.UI);
+    const emulatorGaSession = emulatorSession();
 
-    const servers = await createApp(
-      downloadDetails.unzipDir!!,
-      projectId,
-      EmulatorRegistry.url(Emulators.HUB).host,
-      emulatorSession(),
-      ExpressBasedEmulator.listenOptionsFromSpecs(this.args.listen),
-      enabledExperiments);
-      servers.forEach((server) => {
-        this.destroyers.add(createDestroyer(server));
-      });
+    await downloadableEmulators.downloadIfNecessary(Emulators.UI);
+    const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
+    const webDir = path.join(downloadDetails.unzipDir!!, 'client');
+
+    // Exposes the host and port of various emulators to facilitate accessing
+    // them using client SDKs. For features that involve multiple emulators or
+    // hard to accomplish using client SDKs, consider adding an API below.
+    app.get(
+      '/api/config',
+      this.jsonHandler(async () => {
+        const hubDiscoveryUrl = new URL(`http://${EmulatorRegistry.url(Emulators.HUB).host}/emulators`);
+        const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
+        const emulators = (await emulatorsRes.json()) as any;
+
+        const json = { projectId, experiments: [], ...emulators };
+
+        // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
+        // for more detail
+        if (emulatorGaSession) {
+          json.analytics = emulatorGaSession;
+        }
+
+        // pick up any experiments enabled with `firebase experiment:enable`
+        if (enabledExperiments) {
+          json.experiments = enabledExperiments;
+        }
+
+        return json;
+      })
+    );
+
+    app.use(express.static(webDir));
+    // Required for the router to work properly.
+    app.get('*', function (_, res) {
+      res.sendFile(path.join(webDir, 'index.html'));
+    });
+
+    return app
   }
 
   connect(): Promise<void> {
     return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
-    const promises = [];
-    for (const destroyer of this.destroyers) {
-      promises.push(destroyer().then(() => this.destroyers.delete(destroyer)));
-    }
-    await Promise.all(promises);
-  }
-
-  getInfo(): EmulatorInfo {
-    return {
-      name: this.getName(),
-      host: this.args.listen[0].address,
-      port: this.args.listen[0].port,
-      pid: downloadableEmulators.getPID(Emulators.UI),
-    };
-  }
-
   getName(): Emulators {
     return Emulators.UI;
+  }
+
+  jsonHandler(
+    handler: (req: express.Request) => Promise<object>
+  ): express.Handler {
+    return (req, res) => {
+      handler(req).then(
+        (body) => {
+          res.status(200).json(body);
+        },
+        (err) => {
+          EmulatorLogger.forEmulator(Emulators.UI).log("ERROR", err);
+          res.status(500).json({
+            message: err.message,
+            stack: err.stack,
+            raw: err,
+          });
+        }
+      );
+    };
   }
 }
