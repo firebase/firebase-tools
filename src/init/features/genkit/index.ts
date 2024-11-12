@@ -43,16 +43,18 @@ interface GenkitInfo {
   genkitVersion: string;
   templateVersion: string;
   useInit: boolean;
+  stopInstall: boolean;
 }
 
 /**
  * Determines which version and template to install
  * @return a GenkitInfo object
  */
-function getGenkitVersion(): GenkitInfo {
+async function getGenkitVersion(): Promise<GenkitInfo> {
   let genkitVersion: string;
-  let templateVersion: string | undefined;
-  let useInit: boolean;
+  let templateVersion = "0.9.0";
+  let useInit = false;
+  let stopInstall = false;
 
   // Allow the installed version to be set for dev purposes.
   if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
@@ -67,19 +69,29 @@ function getGenkitVersion(): GenkitInfo {
   }
 
   if (semver.gte(genkitVersion, "1.0.0")) {
-    // We don't know about this version.
-    throw new FirebaseError(
-      "Please update your firebase-tools. Alternatively you can set a GENKIT_DEV_VERSION environment variable to choose a genkit version < 1.0.0",
-    );
+    // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
+    const continueInstall = await confirm({
+      message:
+        clc.yellow(
+          `WARNING: The latest version of Genkit (${genkitVersion}) isn't supported by this\n` +
+            "version of firebase-tools. You can proceed, but the provided sample code may\n" +
+            "not work with the latest library. You can also try updating firebase-tools with\n" +
+            "npm install -g firebase-tools@latest, and then running this command again.\n\n",
+        ) + "Proceed with installing the latest version of Genkit?",
+      default: false,
+    });
+    if (!continueInstall) {
+      stopInstall = true;
+    }
   } else if (semver.gte(genkitVersion, "0.6.0")) {
-    templateVersion = "0.9.0";
-    useInit = false;
+    // if statement order is important
+    // variables already set above
   } else {
     templateVersion = "";
     useInit = true;
   }
 
-  return { genkitVersion, templateVersion, useInit };
+  return { genkitVersion, templateVersion, useInit, stopInstall };
 }
 
 /**
@@ -99,11 +111,15 @@ export interface GenkitSetup extends Setup {
  * doSetup is the entry point for setting up the genkit suite.
  */
 export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
-  const genkitInfo = getGenkitVersion();
+  const genkitInfo = await getGenkitVersion();
+  if (genkitInfo.stopInstall) {
+    logLabeledWarning("genkit", "Stopped Genkit initialization");
+    return;
+  }
   if (setup.functions?.languageChoice !== "typescript") {
     const continueFunctions = await confirm({
       message:
-        "Genkit's Firebase integration uses Cloud Functions for Firebase with TypeScript. Initialize Functions to continue?",
+        "Genkit's Firebase integration uses Cloud Functions for Firebase with TypeScript.\nInitialize Functions to continue?",
       default: true,
     });
     if (!continueFunctions) {
