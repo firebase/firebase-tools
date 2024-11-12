@@ -1,1 +1,2 @@
+- Fix Task Queue Emulator error handling to display error message properly. (#7916)
 - Fixed some misleading logs when using the Data Connect emulator with `FIREBASE_DATACONNECT_POSTGRESQL_STRING` set.
