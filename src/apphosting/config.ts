@@ -7,8 +7,6 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
-import { detectProjectRoot } from "../detectProjectRoot";
-import { logWarning } from "../utils";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -42,25 +40,10 @@ export interface Config {
 /**
  * Returns the absolute path for an app hosting backend root.
  *
- * If backendRootRelativeToProjectRoot is provided then this function will
- * try to return the absolute path of the backend root
- *
- * Otherwise backend root will be determined by looking for an apphosting.yaml
+ * Backend root is determined by looking for an apphosting.yaml
  * file.
  */
-export function discoverBackendRoot(
-  cwd: string,
-  backendRootRelativeToProjectRoot?: string,
-): string | null {
-  if (backendRootRelativeToProjectRoot) {
-    const projectRoot = detectProjectRoot({ cwd });
-    if (!projectRoot) {
-      return null;
-    }
-
-    return resolve(projectRoot, backendRootRelativeToProjectRoot);
-  }
-
+export function discoverBackendRoot(cwd: string): string | null {
   // Look for an apphosting.yaml to find backend root
   let dir = cwd;
 
@@ -82,24 +65,9 @@ export function discoverBackendRoot(
 }
 
 /**
- * Lists absolute paths for `apphosting.*.yaml` configs at backend root
- */
-export function discoverConfigsAtBackendRoot(cwd: string, rootDir?: string): string[] {
-  const backendRoot = discoverBackendRoot(cwd, rootDir);
-  if (!backendRoot) {
-    logWarning(
-      "Unable to find your project's root, listing App Hosting config files in current working directory.",
-    );
-    return listAppHostingFilesInPath(cwd);
-  }
-
-  return listAppHostingFilesInPath(backendRoot);
-}
-
-/**
  * Returns paths of apphosting config files in the given path
  * */
-function listAppHostingFilesInPath(path: string) {
+export function listAppHostingFilesInPath(path: string) {
   return fs
     .listFiles(path)
     .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file))

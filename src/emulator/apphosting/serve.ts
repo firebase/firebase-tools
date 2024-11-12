@@ -11,7 +11,7 @@ import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
-import { resolve } from "path";
+import { resolveProjectPath } from "../../projectPath";
 
 interface StartOptions {
   startCommand?: string;
@@ -43,10 +43,10 @@ async function serve(
   startCommand?: string,
   backendRelativeDir?: string,
 ): Promise<void> {
-  const rootDir = process.cwd();
   backendRelativeDir = backendRelativeDir ?? "./";
+  const backendRoot = resolveProjectPath({}, backendRelativeDir);
 
-  const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir, backendRelativeDir);
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
 
   const environmentVariablesAsRecord: Record<string, string> = {};
   for (const env of apphostingLocalConfig.environmentVariables) {
@@ -58,25 +58,25 @@ async function serve(
     PORT: port.toString(),
   };
 
-  const backendRootDir = resolve(rootDir, backendRelativeDir);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `backendRoot: ${backendRoot}`);
   if (startCommand) {
     logger.logLabeled(
       "BULLET",
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
-    await spawnWithCommandString(startCommand, backendRootDir, environmentVariablesToInject);
+    await spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
     return;
   }
 
-  const packageManager = await discoverPackageManager(backendRootDir);
+  const packageManager = await discoverPackageManager(backendRoot);
 
   logger.logLabeled(
     "BULLET",
     Emulators.APPHOSTING,
     `starting app with: '${packageManager} run dev'`,
   );
-  await wrapSpawn(packageManager, ["run", "dev"], backendRootDir, environmentVariablesToInject);
+  await wrapSpawn(packageManager, ["run", "dev"], backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {

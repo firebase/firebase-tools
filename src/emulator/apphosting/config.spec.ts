@@ -11,7 +11,7 @@ describe("environments", () => {
   let joinStub: sinon.SinonStub;
   let loggerStub: sinon.SinonStub;
   let loadAppHostingYamlStub: sinon.SinonStub;
-  let discoverConfigsAtBackendRoot: sinon.SinonStub;
+  let listAppHostingFilesInPathStub: sinon.SinonStub;
 
   // Configs used for stubs
   const apphostingYamlConfigOne = AppHostingYamlConfig.empty();
@@ -52,7 +52,7 @@ describe("environments", () => {
     loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
     joinStub = sinon.stub(path, "join");
     loggerStub = sinon.stub(utils, "logger");
-    discoverConfigsAtBackendRoot = sinon.stub(configImport, "discoverConfigsAtBackendRoot");
+    listAppHostingFilesInPathStub = sinon.stub(configImport, "listAppHostingFilesInPath");
   });
 
   afterEach(() => {
@@ -63,18 +63,18 @@ describe("environments", () => {
 
   describe("getLocalAppHostingConfiguration", () => {
     it("should return an empty config if no base or local apphosting yaml files found", async () => {
-      discoverConfigsAtBackendRoot.returns([]);
+      listAppHostingFilesInPathStub.returns([]);
 
-      const apphostingConfig = await getLocalAppHostingConfiguration("test", "./");
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(JSON.stringify([]));
       expect(JSON.stringify(apphostingConfig.secrets)).to.equal(JSON.stringify([]));
     });
 
     it("should return local config if only local config found", async () => {
-      discoverConfigsAtBackendRoot.returns(["/parent/apphosting.local.yaml"]);
+      listAppHostingFilesInPathStub.returns(["/parent/apphosting.local.yaml"]);
       loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigOne);
 
-      const apphostingConfig = await getLocalAppHostingConfiguration("test", "./");
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
@@ -94,10 +94,10 @@ describe("environments", () => {
     });
 
     it("should return base config if only base config found", async () => {
-      discoverConfigsAtBackendRoot.returns(["/parent/apphosting.yaml"]);
+      listAppHostingFilesInPathStub.returns(["/parent/apphosting.yaml"]);
       loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigOne);
 
-      const apphostingConfig = await getLocalAppHostingConfiguration("test", "./");
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
@@ -117,7 +117,7 @@ describe("environments", () => {
     });
 
     it("should combine apphosting yaml files according to precedence", async () => {
-      discoverConfigsAtBackendRoot.returns([
+      listAppHostingFilesInPathStub.returns([
         "/parent/cwd/apphosting.yaml",
         "/parent/apphosting.local.yaml",
       ]);
@@ -126,7 +126,7 @@ describe("environments", () => {
       loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigTwo);
       loadAppHostingYamlStub.onSecondCall().returns(apphostingYamlConfigOne);
 
-      const apphostingConfig = await getLocalAppHostingConfiguration("test", "./");
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
