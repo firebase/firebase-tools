@@ -527,7 +527,7 @@ async function _runBinary(
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   const details = DownloadDetails[emulator];
-  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`]; // FIXME care about this for UI?
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
   if (pathOverride) {
     const logger = EmulatorLogger.forEmulator(emulator);
     logger.logLabeled(
