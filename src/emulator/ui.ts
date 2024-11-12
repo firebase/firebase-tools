@@ -14,7 +14,6 @@ import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
   projectId: string;
-  auto_download?: boolean;
 }
 
 export class EmulatorUI extends ExpressBasedEmulator {
