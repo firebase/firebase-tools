@@ -68,12 +68,10 @@ export async function updateFirebaseRCProject(values: {
   };
 }) {
   let didChange = false;
-  const rc =
-    firebaseRC.value?.tryReadValue ??
-    // We don't update firebaseRC if we create a temporary RC,
-    // as the file watcher will update the value for us.
-    // This is only for the sake of calling `save()`.
-    new RC(path.join(currentOptions.value.cwd, ".firebaserc"), {});
+  const newRCPath = path.join(currentOptions.value.cwd, ".firebaserc");
+  const isNewRC = !firebaseRC.value?.tryReadValue;
+
+  const rc = firebaseRC.value?.tryReadValue ?? new RC(newRCPath, {});
 
   if (
     values.projectAlias &&
@@ -84,6 +82,9 @@ export async function updateFirebaseRCProject(values: {
       values.projectAlias.projectId,
     );
     rc.save();
+    if (isNewRC) {
+      firebaseRC.value = _readRC(vscode.Uri.file(newRCPath));
+    }
   }
 }
 
