@@ -55,6 +55,7 @@ import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { WebFrameworks } from "./frameworks";
 import { constructDefaultWebSetup } from "../fetchWebSetup";
+import { isUsingImageOptimization } from "./next/utils";
 
 export { WebFrameworks };
 
@@ -537,6 +538,12 @@ ${
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
+
+      if (frameworksBackend && framework === "next") {
+        if (await isUsingImageOptimization(getProjectPath(), ".next")) {
+          frameworksBackend.memory = "512MiB";
+        }
+      }
 
       if (packageJson.type === "module") {
         await writeFile(
