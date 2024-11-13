@@ -1,0 +1,1 @@
+- Moved firebase-tools-ui server.js logic to fireabse-tools to run it in-memory. (#7897)
