@@ -1,0 +1,1 @@
+- Migrated some API calls from `firebase.googleapis.com` to `resourcemanager.googleapis.com`.
