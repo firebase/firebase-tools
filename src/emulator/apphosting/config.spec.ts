@@ -17,36 +17,54 @@ describe("environments", () => {
   const apphostingYamlConfigOne = AppHostingYamlConfig.empty();
   apphostingYamlConfigOne.addEnvironmentVariable({
     variable: "randomEnvOne",
-    value: "envOne",
+    value: "ENV_ONE_FROM_CONFIG_ONE",
   });
   apphostingYamlConfigOne.addEnvironmentVariable({
     variable: "randomEnvTwo",
-    value: "envTwo",
+    value: "ENV_TWO_FROM_CONFIG_ONE",
   });
   apphostingYamlConfigOne.addEnvironmentVariable({
     variable: "randomEnvThree",
-    value: "envThree",
+    value: "ENV_THREE_FROM_CONFIG_ONE",
   });
-  apphostingYamlConfigOne.addSecret({ variable: "randomSecretOne", secret: "secretOne" });
-  apphostingYamlConfigOne.addSecret({ variable: "randomSecretTwo", secret: "secretTwo" });
-  apphostingYamlConfigOne.addSecret({ variable: "randomSecretThree", secret: "secretThree" });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretOne",
+    secret: "SECRET_ONE_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretTwo",
+    secret: "SECRET_TWO_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretThree",
+    secret: "SECRET_THREE_FROM_CONFIG_ONE",
+  });
 
   const apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
   apphostingYamlConfigTwo.addEnvironmentVariable({
     variable: "randomEnvOne",
-    value: "envOne",
+    value: "ENV_ONE_FROM_CONFIG_TWO",
   });
   apphostingYamlConfigTwo.addEnvironmentVariable({
     variable: "randomEnvTwo",
-    value: "blah",
+    value: "ENV_TWO_FROM_CONFIG_TWO",
   });
   apphostingYamlConfigTwo.addEnvironmentVariable({
     variable: "randomEnvFour",
-    value: "envFour",
+    value: "ENV_FOUR_FROM_CONFIG_TWO",
   });
-  apphostingYamlConfigTwo.addSecret({ variable: "randomSecretOne", secret: "bleh" });
-  apphostingYamlConfigTwo.addSecret({ variable: "randomSecretTwo", secret: "secretTwo" });
-  apphostingYamlConfigTwo.addSecret({ variable: "randomSecretFour", secret: "secretFour" });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretOne",
+    secret: "SECRET_ONE_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretTwo",
+    secret: "SECRET_TWO_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretFour",
+    secret: "SECRET_FOUR_FROM_CONFIG_TWO",
+  });
 
   beforeEach(() => {
     loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
@@ -78,17 +96,17 @@ describe("environments", () => {
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
-          { variable: "randomEnvOne", value: "envOne" },
-          { variable: "randomEnvTwo", value: "envTwo" },
-          { variable: "randomEnvThree", value: "envThree" },
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
         ]),
       );
 
       expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
         JSON.stringify([
-          { variable: "randomSecretOne", secret: "secretOne" },
-          { variable: "randomSecretTwo", secret: "secretTwo" },
-          { variable: "randomSecretThree", secret: "secretThree" },
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
         ]),
       );
     });
@@ -101,17 +119,17 @@ describe("environments", () => {
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
-          { variable: "randomEnvOne", value: "envOne" },
-          { variable: "randomEnvTwo", value: "envTwo" },
-          { variable: "randomEnvThree", value: "envThree" },
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
         ]),
       );
 
       expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
         JSON.stringify([
-          { variable: "randomSecretOne", secret: "secretOne" },
-          { variable: "randomSecretTwo", secret: "secretTwo" },
-          { variable: "randomSecretThree", secret: "secretThree" },
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
         ]),
       );
     });
@@ -130,19 +148,19 @@ describe("environments", () => {
 
       expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
         JSON.stringify([
-          { variable: "randomEnvOne", value: "envOne" },
-          { variable: "randomEnvTwo", value: "blah" },
-          { variable: "randomEnvThree", value: "envThree" },
-          { variable: "randomEnvFour", value: "envFour" },
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_TWO" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_TWO" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvFour", value: "ENV_FOUR_FROM_CONFIG_TWO" },
         ]),
       );
 
       expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
         JSON.stringify([
-          { variable: "randomSecretOne", secret: "bleh" },
-          { variable: "randomSecretTwo", secret: "secretTwo" },
-          { variable: "randomSecretThree", secret: "secretThree" },
-          { variable: "randomSecretFour", secret: "secretFour" },
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_TWO" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_TWO" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretFour", secret: "SECRET_FOUR_FROM_CONFIG_TWO" },
         ]),
       );
     });

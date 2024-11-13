@@ -35,5 +35,8 @@ export async function getLocalAppHostingConfiguration(
     return await AppHostingYamlConfig.loadFromFile((baseFilePath || localFilePath)!);
   }
 
-  return await loadConfigForEnvironment(localFilePath, baseFilePath);
+  const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+  const baseConfig = await AppHostingYamlConfig.loadFromFile(baseFilePath);
+  baseConfig.merge(localYamlConfig);
+  return baseConfig;
 }
