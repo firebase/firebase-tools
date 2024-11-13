@@ -10,6 +10,7 @@ import { Constants } from "./constants";
 import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
+import { EmulatorHub} from "./hub";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -35,6 +36,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
         )}!`,
       );
     }
+    const hub = EmulatorRegistry.get(Emulators.HUB);
     const app = await super.createExpressApp();
     const { projectId } = this.args;
     const enabledExperiments: Array<ExperimentName> = (
@@ -44,7 +46,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
 
     await downloadableEmulators.downloadIfNecessary(Emulators.UI);
     const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
-    const webDir = path.join(downloadDetails.unzipDir!!, "client");
+    const webDir = path.join(downloadDetails.unzipDir!, "client");
 
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
@@ -58,7 +60,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
         const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
         const emulators = (await emulatorsRes.json()) as any;
 
-        const json = { projectId, experiments: [], ...emulators };
+        const json = { projectId, experiments: [], ... (hub! as EmulatorHub).getRunningEmulatorsMapping() };
 
         // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
         // for more detail
