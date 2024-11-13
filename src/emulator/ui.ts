@@ -1,6 +1,5 @@
 import * as express from "express";
 import * as path from "path";
-import fetch from "node-fetch";
 import { Emulators, ListenSpec } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
@@ -10,7 +9,7 @@ import { Constants } from "./constants";
 import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
-import { EmulatorHub} from "./hub";
+import { EmulatorHub } from "./hub";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -53,14 +52,12 @@ export class EmulatorUI extends ExpressBasedEmulator {
     // hard to accomplish using client SDKs, consider adding an API below.
     app.get(
       "/api/config",
-      this.jsonHandler(async () => {
-        const hubDiscoveryUrl = new URL(
-          `http://${EmulatorRegistry.url(Emulators.HUB).host}/emulators`,
-        );
-        const emulatorsRes = await fetch(hubDiscoveryUrl.toString());
-        const emulators = (await emulatorsRes.json()) as any;
-
-        const json = { projectId, experiments: [], ... (hub! as EmulatorHub).getRunningEmulatorsMapping() };
+      this.jsonHandler(() => {
+        const json = {
+          projectId,
+          experiments: [],
+          ...(hub! as EmulatorHub).getRunningEmulatorsMapping(),
+        };
 
         // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
         // for more detail

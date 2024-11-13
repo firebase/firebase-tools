@@ -100,13 +100,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
-      const body: GetEmulatorsResponse = {};
-      for (const info of EmulatorRegistry.listRunningWithInfo()) {
-        body[info.name] = {
-          listen: this.args.listenForEmulator[info.name],
-          ...info,
-        };
-      }
       res.json(this.getRunningEmulatorsMapping());
     });
 
