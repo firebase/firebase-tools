@@ -1,6 +1,8 @@
 ## NEXT
 
+- Updated internal firebase-tools dependency to 13.25.0
 - [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+- [Fixed] Fixed a visual bug when selecting a Firebase project in an empty folder
 
 ## 0.10.7
 
