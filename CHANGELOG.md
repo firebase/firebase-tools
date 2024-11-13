@@ -1,1 +1,2 @@
-- Migrated some API calls from `firebase.googleapis.com` to `resourcemanager.googleapis.com`.
+- Migrates some API calls from `firebase.googleapis.com` to `resourcemanager.googleapis.com`.
+- Updates `superstatic` to `9.1.0` (#7929).
