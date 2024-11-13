@@ -98,7 +98,9 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
   logger.info("");
   logger.info("Project information:");
   logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
-  logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+  if (projectInfo.displayName) {
+    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+  }
   logger.info("");
   logger.info("Firebase console is available at");
   logger.info(
