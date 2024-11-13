@@ -1,2 +1,3 @@
-- Migrates some API calls from `firebase.googleapis.com` to `cloudresourcemanager.googleapis.com`.
-- Updates `superstatic` to `9.1.0` (#7929).
+- Migrated some API calls from `firebase.googleapis.com` to `cloudresourcemanager.googleapis.com`.
+- Moved `firebase-tools-ui` `server.js` logic to `firebase-tools` to run it in process. (#7897)
+- Updated `superstatic` to `9.1.0` (#7929).
