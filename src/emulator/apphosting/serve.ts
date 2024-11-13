@@ -5,13 +5,14 @@
 
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { discoverPackageManager } from "./utils";
+import { PackageManager, discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
+import { FirebaseError } from "../../error";
 
 interface StartOptions {
   startCommand?: string;
@@ -68,7 +69,14 @@ async function serve(
     return;
   }
 
-  const packageManager = await discoverPackageManager(backendRoot);
+  let packageManager: PackageManager = "npm";
+  try {
+    packageManager = await discoverPackageManager(backendRoot);
+  } catch (e) {
+    throw new FirebaseError(
+      "Failed to detect your project's package manager, consider manually setting the start command with the `startCommandOverride` config. ",
+    );
+  }
 
   logger.logLabeled(
     "BULLET",

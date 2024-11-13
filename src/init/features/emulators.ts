@@ -5,6 +5,7 @@ import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 import { Setup } from "../index";
+import { AdditionalInitFns } from "../../emulator/initEmulators";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -55,6 +56,13 @@ export async function doSetup(setup: Setup, config: any) {
     }
 
     //TODO: Can add some logic here where each emulator can run their own inits
+    const additionalOptions = await AdditionalInitFns[selected]();
+    if (additionalOptions) {
+      setup.config.emulators[selected] = {
+        ...setup.config.emulators[selected],
+        ...additionalOptions,
+      };
+    }
   }
 
   if (selections.emulators.length) {

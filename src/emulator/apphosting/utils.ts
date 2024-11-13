@@ -2,6 +2,7 @@ import { pathExists } from "fs-extra";
 import { join } from "path";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
+import { FirebaseError } from "../../error";
 
 export const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
@@ -24,5 +25,9 @@ export async function discoverPackageManager(rootdir: string): Promise<PackageMa
     return "yarn";
   }
 
-  return "npm";
+  if (await pathExists(join(rootdir, "package.lock"))) {
+    return "npm";
+  }
+
+  throw new FirebaseError("Unsupported package manager");
 }
