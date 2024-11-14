@@ -419,6 +419,9 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
   } catch (err: any) {
     if (getErrStatus(err) === 404) {
       try {
+        logger.debug(
+          `Couldn't get project info from firedata for ${projectId}, trying resource manager. Original error: ${err}`,
+        );
         const info = await getProject(projectId);
         // TODO: Update copy based on Rachel/Yvonne's feedback.
         // TODO: Add link
