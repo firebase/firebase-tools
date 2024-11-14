@@ -7,7 +7,6 @@ import { PGlite } from "@electric-sql/pglite";
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
-import { rmSync } from "node:fs";
 
 import {
   getMessages,
@@ -25,7 +24,9 @@ export class PostgresServer {
 
   public db: PGlite | undefined = undefined;
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
-    const getDb: () => Promise<PGlite> = this.getDb;
+    const getDb: () => Promise<PGlite> = () => {
+      return this.getDb();
+    };
     await getDb();
 
     const server = net.createServer(async (socket) => {
@@ -88,13 +89,25 @@ export class PostgresServer {
     return this.db;
   }
 
-  public async clearDb(): Promise<PGlite> {
-    if (this.dataDirectory) {
-      rmSync(this.dataDirectory, { recursive: true });
-    }
-    await this.db?.close();
-    this.db = undefined;
-    return this.getDb(); 
+  public async clearDb(): Promise<void> {
+    // if (this.dataDirectory) {
+    //   rmSync(this.dataDirectory, { recursive: true });
+    // }
+    // await this.db?.close();
+    // this.db = undefined;
+    // return this.getDb();
+    const db = await this.getDb();
+    await db.query(`
+DO $do$
+BEGIN
+   EXECUTE
+   (SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
+    FROM   pg_class
+    WHERE  relkind = 'r'
+    AND    relnamespace = 'public'::regnamespace
+   );
+END
+$do$;`);
   }
 
   constructor(database: string, username: string, dataDirectory?: string) {

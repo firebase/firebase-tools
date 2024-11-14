@@ -173,10 +173,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
       //     message: `Clear Data Connect cannot be triggered by external callers.`,
       //   });
       // }
-      utils.logLabeledBullet(
-        "emulators",
-        `Clearing data from Data Connect data sources.`,
-      );
+      utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
 
       const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
       if (!instance) {
@@ -185,7 +182,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
       }
 
       await instance.clearData();
-
+      res.status(200).send("Data cleared");
     });
 
     return app;
