@@ -5,14 +5,13 @@
 
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { PackageManager, discoverPackageManager } from "./utils";
+import { detectStartCommand } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
-import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
+import { spawnWithCommandString } from "../../init/spawn";
 import { logger } from "./utils";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
-import { FirebaseError } from "../../error";
 
 interface StartOptions {
   startCommand?: string;
@@ -69,21 +68,9 @@ async function serve(
     return;
   }
 
-  let packageManager: PackageManager = "npm";
-  try {
-    packageManager = await discoverPackageManager(backendRoot);
-  } catch (e) {
-    throw new FirebaseError(
-      "Failed to detect your project's package manager, consider manually setting the start command with the `startCommandOverride` config. ",
-    );
-  }
-
-  logger.logLabeled(
-    "BULLET",
-    Emulators.APPHOSTING,
-    `starting app with: '${packageManager} run dev'`,
-  );
-  await wrapSpawn(packageManager, ["run", "dev"], backendRoot, environmentVariablesToInject);
+  const detectedStartCommand = await detectStartCommand(backendRoot);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectStartCommand}`);
+  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {

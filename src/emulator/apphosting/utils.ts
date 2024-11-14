@@ -16,7 +16,7 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
  * @param rootdir project's root directory
  * @returns PackageManager
  */
-export async function discoverPackageManager(rootdir: string): Promise<PackageManager> {
+async function detectPackageManager(rootdir: string): Promise<PackageManager> {
   if (await pathExists(join(rootdir, "pnpm-lock.yaml"))) {
     return "pnpm";
   }
@@ -30,4 +30,17 @@ export async function discoverPackageManager(rootdir: string): Promise<PackageMa
   }
 
   throw new FirebaseError("Unsupported package manager");
+}
+
+export async function detectStartCommand(rootDir: string) {
+  let packageManager: PackageManager = "npm";
+  try {
+    packageManager = await detectPackageManager(rootDir);
+  } catch (e) {
+    throw new FirebaseError(
+      "Failed to detect your project's package manager, consider manually setting the start command with the `startCommandOverride` config. ",
+    );
+  }
+
+  return `${packageManager} run dev`;
 }
