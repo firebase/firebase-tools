@@ -121,7 +121,6 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     // require a resource location:
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
     setup.projectId = rcProject.projectId;
-    // TODO: Handle this.
     setup.projectLocation = rcProject?.resources?.locationId;
     return;
   }
