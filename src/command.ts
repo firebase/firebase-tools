@@ -10,7 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 
@@ -372,7 +372,7 @@ export class Command {
   }): Promise<void> {
     if (options.project?.match(/^\d+$/)) {
       await requireAuth(options);
-      const { projectId, projectNumber } = await getFirebaseProject(options.project);
+      const { projectId, projectNumber } = await getProject(options.project);
       options.projectId = projectId;
       options.projectNumber = projectNumber;
     } else {
