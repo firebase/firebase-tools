@@ -22,9 +22,11 @@ export function load(client: any): any {
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.appdistribution.testers = {};
+  client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
   client.appdistribution.group = {};
+  client.appdistribution.group.list = loadCommand("appdistribution-group-list");
   client.appdistribution.group.create = loadCommand("appdistribution-group-create");
   client.appdistribution.group.delete = loadCommand("appdistribution-group-delete");
   client.apps = {};
@@ -183,6 +185,10 @@ export function load(client: any): any {
       client.apphosting.rollouts = {};
       client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
+    }
+    if (experiments.isEnabled("emulatorapphosting")) {
+      client.apphosting.config = {};
+      client.apphosting.config.export = loadCommand("apphosting-config-export");
     }
   }
   client.login = loadCommand("login");

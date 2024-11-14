@@ -8,9 +8,9 @@ import { checkListenable } from "../portUtils";
 import { discoverPackageManager } from "./utils";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
-import { getLocalAppHostingConfiguration } from "./config";
 import { logger } from "./utils";
 import { Emulators } from "../types";
+import { getLocalAppHostingConfiguration } from "./config";
 
 interface StartOptions {
   startCommand?: string;
@@ -39,8 +39,14 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
 async function serve(port: number, startCommand?: string): Promise<void> {
   const rootDir = process.cwd();
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
+
+  const environmentVariablesAsRecord: Record<string, string> = {};
+  for (const env of apphostingLocalConfig.environmentVariables) {
+    environmentVariablesAsRecord[env.variable] = env.value!;
+  }
+
   const environmentVariablesToInject = {
-    ...apphostingLocalConfig.environmentVariables,
+    ...environmentVariablesAsRecord,
     PORT: port.toString(),
   };
 

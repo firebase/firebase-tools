@@ -1,1 +1,4 @@
-- Fixed Next.js issue with PPR routes not rendering correctly. (#7625)
+- Migrated some API calls from `firebase.googleapis.com` to `cloudresourcemanager.googleapis.com`.
+- Moved firebase-tools-ui server.js logic to fireabse-tools to run it in-memory. (#7897)
+- Updates `superstatic` to `9.1.0` (#7929).
+- Added the appdistribution:group:list and appdistribution:testers:list commands.
