@@ -25,7 +25,7 @@ async function detectPackageManager(rootdir: string): Promise<PackageManager> {
     return "yarn";
   }
 
-  if (await pathExists(join(rootdir, "package.lock"))) {
+  if (await pathExists(join(rootdir, "package-lock.json"))) {
     return "npm";
   }
 

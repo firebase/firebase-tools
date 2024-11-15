@@ -1,31 +1,32 @@
 // specific initialization steps for an emulator
 
+import { join } from "path";
 import { promptOnce } from "../prompt";
 import { detectStartCommand } from "./apphosting/utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
+import { getOrPromptProject } from "../management/projects";
+import { exportConfig } from "../apphosting/config";
 
 type InitFn = () => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
 
 export const AdditionalInitFns: AdditionalInitFnsType = {
   [Emulators.APPHOSTING]: async () => {
+    const cwd = process.cwd();
     const additionalConfigs = new Map<string, string>();
     const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
     logger.log("BULLET", "Initializing App Hosting Emulator");
 
-    // get root directory
-    const rootDirectory = await promptOnce({
+    const backendRelativeDir = await promptOnce({
       name: "rootDir",
       type: "input",
       default: "./",
       message: "Specify your app's root directory relative to your repository",
     });
-    additionalConfigs.set("rootDirectory", rootDirectory);
+    additionalConfigs.set("rootDirectory", backendRelativeDir);
 
-    // Auto-detect package manager and set startCommandOverride
-    // TODO: don't use cwd, instead try to find project root
-    const backendRoot = process.cwd();
+    const backendRoot = join(cwd, backendRelativeDir);
     try {
       const startCommand = await detectStartCommand(backendRoot);
       additionalConfigs.set("startCommandOverride", startCommand);
@@ -37,6 +38,8 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     }
 
     // prompt for apphosting yaml to export
+    const project = await getOrPromptProject({});
+    await exportConfig(project.projectId, cwd, backendRoot);
 
     return mapToObject(additionalConfigs);
   },

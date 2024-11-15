@@ -3,7 +3,6 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   listAppHostingFilesInPath,
-  loadConfigForEnvironment,
 } from "../../apphosting/config";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
