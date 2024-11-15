@@ -72,8 +72,9 @@ const START_LOGGING_EMULATOR = utils.envOverride(
  * Exports emulator data on clean exit (SIGINT or process end)
  * @param options
  */
-export async function exportOnExit(options: any) {
-  const exportOnExitDir = options.exportOnExit;
+export async function exportOnExit(options: Options): Promise<void> {
+  // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
+  const exportOnExitDir = options.exportOnExit as string;
   if (exportOnExitDir) {
     try {
       utils.logBullet(
@@ -81,8 +82,8 @@ export async function exportOnExit(options: any) {
           "please wait for the export to finish...",
       );
       await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
-    } catch (e: any) {
-      utils.logWarning(e);
+    } catch (e: unknown) {
+      utils.logWarning(`${e}`);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
     }
   }

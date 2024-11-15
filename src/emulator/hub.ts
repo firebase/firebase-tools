@@ -167,12 +167,11 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
-      // TODO: Sanity check that this is needed.
-      // if (req.headers.origin) {
-      //   res.status(403).json({
-      //     message: `Clear Data Connect cannot be triggered by external callers.`,
-      //   });
-      // }
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Clear Data Connect cannot be triggered by external callers.`,
+        });
+      }
       utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
 
       const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;

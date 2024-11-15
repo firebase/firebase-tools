@@ -1,6 +1,7 @@
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
 import * as clc from "colorette";
+import * as path from "path";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -104,13 +105,11 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDirectory");
-        this.postgresServer = new PostgresServer(
-          dbId,
-          "postgres",
-          dataDirectory,
-          this.args.importPath,
-        );
+        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        const postgresDumpPath = this.args.importPath
+          ? path.join(this.args.importPath, "postgres.tar.gz")
+          : undefined;
+        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory, postgresDumpPath);
         const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
@@ -118,7 +117,6 @@ export class DataConnectEmulator implements EmulatorInstance {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
-            console;
             this.logger.logLabeled(
               "ERROR",
               "dataconnect",
@@ -185,9 +183,9 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-  async exportData(path: string): Promise<void> {
+  async exportData(exportPath: string): Promise<void> {
     if (this.postgresServer) {
-      await this.postgresServer.exportData(path);
+      await this.postgresServer.exportData(path.join(exportPath, "postgres.tar.gz"));
     } else {
       throw new FirebaseError(
         "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",

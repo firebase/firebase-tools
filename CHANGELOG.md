@@ -2,3 +2,5 @@
 - Moved firebase-tools-ui server.js logic to fireabse-tools to run it in-memory. (#7897)
 - Updates `superstatic` to `9.1.0` (#7929).
 - Added the appdistribution:group:list and appdistribution:testers:list commands.
+- Added `--import` and `emulators:export` support to the Data Connect emulator.
+- Added `firebase.json#emulators.dataconnect.dataDir`. When set, Data Connect data will be persisted to the configured directory between emulator runs.

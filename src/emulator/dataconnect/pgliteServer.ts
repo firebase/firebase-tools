@@ -26,10 +26,7 @@ export class PostgresServer {
 
   public db: PGlite | undefined = undefined;
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
-    const getDb: () => Promise<PGlite> = () => {
-      return this.getDb();
-    };
-    await getDb();
+    const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
       const connection: PostgresConnection = await fromNodeSocket(socket, {
@@ -82,9 +79,7 @@ export class PostgresServer {
           vector,
           uuidOssp,
         },
-        // TODO:  Use dataDir + loadDataDir to implement import/export.
         dataDir: this.dataDirectory,
-        // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
       };
       if (this.importPath) {
         logger.debug(`Importing from ${this.importPath}`);
@@ -99,12 +94,6 @@ export class PostgresServer {
   }
 
   public async clearDb(): Promise<void> {
-    // if (this.dataDirectory) {
-    //   rmSync(this.dataDirectory, { recursive: true });
-    // }
-    // await this.db?.close();
-    // this.db = undefined;
-    // return this.getDb();
     const db = await this.getDb();
     await db.query(`
 DO $do$

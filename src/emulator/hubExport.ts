@@ -132,7 +132,7 @@ export class HubExport {
     if (shouldExport(Emulators.DATACONNECT)) {
       metadata.dataconnect = {
         version: EmulatorHub.CLI_VERSION,
-        path: "dataconnect_export.tar.gz",
+        path: "dataconnect_export",
       };
       await this.exportDataConnect(metadata);
     }
@@ -310,10 +310,6 @@ export class HubExport {
       initiated_by: this.options.initiatedBy,
       emulator_name: Emulators.DATACONNECT,
     });
-    const dataconnectExportPath = path.join(this.tmpDir, metadata.dataconnect!.path);
-    if (fs.existsSync(dataconnectExportPath)) {
-      fse.removeSync(dataconnectExportPath);
-    }
 
     const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
     if (!instance) {
@@ -321,6 +317,13 @@ export class HubExport {
         "Unable to export Data Connect emulator data: the Data Connect emulator is not running.",
       );
     }
+
+    const dataconnectExportPath = path.join(this.tmpDir, metadata.dataconnect!.path);
+    if (fs.existsSync(dataconnectExportPath)) {
+      fse.removeSync(dataconnectExportPath);
+    }
+    fs.mkdirSync(dataconnectExportPath);
+
     await instance.exportData(dataconnectExportPath);
   }
 }
