@@ -31,6 +31,7 @@ export interface DataConnectEmulatorArgs {
   postgresListen?: ListenSpec[];
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
+  importPath?: string;
 }
 
 export interface DataConnectGenerateArgs {
@@ -104,7 +105,12 @@ export class DataConnectEmulator implements EmulatorInstance {
         );
       } else if (pgHost && pgPort) {
         const dataDirectory = this.args.config.get("emulators.dataconnect.dataDirectory");
-        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory);
+        this.postgresServer = new PostgresServer(
+          dbId,
+          "postgres",
+          dataDirectory,
+          this.args.importPath,
+        );
         const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
@@ -176,6 +182,16 @@ export class DataConnectEmulator implements EmulatorInstance {
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
+    }
+  }
+
+  async exportData(path: string): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.exportData(path);
+    } else {
+      throw new FirebaseError(
+        "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
+      );
     }
   }
 

@@ -1,12 +1,13 @@
 // https://github.com/supabase-community/pg-gateway
 
-import { PGlite } from "@electric-sql/pglite";
+import { PGlite, PGliteOptions } from "@electric-sql/pglite";
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
+import * as fs from "fs";
 
 import {
   getMessages,
@@ -21,6 +22,7 @@ export class PostgresServer {
   private username: string;
   private database: string;
   private dataDirectory?: string;
+  private importPath?: string;
 
   public db: PGlite | undefined = undefined;
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
@@ -72,7 +74,7 @@ export class PostgresServer {
       // to swap extensions after starting PGLite, so we always include it.
       const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
       const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
-      this.db = await PGlite.create({
+      const pgliteArgs: PGliteOptions = {
         username: this.username,
         database: this.database,
         debug: 0,
@@ -83,8 +85,15 @@ export class PostgresServer {
         // TODO:  Use dataDir + loadDataDir to implement import/export.
         dataDir: this.dataDirectory,
         // loadDataDir?: Blob | File; // This will be used with .dumpDataDir() for import/export
-      });
-      // await this.db.waitReady;
+      };
+      if (this.importPath) {
+        logger.debug(`Importing from ${this.importPath}`);
+        const rf = fs.readFileSync(this.importPath);
+        const file = new File([rf.buffer], this.importPath);
+        pgliteArgs.loadDataDir = file;
+      }
+      this.db = await PGlite.create(pgliteArgs);
+      await this.db.waitReady;
     }
     return this.db;
   }
@@ -110,10 +119,18 @@ END
 $do$;`);
   }
 
-  constructor(database: string, username: string, dataDirectory?: string) {
+  public async exportData(exportPath: string): Promise<void> {
+    const db = await this.getDb();
+    const dump = await db.dumpDataDir();
+    const arrayBuff = await dump.arrayBuffer();
+    fs.writeFileSync(exportPath, new Uint8Array(arrayBuff));
+  }
+
+  constructor(database: string, username: string, dataDirectory?: string, importPath?: string) {
     this.username = username;
     this.database = database;
     this.dataDirectory = dataDirectory;
+    this.importPath = importPath;
   }
 }
 

@@ -51,7 +51,7 @@ import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
 import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { EventarcEmulator } from "./eventarcEmulator";
-import { DataConnectEmulator } from "./dataconnectEmulator";
+import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -871,19 +871,41 @@ export async function startAll(
         `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
       );
     }
-    const configDir = config[0].source;
-    const dataConnectEmulator = new DataConnectEmulator({
+
+    const args: DataConnectEmulatorArgs = {
       listen: listenForEmulator.dataconnect,
       projectId,
       auto_download: true,
-      configDir,
+      configDir: config[0].source,
       rc: options.rc,
       config: options.config,
       autoconnectToPostgres: true,
       postgresListen: listenForEmulator["dataconnect.postgres"],
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
-    });
+    };
+
+    if (exportMetadata.dataconnect) {
+      utils.assertIsString(options.import);
+      const importDirAbsPath = path.resolve(options.import);
+      const exportMetadataFilePath = path.resolve(
+        importDirAbsPath,
+        exportMetadata.dataconnect.path,
+      );
+
+      EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
+        "BULLET",
+        "dataconnect",
+        `Importing data from ${exportMetadataFilePath}`,
+      );
+      args.importPath = exportMetadataFilePath;
+      void trackEmulator("emulator_import", {
+        initiated_by: "start",
+        emulator_name: Emulators.DATACONNECT,
+      });
+    }
+
+    const dataConnectEmulator = new DataConnectEmulator(args);
     await startEmulator(dataConnectEmulator);
   }
 
