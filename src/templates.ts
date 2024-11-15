@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
-import { isVSCodeExtension } from "./vsCodeUtils";
+import { isVSCodeExtension } from "./utils";
 
 const TEMPLATE_ENCODING = "utf8";
 
