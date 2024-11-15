@@ -31,6 +31,7 @@ import {
 } from "../utils";
 import {
   BuildResult,
+  CodegenFunctionDirectoryResult,
   Framework,
   FrameworkContext,
   FrameworkType,
@@ -83,6 +84,7 @@ import {
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
 import { parseStrict } from "../../functions/env";
+import { FrameworksBackendOptions } from "../../firebaseConfig";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -677,8 +679,14 @@ export async function ɵcodegenFunctionsDirectory(
   }
 
   // Add the `sharp` library if app is using image optimization
+
+  let frameworksBackend: FrameworksBackendOptions | undefined;
   if (await isUsingImageOptimization(sourceDir, distDir)) {
     packageJson.dependencies["sharp"] = SHARP_VERSION;
+    // TODO check if it is only for Next 15
+    frameworksBackend = {
+      memory: "512MiB",
+    };
   }
 
   const dotEnv: Record<string, string> = {};
@@ -710,7 +718,17 @@ export async function ɵcodegenFunctionsDirectory(
     ),
   );
 
-  return { packageJson, frameworksEntry: "next.js", dotEnv };
+  const result: CodegenFunctionDirectoryResult = {
+    packageJson,
+    frameworksEntry: "next.js",
+    dotEnv,
+  };
+
+  if (frameworksBackend) {
+    result.frameworksBackend = frameworksBackend;
+  }
+
+  return result;
 }
 
 /**

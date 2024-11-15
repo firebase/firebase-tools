@@ -55,7 +55,6 @@ import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { WebFrameworks } from "./frameworks";
 import { constructDefaultWebSetup } from "../fetchWebSetup";
-import { isUsingImageOptimization } from "./next/utils";
 
 export { WebFrameworks };
 
@@ -410,6 +409,7 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
         dotEnv = {},
         rewriteSource,
+        frameworksBackend: functionsDirectoryFrameworksBackend,
       } = await codegenFunctionsDirectory(
         getProjectPath(),
         functionsDist,
@@ -538,21 +538,16 @@ ${
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
-
-      if (frameworksBackend && framework === "next") {
-        if (await isUsingImageOptimization(getProjectPath(), ".next")) {
-          frameworksBackend.memory = "512MiB";
-        }
-      }
-
+      const mergedFrameworksBackend = {
+        ...functionsDirectoryFrameworksBackend,
+        ...frameworksBackend,
+      };
       if (packageJson.type === "module") {
         await writeFile(
           join(functionsDist, "server.js"),
           `import { onRequest } from 'firebase-functions/v2/https';
   const server = import('firebase-frameworks');
-  export const ${functionId} = onRequest(${JSON.stringify(
-    frameworksBackend || {},
-  )}, (req, res) => server.then(it => it.handle(req, res)));
+  export const ${functionId} = onRequest(${JSON.stringify(mergedFrameworksBackend)} || {}, (req, res) => server.then(it => it.handle(req, res)));
   `,
         );
       } else {
@@ -560,9 +555,7 @@ ${
           join(functionsDist, "server.js"),
           `const { onRequest } = require('firebase-functions/v2/https');
   const server = import('firebase-frameworks');
-  exports.${functionId} = onRequest(${JSON.stringify(
-    frameworksBackend || {},
-  )}, (req, res) => server.then(it => it.handle(req, res)));
+  exports.${functionId} = onRequest(${JSON.stringify(mergedFrameworksBackend)} || {}, (req, res) => server.then(it => it.handle(req, res)));
   `,
         );
       }
