@@ -11,8 +11,8 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
-import { isVSCodeExtension } from "../utils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
+import { isVSCodeExtension } from "../vsCodeUtils";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
