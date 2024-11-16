@@ -110,6 +110,7 @@ export async function pickService(
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
 const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
+// Note: build.gradle can be nested inside android/ and android/app.
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
 const DART_INDICATORS = ["pubspec.yaml", "pubspec.lock"];
 
