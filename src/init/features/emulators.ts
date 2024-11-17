@@ -55,7 +55,6 @@ export async function doSetup(setup: Setup, config: any) {
       ]);
     }
 
-    //TODO: Can add some logic here where each emulator can run their own inits
     const additionalInitFn = AdditionalInitFns[selected];
     if (additionalInitFn) {
       const additionalOptions = await additionalInitFn();

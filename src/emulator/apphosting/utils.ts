@@ -16,7 +16,7 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
  * @param rootdir project's root directory
  * @returns PackageManager
  */
-async function detectPackageManager(rootdir: string): Promise<PackageManager> {
+export async function detectPackageManager(rootdir: string): Promise<PackageManager> {
   if (await pathExists(join(rootdir, "pnpm-lock.yaml"))) {
     return "pnpm";
   }
@@ -33,14 +33,12 @@ async function detectPackageManager(rootdir: string): Promise<PackageManager> {
 }
 
 export async function detectStartCommand(rootDir: string) {
-  let packageManager: PackageManager = "npm";
   try {
-    packageManager = await detectPackageManager(rootDir);
+    const packageManager = await detectPackageManager(rootDir);
+    return `${packageManager} run dev`;
   } catch (e) {
     throw new FirebaseError(
       "Failed to detect your project's package manager, consider manually setting the start command with the `startCommandOverride` config. ",
     );
   }
-
-  return `${packageManager} run dev`;
 }

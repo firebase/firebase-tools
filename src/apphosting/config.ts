@@ -221,7 +221,7 @@ export async function exportConfig(
  * @param envYamlPath: Example: "/home/my-project/apphosting.staging.yaml"
  * @param baseYamlPath: Example: "/home/my-project/apphosting.yaml"
  */
-async function loadConfigForEnvironment(
+export async function loadConfigForEnvironment(
   envYamlPath: string,
   baseYamlPath?: string,
 ): Promise<AppHostingYamlConfig> {
@@ -244,7 +244,7 @@ async function loadConfigForEnvironment(
  *
  * @returns The final merged config
  */
-async function loadConfigToExport(
+export async function loadConfigToExport(
   cwd: string,
   userGivenConfigFile?: string,
 ): Promise<AppHostingYamlConfig> {

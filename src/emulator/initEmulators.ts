@@ -46,8 +46,8 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
 };
 
 function mapToObject(map: Map<string, string>): Record<string, string> {
-  let newObject: Record<string, string> = {};
-  for (let [key, value] of map) {
+  const newObject: Record<string, string> = {};
+  for (const [key, value] of map) {
     newObject[key] = value;
   }
   return newObject;
