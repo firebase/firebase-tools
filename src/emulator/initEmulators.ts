@@ -16,7 +16,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     const cwd = process.cwd();
     const additionalConfigs = new Map<string, string>();
     const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
-    logger.log("BULLET", "Initializing App Hosting Emulator");
+    logger.logLabeled("INFO", "Initializing Emulator");
 
     const backendRelativeDir = await promptOnce({
       name: "rootDir",
@@ -37,9 +37,13 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       );
     }
 
-    // prompt for apphosting yaml to export
-    const project = await getOrPromptProject({});
-    await exportConfig(project.projectId, cwd, backendRoot);
+    try {
+      // prompt for apphosting yaml to export
+      const project = await getOrPromptProject({});
+      await exportConfig(project.projectId, cwd, backendRoot);
+    } catch (e) {
+      logger.log("WARN", "failed to export app hosting configs");
+    }
 
     return mapToObject(additionalConfigs);
   },
