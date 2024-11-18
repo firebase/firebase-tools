@@ -21,7 +21,7 @@
         "cjson": "^0.3.1",
         "cli-table": "0.3.11",
         "colorette": "^2.0.19",
-        "commander": "^5.0.0",
+        "commander": "^5.1.0",
         "configstore": "^5.0.1",
         "cors": "^2.8.5",
         "cross-env": "^5.1.3",
