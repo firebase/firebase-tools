@@ -29,10 +29,6 @@ export function load(client: any): any {
   client.appdistribution.group.list = loadCommand("appdistribution-group-list");
   client.appdistribution.group.create = loadCommand("appdistribution-group-create");
   client.appdistribution.group.delete = loadCommand("appdistribution-group-delete");
-  client.appdistribution.groups = {};
-  client.appdistribution.groups.list = loadCommand("appdistribution-group-list");
-  client.appdistribution.groups.create = loadCommand("appdistribution-group-create");
-  client.appdistribution.groups.delete = loadCommand("appdistribution-group-delete");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
