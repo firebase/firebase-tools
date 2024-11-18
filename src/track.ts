@@ -19,7 +19,8 @@ type cliEventNames =
   | "extensions_emulated"
   | "function_deploy"
   | "codebase_deploy"
-  | "function_deploy_group";
+  | "function_deploy_group"
+  | "apphosting_backends_emulated";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;

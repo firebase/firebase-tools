@@ -1,3 +1,4 @@
+import { trackGA4 } from "../../track";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { start as apphostingStart } from "./serve";
 import { logger } from "./utils";
@@ -23,6 +24,8 @@ export class AppHostingEmulator implements EmulatorInstance {
     });
     this.args.options.host = hostname;
     this.args.options.port = port;
+
+    void trackGA4("apphosting_backends_emulated", {});
   }
 
   connect(): Promise<void> {
