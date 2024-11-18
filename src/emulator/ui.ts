@@ -70,7 +70,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
           json.experiments = enabledExperiments;
         }
 
-        return json;
+        return Promise.resolve(json);
       }),
     );
 
