@@ -84,7 +84,7 @@ export class PostgresServer {
       if (this.importPath) {
         logger.debug(`Importing from ${this.importPath}`);
         const rf = fs.readFileSync(this.importPath);
-        const file = new File([rf.buffer], this.importPath);
+        const file = new File([rf], this.importPath);
         pgliteArgs.loadDataDir = file;
       }
       this.db = await PGlite.create(pgliteArgs);
