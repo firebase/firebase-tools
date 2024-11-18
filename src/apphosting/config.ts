@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 import { promptForAppHostingYaml } from "./utils";
 import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
+import { updateOrCreateGitignore } from "../utils";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -209,6 +210,9 @@ export async function exportConfig(
   // update apphosting.local.yaml
   localAppHostingConfig.upsertFile(localAppHostingConfigPath);
   logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
+
+  await updateOrCreateGitignore(backendRoot, [APPHOSTING_LOCAL_YAML_FILE]);
+  logger.info(`${APPHOSTING_LOCAL_YAML_FILE} has been automatically added to your .gitignore.`);
 }
 
 /**
