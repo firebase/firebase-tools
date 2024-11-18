@@ -4,9 +4,9 @@ import { requireAuth } from "../requireAuth";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 
-export const command = new Command("appdistribution:group:create <displayName> [alias]")
+export const command = new Command("appdistribution:groups:create <displayName> [alias]")
   .description("create group in project")
-  .alias("appdistribution:groups:create")
+  .alias("appdistribution:group:create")
   .before(requireAuth)
   .action(async (displayName: string, alias?: string, options?: any) => {
     const projectName = await getProjectName(options);
