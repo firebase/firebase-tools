@@ -2,3 +2,4 @@
 - Moved firebase-tools-ui server.js logic to fireabse-tools to run it in-memory. (#7897)
 - Updates `superstatic` to `9.1.0` (#7929).
 - Added the appdistribution:group:list and appdistribution:testers:list commands.
+- Aliased `appdistribution:group:*` commands to `appdistribution:groups:*`.

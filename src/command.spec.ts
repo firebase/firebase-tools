@@ -24,6 +24,7 @@ describe("Command", () => {
         },
         ["foo", "bar"],
       );
+      command.alias("example2");
       command.help("here's how!");
       command.action(() => {
         // do nothing

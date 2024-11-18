@@ -37,6 +37,7 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
+  private aliases: string[] = [];
   private actionFn: ActionFunction = (): void => {
     // noop by default, unless overwritten by `.action(fn)`.
   };
@@ -59,6 +60,16 @@ export class Command {
    */
   description(t: string): Command {
     this.descriptionText = t;
+    return this;
+  }
+
+  /**
+   * Sets an alias for a command.
+   * @param aliases an alternativre name for the command. Users will be able to call the command via this name.
+   * @return the command, for chaining.
+   */
+  alias(alias: string): Command {
+    this.aliases.push(alias);
     return this;
   }
 
@@ -137,6 +148,9 @@ export class Command {
     const cmd = program.command(this.cmd);
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
+    }
+    if (this.aliases) {
+      cmd.aliases(this.aliases);
     }
     this.options.forEach((args) => {
       const flags = args.shift();

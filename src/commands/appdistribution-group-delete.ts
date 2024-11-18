@@ -7,6 +7,7 @@ import { getProjectName } from "../appdistribution/options-parser-util";
 
 export const command = new Command("appdistribution:group:delete <alias>")
   .description("delete group from a project")
+  .alias("appdistribution:groups:delete")
   .before(requireAuth)
   .action(async (alias: string, options: any) => {
     const projectName = await getProjectName(options);

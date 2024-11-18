@@ -13,6 +13,7 @@ const Table = require("cli-table");
 
 export const command = new Command("appdistribution:group:list")
   .description("list groups in project")
+  .alias("appdistribution:groups:list")
   .before(requireAuth)
   .action(async (options?: Options): Promise<ListGroupsResponse> => {
     const projectName = await getProjectName(options);
