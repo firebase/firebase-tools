@@ -55,8 +55,11 @@ export interface WebviewToExtensionParamsMap {
   /** Calls the `firebase init` CLI */
   runFirebaseInit: void;
 
-  /** Calls the `firebase init` CLI */
+  /** Calls the `firebase emulators:start` CLI */
   runStartEmulators: void;
+
+  /** Calls the `firebase emulators:export` CLI */
+  runEmulatorsExport: void;
 
   /**
    * Show a UI message using the vscode interface
@@ -99,6 +102,9 @@ export interface WebviewToExtensionParamsMap {
 
   /** Opens generated docs */
   "fdc.open-docs": void;
+
+    /** Clears data from a running data connect emulator */
+  "fdc.clear-emulator-data": void;
 
   // Initialize "result" tab.
   getDataConnectResults: void;

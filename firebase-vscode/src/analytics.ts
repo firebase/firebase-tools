@@ -31,6 +31,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   START_EMULATORS = "start_emulators",
   AUTO_COMPLETE = "auto_complete",
   SESSION_CHAR_COUNT = "session_char_count",
+  EMULATOR_EXPORT ="emulator_export"
 }
 
 export class AnalyticsLogger {

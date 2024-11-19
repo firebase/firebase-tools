@@ -1,10 +1,10 @@
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react";
-import React, { useEffect } from "react";
+import React from "react";
 import { Spacer } from "./ui/Spacer";
-import { PanelSection } from "./ui/PanelSection";
-import { EmulatorInfo } from "../../../src/emulator/types";
+import { EmulatorInfo, Emulators, IMPORT_EXPORT_EMULATORS } from "../../../src/emulator/types";
 import { RunningEmulatorInfo } from "../messaging/types";
 import { Body, Label } from "./ui/Text";
+import { broker } from "../globals/html-broker";
 import styles from "./EmulatorPanel.scss";
 import { ExternalLink } from "./ui/ExternalLink";
 import { Icon } from "./ui/Icon";
@@ -31,7 +31,7 @@ export function EmulatorPanel({
           </VSCodeLink>
         </>
       )}
-
+      <RunningEmulatorControlButtons infos={emulatorInfo.displayInfo}></RunningEmulatorControlButtons>
       <Spacer size="large" />
       <Body>
         <ExternalLink
@@ -64,5 +64,22 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
           </li>
         ))}
     </ul>
+  );
+}
+
+function RunningEmulatorControlButtons({ infos }: { infos: EmulatorInfo[] }) {
+  return (
+    <Body>
+      {!!infos.some(e => e.name === Emulators.DATACONNECT) && (
+        <VSCodeButton onClick={() => broker.send("fdc.clear-emulator-data")}>
+          Clear Data Connect Data
+        </VSCodeButton>
+      )}
+      {!!infos.some(e => IMPORT_EXPORT_EMULATORS.includes(e.name)) && (
+        <VSCodeButton onClick={() => broker.send("runEmulatorsExport")}>
+          Export Emulator Data
+        </VSCodeButton>
+      )}
+    </Body>
   );
 }
