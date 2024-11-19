@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as utils from "./utils";
+import * as utils from "./developmentServer";
 
 import * as sinon from "sinon";
 import { expect } from "chai";

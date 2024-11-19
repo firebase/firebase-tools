@@ -2,7 +2,7 @@
 
 import { join } from "path";
 import { promptOnce } from "../prompt";
-import { detectStartCommand } from "./apphosting/utils";
+import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { getOrPromptProject } from "../management/projects";
@@ -33,7 +33,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     } catch (e) {
       logger.log(
         "WARN",
-        "failed to auto-detect your project's start command, consider manually setting the start command by setting the startCommandOverride config",
+        "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommandOverride`",
       );
     }
 
