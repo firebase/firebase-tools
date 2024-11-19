@@ -5,8 +5,9 @@ import { FirebaseError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 
-export const command = new Command("appdistribution:group:delete <alias>")
+export const command = new Command("appdistribution:groups:delete <alias>")
   .description("delete group from a project")
+  .alias("appdistribution:group:delete")
   .before(requireAuth)
   .action(async (alias: string, options: any) => {
     const projectName = await getProjectName(options);
