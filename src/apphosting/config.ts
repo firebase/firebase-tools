@@ -7,7 +7,6 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
-import { FirebaseError } from "../error";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -39,10 +38,10 @@ export interface Config {
 }
 
 /**
- * Finds the project root for apphosting backends.
- * Starts with cwd and walks up the path until an apphosting.yaml file is found
+ * Returns the absolute path for an app hosting backend root.
  *
- * Example path that's returned: "/home/my-project"
+ * Backend root is determined by looking for an apphosting.yaml
+ * file.
  */
 export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
@@ -65,23 +64,9 @@ export function discoverBackendRoot(cwd: string): string | null {
 }
 
 /**
- * Lists absolute paths for `apphosting.*.yaml` configs at backend root
- */
-export function discoverConfigsAtBackendRoot(cwd: string): string[] {
-  const backendRoot = discoverBackendRoot(cwd);
-  if (!backendRoot) {
-    throw new FirebaseError(
-      "Unable to find your project's root, ensure the apphosting.yaml config is initialized. Try 'firebase init apphosting'",
-    );
-  }
-
-  return listAppHostingFilesInPath(backendRoot);
-}
-
-/**
  * Returns paths of apphosting config files in the given path
  * */
-function listAppHostingFilesInPath(path: string) {
+export function listAppHostingFilesInPath(path: string) {
   return fs
     .listFiles(path)
     .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file))
