@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import * as ora from "ora";
 
 import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { pollOperation } from "../operation-poller";
 import { Question, promptOnce } from "../prompt";
 import * as api from "../api";
@@ -46,6 +46,11 @@ const firebaseAPIClient = new Client({
   urlPrefix: api.firebaseApiOrigin(),
   auth: true,
   apiVersion: "v1beta1",
+});
+
+const resourceManagerClient = new Client({
+  urlPrefix: api.resourceManagerOrigin(),
+  apiVersion: "v1",
 });
 
 export async function createFirebaseProjectAndLog(
@@ -93,7 +98,9 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
   logger.info("");
   logger.info("Project information:");
   logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
-  logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+  if (projectInfo.displayName) {
+    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+  }
   logger.info("");
   logger.info("Firebase console is available at");
   logger.info(
@@ -230,13 +237,12 @@ export async function createCloudProject(
   options: { displayName?: string; parentResource?: ProjectParentResource },
 ): Promise<any> {
   try {
-    const client = new Client({ urlPrefix: api.resourceManagerOrigin(), apiVersion: "v1" });
     const data = {
       projectId,
       name: options.displayName || projectId,
       parent: options.parentResource,
     };
-    const response = await client.request<any, { name: string }>({
+    const response = await resourceManagerClient.request<any, { name: string }>({
       method: "POST",
       path: "/projects",
       body: data,
@@ -411,6 +417,22 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
     });
     return res.body;
   } catch (err: any) {
+    if (getErrStatus(err) === 404) {
+      try {
+        logger.debug(
+          `Couldn't get project info from firedata for ${projectId}, trying resource manager. Original error: ${err}`,
+        );
+        const info = await getProject(projectId);
+        // TODO: Update copy based on Rachel/Yvonne's feedback.
+        // TODO: Add link
+        // logger.info(`Project ${clc.bold(projectId)} is not a Firebase project.`);
+        // logger.info('It can only use products governed by the Google Cloud Platform terms of service.');
+        // logger.info('If you wish to use products governed by the Firebase terms of service, upgrade to a Firebase project <link here>');
+        return info;
+      } catch (err: any) {
+        logger.debug(`Unable to get project info from resourcemanager for ${projectId}: ${err}`);
+      }
+    }
     let message = err.message;
     if (err.original) {
       message += ` (original: ${err.original.message})`;
@@ -422,4 +444,22 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
       { exit: 2, original: err },
     );
   }
+}
+
+export interface ProjectInfo {
+  projectNumber: string;
+  projectId: string;
+  lifecycleState: string;
+  name: string;
+  createTime: string;
+  parent: { type: string; id: string };
+}
+
+/**
+ * Gets basic information about any Cloud project. Does not use Firebase TOS APIs, so this is safe for core app projects.
+ * @param projectId
+ */
+export async function getProject(projectId: string): Promise<ProjectInfo> {
+  const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
+  return response.body;
 }
