@@ -11,7 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
-import { isVSCodeExtension } from "../utils";
+import { isVSCodeExtension } from "../vsCodeUtils";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -77,6 +77,17 @@ export class EmulatorHub extends ExpressBasedEmulator {
     await this.writeLocatorFile();
   }
 
+  getRunningEmulatorsMapping(): any {
+    const emulators: GetEmulatorsResponse = {};
+    for (const info of EmulatorRegistry.listRunningWithInfo()) {
+      emulators[info.name] = {
+        listen: this.args.listenForEmulator[info.name],
+        ...info,
+      };
+    }
+    return emulators;
+  }
+
   protected override async createExpressApp(): Promise<express.Express> {
     const app = await super.createExpressApp();
     app.get("/", (req, res) => {
@@ -89,14 +100,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
-      const body: GetEmulatorsResponse = {};
-      for (const info of EmulatorRegistry.listRunningWithInfo()) {
-        body[info.name] = {
-          listen: this.args.listenForEmulator[info.name],
-          ...info,
-        };
-      }
-      res.json(body);
+      res.json(this.getRunningEmulatorsMapping());
     });
 
     app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
