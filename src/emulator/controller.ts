@@ -60,6 +60,7 @@ import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { dataConnectLocalConnString } from "../api";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -419,7 +420,7 @@ export async function startAll(
           portFixed: !!wsPortConfig,
         };
       }
-      if (emulator === Emulators.DATACONNECT) {
+      if (emulator === Emulators.DATACONNECT && !dataConnectLocalConnString()) {
         const pglitePortConfig = options.config.src.emulators?.dataconnect?.postgresPort;
         listenConfig["dataconnect.postgres"] = {
           host: config.host,
@@ -963,7 +964,6 @@ export async function startAll(
   if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
       projectId: projectId,
-      auto_download: true,
       listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);

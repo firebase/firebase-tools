@@ -230,14 +230,14 @@ function open(url: string): void {
 
 // Always create a new error so that the stack is useful
 function invalidCredentialError(): FirebaseError {
-  return new FirebaseError(
+  const message =
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
-    { exit: 1 },
-  );
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci");
+  logger.error(message);
+  return new FirebaseError(message, { exit: 1 });
 }
 
 const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;

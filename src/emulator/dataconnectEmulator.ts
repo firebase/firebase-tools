@@ -1,5 +1,6 @@
 import * as childProcess from "child_process";
 import { EventEmitter } from "events";
+import * as clc from "colorette";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -64,13 +65,13 @@ export class DataConnectEmulator implements EmulatorInstance {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
             "WARN",
-            "Data Connect",
+            "dataconnect",
             "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
           );
         } else {
           this.logger.logLabeled(
             "WARN",
-            "Data Connect",
+            "dataconnect",
             "Operations that use vector_embed will make calls to production Vertex AI",
           );
         }
@@ -79,9 +80,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
 
-    const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-    const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
-    const serviceId = info.dataConnectYaml.serviceId;
     await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
@@ -91,14 +89,17 @@ export class DataConnectEmulator implements EmulatorInstance {
     });
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
+      const info = await load(this.args.projectId, this.args.config, this.args.configDir);
+      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;
       let connStr = dataConnectLocalConnString();
-      if (dataConnectLocalConnString()) {
+      if (connStr) {
         this.logger.logLabeled(
           "INFO",
-          "Data Connect",
-          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
+          "dataconnect",
+          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
         const pgServer = new PostgresServer(dbId, "postgres");
@@ -111,7 +112,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           } else {
             this.logger.logLabeled(
               "ERROR",
-              "Data Connect",
+              "dataconnect",
               `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
             );
           }
@@ -119,8 +120,8 @@ export class DataConnectEmulator implements EmulatorInstance {
         });
         this.logger.logLabeled(
           "INFO",
-          "Data Connect",
-          `Started up Postgres server, listening on ${server.address()?.toString()}`,
+          "dataconnect",
+          `Started up Postgres server, listening on ${JSON.stringify(server.address())}`,
         );
       }
       await this.connectToPostgres(new URL(connStr), dbId, serviceId);
@@ -134,7 +135,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       this.logger.logLabeled(
         "ERROR",
-        "Data Connect",
+        "dataconnect",
         "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
       );
       return Promise.reject();
@@ -146,7 +147,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (this.usingExistingEmulator) {
       this.logger.logLabeled(
         "INFO",
-        "Data Connect",
+        "dataconnect",
         "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
       );
       return;
