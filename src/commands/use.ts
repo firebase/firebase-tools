@@ -1,8 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { getFirebaseProject, listFirebaseProjects } from "../management/projects";
-import { FirebaseProjectMetadata } from "../types/project";
+import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { prompt } from "../prompt";
@@ -58,11 +57,11 @@ export const command = new Command("use [alias_or_project_id]")
 
     if (newActive) {
       // firebase use [alias_or_project]
-      let project: FirebaseProjectMetadata | undefined;
+      let project: ProjectInfo | undefined;
       const hasAlias = options.rc.hasProjectAlias(newActive);
       const resolvedProject = options.rc.resolveAlias(newActive);
       validateProjectId(resolvedProject);
-      return getFirebaseProject(resolvedProject)
+      return getProject(resolvedProject)
         .then((foundProject) => {
           project = foundProject;
         })
