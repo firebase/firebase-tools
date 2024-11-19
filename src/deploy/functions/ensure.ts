@@ -1,19 +1,17 @@
 import * as clc from "colorette";
 
-import type { FirebaseProjectMetadata } from "../../types/project";
-
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
-import { getFirebaseProject } from "../../management/projects";
+import { getProject, ProjectInfo } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 
-const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
+const metadataCallCache: Map<string, Promise<ProjectInfo>> = new Map();
 
 /**
  *  By default:
@@ -23,7 +21,7 @@ const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
   let metadataCall = metadataCallCache.get(e.project);
   if (!metadataCall) {
-    metadataCall = getFirebaseProject(e.project);
+    metadataCall = getProject(e.project);
     metadataCallCache.set(e.project, metadataCall);
   }
   const metadata = await metadataCall;

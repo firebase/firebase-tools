@@ -13,7 +13,7 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   APPHOSTING_YAML_FILE_REGEX,
-  discoverConfigsAtBackendRoot,
+  listAppHostingFilesInPath,
   loadConfigForEnvironment,
 } from "../config";
 import { promptForAppHostingYaml } from "../utils";
@@ -218,7 +218,7 @@ export async function loadConfigToExport(
     );
   }
 
-  const allConfigs = discoverConfigs(cwd);
+  const allConfigs = getValidConfigs(cwd);
   let userGivenConfigFilePath: string;
   if (userGivenConfigFile) {
     if (!allConfigs.has(userGivenConfigFile)) {
@@ -247,8 +247,8 @@ export async function loadConfigToExport(
  * Gets all apphosting yaml configs excluding apphosting.local.yaml and returns
  * a map in the format {"apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"}.
  */
-function discoverConfigs(cwd: string): Map<string, string> {
-  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
+function getValidConfigs(cwd: string): Map<string, string> {
+  const appHostingConfigPaths = listAppHostingFilesInPath(cwd).filter(
     (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
   );
   if (appHostingConfigPaths.length === 0) {

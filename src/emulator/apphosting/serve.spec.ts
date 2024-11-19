@@ -6,6 +6,7 @@ import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
 import * as utils from "./utils";
 import * as configsImport from "./config";
+import * as projectPathImport from "../../projectPath";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 describe("serve", () => {
@@ -14,6 +15,7 @@ describe("serve", () => {
   let spawnWithCommandStringStub: sinon.SinonStub;
   let discoverPackageManagerStub: sinon.SinonStub;
   let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
+  let resolveProjectPathStub: sinon.SinonStub;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
@@ -21,6 +23,9 @@ describe("serve", () => {
     spawnWithCommandStringStub = sinon.stub(spawn, "spawnWithCommandString");
     discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
     configsStub = sinon.stub(configsImport);
+    resolveProjectPathStub = sinon.stub(projectPathImport, "resolveProjectPath");
+
+    resolveProjectPathStub.returns("");
   });
 
   afterEach(() => {

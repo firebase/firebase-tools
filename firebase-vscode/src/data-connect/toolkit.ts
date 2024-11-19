@@ -10,6 +10,7 @@ import { DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
 import { Config } from "../config";
 import { RC } from "../rc";
 import { findOpenPort } from "../utils/port_utils";
+import { pluginLogger } from "../logger-wrapper";
 
 const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
@@ -46,10 +47,12 @@ export class DataConnectToolkit implements vscode.Disposable {
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
     };
+    pluginLogger.info(`Starting Data Connect toolkit on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
   }
 
   async stopFDCToolkit() {
+    pluginLogger.info(`Stopping Data Connect toolkit`);
     return DataConnectToolkitController.stop();
   }
 

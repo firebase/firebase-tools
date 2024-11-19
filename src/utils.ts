@@ -24,6 +24,7 @@ import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { promptOnce } from "./prompt";
 import { readTemplateSync } from "./templates";
+import { isVSCodeExtension } from "./vsCodeUtils";
 
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -601,13 +602,6 @@ export function datetimeString(d: Date): string {
  */
 export function isCloudEnvironment() {
   return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
-}
-
-/**
- * Detect if code is running in a VSCode Extension
- */
-export function isVSCodeExtension(): boolean {
-  return !!process.env.VSCODE_CWD;
 }
 
 /**

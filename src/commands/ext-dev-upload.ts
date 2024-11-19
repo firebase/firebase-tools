@@ -22,7 +22,7 @@ import * as utils from "../utils";
 import { Options } from "../options";
 import { getPublisherProfile } from "../extensions/publisherApi";
 import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
-import { getFirebaseProject } from "../management/projects";
+import { getProject } from "../management/projects";
 
 // TODO(joehan): Go update @types/marked-terminal
 marked.use(markedTerminal() as any);
@@ -87,7 +87,7 @@ export async function uploadExtensionAction(
     throw err;
   }
   const projectNumber = `${getPublisherProjectFromName(profile.name)}`;
-  const { projectId } = await getFirebaseProject(projectNumber);
+  const { projectId } = await getProject(projectNumber);
   await acceptLatestPublisherTOS(options, projectNumber);
 
   let res;

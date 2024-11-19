@@ -934,6 +934,7 @@ export async function startAll(
         host: apphostingAddr.host,
         port: apphostingAddr.port,
         startCommandOverride: apphostingConfig?.startCommandOverride,
+        rootDirectory: apphostingConfig?.rootDirectory,
         options,
       });
 
@@ -964,7 +965,6 @@ export async function startAll(
   if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
       projectId: projectId,
-      auto_download: true,
       listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);

@@ -24,20 +24,20 @@ const OPTION_ADD_FIREBASE = "Add Firebase to an existing Google Cloud Platform p
  * Used in init flows to keep information about the project - basically
  * a shorter version of {@link FirebaseProjectMetadata} with some additional fields.
  */
-export interface ProjectInfo {
+export interface InitProjectInfo {
   id: string; // maps to FirebaseProjectMetadata.projectId
   label?: string;
   instance?: string; // maps to FirebaseProjectMetadata.resources.realtimeDatabaseInstance
   location?: string; // maps to FirebaseProjectMetadata.resources.locationId
 }
 
-function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
+function toInitProjectInfo(projectMetaData: FirebaseProjectMetadata): InitProjectInfo {
   const { projectId, displayName, resources } = projectMetaData;
   return {
     id: projectId,
     label: `${projectId}` + (displayName ? ` (${displayName})` : ""),
-    instance: _.get(resources, "realtimeDatabaseInstance"),
-    location: _.get(resources, "locationId"),
+    instance: resources?.realtimeDatabaseInstance,
+    location: resources?.locationId,
   };
 }
 
@@ -114,14 +114,14 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   logger.info(`but for now we'll just set up a default project.`);
   logger.info();
 
-  const projectFromRcFile = _.get(setup.rcfile, "projects.default");
+  const projectFromRcFile = setup.rcfile?.projects?.default;
   if (projectFromRcFile && !options.project) {
     utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
     setup.projectId = rcProject.projectId;
-    setup.projectLocation = _.get(rcProject, "resources.locationId");
+    setup.projectLocation = rcProject?.resources?.locationId;
     return;
   }
 
@@ -137,7 +137,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     }
   }
 
-  const projectInfo = toProjectInfo(projectMetaData);
+  const projectInfo = toInitProjectInfo(projectMetaData);
   utils.logBullet(`Using project ${projectInfo.label}`);
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", projectInfo.id);
