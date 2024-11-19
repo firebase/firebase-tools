@@ -2,3 +2,5 @@
 - Moved firebase-tools-ui server.js logic to fireabse-tools to run it in-memory. (#7897)
 - Updates `superstatic` to `9.1.0` (#7929).
 - Added the appdistribution:group:list and appdistribution:testers:list commands.
+- Aliased `appdistribution:group:*` commands to `appdistribution:groups:*`.
+- Updated the Firebase Data Connect local toolkit to v1.7.2, which includes bug fixes for `@auth` expressions that reference the `auth` variable, `Optional` arrays in Swift codegen, and updates Kotlin codegen to use fully-qualified class names everywhere. (#7968)

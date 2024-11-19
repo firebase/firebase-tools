@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus, getError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
 import * as gcb from "../../gcp/cloudbuild";
@@ -91,10 +91,10 @@ export async function grantSecretAccess(
   let existingBindings;
   try {
     existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -102,10 +102,10 @@ export async function grantSecretAccess(
     // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
     await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -127,9 +127,9 @@ export async function upsertSecret(
   let existing: gcsm.Secret;
   try {
     existing = await gcsm.getSecret(project, secret);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw new FirebaseError("Unexpected error loading secret", { original: err });
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      throw new FirebaseError("Unexpected error loading secret", { original: getError(err) });
     }
     await gcsm.createSecret(project, secret, gcsm.labels("apphosting"), location);
     return true;
