@@ -211,7 +211,7 @@ env:
     });
   });
 
-  describe("discoverConfigsInProject", () => {
+  describe("listAppHostingFilesInPath", () => {
     let fs: sinon.SinonStubbedInstance<typeof fsImport>;
 
     beforeEach(() => {
@@ -222,22 +222,21 @@ env:
       sinon.verifyAndRestore();
     });
 
-    it("finds project root and returns available configs", () => {
-      fs.fileExistsSync.withArgs("/project-root/firebase.json").returns(true);
-      fs.fileExistsSync.withArgs("/project-root/apphosting.yaml").returns(true);
-      fs.fileExistsSync.withArgs("/project-root/parent/firebase.json").returns(false);
-      fs.fileExistsSync.withArgs("/project-root/parent/cwd/firebase.json").returns(false);
-
-      fs.listFiles.withArgs("/project-root/parent/cwd").returns(["test1.js", "test2.js"]);
-      fs.listFiles.withArgs("/project-root/parent").returns(["test3.js"]);
+    it("only returns valid App Hosting YAML files", () => {
       fs.listFiles
-        .withArgs("/project-root")
-        .returns(["apphosting.yaml", "test4.js", "apphosting.staging.yaml"]);
+        .withArgs("/parent/cwd")
+        .returns([
+          "test1.js",
+          "test2.js",
+          "apphosting.yaml",
+          "test4.js",
+          "apphosting.staging.yaml",
+        ]);
 
-      const apphostingYamls = config.discoverConfigsAtBackendRoot("/project-root/parent/cwd");
+      const apphostingYamls = config.listAppHostingFilesInPath("/parent/cwd");
       expect(apphostingYamls).to.deep.equal([
-        "/project-root/apphosting.yaml",
-        "/project-root/apphosting.staging.yaml",
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.staging.yaml",
       ]);
     });
   });
