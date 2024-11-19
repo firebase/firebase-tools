@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
@@ -53,8 +53,10 @@ export const command = new Command("apphosting:backends:delete <backend>")
     try {
       await deleteBackendAndPoll(projectId, location, backendId);
       spinner.succeed(`Successfully deleted the backend: ${backendId}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.stop();
-      throw new FirebaseError(`Failed to delete backend: ${backendId}.`, { original: err });
+      throw new FirebaseError(`Failed to delete backend: ${backendId}.`, {
+        original: getError(err),
+      });
     }
   });

@@ -36,7 +36,7 @@ export const command = new Command("database:instances:list")
     let instances: DatabaseInstance[] = [];
     try {
       instances = await listDatabaseInstances(projectId, location);
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.fail();
       throw err;
     }
