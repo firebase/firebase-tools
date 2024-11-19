@@ -39,8 +39,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
 
     try {
       // prompt for apphosting yaml to export
-      const project = await getOrPromptProject({});
-      await exportConfig(project.projectId, cwd, backendRoot);
+      await exportConfig(cwd, backendRoot);
     } catch (e) {
       logger.log("WARN", "failed to export app hosting configs");
     }

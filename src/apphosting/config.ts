@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 import { promptForAppHostingYaml } from "./utils";
 import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
+import { getOrPromptProject } from "../management/projects";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -40,6 +41,9 @@ export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
 }
+
+const SECRET_CONFIG = "Secret";
+const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 
 /**
  * Returns the absolute path for an app hosting backend root.
@@ -185,11 +189,34 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
  * discovered app hosting yaml files.
  */
 export async function exportConfig(
-  projectId: string,
   cwd: string,
   backendRoot: string,
+  projectId?: string,
   userGivenConfigFile?: string,
 ): Promise<void> {
+  const choices = await prompt.prompt({}, [
+    {
+      type: "checkbox",
+      name: "configurations",
+      message: "What configs would you like to export?",
+      choices: EXPORTABLE_CONFIG,
+    },
+  ]);
+
+  /**
+   * TODO: Update when supporting additional configurations. Currently only
+   * Secrets are exportable.
+   */
+  if (!choices.configurations.includes(SECRET_CONFIG)) {
+    logger.info("No configs selected to export");
+    return;
+  }
+
+  if (!projectId) {
+    const project = await getOrPromptProject({});
+    projectId = project.projectId;
+  }
+
   let localAppHostingConfig: AppHostingYamlConfig = AppHostingYamlConfig.empty();
 
   const localAppHostingConfigPath = resolve(backendRoot, APPHOSTING_LOCAL_YAML_FILE);
@@ -247,7 +274,7 @@ export async function loadConfigForEnvironment(
 
 /**
  * Returns the appropriate App Hosting YAML configuration for exporting secrets.
- * @returns The final merged config
+ * @return The final merged config
  */
 export async function loadConfigToExportSecrets(
   cwd: string,
