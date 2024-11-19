@@ -3,4 +3,9 @@
 - Updates `superstatic` to `9.1.0` (#7929).
 - Added the appdistribution:group:list and appdistribution:testers:list commands.
 - Aliased `appdistribution:group:*` commands to `appdistribution:groups:*`.
-- Updated the Firebase Data Connect local toolkit to v1.7.2, which includes bug fixes for `@auth` expressions that reference the `auth` variable, `Optional` arrays in Swift codegen, and updates Kotlin codegen to use fully-qualified class names everywhere. (#7968)
+- Updated the Firebase Data Connect local toolkit to v1.7.3, which includes:
+  - Bug fixes for `@auth` expressions that reference the `auth` variable
+  - Allows custom boolean claims on the auth token to be returned in expressions
+  - Adds support for `Optional` arrays in Swift codegen
+  - Updates Kotlin codegen to use fully-qualified class names everywhere
+  - Removes `StringType_pattern` from generated docs and GQL prelude. (#7968)
