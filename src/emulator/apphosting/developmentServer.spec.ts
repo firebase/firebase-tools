@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import * as sinon from "sinon";
-import { discoverPackageManager } from "./utils";
+import { detectPackageManager } from "./developmentServer";
 import { expect } from "chai";
 
 describe("utils", () => {
@@ -14,7 +14,7 @@ describe("utils", () => {
     pathExistsStub.restore();
   });
 
-  describe("discoverPackageManager", () => {
+  describe("detectPackageManager", () => {
     it("returns npm if package-lock.json file fond", async () => {
       pathExistsStub.callsFake((...args) => {
         if (args[0] === "package-lock.json") {
@@ -24,7 +24,7 @@ describe("utils", () => {
         return false;
       });
 
-      expect(await discoverPackageManager("./")).to.equal("npm");
+      expect(await detectPackageManager("./")).to.equal("npm");
     });
 
     it("returns pnpm if pnpm-lock.json file fond", async () => {
@@ -36,7 +36,7 @@ describe("utils", () => {
         return false;
       });
 
-      expect(await discoverPackageManager("./")).to.equal("pnpm");
+      expect(await detectPackageManager("./")).to.equal("pnpm");
     });
   });
 
@@ -49,6 +49,6 @@ describe("utils", () => {
       return false;
     });
 
-    expect(await discoverPackageManager("./")).to.equal("yarn");
+    expect(await detectPackageManager("./")).to.equal("yarn");
   });
 });

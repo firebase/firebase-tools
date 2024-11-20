@@ -9,10 +9,8 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
-import * as configImport from "../config";
 
 import { Secret } from "../yaml";
-import { FirebaseError } from "../../error";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
@@ -294,49 +292,6 @@ describe("secrets", () => {
         projectId,
         "projects/test-project/secrets/secretID",
         "latest",
-      );
-    });
-  });
-
-  describe("loadConfigToExport", () => {
-    let apphostingConfigs: sinon.SinonStubbedInstance<typeof configImport>;
-
-    const baseYamlPath = "/parent/cwd/apphosting.yaml";
-
-    beforeEach(() => {
-      apphostingConfigs = sinon.stub(configImport);
-      apphostingConfigs.listAppHostingFilesInPath.returns([
-        baseYamlPath,
-        "/parent/apphosting.staging.yaml",
-      ]);
-    });
-
-    afterEach(() => {
-      sinon.verifyAndRestore();
-    });
-
-    it("returns throws an error if an invalid apphosting yaml if provided", async () => {
-      await expect(secrets.loadConfigToExport("/parent/cwd", "blah.txt")).to.be.rejectedWith(
-        FirebaseError,
-        "Invalid apphosting yaml config file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
-      );
-    });
-
-    it("does not prompt user if an userGivenConfigFile is provided", async () => {
-      await secrets.loadConfigToExport("/parent/cwd", "apphosting.staging.yaml");
-      expect(prompt.promptOnce).to.not.be.called;
-    });
-
-    it("prompts user if userGivenConfigFile not provided", async () => {
-      await secrets.loadConfigToExport("/parent/cwd");
-      expect(prompt.promptOnce).to.be.called;
-    });
-
-    it("should throw an error if userGivenConfigFile could not be found", async () => {
-      await expect(
-        secrets.loadConfigToExport("/parent/cwd", "apphosting.preview.yaml"),
-      ).to.be.rejectedWith(
-        'The provided app hosting config file "apphosting.preview.yaml" does not exist',
       );
     });
   });

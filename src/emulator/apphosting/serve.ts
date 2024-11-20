@@ -5,10 +5,10 @@
 
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { discoverPackageManager } from "./utils";
+import { detectStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
-import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
-import { logger } from "./utils";
+import { spawnWithCommandString } from "../../init/spawn";
+import { logger } from "./developmentServer";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
@@ -68,14 +68,9 @@ async function serve(
     return;
   }
 
-  const packageManager = await discoverPackageManager(backendRoot);
-
-  logger.logLabeled(
-    "BULLET",
-    Emulators.APPHOSTING,
-    `starting app with: '${packageManager} run dev'`,
-  );
-  await wrapSpawn(packageManager, ["run", "dev"], backendRoot, environmentVariablesToInject);
+  const detectedStartCommand = await detectStartCommand(backendRoot);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectStartCommand}`);
+  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
