@@ -191,6 +191,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
  */
 export async function exportConfig(
   cwd: string,
+  projectRoot: string,
   backendRoot: string,
   projectId?: string,
   userGivenConfigFile?: string,
@@ -245,7 +246,7 @@ export async function exportConfig(
   await localAppHostingConfig.upsertFile(localAppHostingConfigPath);
   logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
 
-  updateOrCreateGitignore(backendRoot, [APPHOSTING_LOCAL_YAML_FILE]);
+  updateOrCreateGitignore(projectRoot, [APPHOSTING_LOCAL_YAML_FILE]);
   logger.info(`${APPHOSTING_LOCAL_YAML_FILE} has been automatically added to your .gitignore.`);
 }
 
