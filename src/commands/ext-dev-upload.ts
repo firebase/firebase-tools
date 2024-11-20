@@ -16,7 +16,7 @@ import { findExtensionYaml } from "../extensions/localHelper";
 import { consoleInstallLink } from "../extensions/publishHelpers";
 import { ExtensionVersion, PublisherProfile } from "../extensions/types";
 import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { acceptLatestPublisherTOS } from "../extensions/tos";
 import * as utils from "../utils";
 import { Options } from "../options";
@@ -80,8 +80,8 @@ export async function uploadExtensionAction(
   let profile: PublisherProfile | undefined;
   try {
     profile = await getPublisherProfile("-", publisherId);
-  } catch (err: any) {
-    if (err.status === 404) {
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
       throw getMissingPublisherError(publisherId);
     }
     throw err;

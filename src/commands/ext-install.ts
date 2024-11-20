@@ -5,7 +5,7 @@ import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo"
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
@@ -151,11 +151,14 @@ export const command = new Command("ext:install [extensionRef]")
         nonInteractive: options.nonInteractive,
         force: options.force,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred saving the extension to manifest: ${err.message}`, {
-          original: err,
-        });
+        throw new FirebaseError(
+          `Error occurred saving the extension to manifest: ${getErrMsg(err)}`,
+          {
+            original: getError(err),
+          },
+        );
       }
       throw err;
     }

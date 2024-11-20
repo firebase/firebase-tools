@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus, getError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
 import * as gcb from "../../gcp/cloudbuild";
@@ -13,7 +13,7 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   APPHOSTING_YAML_FILE_REGEX,
-  discoverConfigsAtBackendRoot,
+  listAppHostingFilesInPath,
   loadConfigForEnvironment,
 } from "../config";
 import { promptForAppHostingYaml } from "../utils";
@@ -100,10 +100,10 @@ export async function grantSecretAccess(
   let existingBindings;
   try {
     existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -111,10 +111,10 @@ export async function grantSecretAccess(
     // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
     await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -136,9 +136,9 @@ export async function upsertSecret(
   let existing: gcsm.Secret;
   try {
     existing = await gcsm.getSecret(project, secret);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw new FirebaseError("Unexpected error loading secret", { original: err });
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      throw new FirebaseError("Unexpected error loading secret", { original: getError(err) });
     }
     await gcsm.createSecret(project, secret, gcsm.labels("apphosting"), location);
     return true;
@@ -218,7 +218,7 @@ export async function loadConfigToExport(
     );
   }
 
-  const allConfigs = discoverConfigs(cwd);
+  const allConfigs = getValidConfigs(cwd);
   let userGivenConfigFilePath: string;
   if (userGivenConfigFile) {
     if (!allConfigs.has(userGivenConfigFile)) {
@@ -247,8 +247,8 @@ export async function loadConfigToExport(
  * Gets all apphosting yaml configs excluding apphosting.local.yaml and returns
  * a map in the format {"apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"}.
  */
-function discoverConfigs(cwd: string): Map<string, string> {
-  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
+function getValidConfigs(cwd: string): Map<string, string> {
+  const appHostingConfigPaths = listAppHostingFilesInPath(cwd).filter(
     (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
   );
   if (appHostingConfigPaths.length === 0) {
