@@ -5,15 +5,17 @@
 
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { discoverPackageManager } from "./utils";
+import { detectStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
-import { spawnWithCommandString, wrapSpawn } from "../../init/spawn";
-import { getLocalAppHostingConfiguration } from "./config";
-import { logger } from "./utils";
+import { spawnWithCommandString } from "../../init/spawn";
+import { logger } from "./developmentServer";
 import { Emulators } from "../types";
+import { getLocalAppHostingConfiguration } from "./config";
+import { resolveProjectPath } from "../../projectPath";
 
 interface StartOptions {
   startCommand?: string;
+  rootDirectory?: string;
 }
 
 /**
@@ -31,16 +33,28 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     port += 1;
   }
 
-  serve(port, options?.startCommand);
+  serve(port, options?.startCommand, options?.rootDirectory);
 
   return { hostname, port };
 }
 
-async function serve(port: number, startCommand?: string): Promise<void> {
-  const rootDir = process.cwd();
-  const apphostingLocalConfig = await getLocalAppHostingConfiguration(rootDir);
+async function serve(
+  port: number,
+  startCommand?: string,
+  backendRelativeDir?: string,
+): Promise<void> {
+  backendRelativeDir = backendRelativeDir ?? "./";
+
+  const backendRoot = resolveProjectPath({}, backendRelativeDir);
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
+  const environmentVariablesAsRecord: Record<string, string> = {};
+
+  for (const env of apphostingLocalConfig.environmentVariables) {
+    environmentVariablesAsRecord[env.variable] = env.value!;
+  }
+
   const environmentVariablesToInject = {
-    ...apphostingLocalConfig.environmentVariables,
+    ...environmentVariablesAsRecord,
     PORT: port.toString(),
   };
 
@@ -50,18 +64,13 @@ async function serve(port: number, startCommand?: string): Promise<void> {
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
-    await spawnWithCommandString(startCommand, rootDir, environmentVariablesToInject);
+    await spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
     return;
   }
 
-  const packageManager = await discoverPackageManager(rootDir);
-
-  logger.logLabeled(
-    "BULLET",
-    Emulators.APPHOSTING,
-    `starting app with: '${packageManager} run dev'`,
-  );
-  await wrapSpawn(packageManager, ["run", "dev"], rootDir, environmentVariablesToInject);
+  const detectedStartCommand = await detectStartCommand(backendRoot);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectStartCommand}`);
+  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {

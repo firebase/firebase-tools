@@ -27,6 +27,7 @@ export type DownloadableEmulators =
   | Emulators.UI
   | Emulators.STORAGE
   | Emulators.DATACONNECT;
+
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -42,15 +43,16 @@ export const IMPORT_EXPORT_EMULATORS = [
   Emulators.DATABASE,
   Emulators.AUTH,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export const ALL_SERVICE_EMULATORS = [
+  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
   Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
-  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,

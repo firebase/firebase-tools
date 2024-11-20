@@ -4,7 +4,7 @@ import { Client } from "../apiv2";
 import { Command } from "../command";
 import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
@@ -40,10 +40,10 @@ export const command = new Command("database:settings:get <path>")
       let res;
       try {
         res = await c.get(u.pathname);
-      } catch (err: any) {
+      } catch (err: unknown) {
         throw new FirebaseError(`Unexpected error fetching configs at ${path}`, {
           exit: 2,
-          original: err,
+          original: getError(err),
         });
       }
       // strictTriggerValidation returns an object, not a single string.

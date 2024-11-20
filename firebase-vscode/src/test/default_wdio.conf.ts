@@ -25,9 +25,11 @@ export const vscodeConfigs = {
 
 export const config: WebdriverIO.Config = {
   runner: "local",
-
-  tsConfigPath: "./tsconfig.test.json",
-
+  autoCompileOpts: {
+    tsNodeOpts: {
+      project: "./tsconfig.test.json",
+    },
+  },
   capabilities: [vscodeConfigs],
 
   // Redirect noisy chromedriver and browser logs to ./logs
