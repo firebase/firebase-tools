@@ -1,0 +1,1 @@
+- Fixes an issue where `emulators:exec` would return a 0 error code when emulators failed to start. (#7974)
