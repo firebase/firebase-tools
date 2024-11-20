@@ -1,0 +1,1 @@
+Updates `superstatic` to `9.1.0` in package.json.
