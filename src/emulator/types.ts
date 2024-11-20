@@ -43,6 +43,7 @@ export const IMPORT_EXPORT_EMULATORS = [
   Emulators.DATABASE,
   Emulators.AUTH,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export const ALL_SERVICE_EMULATORS = [

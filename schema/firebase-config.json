@@ -402,6 +402,9 @@
                 "dataconnect": {
                     "additionalProperties": false,
                     "properties": {
+                        "dataDir": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },

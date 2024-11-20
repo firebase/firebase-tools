@@ -10,6 +10,7 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
+import { DataConnectEmulator } from "./dataconnectEmulator";
 import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
 
@@ -34,12 +35,18 @@ export interface StorageExportMetadata {
   path: string;
 }
 
+export interface DataConnectExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
   auth?: AuthExportMetadata;
   storage?: StorageExportMetadata;
+  dataconnect?: DataConnectExportMetadata;
 }
 
 export interface ExportOptions {
@@ -120,6 +127,14 @@ export class HubExport {
         path: "storage_export",
       };
       await this.exportStorage(metadata);
+    }
+
+    if (shouldExport(Emulators.DATACONNECT)) {
+      metadata.dataconnect = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "dataconnect_export",
+      };
+      await this.exportDataConnect(metadata);
     }
 
     // Make sure the export directory exists
@@ -288,6 +303,28 @@ export class HubExport {
     if (res.status >= 400) {
       throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
     }
+  }
+
+  private async exportDataConnect(metadata: ExportMetadata): Promise<void> {
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.DATACONNECT,
+    });
+
+    const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+    if (!instance) {
+      throw new FirebaseError(
+        "Unable to export Data Connect emulator data: the Data Connect emulator is not running.",
+      );
+    }
+
+    const dataconnectExportPath = path.join(this.tmpDir, metadata.dataconnect!.path);
+    if (fs.existsSync(dataconnectExportPath)) {
+      fse.removeSync(dataconnectExportPath);
+    }
+    fs.mkdirSync(dataconnectExportPath);
+
+    await instance.exportData(dataconnectExportPath);
   }
 }
 
