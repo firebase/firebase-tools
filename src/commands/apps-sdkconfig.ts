@@ -97,7 +97,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
     ).start();
     try {
       configData = await getAppConfig(appId, appPlatform);
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.fail();
       throw err;
     }

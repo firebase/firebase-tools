@@ -2,11 +2,11 @@
 
 import { join } from "path";
 import { promptOnce } from "../prompt";
-import { detectStartCommand } from "./apphosting/utils";
+import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { getOrPromptProject } from "../management/projects";
 import { exportConfig } from "../apphosting/config";
+import { detectProjectRoot } from "../detectProjectRoot";
 
 type InitFn = () => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
@@ -33,14 +33,13 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     } catch (e) {
       logger.log(
         "WARN",
-        "failed to auto-detect your project's start command, consider manually setting the start command by setting the startCommandOverride config",
+        "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommandOverride`",
       );
     }
 
     try {
-      // prompt for apphosting yaml to export
-      const project = await getOrPromptProject({});
-      await exportConfig(project.projectId, cwd, backendRoot);
+      const projectRoot = detectProjectRoot({}) ?? backendRoot;
+      await exportConfig(cwd, projectRoot, backendRoot);
     } catch (e) {
       logger.log("WARN", "failed to export app hosting configs");
     }

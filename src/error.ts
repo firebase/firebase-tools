@@ -69,6 +69,18 @@ export function getErrStatus(err: unknown, defaultStatus?: number): number {
 }
 
 /**
+ * Safely gets an error object from an unknown object
+ * @param err The error to get an Error for.
+ * @return an Error object
+ */
+export function getError(err: unknown): Error {
+  if (err instanceof Error) {
+    return err;
+  }
+  return Error(getErrMsg(err));
+}
+
+/**
  * Checks if a FirebaseError is caused by attempting something
  * that requires billing enabled while billing is not enabled.
  */

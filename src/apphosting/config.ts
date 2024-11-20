@@ -12,6 +12,7 @@ import { promptForAppHostingYaml } from "./utils";
 import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
 import { updateOrCreateGitignore } from "../utils";
+import { getOrPromptProject } from "../management/projects";
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
@@ -42,6 +43,9 @@ export interface Config {
   env?: Env[];
 }
 
+const SECRET_CONFIG = "Secret";
+const EXPORTABLE_CONFIG = [SECRET_CONFIG];
+
 /**
  * Returns the absolute path for an app hosting backend root.
  *
@@ -70,8 +74,8 @@ export function discoverBackendRoot(cwd: string): string | null {
 
 /**
  * Returns paths of apphosting config files in the given path
- * */
-export function listAppHostingFilesInPath(path: string) {
+ */
+export function listAppHostingFilesInPath(path: string): string[] {
   return fs
     .listFiles(path)
     .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file))
@@ -177,13 +181,44 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   dynamicDispatch.store(path, projectYaml);
 }
 
+/**
+ * Reads userGivenConfigFile and exports the secrets defined in that file by
+ * hitting Google Secret Manager. The secrets are written in plain text to an
+ * apphosting.local.yaml file as environment variables.
+ *
+ * If userGivenConfigFile is not given, user is prompted to select one of the
+ * discovered app hosting yaml files.
+ */
 export async function exportConfig(
-  projectId: string,
   cwd: string,
+  projectRoot: string,
   backendRoot: string,
-  environmentConfigFile?: string,
-) {
-  // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
+  projectId?: string,
+  userGivenConfigFile?: string,
+): Promise<void> {
+  const choices = await prompt.prompt({}, [
+    {
+      type: "checkbox",
+      name: "configurations",
+      message: "What configs would you like to export?",
+      choices: EXPORTABLE_CONFIG,
+    },
+  ]);
+
+  /**
+   * TODO: Update when supporting additional configurations. Currently only
+   * Secrets are exportable.
+   */
+  if (!choices.configurations.includes(SECRET_CONFIG)) {
+    logger.info("No configs selected to export");
+    return;
+  }
+
+  if (!projectId) {
+    const project = await getOrPromptProject({});
+    projectId = project.projectId;
+  }
+
   let localAppHostingConfig: AppHostingYamlConfig = AppHostingYamlConfig.empty();
 
   const localAppHostingConfigPath = resolve(backendRoot, APPHOSTING_LOCAL_YAML_FILE);
@@ -191,10 +226,10 @@ export async function exportConfig(
     localAppHostingConfig = await AppHostingYamlConfig.loadFromFile(localAppHostingConfigPath);
   }
 
-  const configToExport = await loadConfigToExport(cwd, environmentConfigFile);
+  const configToExport = await loadConfigToExportSecrets(cwd, userGivenConfigFile);
   const secretsToExport = configToExport.secrets;
   if (!secretsToExport) {
-    logger.warn("No secrets found to export in the chosen App Hosting config files");
+    logger.info("No secrets found to export in the chosen App Hosting config files");
     return;
   }
 
@@ -207,12 +242,11 @@ export async function exportConfig(
     });
   }
 
-  // remove secrets to avoid confusion as they are not read anyways.
-  localAppHostingConfig.resetSecrets();
-  localAppHostingConfig.upsertFile(localAppHostingConfigPath);
+  // update apphosting.local.yaml
+  await localAppHostingConfig.upsertFile(localAppHostingConfigPath);
   logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
 
-  await updateOrCreateGitignore(backendRoot, [APPHOSTING_LOCAL_YAML_FILE]);
+  updateOrCreateGitignore(projectRoot, [APPHOSTING_LOCAL_YAML_FILE]);
   logger.info(`${APPHOSTING_LOCAL_YAML_FILE} has been automatically added to your .gitignore.`);
 }
 
@@ -222,9 +256,8 @@ export async function exportConfig(
  *
  * Environment specific config (i.e apphosting.<environment>.yaml) will
  * take precedence over the base config (apphosting.yaml).
- *
- * @param envYamlPath: Example: "/home/my-project/apphosting.staging.yaml"
- * @param baseYamlPath: Example: "/home/my-project/apphosting.yaml"
+ * @param envYamlPath Example: "/home/my-project/apphosting.staging.yaml"
+ * @param baseYamlPath Example: "/home/my-project/apphosting.yaml"
  */
 export async function loadConfigForEnvironment(
   envYamlPath: string,
@@ -246,10 +279,9 @@ export async function loadConfigForEnvironment(
 
 /**
  * Returns the appropriate App Hosting YAML configuration for exporting secrets.
- *
- * @returns The final merged config
+ * @return The final merged config
  */
-export async function loadConfigToExport(
+export async function loadConfigToExportSecrets(
   cwd: string,
   userGivenConfigFile?: string,
 ): Promise<AppHostingYamlConfig> {

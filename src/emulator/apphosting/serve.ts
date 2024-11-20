@@ -5,10 +5,10 @@
 
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { detectStartCommand } from "./utils";
+import { detectStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString } from "../../init/spawn";
-import { logger } from "./utils";
+import { logger } from "./developmentServer";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";

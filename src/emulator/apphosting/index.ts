@@ -1,7 +1,7 @@
 import { trackGA4 } from "../../track";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { start as apphostingStart } from "./serve";
-import { logger } from "./utils";
+import { logger } from "./developmentServer";
 interface AppHostingEmulatorArgs {
   options?: any;
   port?: number;
