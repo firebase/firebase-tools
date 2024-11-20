@@ -186,8 +186,12 @@ export class EmulatorsController implements Disposable {
     }
   }
 
-  public areEmulatorsRunning() {
-    return this.emulators.status === "running";
+  public async areEmulatorsRunning(): Promise<boolean> {
+    if (this.emulators.status === "running") {
+      return true;
+    }
+
+    return !!(await this.findRunningCliEmulators());
   }
 
   /** FDC specific functions */
