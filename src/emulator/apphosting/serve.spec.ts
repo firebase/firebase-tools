@@ -4,7 +4,7 @@ import * as portUtils from "../portUtils";
 import * as spawn from "../../init/spawn";
 import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
-import * as utils from "./utils";
+import * as utils from "./developmentServer";
 import * as configsImport from "./config";
 import * as projectPathImport from "../../projectPath";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";

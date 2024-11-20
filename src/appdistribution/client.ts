@@ -3,13 +3,16 @@ import { ReadStream } from "fs";
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
+import { FirebaseError, getErrMsg } from "../error";
+import { Client, ClientResponse } from "../apiv2";
 import { appDistributionOrigin } from "../api";
+
 import {
   AabInfo,
   BatchRemoveTestersResponse,
   Group,
+  ListGroupsResponse,
+  ListTestersResponse,
   LoginCredential,
   mapDeviceToExecution,
   ReleaseTest,
@@ -81,8 +84,8 @@ export class AppDistributionClient {
 
     try {
       await this.appDistroV1Client.patch(`/${releaseName}`, data, { queryParams });
-    } catch (err: any) {
-      throw new FirebaseError(`failed to update release notes with ${err?.message}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`failed to update release notes with ${getErrMsg(err)}`);
     }
 
     utils.logSuccess("added release notes successfully");
@@ -123,6 +126,46 @@ export class AppDistributionClient {
     utils.logSuccess("distributed to testers/groups successfully");
   }
 
+  async listTesters(projectName: string, groupName?: string): Promise<ListTestersResponse> {
+    const listTestersResponse: ListTestersResponse = {
+      testers: [],
+    };
+
+    const client = this.appDistroV1Client;
+
+    let pageToken: string | undefined;
+
+    const filter = groupName ? `groups=${projectName}/groups/${groupName}` : null;
+
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      if (filter != null) {
+        queryParams["filter"] = filter;
+      }
+
+      let apiResponse: ClientResponse<ListTestersResponse>;
+      try {
+        apiResponse = await client.get<ListTestersResponse>(`${projectName}/testers`, {
+          queryParams,
+        });
+      } catch (err) {
+        throw new FirebaseError(`Client request failed to list testers ${err}`);
+      }
+
+      for (const t of apiResponse.body.testers) {
+        listTestersResponse.testers.push({
+          name: t.name,
+          displayName: t.displayName,
+          groups: t.groups,
+          lastActivityTime: new Date(t.lastActivityTime),
+        });
+      }
+
+      pageToken = apiResponse.body.nextPageToken;
+    } while (pageToken);
+    return listTestersResponse;
+  }
+
   async addTesters(projectName: string, emails: string[]): Promise<void> {
     try {
       await this.appDistroV1Client.request({
@@ -130,8 +173,8 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchAdd`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to add testers ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to add testers ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers created successfully`);
@@ -148,10 +191,34 @@ export class AppDistributionClient {
         path: `${projectName}/testers:batchRemove`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to remove testers ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to remove testers ${getErrMsg(err)}`);
     }
     return apiResponse.body;
+  }
+
+  async listGroups(projectName: string): Promise<ListGroupsResponse> {
+    const listGroupsResponse: ListGroupsResponse = {
+      groups: [],
+    };
+
+    const client = this.appDistroV1Client;
+
+    let pageToken: string | undefined;
+
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      try {
+        const apiResponse = await client.get<ListGroupsResponse>(`${projectName}/groups`, {
+          queryParams,
+        });
+        listGroupsResponse.groups.push(...(apiResponse.body.groups || []));
+        pageToken = apiResponse.body.nextPageToken;
+      } catch (err) {
+        throw new FirebaseError(`Client failed to list groups ${err}`);
+      }
+    } while (pageToken);
+    return listGroupsResponse;
   }
 
   async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {
@@ -163,8 +230,8 @@ export class AppDistributionClient {
           alias === undefined ? `${projectName}/groups` : `${projectName}/groups?groupId=${alias}`,
         body: { displayName: displayName },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to create group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create group ${getErrMsg(err)}`);
     }
     return apiResponse.body;
   }
@@ -175,8 +242,8 @@ export class AppDistributionClient {
         method: "DELETE",
         path: groupName,
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to delete group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Group deleted successfully`);
@@ -189,8 +256,8 @@ export class AppDistributionClient {
         path: `${groupName}:batchJoin`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to add testers to group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to add testers to group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers added to group successfully`);
@@ -203,8 +270,8 @@ export class AppDistributionClient {
         path: `${groupName}:batchLeave`,
         body: { emails: emails },
       });
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to remove testers from group ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to remove testers from group ${getErrMsg(err)}`);
     }
 
     utils.logSuccess(`Testers removed from group successfully`);
@@ -225,8 +292,8 @@ export class AppDistributionClient {
         },
       });
       return response.body;
-    } catch (err: any) {
-      throw new FirebaseError(`Failed to create release test ${err}`);
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create release test ${getErrMsg(err)}`);
     }
   }
 

@@ -10,7 +10,7 @@ import {
   UploadReleaseResult,
   TestDevice,
 } from "../appdistribution/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
 import {
   ensureFileExists,
@@ -96,8 +96,8 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     if (distribution.distributionFileType() === DistributionFileType.AAB) {
       try {
         aabInfo = await requests.getAabInfo(appName);
-      } catch (err: any) {
-        if (err.status === 404) {
+      } catch (err: unknown) {
+        if (getErrStatus(err) === 404) {
           throw new FirebaseError(
             `App Distribution could not find your app ${options.app}. ` +
               `Make sure to onboard your app by pressing the "Get started" ` +
@@ -106,7 +106,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
             { exit: 1 },
           );
         }
-        throw new FirebaseError(`failed to determine AAB info. ${err.message}`, { exit: 1 });
+        throw new FirebaseError(`failed to determine AAB info. ${getErrMsg(err)}`, { exit: 1 });
       }
 
       if (
@@ -175,8 +175,8 @@ export const command = new Command("appdistribution:distribute <release-binary-f
         `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`,
       );
       releaseName = uploadResponse.release.name;
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 404) {
         throw new FirebaseError(
           `App Distribution could not find your app ${options.app}. ` +
             `Make sure to onboard your app by pressing the "Get started" ` +
@@ -185,7 +185,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
           { exit: 1 },
         );
       }
-      throw new FirebaseError(`Failed to upload release. ${err.message}`, { exit: 1 });
+      throw new FirebaseError(`Failed to upload release. ${getErrMsg(err)}`, { exit: 1 });
     }
 
     // If this is an app bundle and the certificate was originally blank fetch the updated
