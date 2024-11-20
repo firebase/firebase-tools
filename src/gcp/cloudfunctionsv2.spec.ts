@@ -436,7 +436,7 @@ describe("cloudfunctionsv2", () => {
       let want: backend.Endpoint = {
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: RUN_URI,
+        uri: GCF_URL,
         eventTrigger: {
           eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: { topic: "projects/p/topics/t" },
@@ -563,7 +563,7 @@ describe("cloudfunctionsv2", () => {
       const want: backend.Endpoint = {
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: RUN_URI,
+        uri: GCF_URL,
         eventTrigger: {
           eventType: "com.custom.event",
           eventFilters: { customattr: "customvalue" },
@@ -763,6 +763,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         httpsTrigger: {},
+        uri: GCF_URL,
       };
       delete expectedEndpoint.runServiceId;
       expect(
