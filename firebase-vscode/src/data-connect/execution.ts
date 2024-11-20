@@ -23,12 +23,14 @@ import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { InstanceType } from "./code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
+import { EmulatorsController } from "../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
   analyticsLogger: AnalyticsLogger,
+  emulatorsController: EmulatorsController,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
@@ -80,8 +82,41 @@ export function registerExecution(
     instance: InstanceType,
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
+
     const alwaysExecuteMutationsInProduction =
       "alwaysAllowMutationsInProduction";
+    const alwaysStartEmulator = "alwaysStartEmulator";
+
+    if (
+      instance === InstanceType.LOCAL &&
+      !(await emulatorsController.areEmulatorsRunning())
+    ) {
+      const always = "Yes (always)";
+      const yes = "Yes";
+      const result = await vscode.window.showWarningMessage(
+        "Trying to execute an operation on the emulator, but it isn't started yet. " +
+          "Do you wish to start it?",
+        { modal: true },
+        yes,
+        always,
+      );
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(alwaysStartEmulator, true, ConfigurationTarget.Global);
+      }
+
+      if (result === yes || result === always) {
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+        );
+        await vscode.commands.executeCommand("firebase.emulators.start");
+      } else {
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.REFUSE_START_EMULATOR_FROM_EXECUTION,
+        );
+      }
+    }
 
     // Warn against using mutations in production.
     if (
