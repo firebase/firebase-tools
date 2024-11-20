@@ -921,7 +921,7 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
 /**
  * Updates or creates a .gitignore file with the given entries in the given path
  */
-export async function updateOrCreateGitignore(dirPath: string, entries: string[]): Promise<void> {
+export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
   const gitignorePath = path.join(dirPath, ".gitignore");
 
   if (fs.existsSync(gitignorePath)) {
