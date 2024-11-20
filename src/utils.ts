@@ -921,26 +921,20 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
 /**
  * Updates or creates a .gitignore file with the given entries in the given path
  */
-export async function updateOrCreateGitignore(dirPath: string, entries: string[]): Promise<void> {
+export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
   const gitignorePath = path.join(dirPath, ".gitignore");
-  try {
-    // Check if .gitignore exists
-    await fs.promises.access(gitignorePath, fs.constants.F_OK);
 
-    // Read existing content
-    let content = await fs.promises.readFile(gitignorePath, "utf-8");
-
-    // Add new entries if they don't exist
-    for (const entry of entries) {
-      if (!content.includes(entry)) {
-        content += `${entry}\n`;
-      }
-    }
-
-    // Write updated content
-    await fs.promises.writeFile(gitignorePath, content);
-  } catch (err) {
-    // .gitignore doesn't exist, create it
-    await fs.promises.writeFile(gitignorePath, entries.join("\n"));
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, entries.join("\n"));
+    return;
   }
+
+  let content = fs.readFileSync(gitignorePath, "utf-8");
+  for (const entry of entries) {
+    if (!content.includes(entry)) {
+      content += `\n${entry}\n`;
+    }
+  }
+
+  fs.writeFileSync(gitignorePath, content);
 }
