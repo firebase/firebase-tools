@@ -167,24 +167,43 @@ export async function upsertSecret(
 }
 
 /**
- * Fetches secrets from Google Secret Manager and returns their values in plain text.
+ * Fetches secrets from Google Secret Manager and returns their values in plain text. If a secret is
+ * not accessible due to not having access permissions, it is not included in the returned map.
  */
 export async function fetchSecrets(
   projectId: string,
   secrets: Secret[],
 ): Promise<Map<string, string>> {
-  let secretsKeyValuePairs: Map<string, string>;
+  const secretsKeyValuePairs = new Map<string, string>();
+  const promises: Promise<void>[] = [];
 
   try {
-    const secretPromises: Promise<[string, string]>[] = secrets.map(async (secretConfig) => {
+    for (const secretConfig of secrets) {
       const [name, version] = getSecretNameParts(secretConfig.secret!);
 
-      const value = await gcsm.accessSecretVersion(projectId, name, version);
-      return [secretConfig.variable, value] as [string, string];
-    });
+      promises.push(
+        (async () => {
+          try {
+            const value = await gcsm.accessSecretVersion(projectId, name, version);
+            secretsKeyValuePairs.set(secretConfig.variable, value);
+          } catch (err: unknown) {
+            const status = getErrStatus(err);
+            if (status === 403) {
+              utils.logLabeledWarning(
+                "apphosting",
+                `You don't have permission to access secret: ${name}. Please ensure you have secretmanager.secretAccessor permission.`,
+              );
+              return;
+            }
+            throw new FirebaseError(`Failed to check access for secret: ${name}`, {
+              original: getError(err),
+            });
+          }
+        })(),
+      );
+    }
 
-    const secretEntries = await Promise.all(secretPromises);
-    secretsKeyValuePairs = new Map(secretEntries);
+    await Promise.all(promises);
   } catch (e: any) {
     throw new FirebaseError(`Error exporting secrets`, {
       original: e,
