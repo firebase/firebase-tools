@@ -30,5 +30,5 @@ export const command = new Command("apphosting:config:export")
       );
     }
 
-    await exportConfig(projectId, cwd, backendRoot, environmentConfigFile);
+    await exportConfig(cwd, backendRoot, projectId, environmentConfigFile);
   });

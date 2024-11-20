@@ -4,7 +4,7 @@ import { markedTerminal } from "marked-terminal";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { Config } from "../config";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
@@ -69,12 +69,12 @@ export const command = new Command("ext:dev:init")
       await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
       return logger.info("\n" + marked(welcome));
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(
-          `Error occurred when initializing files for new extension: ${err.message}`,
+          `Error occurred when initializing files for new extension: ${getErrMsg(err)}`,
           {
-            original: err,
+            original: getError(err),
           },
         );
       }
