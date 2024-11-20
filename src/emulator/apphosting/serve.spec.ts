@@ -4,7 +4,7 @@ import * as portUtils from "../portUtils";
 import * as spawn from "../../init/spawn";
 import * as serve from "./serve";
 import { DEFAULT_PORTS } from "../constants";
-import * as utils from "./utils";
+import * as utils from "./developmentServer";
 import * as configsImport from "./config";
 import * as projectPathImport from "../../projectPath";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
@@ -13,7 +13,7 @@ describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithCommandStringStub: sinon.SinonStub;
-  let discoverPackageManagerStub: sinon.SinonStub;
+  let detectStartCommandStub: sinon.SinonStub;
   let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
   let resolveProjectPathStub: sinon.SinonStub;
 
@@ -21,16 +21,17 @@ describe("serve", () => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
     spawnWithCommandStringStub = sinon.stub(spawn, "spawnWithCommandString");
-    discoverPackageManagerStub = sinon.stub(utils, "discoverPackageManager");
+    detectStartCommandStub = sinon.stub(utils, "detectStartCommand");
     configsStub = sinon.stub(configsImport);
     resolveProjectPathStub = sinon.stub(projectPathImport, "resolveProjectPath");
 
     resolveProjectPathStub.returns("");
+    detectStartCommandStub.returns("npm run dev");
   });
 
   afterEach(() => {
     wrapSpawnStub.restore();
-    discoverPackageManagerStub.restore();
+    detectStartCommandStub.restore();
     sinon.verifyAndRestore();
   });
 
