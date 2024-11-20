@@ -5,7 +5,6 @@ import { promptOnce } from "../prompt";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { getOrPromptProject } from "../management/projects";
 import { exportConfig } from "../apphosting/config";
 
 type InitFn = () => Promise<Record<string, string> | null>;
