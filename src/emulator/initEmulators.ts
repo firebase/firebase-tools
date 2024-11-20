@@ -6,6 +6,7 @@ import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { exportConfig } from "../apphosting/config";
+import { detectProjectRoot } from "../detectProjectRoot";
 
 type InitFn = () => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
@@ -37,8 +38,8 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     }
 
     try {
-      // prompt for apphosting yaml to export
-      await exportConfig(cwd, backendRoot);
+      const projectRoot = detectProjectRoot({}) ?? backendRoot;
+      await exportConfig(cwd, projectRoot, backendRoot);
     } catch (e) {
       logger.log("WARN", "failed to export app hosting configs");
     }
