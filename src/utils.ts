@@ -924,17 +924,17 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
 export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
   const gitignorePath = path.join(dirPath, ".gitignore");
 
-  if (fs.existsSync(gitignorePath)) {
-    let content = fs.readFileSync(gitignorePath, "utf-8");
-    for (const entry of entries) {
-      if (!content.includes(entry)) {
-        content += `${entry}\n`;
-      }
-    }
-
-    fs.writeFileSync(gitignorePath, content);
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, entries.join("\n"));
     return;
   }
 
-  fs.writeFileSync(gitignorePath, entries.join("\n"));
+  let content = fs.readFileSync(gitignorePath, "utf-8");
+  for (const entry of entries) {
+    if (!content.includes(entry)) {
+      content += `${entry}\n`;
+    }
+  }
+
+  fs.writeFileSync(gitignorePath, content);
 }
