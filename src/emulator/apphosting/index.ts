@@ -18,6 +18,7 @@ export class AppHostingEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { hostname, port } = await apphostingStart({
+      port: this.args.port,
       startCommand: this.args.startCommandOverride,
       rootDirectory: this.args.rootDirectory,
     });
