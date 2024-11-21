@@ -80,14 +80,6 @@
         }
       }
     },
-    "keybindings": [
-      {
-        "command": "firebase.dataConnect.executeOperationAtCursor",
-        "key": "ctrl+enter",
-        "mac": "cmd+enter",
-        "when": "editorLangId == gql || editorLangId == graphql"
-      }
-    ],
     "viewsContainers": {
       "activitybar": [
         {
