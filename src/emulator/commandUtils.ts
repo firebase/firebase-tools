@@ -468,8 +468,9 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
-  } catch {
+  } catch (err: unknown) {
     await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+    throw err;
   } finally {
     await controller.cleanShutdown();
   }
