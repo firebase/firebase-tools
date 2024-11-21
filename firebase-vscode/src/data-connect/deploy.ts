@@ -42,12 +42,16 @@ export function registerFdcDeploy(
   );
 
   const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL);
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL, {
+      firebase_binary_kind: settings.firebaseBinaryKind,
+    });
     deploySpy.call(`${settings.firebasePath} deploy --only dataconnect`);
   });
 
   const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_INDIVIDUAL);
+    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_INDIVIDUAL, {
+      firebase_binary_kind: settings.firebaseBinaryKind,
+    });
     const configs = await firstWhereDefined(dataConnectConfigs).then(
       (c) => c.requireValue,
     );
