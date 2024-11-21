@@ -1032,8 +1032,7 @@ export function setAccountInfoImpl(
   // TODO: Implement these.
   const unimplementedFields: (keyof typeof reqBody)[] = [
     "provider",
-    "upgradeToFederatedLogin",
-    "linkProviderUserInfo",
+    "upgradeToFederatedLogin"
   ];
   for (const field of unimplementedFields) {
     if (field in reqBody) {
@@ -1232,8 +1231,20 @@ export function setAccountInfoImpl(
     }
   }
 
+  if (reqBody.linkProviderUserInfo) {
+    if (!reqBody.linkProviderUserInfo.providerId?.length) {
+      throw new Error("providerId is required and must be a non-empty string.")
+    }
+    if (!reqBody.linkProviderUserInfo.rawId?.length) {
+      throw new Error("rawId is required and must be a non-empty string.")
+    }
+  }
+
   user = state.updateUserByLocalId(user.localId, updates, {
     deleteProviders: reqBody.deleteProvider,
+    upsertProviders: reqBody.linkProviderUserInfo
+      ? [reqBody.linkProviderUserInfo as ProviderUserInfo]
+      : undefined,
   });
 
   // Only initiate the recover email OOB flow for non-anonymous users
