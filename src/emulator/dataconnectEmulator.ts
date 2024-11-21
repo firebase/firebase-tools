@@ -184,7 +184,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     } else {
       const conn = new pg.Client(dataConnectLocalConnString());
       await conn.query(TRUNCATE_TABLES_SQL);
-      await conn.end()
+      await conn.end();
     }
   }
 
