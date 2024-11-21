@@ -46,6 +46,18 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
 
     return mapToObject(additionalConfigs);
   },
+  [Emulators.DATACONNECT] : async () => {
+    
+    const dataDir = await promptOnce({
+      name: "dataDir",
+      type: "input",
+      default: "./postgresData",
+      message: "Where do you want to store Postgres data from the Data Connect emulator? " +
+        "If set, data will be saved between emulator runs. " +
+        "Set this to blank if you do not want to persist Postgres data between runs.",
+    });
+    return { dataDir }
+  }
 };
 
 function mapToObject(map: Map<string, string>): Record<string, string> {
