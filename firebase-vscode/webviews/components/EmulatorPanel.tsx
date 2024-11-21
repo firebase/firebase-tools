@@ -1,7 +1,7 @@
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react";
 import React from "react";
 import { Spacer } from "./ui/Spacer";
-import { EmulatorInfo, Emulators, IMPORT_EXPORT_EMULATORS } from "../../../src/emulator/types";
+import type { EmulatorInfo } from "../../../src/emulator/types";
 import { RunningEmulatorInfo } from "../messaging/types";
 import { Body, Label } from "./ui/Text";
 import { broker } from "../globals/html-broker";
@@ -70,16 +70,13 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
 function RunningEmulatorControlButtons({ infos }: { infos: EmulatorInfo[] }) {
   return (
     <Body>
-      {!!infos.some(e => e.name === Emulators.DATACONNECT) && (
-        <VSCodeButton onClick={() => broker.send("fdc.clear-emulator-data")}>
-          Clear Data Connect Data
-        </VSCodeButton>
-      )}
-      {!!infos.some(e => IMPORT_EXPORT_EMULATORS.includes(e.name)) && (
-        <VSCodeButton onClick={() => broker.send("runEmulatorsExport")}>
-          Export Emulator Data
-        </VSCodeButton>
-      )}
+      <VSCodeButton onClick={() => broker.send("fdc.clear-emulator-data")}>
+        Clear Data Connect Data
+      </VSCodeButton>
+      <Spacer size="small"></Spacer>
+      <VSCodeButton onClick={() => broker.send("runEmulatorsExport")}>
+        Export Emulator Data
+      </VSCodeButton>
     </Body>
   );
 }
