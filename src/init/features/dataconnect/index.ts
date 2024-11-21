@@ -79,6 +79,8 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
   const info = await askQuestions(setup, isBillingEnabled);
+  // Most users will want to perist data between emulator runs, so set this to a reasonable default.
+  config.set("emulators.dataconnect.dataDir", "./postgresData");
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
