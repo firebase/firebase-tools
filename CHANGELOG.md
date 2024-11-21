@@ -1,5 +1,5 @@
 - Fixes an issue where `emulators:exec` would return a 0 error code when emulators failed to start. (#7974)
 - Added `--import` and `emulators:export` support to the Data Connect emulator.
 - Added `firebase.json#emulators.dataconnect.dataDir`. When set, Data Connect data will be persisted to the configured directory between emulator runs.
-- Added App Hosting Emulator
+- Added App Hosting Emulator: https://firebase.google.com/docs/app-hosting/emulate
 - Added `apphosting:config:export` to export App Hosting configurations such as secrets into an apphosting.local.yaml file, to be used by the emulator
