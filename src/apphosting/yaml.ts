@@ -69,7 +69,7 @@ export class AppHostingYamlConfig {
     this._secrets.set(secret.variable, secret);
   }
 
-  resetSecrets() {
+  clearSecrets() {
     this._secrets.clear();
   }
 
