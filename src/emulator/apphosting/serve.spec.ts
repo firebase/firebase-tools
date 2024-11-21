@@ -32,10 +32,21 @@ describe("serve", () => {
   afterEach(() => {
     wrapSpawnStub.restore();
     detectStartCommandStub.restore();
+    checkListenableStub.restore();
     sinon.verifyAndRestore();
   });
 
   describe("start", () => {
+    it("should use user-provided port if one is defined", async () => {
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.returns(
+        Promise.resolve(AppHostingYamlConfig.empty()),
+      );
+
+      const res = await serve.start({ port: 9999 });
+      expect(res.port).to.equal(9999);
+    });
+
     it("should only select an available port to serve", async () => {
       checkListenableStub.onFirstCall().returns(false);
       checkListenableStub.onSecondCall().returns(false);
