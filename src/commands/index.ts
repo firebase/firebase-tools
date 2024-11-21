@@ -177,6 +177,8 @@ export function load(client: any): any {
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
+    client.apphosting.config = {};
+    client.apphosting.config.export = loadCommand("apphosting-config-export");
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");
@@ -186,10 +188,6 @@ export function load(client: any): any {
       client.apphosting.rollouts = {};
       client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
-    }
-    if (experiments.isEnabled("emulatorapphosting")) {
-      client.apphosting.config = {};
-      client.apphosting.config.export = loadCommand("apphosting-config-export");
     }
   }
   client.login = loadCommand("login");
