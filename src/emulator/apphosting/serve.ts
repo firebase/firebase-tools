@@ -14,6 +14,7 @@ import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
 
 interface StartOptions {
+  port?: number;
   startCommand?: string;
   rootDirectory?: string;
 }
@@ -28,7 +29,7 @@ interface StartOptions {
  */
 export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
   const hostname = DEFAULT_HOST;
-  let port = DEFAULT_PORTS.apphosting;
+  let port = options?.port ?? DEFAULT_PORTS.apphosting;
   while (!(await availablePort(hostname, port))) {
     port += 1;
   }
