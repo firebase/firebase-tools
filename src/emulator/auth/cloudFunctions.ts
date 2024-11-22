@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
 
-import { EventContext } from "firebase-functions";
+import { EventContext } from "firebase-functions/lib/v1";
 
 import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
