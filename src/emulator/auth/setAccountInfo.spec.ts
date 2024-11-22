@@ -1305,8 +1305,9 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .query({ key: "fake-api-key" })
       .send({ idToken, linkProviderUserInfo: incompleteProviderUserInfo1 })
-      .catch((err) => {
-        expect(err.response.status).to.equal(500); // Expecting internal server error since it's a missing validation
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_RAW_ID");
       });
 
     const incompleteProviderUserInfo2 = {
@@ -1318,9 +1319,9 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .query({ key: "fake-api-key" })
       .send({ idToken, linkProviderUserInfo: incompleteProviderUserInfo2 })
-      .catch((err) => {
-        expect(err.response.status).to.equal(500); // Expecting internal server error since it's a missing validation
-
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_PROVIDER_ID");
       });
   });
 

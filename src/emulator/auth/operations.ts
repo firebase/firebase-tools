@@ -1030,10 +1030,7 @@ export function setAccountInfoImpl(
   { privileged = false, emulatorUrl = undefined }: { privileged?: boolean; emulatorUrl?: URL } = {},
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   // TODO: Implement these.
-  const unimplementedFields: (keyof typeof reqBody)[] = [
-    "provider",
-    "upgradeToFederatedLogin"
-  ];
+  const unimplementedFields: (keyof typeof reqBody)[] = ["provider", "upgradeToFederatedLogin"];
   for (const field of unimplementedFields) {
     if (field in reqBody) {
       throw new NotImplementedError(`${field} is not implemented yet.`);
@@ -1232,12 +1229,8 @@ export function setAccountInfoImpl(
   }
 
   if (reqBody.linkProviderUserInfo) {
-    if (!reqBody.linkProviderUserInfo.providerId?.length) {
-      throw new Error("providerId is required and must be a non-empty string.")
-    }
-    if (!reqBody.linkProviderUserInfo.rawId?.length) {
-      throw new Error("rawId is required and must be a non-empty string.")
-    }
+    assert(!reqBody.linkProviderUserInfo.providerId?.length, "MISSING_PROVIDER_ID");
+    assert(!reqBody.linkProviderUserInfo.rawId?.length, "MISSING_RAW_ID");
   }
 
   user = state.updateUserByLocalId(user.localId, updates, {
