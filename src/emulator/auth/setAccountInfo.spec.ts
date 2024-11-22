@@ -1286,7 +1286,9 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
 
     const accountInfo = await getAccountInfoByIdToken(authApi(), idToken);
     expect(accountInfo.providerUserInfo).to.have.length(2);
-    const linkedProviderInfo = accountInfo.providerUserInfo?.find((p: ProviderUserInfo) => p.providerId === providerId);
+    const linkedProviderInfo = accountInfo.providerUserInfo?.find(
+      (p: ProviderUserInfo) => p.providerId === providerId,
+    );
     expect(linkedProviderInfo).to.deep.equal(providerUserInfo);
   });
 
