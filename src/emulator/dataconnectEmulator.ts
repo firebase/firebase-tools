@@ -1,6 +1,8 @@
 import * as childProcess from "child_process";
+import * as pg from "pg";
 import { EventEmitter } from "events";
 import * as clc from "colorette";
+import * as path from "path";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -16,7 +18,7 @@ import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
-import { PostgresServer } from "./dataconnect/pgliteServer";
+import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
 
@@ -31,6 +33,7 @@ export interface DataConnectEmulatorArgs {
   postgresListen?: ListenSpec[];
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
+  importPath?: string;
 }
 
 export interface DataConnectGenerateArgs {
@@ -49,6 +52,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
   private usingExistingEmulator: boolean = false;
+  private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {
     this.emulatorClient = new DataConnectEmulatorClient();
@@ -102,11 +106,15 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer(pgHost, pgPort);
+        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        const postgresDumpPath = this.args.importPath
+          ? path.join(this.args.importPath, "postgres.tar.gz")
+          : undefined;
+        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory, postgresDumpPath);
+        const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
-        server.on("error", (err) => {
+        server.on("error", (err: any) => {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
@@ -168,6 +176,26 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  async clearData(): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.clearDb();
+    } else {
+      const conn = new pg.Client(dataConnectLocalConnString());
+      await conn.query(TRUNCATE_TABLES_SQL);
+      await conn.end();
+    }
+  }
+
+  async exportData(exportPath: string): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.exportData(path.join(exportPath, "postgres.tar.gz"));
+    } else {
+      throw new FirebaseError(
+        "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
+      );
+    }
   }
 
   static async generate(args: DataConnectGenerateArgs): Promise<string> {

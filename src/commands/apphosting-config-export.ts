@@ -1,16 +1,12 @@
 import { Command } from "../command";
-import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import { APPHOSTING_LOCAL_YAML_FILE, discoverBackendRoot } from "../apphosting/config";
-import { fetchSecrets, loadConfigToExport } from "../apphosting/secrets";
-import { resolve } from "path";
-import * as fs from "../fsutils";
-import { AppHostingYamlConfig } from "../apphosting/yaml";
+import { discoverBackendRoot, exportConfig } from "../apphosting/config";
 import { FirebaseError } from "../error";
+import { detectProjectRoot } from "../detectProjectRoot";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -28,8 +24,6 @@ export const command = new Command("apphosting:config:export")
     const environmentConfigFile = options.secrets as string | undefined;
     const cwd = process.cwd();
 
-    // Load apphosting.local.yaml file if it exists. Secrets should be added to the env list in this object and written back to the apphosting.local.yaml
-    let localAppHostingConfig: AppHostingYamlConfig = AppHostingYamlConfig.empty();
     const backendRoot = discoverBackendRoot(cwd);
     if (!backendRoot) {
       throw new FirebaseError(
@@ -37,28 +31,6 @@ export const command = new Command("apphosting:config:export")
       );
     }
 
-    const localAppHostingConfigPath = resolve(backendRoot, APPHOSTING_LOCAL_YAML_FILE);
-    if (fs.fileExistsSync(localAppHostingConfigPath)) {
-      localAppHostingConfig = await AppHostingYamlConfig.loadFromFile(localAppHostingConfigPath);
-    }
-
-    const configToExport = await loadConfigToExport(cwd, environmentConfigFile);
-    const secretsToExport = configToExport.secrets;
-    if (!secretsToExport) {
-      logger.warn("No secrets found to export in the chosen App Hosting config files");
-      return;
-    }
-
-    const secretMaterial = await fetchSecrets(projectId, secretsToExport);
-    for (const [key, value] of secretMaterial) {
-      localAppHostingConfig.addEnvironmentVariable({
-        variable: key,
-        value: value,
-        availability: ["RUNTIME"],
-      });
-    }
-
-    // update apphosting.local.yaml
-    localAppHostingConfig.upsertFile(localAppHostingConfigPath);
-    logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
+    const projectRoot = detectProjectRoot({}) ?? backendRoot;
+    await exportConfig(cwd, projectRoot, backendRoot, projectId, environmentConfigFile);
   });

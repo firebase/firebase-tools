@@ -11,7 +11,11 @@ import {
 import { logSetup, pluginLogger } from "./logger-wrapper";
 import { registerWebview } from "./webview";
 import { registerCore } from "./core";
-import { getSettings, updateIdxSetting } from "./utils/settings";
+import {
+  getSettings,
+  setupFirebasePath,
+  updateIdxSetting,
+} from "./utils/settings";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 import {
@@ -25,9 +29,12 @@ import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-hig
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
+  const analyticsLogger = new AnalyticsLogger();
+
   // Suggest installing the GraphQL syntax highlighter extension
   await suggestGraphqlSyntaxExtension();
 
+  await setupFirebasePath(analyticsLogger.logger);
   const settings = getSettings();
   logSetup();
   pluginLogger.debug("Activating Firebase extension.");
@@ -39,7 +46,6 @@ export async function activate(context: vscode.ExtensionContext) {
   >(new ExtensionBroker());
 
   const authService = new AuthService(broker);
-  const analyticsLogger = new AnalyticsLogger();
 
   // show IDX data collection notice
   if (settings.shouldShowIdxMetricNotice && env.value.isMonospace) {

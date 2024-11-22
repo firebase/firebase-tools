@@ -12,7 +12,7 @@ import {
 } from "../extensions/extensionsHelper";
 import { acceptLatestPublisherTOS } from "../extensions/tos";
 import { requirePermissions } from "../requirePermissions";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
 import { PublisherProfile } from "../extensions/types";
 
@@ -42,8 +42,8 @@ export const command = new Command("ext:dev:register")
     let profile: PublisherProfile;
     try {
       profile = await registerPublisherProfile(projectId, publisherId);
-    } catch (err: any) {
-      if (err.status === 409) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 409) {
         const error =
           `Couldn't register the publisher ID '${clc.bold(publisherId)}' to the project '${clc.bold(
             projectId,
@@ -59,7 +59,7 @@ export const command = new Command("ext:dev:register")
       throw new FirebaseError(
         `Failed to register publisher ID ${clc.bold(publisherId)} for project ${clc.bold(
           projectId,
-        )}: ${err.message}`,
+        )}: ${getErrMsg(err)}`,
       );
     }
     utils.logLabeledSuccess(

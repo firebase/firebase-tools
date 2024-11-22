@@ -18,7 +18,7 @@ const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
 marked.use(markedTerminal() as any);
 
-import { Command } from "commander";
+import { CommanderStatic } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
 import { stripVTControlCharacters } from "node:util";
@@ -34,7 +34,7 @@ import * as utils from "../utils";
 import * as winston from "winston";
 
 let args = process.argv.slice(2);
-let cmd: Command;
+let cmd: CommanderStatic;
 
 function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
