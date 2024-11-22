@@ -96,6 +96,21 @@ describe("yaml", () => {
         JSON.stringify([{ variable: "TEST", secret: "overwritten_value" }]),
       );
     });
+
+    it("should clear secrets when clearSecrets is called", () => {
+      apphostingYaml.addSecret({
+        variable: "TEST",
+        secret: "value",
+      });
+
+      apphostingYaml.addSecret({
+        variable: "TEST",
+        secret: "overwritten_value",
+      });
+
+      apphostingYaml.clearSecrets();
+      expect(JSON.stringify(apphostingYaml.secrets)).to.equal(JSON.stringify([]));
+    });
   });
 
   describe("merge", () => {

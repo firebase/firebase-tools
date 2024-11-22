@@ -1,4 +1,5 @@
 import * as childProcess from "child_process";
+import * as pg from "pg";
 import { EventEmitter } from "events";
 import * as clc from "colorette";
 import * as path from "path";
@@ -17,7 +18,7 @@ import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
-import { PostgresServer } from "./dataconnect/pgliteServer";
+import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
 
@@ -180,6 +181,10 @@ export class DataConnectEmulator implements EmulatorInstance {
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
+    } else {
+      const conn = new pg.Client(dataConnectLocalConnString());
+      await conn.query(TRUNCATE_TABLES_SQL);
+      await conn.end();
     }
   }
 

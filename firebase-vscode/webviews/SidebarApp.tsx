@@ -74,7 +74,7 @@ function EmulatorsPanel() {
         <>
           <Spacer size="medium"></Spacer>
           <label>
-            Emulator start-up may take a while. In case of error, click reset.
+            Emulator start-up is taking a while. In case of error, click refresh.
           </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
@@ -85,7 +85,7 @@ function EmulatorsPanel() {
               showResetPanel.value = false;
             }}
           >
-            Reset Emulator View
+            Refresh Emulator View
           </VSCodeButton>
         </>
       );

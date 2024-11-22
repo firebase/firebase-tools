@@ -948,21 +948,19 @@ export async function startAll(
    * app hosting emulator may depend on other emulators (i.e auth, firestore,
    * storage, etc).
    */
-  if (experiments.isEnabled("emulatorapphosting")) {
-    const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+  const apphostingConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
 
-    if (listenForEmulator.apphosting) {
-      const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
-      const apphostingEmulator = new AppHostingEmulator({
-        host: apphostingAddr.host,
-        port: apphostingAddr.port,
-        startCommandOverride: apphostingConfig?.startCommandOverride,
-        rootDirectory: apphostingConfig?.rootDirectory,
-        options,
-      });
+  if (listenForEmulator.apphosting) {
+    const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+    const apphostingEmulator = new AppHostingEmulator({
+      host: apphostingAddr.host,
+      port: apphostingAddr.port,
+      startCommandOverride: apphostingConfig?.startCommandOverride,
+      rootDirectory: apphostingConfig?.rootDirectory,
+      options,
+    });
 
-      await startEmulator(apphostingEmulator);
-    }
+    await startEmulator(apphostingEmulator);
   }
 
   if (listenForEmulator.logging) {

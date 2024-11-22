@@ -242,8 +242,9 @@ export async function exportConfig(
     });
   }
 
-  // update apphosting.local.yaml
-  await localAppHostingConfig.upsertFile(localAppHostingConfigPath);
+  // remove secrets to avoid confusion as they are not read anyways.
+  localAppHostingConfig.clearSecrets();
+  localAppHostingConfig.upsertFile(localAppHostingConfigPath);
   logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
 
   updateOrCreateGitignore(projectRoot, [APPHOSTING_LOCAL_YAML_FILE]);

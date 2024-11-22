@@ -70,7 +70,7 @@ async function serve(
   }
 
   const detectedStartCommand = await detectStartCommand(backendRoot);
-  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectStartCommand}`);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
   await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
