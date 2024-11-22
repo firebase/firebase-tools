@@ -79,6 +79,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
   const info = await askQuestions(setup, isBillingEnabled);
+  // Most users will want to perist data between emulator runs, so set this to a reasonable default.
+
+  const dir: string = config.get("dataconnect.source", "dataconnect");
+  const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
+  config.set("emulators.dataconnect.dataDir", dataDir);
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());

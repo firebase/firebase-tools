@@ -7,8 +7,9 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { exportConfig } from "../apphosting/config";
 import { detectProjectRoot } from "../detectProjectRoot";
+import { Config } from "../config";
 
-type InitFn = () => Promise<Record<string, string> | null>;
+type InitFn = (config: Config) => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
 
 export const AdditionalInitFns: AdditionalInitFnsType = {
@@ -45,6 +46,27 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     }
 
     return mapToObject(additionalConfigs);
+  },
+  [Emulators.DATACONNECT]: async (config: Config) => {
+    const additionalConfig: Record<string, string> = {};
+    const defaultDataConnectDir = config.get("dataconnect.source", "dataconnect");
+    const defaultDataDir = config.get(
+      "emulators.dataconnect.dataDir",
+      `${defaultDataConnectDir}/.dataconnect/pgliteData`,
+    );
+    if (
+      await promptOnce({
+        name: "dataDir",
+        type: "confirm",
+        message:
+          "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
+          `Data will be saved to ${defaultDataDir}. ` +
+          `You can change this directory by editing 'firebase.json#emulators.dataconnect.dataDir'.`,
+      })
+    ) {
+      additionalConfig["dataDir"] = defaultDataDir;
+    }
+    return additionalConfig;
   },
 };
 

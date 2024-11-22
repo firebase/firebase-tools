@@ -6,13 +6,14 @@ import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 import { Setup } from "../index";
 import { AdditionalInitFns } from "../../emulator/initEmulators";
+import { Config } from "../../config";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
   download?: boolean;
 }
 
-export async function doSetup(setup: Setup, config: any) {
+export async function doSetup(setup: Setup, config: Config) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
@@ -57,7 +58,7 @@ export async function doSetup(setup: Setup, config: any) {
 
     const additionalInitFn = AdditionalInitFns[selected];
     if (additionalInitFn) {
-      const additionalOptions = await additionalInitFn();
+      const additionalOptions = await additionalInitFn(config);
       if (additionalOptions) {
         setup.config.emulators[selected] = {
           ...setup.config.emulators[selected],
