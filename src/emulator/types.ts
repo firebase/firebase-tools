@@ -1,6 +1,5 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import * as experiments from "../experiments";
 
 export enum Emulators {
   AUTH = "auth",
@@ -37,7 +36,12 @@ export const DOWNLOADABLE_EMULATORS = [
   Emulators.DATACONNECT,
 ];
 
-export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH | Emulators.STORAGE | Emulators.DATACONNECT;
+export type ImportExportEmulators =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.AUTH
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
 export const IMPORT_EXPORT_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -47,7 +51,7 @@ export const IMPORT_EXPORT_EMULATORS = [
 ];
 
 export const ALL_SERVICE_EMULATORS = [
-  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
+  Emulators.APPHOSTING,
   Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,

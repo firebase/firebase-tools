@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus, getError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
 import * as gcb from "../../gcp/cloudbuild";
@@ -8,16 +8,7 @@ import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { basename } from "path";
-import {
-  APPHOSTING_BASE_YAML_FILE,
-  APPHOSTING_LOCAL_YAML_FILE,
-  APPHOSTING_YAML_FILE_REGEX,
-  discoverConfigsAtBackendRoot,
-  loadConfigForEnvironment,
-} from "../config";
-import { promptForAppHostingYaml } from "../utils";
-import { AppHostingYamlConfig, Secret } from "../yaml";
+import { Secret } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -100,10 +91,10 @@ export async function grantSecretAccess(
   let existingBindings;
   try {
     existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -111,10 +102,10 @@ export async function grantSecretAccess(
     // TODO: Merge with existing bindings with the same role
     const updatedBindings = existingBindings.concat(newBindings);
     await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
@@ -136,9 +127,9 @@ export async function upsertSecret(
   let existing: gcsm.Secret;
   try {
     existing = await gcsm.getSecret(project, secret);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw new FirebaseError("Unexpected error loading secret", { original: err });
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      throw new FirebaseError("Unexpected error loading secret", { original: getError(err) });
     }
     await gcsm.createSecret(project, secret, gcsm.labels("apphosting"), location);
     return true;
@@ -203,66 +194,6 @@ export async function fetchSecrets(
   return secretsKeyValuePairs;
 }
 
-/**
- * Returns the appropriate App Hosting YAML configuration for exporting secrets.
- *
- * @returns The final merged config
- */
-export async function loadConfigToExport(
-  cwd: string,
-  userGivenConfigFile?: string,
-): Promise<AppHostingYamlConfig> {
-  if (userGivenConfigFile && !APPHOSTING_YAML_FILE_REGEX.test(userGivenConfigFile)) {
-    throw new FirebaseError(
-      "Invalid apphosting yaml config file provided. File must be in format: 'apphosting.yaml' or 'apphosting.<environment>.yaml'",
-    );
-  }
-
-  const allConfigs = discoverConfigs(cwd);
-  let userGivenConfigFilePath: string;
-  if (userGivenConfigFile) {
-    if (!allConfigs.has(userGivenConfigFile)) {
-      throw new FirebaseError(
-        `The provided app hosting config file "${userGivenConfigFile}" does not exist`,
-      );
-    }
-
-    userGivenConfigFilePath = allConfigs.get(userGivenConfigFile)!;
-  } else {
-    userGivenConfigFilePath = await promptForAppHostingYaml(
-      allConfigs,
-      "Which environment would you like to export secrets from Secret Manager for?",
-    );
-  }
-
-  if (userGivenConfigFile === APPHOSTING_BASE_YAML_FILE) {
-    return AppHostingYamlConfig.loadFromFile(allConfigs.get(APPHOSTING_BASE_YAML_FILE)!);
-  }
-
-  const baseFilePath = allConfigs.get(APPHOSTING_BASE_YAML_FILE)!;
-  return await loadConfigForEnvironment(userGivenConfigFilePath, baseFilePath);
-}
-
-/**
- * Gets all apphosting yaml configs excluding apphosting.local.yaml and returns
- * a map in the format {"apphosting.staging.yaml" => "/cwd/apphosting.staging.yaml"}.
- */
-function discoverConfigs(cwd: string): Map<string, string> {
-  const appHostingConfigPaths = discoverConfigsAtBackendRoot(cwd).filter(
-    (path) => !path.endsWith(APPHOSTING_LOCAL_YAML_FILE),
-  );
-  if (appHostingConfigPaths.length === 0) {
-    throw new FirebaseError("No apphosting.*.yaml configs found");
-  }
-
-  const fileNameToPathMap: Map<string, string> = new Map();
-  for (const path of appHostingConfigPaths) {
-    const fileName = basename(path);
-    fileNameToPathMap.set(fileName, path);
-  }
-
-  return fileNameToPathMap;
-}
 /**
  * secret expected to be in format "myApiKeySecret@5",
  * "projects/test-project/secrets/secretID", or

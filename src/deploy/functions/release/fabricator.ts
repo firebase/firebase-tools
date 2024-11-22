@@ -394,7 +394,7 @@ export class Fabricator {
         });
     }
 
-    endpoint.uri = resultFunction.serviceConfig?.uri;
+    endpoint.uri = resultFunction.url;
     const serviceName = resultFunction.serviceConfig?.service;
     endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {

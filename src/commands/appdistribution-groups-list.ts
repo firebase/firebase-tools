@@ -11,8 +11,9 @@ import * as utils from "../utils";
 
 const Table = require("cli-table");
 
-export const command = new Command("appdistribution:group:list")
+export const command = new Command("appdistribution:groups:list")
   .description("list groups in project")
+  .alias("appdistribution:group:list")
   .before(requireAuth)
   .action(async (options?: Options): Promise<ListGroupsResponse> => {
     const projectName = await getProjectName(options);

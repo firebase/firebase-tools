@@ -17,6 +17,17 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
+export const TRUNCATE_TABLES_SQL = `
+DO $do$
+BEGIN
+   EXECUTE
+   (SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
+    FROM   pg_class
+    WHERE  relkind = 'r'
+    AND    relnamespace = 'public'::regnamespace
+   );
+END
+$do$;`;
 
 export class PostgresServer {
   private username: string;
@@ -95,17 +106,7 @@ export class PostgresServer {
 
   public async clearDb(): Promise<void> {
     const db = await this.getDb();
-    await db.query(`
-DO $do$
-BEGIN
-   EXECUTE
-   (SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
-    FROM   pg_class
-    WHERE  relkind = 'r'
-    AND    relnamespace = 'public'::regnamespace
-   );
-END
-$do$;`);
+    await db.query(TRUNCATE_TABLES_SQL);
   }
 
   public async exportData(exportPath: string): Promise<void> {

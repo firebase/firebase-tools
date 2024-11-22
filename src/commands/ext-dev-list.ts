@@ -2,7 +2,7 @@ import * as clc from "colorette";
 const Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { last, logLabeledBullet } from "../utils";
 import { listExtensions } from "../extensions/publisherApi";
 import { logger } from "../logger";
@@ -19,8 +19,8 @@ export const command = new Command("ext:dev:list <publisherId>")
     let extensions;
     try {
       extensions = await listExtensions(publisherId);
-    } catch (err: any) {
-      throw new FirebaseError(err);
+    } catch (err: unknown) {
+      throw new FirebaseError(getErrMsg(err));
     }
 
     if (extensions.length < 1) {
