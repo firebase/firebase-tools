@@ -11,7 +11,7 @@
             "properties": {
                 "concurrency": {
                     "description": "Number of requests a function can serve at once.",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "cors": {
                     "description": "If true, allows CORS on requests to this function.\nIf this is a `string` or `RegExp`, allows requests from domains that match the provided value.\nIf this is an `Array`, allows requests from domains matching at least one entry of the array.\nDefaults to true for {@link https.CallableFunction} and false otherwise.",
@@ -60,7 +60,7 @@
                 },
                 "maxInstances": {
                     "description": "Max number of instances to be running in parallel.",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "memory": {
                     "description": "Amount of memory to allocate to a function.",
@@ -79,7 +79,7 @@
                 },
                 "minInstances": {
                     "description": "Min number of actual instances to be running at a given time.",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "omit": {
                     "description": "If true, do not deploy or emulate this function.",
@@ -105,7 +105,7 @@
                 },
                 "timeoutSeconds": {
                     "description": "Timeout for the function in seconds, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout.",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "vpcConnector": {
                     "description": "Connect cloud function to specified VPC connector.",
@@ -551,7 +551,7 @@
                         "port": {
                             "type": [
                                 "string",
-                                "integer"
+                                "number"
                             ]
                         }
                     },
@@ -2762,3 +2762,4 @@
     },
     "type": "object"
 }
+

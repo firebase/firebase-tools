@@ -98,9 +98,13 @@ interface FrameworksBackendOptions extends HttpsOptions {
   omit?: boolean;
   cors?: string | boolean;
   memory?: MemoryOption;
+  /** @TJS-type integer */
   timeoutSeconds?: number;
+  /** @TJS-type integer */
   minInstances?: number;
+  /** @TJS-type integer */
   maxInstances?: number;
+  /** @TJS-type integer */
   concurrency?: number;
   vpcConnector?: string;
   vpcConnectorEgressSettings?: VpcEgressSetting;
@@ -184,45 +188,56 @@ export type RemoteConfigConfig = {
 export type EmulatorsConfig = {
   auth?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   database?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   firestore?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
+    /** @TJS-type integer */
     websocketPort?: number;
   };
   functions?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   hosting?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   apphosting?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
     startCommandOverride?: string;
     rootDirectory?: string;
   };
   pubsub?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   storage?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   logging?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   hub?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   ui?: {
@@ -233,18 +248,22 @@ export type EmulatorsConfig = {
   extensions?: {};
   eventarc?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
   singleProjectMode?: boolean;
   dataconnect?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
     postgresHost?: string;
+    /** @TJS-type integer */
     postgresPort?: number;
     dataDir?: string;
   };
   tasks?: {
     host?: string;
+    /** @TJS-type integer */
     port?: number;
   };
 };
