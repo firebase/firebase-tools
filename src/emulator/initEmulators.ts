@@ -61,7 +61,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
         message:
           "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
           `Data will be saved to ${defaultDataDir}. ` +
-          `You can change this directory by editting 'firebase.json#emulators.dataconnect.dataDir'.`,
+          `You can change this directory by editing 'firebase.json#emulators.dataconnect.dataDir'.`,
       })
     ) {
       additionalConfig["dataDir"] = defaultDataDir;
