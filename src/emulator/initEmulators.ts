@@ -8,7 +8,7 @@ import { Emulators } from "./types";
 import { exportConfig } from "../apphosting/config";
 import { detectProjectRoot } from "../detectProjectRoot";
 
-type InitFn = () => Promise<Record<string, string> | null>;
+type InitFn = (currentConfig?: Record<string, any>) => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
 
 export const AdditionalInitFns: AdditionalInitFnsType = {
@@ -46,11 +46,12 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
 
     return mapToObject(additionalConfigs);
   },
-  [Emulators.DATACONNECT]: async () => {
+  [Emulators.DATACONNECT]: async (currentConfig?: Record<string, any>) => {
+    const defaultDataConnectDir = currentConfig?.dataconnect?.source || "dataconnect";
     const dataDir = await promptOnce({
       name: "dataDir",
       type: "input",
-      default: "./postgresData",
+      default: `./${defaultDataConnectDir}/.dataconnect/pgliteData`,
       message:
         "Where do you want to store Postgres data from the Data Connect emulator? " +
         "If set, data will be saved between emulator runs. " +
