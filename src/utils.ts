@@ -19,7 +19,7 @@ import { stripVTControlCharacters } from "node:util";
 import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { promptOnce } from "./prompt";
@@ -424,7 +424,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return promiseReject(err);
       }
     };
@@ -536,7 +536,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail();
     throw err;
   }
@@ -871,8 +871,8 @@ export function readFileFromDirectory(
 export function wrappedSafeLoad(source: string): any {
   try {
     return yaml.parse(source);
-  } catch (err: any) {
-    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+  } catch (err: unknown) {
+    throw new FirebaseError(`YAML Error: ${getErrMsg(err)}`, { original: getError(err) });
   }
 }
 
@@ -917,4 +917,24 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
     }
     throw e;
   }
+}
+/**
+ * Updates or creates a .gitignore file with the given entries in the given path
+ */
+export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
+  const gitignorePath = path.join(dirPath, ".gitignore");
+
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, entries.join("\n"));
+    return;
+  }
+
+  let content = fs.readFileSync(gitignorePath, "utf-8");
+  for (const entry of entries) {
+    if (!content.includes(entry)) {
+      content += `\n${entry}\n`;
+    }
+  }
+
+  fs.writeFileSync(gitignorePath, content);
 }

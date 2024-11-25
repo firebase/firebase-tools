@@ -4,7 +4,7 @@ import * as fs from "fs-extra";
 
 import * as gcp from "./gcp";
 import { logger } from "./logger";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrStatus } from "./error";
 import * as utils from "./utils";
 
 import { promptOnce } from "./prompt";
@@ -202,8 +202,8 @@ export class RulesDeploy {
         this.rulesetNames[filename] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
-    } catch (err: any) {
-      if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }
       utils.logLabeledBullet(RulesetType[this.type], "quota exceeded error while uploading rules");
