@@ -2,7 +2,7 @@ import { TelemetryLogger, TerminalOptions } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
 import { currentProjectId } from "../core/project";
 
@@ -69,12 +69,12 @@ export function runTerminalTask(
 
 export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   const settings = getSettings();
 
   const loginTaskBroker = broker.on("executeLogin", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN, {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN, {
       firebase_binary_kind: settings.firebaseBinaryKind,
     });
     runTerminalTask(
@@ -86,7 +86,7 @@ export function registerTerminalTasks(
   });
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS, {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS, {
       firebase_binary_kind: settings.firebaseBinaryKind,
     });
     // TODO: optional debug mode
@@ -104,9 +104,12 @@ export function registerTerminalTasks(
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {
-        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.COMMAND_EXECUTION, {
-          commandName: command,
-        });
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.COMMAND_EXECUTION,
+          {
+            commandName: command,
+          },
+        );
         runTerminalTask(taskName, command);
       },
     ),

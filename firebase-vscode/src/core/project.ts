@@ -1,4 +1,4 @@
-import vscode, { Disposable, TelemetryLogger } from "vscode";
+import vscode, { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { computed, effect, Signal } from "@preact/signals-react";
 import { firebaseRC, updateFirebaseRCProject } from "./config";
@@ -9,7 +9,7 @@ import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 import { User } from "../types/auth";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
@@ -30,7 +30,7 @@ const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
 
 export function registerProject(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   // For testing purposes.
   const demoProjectCommand = vscode.commands.registerCommand(
@@ -103,7 +103,9 @@ export function registerProject(
         return;
       } else {
         try {
-          telemetryLogger.logUsage(
+          console.log("HAROLD: logging project select");
+          console.log(analyticsLogger);
+          analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.PROJECT_SELECT_CLICKED,
           );
 
@@ -120,7 +122,9 @@ export function registerProject(
                 }
               : undefined,
           });
-          telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.PROJECT_SELECTED);
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.PROJECT_SELECTED,
+          );
         } catch (e: any) {
           vscode.window.showErrorMessage(e.message);
         }
