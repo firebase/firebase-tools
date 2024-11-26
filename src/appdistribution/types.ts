@@ -126,4 +126,5 @@ export interface ReleaseTest {
   name?: string;
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
+  testCase?: string;
 }
