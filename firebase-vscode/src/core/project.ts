@@ -103,8 +103,6 @@ export function registerProject(
         return;
       } else {
         try {
-          console.log("HAROLD: logging project select");
-          console.log(analyticsLogger);
           analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.PROJECT_SELECT_CLICKED,
           );
