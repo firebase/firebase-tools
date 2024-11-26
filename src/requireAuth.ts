@@ -40,6 +40,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
+  logger.debug(`Running auto auth`);
 
   let clientEmail;
   try {
@@ -99,8 +100,9 @@ export async function requireAuth(options: any): Promise<string | void> {
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
         "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
-  } else if (user) {
+  } else if (user && !tokens) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
+    return await autoAuth(options, options.authScopes);
   } else {
     try {
       return await autoAuth(options, options.authScopes);
