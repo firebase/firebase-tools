@@ -1,1 +1,2 @@
 - Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
+- [Fixed] Fix issue where auth token doesn't refresh
