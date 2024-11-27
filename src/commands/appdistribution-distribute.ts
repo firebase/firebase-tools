@@ -37,7 +37,7 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
 
 export const command = new Command("appdistribution:distribute <release-binary-file>")
   .description(
-    "upload a release binary, optionally distribute it to testers and/or run automated tests",
+    "upload a release binary and optionally distribute it to testers and run automated tests",
   )
   .option("--app <app_id>", "the app id of your Firebase app")
   .option("--release-notes <string>", "release notes to include")
@@ -94,7 +94,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
     if (testCases.length && (options.testUsernameResource || options.testPasswordResource)) {
       throw new FirebaseError(
-        "Username and password resource names are not supported for the AI testing agent.",
+        "Password and username resource names are not supported for the AI testing agent.",
       );
     }
     const loginCredential = getLoginCredential({
