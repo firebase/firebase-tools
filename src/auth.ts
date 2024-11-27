@@ -565,6 +565,16 @@ export function loggedIn() {
   return !!lastAccessToken;
 }
 
+export function isExpired(tokens: Tokens | undefined) {
+  return !(
+    tokens &&
+    tokens.access_token === lastAccessToken?.access_token &&
+    lastAccessToken &&
+    lastAccessToken?.expires_at &&
+    lastAccessToken.expires_at < Date.now()
+  );
+}
+
 export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
