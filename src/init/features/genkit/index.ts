@@ -19,7 +19,6 @@ import * as inquirer from "inquirer";
 import * as path from "path";
 import * as semver from "semver";
 import * as clc from "colorette";
-import { execFileSync } from "child_process";
 
 import { doSetup as functionsSetup } from "../functions";
 import { Config } from "../../../config";
@@ -38,6 +37,7 @@ import {
   logLabeledWarning,
 } from "../../../utils";
 import { isObject } from "../../../extensions/types";
+import { execNpm } from "../../../extensions/runtimes/node";
 
 interface GenkitInfo {
   genkitVersion: string;
@@ -61,7 +61,17 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     semver.parse(process.env.GENKIT_DEV_VERSION);
     genkitVersion = process.env.GENKIT_DEV_VERSION;
   } else {
-    genkitVersion = execFileSync("npm", ["view", "genkit", "version"]).toString();
+    try {
+      genkitVersion = execNpm(["view", "genkit", "version"]);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        "Unable to determine which genkit version to install. " +
+          "For a possible workaround run `npm view genkit version` " +
+          "and then set an environment variable: " +
+          "`export GENKIT_DEV_VERSION=<output from previous command>` " +
+          "and try the firebase init command again",
+      );
+    }
   }
 
   if (!genkitVersion) {
