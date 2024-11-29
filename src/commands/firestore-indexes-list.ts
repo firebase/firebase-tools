@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as fs from "fs";
 
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
@@ -8,6 +9,7 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
+import * as utils from "../utils";
 
 export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
@@ -19,6 +21,10 @@ export const command = new Command("firestore:indexes")
   .option(
     "--database <databaseId>",
     "Database ID of the firestore database from which to list indexes. (default) if none provided.",
+  )
+  .option(
+    "-o, --output [filename]",
+    "write indexes output to a file. if omitted, will use the path to specified database indexes file. (default) if none provided",
   )
   .before(requirePermissions, ["datastore.indexes.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -43,6 +49,33 @@ export const command = new Command("firestore:indexes")
       }
     } else {
       logger.info(JSON.stringify(indexSpec, undefined, 2));
+    }
+
+    const fileOut = !!options.output;
+    if (fileOut) {
+      const shouldUseDefaultFilename = options.output === true || options.output === "";
+
+      let filename = undefined;
+      if (shouldUseDefaultFilename) {
+        const fsConfig = options.config.src.firestore;
+        if (fsConfig !== undefined) {
+          // Check if single db
+          if (!Array.isArray(fsConfig)) {
+            filename = fsConfig.indexes;
+          } else {
+            const databaseId = options.database || `(default)`;
+            filename = fsConfig.find((db) => db.database === databaseId)?.indexes;
+          }
+        } else {
+          logger.debug("Possibly invalid database config: ", JSON.stringify(fsConfig));
+        }
+      } else {
+        filename = options.output;
+      }
+
+      utils.assertIsString(filename);
+      const indexTemplate = JSON.stringify(indexSpec, undefined, 2);
+      fs.writeFileSync(filename, indexTemplate);
     }
 
     return indexSpec;

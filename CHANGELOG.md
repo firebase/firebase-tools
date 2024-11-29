@@ -1,2 +1,3 @@
 - Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
 - Fixed an issue where `firebase` would error out instead of displaying help text.
+- Added `--output` option to `firestore:indexes` which writes indexes to a file.
