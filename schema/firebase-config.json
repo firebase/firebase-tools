@@ -369,7 +369,7 @@
                         "rootDirectory": {
                             "type": "string"
                         },
-                        "startCommandOverride": {
+                        "startCommand": {
                             "type": "string"
                         }
                     },

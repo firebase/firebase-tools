@@ -30,11 +30,11 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     const backendRoot = join(cwd, backendRelativeDir);
     try {
       const startCommand = await detectStartCommand(backendRoot);
-      additionalConfigs.set("startCommandOverride", startCommand);
+      additionalConfigs.set("startCommand", startCommand);
     } catch (e) {
       logger.log(
         "WARN",
-        "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommandOverride`",
+        "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommand`",
       );
     }
 
