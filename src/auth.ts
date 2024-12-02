@@ -565,14 +565,13 @@ export function loggedIn() {
   return !!lastAccessToken;
 }
 
-export function isExpired(tokens: Tokens | undefined) {
-  return !(
-    tokens &&
-    tokens.access_token === lastAccessToken?.access_token &&
-    lastAccessToken &&
-    lastAccessToken?.expires_at &&
-    lastAccessToken.expires_at < Date.now()
-  );
+export function isExpired(tokens: Tokens | undefined): boolean {
+  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.payload
+  if (hasExpiration(tokens)) {
+    return !(tokens && tokens.expires_at  && tokens.expires_at > Date.now());
+  } else {
+    return !tokens;
+  }
 }
 
 export function haveValidTokens(refreshToken: string, authScopes: string[]) {
@@ -589,8 +588,8 @@ export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   const hasSameScopes = oldScopesJSON === newScopesJSON;
   // To avoid token expiration in the middle of a long process we only hand out
   // tokens if they have a _long_ time before the server rejects them.
-  const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
-  const valid = hasTokens && hasSameScopes && !isExpired;
+  const expired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
+  const valid = hasTokens && hasSameScopes && !expired;
   if (hasTokens) {
     logger.debug(
       `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
