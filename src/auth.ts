@@ -566,9 +566,9 @@ export function loggedIn() {
 }
 
 export function isExpired(tokens: Tokens | undefined): boolean {
-  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.payload
+  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.payload;
   if (hasExpiration(tokens)) {
-    return !(tokens && tokens.expires_at  && tokens.expires_at > Date.now());
+    return !(tokens && tokens.expires_at && tokens.expires_at > Date.now());
   } else {
     return !tokens;
   }
