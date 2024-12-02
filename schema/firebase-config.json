@@ -371,6 +371,9 @@
                         },
                         "startCommand": {
                             "type": "string"
+                        },
+                        "startCommandOverride": {
+                            "type": "string"
                         }
                     },
                     "type": "object"
