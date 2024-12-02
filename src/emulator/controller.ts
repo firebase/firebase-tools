@@ -952,10 +952,18 @@ export async function startAll(
 
   if (listenForEmulator.apphosting) {
     const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+    if (apphostingConfig?.startCommandOverride) {
+      const apphostingLogger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
+      apphostingLogger.logLabeled(
+        "WARN",
+        Emulators.APPHOSTING,
+        "The `firebase.json#emulators.apphosting.startCommandOverride` config is deprecated, please use `firebase.json#emulators.apphosting.startCommand` to set a custom start command instead",
+      );
+    }
     const apphostingEmulator = new AppHostingEmulator({
       host: apphostingAddr.host,
       port: apphostingAddr.port,
-      startCommand: apphostingConfig?.startCommand,
+      startCommand: apphostingConfig?.startCommand || apphostingConfig?.startCommandOverride,
       rootDirectory: apphostingConfig?.rootDirectory,
       options,
     });
