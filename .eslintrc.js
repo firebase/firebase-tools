@@ -20,7 +20,13 @@ module.exports = {
     "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
-
+    "brikke/no-undeclared-imports": [
+      "error",
+      {
+        excludedFilePatterns: ["**/scripts/**/*", `update-notifier-cjs.d.ts`],
+        excludedModules: [/node:/],
+      },
+    ],
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
     "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
@@ -107,7 +113,7 @@ module.exports = {
     sourceType: "module",
     warnOnUnsupportedTypeScriptVersion: false,
   },
-  plugins: ["prettier", "@typescript-eslint", "jsdoc"],
+  plugins: ["prettier", "@typescript-eslint", "jsdoc", "brikke"],
   settings: {
     jsdoc: {
       tagNamePreference: {
