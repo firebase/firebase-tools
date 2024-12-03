@@ -121,7 +121,7 @@ export const command = new Command("deploy")
       if (!(await isFirebaseProject(projectId))) {
         printMigrateToFirebaseMessage(projectId);
         throw new FirebaseError(
-          "Some of the products in this deployment require this project to be migrated to Firebase.",
+          "Some of the products in this deployment require that your Google Cloud project has Firebase added to it.",
         );
       }
     }
