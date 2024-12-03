@@ -10,11 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import {
-  getProject,
-  isFirebaseProject,
-  printAddFirebaseMessage,
-} from "./management/projects";
+import { getProject, isFirebaseProject, printAddFirebaseMessage } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 
@@ -437,7 +433,9 @@ export class Command {
       }
       if (this.firebaseRequired && options.project && !(await isFirebaseProject(options.project))) {
         printAddFirebaseMessage(options.project);
-        throw new FirebaseError("This command requires that your Google Cloud project has Firebase added to it.");
+        throw new FirebaseError(
+          "This command requires that your Google Cloud project has Firebase added to it.",
+        );
       }
       return this.actionFn(...args);
     };

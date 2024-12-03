@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as rc from "./rc";
 import * as nock from "nock";
+import * as projects from "./management/projects";
 
 import { Command, validateProjectId } from "./command";
 import { FirebaseError } from "./error";
@@ -34,14 +35,17 @@ describe("Command", () => {
 
   describe("runner", () => {
     let rcStub: sinon.SinonStub;
+    let isFirebaseProjectStub: sinon.SinonStub;
     beforeEach(() => {
       rcStub = sinon
         .stub(rc, "loadRC")
         .returns(new rc.RC(undefined, { projects: { default: "default-project" } }));
+      isFirebaseProjectStub = sinon.stub(projects, "isFirebaseProject").resolves(true);
     });
 
     afterEach(() => {
       rcStub.restore();
+      isFirebaseProjectStub.restore();
       nock.cleanAll();
     });
 
@@ -159,6 +163,34 @@ describe("Command", () => {
         projectNumber: undefined,
         project: "default-project",
       });
+    });
+
+    it("should error for non-Firebase projects if the command requires Firebase", async () => {
+      isFirebaseProjectStub.resolves(false);
+      const run = command
+        .action((options) => {
+          return options;
+        })
+        .runner();
+
+      const result = run();
+      return expect(result).to.be.rejectedWith(
+        "This command requires that your Google Cloud project has Firebase added to it.",
+      );
+    });
+
+    it("should not error for non-Firebase projects if the command does not require Firebase", async () => {
+      isFirebaseProjectStub.resolves(false);
+      const run = command
+        .firebaseNotRequired()
+        .action((options) => {
+          options.foo = "bar";
+          return options;
+        })
+        .runner();
+
+      const result = run({ foo: "baz" });
+      await expect(result).to.eventually.have.property("foo", "bar");
     });
   });
 });
