@@ -24,7 +24,6 @@ import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
-import * as experiments from "../experiments";
 import * as errors from "./errors";
 
 export async function diffSchema(
