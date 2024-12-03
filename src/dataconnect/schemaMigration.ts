@@ -41,13 +41,11 @@ export async function diffSchema(
   let diffs: Diff[] = [];
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-  let validationMode: SchemaValidation = experiments.isEnabled("fdccompatiblemode")
-    ? schemaValidation ?? "COMPATIBLE"
-    : "STRICT";
+  let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
   setSchemaValidationMode(schema, validationMode);
 
   try {
-    if (!schemaValidation && experiments.isEnabled("fdccompatiblemode")) {
+    if (!schemaValidation) {
       logLabeledBullet("dataconnect", `generating required schema changes...`);
     }
     await upsertSchema(schema, /** validateOnly=*/ true);
@@ -78,7 +76,7 @@ export async function diffSchema(
   }
 
   // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
-  if (experiments.isEnabled("fdccompatiblemode") && !schemaValidation) {
+  if (!schemaValidation) {
     validationMode = "STRICT";
     setSchemaValidationMode(schema, validationMode);
     try {
@@ -127,9 +125,7 @@ export async function migrateSchema(args: {
   let diffs: Diff[] = [];
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-  let validationMode: SchemaValidation = experiments.isEnabled("fdccompatiblemode")
-    ? schemaValidation ?? "COMPATIBLE"
-    : "STRICT";
+  let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
   setSchemaValidationMode(schema, validationMode);
 
   try {
@@ -183,7 +179,7 @@ export async function migrateSchema(args: {
   }
 
   // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
-  if (experiments.isEnabled("fdccompatiblemode") && !schemaValidation) {
+  if (!schemaValidation) {
     validationMode = "STRICT";
     setSchemaValidationMode(schema, validationMode);
     try {
@@ -274,11 +270,9 @@ function diffsEqual(x: Diff[], y: Diff[]): boolean {
 }
 
 function setSchemaValidationMode(schema: Schema, schemaValidation: SchemaValidation) {
-  if (experiments.isEnabled("fdccompatiblemode")) {
-    const postgresDatasource = schema.datasources.find((d) => d.postgresql);
-    if (postgresDatasource?.postgresql) {
-      postgresDatasource.postgresql.schemaValidation = schemaValidation;
-    }
+  const postgresDatasource = schema.datasources.find((d) => d.postgresql);
+  if (postgresDatasource?.postgresql) {
+    postgresDatasource.postgresql.schemaValidation = schemaValidation;
   }
 }
 
