@@ -68,7 +68,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
           "For a possible workaround run\n  npm view genkit version\n" +
           "and then set an environment variable:\n" +
           "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
-          "and try the firebase init command again",
+          "and run `firebase init genkit` again",
       );
     }
   }
