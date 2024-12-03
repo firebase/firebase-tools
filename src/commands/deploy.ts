@@ -14,7 +14,7 @@ import { interactiveCreateHostingSite } from "../hosting/interactive";
 import { logBullet } from "../utils";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { isFirebaseProject, printMigrateToFirebaseMessage } from "../management/projects";
+import { isFirebaseProject, printAddFirebaseMessage } from "../management/projects";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -119,7 +119,7 @@ export const command = new Command("deploy")
     ) {
       const projectId = needProjectId(options);
       if (!(await isFirebaseProject(projectId))) {
-        printMigrateToFirebaseMessage(projectId);
+        printAddFirebaseMessage(projectId);
         throw new FirebaseError(
           "Some of the products in this deployment require that your Google Cloud project has Firebase added to it.",
         );

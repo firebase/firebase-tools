@@ -46,7 +46,7 @@ export function consoleUrl(project: string, path: string): string {
 /**
  * Create a Migrate to Firebase Console URL for the specified project.
  */
-export function migrateToFirebaseLink(project: string): string {
+export function addFirebaseToCloudProjectLink(project: string): string {
   const api = require("./api");
   return `${api.consoleOrigin()}?dlAction=MigrateCloudProject&cloudProjectNumber=${project}`;
 }

@@ -13,7 +13,7 @@ import { selectAccount, setActiveAccount } from "./auth";
 import {
   getProject,
   isFirebaseProject,
-  printMigrateToFirebaseMessage,
+  printAddFirebaseMessage,
 } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
@@ -436,7 +436,7 @@ export class Command {
         await before.fn(options, ...before.args);
       }
       if (this.firebaseRequired && options.project && !(await isFirebaseProject(options.project))) {
-        printMigrateToFirebaseMessage(options.project);
+        printAddFirebaseMessage(options.project);
         throw new FirebaseError("This command requires that your Google Cloud project has Firebase added to it.");
       }
       return this.actionFn(...args);
