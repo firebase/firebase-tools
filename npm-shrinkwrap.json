@@ -142,7 +142,6 @@
         "eslint-plugin-brikke": "^2.2.2",
         "eslint-plugin-jsdoc": "^48.0.1",
         "eslint-plugin-prettier": "^5.1.3",
-        "express-serve-static-core": "^0.1.1",
         "firebase": "^9.16.0",
         "firebase-admin": "^11.5.0",
         "firebase-functions": "^4.3.1",
@@ -156,7 +155,7 @@
         "nyc": "^15.1.0",
         "openapi-merge": "^1.0.23",
         "openapi-typescript": "^4.5.0",
-        "openapi3-ts": "^4.4.0",
+        "openapi3-ts": "^3.2.0",
         "prettier": "^3.2.4",
         "proxy": "^1.0.2",
         "puppeteer": "^19.0.0",
@@ -9052,14 +9051,6 @@
       "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
       "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="
     },
-    "node_modules/exegesis/node_modules/openapi3-ts": {
-      "version": "3.2.0",
-      "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-3.2.0.tgz",
-      "integrity": "sha512-/ykNWRV5Qs0Nwq7Pc0nJ78fgILvOT/60OxEmB3v7yQ8a8Bwcm43D4diaYazG/KBn6czA+52XYy931WFLMCUeSg==",
-      "dependencies": {
-        "yaml": "^2.2.1"
-      }
-    },
     "node_modules/express": {
       "version": "4.19.2",
       "resolved": "https://registry.npmjs.org/express/-/express-4.19.2.tgz",
@@ -9100,12 +9091,6 @@
       "engines": {
         "node": ">= 0.10.0"
       }
-    },
-    "node_modules/express-serve-static-core": {
-      "version": "0.1.1",
-      "resolved": "https://registry.npmjs.org/express-serve-static-core/-/express-serve-static-core-0.1.1.tgz",
-      "integrity": "sha512-phQFPo1vVwBLOjDq+EspUY6PpWZIs/s62Lvu6QuReViQ9j9ANBnMqPBRwdxs3zxNmpMJ9KBKrmMqCjMwHnGRyQ==",
-      "dev": true
     },
     "node_modules/express/node_modules/cookie": {
       "version": "0.6.0",
@@ -15769,12 +15754,11 @@
       }
     },
     "node_modules/openapi3-ts": {
-      "version": "4.4.0",
-      "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-4.4.0.tgz",
-      "integrity": "sha512-9asTNB9IkKEzWMcHmVZE7Ts3kC9G7AFHfs8i7caD8HbI76gEjdkId4z/AkP83xdZsH7PLAnnbl47qZkXuxpArw==",
-      "dev": true,
+      "version": "3.2.0",
+      "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-3.2.0.tgz",
+      "integrity": "sha512-/ykNWRV5Qs0Nwq7Pc0nJ78fgILvOT/60OxEmB3v7yQ8a8Bwcm43D4diaYazG/KBn6czA+52XYy931WFLMCUeSg==",
       "dependencies": {
-        "yaml": "^2.5.0"
+        "yaml": "^2.2.1"
       }
     },
     "node_modules/optionator": {
@@ -27769,14 +27753,6 @@
           "version": "1.0.0",
           "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
           "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="
-        },
-        "openapi3-ts": {
-          "version": "3.2.0",
-          "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-3.2.0.tgz",
-          "integrity": "sha512-/ykNWRV5Qs0Nwq7Pc0nJ78fgILvOT/60OxEmB3v7yQ8a8Bwcm43D4diaYazG/KBn6czA+52XYy931WFLMCUeSg==",
-          "requires": {
-            "yaml": "^2.2.1"
-          }
         }
       }
     },
@@ -27869,12 +27845,6 @@
           "integrity": "sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ=="
         }
       }
-    },
-    "express-serve-static-core": {
-      "version": "0.1.1",
-      "resolved": "https://registry.npmjs.org/express-serve-static-core/-/express-serve-static-core-0.1.1.tgz",
-      "integrity": "sha512-phQFPo1vVwBLOjDq+EspUY6PpWZIs/s62Lvu6QuReViQ9j9ANBnMqPBRwdxs3zxNmpMJ9KBKrmMqCjMwHnGRyQ==",
-      "dev": true
     },
     "extend": {
       "version": "3.0.2",
@@ -32781,12 +32751,11 @@
       }
     },
     "openapi3-ts": {
-      "version": "4.4.0",
-      "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-4.4.0.tgz",
-      "integrity": "sha512-9asTNB9IkKEzWMcHmVZE7Ts3kC9G7AFHfs8i7caD8HbI76gEjdkId4z/AkP83xdZsH7PLAnnbl47qZkXuxpArw==",
-      "dev": true,
+      "version": "3.2.0",
+      "resolved": "https://registry.npmjs.org/openapi3-ts/-/openapi3-ts-3.2.0.tgz",
+      "integrity": "sha512-/ykNWRV5Qs0Nwq7Pc0nJ78fgILvOT/60OxEmB3v7yQ8a8Bwcm43D4diaYazG/KBn6czA+52XYy931WFLMCUeSg==",
       "requires": {
-        "yaml": "^2.5.0"
+        "yaml": "^2.2.1"
       }
     },
     "optionator": {

@@ -24,7 +24,10 @@ module.exports = {
       "error",
       {
         excludedFilePatterns: ["**/scripts/**/*", `update-notifier-cjs.d.ts`],
-        excludedModules: [/node:/],
+        excludedModules: [
+          /node:/,
+          "express-serve-static-core", // We rely on just the types, and the package breaks our build.
+        ],
       },
     ],
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
