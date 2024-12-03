@@ -1,2 +1,3 @@
 - Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
-- [Fixed] Fix issue where auth token doesn't refresh
+- Fixed issue where expired auth tokens would not refresh when running on IDX.
+- Fixed an issue where `firebase` would error out instead of displaying help text.
