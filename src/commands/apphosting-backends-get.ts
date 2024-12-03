@@ -8,6 +8,7 @@ import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:get <backend>")
   .description("print info about a Firebase App Hosting backend")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "backend location", "-")
   .before(apphosting.ensureApiEnabled)
   .action(async (backend: string, options: Options) => {

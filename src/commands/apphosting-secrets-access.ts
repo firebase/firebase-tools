@@ -11,6 +11,7 @@ export const command = new Command("apphosting:secrets:access <secretName[@versi
   .description(
     "Access secret value given secret and its version. Defaults to accessing the latest version.",
   )
+  .firebaseNotRequired()
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(requirePermissions, ["secretmanager.versions.access"])

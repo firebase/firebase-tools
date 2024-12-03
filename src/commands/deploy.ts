@@ -12,6 +12,9 @@ import { FirebaseError } from "../error";
 import { bold } from "colorette";
 import { interactiveCreateHostingSite } from "../hosting/interactive";
 import { logBullet } from "../utils";
+import { Options } from "../options";
+import { needProjectId } from "../projectUtils";
+import { isFirebaseProject, printMigrateToFirebaseMessage } from "../management/projects";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -74,6 +77,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
 
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
+  .firebaseNotRequired()
   .withForce(
     "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
   )
@@ -97,19 +101,38 @@ export const command = new Command("deploy")
       "In order to provide better validation, this may still enable APIs on the target project.",
   )
   .before(requireConfig)
-  .before((options) => {
+  .before((options: Options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
     return requirePermissions(options, permissions);
   })
-  .before((options) => {
-    if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project);
+  .before(async (options: Options) => {
+    if (
+      options.filteredTargets.includes("database") ||
+      options.filteredTargets.includes("extensions") ||
+      options.filteredTargets.includes("functions") ||
+      options.filteredTargets.includes("hosting") ||
+      options.filteredTargets.includes("remoteconfig") ||
+      options.filteredTargets.includes("storage")
+    ) {
+      const projectId = needProjectId(options);
+      if (!(await isFirebaseProject(projectId))) {
+        printMigrateToFirebaseMessage(projectId);
+        throw new FirebaseError(
+          "Some of the products in this deployment require this project to be migrated to Firebase.",
+        );
+      }
     }
   })
-  .before(async (options) => {
+  .before((options: Options) => {
+    if (options.filteredTargets.includes("functions")) {
+      const projectId = needProjectId(options);
+      return checkServiceAccountIam(projectId);
+    }
+  })
+  .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys
     if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
@@ -145,6 +168,6 @@ export const command = new Command("deploy")
     }
   })
   .before(checkValidTargetFilters)
-  .action((options) => {
+  .action((options: Options) => {
     return deploy(options.filteredTargets, options);
   });

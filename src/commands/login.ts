@@ -13,6 +13,7 @@ import { User, Tokens } from "../types/auth";
 
 export const command = new Command("login")
   .description("log the CLI into Firebase")
+  .firebaseNotRequired()
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
   .action(async (options: any) => {

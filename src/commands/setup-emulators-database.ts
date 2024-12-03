@@ -6,6 +6,7 @@ const NAME = Emulators.DATABASE;
 
 export const command = new Command(`setup:emulators:${NAME}`)
   .description(`downloads the ${NAME} emulator`)
+  .firebaseNotRequired()
   .action(() => {
     return downloadEmulator(NAME);
   });

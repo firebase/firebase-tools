@@ -10,7 +10,11 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getProject } from "./management/projects";
+import {
+  getProject,
+  isFirebaseProject,
+  printMigrateToFirebaseMessage,
+} from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 
@@ -38,6 +42,7 @@ export class Command {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
   private aliases: string[] = [];
+  private firebaseRequired = true;
   private actionFn: ActionFunction = (): void => {
     // noop by default, unless overwritten by `.action(fn)`.
   };
@@ -96,6 +101,15 @@ export class Command {
    */
   withForce(message?: string): Command {
     this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
+    return this;
+  }
+
+  /**
+   * This command is safe to run on Cloud projects that do not have Firebase enabled.
+   * @returns
+   */
+  firebaseNotRequired(): Command {
+    this.firebaseRequired = false;
     return this;
   }
 
@@ -291,7 +305,7 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async prepare(options: any): Promise<void> {
+  public async prepare(options: any): Promise<Options> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
@@ -342,6 +356,7 @@ export class Command {
       await this.resolveProjectIdentifiers(options);
       validateProjectId(options.projectId);
     }
+    return options as Options;
   }
 
   /**
@@ -415,11 +430,14 @@ export class Command {
         args.splice(args.length - 1, 0, "");
       }
 
-      const options = last(args);
-      await this.prepare(options);
+      const options = await this.prepare(last(args));
 
       for (const before of this.befores) {
         await before.fn(options, ...before.args);
+      }
+      if (this.firebaseRequired && options.project && !(await isFirebaseProject(options.project))) {
+        printMigrateToFirebaseMessage(options.project);
+        throw new FirebaseError("This command requires your project to be migrated to Firebase.");
       }
       return this.actionFn(...args);
     };

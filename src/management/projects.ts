@@ -463,3 +463,24 @@ export async function getProject(projectId: string): Promise<ProjectInfo> {
   const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
   return response.body;
 }
+
+/**
+ * Check whether a project is registered as a Firebase project.
+ * @param projectId the project ID to check
+ * @returns true if it is a firebase project, false if it is a core app project, errors if the project does not exist.
+ */
+export async function isFirebaseProject(projectId: string) {
+  try {
+    await getFirebaseProject(projectId);
+    return true;
+  } catch (err: unknown) {
+    await getProject(projectId);
+    return false;
+  }
+}
+
+export function printMigrateToFirebaseMessage(projectId: string) {
+  `${clc.bold(projectId)} has limited access to some Firebase services. ` +
+    `Update this project to access all Firebase capabilities, including this Firebase service: ` +
+    `${utils.migrateToFirebaseLink(projectId)}`;
+}

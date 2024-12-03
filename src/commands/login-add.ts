@@ -8,6 +8,7 @@ import * as auth from "../auth";
 
 export const command = new Command("login:add [email]")
   .description("authorize the CLI for an additional account")
+  .firebaseNotRequired()
   .option(
     "--no-localhost",
     "copy and paste a code instead of starting a local server for authentication",

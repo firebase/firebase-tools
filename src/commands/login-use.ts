@@ -9,6 +9,7 @@ export const command = new Command("login:use <email>")
   .description(
     "set the default account to use for this project directory or the global default account if not in a Firebase project directory",
   )
+  .firebaseNotRequired()
   .action((email: string, options: any) => {
     const allAccounts = auth.getAllAccounts();
     const accountExists = allAccounts.some((a) => a.user.email === email);

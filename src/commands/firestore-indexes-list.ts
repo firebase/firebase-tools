@@ -11,6 +11,7 @@ import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
+  .firebaseNotRequired()
   .option(
     "--pretty",
     "Pretty print. When not specified the indexes are printed in the " +

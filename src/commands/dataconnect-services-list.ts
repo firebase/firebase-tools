@@ -10,6 +10,7 @@ const Table = require("cli-table");
 
 export const command = new Command("dataconnect:services:list")
   .description("list all deployed services in your Firebase project")
+  .firebaseNotRequired()
   .before(requirePermissions, [
     "dataconnect.services.list",
     "dataconnect.schemas.list",

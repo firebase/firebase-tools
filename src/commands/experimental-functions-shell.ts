@@ -7,6 +7,7 @@ export const command = new Command("experimental:functions:shell")
   .description(
     "launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)",
   )
+  .firebaseNotRequired()
   .option("-p, --port <port>", "the port on which to emulate functions (default: 5000)", 5000)
   .before(requireConfig)
   .before(requirePermissions)

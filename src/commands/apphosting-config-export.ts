@@ -12,6 +12,7 @@ export const command = new Command("apphosting:config:export")
   .description(
     "Export App Hosting configurations such as secrets into an apphosting.local.yaml file",
   )
+  .firebaseNotRequired()
   .option(
     "-s, --secrets <apphosting.yaml or apphosting.<environment>.yaml file to export secrets from>",
     "This command combines the base apphosting.yaml with the specified environment-specific file (e.g., apphosting.staging.yaml). If keys conflict, the environment-specific file takes precedence.",

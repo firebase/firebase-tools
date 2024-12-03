@@ -6,6 +6,7 @@ import * as utils from "../utils";
 
 export const command = new Command("target:clear <type> <target>")
   .description("clear all resources from a named resource target")
+  .firebaseNotRequired()
   .before(requireConfig)
   .action((type, name, options) => {
     const existed = options.rc.clearTarget(options.project, type, name);
