@@ -437,7 +437,7 @@ export class Command {
       }
       if (this.firebaseRequired && options.project && !(await isFirebaseProject(options.project))) {
         printMigrateToFirebaseMessage(options.project);
-        throw new FirebaseError("This command requires your project to be migrated to Firebase.");
+        throw new FirebaseError("This command requires that your Google Cloud project has Firebase added to it.");
       }
       return this.actionFn(...args);
     };
