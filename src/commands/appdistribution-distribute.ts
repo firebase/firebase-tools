@@ -247,25 +247,25 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       const releaseTests = await Promise.all(releaseTestPromises);
       utils.logSuccess(`${releaseTests.length} release test(s) started successfully`);
       if (!options.testNonBlocking) {
-        const releaseTestNames = new Set(releaseTests.map((rt) => rt.name!!));
-        await awaitTestResults(releaseTestNames, requests);
+        await awaitTestResults(releaseTests, requests);
       }
     }
   });
 
 async function awaitTestResults(
-  releaseTestNames: Set<string>,
+  releaseTests: ReleaseTest[],
   requests: AppDistributionClient,
 ): Promise<void> {
+  const releaseTestNames = new Set(releaseTests.map((rt) => rt.name!));
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
-    utils.logBullet("the automated test results are pending");
+    utils.logBullet(`${releaseTestNames.size} automated test results are pending...`);
     await delay(TEST_POLLING_INTERVAL_MILLIS);
     for (const releaseTestName of releaseTestNames) {
       const releaseTest = await requests.getReleaseTest(releaseTestName);
       if (releaseTest.deviceExecutions.every((e) => e.state === "PASSED")) {
         releaseTestNames.delete(releaseTestName);
         if (releaseTestNames.size === 0) {
-          utils.logSuccess("automated test(s) passed!");
+          utils.logSuccess("Automated test(s) passed!");
           return;
         } else {
           continue;
