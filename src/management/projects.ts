@@ -480,7 +480,7 @@ export async function isFirebaseProject(projectId: string) {
 }
 
 export function printMigrateToFirebaseMessage(projectId: string) {
-  `${clc.bold(projectId)} has limited access to some Firebase services. ` +
+  utils.logWarning(`${clc.bold(projectId)} has limited access to some Firebase services. ` +
     `Update this project to access all Firebase capabilities, including this Firebase service: ` +
-    `${utils.migrateToFirebaseLink(projectId)}`;
+    `${utils.migrateToFirebaseLink(projectId)}`);
 }
