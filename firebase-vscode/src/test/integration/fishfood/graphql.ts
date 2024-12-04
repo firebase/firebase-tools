@@ -187,7 +187,7 @@ firebaseSuite("GraphQL", async function () {
       await readDataButton.click();
 
       // Wait a bit for the query to be generated
-      await browser.pause(3500);
+      await browser.pause(5000);
 
       // Verify the generated query
       const activeEditor = await editorView.getActiveEditor();
