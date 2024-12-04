@@ -174,14 +174,14 @@ export function load(client: any): any {
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
+    client.apphosting.rollouts = {};
+    client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");
       client.apphosting.builds.create = loadCommand("apphosting-builds-create");
       client.apphosting.repos = {};
       client.apphosting.repos.create = loadCommand("apphosting-repos-create");
-      client.apphosting.rollouts = {};
-      client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
     if (experiments.isEnabled("emulatorapphosting")) {
