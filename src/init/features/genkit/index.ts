@@ -19,17 +19,16 @@ import * as inquirer from "inquirer";
 import * as path from "path";
 import * as semver from "semver";
 import * as clc from "colorette";
-import { execFileSync } from "child_process";
 
 import { doSetup as functionsSetup } from "../functions";
 import { Config } from "../../../config";
 import { confirm } from "../../../prompt";
-import { wrapSpawn } from "../../spawn";
+import { wrapSpawn, spawnWithOutput } from "../../spawn";
 import { Options } from "../../../options";
 import { getProjectId } from "../../../projectUtils";
 import { ensure } from "../../../ensureApiEnabled";
 import { logger } from "../../../logger";
-import { FirebaseError, getErrMsg } from "../../../error";
+import { FirebaseError, getErrMsg, isObject } from "../../../error";
 import { Setup } from "../..";
 import {
   logLabeledBullet,
@@ -37,7 +36,6 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
 } from "../../../utils";
-import { isObject } from "../../../extensions/types";
 
 interface GenkitInfo {
   genkitVersion: string;
@@ -61,7 +59,18 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     semver.parse(process.env.GENKIT_DEV_VERSION);
     genkitVersion = process.env.GENKIT_DEV_VERSION;
   } else {
-    genkitVersion = execFileSync("npm", ["view", "genkit", "version"]).toString();
+    try {
+      genkitVersion = await spawnWithOutput("npm", ["view", "genkit", "version"]);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        "Unable to determine which genkit version to install.\n" +
+          `npm Error: ${getErrMsg(err)}\n\n` +
+          "For a possible workaround run\n  npm view genkit version\n" +
+          "and then set an environment variable:\n" +
+          "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
+          "and run `firebase init genkit` again",
+      );
+    }
   }
 
   if (!genkitVersion) {

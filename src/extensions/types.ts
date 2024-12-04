@@ -2,6 +2,7 @@ import { MemoryOptions } from "../deploy/functions/backend";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
+import { isObject } from "../error";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -279,10 +280,6 @@ export enum ParamType {
 export interface ParamOption {
   value: string;
   label?: string;
-}
-
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 export const isParam = (param: unknown): param is Param => {
