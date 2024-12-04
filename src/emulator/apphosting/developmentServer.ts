@@ -38,7 +38,7 @@ export async function detectStartCommand(rootDir: string) {
     return `${packageManager} run dev`;
   } catch (e) {
     throw new FirebaseError(
-      "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommandOverride`",
+      "Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommand`",
     );
   }
 }
