@@ -89,7 +89,7 @@ export function registerTerminalTasks(
     });
   });
 
-  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+  const startEmulatorsTask = () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
 
     let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
@@ -105,8 +105,14 @@ export function registerTerminalTasks(
       cmd,
       { focus: true },
     );
+  };
+  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+    startEmulatorsTask();
   });
-  const startEmulatorsCommand = vscode.commands.registerCommand("firebase.emulators.start", startEmulatorsTaskBroker);
+  const startEmulatorsCommand = vscode.commands.registerCommand(
+    "firebase.emulators.start",
+    startEmulatorsTask,
+  );
 
   return Disposable.from(
     { dispose: loginTaskBroker },
