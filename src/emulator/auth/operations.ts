@@ -1229,7 +1229,7 @@ export function setAccountInfoImpl(
   }
 
   if (reqBody.linkProviderUserInfo) {
-    assert(!reqBody.linkProviderUserInfo.providerId?.length, "MISSING_PROVIDER_ID");
+    assert(reqBody.linkProviderUserInfo.providerId, "MISSING_PROVIDER_ID");
     assert(!reqBody.linkProviderUserInfo.rawId?.length, "MISSING_RAW_ID");
   }
 
