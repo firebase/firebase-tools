@@ -69,6 +69,10 @@ export class AppHostingYamlConfig {
     this._secrets.set(secret.variable, secret);
   }
 
+  clearSecrets() {
+    this._secrets.clear();
+  }
+
   /**
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.

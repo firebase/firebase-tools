@@ -1,1 +1,6 @@
-Updates `superstatic` to `9.1.0` in package.json.
+- Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
+- Fixed issue where expired auth tokens would not refresh when running on IDX.
+- Fixed an issue where `firebase` would error out instead of displaying help text.
+- Fixed an issue where `firebase init genkit` would error on Windows machines.
+- Fixed an issue where emulator returned error when emulating alerts functions written in python (#8019)
+- Updated `superstatic` to `9.1.0` in package.json.

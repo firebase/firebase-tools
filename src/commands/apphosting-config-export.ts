@@ -6,6 +6,7 @@ import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
 import { discoverBackendRoot, exportConfig } from "../apphosting/config";
 import { FirebaseError } from "../error";
+import { detectProjectRoot } from "../detectProjectRoot";
 
 export const command = new Command("apphosting:config:export")
   .description(
@@ -30,5 +31,6 @@ export const command = new Command("apphosting:config:export")
       );
     }
 
-    await exportConfig(cwd, backendRoot, projectId, environmentConfigFile);
+    const projectRoot = detectProjectRoot({}) ?? backendRoot;
+    await exportConfig(cwd, projectRoot, backendRoot, projectId, environmentConfigFile);
   });
