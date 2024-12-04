@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.7.3",
-          expectedSize: 25211648,
-          expectedChecksum: "8410794304b2ae340c3facf07d7edc16",
+          version: "1.7.4",
+          expectedSize: 25277184,
+          expectedChecksum: "74f6b66c79a8a903132c7ab26c644593",
         }
       : process.platform === "win32"
         ? {
-            version: "1.7.3",
-            expectedSize: 25641984,
-            expectedChecksum: "a4bd0f9d9d884528fa4494e4d7918c08",
+            version: "1.7.4",
+            expectedSize: 25707520,
+            expectedChecksum: "66eec92e2d57ae42a8b58f33b65b4184",
           }
         : {
-            version: "1.7.3",
-            expectedSize: 25125016,
-            expectedChecksum: "48660e6370aeed973f33c3420c3255fb",
+            version: "1.7.4",
+            expectedSize: 25190552,
+            expectedChecksum: "acb7be487020afa6e1a597ceb8c6e862",
           },
 };
 
@@ -468,6 +468,14 @@ async function _runBinary(
           emulator.name,
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`,
         );
+      } else if (isIncomaptibleArchError(e)) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          `Unknown system error when starting emulator binary. ` +
+            `You may be able to fix this by installing Rosetta: ` +
+            `softwareupdate --install-rosetta`,
+        );
       }
       _fatal(emulator.name, e);
     }
@@ -644,4 +652,13 @@ export async function start(
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
   return _runBinary(emulator, command, extraEnv);
+}
+
+export function isIncomaptibleArchError(err: unknown): boolean {
+  const hasMessage = (e: any): e is { message: string } => !!e.message;
+  return (
+    hasMessage(err) &&
+    /Unknown system error/.test(err.message ?? "") &&
+    process.platform === "darwin"
+  );
 }
