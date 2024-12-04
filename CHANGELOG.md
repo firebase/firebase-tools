@@ -1,3 +1,4 @@
+- Enable apphosting:rollouts:create command. (#8031)
 - Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
 - Fixed issue where expired auth tokens would not refresh when running on IDX.
 - Fixed an issue where `firebase` would error out instead of displaying help text.
