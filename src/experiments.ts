@@ -138,13 +138,6 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
-  fdccompatiblemode: {
-    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    default: true,
-    public: false,
-  },
-
   fdcconnectorevolution: {
     shortDescription: "Enable Data Connect connector evolution warnings.",
     fullDescription: "Enable Data Connect connector evolution warnings.",
