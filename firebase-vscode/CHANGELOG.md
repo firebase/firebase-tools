@@ -1,4 +1,5 @@
 ## NEXT
+
 - [Fixed] Fixed an issue where generating an ad-hoc file would break codelenses
 
 ## 0.10.8
