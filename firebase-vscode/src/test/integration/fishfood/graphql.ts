@@ -150,6 +150,8 @@ firebaseSuite("GraphQL", async function () {
   }"`);
       expect(editorTitle).toBe("Post_insert.gql");
 
+      // file should be created, saved, then opened
+      expect(activeEditor?.document.isDirty).toBe(false);
       await editorView.closeCurrentEditor();
     },
   );
@@ -199,6 +201,9 @@ firebaseSuite("GraphQL", async function () {
   }
 }`);
       expect(editorTitle).toBe("Post_read.gql");
+
+      // file should be created, saved, then opened
+      expect(activeEditor?.document.isDirty).toBe(false);
     },
   );
 
