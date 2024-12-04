@@ -24,6 +24,7 @@ describe("Command", () => {
         },
         ["foo", "bar"],
       );
+      command.alias("example2");
       command.help("here's how!");
       command.action(() => {
         // do nothing
@@ -99,7 +100,7 @@ describe("Command", () => {
     });
 
     it("should resolve a numeric --project flag into a project id", async () => {
-      nock("https://firebase.googleapis.com").get("/v1beta1/projects/12345678").reply(200, {
+      nock("https://cloudresourcemanager.googleapis.com").get("/v1/projects/12345678").reply(200, {
         projectNumber: "12345678",
         projectId: "resolved-project",
       });

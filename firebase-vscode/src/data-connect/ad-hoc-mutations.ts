@@ -130,7 +130,7 @@ export function registerAdHoc(
       const queryName = `${ast.name.value.charAt(0).toLowerCase()}${ast.name.value.slice(1)}s`;
 
       return `
-# This is a file for you to write an un-named queries. 
+# This is a file for you to write an un-named query.
 # Only one un-named query is allowed per file.
 query {
   ${queryName}${buildRecursiveObjectQuery(ast)!}
@@ -158,7 +158,9 @@ query {
     }
     const schema = buildClientSchema(introspect.data);
     const dataType = schema.getType(`${ast.name.value}_Data`);
-    if (!isInputObjectType(dataType)) return;
+    if (!isInputObjectType(dataType)) {
+      return;
+    }
 
     const adhocMutation = print(
       await makeAdHocMutation(
@@ -206,7 +208,9 @@ query {
     for (const field of fields) {
       const type = getNamedType(field.type);
       const defaultValue = getDefaultScalarValue(type.name);
-      if (!defaultValue) continue;
+      if (!defaultValue) {
+        continue;
+      }
 
       argumentFields.push({
         kind: Kind.OBJECT_FIELD,
