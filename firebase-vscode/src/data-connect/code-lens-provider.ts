@@ -98,16 +98,14 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         );
 
         if (service) {
-          if (this.emulatorsController.areEmulatorsRunning()) {
-            codeLenses.push(
-              new vscode.CodeLens(range, {
-                title: `$(play) Run (local)`,
-                command: "firebase.dataConnect.executeOperation",
-                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-                arguments: [x, operationLocation, InstanceType.LOCAL],
-              }),
-            );
-          }
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `$(play) Run (local)`,
+              command: "firebase.dataConnect.executeOperation",
+              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+              arguments: [x, operationLocation, InstanceType.LOCAL],
+            }),
+          );
 
           codeLenses.push(
             new vscode.CodeLens(range, {
@@ -137,10 +135,6 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
-    if (!this.emulatorsController.areEmulatorsRunning) {
-      return [];
-    }
-
     const codeLenses: vscode.CodeLens[] = [];
 
     // TODO: replace w/ online-parser to work with malformed documents

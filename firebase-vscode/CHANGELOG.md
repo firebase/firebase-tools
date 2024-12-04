@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Added] Make run local button available when emulators are not running
+
 ## 0.10.8
 
 - Updated internal firebase-tools dependency to 13.25.0

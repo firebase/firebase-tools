@@ -26,6 +26,10 @@ export class EmulatorsController implements Disposable {
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
   private currExecId = 0;
 
+  public async startEmulators() {
+    this.setEmulatorsStarting();
+    vscode.commands.executeCommand("firebase.emulators.start");
+  }
   // called by webhook
   private readonly findRunningEmulatorsCommand =
     vscode.commands.registerCommand(
@@ -48,7 +52,6 @@ export class EmulatorsController implements Disposable {
 
   notifyEmulatorStateChanged() {
     this.broker.send("notifyEmulatorStateChanged", this.emulators);
-    vscode.commands.executeCommand("refreshCodelens");
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
@@ -105,7 +108,7 @@ export class EmulatorsController implements Disposable {
   }
 
   async findRunningCliEmulators(): Promise<
-    { status: EmulatorsStatus; infos?: RunningEmulatorInfo } | undefined
+    { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
   > {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
     // TODO: think about what to without projectID, in potentially a logged out mode
@@ -126,8 +129,11 @@ export class EmulatorsController implements Disposable {
     return this.emulators;
   }
 
-  public areEmulatorsRunning() {
-    return this.emulators.status === "running";
+  public async areEmulatorsRunning(): Promise<boolean> {
+    if (this.emulators.status === "running") {
+      return true;
+    }
+    return (await this.findRunningCliEmulators())?.status === "running";
   }
 
   dispose(): void {
