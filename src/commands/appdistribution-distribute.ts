@@ -9,6 +9,7 @@ import {
   IntegrationState,
   UploadReleaseResult,
   TestDevice,
+  ReleaseTest,
 } from "../appdistribution/types";
 import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
@@ -16,8 +17,8 @@ import {
   ensureFileExists,
   getAppName,
   getLoginCredential,
-  getTestDevices,
-  getTestersOrGroups,
+  parseTestDevices,
+  parseIntoStringArray,
 } from "../appdistribution/options-parser-util";
 
 const TEST_MAX_POLLING_RETRIES = 40;
@@ -35,19 +36,21 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
 }
 
 export const command = new Command("appdistribution:distribute <release-binary-file>")
-  .description("upload a release binary")
+  .description(
+    "upload a release binary and optionally distribute it to testers and run automated tests",
+  )
   .option("--app <app_id>", "the app id of your Firebase app")
   .option("--release-notes <string>", "release notes to include")
   .option("--release-notes-file <file>", "path to file with release notes")
-  .option("--testers <string>", "a comma separated list of tester emails to distribute to")
+  .option("--testers <string>", "a comma-separated list of tester emails to distribute to")
   .option(
     "--testers-file <file>",
-    "path to file with a comma separated list of tester emails to distribute to",
+    "path to file with a comma- or newline-separated list of tester emails to distribute to",
   )
-  .option("--groups <string>", "a comma separated list of group aliases to distribute to")
+  .option("--groups <string>", "a comma-separated list of group aliases to distribute to")
   .option(
     "--groups-file <file>",
-    "path to file with a comma separated list of group aliases to distribute to",
+    "path to file with a comma- or newline-separated list of group aliases to distribute to",
   )
   .option(
     "--test-devices <string>",
@@ -75,14 +78,25 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "--test-non-blocking",
     "run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
+  .option("--test-case-ids <string>", "a comma-separated list of test case IDs.")
+  .option(
+    "--test-case-ids-file <file>",
+    "path to file with a comma- or newline-separated list of test case IDs.",
+  )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
     const appName = getAppName(options);
     const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
-    const testers = getTestersOrGroups(options.testers, options.testersFile);
-    const groups = getTestersOrGroups(options.groups, options.groupsFile);
-    const testDevices = getTestDevices(options.testDevices, options.testDevicesFile);
+    const testers = parseIntoStringArray(options.testers, options.testersFile);
+    const groups = parseIntoStringArray(options.groups, options.groupsFile);
+    const testCases = parseIntoStringArray(options.testCaseIds, options.testCaseIdsFile);
+    const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
+    if (testCases.length && (options.testUsernameResource || options.testPasswordResource)) {
+      throw new FirebaseError(
+        "Password and username resource names are not supported for the AI testing agent.",
+      );
+    }
     const loginCredential = getLoginCredential({
       username: options.testUsername,
       password: options.testPassword,
@@ -210,56 +224,78 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     await requests.distribute(releaseName, testers, groups);
 
     // Run automated tests
-    if (testDevices?.length) {
-      utils.logBullet("starting automated tests (note: this feature is in beta)");
-      const releaseTest = await requests.createReleaseTest(
-        releaseName,
-        testDevices,
-        loginCredential,
-      );
-      utils.logSuccess(`Release test created successfully`);
+    if (testDevices.length) {
+      utils.logBullet("starting automated test (note: this feature is in beta)");
+      const releaseTestPromises: Promise<ReleaseTest>[] = [];
+      if (!testCases.length) {
+        // fallback to basic automated test
+        releaseTestPromises.push(
+          requests.createReleaseTest(releaseName, testDevices, loginCredential),
+        );
+      } else {
+        for (const testCaseId of testCases) {
+          releaseTestPromises.push(
+            requests.createReleaseTest(
+              releaseName,
+              testDevices,
+              loginCredential,
+              `${appName}/testCases/${testCaseId}`,
+            ),
+          );
+        }
+      }
+      const releaseTests = await Promise.all(releaseTestPromises);
+      utils.logSuccess(`${releaseTests.length} release test(s) started successfully`);
       if (!options.testNonBlocking) {
-        await awaitTestResults(releaseTest.name!, requests);
+        await awaitTestResults(releaseTests, requests);
       }
     }
   });
 
 async function awaitTestResults(
-  releaseTestName: string,
+  releaseTests: ReleaseTest[],
   requests: AppDistributionClient,
 ): Promise<void> {
+  const releaseTestNames = new Set(releaseTests.map((rt) => rt.name!));
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
-    utils.logBullet("the automated tests results are pending");
+    utils.logBullet(`${releaseTestNames.size} automated test results are pending...`);
     await delay(TEST_POLLING_INTERVAL_MILLIS);
-    const releaseTest = await requests.getReleaseTest(releaseTestName);
-    if (releaseTest.deviceExecutions.every((e) => e.state === "PASSED")) {
-      utils.logSuccess("automated test(s) passed!");
-      return;
-    }
-    for (const execution of releaseTest.deviceExecutions) {
-      switch (execution.state) {
-        case "PASSED":
-        case "IN_PROGRESS":
+    for (const releaseTestName of releaseTestNames) {
+      const releaseTest = await requests.getReleaseTest(releaseTestName);
+      if (releaseTest.deviceExecutions.every((e) => e.state === "PASSED")) {
+        releaseTestNames.delete(releaseTestName);
+        if (releaseTestNames.size === 0) {
+          utils.logSuccess("Automated test(s) passed!");
+          return;
+        } else {
           continue;
-        case "FAILED":
-          throw new FirebaseError(
-            `Automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
-            { exit: 1 },
-          );
-        case "INCONCLUSIVE":
-          throw new FirebaseError(
-            `Automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
-            { exit: 1 },
-          );
-        default:
-          throw new FirebaseError(
-            `Unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
-            { exit: 1 },
-          );
+        }
+      }
+      for (const execution of releaseTest.deviceExecutions) {
+        switch (execution.state) {
+          case "PASSED":
+          case "IN_PROGRESS":
+            continue;
+          case "FAILED":
+            throw new FirebaseError(
+              `Automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
+              { exit: 1 },
+            );
+          case "INCONCLUSIVE":
+            throw new FirebaseError(
+              `Automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
+              { exit: 1 },
+            );
+          default:
+            throw new FirebaseError(
+              `Unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
+              { exit: 1 },
+            );
+        }
       }
     }
   }
-  throw new FirebaseError("It took longer than expected to process your test, please try again.", {
+  throw new FirebaseError("It took longer than expected to run your test(s), please try again.", {
     exit: 1,
   });
 }
