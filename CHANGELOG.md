@@ -3,5 +3,6 @@
 - Fixed an issue where `firebase` would error out instead of displaying help text.
 - Fixed an issue where `firebase init genkit` would error on Windows machines.
 - Fixed an issue where emulator returned error when emulating alerts functions written in python (#8019)
+- Deprecated `emulators.apphosting.startCommandOverride`. Please use `emulators.apphosting.startCommand` instead.
 - Updated `superstatic` to `9.1.0` in package.json.
 - Updated the Firebase Data Connect local toolkit to v1.7.4, which includes a fix for an issue that caused duplicate installations of the Firebase JS SDK. (#8028)
