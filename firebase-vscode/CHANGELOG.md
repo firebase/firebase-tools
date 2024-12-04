@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Added] Make Run Local button always present
+
 ## 0.12.2
 
 - Updated internal `firebase-tools` dependency to 13.29.3
