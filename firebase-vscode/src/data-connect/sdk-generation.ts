@@ -16,10 +16,11 @@ import {
   generateSdkYaml,
 } from "../../../src/init/features/dataconnect/sdk";
 import { createE2eMockable } from "../utils/test_hooks";
+import { AnalyticsLogger} from "../analytics";
 
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: vscode.TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): vscode.Disposable {
   const settings = getSettings();
 
@@ -37,7 +38,7 @@ export function registerFdcSdkGeneration(
   const initSdkCmd = vscode.commands.registerCommand(
     "fdc.init-sdk",
     (args: { appFolder: string }) => {
-      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI, {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI, {
         firebase_binary_kind: settings.firebaseBinaryKind,
       });
       // Lets do it from the right directory
@@ -50,7 +51,9 @@ export function registerFdcSdkGeneration(
   const configureSDKCodelense = vscode.commands.registerCommand(
     "fdc.connector.configure-sdk",
     async (connectorConfig) => {
-      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CODELENSE);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.INIT_SDK_CODELENSE,
+      );
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
       );
@@ -62,7 +65,7 @@ export function registerFdcSdkGeneration(
   const configureSDK = vscode.commands.registerCommand(
     "fdc.configure-sdk",
     async () => {
-      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK);
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK);
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
       );

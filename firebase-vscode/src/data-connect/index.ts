@@ -28,10 +28,10 @@ import { Result } from "../result";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
-
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
+import { AnalyticsLogger } from "../analytics";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -133,7 +133,7 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   registerDiagnostics(context, dataConnectConfigs);
   const dataConnectToolkit = new DataConnectToolkit(broker);
@@ -222,14 +222,14 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerExecution(context, broker, fdcService, telemetryLogger),
+    registerExecution(context, broker, fdcService, analyticsLogger),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
-    registerAdHoc(fdcService, telemetryLogger),
-    registerConnectors(context, broker, fdcService, telemetryLogger),
-    registerFdcDeploy(broker, telemetryLogger),
-    registerFdcSdkGeneration(broker, telemetryLogger),
-    registerTerminalTasks(broker, telemetryLogger),
+    registerAdHoc(fdcService, analyticsLogger),
+    registerConnectors(context, broker, fdcService, analyticsLogger),
+    registerFdcDeploy(broker, analyticsLogger),
+    registerFdcSdkGeneration(broker, analyticsLogger),
+    registerTerminalTasks(broker, analyticsLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files

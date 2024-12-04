@@ -35,12 +35,12 @@ export enum DATA_CONNECT_EVENT_NAME {
 }
 
 export class AnalyticsLogger {
-  readonly logger: TelemetryLogger;
+  readonly logger: TelemetryLogger | IDXLogger;
   private disposable: vscode.Disposable;
   private sessionCharCount = 0; // Track total chars for the session
 
-  constructor() {
-    this.logger = env.createTelemetryLogger(
+  constructor(context: vscode.ExtensionContext) {
+    this.logger = monospaceEnv.value.isMonospace ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context) : env.createTelemetryLogger(
       new GA4TelemetrySender(pluginLogger),
     );
 
@@ -146,6 +146,19 @@ export class AnalyticsLogger {
   }
 }
 
+export class IDXLogger {
+  constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
+  public logUsage(eventName: string, data?: any) {
+    const packageJson = this.context.extension.packageJSON;
+    data = { ...data, extversion: packageJson.version, extname: this.context.extension.id, isidx: true };
+    this.sender.sendEventData(eventName, data);
+  }
+
+  public logError() {
+    // TODO
+  }
+}
+
 class GA4TelemetrySender implements TelemetrySender {
   private hasSentData = false;
   constructor(readonly pluginLogger: { warn: (s: string) => void }) {}
@@ -154,12 +167,6 @@ class GA4TelemetrySender implements TelemetrySender {
     eventName: string,
     data?: Record<string, any> | undefined,
   ): void {
-    // telemtry flag does not exist in monospace
-    if (!env.isTelemetryEnabled && !monospaceEnv.value.isMonospace) {
-      this.pluginLogger.warn("Telemetry is not enabled.");
-      return;
-    }
-
     // telemetry logger adds prefixes to eventName and params that are disallowed in GA4
     eventName = eventName.replace(
       "GoogleCloudTools.firebase-dataconnect-vscode/",
@@ -176,15 +183,14 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
-    const idxPrepend = monospaceEnv.value.isMonospace ? "idx_" : "";
     if (!this.hasSentData) {
       trackVSCode(
-        `${idxPrepend}${DATA_CONNECT_EVENT_NAME.EXTENSION_USED}`,
+        DATA_CONNECT_EVENT_NAME.EXTENSION_USED,
         data as AnalyticsParams,
       );
       this.hasSentData = true;
     }
-    trackVSCode(`${idxPrepend}${eventName}`, data as AnalyticsParams);
+    trackVSCode(eventName, data as AnalyticsParams);
   }
 
   sendErrorData(error: Error, data?: Record<string, any> | undefined): void {

@@ -1,6 +1,5 @@
-import * as vscode from "vscode";
-import { ConfigurationTarget, window, workspace } from "vscode";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { ConfigurationTarget, workspace } from "vscode";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 
 export interface Settings {
   readonly firebasePath: string;
@@ -47,7 +46,7 @@ export function updateIdxSetting(shouldShow: boolean) {
 }
 
 // Persist env var as path setting when path setting doesn't exist
-export function setupFirebasePath(telemetryLogger: vscode.TelemetryLogger) {
+export function setupFirebasePath(analyticsLogger: AnalyticsLogger) {
   const config = workspace.getConfiguration("firebase");
   if (process.env.FIREBASE_BINARY && !config.get<string>("firebasePath")) {
     config.update(
@@ -56,5 +55,5 @@ export function setupFirebasePath(telemetryLogger: vscode.TelemetryLogger) {
       ConfigurationTarget.Global,
     );
   }
-  telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.SETUP_FIREBASE_BINARY);
+  analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.SETUP_FIREBASE_BINARY);
 }

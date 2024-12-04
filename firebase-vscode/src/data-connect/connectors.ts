@@ -3,7 +3,6 @@ import vscode, {
   ExtensionContext,
   InputBoxValidationMessage,
   InputBoxValidationSeverity,
-  TelemetryLogger,
 } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import {
@@ -39,13 +38,13 @@ import { DataConnectService } from "./service";
 import { OperationLocation } from "./types";
 import { checkIfFileExists } from "./file-utils";
 import * as path from "path";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 
 export function registerConnectors(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   async function moveOperationToConnector(
     defIndex: number, // The index of the definition to move.
@@ -477,7 +476,9 @@ export function registerConnectors(
     vscode.commands.registerCommand(
       "firebase.dataConnect.moveOperationToConnector",
       (number, location, connectorPath) => {
-        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.MOVE_TO_CONNECTOR);
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.MOVE_TO_CONNECTOR,
+        );
         moveOperationToConnector(number, location, connectorPath);
       },
     ),
