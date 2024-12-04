@@ -135,7 +135,7 @@ firebaseSuite("GraphQL", async function () {
       await addDataButton.click();
 
       // Wait a bit for the mutation to be generated
-      await browser.pause(1500);
+      await browser.pause(2500);
 
       // Verify the generated mutation
       const activeEditor = await editorView.getActiveEditor();
@@ -187,7 +187,7 @@ firebaseSuite("GraphQL", async function () {
       await readDataButton.click();
 
       // Wait a bit for the query to be generated
-      await browser.pause(1000);
+      await browser.pause(2500);
 
       // Verify the generated query
       const activeEditor = await editorView.getActiveEditor();
