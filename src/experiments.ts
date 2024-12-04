@@ -137,13 +137,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-
-  fdccompatiblemode: {
-    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    default: true,
-    public: false,
-  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
