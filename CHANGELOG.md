@@ -1,2 +1,3 @@
 - Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
 - Fixed an issue where `firebase` would error out instead of displaying help text.
+- Add support for `linkProviderUserInfo` in the Firebase Emulator to allow linking providers to user accounts.
