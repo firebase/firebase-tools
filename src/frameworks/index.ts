@@ -537,11 +537,12 @@ ${
 
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
-      // TODO move to templates
       const mergedFrameworksBackend = {
         ...functionsDirectoryFrameworksBackend,
         ...frameworksBackend,
       };
+
+      // TODO move to templates
       if (packageJson.type === "module") {
         await writeFile(
           join(functionsDist, "server.js"),
