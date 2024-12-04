@@ -80,6 +80,7 @@ import {
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
   ESBUILD_VERSION,
+  NEXTJS_IMAGE_OPTIMIZATION_MEMORY,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -679,13 +680,12 @@ export async function ɵcodegenFunctionsDirectory(
   }
 
   // Add the `sharp` library if app is using image optimization
-
   let frameworksBackend: FrameworksBackendOptions | undefined;
   if (await isUsingImageOptimization(sourceDir, distDir)) {
     packageJson.dependencies["sharp"] = SHARP_VERSION;
-    // TODO check if it is only for Next 15
+
     frameworksBackend = {
-      memory: "512MiB",
+      memory: NEXTJS_IMAGE_OPTIMIZATION_MEMORY,
     };
   }
 
