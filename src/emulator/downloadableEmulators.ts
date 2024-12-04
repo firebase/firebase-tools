@@ -655,7 +655,7 @@ export async function start(
 }
 
 export function isIncomaptibleArchError(err: unknown): boolean {
-  const hasMessage = (e: any): e is { message: string } => !!e.message;
+  const hasMessage = (e: any): e is { message: string } => !!e?.message;
   return (
     hasMessage(err) &&
     /Unknown system error/.test(err.message ?? "") &&
