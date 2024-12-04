@@ -8,3 +8,4 @@
 - Deprecated `emulators.apphosting.startCommandOverride`. Please use `emulators.apphosting.startCommand` instead.
 - Updated `superstatic` to `9.1.0` in package.json.
 - Updated the Firebase Data Connect local toolkit to v1.7.4, which includes a fix for an issue that caused duplicate installations of the Firebase JS SDK. (#8028)
+- Add support for `linkProviderUserInfo` in the Firebase Emulator to allow linking providers to user accounts. (#4170)
