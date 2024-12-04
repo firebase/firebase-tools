@@ -68,7 +68,7 @@ export const command = new Command("database:update <path> [infile]")
         body: inStream,
         queryParams: jsonUrl.searchParams,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError("Unexpected error while setting data");
     }
 

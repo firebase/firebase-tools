@@ -16,7 +16,7 @@ import {
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus, getError } from "../error";
 import { promptOnce } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
@@ -269,13 +269,13 @@ async function promptNewBackendId(
     const backendId = await promptOnce(prompt);
     try {
       await apphosting.getBackend(projectId, location, backendId);
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 404) {
         return backendId;
       }
       throw new FirebaseError(
         `Failed to check if backend with id ${backendId} already exists in ${location}`,
-        { original: err },
+        { original: getError(err) },
       );
     }
     logWarning(`Backend with id ${backendId} already exists in ${location}`);
@@ -331,9 +331,9 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "Default service account used to run builds and deploys for Firebase App Hosting",
       "Firebase App Hosting compute service account",
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 409 Already Exists errors can safely be ignored.
-    if (err.status !== 409) {
+    if (getErrStatus(err) !== 409) {
       throw err;
     }
   }
@@ -422,9 +422,9 @@ export async function getBackendForLocation(
 ): Promise<apphosting.Backend> {
   try {
     return await apphosting.getBackend(projectId, location, backendId);
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(`No backend named "${backendId}" found in ${location}.`, {
-      original: err,
+      original: getError(err),
     });
   }
 }

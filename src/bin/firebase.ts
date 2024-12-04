@@ -18,7 +18,7 @@ const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
 marked.use(markedTerminal() as any);
 
-import { Command } from "commander";
+import { CommanderStatic } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
 import { stripVTControlCharacters } from "node:util";
@@ -33,8 +33,8 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import * as winston from "winston";
 
-let args = process.argv.slice(2);
-let cmd: Command;
+const args = process.argv.slice(2);
+let cmd: CommanderStatic;
 
 function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
@@ -161,11 +161,10 @@ process.on("uncaughtException", (err) => {
 });
 
 if (!handlePreviewToggles(args)) {
-  cmd = client.cli.parse(process.argv);
-
-  // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => !arg.includes("-"));
+  // determine if there are any arguments. if not, display help
   if (!args.length) {
     client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
   }
 }

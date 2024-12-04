@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.6.1",
-          expectedSize: 25309952,
-          expectedChecksum: "826692eb4ed9cf11becb595c386eb7bf",
+          version: "1.7.4",
+          expectedSize: 25277184,
+          expectedChecksum: "74f6b66c79a8a903132c7ab26c644593",
         }
       : process.platform === "win32"
         ? {
-            version: "1.6.1",
-            expectedSize: 25737728,
-            expectedChecksum: "1e87a3a1f95d7b21cebf18f551619167",
+            version: "1.7.4",
+            expectedSize: 25707520,
+            expectedChecksum: "66eec92e2d57ae42a8b58f33b65b4184",
           }
         : {
-            version: "1.6.1",
-            expectedSize: 25223320,
-            expectedChecksum: "b13218419fcaaa3ad22005ce8378412d",
+            version: "1.7.4",
+            expectedSize: 25190552,
+            expectedChecksum: "acb7be487020afa6e1a597ceb8c6e862",
           },
 };
 
@@ -281,8 +281,8 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: true,
   },
   ui: {
-    binary: "node",
-    args: [getExecPath(Emulators.UI)],
+    binary: "",
+    args: [],
     optionalArgs: [],
     joinArgs: false,
     shell: false,

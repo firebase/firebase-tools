@@ -366,6 +366,12 @@
                         "port": {
                             "type": "number"
                         },
+                        "rootDirectory": {
+                            "type": "string"
+                        },
+                        "startCommand": {
+                            "type": "string"
+                        },
                         "startCommandOverride": {
                             "type": "string"
                         }
@@ -399,6 +405,9 @@
                 "dataconnect": {
                     "additionalProperties": false,
                     "properties": {
+                        "dataDir": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },

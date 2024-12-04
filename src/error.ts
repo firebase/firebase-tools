@@ -50,7 +50,24 @@ export function getErrMsg(err: unknown, defaultMsg?: string): string {
   return JSON.stringify(err);
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+/**
+ * Safely gets an error stack (or error message if no stack is available)
+ * from an unknown object
+ * @param err The potential error object
+ * @return a string representing the error stack or the error message.
+ */
+export function getErrStack(err: unknown): string {
+  if (err instanceof Error) {
+    return err.stack || err.message;
+  }
+  return getErrMsg(err);
+}
+
+/**
+ * A typeguard for objects
+ * @param value The value to check
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -66,6 +83,18 @@ export function getErrStatus(err: unknown, defaultStatus?: number): number {
   }
 
   return defaultStatus || DEFAULT_STATUS;
+}
+
+/**
+ * Safely gets an error object from an unknown object
+ * @param err The error to get an Error for.
+ * @return an Error object
+ */
+export function getError(err: unknown): Error {
+  if (err instanceof Error) {
+    return err;
+  }
+  return Error(getErrMsg(err));
 }
 
 /**

@@ -8,7 +8,7 @@ import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -40,6 +40,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
+  logger.debug(`Running auto auth`);
 
   let clientEmail;
   try {
@@ -99,7 +100,7 @@ export async function requireAuth(options: any): Promise<string | void> {
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
         "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
-  } else if (user) {
+  } else if (user && (!isExpired(tokens) || tokens?.refresh_token)) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
   } else {
     try {

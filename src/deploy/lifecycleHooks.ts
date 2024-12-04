@@ -6,10 +6,11 @@ const needProjectId = require("../projectUtils").needProjectId;
 import { logger } from "../logger";
 import * as path from "path";
 import { Options } from "../options";
+import { isVSCodeExtension } from "../vsCodeUtils";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
-  const isVSCode = utils.isVSCodeExtension();
+  const isVSCode = isVSCodeExtension();
   const nodeExecutable = isVSCode ? "node" : process.execPath;
   const crossEnvShellPath = isVSCode
     ? path.resolve(__dirname, "./cross-env/dist/bin/cross-env-shell.js")

@@ -1,5 +1,8 @@
 import * as childProcess from "child_process";
+import * as pg from "pg";
 import { EventEmitter } from "events";
+import * as clc from "colorette";
+import * as path from "path";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
@@ -15,7 +18,7 @@ import { EmulatorRegistry } from "./registry";
 import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
-import { PostgresServer } from "./dataconnect/pgliteServer";
+import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
 
@@ -30,6 +33,7 @@ export interface DataConnectEmulatorArgs {
   postgresListen?: ListenSpec[];
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
+  importPath?: string;
 }
 
 export interface DataConnectGenerateArgs {
@@ -48,6 +52,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
   private usingExistingEmulator: boolean = false;
+  private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {
     this.emulatorClient = new DataConnectEmulatorClient();
@@ -64,13 +69,13 @@ export class DataConnectEmulator implements EmulatorInstance {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
             "WARN",
-            "Data Connect",
+            "dataconnect",
             "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
           );
         } else {
           this.logger.logLabeled(
             "WARN",
-            "Data Connect",
+            "dataconnect",
             "Operations that use vector_embed will make calls to production Vertex AI",
           );
         }
@@ -79,9 +84,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
 
-    const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-    const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
-    const serviceId = info.dataConnectYaml.serviceId;
     await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
@@ -91,27 +93,34 @@ export class DataConnectEmulator implements EmulatorInstance {
     });
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
+      const info = await load(this.args.projectId, this.args.config, this.args.configDir);
+      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;
       let connStr = dataConnectLocalConnString();
-      if (dataConnectLocalConnString()) {
+      if (connStr) {
         this.logger.logLabeled(
           "INFO",
-          "Data Connect",
-          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${dataConnectLocalConnString()} - using that instead of starting a new database`,
+          "dataconnect",
+          `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const pgServer = new PostgresServer(dbId, "postgres");
-        const server = await pgServer.createPGServer(pgHost, pgPort);
+        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        const postgresDumpPath = this.args.importPath
+          ? path.join(this.args.importPath, "postgres.tar.gz")
+          : undefined;
+        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory, postgresDumpPath);
+        const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
-        server.on("error", (err) => {
+        server.on("error", (err: any) => {
           if (err instanceof FirebaseError) {
             this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
           } else {
             this.logger.logLabeled(
               "ERROR",
-              "Data Connect",
+              "dataconnect",
               `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
             );
           }
@@ -119,8 +128,8 @@ export class DataConnectEmulator implements EmulatorInstance {
         });
         this.logger.logLabeled(
           "INFO",
-          "Data Connect",
-          `Started up Postgres server, listening on ${server.address()?.toString()}`,
+          "dataconnect",
+          `Started up Postgres server, listening on ${JSON.stringify(server.address())}`,
         );
       }
       await this.connectToPostgres(new URL(connStr), dbId, serviceId);
@@ -134,7 +143,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (!emuInfo) {
       this.logger.logLabeled(
         "ERROR",
-        "Data Connect",
+        "dataconnect",
         "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
       );
       return Promise.reject();
@@ -146,7 +155,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (this.usingExistingEmulator) {
       this.logger.logLabeled(
         "INFO",
-        "Data Connect",
+        "dataconnect",
         "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
       );
       return;
@@ -167,6 +176,26 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  async clearData(): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.clearDb();
+    } else {
+      const conn = new pg.Client(dataConnectLocalConnString());
+      await conn.query(TRUNCATE_TABLES_SQL);
+      await conn.end();
+    }
+  }
+
+  async exportData(exportPath: string): Promise<void> {
+    if (this.postgresServer) {
+      await this.postgresServer.exportData(path.join(exportPath, "postgres.tar.gz"));
+    } else {
+      throw new FirebaseError(
+        "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
+      );
+    }
   }
 
   static async generate(args: DataConnectGenerateArgs): Promise<string> {

@@ -5,7 +5,7 @@ import * as utils from "../utils";
 import { Command } from "../command";
 import DatabaseImporter from "../database/import";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
@@ -97,12 +97,14 @@ export const command = new Command("database:import <path> [infile]")
     let responses;
     try {
       responses = await importer.execute();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof FirebaseError) {
         throw err;
       }
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while importing data: ${err}`, { exit: 2 });
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while importing data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     if (responses.length) {

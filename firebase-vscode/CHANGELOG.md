@@ -1,5 +1,14 @@
 ## NEXT
 
+## 0.10.8
+
+- Updated internal firebase-tools dependency to 13.25.0
+- [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+- [Fixed] Fixed a visual bug when selecting a Firebase project in an empty folder
+
+## 0.10.7
+
+- Updated internal firebase-tools dependency to 13.24.2
 - [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
 - [Fixed] Fixed an issue where firebase version check produced false positives on Windows (#7910)
 

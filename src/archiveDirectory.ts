@@ -5,7 +5,7 @@ import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
 
-import { FirebaseError } from "./error";
+import { FirebaseError, getError } from "./error";
 import { listFiles } from "./listFiles";
 import { logger } from "./logger";
 import { Readable, Writable } from "stream";
@@ -62,11 +62,11 @@ export async function archiveDirectory(
     const archive = await makeArchive;
     logger.debug(`Archived ${filesize(archive.size)} in ${sourceDirectory}.`);
     return archive;
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError("Failed to create archive.", { original: err });
+    throw new FirebaseError("Failed to create archive.", { original: getError(err) });
   }
 }
 
