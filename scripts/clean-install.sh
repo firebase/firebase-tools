@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 function cleanup() {
   echo "Cleaning up artifacts..."
