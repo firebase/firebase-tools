@@ -13,10 +13,14 @@ describe("CleanupBuildImages", () => {
   let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
   let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
   let logLabeledWarning: sinon.SinonStub;
-  const TARGET: backend.TargetIds = {
-    project: "project",
-    region: "us-central1",
+  const TARGET: backend.Endpoint = {
+    platform: "gcfv2",
     id: "id",
+    region: "us-central1",
+    project: "project",
+    entryPoint: "func",
+    runtime: "nodejs16",
+    httpsTrigger: {},
   };
 
   beforeEach(() => {
@@ -192,10 +196,14 @@ describe("ArtifactRegistryCleaner", () => {
 
   it("deletes artifacts", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func: backend.Endpoint = {
+      platform: "gcfv1",
       id: "function",
       region: "region",
       project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
     };
 
     ar.deletePackage.returns(Promise.resolve({ name: "op" } as any));
@@ -209,10 +217,14 @@ describe("ArtifactRegistryCleaner", () => {
 
   it("bypasses poller if the operation is completed", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func: backend.Endpoint = {
+      platform: "gcfv1",
       id: "function",
       region: "region",
       project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
     };
 
     ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
@@ -226,10 +238,14 @@ describe("ArtifactRegistryCleaner", () => {
 
   it("encodeds to avoid upper-case letters", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func: backend.Endpoint = {
+      platform: "gcfv1",
       id: "Strange-Casing_cases",
       region: "region",
       project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
     };
 
     ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
@@ -237,6 +253,28 @@ describe("ArtifactRegistryCleaner", () => {
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
       "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases",
+    );
+    expect(poll.pollOperation).to.not.have.been.called;
+  });
+
+
+  it("constucts container image for v2 function", async () => {
+    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
+    const func: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "region",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
+
+    await cleaner.cleanupFunction(func);
+    expect(ar.deletePackage).to.have.been.calledWith(
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region_id",
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });

@@ -39,8 +39,8 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 }
 
 export async function cleanupBuildImages(
-  haveFunctions: backend.TargetIds[],
-  deletedFunctions: backend.TargetIds[],
+  haveFunctions: backend.Endpoint[],
+  deletedFunctions: backend.Endpoint[],
   cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {},
 ): Promise<void> {
   utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
@@ -100,19 +100,25 @@ export async function cleanupBuildImages(
 // than the raw Docker API. If there are reports of any quota issues we may have to run these
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
-  static packagePath(func: backend.TargetIds): string {
-    // GCFv1 names can include upper-case letters, but docker images cannot.
+  static packagePath(func: backend.Endpoint): string {
+    // GCF names can include upper-case letters, but docker images cannot.
     // to fix this, the artifact registry path for these images uses a custom encoding scheme.
     // * Underscores are doubled
     // * Dashes are doubled
     // * A leading capital letter is replaced with <lower><dash><lower>
     // * Other capital letters are replaced with <underscore><lower>
+    //
+    // For GCFv2, the docker image name is prepended with project and region:
+    //
+    //  <project ID>__<region>_<function ID>
     const encodedId = func.id
       .replace(/_/g, "__")
       .replace(/-/g, "--")
       .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
       .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
-    return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${encodedId}`;
+    const fullId =
+      func.platform === "gcfv1" ? encodedId : `${func.project}__${func.region}_${encodedId}`;
+    return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${fullId}`;
   }
 
   static POLLER_OPTIONS = {
@@ -121,16 +127,17 @@ export class ArtifactRegistryCleaner {
     masterTimeout: 5 * 60 * 1_000,
   };
 
-  // GCFv1 for AR has the following directory structure
+  //
+  // AR has the following directory structure
   // Hostname: <region>-docker.pkg.dev
   // Directory structure:
   // gcf-artifacts/
-  //     +- <function ID>
-  //     +- <function ID>/cache
+  //     +- <container ID>
+  //     +- <container ID>/cache
   // We leave the cache directory alone because it only costs
   // a few MB and improves performance. We only delete the cache if
   // the function was deleted in its entirety.
-  async cleanupFunction(func: backend.TargetIds): Promise<void> {
+  async cleanupFunction(func: backend.Endpoint): Promise<void> {
     let op: artifactregistry.Operation;
     try {
       op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
