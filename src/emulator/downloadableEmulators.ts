@@ -468,6 +468,14 @@ async function _runBinary(
           emulator.name,
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`,
         );
+      } else if (isIncomaptibleArchError(e)) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          `Unknown system error when starting emulator binary. ` +
+            `You may be able to fix this by installing Rosetta: ` +
+            `softwareupdate --install-rosetta`,
+        );
       }
       _fatal(emulator.name, e);
     }
@@ -644,4 +652,13 @@ export async function start(
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
   return _runBinary(emulator, command, extraEnv);
+}
+
+export function isIncomaptibleArchError(err: unknown): boolean {
+  const hasMessage = (e: any): e is { message: string } => !!e?.message;
+  return (
+    hasMessage(err) &&
+    /Unknown system error/.test(err.message ?? "") &&
+    process.platform === "darwin"
+  );
 }
