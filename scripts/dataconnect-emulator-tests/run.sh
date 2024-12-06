@@ -10,7 +10,5 @@ echo "Running with npm: $(which npm)"
 echo "Running with Application Creds: ${GOOGLE_APPLICATION_CREDENTIALS}"
 
 cd scripts/dataconnect-emulator-tests
-firebase --version
-whereis firebase
 firebase emulators:exec "echo" --only dataconnect -P demo-test
 # rm -rf ../../clean
