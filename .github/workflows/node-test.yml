@@ -262,7 +262,10 @@ jobs:
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        run: type *debug.log
+        run: type firebase-debug.log
+      - name: Print more debug logs
+        if: failure()
+        run: type dataconnect-debug.log
 
   check-package-lock:
     runs-on: ubuntu-latest
