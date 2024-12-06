@@ -135,7 +135,7 @@ firebaseSuite("GraphQL", async function () {
       await addDataButton.click();
 
       // Wait a bit for the mutation to be generated
-      await browser.pause(1500);
+      await browser.pause(5000);
 
       // Verify the generated mutation
       const activeEditor = await editorView.getActiveEditor();
@@ -150,7 +150,9 @@ firebaseSuite("GraphQL", async function () {
   }"`);
       expect(editorTitle).toBe("Post_insert.gql");
 
-      await editorView.closeCurrentEditor();
+      // file should be created, saved, then opened
+      expect(activeEditor?.document.isDirty).toBe(false);
+      await editorView.closeAllEditors();
     },
   );
 
@@ -185,7 +187,7 @@ firebaseSuite("GraphQL", async function () {
       await readDataButton.click();
 
       // Wait a bit for the query to be generated
-      await browser.pause(1000);
+      await browser.pause(5000);
 
       // Verify the generated query
       const activeEditor = await editorView.getActiveEditor();
@@ -199,6 +201,10 @@ firebaseSuite("GraphQL", async function () {
   }
 }`);
       expect(editorTitle).toBe("Post_read.gql");
+
+      // file should be created, saved, then opened
+      expect(activeEditor?.document.isDirty).toBe(false);
+      await editorView.closeAllEditors();
     },
   );
 
@@ -242,7 +248,7 @@ firebaseSuite("GraphQL", async function () {
         "test_projects/fishfood/dataconnect/Post_insert.gql",
       );
 
-      await editorView.closeCurrentEditor();
+      await editorView.closeAllEditors();
     },
   );
 
@@ -282,8 +288,10 @@ firebaseSuite("GraphQL", async function () {
       // Verify the generated query file path
       const activeEditor = await editorView.getActiveEditor();
       const filePath = activeEditor?.document.fileName;
-      expect(filePath).toContain("test_projects/fishfood/dataconnect/Post_read.gql");
-      await editorView.closeCurrentEditor();
+      expect(filePath).toContain(
+        "test_projects/fishfood/dataconnect/Post_read.gql",
+      );
+      await editorView.closeAllEditors();
     },
   );
 });

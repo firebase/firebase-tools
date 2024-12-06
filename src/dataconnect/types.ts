@@ -184,7 +184,7 @@ export function toDatasource(
   locationId: string,
   ds: DatasourceYaml,
 ): Datasource {
-  if (ds.postgresql) {
+  if (ds?.postgresql) {
     return {
       postgresql: {
         database: ds.postgresql.database,
