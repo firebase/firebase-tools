@@ -74,8 +74,9 @@ export interface HttpsTrigger {
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
-// eslint-disable-next-line
-interface CallableTrigger {}
+interface CallableTrigger {
+  genkitAction?: string;
+}
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
@@ -149,28 +150,19 @@ export interface ScheduleTrigger {
   retryConfig?: ScheduleRetryConfig | null;
 }
 
-export interface GenkitTrigger {
-  // Note: This is generated from the parameter passed into onCallGenkit,
-  // and Genkit does not support CF3 parameters, thus this does not need
-  // to be an Expression.
-  flow: string;
-}
-
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
 export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
-export type GenkitTriggered = { genkitTrigger: GenkitTrigger };
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
   | ScheduleTriggered
-  | TaskQueueTriggered
-  | GenkitTriggered;
+  | TaskQueueTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -200,11 +192,6 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
 /** Whether something has a BlockingTrigger */
 export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
-}
-
-/** Whether somethign has a GenkitTrigger */
-export function isGenkitTriggered(triggered: Triggered): triggered is GenkitTriggered {
-  return {}.hasOwnProperty.call(triggered, "genkitTrigger");
 }
 
 export interface VpcSettings {
@@ -582,7 +569,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     }
     return { httpsTrigger };
   } else if (isCallableTriggered(endpoint)) {
-    return { callableTrigger: {} };
+    const trigger: CallableTriggered = { callableTrigger: {} };
+    proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
+    return trigger;
   } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };
   } else if (isEventTriggered(endpoint)) {
@@ -657,8 +646,6 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       taskQueueTrigger.invoker = null;
     }
     return { taskQueueTrigger };
-  } else if ("genkitTrigger" in endpoint) {
-    return { genkitTrigger: { flow: endpoint.genkitTrigger.flow } };
   }
   assertExhaustive(endpoint);
 }

@@ -288,8 +288,9 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
 
   // Originally, @genkit-ai/firebase/functions defined onFlow which created an HTTPS trigger that implemented the streaming callable protocol for the Flow.
   // The new version is firebase-functions/https which defines onCallFlow
-  const upgradingGenkitFunction = backend.isHttpsTriggered(have) && backend.isGenkitTriggered(want);
-  if (wantType !== haveType && !upgradingGenkitFunction) {
+  const upgradingHttpsFunction =
+    backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
+  if (wantType !== haveType && !upgradingHttpsFunction) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want,
