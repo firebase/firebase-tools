@@ -262,7 +262,7 @@ jobs:
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        run: dir * /s/b | findstr \debug.log.$ | type
+        run: dir *.log /s/b | type
 
   check-package-lock:
     runs-on: ubuntu-latest
