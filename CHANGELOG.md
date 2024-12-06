@@ -1,0 +1,1 @@
+- Changes default CF3 runtime to nodejs22 (#8037)
