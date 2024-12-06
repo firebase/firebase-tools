@@ -1,0 +1,13 @@
+I1205 15:34:20.403989   25196 load.go:37] Reloading schema and connectors...
+I1205 15:34:20.423555   25196 control.go:45] [engine.Service /emulator/fake-service 39a7] UpdateSchema(): done sources: schema/schema.gql [37B] 
+I1205 15:34:20.434950   25196 control.go:73] [engine.Service /emulator/fake-service 39a7] UpdateConnector(connectorId): done sources: connector/queries.gql [77B] 
+I1205 15:34:20.451126   25196 collector.go:107] schema extensions wrote into "/Users/joehanley/Workspace/firebase-tools/scripts/dataconnect-emulator-tests/fdc-test/.dataconnect/schema"
+Generated sources: prelude.gql [65151B] main/input.gql [2937B] main/query.gql [1026B] main/mutation.gql [3205B] main/implicit.gql [257B] 
+I1205 15:34:20.451316   25196 load.go:115] Finished reloading
+I1205 15:34:20.454484   25196 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:9399
+I1205 15:34:20.455237   25196 dev.go:95] Listening on address (HTTP + gRPC): [::1]:9399
+I1205 15:34:23.036683   25196 migrate.go:28] Running migration SQL:
+Step 1: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+Step 2: CREATE TABLE "public"."order" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" text NOT NULL, PRIMARY KEY ("id"))
+I1205 15:34:23.077239   25196 control.go:45] [engine.Service /emulator/fake-service 38d7] UpdateSchema(): done sources: schema/schema.gql [37B] 
+I1205 15:34:23.079681   25196 control.go:73] [engine.Service /emulator/fake-service 38d7] UpdateConnector(connectorId): done sources: connector/queries.gql [77B] 
