@@ -226,8 +226,8 @@ describe("cloudfunctionsv2", () => {
         cloudfunctionsv2.functionFromEndpoint({
           ...ENDPOINT,
           platform: "gcfv2",
-          genkitTrigger: {
-            flow: "flow",
+          callableTrigger: {
+            genkitAction: "flows/flow",
           },
         }),
       ).to.deep.equal({
@@ -235,7 +235,7 @@ describe("cloudfunctionsv2", () => {
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
           "deployment-callable": "true",
-          "genkit-flow": "flow",
+          "genkit-action": "flows/flow",
         },
       });
     });
@@ -654,25 +654,25 @@ describe("cloudfunctionsv2", () => {
       });
     });
 
-    it("should translate genkit functions", () => {
+    it("should translate genkit callables", () => {
       expect(
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: {
             "deployment-callable": "true",
-            "genkit-flow": "flow",
+            "genkit-action": "flows/flow",
           },
         }),
       ).to.deep.equal({
         ...ENDPOINT,
-        genkitTrigger: {
-          flow: "flow",
+        callableTrigger: {
+          genkitAction: "flows/flow",
         },
         platform: "gcfv2",
         uri: RUN_URI,
         labels: {
           "deployment-callable": "true",
-          "genkit-flow": "flow",
+          "genkit-action": "flows/flow",
         },
       });
     });

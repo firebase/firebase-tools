@@ -44,7 +44,6 @@ export type WireEndpoint = build.Triggered &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
   Partial<build.BlockingTriggered> &
-  Partial<build.GenkitTriggered> &
   Partial<{ scheduleTrigger: WireScheduleTrigger }> & {
     omit?: build.Field<boolean>;
     labels?: Record<string, string> | null;
@@ -164,7 +163,6 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
-    genkitTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
   });
   if (ep.vpc) {
@@ -193,9 +191,6 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   if (ep.blockingTrigger) {
     triggerCount++;
   }
-  if (ep.genkitTrigger) {
-    triggerCount++;
-  }
   if (!triggerCount) {
     throw new FirebaseError("Expected trigger in endpoint " + id);
   }
@@ -219,7 +214,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       invoker: "array?",
     });
   } else if (build.isCallableTriggered(ep)) {
-    // no-op
+    assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
+      genkitAction: "string?",
+    });
   } else if (build.isScheduleTriggered(ep)) {
     assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
       schedule: "Field<string>",
@@ -266,14 +263,6 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
       eventType: "string",
       options: "object",
-    });
-  } else if (build.isGenkitTriggered(ep)) {
-    if (ep.platform === "gcfv1") {
-      throw new FirebaseError("Genkit functions are only available in 2nd gen");
-    }
-    requireKeys(prefix + ".genkitTrigger", ep.genkitTrigger, "flow");
-    assertKeyTypes(prefix + ".genkitTrigger", ep.genkitTrigger, {
-      flow: "string",
     });
   } else {
     // TODO: Replace with assertExhaustive, which needs some type magic here because we have an any
@@ -324,6 +313,7 @@ function parseEndpointForBuild(
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
+    copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
   } else if (build.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       // TODO: consider adding validation for fields like this that reject
@@ -408,8 +398,6 @@ function parseEndpointForBuild(
     triggered = { taskQueueTrigger: tq };
   } else if (ep.blockingTrigger) {
     triggered = { blockingTrigger: ep.blockingTrigger };
-  } else if (ep.genkitTrigger) {
-    triggered = { genkitTrigger: { flow: ep.genkitTrigger.flow } };
   } else {
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +

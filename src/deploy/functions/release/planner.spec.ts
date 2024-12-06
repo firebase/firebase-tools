@@ -48,10 +48,11 @@ describe("planner", () => {
 
     it("allows upgrades of genkit functions from the genkit plugin to firebase-functions SDK", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
-      const genkitFunc = func("a", "b", { genkitTrigger: { flow: "flow" } });
-      expect(planner.calculateUpdate(httpsFunc, genkitFunc)).to.deep.equal({
-        // Missing: deleteAndRecreate, unsafe
+      const genkitFunc = func("a", "b", { callableTrigger: { genkitAction: "flows/flow" } });
+      expect(planner.calculateUpdate(genkitFunc, httpsFunc)).to.deep.equal({
+        // Missing: deleteAndRecreate 
         endpoint: genkitFunc,
+        unsafe: false,
       });
     });
 

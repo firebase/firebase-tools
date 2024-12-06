@@ -41,7 +41,9 @@ export interface HttpsTriggered {
 }
 
 /** API agnostic version of a Firebase callable function. */
-export type CallableTrigger = Record<string, never>;
+export type CallableTrigger = {
+  genkitAction?: string;
+};
 
 /** Something that has a callable trigger */
 export interface CallableTriggered {
@@ -140,16 +142,6 @@ export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
 }
 
-export interface GenkitTrigger {
-  // Note: flow is not a globally unique name, but can be useful
-  // to help people identify the function.
-  flow: string;
-}
-
-export interface GenkitTriggered {
-  genkitTrigger: GenkitTrigger;
-}
-
 /** A user-friendly string for the kind of trigger of an endpoint. */
 export function endpointTriggerType(endpoint: Endpoint): string {
   if (isScheduleTriggered(endpoint)) {
@@ -164,8 +156,6 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
     return endpoint.blockingTrigger.eventType;
-  } else if (isGenkitTriggered(endpoint)) {
-    return "genkit";
   }
   assertExhaustive(endpoint);
 }
@@ -319,8 +309,7 @@ export type Triggered =
   | EventTriggered
   | ScheduleTriggered
   | TaskQueueTriggered
-  | BlockingTriggered
-  | GenkitTriggered;
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -350,11 +339,6 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
 /** Whether something has a BlockingTrigger */
 export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
-}
-
-/** Whether something is a GenkitTriggger */
-export function isGenkitTriggered(triggered: Triggered): triggered is GenkitTriggered {
-  return {}.hasOwnProperty.call(triggered, "genkitTrigger");
 }
 
 /**
