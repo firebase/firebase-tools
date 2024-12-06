@@ -24,16 +24,11 @@ export async function upsertFile(
 ): Promise<void> {
   const doesFileExist = await checkIfFileExists(uri);
 
-  if (!doesFileExist) {
-    const doc = await vscode.workspace.openTextDocument(
-      uri.with({ scheme: "untitled" }),
-    );
-    const editor = await vscode.window.showTextDocument(doc);
 
-    await editor.edit((edit) =>
-      edit.insert(new vscode.Position(0, 0), content()),
-    );
-    return;
+  // Have to write to file system first before opening
+  // otherwise we can't save it without closing it
+  if (!doesFileExist) {
+    vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content()));
   }
 
   // Opens existing text document

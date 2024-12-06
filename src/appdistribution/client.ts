@@ -281,6 +281,7 @@ export class AppDistributionClient {
     releaseName: string,
     devices: TestDevice[],
     loginCredential?: LoginCredential,
+    testCaseName?: string,
   ): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
@@ -289,6 +290,7 @@ export class AppDistributionClient {
         body: {
           deviceExecutions: devices.map(mapDeviceToExecution),
           loginCredential,
+          testCase: testCaseName,
         },
       });
       return response.body;
