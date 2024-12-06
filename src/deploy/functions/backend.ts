@@ -4,7 +4,7 @@ import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray } from "../../functional";
+import { assertExhaustive, flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -135,8 +135,19 @@ export interface BlockingTrigger {
   eventType: string;
   options?: Record<string, unknown>;
 }
+
 export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
+}
+
+export interface GenkitTrigger {
+  // Note: flow is not a globally unique name, but can be useful
+  // to help people identify the function.
+  flow: string;
+}
+
+export interface GenkitTriggered {
+  genkitTrigger: GenkitTrigger;
 }
 
 /** A user-friendly string for the kind of trigger of an endpoint. */
@@ -153,9 +164,10 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
     return endpoint.blockingTrigger.eventType;
-  } else {
-    throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
+  } else if (isGenkitTriggered(endpoint)) {
+    return "genkit";
   }
+  assertExhaustive(endpoint);
 }
 
 // TODO(inlined): Enum types should be singularly named
@@ -307,7 +319,8 @@ export type Triggered =
   | EventTriggered
   | ScheduleTriggered
   | TaskQueueTriggered
-  | BlockingTriggered;
+  | BlockingTriggered
+  | GenkitTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -337,6 +350,11 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
 /** Whether something has a BlockingTrigger */
 export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
+
+/** Whether something is a GenkitTriggger */
+export function isGenkitTriggered(triggered: Triggered): triggered is GenkitTriggered {
+  return {}.hasOwnProperty.call(triggered, "genkitTrigger");
 }
 
 /**

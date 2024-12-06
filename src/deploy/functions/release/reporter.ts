@@ -268,5 +268,9 @@ export function triggerTag(endpoint: backend.Endpoint): string {
     return `${prefix}.blocking`;
   }
 
+  if (backend.isGenkitTriggered(endpoint)) {
+    return `${prefix}.genkit`;
+  }
+
   return endpoint.eventTrigger.eventType;
 }
