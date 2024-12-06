@@ -5,6 +5,7 @@ import * as commandUtils from "../emulator/commandUtils";
 const COMMAND_NAME = "emulators:export";
 export const command = new Command(`${COMMAND_NAME} <path>`)
   .description("export data from running emulators")
+  .firebaseNotRequired()
   .withForce("overwrite any export data in the target directory")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

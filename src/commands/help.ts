@@ -7,6 +7,7 @@ import * as utils from "../utils";
 
 export const command = new Command("help [command]")
   .description("display help information")
+  .firebaseNotRequired()
   // This must stay `function (commandName)`.
   .action(function (commandName) {
     // @ts-ignore

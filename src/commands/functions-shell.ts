@@ -6,6 +6,7 @@ import { DESC_INSPECT_FUNCTIONS, FLAG_INSPECT_FUNCTIONS } from "../emulator/comm
 
 export const command = new Command("functions:shell")
   .description("launch full Node shell with emulated functions")
+  .firebaseNotRequired()
   .option("-p, --port <port>", "the port on which to emulate functions")
   .option(FLAG_INSPECT_FUNCTIONS, DESC_INSPECT_FUNCTIONS)
   .before(requireConfig)

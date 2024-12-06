@@ -676,5 +676,104 @@ describe("Project management", () => {
         expect(nock.isDone()).to.be.true;
       });
     });
+
+    describe("getProject", () => {
+      it("should resolve with project information if it succeeds", async () => {
+        const expectedProjectInfo: projectManager.ProjectInfo = {
+          projectNumber: "123456789",
+          projectId: "my-project",
+          lifecycleState: "ACTIVE",
+          name: "my-project",
+          createTime: "1234512344",
+          parent: { type: "organization", id: "my-org-id" },
+        };
+        nock(api.resourceManagerOrigin())
+          .get(`/v1/projects/${PROJECT_ID}`)
+          .reply(200, expectedProjectInfo);
+
+        const projects = await projectManager.getProject(PROJECT_ID);
+
+        expect(projects).to.deep.equal(expectedProjectInfo);
+        expect(nock.isDone()).to.be.true;
+      });
+
+      it("should reject if the api call fails", async () => {
+        nock(api.resourceManagerOrigin())
+          .get(`/v1/projects/${PROJECT_ID}`)
+          .reply(404, { error: "Not Found" });
+
+        let err;
+        try {
+          await projectManager.getProject(PROJECT_ID);
+        } catch (e: any) {
+          err = e;
+        }
+
+        expect(err).to.not.be.undefined;
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("isFirebaseProject", () => {
+      it("should return true if the Firebase API has project info", async () => {
+        const expectedProjectInfo: FirebaseProjectMetadata = {
+          name: `projects/${PROJECT_ID}`,
+          projectId: PROJECT_ID,
+          displayName: PROJECT_NAME,
+          projectNumber: PROJECT_NUMBER,
+          resources: {
+            hostingSite: HOSTING_SITE,
+            realtimeDatabaseInstance: DATABASE_INSTANCE,
+            storageBucket: STORAGE_BUCKET,
+            locationId: LOCATION_ID,
+          },
+        };
+        nock(api.firebaseApiOrigin())
+          .get(`/v1beta1/projects/${PROJECT_ID}`)
+          .reply(200, expectedProjectInfo);
+
+        const isFirebase = await projectManager.isFirebaseProject(PROJECT_ID);
+        expect(isFirebase).to.be.true;
+      });
+
+      it("should return false if the Firebase API doesn't have project info but resource manager does", async () => {
+        const expectedProjectInfo: projectManager.ProjectInfo = {
+          projectNumber: "123456789",
+          projectId: "my-project",
+          lifecycleState: "ACTIVE",
+          name: "my-project",
+          createTime: "1234512344",
+          parent: { type: "organization", id: "my-org-id" },
+        };
+        nock(api.resourceManagerOrigin())
+          .get(`/v1/projects/${PROJECT_ID}`)
+          .reply(200, expectedProjectInfo);
+        nock(api.firebaseApiOrigin())
+          .get(`/v1beta1/projects/${PROJECT_ID}`)
+          .reply(404, { error: "Not Found" });
+
+        const isFirebase = await projectManager.isFirebaseProject(PROJECT_ID);
+        expect(isFirebase).to.be.false;
+      });
+
+      it("should error if the project doesn't exist", async () => {
+        nock(api.firebaseApiOrigin())
+          .get(`/v1beta1/projects/${PROJECT_ID}`)
+          .reply(404, { error: "Not Found" });
+        nock(api.resourceManagerOrigin())
+          .get(`/v1/projects/${PROJECT_ID}`)
+          .reply(404, { error: "Not Found" });
+
+        let err;
+        try {
+          await projectManager.isFirebaseProject(PROJECT_ID);
+        } catch (e: any) {
+          err = e;
+        }
+
+        expect(err).to.not.be.undefined;
+        expect(nock.isDone()).to.be.true;
+      });
+    });
   });
 });

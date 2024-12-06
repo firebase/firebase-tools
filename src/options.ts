@@ -9,7 +9,7 @@ export interface BaseOptions {
   only: string;
   except: string;
   config: Config;
-  filteredTargets: string[];
+  filteredTargets: Target[];
   force: boolean;
 
   // Options which are present on every command
@@ -29,6 +29,16 @@ export interface BaseOptions {
   exportOnExit?: boolean | string;
   import?: string;
 }
+
+export type Target =
+  | "database"
+  | "storage"
+  | "firestore"
+  | "functions"
+  | "hosting"
+  | "remoteconfig"
+  | "extensions"
+  | "dataconnect";
 
 export interface Options extends BaseOptions {
   // TODO(samstern): Remove this once options is better typed

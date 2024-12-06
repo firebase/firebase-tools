@@ -8,6 +8,7 @@ const NAME = Emulators.DATACONNECT;
 
 export const command = new Command(`setup:emulators:${NAME}`)
   .description(`downloads the ${NAME} emulator`)
+  .firebaseNotRequired()
   .action(async (options: Options) => {
     await downloadIfNecessary(NAME);
     if (!options.config) {

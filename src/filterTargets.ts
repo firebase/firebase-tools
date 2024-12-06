@@ -1,6 +1,6 @@
 import { intersection, difference } from "lodash";
 import { FirebaseError } from "./error";
-import { Options } from "./options";
+import { Options, Target } from "./options";
 
 /**
  * Filters targets from options with valid targets as specified.
@@ -8,7 +8,7 @@ import { Options } from "./options";
  * @param validTargets Targets that are valid.
  * @return List of targets as specified and filtered by options and validTargets.
  */
-export function filterTargets(options: Options, validTargets: string[]): string[] {
+export function filterTargets(options: Options, validTargets: string[]): Target[] {
   let targets = validTargets.filter((t) => {
     return options.config.has(t);
   });
@@ -38,5 +38,5 @@ export function filterTargets(options: Options, validTargets: string[]): string[
 
     throw new FirebaseError(msg);
   }
-  return targets;
+  return targets as Target[];
 }

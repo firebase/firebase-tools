@@ -34,12 +34,21 @@ const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
 export const vscodeEnvVars: { [key: string]: string } = {};
+
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
 export function consoleUrl(project: string, path: string): string {
   const api = require("./api");
   return `${api.consoleOrigin()}/project/${project}${path}`;
+}
+
+/**
+ * Create a Migrate to Firebase Console URL for the specified project.
+ */
+export function addFirebaseToCloudProjectLink(project: string): string {
+  const api = require("./api");
+  return `${api.consoleOrigin()}?dlAction=MigrateCloudProject&cloudProjectNumber=${project}`;
 }
 
 /**

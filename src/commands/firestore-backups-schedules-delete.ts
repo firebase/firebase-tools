@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:schedules:delete <backupSchedule>")
   .description("Delete a backup schedule under your Cloud Firestore database.")
+  .firebaseNotRequired()
   .option("--force", "Attempt to delete backup schedule without prompting for confirmation.")
   .before(requirePermissions, ["datastore.backupSchedules.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

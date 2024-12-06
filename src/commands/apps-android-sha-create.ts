@@ -29,7 +29,7 @@ export const command = new Command("apps:android:sha:create <appId> <shaHash>")
           }),
         `Creating Android SHA certificate ${clc.bold(
           options.shaHash,
-        )}with Android app Id ${clc.bold(appId)}`,
+        )} with Android app Id ${clc.bold(appId)}`,
       );
 
       return shaCertificate;
