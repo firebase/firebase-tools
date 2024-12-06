@@ -129,7 +129,6 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
         "database": {
