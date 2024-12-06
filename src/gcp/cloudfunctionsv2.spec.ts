@@ -221,6 +221,23 @@ describe("cloudfunctionsv2", () => {
           [BLOCKING_LABEL]: "before-sign-in",
         },
       });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          genkitTrigger: {
+            flow: "flow",
+          },
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          ...CLOUD_FUNCTION_V2.labels,
+          "deployment-callable": "true",
+          "genkit-flow": "flow",
+        },
+      });
     });
 
     it("should copy trival fields", () => {
@@ -634,6 +651,29 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         uri: GCF_URL,
         labels: { "deployment-blocking": "before-sign-in" },
+      });
+    });
+
+    it("should translate genkit functions", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: {
+            "deployment-callable": "true",
+            "genkit-flow": "flow",
+          },
+        }),
+      ).to.deep.equal({
+        ...ENDPOINT,
+        genkitTrigger: {
+          flow: "flow",
+        },
+        platform: "gcfv2",
+        uri: RUN_URI,
+        labels: {
+          "deployment-callable": "true",
+          "genkit-flow": "flow",
+        },
       });
     });
 

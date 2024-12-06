@@ -617,6 +617,14 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
           endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
+  } else if (backend.isGenkitTriggered(endpoint)) {
+    // N.B. We're using two labels here, because I suspect we may eventually support
+    // serving prompts as well as flows and I'd like to be able to differentiate.
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "deployment-callable": "true",
+      "genkit-flow": endpoint.genkitTrigger.flow,
+    };
   }
   const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
   if (codebase !== projectConfig.DEFAULT_CODEBASE) {
@@ -651,9 +659,17 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       taskQueueTrigger: {},
     };
   } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
-    trigger = {
-      callableTrigger: {},
-    };
+    if ("genkit-flow" in gcfFunction.labels) {
+      trigger = {
+        genkitTrigger: {
+          flow: gcfFunction.labels["genkit-flow"],
+        },
+      };
+    } else {
+      trigger = {
+        callableTrigger: {},
+      };
+    }
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     trigger = {
       blockingTrigger: {

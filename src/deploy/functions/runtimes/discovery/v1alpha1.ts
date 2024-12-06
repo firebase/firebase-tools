@@ -44,6 +44,7 @@ export type WireEndpoint = build.Triggered &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
   Partial<build.BlockingTriggered> &
+  Partial<build.GenkitTriggered> &
   Partial<{ scheduleTrigger: WireScheduleTrigger }> & {
     omit?: build.Field<boolean>;
     labels?: Record<string, string> | null;
@@ -163,6 +164,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
+    genkitTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
   });
   if (ep.vpc) {
@@ -189,6 +191,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     triggerCount++;
   }
   if (ep.blockingTrigger) {
+    triggerCount++;
+  }
+  if (ep.genkitTrigger) {
     triggerCount++;
   }
   if (!triggerCount) {
@@ -262,7 +267,16 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       eventType: "string",
       options: "object",
     });
+  } else if (build.isGenkitTriggered(ep)) {
+    if (ep.platform === "gcfv1") {
+      throw new FirebaseError("Genkit functions are only available in 2nd gen");
+    }
+    requireKeys(prefix + ".genkitTrigger", ep.genkitTrigger, "flow");
+    assertKeyTypes(prefix + ".genkitTrigger", ep.genkitTrigger, {
+      flow: "string",
+    });
   } else {
+    // TODO: Replace with assertExhaustive, which needs some type magic here because we have an any
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
         "firebase-tools with npm install -g firebase-tools@latest",
@@ -394,6 +408,8 @@ function parseEndpointForBuild(
     triggered = { taskQueueTrigger: tq };
   } else if (ep.blockingTrigger) {
     triggered = { blockingTrigger: ep.blockingTrigger };
+  } else if (ep.genkitTrigger) {
+    triggered = { genkitTrigger: { flow: ep.genkitTrigger.flow } };
   } else {
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +

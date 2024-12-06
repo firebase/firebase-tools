@@ -100,6 +100,16 @@ describe("reporter", () => {
           blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
         }),
       ).to.equal("v2.blocking");
+
+      it("detects v2 genkit", () => {
+        expect(
+          reporter.triggerTag({
+            ...ENDPOINT_BASE,
+            platform: "gcfv2",
+            genkitTrigger: { flow: "flow" },
+          }),
+        ).to.equal("v2.genkit");
+      });
     });
 
     it("detects others", () => {
