@@ -1,10 +1,10 @@
 import * as path from "path";
-import { execFileSync } from "child_process";
 import { markedTerminal } from "marked-terminal";
 import { marked } from "marked";
 
 import { Options } from "../../options";
-import { ExtensionSpec, ParamType, isObject } from "../types";
+import { isObject } from "../../error";
+import { ExtensionSpec, ParamType } from "../types";
 import { confirm } from "../../prompt";
 import * as secretsUtils from "../secretsUtils";
 import { logLabeledBullet } from "../../utils";
@@ -22,6 +22,7 @@ import {
 import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
 import { SpecParamType } from "../extensionsHelper";
 import { FirebaseError, getErrMsg } from "../../error";
+import { spawnWithOutput } from "../../init/spawn";
 
 marked.use(markedTerminal() as any);
 
@@ -473,7 +474,7 @@ export async function writeSDK(
   // NPM install dependencies (since we will be adding this link locally)
   logLabeledBullet("extensions", `running 'npm --prefix ${shortDirPath} install'`);
   try {
-    execFileSync("npm", ["--prefix", dirPath, "install"]);
+    await spawnWithOutput("npm", ["--prefix", dirPath, "install"]);
   } catch (err: unknown) {
     const errMsg = getErrMsg(err, "unknown error");
     throw new FirebaseError(`Error during npm install in ${shortDirPath}: ${errMsg}`);
@@ -482,7 +483,7 @@ export async function writeSDK(
   // Build it
   logLabeledBullet("extensions", `running 'npm --prefix ${shortDirPath} run build'`);
   try {
-    execFileSync("npm", ["--prefix", dirPath, "run", "build"]);
+    await spawnWithOutput("npm", ["--prefix", dirPath, "run", "build"]);
   } catch (err: unknown) {
     const errMsg = getErrMsg(err, "unknown error");
     throw new FirebaseError(`Error during npm run build in ${shortDirPath}: ${errMsg}`);
@@ -504,7 +505,7 @@ export async function writeSDK(
       `running 'npm --prefix ${shortCodebaseDir} install --save ${shortDirPath}'`,
     );
     try {
-      execFileSync("npm", ["--prefix", codebaseDir, "install", "--save", dirPath]);
+      await spawnWithOutput("npm", ["--prefix", codebaseDir, "install", "--save", dirPath]);
     } catch (err: unknown) {
       const errMsg = getErrMsg(err, "unknown error");
       throw new FirebaseError(`Error during npm install in ${codebaseDir}: ${errMsg}`);
