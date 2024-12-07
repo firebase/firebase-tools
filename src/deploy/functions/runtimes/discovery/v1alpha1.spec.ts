@@ -162,6 +162,35 @@ describe("buildFromV1Alpha", () => {
       });
     });
 
+    describe("genkitTriggers", () => {
+      it("fails with invalid fields", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              genkitTrigger: {
+                tool: "tools are not supported",
+              },
+            },
+          },
+        });
+      });
+
+      it("cannot be used with 1st gen", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              platform: "gcfv1",
+              genkitTrigger: {
+                flow: "agent",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("scheduleTriggers", () => {
       const validTrigger: build.ScheduleTrigger = {
         schedule: "every 5 minutes",
