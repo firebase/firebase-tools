@@ -9,7 +9,7 @@ import {
 } from "./types";
 import { Constants } from "./constants";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, hasMessage } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -655,7 +655,6 @@ export async function start(
 }
 
 export function isIncomaptibleArchError(err: unknown): boolean {
-  const hasMessage = (e: any): e is { message: string } => !!e?.message;
   return (
     hasMessage(err) &&
     /Unknown system error/.test(err.message ?? "") &&

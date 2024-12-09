@@ -1,1 +1,2 @@
 - Changes default CF3 runtime to nodejs22 (#8037)
+- Fixed an issue where `--import` would error for the Data Connect emulator if `dataDir` was also set.
