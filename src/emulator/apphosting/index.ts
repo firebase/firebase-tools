@@ -5,7 +5,7 @@ interface AppHostingEmulatorArgs {
   options?: any;
   port?: number;
   host?: string;
-  startCommandOverride?: string;
+  startCommand?: string;
   rootDirectory?: string;
 }
 
@@ -19,7 +19,7 @@ export class AppHostingEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const { hostname, port } = await apphostingStart({
       port: this.args.port,
-      startCommand: this.args.startCommandOverride,
+      startCommand: this.args.startCommand,
       rootDirectory: this.args.rootDirectory,
     });
     this.args.options.host = hostname;

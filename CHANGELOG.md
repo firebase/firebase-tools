@@ -1,1 +1,1 @@
-- Added default value for `emulators.dataconnect.dataDir` to `init dataconnect`.
+- Changes default CF3 runtime to nodejs22 (#8037)

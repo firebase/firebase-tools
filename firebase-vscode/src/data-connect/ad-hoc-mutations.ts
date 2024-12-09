@@ -149,9 +149,6 @@ query {
     documentPath: string,
   ) {
     // generate content for the file
-    const preamble =
-      "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
-
     const introspect = await dataConnectService.introspect();
     if (!introspect.data) {
       vscode.window.showErrorMessage(
@@ -165,14 +162,6 @@ query {
       return;
     }
 
-    const adhocMutation = print(
-      await makeAdHocMutation(
-        Object.values(dataType.getFields()),
-        ast.name.value,
-      ),
-    );
-    const content = [preamble, adhocMutation].join("\n");
-
     // get root where dataconnect.yaml lives
     const configs = await firstWhereDefined(dataConnectConfigs);
     const dataconnectConfig =
@@ -182,26 +171,15 @@ query {
     const filePath = vscode.Uri.file(
       `${basePath}/${ast.name.value}_insert.gql`,
     );
-    const doesFileExist = await checkIfFileExists(filePath);
 
-    if (!doesFileExist) {
-      // opens unsaved text document with name "[mutationName]_insert.gql"
-
-      vscode.workspace
-        .openTextDocument(filePath.with({ scheme: "untitled" }))
-        .then((doc) => {
-          vscode.window.showTextDocument(doc).then((openDoc) => {
-            openDoc.edit((edit) => {
-              edit.insert(new vscode.Position(0, 0), content);
-            });
-          });
-        });
-    } else {
-      // Opens existing text document
-      vscode.workspace.openTextDocument(filePath).then((doc) => {
-        vscode.window.showTextDocument(doc);
-      });
-    }
+    await upsertFile(filePath, () => {
+    const preamble =
+      "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
+      const adhocMutation = print(
+        makeAdHocMutation(Object.values(dataType.getFields()), ast.name.value),
+      );
+      return [preamble, adhocMutation].join("\n");
+    });
   }
 
   function makeAdHocMutation(
