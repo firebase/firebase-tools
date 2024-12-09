@@ -17,6 +17,7 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
+import { hasMessage } from "../../error";
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
 BEGIN
@@ -98,7 +99,7 @@ export class PostgresServer {
         const file = new File([rf], this.importPath);
         pgliteArgs.loadDataDir = file;
       }
-      this.db = await PGlite.create(pgliteArgs);
+      this.db = await this.forceCreateDB(pgliteArgs);
       await this.db.waitReady;
     }
     return this.db;
@@ -114,6 +115,21 @@ export class PostgresServer {
     const dump = await db.dumpDataDir();
     const arrayBuff = await dump.arrayBuffer();
     fs.writeFileSync(exportPath, new Uint8Array(arrayBuff));
+  }
+
+  async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
+    try {
+      const db = await PGlite.create(pgliteArgs);
+      return db;
+    } catch (err: unknown) {
+      if (pgliteArgs.dataDir && hasMessage(err) && /Database already exists/.test(err.message)) {
+        // Clear out the current pglite data
+        fs.rmSync(pgliteArgs.dataDir, { force: true, recursive: true });
+        const db = await PGlite.create(pgliteArgs);
+        return db;
+      }
+      throw err;
+    }
   }
 
   constructor(database: string, username: string, dataDirectory?: string, importPath?: string) {

@@ -1,11 +1,11 @@
 import { Signal, computed, effect } from "@preact/signals-react";
-import { Disposable, TelemetryLogger } from "vscode";
+import { Disposable } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { login, logoutUser, requireAuthWrapper } from "../cli";
 import { globalSignal } from "../utils/globals";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import * as vscode from "vscode";
 
 type User = ServiceAccountUser | AuthUser;
@@ -24,7 +24,7 @@ export async function checkLogin() {
 
 export function registerUser(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   // For testing purposes.
   const userMockCommand = vscode.commands.registerCommand(
@@ -58,7 +58,7 @@ export function registerUser(
   });
 
   const addUserSub = broker.on("addUser", async () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
     const { user } = await login();
     currentUser.value = user;
   });
