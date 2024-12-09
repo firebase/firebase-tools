@@ -568,7 +568,7 @@ async function ensureServiceIsConnectedToCloudSql(
     );
   }
   if (!postgresql || postgresql.schemaValidation !== "NONE") {
-    // Skip provisioning connectvity if it was already connected.
+    // Skip provisioning connectvity if it is already connected.
     return;
   }
   postgresql.schemaValidation = "STRICT";
