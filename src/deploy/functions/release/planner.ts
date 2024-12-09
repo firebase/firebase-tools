@@ -8,10 +8,6 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
-import {
-  FIRESTORE_EVENT_REGEX,
-  FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX,
-} from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -261,9 +257,9 @@ export function upgradedScheduleFromV1ToV2(
 export function checkForUnsafeUpdate(want: backend.Endpoint, have: backend.Endpoint): boolean {
   return (
     backend.isEventTriggered(want) &&
-    FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX.test(want.eventTrigger.eventType) &&
     backend.isEventTriggered(have) &&
-    FIRESTORE_EVENT_REGEX.test(have.eventTrigger.eventType)
+    want.eventTrigger.eventType ===
+      v2events.CONVERTABLE_EVENTS[have.eventTrigger.eventType as v2events.Event]
   );
 }
 
@@ -289,7 +285,12 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType !== haveType) {
+
+  // Originally, @genkit-ai/firebase/functions defined onFlow which created an HTTPS trigger that implemented the streaming callable protocol for the Flow.
+  // The new version is firebase-functions/https which defines onCallFlow
+  const upgradingHttpsFunction =
+    backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
+  if (wantType !== haveType && !upgradingHttpsFunction) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want,
