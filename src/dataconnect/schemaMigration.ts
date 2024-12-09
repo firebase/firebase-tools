@@ -543,6 +543,7 @@ async function ensureServiceIsConnectedToCloudSql(
         {
           postgresql: {
             database: databaseId,
+            schemaValidation: "NONE",
             cloudSql: {
               instance: instanceId,
             },
@@ -566,7 +567,8 @@ async function ensureServiceIsConnectedToCloudSql(
       `Switching connected Postgres database from ${postgresql?.database} to ${databaseId}`,
     );
   }
-  if (!postgresql || postgresql.schemaValidation === "STRICT") {
+  if (!postgresql || postgresql.schemaValidation !== "NONE") {
+    // Skip provisioning connectvity if it was already connected.
     return;
   }
   postgresql.schemaValidation = "STRICT";
