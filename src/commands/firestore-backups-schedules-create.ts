@@ -19,6 +19,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:schedules:create")
   .description("Create a backup schedule under your Cloud Firestore database.")
+  .firebaseNotRequired()
   .option(
     "-d, --database <databaseId>",
     "Database under which you want to create a schedule. Defaults to the (default) database",

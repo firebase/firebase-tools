@@ -6,6 +6,7 @@ const EMULATOR_NAME = Emulators.STORAGE;
 
 export const command = new Command(`setup:emulators:${EMULATOR_NAME}`)
   .description(`downloads the ${EMULATOR_NAME} emulator`)
+  .firebaseNotRequired()
   .action(() => {
     return downloadEmulator(EMULATOR_NAME);
   });

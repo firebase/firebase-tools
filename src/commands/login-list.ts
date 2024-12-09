@@ -8,6 +8,7 @@ import * as auth from "../auth";
 
 export const command = new Command("login:list")
   .description("list authorized CLI accounts")
+  .firebaseNotRequired()
   .action((options: any) => {
     const user = options.user as User | undefined;
     const allAccounts = auth.getAllAccounts();

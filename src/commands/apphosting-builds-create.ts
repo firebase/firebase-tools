@@ -6,6 +6,7 @@ import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:builds:create <backendId>")
   .description("create a build for an App Hosting backend")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "specify the region of the backend", "us-central1")
   .option("-i, --id <buildId>", "id of the build (defaults to autogenerating a random id)", "")
   .option("-b, --branch <branch>", "repository branch to deploy (defaults to 'main')", "main")

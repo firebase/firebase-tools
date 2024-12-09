@@ -8,6 +8,7 @@ import { last } from "../utils";
 
 export const command = new Command("experiments:enable <experiment>")
   .description("enable an experiment on this machine")
+  .firebaseNotRequired()
   .action((experiment: string) => {
     if (experiments.isValidExperiment(experiment)) {
       experiments.setEnabled(experiment, true);

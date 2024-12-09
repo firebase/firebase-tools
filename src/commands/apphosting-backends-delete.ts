@@ -15,6 +15,7 @@ import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "specify the location of the backend", "-")
   .withForce()
   .before(apphosting.ensureApiEnabled)

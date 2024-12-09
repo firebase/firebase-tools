@@ -17,6 +17,7 @@ import {
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
+  .firebaseNotRequired()
   .action(logoutAction);
 
 /**

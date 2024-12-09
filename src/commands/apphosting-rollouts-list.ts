@@ -6,6 +6,7 @@ import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:rollouts:list <backendId>")
   .description("list rollouts of an App Hosting backend")
+  .firebaseNotRequired()
   .option(
     "-l, --location <location>",
     "region of the rollouts (defaults to listing rollouts from all regions)",

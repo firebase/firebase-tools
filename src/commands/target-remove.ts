@@ -6,6 +6,7 @@ import * as utils from "../utils";
 
 export const command = new Command("target:remove <type> <resource>")
   .description("remove a resource target")
+  .firebaseNotRequired()
   .before(requireConfig)
   .action((type, resource, options) => {
     const name = options.rc.removeTarget(options.project, type, resource);

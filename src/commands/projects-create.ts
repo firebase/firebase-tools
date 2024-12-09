@@ -13,6 +13,7 @@ export const command = new Command("projects:create [projectId]")
   .description(
     "creates a new Google Cloud Platform project, then adds Firebase resources to the project",
   )
+  .firebaseNotRequired()
   .option("-n, --display-name <displayName>", "(optional) display name for the project")
   .option(
     "-o, --organization <organizationId>",

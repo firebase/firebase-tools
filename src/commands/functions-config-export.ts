@@ -95,6 +95,7 @@ function fromEntries<V>(itr: Iterable<[string, V]>): Record<string, V> {
 
 export const command = new Command("functions:config:export")
   .description("Export environment config as environment variables in dotenv format")
+  .firebaseNotRequired()
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.get",

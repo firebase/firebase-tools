@@ -60,7 +60,7 @@ describe("hosting prepare", () => {
       configPath: ".",
       only: "hosting",
       except: "",
-      filteredTargets: ["HOSTING"],
+      filteredTargets: ["hosting"],
       force: false,
       json: false,
       nonInteractive: false,

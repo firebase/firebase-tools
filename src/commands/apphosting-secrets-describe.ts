@@ -11,6 +11,7 @@ const Table = require("cli-table");
 
 export const command = new Command("apphosting:secrets:describe <secretName>")
   .description("Get metadata for secret and its versions.")
+  .firebaseNotRequired()
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(requirePermissions, ["secretmanager.secrets.get"])

@@ -32,6 +32,7 @@ function verifyMessage(name: string): string {
 
 export const command = new Command("use [alias_or_project_id]")
   .description("set an active Firebase project for your working directory")
+  .firebaseNotRequired()
   .option("--add", "create a new project alias interactively")
   .option("--alias <name>", "create a new alias for the provided project id")
   .option("--unalias <name>", "remove an already created project alias")

@@ -63,6 +63,7 @@ const CHOICES = LINKS.map((l) => l.name);
 
 export const command = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
+  .firebaseNotRequired()
   .before(requirePermissions)
   .before(requireDatabaseInstance)
   .before(requireHostingSite)

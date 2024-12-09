@@ -13,6 +13,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:restore")
   .description("Restore a Firestore database in your Firebase project.")
+  .firebaseNotRequired()
   .option("-d, --database <databaseID>", "ID of the database to restore into")
   .option("-b, --backup <backup>", "Backup from which to restore")
   .option(

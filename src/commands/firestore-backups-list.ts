@@ -10,6 +10,7 @@ import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:backups:list")
   .description("List all Cloud Firestore backups in a given location")
+  .firebaseNotRequired()
   .option(
     "-l, --location <locationId>",
     "Location to search for backups, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. Defaults to all locations.",

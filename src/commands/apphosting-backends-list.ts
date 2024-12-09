@@ -11,6 +11,7 @@ const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "list backends in the specified location", "-")
   .before(apphosting.ensureApiEnabled)
   .action(async (options: Options) => {

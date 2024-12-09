@@ -6,6 +6,7 @@ import { needProjectId } from "../projectUtils";
 
 export const command = new Command("apphosting:builds:get <backendId> <buildId>")
   .description("get a build for an App Hosting backend")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "specify the region of the backend", "us-central1")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, buildId: string, options: Options) => {

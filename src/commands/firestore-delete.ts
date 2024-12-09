@@ -68,6 +68,7 @@ function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOption
 
 export const command = new Command("firestore:delete [path]")
   .description("Delete data from Cloud Firestore.")
+  .firebaseNotRequired()
   .option(
     "-r, --recursive",
     "Recursive. Delete all documents and subcollections at and under the " +

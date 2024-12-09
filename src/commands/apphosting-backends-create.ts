@@ -9,6 +9,7 @@ import { requireTosAcceptance } from "../requireTosAcceptance";
 
 export const command = new Command("apphosting:backends:create")
   .description("create a Firebase App Hosting backend")
+  .firebaseNotRequired()
   .option(
     "-a, --app <webAppId>",
     "specify an existing Firebase web app's ID to associate your App Hosting backend with",
