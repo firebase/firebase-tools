@@ -1,5 +1,11 @@
 ## NEXT
 
+## 0.11.1
+
+- [Fixed] Fixed IDX analytics issue
+
+## 0.11.0
+
 - Updated internal firebase-tools dependency to 13.28.0
 - [Fixed] Fixed an issue where generating an ad-hoc file would break codelenses
 
