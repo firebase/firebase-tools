@@ -1,2 +1,3 @@
 - Changes default CF3 runtime to nodejs22 (#8037)
 - Fixed an issue where `--import` would error for the Data Connect emulator if `dataDir` was also set.
+- Fixed an issue where `firebase init dataconnect` errored when importing a schema with no GQL files.

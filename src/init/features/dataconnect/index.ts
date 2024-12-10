@@ -1,5 +1,6 @@
 import { join, basename } from "path";
 import * as clc from "colorette";
+import { ensureDirSync } from "fs-extra";
 
 import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
@@ -192,6 +193,9 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     true,
   );
 
+  // Make sure we create a schema directory even if there are no files
+  // so that users know where to put them.
+  ensureDirSync(join(dir, "schema"));
   if (info.schemaGql.length) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
