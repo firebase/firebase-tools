@@ -58,6 +58,9 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
 }
 
 export async function readGQLFiles(sourceDir: string): Promise<File[]> {
+  if (!fs.existsSync(sourceDir)) {
+    return [];
+  }
   const files = await fs.readdir(sourceDir);
   // TODO: Handle files in subdirectories such as `foo/a.gql` and `bar/baz/b.gql`.
   return files
