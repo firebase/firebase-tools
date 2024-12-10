@@ -89,12 +89,18 @@ export function registerTerminalTasks(
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS, {
       firebase_binary_kind: settings.firebaseBinaryKind,
     });
+    let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
+    if (settings.importPath) {
+      cmd += ` --import ${settings.importPath}`;
+    }
+    if (settings.exportOnExit) {
+      cmd += ` --export-on-exit ${settings.exportPath}`;
+    }
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
-      // emulators:start almost never ask interactive questions.
-      { focus: false },
+      cmd,
+      { focus: true },
     );
   });
 

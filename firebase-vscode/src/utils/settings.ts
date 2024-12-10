@@ -7,6 +7,9 @@ export interface Settings {
   readonly npmPath: string;
   readonly useFrameworks: boolean;
   readonly shouldShowIdxMetricNotice: boolean;
+  readonly importPath?: string;
+  readonly exportPath: string;
+  readonly exportOnExit: boolean;
 }
 
 // TODO: Temporary fallback for bashing, this should probably point to the global firebase binary on the system
@@ -37,6 +40,9 @@ export function getSettings(): Settings {
       "idx.viewMetricNotice",
       true,
     ),
+    importPath: config.get<string>("emulators.importPath"),
+    exportPath: config.get<string>("emulators.exportPath", "./exportedData"),
+    exportOnExit: config.get<boolean>("emulators.exporOnExit", false),
   };
 }
 

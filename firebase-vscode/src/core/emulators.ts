@@ -6,6 +6,7 @@ import { EmulatorsStatus, RunningEmulatorInfo } from "../messaging/types";
 import { EmulatorHubClient } from "../../../src/emulator/hubClient";
 import { GetEmulatorsResponse } from "../../../src/emulator/hub";
 import { EmulatorInfo } from "../emulator/types";
+import { getSettings } from "../utils/settings";
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.emulatorStatusItem.command = "firebase.openFirebaseRc";
@@ -22,6 +23,12 @@ export class EmulatorsController implements Disposable {
       }),
     );
 
+    this.subscriptions.push(
+      broker.on("fdc.open-emulator-settings", () => {
+        vscode.commands.executeCommand( 'workbench.action.openSettings', 'firebase.emulators' );
+      })
+    )
+
     // called by emulator UI
     this.subscriptions.push(
       broker.on("fdc.clear-emulator-data", () => {
@@ -32,7 +39,8 @@ export class EmulatorsController implements Disposable {
     this.subscriptions.push(broker.on("runEmulatorsExport", () => {
       // TODO: optional debug mode
       // TODO: Let users choose a export directory
-      this.exportEmulatorData();
+      const settings = getSettings();
+      this.exportEmulatorData(settings.exportPath);
     }))
   }
 
@@ -141,10 +149,9 @@ export class EmulatorsController implements Disposable {
     }
   }
 
-  async exportEmulatorData(): Promise<void> {
+  async exportEmulatorData(exportDir: string): Promise<void> {
     const hubClient = this.getHubClient();
     if (hubClient) {
-      const exportDir = "./exportedData";
       // TODO: Make exportDir configurable
       await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
       vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);

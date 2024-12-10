@@ -77,6 +77,20 @@
           "default": true,
           "markdownDescription": "%ext.config.idx.viewMetricNotice%",
           "scope": "application"
+        },
+        "firebase.emulators.importPath": {
+          "type": "string",
+          "markdownDescription": "%ext.config.emulators.importPath%"
+        },
+        "firebase.emulators.exportPath": {
+          "type": "string",
+          "default": "./exportedData",
+          "markdownDescription": "%ext.config.emulators.exportPath%"
+        },
+        "firebase.dataConnect.emulators.exportOnExit":{
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%ext.config.emulators.exportOnExit%"
         }
       }
     },
