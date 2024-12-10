@@ -121,3 +121,8 @@ export function isBillingError(e: {
     );
   });
 }
+
+/**
+ * Checks whether an unknown object (such as an error) has a message field
+ */
+export const hasMessage = (e: any): e is { message: string } => !!e?.message;

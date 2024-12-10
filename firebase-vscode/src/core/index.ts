@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
@@ -14,11 +14,12 @@ import { upsertFile } from "../data-connect/file-utils";
 import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
+import { AnalyticsLogger } from "../analytics";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
   context: ExtensionContext,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
 
@@ -69,7 +70,7 @@ export async function registerCore(
       ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
       : `${settings.firebasePath} init dataconnect`;
 
-    initSpy.call("firebase init", initCommand, {focus: true});
+    initSpy.call("firebase init", initCommand, { focus: true });
   });
 
   const emulatorsController = new EmulatorsController(broker);
@@ -103,8 +104,8 @@ export async function registerCore(
       initSpy,
       registerOptions(context),
       registerEnv(broker),
-      registerUser(broker, telemetryLogger),
-      registerProject(broker, telemetryLogger),
+      registerUser(broker, analyticsLogger),
+      registerProject(broker, analyticsLogger),
       registerQuickstart(broker),
       await registerWebhooks(),
       { dispose: sub1 },
