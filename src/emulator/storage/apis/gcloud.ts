@@ -18,6 +18,9 @@ import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import type { Query } from "express-serve-static-core";
 
+/**
+ *
+ */
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const gcloudStorageAPI = Router();
@@ -114,25 +117,28 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     },
   );
 
-  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
-    let updatedMetadata: StoredFileMetadata;
-    try {
-      updatedMetadata = await adminStorageLayer.updateObjectMetadata({
-        bucketId: req.params.bucketId,
-        decodedObjectId: req.params.objectId,
-        metadata: req.body as IncomingMetadata,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return sendObjectNotFound(req, res);
+  gcloudStorageAPI.patch(
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
+    async (req, res) => {
+      let updatedMetadata: StoredFileMetadata;
+      try {
+        updatedMetadata = await adminStorageLayer.updateObjectMetadata({
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+          metadata: req.body as IncomingMetadata,
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
-      if (err instanceof ForbiddenError) {
-        return res.sendStatus(403);
-      }
-      throw err;
-    }
-    return res.json(new CloudStorageObjectMetadata(updatedMetadata));
-  });
+      return res.json(new CloudStorageObjectMetadata(updatedMetadata));
+    },
+  );
 
   gcloudStorageAPI.get(["/b/:bucketId/o", "/storage/v1/b/:bucketId/o"], async (req, res) => {
     let listResponse: ListObjectsResponse;
