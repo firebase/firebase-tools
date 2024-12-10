@@ -42,7 +42,7 @@ export function getSettings(): Settings {
     ),
     importPath: config.get<string>("emulators.importPath"),
     exportPath: config.get<string>("emulators.exportPath", "./exportedData"),
-    exportOnExit: config.get<boolean>("emulators.exporOnExit", false),
+    exportOnExit: config.get<boolean>("emulators.exportOnExit", false),
   };
 }
 

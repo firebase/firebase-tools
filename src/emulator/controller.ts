@@ -910,7 +910,7 @@ export async function startAll(
           }))
         ) {
           await cleanShutdown();
-          return { deprecationNotices: [] };
+          throw new FirebaseError("Command aborted");
         }
       }
 

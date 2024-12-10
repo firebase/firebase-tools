@@ -90,12 +90,14 @@ export function registerTerminalTasks(
       firebase_binary_kind: settings.firebaseBinaryKind,
     });
     let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
+    console.log(settings);
     if (settings.importPath) {
       cmd += ` --import ${settings.importPath}`;
     }
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
+    console.log(cmd);
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
