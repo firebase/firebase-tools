@@ -187,13 +187,10 @@ export class DataConnectEmulator implements EmulatorInstance {
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
-<<<<<<< HEAD
-=======
     } else {
       const conn = new pg.Client(dataConnectLocalConnString());
       await conn.query(TRUNCATE_TABLES_SQL);
       await conn.end();
->>>>>>> public/master
     }
   }
 
