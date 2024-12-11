@@ -4,3 +4,4 @@
 - CF3 callables can now be annotate with a genkit action they are serving (#8039)
 - HTTPS functions can now be upgraded to HTTPS Callable functions (#8039)
 - Update default tsconfig to support more modern defaults (#8039)
+- Fixed an issue where `--import` would error for the Data Connect emulator if `dataDir` was also set.
