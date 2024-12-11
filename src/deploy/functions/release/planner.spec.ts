@@ -50,7 +50,7 @@ describe("planner", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
       const genkitFunc = func("a", "b", { callableTrigger: { genkitAction: "flows/flow" } });
       expect(planner.calculateUpdate(genkitFunc, httpsFunc)).to.deep.equal({
-        // Missing: deleteAndRecreate 
+        // Missing: deleteAndRecreate
         endpoint: genkitFunc,
         unsafe: false,
       });
