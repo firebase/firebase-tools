@@ -31,7 +31,8 @@ export function EmulatorPanel({
           </VSCodeLink>
         </>
       )}
-      <RunningEmulatorControlButtons infos={emulatorInfo.displayInfo}></RunningEmulatorControlButtons>
+      <Spacer size="medium" />
+      <RunningEmulatorControlButtons infos={emulatorInfo.displayInfo} />
       <Spacer size="large" />
       <Body>
         <ExternalLink
@@ -69,14 +70,20 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
 
 function RunningEmulatorControlButtons({ infos }: { infos: EmulatorInfo[] }) {
   return (
-    <Body>
-      <VSCodeButton onClick={() => broker.send("fdc.clear-emulator-data")}>
-        Clear Data Connect Data
+    <>
+      <VSCodeButton
+        onClick={() => broker.send("fdc.clear-emulator-data")}
+        appearance="secondary"
+      >
+        Clear Data Connect data
       </VSCodeButton>
       <Spacer size="small"></Spacer>
-      <VSCodeButton onClick={() => broker.send("runEmulatorsExport")}>
-        Export Emulator Data
+      <VSCodeButton
+        onClick={() => broker.send("runEmulatorsExport")}
+        appearance="secondary"
+      >
+        Export emulator data
       </VSCodeButton>
-    </Body>
+    </>
   );
 }
