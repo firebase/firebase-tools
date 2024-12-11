@@ -1,3 +1,6 @@
 - Changes default CF3 runtime to nodejs22 (#8037)
 - Fixed an issue where `--import` would error for the Data Connect emulator if `dataDir` was also set.
 - Fixed an issue where `firebase init dataconnect` errored when importing a schema with no GQL files.
+- CF3 callables can now be annotate with a genkit action they are serving (#8039)
+- HTTPS functions can now be upgraded to HTTPS Callable functions (#8039)
+- Update default tsconfig to support more modern defaults (#8039)

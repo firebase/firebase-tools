@@ -46,6 +46,16 @@ describe("planner", () => {
       expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw();
     });
 
+    it("allows upgrades of genkit functions from the genkit plugin to firebase-functions SDK", () => {
+      const httpsFunc = func("a", "b", { httpsTrigger: {} });
+      const genkitFunc = func("a", "b", { callableTrigger: { genkitAction: "flows/flow" } });
+      expect(planner.calculateUpdate(genkitFunc, httpsFunc)).to.deep.equal({
+        // Missing: deleteAndRecreate
+        endpoint: genkitFunc,
+        unsafe: false,
+      });
+    });
+
     it("knows to delete & recreate for v2 topic changes", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
