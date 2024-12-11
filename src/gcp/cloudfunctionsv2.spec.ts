@@ -669,7 +669,7 @@ describe("cloudfunctionsv2", () => {
           genkitAction: "flows/flow",
         },
         platform: "gcfv2",
-        uri: RUN_URI,
+        uri: GCF_URL,
         labels: {
           "deployment-callable": "true",
           "genkit-action": "flows/flow",
