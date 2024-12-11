@@ -1,5 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
+import * as fs from "fs-extra";
 
 import * as init from "./index";
 import { Config } from "../../../config";
@@ -17,9 +18,11 @@ describe("init dataconnect", () => {
     const sandbox = sinon.createSandbox();
     let provisionCSQLStub: sinon.SinonStub;
     let askWriteProjectFileStub: sinon.SinonStub;
+    let ensureSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
+      ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
     });
 
     afterEach(() => {
@@ -33,6 +36,7 @@ describe("init dataconnect", () => {
       expectedSource: string;
       expectedFiles: string[];
       expectCSQLProvisioning: boolean;
+      expectEnsureSchemaGQL: boolean;
     }[] = [
       {
         desc: "empty project should generate template",
@@ -47,6 +51,7 @@ describe("init dataconnect", () => {
           "dataconnect/connector/mutations.gql",
         ],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "exiting project should use existing directory",
@@ -55,6 +60,7 @@ describe("init dataconnect", () => {
         expectedSource: "not-dataconnect",
         expectedFiles: ["not-dataconnect/dataconnect.yaml"],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write schema files",
@@ -70,6 +76,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write connector files",
@@ -95,6 +102,7 @@ describe("init dataconnect", () => {
           "dataconnect/hello/queries.gql",
         ],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should provision cloudSQL resources ",
@@ -111,6 +119,22 @@ describe("init dataconnect", () => {
           "dataconnect/connector/mutations.gql",
         ],
         expectCSQLProvisioning: true,
+        expectEnsureSchemaGQL: false,
+      },
+      {
+        desc: "should handle schema with no files",
+        requiredInfo: mockRequiredInfo({
+          schemaGql: [],
+        }),
+        config: mockConfig({
+          dataconnect: {
+            source: "dataconnect",
+          },
+        }),
+        expectedSource: "dataconnect",
+        expectedFiles: ["dataconnect/dataconnect.yaml"],
+        expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: true,
       },
     ];
 
@@ -129,6 +153,9 @@ describe("init dataconnect", () => {
           c.requiredInfo,
         );
         expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
+        if (c.expectEnsureSchemaGQL) {
+          expect(ensureSyncStub).to.have.been.calledWith("dataconnect/schema/schema.gql");
+        }
         expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
         expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
       });
