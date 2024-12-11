@@ -55,7 +55,10 @@ export function logSetup() {
     "logs",
     "vsce-debug.log",
   );
-  if (fs.existsSync(path.join(rootFolders[0], "firebase.json"))) {
+  if (
+    rootFolders.length > 0 &&
+    fs.existsSync(path.join(rootFolders[0], "firebase.json"))
+  ) {
     filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
   }
   pluginLogger.info("Logging to path", filePath);
