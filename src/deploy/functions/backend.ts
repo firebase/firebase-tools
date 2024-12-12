@@ -4,7 +4,7 @@ import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray } from "../../functional";
+import { assertExhaustive, flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -41,7 +41,9 @@ export interface HttpsTriggered {
 }
 
 /** API agnostic version of a Firebase callable function. */
-export type CallableTrigger = Record<string, never>;
+export type CallableTrigger = {
+  genkitAction?: string;
+};
 
 /** Something that has a callable trigger */
 export interface CallableTriggered {
@@ -135,6 +137,7 @@ export interface BlockingTrigger {
   eventType: string;
   options?: Record<string, unknown>;
 }
+
 export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
 }
@@ -153,9 +156,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
     return endpoint.blockingTrigger.eventType;
-  } else {
-    throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
+  assertExhaustive(endpoint);
 }
 
 // TODO(inlined): Enum types should be singularly named
