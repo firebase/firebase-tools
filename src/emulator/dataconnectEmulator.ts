@@ -166,6 +166,9 @@ export class DataConnectEmulator implements EmulatorInstance {
       );
       return;
     }
+    if (this.postgresServer) {
+      await this.postgresServer.stop();
+    }
     return stop(Emulators.DATACONNECT);
   }
 
