@@ -33,12 +33,30 @@ export const PROJECTS_CREATE_QUESTIONS: Question[] = [
     message:
       "Please specify a unique project id " +
       `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
+    validate: (projectId: string) => {
+      if (projectId.length < 6) {
+        return "Project ID must be at least 6 characters long";
+      } else if (projectId.length > 30) {
+        return "Project ID cannot be longer than 30 characters";
+      } else {
+        return true;
+      }
+    },
   },
   {
     type: "input",
     name: "displayName",
-    default: "",
+    default: (answers: any) => answers.projectId,
     message: "What would you like to call your project? (defaults to your project ID)",
+    validate: (displayName: string) => {
+      if (displayName.length < 4) {
+        return "Project name must be at least 4 characters long";
+      } else if (displayName.length > 30) {
+        return "Project name cannot be longer than 30 characters";
+      } else {
+        return true;
+      }
+    },
   },
 ];
 
