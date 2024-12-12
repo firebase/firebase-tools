@@ -44,28 +44,37 @@ export function logSetup() {
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.
-    // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
-    // in the entire firebase.ts file
-    const rootFolders = getRootFolders();
-    // Default to a central path, but write files to a local path if we're in a Firebase directory.
-    let filePath = path.join(os.homedir(), ".cache", "firebase", "logs", "vsce-debug.log");
-    if (fs.existsSync(path.join(rootFolders[0], "firebase.json"))) { 
-      filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
-    }
-    pluginLogger.info("Logging to path", filePath);
-    cliLogger.add(
-      new transports.File({
-        level: "debug",
-        filename: filePath,
-        format: format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(
-            tryStringify,
-          );
-          return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
-        }),
+  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
+  // in the entire firebase.ts file
+  const rootFolders = getRootFolders();
+  // Default to a central path, but write files to a local path if we're in a Firebase directory.
+  let filePath = path.join(
+    os.homedir(),
+    ".cache",
+    "firebase",
+    "logs",
+    "vsce-debug.log",
+  );
+  if (
+    rootFolders.length > 0 &&
+    fs.existsSync(path.join(rootFolders[0], "firebase.json"))
+  ) {
+    filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
+  }
+  pluginLogger.info("Logging to path", filePath);
+  cliLogger.add(
+    new transports.File({
+      level: "debug",
+      filename: filePath,
+      format: format.printf((info) => {
+        const segments = [info.message, ...(info[SPLAT] || [])].map(
+          tryStringify,
+        );
+        return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
       }),
-    );
-    cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
+    }),
+  );
+  cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
 }
 
 /**
