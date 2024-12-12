@@ -214,7 +214,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       invoker: "array?",
     });
   } else if (build.isCallableTriggered(ep)) {
-    // no-op
+    assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
+      genkitAction: "string?",
+    });
   } else if (build.isScheduleTriggered(ep)) {
     assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
       schedule: "Field<string>",
@@ -263,6 +265,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       options: "object",
     });
   } else {
+    // TODO: Replace with assertExhaustive, which needs some type magic here because we have an any
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
         "firebase-tools with npm install -g firebase-tools@latest",
@@ -310,6 +313,7 @@ function parseEndpointForBuild(
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
+    copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
   } else if (build.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       // TODO: consider adding validation for fields like this that reject

@@ -74,8 +74,9 @@ export interface HttpsTrigger {
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
-// eslint-disable-next-line
-interface CallableTrigger {}
+interface CallableTrigger {
+  genkitAction?: string;
+}
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
@@ -568,7 +569,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     }
     return { httpsTrigger };
   } else if (isCallableTriggered(endpoint)) {
-    return { callableTrigger: {} };
+    const trigger: CallableTriggered = { callableTrigger: {} };
+    proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
+    return trigger;
   } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };
   } else if (isEventTriggered(endpoint)) {
