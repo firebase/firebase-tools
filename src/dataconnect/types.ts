@@ -71,8 +71,18 @@ export interface Diff {
   destructive: boolean;
 }
 
+export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK";
+
+export interface Workaround {
+  description: string;
+  reason: string;
+  replaceWith: string;
+}
+
 export interface GraphqlError {
   message: string;
+  warningLevel?: WarningLevel;
+  workarounds?: Workaround[];
   locations?: {
     line: number;
     column: number;
