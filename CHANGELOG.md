@@ -5,3 +5,4 @@
 - CF3 callables can now be annotate with a genkit action they are serving. (#8039)
 - HTTPS functions can now be upgraded to HTTPS Callable functions. (#8039)
 - Update default tsconfig to support more modern defaults. (#8039)
+- Update the Firebase Data Connect local toolkit to v1.7.5, which includes a fix for Kotlin codegen that ensures that generated XxxKeys.kt files include the required `@file:UseSerializers(UUIDSerializer::class)` annotation. (#8058)
