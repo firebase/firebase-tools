@@ -28,4 +28,26 @@ firebaseSuite("Emulators", async function () {
       expect(current).toContain("dataconnect :9399");
     },
   );
+
+  firebaseTest(
+    "Clicking on `Clear Data Connect data` triggers a clear data event",
+    async function () {
+      const workbench = await browser.getWorkbench();
+
+      const sidebar = new FirebaseSidebar(workbench);
+      const commands = new FirebaseCommands();
+
+      await sidebar.openExtensionSidebar();
+      await commands.waitForUser();
+
+      await mockUser({ email: "test@gmail.com" });
+      await mockProject("test-project");
+
+      await sidebar.startEmulators();
+      console.log("Waiting for emulators to start...");
+      await commands.waitForEmulators();
+
+      await sidebar.clearEmulatorData();
+    },
+  );
 });
