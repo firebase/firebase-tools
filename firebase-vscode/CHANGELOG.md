@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Added] Added support for emulator import/export.
+
 ## 0.11.1
 
 - [Fixed] Fixed IDX analytics issue

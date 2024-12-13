@@ -6,6 +6,7 @@ import { EmulatorsStatus, RunningEmulatorInfo } from "../messaging/types";
 import { EmulatorHubClient } from "../../../src/emulator/hubClient";
 import { GetEmulatorsResponse } from "../../../src/emulator/hub";
 import { EmulatorInfo } from "../emulator/types";
+import { getSettings } from "../utils/settings";
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.emulatorStatusItem.command = "firebase.openFirebaseRc";
@@ -21,6 +22,26 @@ export class EmulatorsController implements Disposable {
         this.setEmulatorsStarting();
       }),
     );
+
+    this.subscriptions.push(
+      broker.on("fdc.open-emulator-settings", () => {
+        vscode.commands.executeCommand( 'workbench.action.openSettings', 'firebase.emulators' );
+      })
+    )
+
+    // called by emulator UI
+    this.subscriptions.push(
+      broker.on("fdc.clear-emulator-data", () => {
+        this.clearDataConnectData();
+      }),
+    );
+
+    this.subscriptions.push(broker.on("runEmulatorsExport", () => {
+      // TODO: optional debug mode
+      // TODO: Let users choose a export directory
+      const settings = getSettings();
+      this.exportEmulatorData(settings.exportPath);
+    }))
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
@@ -107,11 +128,8 @@ export class EmulatorsController implements Disposable {
   async findRunningCliEmulators(): Promise<
     { status: EmulatorsStatus; infos?: RunningEmulatorInfo } | undefined
   > {
-    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-    // TODO: think about what to without projectID, in potentially a logged out mode
-    const hubClient = new EmulatorHubClient(projectId!);
-
-    if (hubClient.foundHub()) {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
       const response: GetEmulatorsResponse = await hubClient.getEmulators();
 
       if (Object.values(response)) {
@@ -119,11 +137,36 @@ export class EmulatorsController implements Disposable {
       } else {
         this.setEmulatorsStopped();
       }
+    }
+    return this.emulators;
+  }
+
+  async clearDataConnectData(): Promise<void> {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      await hubClient.clearDataConnectData();
+      vscode.window.showInformationMessage(`Data Connect emulator data has been cleared.`);
+    }
+  }
+
+  async exportEmulatorData(exportDir: string): Promise<void> {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      // TODO: Make exportDir configurable
+      await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
+      vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);
+    }
+  }
+
+  private getHubClient(): EmulatorHubClient | undefined {
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+    // TODO: think about what to without projectID, in potentially a logged out mode
+    const hubClient = new EmulatorHubClient(projectId!);
+    if (hubClient.foundHub()) {
+      return hubClient;
     } else {
       this.setEmulatorsStopped();
     }
-
-    return this.emulators;
   }
 
   public areEmulatorsRunning() {
