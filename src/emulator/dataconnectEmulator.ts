@@ -118,8 +118,6 @@ export class DataConnectEmulator implements EmulatorInstance {
           ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
-          database: dbId,
-          username: "fdc",
           dataDirectory,
           importPath: postgresDumpPath,
           debug: this.args.debug,
