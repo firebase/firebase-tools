@@ -21,19 +21,18 @@ import { hasMessage } from "../../error";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
+DECLARE _clear text;
 BEGIN
-   EXECUTE
-   (SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
+   SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
     FROM   pg_class
     WHERE  relkind = 'r'
     AND    relnamespace = 'public'::regnamespace
-   );
+   INTO _clear;
+  EXECUTE COALESCE(_clear, 'select now()');
 END
 $do$;`;
 
 export class PostgresServer {
-  private username: string;
-  private database: string;
   private dataDirectory?: string;
   private importPath?: string;
   private debug: DebugLevel;
@@ -89,8 +88,6 @@ export class PostgresServer {
       const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
       const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
       const pgliteArgs: PGliteOptions = {
-        username: this.username,
-        database: this.database,
         debug: this.debug,
         extensions: {
           vector,
@@ -147,15 +144,7 @@ export class PostgresServer {
     return;
   }
 
-  constructor(args: {
-    database: string;
-    username: string;
-    dataDirectory?: string;
-    importPath?: string;
-    debug?: boolean;
-  }) {
-    this.username = args.username;
-    this.database = args.database;
+  constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
     this.dataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
     this.debug = args.debug ? 5 : 0;
