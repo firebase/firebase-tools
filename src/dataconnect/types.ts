@@ -81,14 +81,14 @@ export interface Workaround {
 
 export interface GraphqlError {
   message: string;
-  warningLevel?: WarningLevel;
-  workarounds?: Workaround[];
   locations?: {
     line: number;
     column: number;
   }[];
   extensions?: {
     file?: string;
+    warningLevel?: WarningLevel;
+    workarounds?: Workaround[];
     [key: string]: any;
   };
 }
