@@ -152,7 +152,6 @@ export class IDXLogger {
   public logUsage(eventName: string, data?: any) {
     const packageJson = this.context.extension.packageJSON;
     data = { ...data, extversion: packageJson.version, extname: this.context.extension.id, isidx: true };
-    data = addFirebaseBinaryMetadata(data);
     this.sender.sendEventData(eventName, data);
   }
 
