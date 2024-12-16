@@ -18,13 +18,11 @@ import {
 } from "./utils/settings";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
-import {
-  AnalyticsLogger,
-  IDX_METRIC_NOTICE,
-} from "./analytics";
+import { AnalyticsLogger, IDX_METRIC_NOTICE } from "./analytics";
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
+import { registerSession } from "./session";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -72,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
       context,
     }),
     authService,
+    registerSession(),
     registerFdc(
       context,
       broker,

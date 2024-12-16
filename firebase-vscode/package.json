@@ -128,7 +128,7 @@
           "initialSize": 1
         },
         {
-          "id": "firebase.studio",
+          "id": "firebase.session",
           "name": "Account and Project",
           "initialSize": 1
         },

@@ -6,7 +6,7 @@ import { registerEnv } from "./env";
 import { pluginLogger, LogLevel } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
-import { currentUser, registerUser } from "./user";
+import { registerUser } from "./user";
 import { currentProjectId, registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
@@ -15,10 +15,7 @@ import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
 import { AnalyticsLogger } from "../analytics";
-import { StudioItem, StudioProvider } from "./studio-provider";
-import { login } from "../cli";
 import { EmulatorsProvider } from "./emulators-provider";
-import { effect } from "@preact/signals-core";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -99,8 +96,6 @@ export async function registerCore(
     },
   );
 
-  const studioTree = new StudioProvider(currentUser, currentProjectId);
-
   return [
     emulatorsController,
     Disposable.from(
@@ -108,19 +103,6 @@ export async function registerCore(
       refreshCmd,
       emulatorsController,
       initSpy,
-      {
-        dispose: effect(() => {
-          studioTree.updateUser(currentUser.value ?? undefined);
-        }),
-      },
-      {
-        dispose: effect(() => {
-          studioTree.updateProject(currentProjectId.value);
-        }),
-      },
-      vscode.window.createTreeView("firebase.studio", {
-        treeDataProvider: studioTree,
-      }),
       vscode.window.createTreeView("firebase.emulators", {
         treeDataProvider: new EmulatorsProvider(),
       }),
