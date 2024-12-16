@@ -8,7 +8,7 @@ import { globalSignal } from "../utils/globals";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import * as vscode from "vscode";
 
-type User = ServiceAccountUser | AuthUser;
+export type User = ServiceAccountUser | AuthUser;
 
 /** Currently selected user */
 export const currentUser = globalSignal<User | null>(null);

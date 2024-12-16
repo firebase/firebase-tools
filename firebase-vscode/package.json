@@ -126,6 +126,16 @@
           "when": "firebase-vscode.fdc.enabled",
           "visibility": "collapsed",
           "initialSize": 1
+        },
+        {
+          "id": "firebase.studio",
+          "name": "Account and Project",
+          "initialSize": 1
+        },
+        {
+          "id": "firebase.emulators",
+          "name": "Emulator Suite",
+          "initialSize": 1
         }
       ],
       "firebase-data-connect-execution-view": [
@@ -152,6 +162,10 @@
       {
         "view": "firebase.dataConnect.explorerView",
         "contents": "Resolve compilation errors to view your schema."
+      },
+      {
+        "view": "firebase.studio",
+        "contents": "Welcome to Firebase!\n[Login](command:firebase.addUser)"
       }
     ],
     "jsonValidation": [

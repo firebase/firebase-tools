@@ -6,7 +6,7 @@ import { registerEnv } from "./env";
 import { pluginLogger, LogLevel } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
-import { registerUser } from "./user";
+import { currentUser, registerUser } from "./user";
 import { currentProjectId, registerProject } from "./project";
 import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
@@ -15,6 +15,10 @@ import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
 import { AnalyticsLogger } from "../analytics";
+import { StudioItem, StudioProvider } from "./studio-provider";
+import { login } from "../cli";
+import { EmulatorsProvider } from "./emulators-provider";
+import { effect } from "@preact/signals-core";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -95,6 +99,12 @@ export async function registerCore(
     },
   );
 
+  const studioTree = new StudioProvider(currentUser, currentProjectId);
+
+  effect(() => {
+    // if changes, tree.onDidChangeTree()
+  });
+
   return [
     emulatorsController,
     Disposable.from(
@@ -102,6 +112,28 @@ export async function registerCore(
       refreshCmd,
       emulatorsController,
       initSpy,
+      // vscode.commands.registerCommand("firebase.login", async () => {
+      //   // analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
+      //   const { user } = await login();
+      //   currentUser.value = user;
+      //   tree._onDidChangeTreeData.fire(undefined);
+      // }),
+      {
+        dispose: effect(() => {
+          studioTree.updateUser(currentUser.value ?? undefined);
+        }),
+      },
+      {
+        dispose: effect(() => {
+          studioTree.updateProject(currentProjectId.value);
+        }),
+      },
+      vscode.window.createTreeView("firebase.studio", {
+        treeDataProvider: studioTree,
+      }),
+      vscode.window.createTreeView("firebase.emulators", {
+        treeDataProvider: new EmulatorsProvider(),
+      }),
       registerOptions(context),
       registerEnv(broker),
       registerUser(broker, analyticsLogger),
