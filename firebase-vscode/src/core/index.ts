@@ -101,10 +101,6 @@ export async function registerCore(
 
   const studioTree = new StudioProvider(currentUser, currentProjectId);
 
-  effect(() => {
-    // if changes, tree.onDidChangeTree()
-  });
-
   return [
     emulatorsController,
     Disposable.from(
@@ -112,12 +108,6 @@ export async function registerCore(
       refreshCmd,
       emulatorsController,
       initSpy,
-      // vscode.commands.registerCommand("firebase.login", async () => {
-      //   // analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
-      //   const { user } = await login();
-      //   currentUser.value = user;
-      //   tree._onDidChangeTreeData.fire(undefined);
-      // }),
       {
         dispose: effect(() => {
           studioTree.updateUser(currentUser.value ?? undefined);
