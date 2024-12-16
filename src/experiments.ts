@@ -4,6 +4,7 @@ import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { isRunningInGithubAction } from "./init/features/hosting/github";
+import process from "node:process";
 
 export interface Experiment {
   shortDescription: string;

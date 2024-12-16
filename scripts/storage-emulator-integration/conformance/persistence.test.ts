@@ -14,6 +14,7 @@ import {
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
+import { Buffer } from "node:buffer";
 
 const TEST_FILE_NAME = "public/testFile";
 

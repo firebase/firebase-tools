@@ -15,6 +15,7 @@ import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeploy
 import { ExtensionSpec } from "../types";
 import * as functionRuntimes from "../../deploy/functions/runtimes";
 import * as nodeRuntime from "./node";
+import process from "node:process";
 
 export { DynamicExtension } from "../../deploy/functions/build";
 

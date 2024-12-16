@@ -76,19 +76,19 @@ export class HtmlBroker extends Broker<
 > {
   constructor(readonly vscode: any) {
     super();
-    window.addEventListener("message", (event) =>
+    globalThis.addEventListener("message", (event) =>
       this.executeListeners(event.data),
     );
 
     // Log uncaught errors and unhandled rejections
-    window.addEventListener("error", (event) => {
+    globalThis.addEventListener("error", (event) => {
       webLogger.error(
         event.error.message,
         event.error.stack && "\n",
         event.error.stack,
       );
     });
-    window.addEventListener("unhandledrejection", (event) => {
+    globalThis.addEventListener("unhandledrejection", (event) => {
       webLogger.error(
         "Unhandled rejected promise:",
         event.reason,

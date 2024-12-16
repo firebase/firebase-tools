@@ -10,6 +10,8 @@ import { logger as cliLogger } from "../../src/logger";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
 import { getRootFolders } from "./core/config";
+import process from "node:process";
+import { setImmediate } from "node:timers";
 
 export type LogLevel = "debug" | "info" | "log" | "warn" | "error";
 

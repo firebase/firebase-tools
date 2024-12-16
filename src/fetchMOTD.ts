@@ -6,6 +6,7 @@ import { configstore } from "./configstore";
 import { logger } from "./logger";
 import { realtimeOrigin } from "./api";
 import * as utils from "./utils";
+import process from "node:process";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
 

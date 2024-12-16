@@ -2,6 +2,7 @@ import fetch, { Response } from "node-fetch";
 
 import { CLIProcess } from "./cli";
 import { Emulators } from "../../src/emulator/types";
+import { Buffer } from "node:buffer";
 
 const FIREBASE_PROJECT_ZONE = "us-central1";
 

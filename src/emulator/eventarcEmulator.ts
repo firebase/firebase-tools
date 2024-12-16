@@ -10,6 +10,7 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 import * as cors from "cors";
+import { Buffer } from "node:buffer";
 
 interface EmulatedEventTrigger {
   projectId: string;

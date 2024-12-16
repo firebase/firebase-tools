@@ -23,6 +23,7 @@ import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
 import { SpecParamType } from "../extensionsHelper";
 import { FirebaseError, getErrMsg } from "../../error";
 import { spawnWithOutput } from "../../init/spawn";
+import process from "node:process";
 
 marked.use(markedTerminal() as any);
 

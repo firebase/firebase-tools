@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { Buffer } from "node:buffer";
 
 /** Returns the body of a {@link Request} as a {@link Buffer}.  */
 export async function reqBodyToBuffer(req: Request): Promise<Buffer> {

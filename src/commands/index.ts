@@ -1,4 +1,5 @@
 import * as experiments from "../experiments";
+import process from "node:process";
 /**
  * Loads all commands for our parser.
  */

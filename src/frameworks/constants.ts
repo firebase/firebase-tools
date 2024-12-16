@@ -1,6 +1,7 @@
 import { SupportLevel } from "./interfaces";
 import * as clc from "colorette";
 import * as experiments from "../experiments";
+import process from "node:process";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
 

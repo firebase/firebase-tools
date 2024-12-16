@@ -1,3 +1,4 @@
+import process from "node:process";
 const spawn = require("child_process").spawn;
 const fork = require("child_process").fork;
 const readline = require("readline");

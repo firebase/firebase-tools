@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import * as utils from "./utils";
+import process from "node:process";
 
 describe("api", () => {
   beforeEach(() => {

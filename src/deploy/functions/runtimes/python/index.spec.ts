@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as python from ".";
+import process from "node:process";
 
 const PROJECT_ID = "test-project";
 const SOURCE_DIR = "/some/path/fns";

@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
+import process from "node:process";
 
 export const mutationsPath = path.resolve(
   process.cwd(),

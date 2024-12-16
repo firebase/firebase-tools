@@ -5,6 +5,7 @@ import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
 import * as config from "../hosting/config";
+import process from "node:process";
 
 const { FunctionsServer } = require("./functions");
 

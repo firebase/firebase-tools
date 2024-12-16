@@ -7,6 +7,7 @@ import { logger } from "../logger";
 import * as path from "path";
 import { Options } from "../options";
 import { isVSCodeExtension } from "../vsCodeUtils";
+import process from "node:process";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');

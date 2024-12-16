@@ -5,6 +5,7 @@ import { rmSync } from "node:fs";
 import * as path from "path";
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import process from "node:process";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 

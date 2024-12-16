@@ -12,6 +12,7 @@ import { EmulatorRegistry } from "./registry";
 import { SignatureType } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { execSync } from "child_process";
+import process from "node:process";
 
 // Finds processes with "pubsub-emulator" in the description and runs `kill` if any exist
 // Since the pubsub emulator doesn't export any data, force-killing will not affect export-on-exit

@@ -8,6 +8,7 @@ import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
 import { NodeType } from "yaml/dist/nodes/Node";
 import { AppHostingYamlConfig } from "./yaml";
+import process from "node:process";
 
 describe("config", () => {
   describe("discoverBackendRoot", () => {

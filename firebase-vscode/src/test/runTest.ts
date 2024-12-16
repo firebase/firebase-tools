@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import { runTests } from "@vscode/test-electron";
+import process from "node:process";
 
 async function main() {
   try {

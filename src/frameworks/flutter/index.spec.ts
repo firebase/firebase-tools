@@ -9,6 +9,7 @@ import { join } from "path";
 
 import * as flutterUtils from "./utils";
 import { discover, build, ɵcodegenPublicDirectory, init } from ".";
+import { Buffer } from "node:buffer";
 
 describe("Flutter", () => {
   describe("discovery", () => {

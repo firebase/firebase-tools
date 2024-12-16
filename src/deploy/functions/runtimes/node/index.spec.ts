@@ -7,6 +7,7 @@ import * as versioning from "./versioning";
 import * as utils from "../../../../utils";
 import { FirebaseError } from "../../../../error";
 import { Runtime } from "../supported";
+import process from "node:process";
 
 const PROJECT_ID = "test-project";
 const PROJECT_DIR = "/some/path";

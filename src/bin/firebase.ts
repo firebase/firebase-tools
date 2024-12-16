@@ -2,6 +2,7 @@
 
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
+import process from "node:process";
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {

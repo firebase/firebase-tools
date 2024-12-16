@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { crc32c, crc32cToString } from "./crc";
+import { Buffer } from "node:buffer";
 
 /**
  * Test cases adapated from:

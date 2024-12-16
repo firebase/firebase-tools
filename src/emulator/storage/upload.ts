@@ -2,6 +2,7 @@ import { Persistence } from "./persistence";
 import { IncomingMetadata } from "./metadata";
 import { v4 as uuidV4 } from "uuid";
 import { NotFoundError } from "./errors";
+import { Buffer } from "node:buffer";
 
 /** A file upload. */
 export type Upload = {

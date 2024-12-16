@@ -12,6 +12,8 @@ import { hostingApiOrigin } from "../../api";
 import { load, dump, HashRecord } from "./hashcache";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import process from "node:process";
+import { Buffer } from "node:buffer";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h

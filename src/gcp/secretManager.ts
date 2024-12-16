@@ -6,6 +6,7 @@ import { Client } from "../apiv2";
 import { secretManagerOrigin } from "../api";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import { needProjectId } from "../projectUtils";
+import { Buffer } from "node:buffer";
 
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(

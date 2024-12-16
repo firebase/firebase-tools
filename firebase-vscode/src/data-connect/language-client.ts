@@ -8,6 +8,7 @@ import {
 } from "vscode-languageclient/node";
 import * as path from "node:path";
 import { ResolvedDataConnectConfigs } from "./config";
+import { Buffer } from "node:buffer";
 
 export function setupLanguageClient(
   context: vscode.ExtensionContext,

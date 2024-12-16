@@ -21,6 +21,7 @@ import {
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
 import { firebaseApiOrigin } from "../api";
+import { Buffer } from "node:buffer";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";

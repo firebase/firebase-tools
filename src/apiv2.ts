@@ -12,6 +12,7 @@ import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
+import process from "node:process";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.

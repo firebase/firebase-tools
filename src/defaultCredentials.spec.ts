@@ -9,6 +9,7 @@ import { configstore } from "./configstore";
 import * as defaultCredentials from "./defaultCredentials";
 import { getGlobalDefaultAccount } from "./auth";
 import { Account } from "./types/auth";
+import process from "node:process";
 
 describe("defaultCredentials", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

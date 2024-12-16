@@ -8,6 +8,7 @@ import {
   readEmulatorConfig,
   TEST_SETUP_TIMEOUT,
 } from "../utils";
+import process from "node:process";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
 

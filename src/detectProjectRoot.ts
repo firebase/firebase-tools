@@ -1,6 +1,7 @@
 import { fileExistsSync } from "./fsutils";
 import { FirebaseError } from "./error";
 import { dirname, resolve } from "path";
+import process from "node:process";
 
 export function detectProjectRoot(options: { cwd?: string; configPath?: string }): string | null {
   let projectRootDir = options.cwd || process.cwd();

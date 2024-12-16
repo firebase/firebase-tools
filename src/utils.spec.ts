@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as utils from "./utils";
+import process from "node:process";
 
 describe("utils", () => {
   describe("consoleUrl", () => {

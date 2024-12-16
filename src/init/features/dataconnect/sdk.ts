@@ -21,6 +21,7 @@ import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
+import process from "node:process";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {

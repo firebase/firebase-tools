@@ -55,6 +55,7 @@ import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { WebFrameworks } from "./frameworks";
 import { constructDefaultWebSetup } from "../fetchWebSetup";
+import { Buffer } from "node:buffer";
 
 export { WebFrameworks };
 

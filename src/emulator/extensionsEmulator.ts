@@ -21,6 +21,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Build } from "../deploy/functions/build";
 import { extractExtensionsFromBuilds } from "../extensions/runtimes/common";
+import process from "node:process";
 
 export interface ExtensionEmulatorArgs {
   options: Options;

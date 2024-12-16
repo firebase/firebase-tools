@@ -5,6 +5,7 @@ import * as planner from "../deploy/extensions/planner";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { EmulatableBackend } from "./functionsEmulator";
 import { Extension, ExtensionVersion, RegistryLaunchStage, Visibility } from "../extensions/types";
+import process from "node:process";
 
 const TEST_EXTENSION: Extension = {
   name: "publishers/firebase/extensions/storage-resize-images",

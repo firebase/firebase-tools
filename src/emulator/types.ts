@@ -1,5 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import process from "node:process";
 
 export enum Emulators {
   AUTH = "auth",

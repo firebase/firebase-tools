@@ -1,5 +1,6 @@
 import { ConfigurationTarget, workspace } from "vscode";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
+import process from "node:process";
 
 export interface Settings {
   readonly firebasePath: string;

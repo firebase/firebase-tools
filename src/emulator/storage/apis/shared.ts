@@ -3,6 +3,7 @@ import { StoredFileMetadata } from "../metadata";
 import { Request, Response } from "express";
 import { crc32cToString } from "../crc";
 import { encodeRFC5987 } from "../rfc";
+import { Buffer } from "node:buffer";
 
 /** Populates an object media GET Express response. */
 export function sendFileBytes(

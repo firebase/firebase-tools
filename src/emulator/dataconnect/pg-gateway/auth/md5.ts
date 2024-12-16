@@ -5,6 +5,7 @@ import { closeSignal } from '../connection';
 import type { ConnectionState } from '../connection.types';
 import { BackendMessageCode } from '../message-codes';
 import { BaseAuthFlow } from './base-auth-flow';
+import { Buffer } from "node:buffer";
 
 
 type BufferSource = ArrayBufferView | ArrayBuffer;

@@ -9,6 +9,7 @@
  */
 
 import * as functions from "firebase-functions";
+import process from "node:process";
 
 exports.greetTheWorld = functions.https.onRequest(
   (req: functions.Request, res: functions.Response) => {

@@ -17,6 +17,7 @@ import { Constants } from "./emulator/constants";
 import { Options } from "./options";
 import { HTTPS_SENTINEL } from "./localFunction";
 import { needProjectId } from "./projectUtils";
+import process from "node:process";
 
 const serveFunctions = new FunctionsServer();
 

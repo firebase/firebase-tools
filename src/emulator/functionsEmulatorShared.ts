@@ -17,6 +17,7 @@ import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
 import * as events from "../functions/events";
 import { connectableHostname } from "../utils";
+import process from "node:process";
 
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [

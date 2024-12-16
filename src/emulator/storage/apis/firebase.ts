@@ -16,6 +16,8 @@ import {
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
+import process from "node:process";
+import { Buffer } from "node:buffer";
 
 /**
  * @param emulator

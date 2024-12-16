@@ -18,6 +18,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import { getProjectId } from "../projectUtils";
 import { checkListenable } from "../emulator/portUtils";
 import { IncomingMessage, ServerResponse } from "http";
+import { Buffer } from "node:buffer";
 
 let destroyServer: undefined | (() => Promise<void>) = undefined;
 

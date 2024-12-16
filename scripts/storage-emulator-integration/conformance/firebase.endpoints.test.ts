@@ -13,6 +13,7 @@ import {
   TEST_SETUP_TIMEOUT,
   createRandomFile,
 } from "../utils";
+import { Buffer } from "node:buffer";
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";

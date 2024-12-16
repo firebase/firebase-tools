@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";
+import { Buffer } from "node:buffer";
 const { google } = require("googleapis");
 
 /* Various delays needed when integration test spawns parallel emulator subprocesses. */

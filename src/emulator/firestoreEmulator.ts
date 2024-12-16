@@ -9,6 +9,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
+import process from "node:process";
 
 export interface FirestoreEmulatorArgs {
   port?: number;

@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
+import process from "node:process";
 
 const tmpDir = process.argv[2];
 const file = resolve(__dirname, "..", tmpDir, "npm-shrinkwrap.json");

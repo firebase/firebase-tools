@@ -14,6 +14,7 @@ import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
+import process from "node:process";
 
 const homeDir = os.homedir();
 

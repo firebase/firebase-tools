@@ -14,6 +14,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
+import process from "node:process";
 
 export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")

@@ -4,6 +4,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
 import { readTemplateSync } from "../templates";
+import { Buffer } from "node:buffer";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;

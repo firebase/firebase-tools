@@ -4,6 +4,7 @@ import { expect } from "chai";
 
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import process from "node:process";
 
 const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 

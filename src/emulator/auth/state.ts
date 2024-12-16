@@ -10,6 +10,7 @@ import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
 import { assert, BadRequestError } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
+import { Buffer } from "node:buffer";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";

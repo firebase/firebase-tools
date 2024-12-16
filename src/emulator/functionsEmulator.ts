@@ -64,6 +64,8 @@ import { setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { ExtensionsEmulator } from "./extensionsEmulator";
+import { Buffer } from "node:buffer";
+import process from "node:process";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 

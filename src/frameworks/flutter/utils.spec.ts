@@ -7,6 +7,7 @@ import { assertFlutterCliExists, getAdditionalBuildArgs, getPubSpec } from "./ut
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as fsExtra from "fs-extra";
+import { Buffer } from "node:buffer";
 
 describe("Flutter utils", () => {
   describe("assertFlutterCliExists", () => {

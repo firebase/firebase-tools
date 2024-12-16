@@ -2,6 +2,7 @@
  * Function to compute a CRC table rather than store a massive literal in source.
  * Executed once.
  */
+import { Buffer } from "node:buffer";
 function makeCRCTable(poly: number) {
   let c;
   const crcTable = [];

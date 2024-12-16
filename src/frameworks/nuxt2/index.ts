@@ -8,6 +8,7 @@ import { getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "../nuxt/utils";
 import { simpleProxy } from "../utils";
 import { spawn } from "cross-spawn";
+import process from "node:process";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;

@@ -8,6 +8,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { rmSync } from "node:fs";
 import * as utils from "../utils";
+import process from "node:process";
 
 const JAR_CACHE_DIR =
   process.env.FIREBASE_CRASHLYTICS_BUILDTOOLS_PATH ||

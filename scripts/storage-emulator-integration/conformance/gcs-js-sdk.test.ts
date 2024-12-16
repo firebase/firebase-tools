@@ -13,6 +13,7 @@ import {
   getTmpDir,
 } from "../utils";
 import { gunzipSync } from "zlib";
+import { Buffer } from "node:buffer";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});

@@ -13,6 +13,7 @@ import { URL } from "url";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
+import process from "node:process";
 
 export const command = new Command("database:push <path> [infile]")
   .description("add a new JSON object to a list of data in your Firebase")

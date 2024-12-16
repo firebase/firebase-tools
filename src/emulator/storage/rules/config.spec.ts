@@ -8,6 +8,7 @@ import { FirebaseError } from "../../../error";
 import { Persistence } from "../persistence";
 import { RulesConfig } from "..";
 import { SourceFile } from "./types";
+import { Buffer } from "node:buffer";
 
 const PROJECT_ID = "test-project";
 

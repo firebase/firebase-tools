@@ -8,6 +8,7 @@ import { execSync } from "child_process";
 import { command as functionsDelete } from "../../../src/commands/functions-delete";
 import fetch, { Request } from "node-fetch";
 import { FirebaseError } from "../../../src/error";
+import process from "node:process";
 
 tmp.setGracefulCleanup();
 

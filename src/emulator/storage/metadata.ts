@@ -4,6 +4,7 @@ import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { crc32c, crc32cToString } from "./crc";
+import { Buffer } from "node:buffer";
 
 type SerializedFileMetadata = Omit<StoredFileMetadata, "timeCreated" | "updated"> & {
   timeCreated: string;

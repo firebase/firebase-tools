@@ -7,6 +7,7 @@ const proxySetup = require("proxy");
 import { Client } from "./apiv2";
 import { FirebaseError } from "./error";
 import { streamToString, stringToStream } from "./utils";
+import process from "node:process";
 
 describe("apiv2", () => {
   beforeEach(() => {

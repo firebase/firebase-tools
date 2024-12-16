@@ -5,6 +5,7 @@ import { e2eSpy, getE2eSpyCalls } from "../mock";
 import { mockUser } from "../../utils/user";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { mockProject } from "../../utils/projects";
+import process from "node:process";
 
 firebaseSuite("Deployment", async function () {
   firebaseTest("Can deploy services", async function () {

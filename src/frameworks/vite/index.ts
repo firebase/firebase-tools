@@ -13,6 +13,7 @@ import {
   getNodeModuleBin,
   relativeRequire,
 } from "../utils";
+import process from "node:process";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;

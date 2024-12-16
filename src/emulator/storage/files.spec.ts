@@ -11,6 +11,7 @@ import { UploadService } from "./upload";
 import { FakeEmulator } from "../testing/fakeEmulator";
 import { Emulators } from "../types";
 import { EmulatorRegistry } from "../registry";
+import { Buffer } from "node:buffer";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),

@@ -1,6 +1,7 @@
 import { intersection, difference } from "lodash";
 import { FirebaseError } from "./error";
 import { Options } from "./options";
+import process from "node:process";
 
 /**
  * Filters targets from options with valid targets as specified.

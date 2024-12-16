@@ -11,6 +11,7 @@ import * as proto from "../../../../gcp/proto";
 import { Runtime } from "../../runtimes/supported";
 import * as events from "../../../../functions/events";
 import { nullsafeVisitor } from "../../../../functional";
+import process from "node:process";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 

@@ -6,6 +6,7 @@ import { LogEntry } from "winston";
 import * as TransportStream from "winston-transport";
 import { logger } from "../logger";
 import { stripVTControlCharacters } from "node:util";
+import { setImmediate } from "node:timers";
 
 export interface LoggingEmulatorArgs {
   port?: number;

@@ -83,6 +83,7 @@ import {
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
 import { parseStrict } from "../../functions/env";
+import process from "node:process";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";

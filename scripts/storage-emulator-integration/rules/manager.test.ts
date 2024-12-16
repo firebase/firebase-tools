@@ -8,6 +8,7 @@ import { RulesetOperationMethod, SourceFile } from "../../../src/emulator/storag
 import { isPermitted } from "../../../src/emulator/storage/rules/utils";
 import { readFile } from "../../../src/fsutils";
 import * as path from "path";
+import { Buffer } from "node:buffer";
 
 const EMULATOR_LOAD_RULESET_DELAY_MS = 20000;
 const SETUP_TIMEOUT = 60000;

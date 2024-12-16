@@ -7,6 +7,7 @@ import { requirePermissions } from "../requirePermissions";
 import { discoverBackendRoot, exportConfig } from "../apphosting/config";
 import { FirebaseError } from "../error";
 import { detectProjectRoot } from "../detectProjectRoot";
+import process from "node:process";
 
 export const command = new Command("apphosting:config:export")
   .description(

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { parseObjectUploadMultipartRequest } from "./multipart";
 import { randomBytes } from "crypto";
+import { Buffer } from "node:buffer";
 
 describe("Storage Multipart Request Parser", () => {
   const CONTENT_TYPE_HEADER = "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e";

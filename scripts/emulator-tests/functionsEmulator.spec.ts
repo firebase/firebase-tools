@@ -17,6 +17,7 @@ import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
+import process from "node:process";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;

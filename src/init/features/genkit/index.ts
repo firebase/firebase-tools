@@ -36,6 +36,7 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
 } from "../../../utils";
+import process from "node:process";
 
 interface GenkitInfo {
   genkitVersion: string;

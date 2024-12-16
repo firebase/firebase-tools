@@ -10,6 +10,8 @@ import { logger } from "./logger";
 import { ProfileReport, ProfileReportOptions } from "./profileReport";
 import { responseToError } from "./responseToError";
 import * as utils from "./utils";
+import process from "node:process";
+import { Buffer } from "node:buffer";
 
 tmp.setGracefulCleanup();
 

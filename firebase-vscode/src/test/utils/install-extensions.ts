@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import process from "node:process";
 
 async function installExtensions() {
   // List of extensions to install

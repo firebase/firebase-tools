@@ -9,6 +9,7 @@ import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
 import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
+import process from "node:process";
 
 type LogListener = (el: EmulatorLog) => any;
 

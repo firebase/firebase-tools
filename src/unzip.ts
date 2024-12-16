@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { FirebaseError } from "./error";
 import { pipeline } from "stream";
 import { logger } from "./logger";
+import { Buffer } from "node:buffer";
 
 const pipelineAsync = promisify(pipeline);
 

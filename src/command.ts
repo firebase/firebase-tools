@@ -13,6 +13,7 @@ import { selectAccount, setActiveAccount } from "./auth";
 import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
+import process from "node:process";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;

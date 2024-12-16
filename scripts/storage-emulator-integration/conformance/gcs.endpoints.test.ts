@@ -12,6 +12,7 @@ import {
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
+import { Buffer } from "node:buffer";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});

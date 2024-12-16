@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import { CLIProcess } from "../integration-helpers/cli";
+import process from "node:process";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 

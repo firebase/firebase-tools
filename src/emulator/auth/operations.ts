@@ -38,6 +38,7 @@ import {
   BlockingFunctionEvents,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
+import { Buffer } from "node:buffer";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.

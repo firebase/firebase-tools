@@ -9,6 +9,7 @@ import { FrameworkOptions } from "../../integration-helpers/framework";
 import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
+import process from "node:process";
 
 // Set these flags to control test behavior.
 const TEST_CONFIG = {

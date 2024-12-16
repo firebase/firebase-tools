@@ -5,6 +5,7 @@
  * converting to String can append unwanted encoding data to the blob data
  * passed in the original request.
  */
+import { Buffer } from "node:buffer";
 export type ObjectUploadMultipartData = {
   metadataRaw: string;
   dataRaw: Buffer;
