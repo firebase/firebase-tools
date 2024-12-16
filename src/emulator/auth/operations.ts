@@ -3309,8 +3309,12 @@ function generateBlockingFunctionJwt(
 
   if (user.lastLoginAt || user.createdAt) {
     jwt.user_record.metadata = {
-      last_sign_in_time: user.lastLoginAt,
-      creation_time: user.createdAt,
+      last_sign_in_time: user.lastLoginAt
+        ? new Date(parseInt(user.lastLoginAt, 10)).toISOString()
+        : undefined,
+      creation_time: user.createdAt
+          ? new Date(parseInt(user.createdAt, 10)).toISOString()
+          : undefined,
     };
   }
 
