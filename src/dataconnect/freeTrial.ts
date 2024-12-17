@@ -11,6 +11,7 @@ const FREE_TRIAL_METRIC = "sqladmin.googleapis.com/fdc_lifetime_free_trial_per_p
 
 // Checks whether there is already a free trial instance on a project.
 export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boolean> {
+  // TODO: Catch error instead of checking for metric? Some test projects have been allow-listed for unlimited free trials.
   const past7d = new Date();
   past7d.setDate(past7d.getDate() - 7);
   const query: CmQuery = {
@@ -42,11 +43,11 @@ export function printFreeTrialUnavailable(
 ): void {
   if (!instanceId) {
     utils.logLabeledError(
-      "data connect",
+      "dataconnect",
       "The CloudSQL free trial has already been used on this project.",
     );
     utils.logLabeledError(
-      "data connect",
+      "dataconnect",
       `You may create or use a paid CloudSQL instance by visiting https://console.cloud.google.com/sql/instances`,
     );
     return;
