@@ -15,7 +15,7 @@ import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
 import { AnalyticsLogger } from "../analytics";
-import { EmulatorsProvider } from "./emulators-provider";
+import { EmulatorsProvider } from "../emulators/emulators-provider";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,

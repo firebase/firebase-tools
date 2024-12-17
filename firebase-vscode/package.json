@@ -115,27 +115,12 @@
     "views": {
       "firebase-data-connect": [
         {
-          "type": "webview",
-          "id": "fdc_sidebar",
-          "name": "Studio",
-          "initialSize": 2
-        },
-        {
-          "id": "firebase.dataConnect.explorerView",
-          "name": "Schema explorer",
-          "when": "firebase-vscode.fdc.enabled",
-          "visibility": "collapsed",
-          "initialSize": 1
-        },
-        {
           "id": "firebase.session",
-          "name": "Account and Project",
-          "initialSize": 1
+          "name": "Account and Project"
         },
         {
           "id": "firebase.emulators",
-          "name": "Emulator Suite",
-          "initialSize": 1
+          "name": "Emulator Suite"
         }
       ],
       "firebase-data-connect-execution-view": [

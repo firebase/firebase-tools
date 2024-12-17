@@ -14,7 +14,7 @@ export class EmulatorsProvider
   ): Promise<EmulatorItem[]> | EmulatorItem[] {
     return [
       new EmulatorItem("Emulator 1", vscode.TreeItemCollapsibleState.None),
-      new EmulatorItem("Emulator 2", vscode.TreeItemCollapsibleState.None),
+      new EmulatorItem("Emulator 123", vscode.TreeItemCollapsibleState.None),
     ];
   }
 

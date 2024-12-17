@@ -1,21 +1,25 @@
-import { effect } from "@preact/signals-core";
+import { effect, ReadonlySignal } from "@preact/signals-core";
 import * as vscode from "vscode";
 import { SessionProvider } from "./session-provider";
-import { currentUser } from "../core/user";
+import { checkLogin, User } from "../core/user";
 import { currentProjectId } from "../core/project";
 
-export function registerSession(): vscode.Disposable {
+export function registerSession(
+  user: ReadonlySignal<User | undefined>,
+  project: ReadonlySignal<string | undefined>,
+): vscode.Disposable {
   const sessionProvider = new SessionProvider();
 
   return vscode.Disposable.from(
     {
       dispose: effect(() => {
-        sessionProvider.updateEmail(currentUser.value?.email);
+        sessionProvider.updateEmail(user.value?.email);
       }),
     },
     {
       dispose: effect(() => {
-        sessionProvider.updateProjectId(currentProjectId.value);
+        sessionProvider.updateProjectId(project.value);
+        console.log("project.value", project.value);
       }),
     },
     vscode.window.createTreeView("firebase.session", {

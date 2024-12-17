@@ -46,7 +46,7 @@ export function updateIdxSetting(shouldShow: boolean) {
 }
 
 // Persist env var as path setting when path setting doesn't exist
-export function setupFirebasePath(analyticsLogger: AnalyticsLogger) {
+export function setupFirebasePath() {
   const config = workspace.getConfiguration("firebase");
   if (process.env.FIREBASE_BINARY && !config.get<string>("firebasePath")) {
     config.update(
@@ -55,5 +55,5 @@ export function setupFirebasePath(analyticsLogger: AnalyticsLogger) {
       ConfigurationTarget.Global,
     );
   }
-  analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.SETUP_FIREBASE_BINARY);
+  // analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.SETUP_FIREBASE_BINARY);
 }

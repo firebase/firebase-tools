@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { spawnSync } from "child_process";
 import * as semver from "semver";
+import * as path from "path";
 
 import { ExtensionBroker } from "./extension-broker";
 import { createBroker } from "../common/messaging/broker";
@@ -23,62 +24,68 @@ import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
 import { registerSession } from "./session";
+import { computed, ReadonlySignal, Signal, signal } from "@preact/signals-core";
+import { checkLogin, User } from "./core/user";
+import { requireAuthWrapper } from "./cli";
+import { _readRC, getConfigPath } from "./core/config";
+import { RC } from "../src/rc";
+import { Result, ResultValue } from "./result";
+import { Emulators, registerEmulators } from "./emulators";
 
 // This method is called when your extension is activated
-export async function activate(context: vscode.ExtensionContext) {
-  const analyticsLogger = new AnalyticsLogger(context);
-
-  // Suggest installing the GraphQL syntax highlighter extension
-  await suggestGraphqlSyntaxExtension();
-
-  await setupFirebasePath(analyticsLogger);
+export async function activate(ctx: vscode.ExtensionContext) {
+  await setupFirebasePath();
   const settings = getSettings();
+
   logSetup();
   pluginLogger.debug("Activating Firebase extension.");
 
-  const broker = createBroker<
-    ExtensionToWebviewParamsMap,
-    WebviewToExtensionParamsMap,
-    vscode.Webview
-  >(new ExtensionBroker());
-
-  const authService = new AuthService(broker);
-
-  // show IDX data collection notice
-  if (settings.shouldShowIdxMetricNotice && env.value.isMonospace) {
-    // don't await/block on this
-    vscode.window.showInformationMessage(IDX_METRIC_NOTICE, "Ok").then(() => {
-      updateIdxSetting(false); // don't show message again
-    });
-  }
-
   await checkCLIInstallation();
 
-  const [emulatorsController, coreDisposable] = await registerCore(
-    broker,
-    context,
-    analyticsLogger,
-  );
+  const user = await createUser();
+  const rc = await createRC(ctx);
+  const project = await createProject(rc);
+  const emulators = signal<Emulators>({ status: "stopped" });
 
-  context.subscriptions.push(
-    { dispose: analyticsLogger.endSession },
-    { dispose: analyticsLogger.onDispose },
-    coreDisposable,
-    registerWebview({
-      name: "fdc_sidebar",
-      broker,
-      context,
-    }),
-    authService,
-    registerSession(),
-    registerFdc(
-      context,
-      broker,
-      authService,
-      emulatorsController,
-      analyticsLogger,
-    ),
+  ctx.subscriptions.push(
+    registerEmulators(emulators, rc),
+    registerSession(user, project),
   );
+}
+
+async function createUser(): Promise<Signal<User | undefined>> {
+  const user = await requireAuthWrapper();
+  return signal(user ?? undefined);
+}
+
+async function createRC(
+  ctx: vscode.ExtensionContext,
+): Promise<Signal<Result<RC | undefined>>> {
+  // const folderPath = path.dirname(getConfigPath() ?? "");
+  const rcUri = vscode.Uri.file(
+    path.join(getConfigPath() ?? "", ".firebaserc"),
+  );
+  console.log("WOWOWOWOWOW");
+  console.log(rcUri.fsPath);
+  const watcher = vscode.workspace.createFileSystemWatcher(rcUri.fsPath);
+  ctx.subscriptions.push(watcher);
+
+  const rc = signal<Result<RC | undefined>>(_readRC(rcUri));
+  watcher.onDidChange(() => (rc.value = _readRC(rcUri)));
+  watcher.onDidCreate(() => (rc.value = _readRC(rcUri)));
+  watcher.onDidDelete(() => (rc.value = new ResultValue(undefined)));
+
+  return rc;
+}
+
+async function createProject(
+  rc: Signal<Result<RC | undefined>>,
+): Promise<ReadonlySignal<string | undefined>> {
+  return computed(() => {
+    if (rc.value.tryReadValue) {
+      return rc.value.tryReadValue.projects.default;
+    }
+  });
 }
 
 async function checkCLIInstallation(): Promise<void> {
