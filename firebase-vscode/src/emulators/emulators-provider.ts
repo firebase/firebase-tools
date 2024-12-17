@@ -12,10 +12,7 @@ export class EmulatorsProvider
   getChildren(
     element?: EmulatorItem,
   ): Promise<EmulatorItem[]> | EmulatorItem[] {
-    return [
-      new EmulatorItem("Emulator 1", vscode.TreeItemCollapsibleState.None),
-      new EmulatorItem("Emulator 123", vscode.TreeItemCollapsibleState.None),
-    ];
+    return [new EmulatorItem("Foo", 8080), new EmulatorItem("Bar", 8081)];
   }
 
   private _onDidChangeTreeData: vscode.EventEmitter<EmulatorItem | undefined> =
@@ -27,10 +24,14 @@ export class EmulatorsProvider
 class EmulatorItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+    port: number,
   ) {
-    super(label, collapsibleState);
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.description = `:${port}`;
   }
 
-  iconPath = new vscode.ThemeIcon("account");
+  iconPath = new vscode.ThemeIcon(
+    "circle-filled",
+    new vscode.ThemeColor("testing.runAction"),
+  );
 }

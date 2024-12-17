@@ -151,6 +151,10 @@
       {
         "view": "firebase.studio",
         "contents": "Welcome to Firebase!\n[Login](command:firebase.addUser)"
+      },
+      {
+        "view": "firebase.emulators",
+        "contents": "No emulators detected\n[Start Emulators](command:firebase.startEmulators)"
       }
     ],
     "jsonValidation": [
