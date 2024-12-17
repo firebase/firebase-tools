@@ -38,9 +38,7 @@ export function registerFdcSdkGeneration(
   const initSdkCmd = vscode.commands.registerCommand(
     "fdc.init-sdk",
     (args: { appFolder: string }) => {
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI, {
-        firebase_binary_kind: settings.firebaseBinaryKind,
-      });
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
       // Lets do it from the right directory
       setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
       runCommand(`${settings.firebasePath} init dataconnect:sdk`);

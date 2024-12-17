@@ -74,9 +74,7 @@ export function registerTerminalTasks(
   const settings = getSettings();
 
   const loginTaskBroker = broker.on("executeLogin", () => {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
     runTerminalTask(
       "firebase login",
       `${settings.firebasePath} login --no-localhost`,
@@ -86,9 +84,7 @@ export function registerTerminalTasks(
   });
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",

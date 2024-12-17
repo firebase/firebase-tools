@@ -1,2 +1,0 @@
-- Fixed an issue where `clearData` with no tables would cause the Data Connect emulator to crash.
-- Fixed an issue where the Data Connect emulator would crash with `Error: Unreachable`.
