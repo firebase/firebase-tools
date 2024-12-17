@@ -87,8 +87,7 @@ function availablePort(host: string, port: number): Promise<boolean> {
 
 function getEmulatorEnvs(): Record<string, string> {
   const envs: Record<string, string> = {};
-  let emulatorInfos = EmulatorRegistry.listRunningWithInfo();
-
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo();
   setEnvVarsForEmulators(envs, emulatorInfos);
 
   return envs;
