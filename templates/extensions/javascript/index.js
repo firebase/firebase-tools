@@ -8,7 +8,7 @@
  * https://firebase.google.com/docs/extensions/publishers
  */
 
-import process from "node:process";
+
 const functions = require("firebase-functions");
 
 exports.greetTheWorld = functions.https.onRequest((req, res) => {

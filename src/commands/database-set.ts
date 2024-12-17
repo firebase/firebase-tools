@@ -14,7 +14,7 @@ import { URL } from "url";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
-import process from "node:process";
+
 
 export const command = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")

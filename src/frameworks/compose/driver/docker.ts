@@ -5,7 +5,7 @@ import * as spawn from "cross-spawn";
 import { AppBundle, Driver, Hook } from "../interfaces";
 import { BUNDLE_PATH, genHookScript } from "./hooks";
 import { RuntimeSpec } from "../discover/types";
-import process from "node:process";
+
 
 const ADAPTER_SCRIPTS_PATH = "./.firebase/adapters" as const;
 

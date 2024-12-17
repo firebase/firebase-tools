@@ -1,6 +1,6 @@
 import { logError } from "./logError";
 import { FirebaseError } from "./error";
-import process from "node:process";
+
 
 /**
  * Errors out by calling `process.exit` with an exit code of 2.

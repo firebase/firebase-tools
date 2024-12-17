@@ -1,6 +1,6 @@
 // This is an independently executed script that parses triggers
 // from a functions package directory.
-import process from "node:process";
+
 "use strict";
 
 var url = require("url");

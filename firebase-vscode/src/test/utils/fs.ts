@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import { addTearDown } from "./test_hooks";
-import process from "node:process";
+
 
 // TODO if we can afford adding a dependency, we could use something like "memfs"
 // to mock the file system instead of using the real one.

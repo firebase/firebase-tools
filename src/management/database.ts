@@ -9,7 +9,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { rtdbManagementOrigin } from "../api";
 import * as utils from "../utils";
-import process from "node:process";
+
 
 export const MGMT_API_VERSION = "v1beta";
 export const APP_LIST_PAGE_SIZE = 100;

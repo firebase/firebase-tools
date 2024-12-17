@@ -4,7 +4,7 @@ import { configstore } from "../configstore";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { Constants } from "./constants";
-import process from "node:process";
+
 
 export type AdminSdkConfig = {
   projectId: string;

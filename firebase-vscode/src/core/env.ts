@@ -2,7 +2,7 @@ import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
-import process from "node:process";
+
 
 interface Environment {
   isMonospace: boolean;

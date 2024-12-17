@@ -5,7 +5,7 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import process from "node:process";
+
 const pkg = require("../package.json");
 
 type cliEventNames =

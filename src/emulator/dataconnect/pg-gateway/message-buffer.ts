@@ -34,13 +34,13 @@ export class MessageBuffer {
           this.bufferOffset + this.bufferLength,
         );
         copy(bufferView, newBuffer, 0);
-        this.buffer = newBuffer;
+        this.buffer = newBuffer as any;
         this.bufferOffset = 0;
       }
       copy(newData, this.buffer, this.bufferOffset + this.bufferLength);
       this.bufferLength = newLength;
     } else {
-      this.buffer = newData;
+      this.buffer = newData as any;
       this.bufferOffset = 0;
       this.bufferLength = newData.byteLength;
     }

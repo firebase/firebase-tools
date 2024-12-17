@@ -3,7 +3,7 @@ import { developerConnectOrigin, developerConnectP4SADomain } from "../api";
 import { generateServiceIdentityAndPoll } from "./serviceusage";
 import { FirebaseError } from "../error";
 import { extractRepoSlugFromUri } from "../apphosting/githubConnections";
-import process from "node:process";
+
 
 const PAGE_SIZE_MAX = 1000;
 const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;

@@ -13,7 +13,7 @@ import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
 import { updateOrCreateGitignore } from "../utils";
 import { getOrPromptProject } from "../management/projects";
-import process from "node:process";
+
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";

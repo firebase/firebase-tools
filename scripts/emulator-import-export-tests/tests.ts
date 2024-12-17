@@ -7,7 +7,7 @@ import * as path from "path";
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions } from "../integration-helpers/framework";
 import { Resolver } from "../../src/emulator/dns";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";

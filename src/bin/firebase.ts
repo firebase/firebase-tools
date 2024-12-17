@@ -2,7 +2,6 @@
 
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
-import process from "node:process";
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
@@ -101,8 +100,8 @@ import { fetchMOTD } from "../fetchMOTD";
 enableExperimentsFromCliEnvVariable();
 fetchMOTD();
 
-process.on("exit", (code) => {
-  code = process.exitCode || code;
+process.on("exit", (c) => {
+  const code = (process.exitCode || c) as number;
   if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }

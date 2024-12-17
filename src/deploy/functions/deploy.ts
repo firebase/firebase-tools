@@ -13,7 +13,7 @@ import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
-import process from "node:process";
+
 
 setGracefulCleanup();
 

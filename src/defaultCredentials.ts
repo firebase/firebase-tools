@@ -4,7 +4,7 @@ import * as path from "path";
 import { clientId, clientSecret } from "./api";
 import { Tokens, User, Account } from "./types/auth";
 import { logger } from "./logger";
-import process from "node:process";
+
 
 // Interface for a valid JSON refresh token credential, so the
 // fields must be snake_case not camelCase.

@@ -9,7 +9,7 @@ import { serve } from "../serve/index";
 import { filterTargets } from "../filterTargets";
 import { needProjectNumber } from "../projectUtils";
 import { FirebaseError } from "../error";
-import process from "node:process";
+
 
 const VALID_TARGETS = ["hosting", "functions"];
 const REQUIRES_AUTH = ["hosting", "functions"];

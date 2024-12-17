@@ -28,7 +28,7 @@ import zlib from "node:zlib";
 import debugPkg from "debug";
 import minimist from "minimist";
 import { GoogleAuth } from "google-auth-library";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 const debug = debugPkg("update-single-file");

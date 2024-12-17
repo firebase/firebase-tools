@@ -7,7 +7,7 @@
     "outDir": "lib",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es2017",
+    "target": "es2018",
     "sourceMap": true,
     "skipLibCheck": true,
     "typeRoots": [

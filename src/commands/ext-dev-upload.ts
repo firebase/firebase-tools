@@ -23,7 +23,7 @@ import { Options } from "../options";
 import { getPublisherProfile } from "../extensions/publisherApi";
 import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
 import { getProject } from "../management/projects";
-import process from "node:process";
+
 
 // TODO(joehan): Go update @types/marked-terminal
 marked.use(markedTerminal() as any);

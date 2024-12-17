@@ -12,7 +12,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { parseBoltRules } from "../parseBoltRules";
 import { connectableHostname } from "../utils";
-import process from "node:process";
+
 
 export interface DatabaseEmulatorArgs {
   port?: number;

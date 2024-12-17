@@ -17,7 +17,7 @@ import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import type { Query } from "express-serve-static-core";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 export function createCloudEndpoints(emulator: StorageEmulator): Router {

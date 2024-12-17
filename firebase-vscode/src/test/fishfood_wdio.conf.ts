@@ -1,7 +1,7 @@
 import { merge } from "lodash";
 import { config as baseConfig, vscodeConfigs } from "./default_wdio.conf";
 import * as path from "path";
-import process from "node:process";
+
 
 const fishfoodPath = path.resolve(
   process.cwd(),

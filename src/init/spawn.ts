@@ -1,7 +1,7 @@
 import * as spawn from "cross-spawn";
 import { logger } from "../logger";
 import { getErrStack, isObject } from "../error";
-import process from "node:process";
+
 
 /**
  * wrapSpawn is cross platform spawn

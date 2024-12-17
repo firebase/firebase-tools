@@ -5,7 +5,7 @@ import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfac
 import { FirebaseError } from "../../error";
 import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
-import process from "node:process";
+
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;

@@ -17,7 +17,7 @@ import {
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
 import { streamToString } from "../../src/utils";
-import process from "node:process";
+
 
 const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
 const ADMIN_SDK_CONFIG = {

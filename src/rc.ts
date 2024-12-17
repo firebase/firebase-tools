@@ -8,7 +8,7 @@ import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
 import * as fsutils from "./fsutils";
 import * as utils from "./utils";
-import process from "node:process";
+
 
 // "exclusive" target implies that a resource can only be assigned a single target name
 const TARGET_TYPES: { [type: string]: { resource: string; exclusive: boolean } } = {

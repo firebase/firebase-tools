@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { enableExperimentsFromCliEnvVariable, isEnabled, setEnabled } from "./experiments";
-import process from "node:process";
+
 
 describe("experiments", () => {
   let originalCLIState = process.env.FIREBASE_CLI_EXPERIMENTS;

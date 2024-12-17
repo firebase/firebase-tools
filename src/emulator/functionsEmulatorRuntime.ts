@@ -19,7 +19,7 @@ import {
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 import { EventUtils } from "./events/types";
 import { Buffer } from "node:buffer";
-import process from "node:process";
+
 
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;

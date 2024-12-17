@@ -23,7 +23,7 @@
   and correctly spawn "./script.js" while preserving the
   "--foo" argument.
 */
-import process from "node:process";
+
 exports.Script_NodeJS = function() {
   const execArgv = [];
   let script = "";

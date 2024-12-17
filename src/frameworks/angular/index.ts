@@ -28,7 +28,7 @@ import {
 } from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
 import { FirebaseError } from "../../error";
-import process from "node:process";
+
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;

@@ -10,7 +10,7 @@ import * as build from "../../build";
 import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
-import process from "node:process";
+
 
 export const readFileAsync = promisify(fs.readFile);
 

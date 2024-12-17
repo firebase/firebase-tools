@@ -23,7 +23,7 @@ import { logBullet } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-import process from "node:process";
+
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");

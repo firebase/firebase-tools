@@ -20,7 +20,7 @@ import {
   VALID_LOCALE_FORMATS,
 } from "./constants";
 import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
-import process from "node:process";
+
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require

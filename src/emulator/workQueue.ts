@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators, FunctionsExecutionMode } from "./types";
-import process from "node:process";
+
 
 export type Work = {
   type?: string;

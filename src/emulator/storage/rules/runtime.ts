@@ -31,7 +31,7 @@ import {
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 const lock = new AsyncLock();

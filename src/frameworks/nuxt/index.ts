@@ -16,7 +16,7 @@ import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
 import { FirebaseError } from "../../error";
 import { execSync } from "child_process";
-import process from "node:process";
+
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 

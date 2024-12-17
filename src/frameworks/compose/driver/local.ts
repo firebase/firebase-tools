@@ -4,7 +4,7 @@ import * as spawn from "cross-spawn";
 import { AppBundle, Hook, Driver } from "../interfaces";
 import { BUNDLE_PATH, genHookScript } from "./hooks";
 import { RuntimeSpec } from "../discover/types";
-import process from "node:process";
+
 
 export class LocalDriver implements Driver {
   constructor(readonly spec: RuntimeSpec) {}

@@ -21,7 +21,7 @@ const Table = require("cli-table");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
-import process from "node:process";
+
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =

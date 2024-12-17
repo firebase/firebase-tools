@@ -24,7 +24,7 @@ import * as validate from "./validate";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 // The versions of the Firebase Functions SDK that added support for the container contract.

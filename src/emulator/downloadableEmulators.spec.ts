@@ -5,7 +5,7 @@ import * as fs from "fs-extra";
 
 import * as downloadableEmulators from "./downloadableEmulators";
 import { Emulators } from "./types";
-import process from "node:process";
+
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 

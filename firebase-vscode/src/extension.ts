@@ -25,7 +25,7 @@ import {
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
-import process from "node:process";
+
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {

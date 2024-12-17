@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { FirebaseError } from "../error";
 import { encodeFirestoreValue } from "./encodeFirestoreValue";
 import { Buffer } from "node:buffer";
-import process from "node:process";
+
 
 describe("encodeFirestoreValue", () => {
   it("should encode known types", () => {

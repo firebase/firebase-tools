@@ -1,6 +1,6 @@
 import { ChildProcess } from "child_process";
 import * as spawn from "cross-spawn";
-import process from "node:process";
+
 
 export class CLIProcess {
   process?: ChildProcess;

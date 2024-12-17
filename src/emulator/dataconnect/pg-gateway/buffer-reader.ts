@@ -10,7 +10,7 @@ export class BufferReader {
   constructor(private offset = 0) {}
 
   public setBuffer(buffer: Uint8Array, offset = 0): void {
-    this.buffer = buffer;
+    this.buffer = buffer as any; // Necessary due to declaration merging of ArrayBufferLike
     this.offset = offset;
   }
 

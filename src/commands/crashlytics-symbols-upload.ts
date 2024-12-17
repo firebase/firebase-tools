@@ -8,7 +8,7 @@ import * as utils from "../utils";
 
 import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
 import { Options } from "../options";
-import process from "node:process";
+
 
 enum SymbolGenerator {
   breakpad = "breakpad",

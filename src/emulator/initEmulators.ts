@@ -8,7 +8,7 @@ import { Emulators } from "./types";
 import { exportConfig } from "../apphosting/config";
 import { detectProjectRoot } from "../detectProjectRoot";
 import { Config } from "../config";
-import process from "node:process";
+
 
 type InitFn = (config: Config) => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;

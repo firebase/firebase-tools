@@ -10,7 +10,7 @@ import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import { execSync } from "node:child_process";
-import process from "node:process";
+
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports

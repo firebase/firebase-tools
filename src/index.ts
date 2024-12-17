@@ -4,7 +4,7 @@ import * as leven from "leven";
 
 import { logger } from "./logger";
 import { setupLoggers } from "./utils";
-import process from "node:process";
+
 
 const pkg = require("../package.json");
 

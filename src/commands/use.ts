@@ -8,7 +8,7 @@ import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
 import * as utils from "../utils";
-import process from "node:process";
+
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {

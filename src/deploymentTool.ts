@@ -1,4 +1,4 @@
-import process from "node:process";
+
 export const BASE = "cli-firebase";
 
 export function value() {

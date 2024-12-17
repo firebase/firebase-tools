@@ -21,7 +21,7 @@ import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";
 import { FirebaseError } from "../../../error";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 let GIT_DIR: string;

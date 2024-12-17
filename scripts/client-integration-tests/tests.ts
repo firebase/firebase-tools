@@ -3,7 +3,7 @@ import { join } from "path";
 import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { v4 as uuidv4 } from "uuid";
 import * as tmp from "tmp";
-import process from "node:process";
+
 
 import firebase = require("../../src");
 

@@ -9,7 +9,7 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 import { readTemplateSync } from "../templates";
-import process from "node:process";
+
 marked.use(markedTerminal() as any);
 
 function readCommonTemplates() {

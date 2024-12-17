@@ -5,7 +5,7 @@
 
 import { execSync } from "child_process";
 import { extname, resolve } from "path";
-import process from "node:process";
+
 
 const root = resolve(__dirname, "..");
 

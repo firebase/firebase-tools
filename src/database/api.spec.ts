@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as utils from "../utils";
 import { realtimeOriginOrEmulatorOrCustomUrl, realtimeOriginOrCustomUrl } from "./api";
-import process from "node:process";
+
 
 describe("api", () => {
   afterEach(() => {

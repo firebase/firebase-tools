@@ -14,7 +14,7 @@ import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 import { assertExhaustive } from "../../../../functional";
-import process from "node:process";
+
 import { Buffer } from "node:buffer";
 
 /**
