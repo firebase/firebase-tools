@@ -74,9 +74,10 @@ export interface Diff {
 export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK";
 
 export interface Workaround {
-  description: string;
-  reason: string;
-  replaceWith: string;
+  // TODO: Make these lower-case after fixing the emulator, to match the style convention.
+  Description: string;
+  Reason: string;
+  ReplaceWith: string;
 }
 
 export interface GraphqlError {

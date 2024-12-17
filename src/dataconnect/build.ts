@@ -2,8 +2,9 @@ import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
+import { promptOnce } from "../prompt";
 import * as utils from "../utils";
-import { prettify } from "./graphqlError";
+import { prettify, prettifyWithWorkaround } from "./graphqlError";
 import { DeploymentMetadata } from "./types";
 
 export async function build(
@@ -30,22 +31,48 @@ export async function build(
     const requiredAcks = buildResult.errors.filter(
       (w) => w.extensions?.warningLevel && w.extensions?.warningLevel === "REQUIRE_ACK",
     );
+    const choices = [
+      { name: "Accept all changes and proceed", value: "proceed" },
+      { name: "Reject changes and abort", value: "abort" },
+    ];
     if (requiredAcks.length) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        `There are changes in your schema or connectors that may break your existing applications. These changes require explicit acknowledgement to deploy:\n` +
+          requiredAcks.map(prettifyWithWorkaround).join("\n"),
+      );
       if (options.nonInteractive && !options.force) {
         throw new FirebaseError(
-          `There are changes in your schema or connectors that may break your existing applications. These changes require explicit acknowledgement to deploy:\n${requiredAcks.map(prettify).join("\n")}`,
+          "Explicit acknowledgement required for breaking schema or connector changes.",
         );
       } else if (!options.nonInteractive && !options.force && !dryRun) {
-        // TODO: Prompt message and error if rejected. Default to reject.
-      } else {
-        utils.logLabeledBullet("dataconnect", requiredAcks.map(prettify).join("\n"));
+        const result = await promptOnce({
+          message: "Would you like to proceed with these changes?",
+          type: "list",
+          choices,
+          default: "abort",
+        });
+        if (result === "abort") {
+          throw new FirebaseError(`Deployment aborted.`);
+        }
       }
     }
     if (interactiveAcks.length) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        `There are changes in your schema or connectors that may cause unexpected behavior in your existing applications:\n` +
+          interactiveAcks.map(prettify).join("\n"),
+      );
       if (!options.nonInteractive && !options.force && !dryRun) {
-        // TODO: Prompt message and error if rejected. Default to accept.
-      } else {
-        utils.logLabeledBullet("dataconnect", interactiveAcks.map(prettify).join("\n"));
+        const result = await promptOnce({
+          message: "Would you like to proceed with these changes?",
+          type: "list",
+          choices,
+          default: "proceed",
+        });
+        if (result === "abort") {
+          throw new FirebaseError(`Deployment aborted.`);
+        }
       }
     }
   }
