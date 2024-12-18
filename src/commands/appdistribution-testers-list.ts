@@ -9,7 +9,7 @@ import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import * as utils from "../utils";
 
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 export const command = new Command("appdistribution:testers:list [group]")
   .description("list testers in project")

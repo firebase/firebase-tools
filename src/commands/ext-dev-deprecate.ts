@@ -39,7 +39,7 @@ async function deprecate(
   extensionRef: refs.Ref,
   versionPredicate: string,
   options: ExtDevDeprecateOptions,
-) {
+): Promise<void> {
   const { publisherId, extensionId, version } = extensionRef;
   if (version) {
     throw new FirebaseError(

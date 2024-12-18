@@ -77,7 +77,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     throw new FirebaseError("Unable to determine genkit version to install");
   }
 
-  if (semver.gte(genkitVersion, "1.0.0")) {
+  if (semver.gte(genkitVersion, "2.0.0")) {
     // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
     const continueInstall = await confirm({
       message:
