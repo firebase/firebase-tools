@@ -51,6 +51,7 @@ export interface DataConnectGenerateArgs {
 
 export interface DataConnectBuildArgs {
   configDir: string;
+  projectId?: string;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -249,6 +250,9 @@ export class DataConnectEmulator implements EmulatorInstance {
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
+    if (args.projectId) {
+      cmd.push(`--project_id=${args.projectId}`);
+    }
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (isIncomaptibleArchError(res.error)) {

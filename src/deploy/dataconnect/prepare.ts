@@ -39,7 +39,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     serviceCfgs.map((c) => load(projectId, options.config, c.source)),
   );
   for (const si of serviceInfos) {
-    si.deploymentMetadata = await build(options, si.sourceDirectory);
+    si.deploymentMetadata = await build(options, si.sourceDirectory, options.dryRun);
   }
   const unmatchedFilters = filters?.filter((f) => {
     // filter out all filters that match no service
