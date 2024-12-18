@@ -1,30 +1,30 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
-import { getSchema, upsertSchema, deleteConnector } from "./client";
+import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types.js";
+import { getSchema, upsertSchema, deleteConnector } from "./client.js";
 import {
   setupIAMUsers,
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
   toDatabaseUser,
-} from "../gcp/cloudsql/connect";
+} from "../gcp/cloudsql/connect.js";
 import {
   firebaseowner,
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
-} from "../gcp/cloudsql/permissions";
-import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { needProjectId } from "../projectUtils";
-import { promptOnce, confirm } from "../prompt";
-import { logger } from "../logger";
-import { Schema } from "./types";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
-import * as errors from "./errors";
+} from "../gcp/cloudsql/permissions.js";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin.js";
+import { needProjectId } from "../projectUtils.js";
+import { promptOnce, confirm } from "../prompt.js";
+import { logger } from "../logger.js";
+import { Schema } from "./types.js";
+import { Options } from "../options.js";
+import { FirebaseError } from "../error.js";
+import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils.js";
+import * as errors from "./errors.js";
 
 export async function diffSchema(
   schema: Schema,

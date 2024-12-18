@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as nock from "nock";
+import sinon from "sinon";
+import nock from "nock";
 
-import * as api from "../api";
+import * as api from "../api.js";
 
 import {
   DatabaseLocation,
@@ -15,8 +15,8 @@ import {
   checkInstanceNameAvailable,
   MGMT_API_VERSION,
   APP_LIST_PAGE_SIZE,
-} from "./database";
-import { FirebaseError } from "../error";
+} from "./database.js";
+import { FirebaseError } from "../error.js";
 
 const PROJECT_ID = "the-best-firebase-project";
 const DATABASE_INSTANCE_NAME = "some_instance";

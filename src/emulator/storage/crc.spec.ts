@@ -1,27 +1,9 @@
 import { expect } from "chai";
-import { crc32c, crc32cToString } from "./crc";
+import { crc32c, crc32cToString } from "./crc.js";
 import { Buffer } from "node:buffer";
-
-/**
- * Test cases adapated from:
- * https://github.com/ashi009/node-fast-crc32c/blob/master/test/sets.json
- */
-const stringTestCases: {
-  cases: { input: string; want: number }[];
-} = require("./crc-string-cases.json");
-
-/**
- * Test cases adapated from:
- * https://github.com/ashi009/node-fast-crc32c/blob/master/test/sets.json
- */
-const bufferTestCases: {
-  cases: { input: number[]; want: number }[];
-} = require("./crc-buffer-cases.json");
-
-const toStringTestCases: {
-  cases: { input: string; want: string }[];
-} = require("./crc-to-string-cases.json");
-
+import stringTestCases from "./crc-string-cases.json" with { type: "json" };
+import bufferTestCases from "./crc-buffer-cases.json" with { type: "json" };
+import toStringTestCases from "./crc-to-string-cases.json" with { type: "json" };
 describe("crc", () => {
   it("correctly computes crc32c from a string", () => {
     const cases = stringTestCases.cases;

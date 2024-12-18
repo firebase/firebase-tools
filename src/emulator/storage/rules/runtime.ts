@@ -1,7 +1,11 @@
 import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
-import { FirebaseError } from "../../../error";
-import * as AsyncLock from "async-lock";
+import AsyncLock from "async-lock";
+import * as jwt from "jsonwebtoken";
+import * as fs from "fs-extra";
+import { Buffer } from "node:buffer";
+
+import { FirebaseError } from "../../../error.js";
 import {
   DataLoadStatus,
   RulesetOperationMethod,
@@ -15,24 +19,20 @@ import {
   RuntimeActionVerifyBundle,
   RuntimeActionVerifyResponse,
   Source,
-} from "./types";
-import * as jwt from "jsonwebtoken";
-import { ExpressionValue } from "./expressionValue";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
-import { RulesResourceMetadata, toSerializedDate } from "../metadata";
-import * as utils from "../../../utils";
-import { Constants } from "../../constants";
-import { downloadEmulator } from "../../download";
-import * as fs from "fs-extra";
+} from "./types.js";
+import { ExpressionValue } from "./expressionValue.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
+import { RulesResourceMetadata, toSerializedDate } from "../metadata.js";
+import * as utils from "../../../utils.js";
+import { Constants } from "../../constants.js";
+import { downloadEmulator } from "../../download.js";
 import {
   _getCommand,
   getDownloadDetails,
   handleEmulatorProcessError,
-} from "../../downloadableEmulators";
-import { EmulatorRegistry } from "../../registry";
-
-import { Buffer } from "node:buffer";
+} from "../../downloadableEmulators.js";
+import { EmulatorRegistry } from "../../registry.js";
 
 const lock = new AsyncLock();
 const synchonizationKey = "key";

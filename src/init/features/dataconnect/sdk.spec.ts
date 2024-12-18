@@ -1,10 +1,9 @@
 import * as fs from "fs";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
 
-import * as sdk from "./sdk";
-import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
-
+import * as sdk from "./sdk.js";
+import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator.js";
 
 const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 

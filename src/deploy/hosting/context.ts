@@ -1,5 +1,5 @@
-import { HostingResolved } from "../../hosting/config";
-import { Context as FunctionsContext } from "../functions/args";
+import { HostingResolved } from "../../hosting/config.js";
+import { Context as FunctionsContext } from "../functions/args.js";
 
 export interface HostingDeploy {
   // Note: a HostingMultiple[number] is a stronger guarantee than a HostingSingle

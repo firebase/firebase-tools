@@ -1,12 +1,12 @@
 import * as clc from "colorette";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { hostingApiOrigin } from "../api";
-import { promptOnce } from "../prompt";
-import { requireHostingSite } from "../requireHostingSite";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { hostingApiOrigin } from "../api.js";
+import { promptOnce } from "../prompt.js";
+import { requireHostingSite } from "../requireHostingSite.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")

@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { ensureApis } from "../dataconnect/ensureApis";
-import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
-import { diffSchema } from "../dataconnect/schemaMigration";
-import { requireAuth } from "../requireAuth";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { ensureApis } from "../dataconnect/ensureApis.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { pickService } from "../dataconnect/fileUtils.js";
+import { diffSchema } from "../dataconnect/schemaMigration.js";
+import { requireAuth } from "../requireAuth.js";
 
 export const command = new Command("dataconnect:sql:diff [serviceId]")
   .description(

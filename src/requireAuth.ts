@@ -1,16 +1,15 @@
 import { GoogleAuth, GoogleAuthOptions } from "google-auth-library";
 import * as clc from "colorette";
 
-import * as api from "./api";
-import * as apiv2 from "./apiv2";
-import { FirebaseError } from "./error";
-import { logger } from "./logger";
-import * as utils from "./utils";
-import * as scopes from "./scopes";
-import { Tokens, TokensWithExpiration, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
-import type { Options } from "./options";
-
+import * as api from "./api.js";
+import * as apiv2 from "./apiv2.js";
+import { FirebaseError } from "./error.js";
+import { logger } from "./logger.js";
+import * as utils from "./utils.js";
+import * as scopes from "./scopes.js";
+import { Tokens, TokensWithExpiration, User } from "./types/auth/index.js";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth.js";
+import type { Options } from "./options.js";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",

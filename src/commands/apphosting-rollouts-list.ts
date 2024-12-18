@@ -1,8 +1,8 @@
-import * as apphosting from "../gcp/apphosting";
-import { logger } from "../logger";
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
+import * as apphosting from "../gcp/apphosting.js";
+import { logger } from "../logger.js";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
 
 export const command = new Command("apphosting:rollouts:list <backendId>")
   .description("list rollouts of an App Hosting backend")

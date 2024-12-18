@@ -1,11 +1,11 @@
 import { ReadStream } from "fs";
 
-import * as utils from "../utils";
-import * as operationPoller from "../operation-poller";
-import { Distribution } from "./distribution";
-import { FirebaseError, getErrMsg } from "../error";
-import { Client, ClientResponse } from "../apiv2";
-import { appDistributionOrigin } from "../api";
+import * as utils from "../utils.js";
+import * as operationPoller from "../operation-poller.js";
+import { Distribution } from "./distribution.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { Client, ClientResponse } from "../apiv2.js";
+import { appDistributionOrigin } from "../api.js";
 
 import {
   AabInfo,
@@ -18,7 +18,7 @@ import {
   ReleaseTest,
   TestDevice,
   UploadReleaseResponse,
-} from "./types";
+} from "./types.js";
 
 /**
  * Makes RPCs to the App Distribution server backend.

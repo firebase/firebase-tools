@@ -2,12 +2,12 @@ import {
   EndpointFilter,
   endpointMatchesAnyFilter,
   getFunctionLabel,
-} from "../functionsDeployHelper";
-import { isFirebaseManaged } from "../../../deploymentTool";
-import { FirebaseError } from "../../../error";
-import * as utils from "../../../utils";
-import * as backend from "../backend";
-import * as v2events from "../../../functions/events/v2";
+} from "../functionsDeployHelper.js";
+import { isFirebaseManaged } from "../../../deploymentTool.js";
+import { FirebaseError } from "../../../error.js";
+import * as utils from "../../../utils.js";
+import * as backend from "../backend.js";
+import * as v2events from "../../../functions/events/v2.js";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;

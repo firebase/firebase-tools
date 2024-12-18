@@ -1,11 +1,10 @@
-import { get } from "lodash";
 import { join } from "path";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import * as functionsConfig from "../functionsConfig";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as functionsConfig from "../functionsConfig.js";
 
 async function materialize(projectId: string, path?: string): Promise<any> {
   if (path === undefined) {
@@ -16,7 +15,7 @@ async function materialize(projectId: string, path?: string): Promise<any> {
   const configName = join("projects", projectId, "configs", configId);
   const result = await functionsConfig.materializeConfig(configName, {});
   const query = parts.join(".");
-  return query ? get(result, query) : result;
+  return query ? result?.[query] : result;
 }
 
 export const command = new Command("functions:config:get [path]")

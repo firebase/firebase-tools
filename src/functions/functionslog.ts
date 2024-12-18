@@ -1,5 +1,5 @@
-import { logger } from "../logger";
-import { LogEntry } from "../gcp/cloudlogging";
+import { logger } from "../logger.js";
+import { LogEntry } from "../gcp/cloudlogging.js";
 
 /**
  * The correct API filter to use when GCFv2 is enabled and/or we want specific function logs

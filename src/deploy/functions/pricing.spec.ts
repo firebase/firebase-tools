@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import * as backend from "./backend";
-import * as pricing from "./pricing";
+import * as backend from "./backend.js";
+import * as pricing from "./pricing.js";
 
 // N.B. I'm not sure why, but if I don't add back backend.HttpsTriggered
 // then I can't add the trigger to the Omit<>, which means it can't be

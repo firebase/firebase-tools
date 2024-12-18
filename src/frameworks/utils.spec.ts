@@ -1,15 +1,15 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fs from "fs";
 import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils";
+import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils.js";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
     it("should return expected tsc path", () => {
-      expect(getNodeModuleBin("tsc", __dirname)).to.equal(
-        resolve(join(__dirname, "..", "..", "node_modules", ".bin", "tsc")),
+      expect(getNodeModuleBin("tsc", import.meta.dirname)).to.equal(
+        resolve(join(import.meta.dirname, "..", "..", "node_modules", ".bin", "tsc")),
       );
     }).timeout(5000);
     it("should throw when npm root not found", () => {
@@ -19,7 +19,7 @@ describe("Frameworks utils", () => {
     }).timeout(5000);
     it("should throw when executable not found", () => {
       expect(() => {
-        getNodeModuleBin("xxxxx", __dirname);
+        getNodeModuleBin("xxxxx", import.meta.dirname);
       }).to.throw("Could not find the xxxxx executable.");
     }).timeout(5000);
   });

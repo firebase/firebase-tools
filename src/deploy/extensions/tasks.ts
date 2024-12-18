@@ -1,13 +1,13 @@
 import * as clc from "colorette";
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 
-import * as extensionsApi from "../../extensions/extensionsApi";
-import { createSourceFromLocation } from "../../extensions/extensionsHelper";
-import * as refs from "../../extensions/refs";
-import * as utils from "../../utils";
-import { ErrorHandler } from "./errors";
-import { DeploymentInstanceSpec, InstanceSpec } from "./planner";
-import { isObject } from "../../error";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import { createSourceFromLocation } from "../../extensions/extensionsHelper.js";
+import * as refs from "../../extensions/refs.js";
+import * as utils from "../../utils.js";
+import { ErrorHandler } from "./errors.js";
+import { DeploymentInstanceSpec, InstanceSpec } from "./planner.js";
+import { isObject } from "../../error.js";
 
 const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 

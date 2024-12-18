@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { BackupSchedule, listBackupSchedules } from "../gcp/firestore";
-import { PrettyPrint } from "../firestore/pretty-print";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { BackupSchedule, listBackupSchedules } from "../gcp/firestore.js";
+import { PrettyPrint } from "../firestore/pretty-print.js";
 
 export const command = new Command("firestore:backups:schedules:list")
   .description("List backup schedules under your Cloud Firestore database.")

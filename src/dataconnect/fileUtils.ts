@@ -1,12 +1,12 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types";
-import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config } from "../config";
-import { DataConnectMultiple } from "../firebaseConfig";
-import { load } from "./load";
+import { FirebaseError } from "../error.js";
+import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types.js";
+import { readFileFromDirectory, wrappedSafeLoad } from "../utils.js";
+import { Config } from "../config.js";
+import { DataConnectMultiple } from "../firebaseConfig.js";
+import { load } from "./load.js";
 
 export function readFirebaseJson(config?: Config): DataConnectMultiple {
   if (!config?.has("dataconnect")) {

@@ -1,8 +1,12 @@
 import { execSync } from "child_process";
-import { copy, pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces.js";
+
+import Module from "node:module";
+
+const require = Module.createRequire(import.meta.url);
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -22,7 +26,7 @@ async function getConfig(root: string) {
 }
 
 export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "package.json")))) return;
+  if (!(await fs.pathExists(join(dir, "package.json")))) return;
   const { serveDir: publicDirectory } = await getConfig(dir);
   if (!publicDirectory) return;
   return { mayWantBackend: true, publicDirectory };
@@ -36,7 +40,7 @@ export async function build(cwd: string): Promise<BuildResult> {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { serveDir } = await getConfig(root);
-  await copy(serveDir!, dest);
+  await fs.copy(serveDir!, dest);
 }
 
 async function getBootstrapScript(

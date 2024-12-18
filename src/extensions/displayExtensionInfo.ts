@@ -2,8 +2,8 @@ import * as clc from "colorette";
 import * as semver from "semver";
 import * as path from "path";
 
-import * as refs from "../extensions/refs";
-import { logger } from "../logger";
+import * as refs from "../extensions/refs.js";
+import { logger } from "../logger.js";
 import {
   Api,
   ExtensionSpec,
@@ -15,9 +15,9 @@ import {
   Resource,
   FUNCTIONS_RESOURCE_TYPE,
   EventDescriptor,
-} from "./types";
-import * as iam from "../gcp/iam";
-import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
+} from "./types.js";
+import * as iam from "../gcp/iam.js";
+import { SECRET_ROLE, usesSecrets } from "./secretsUtils.js";
 
 const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";

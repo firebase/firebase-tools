@@ -1,13 +1,11 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
-import * as nock from "nock";
-import AbortController from "abort-controller";
-const proxySetup = require("proxy");
-
-import { Client } from "./apiv2";
-import { FirebaseError } from "./error";
-import { streamToString, stringToStream } from "./utils";
-
+import nock from "nock";
+import { AbortController } from "abort-controller";
+import { Client } from "./apiv2.js";
+import { FirebaseError } from "./error.js";
+import { streamToString, stringToStream } from "./utils.js";
+import proxySetup from "proxy";
 
 describe("apiv2", () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as functionsLog from "./functionslog";
-import { logger } from "../logger";
+import sinon from "sinon";
+import * as functionsLog from "./functionslog.js";
+import { logger } from "../logger.js";
 
 describe("functionsLog", () => {
   describe("getApiFilter", () => {

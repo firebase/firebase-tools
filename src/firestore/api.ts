@@ -1,18 +1,18 @@
 import * as clc from "colorette";
 
-import { logger } from "../logger";
-import * as utils from "../utils";
-import * as validator from "./validator";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import * as validator from "./validator.js";
 
-import * as types from "./api-types";
-import * as Spec from "./api-spec";
-import * as sort from "./api-sort";
-import * as util from "./util";
-import { confirm } from "../prompt";
-import { firestoreOrigin } from "../api";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
-import { PrettyPrint } from "./pretty-print";
+import * as types from "./api-types.js";
+import * as Spec from "./api-spec.js";
+import * as sort from "./api-sort.js";
+import * as util from "./util.js";
+import { confirm } from "../prompt.js";
+import { firestoreOrigin } from "../api.js";
+import { FirebaseError } from "../error.js";
+import { Client } from "../apiv2.js";
+import { PrettyPrint } from "./pretty-print.js";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });

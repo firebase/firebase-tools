@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import * as args from "./args";
-import * as backend from "./backend";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as utils from "../../utils";
-import * as projectConfig from "../../functions/projectConfig";
+import { FirebaseError } from "../../error.js";
+import * as args from "./args.js";
+import * as backend from "./backend.js";
+import * as gcf from "../../gcp/cloudfunctions.js";
+import * as gcfV2 from "../../gcp/cloudfunctionsv2.js";
+import * as utils from "../../utils.js";
+import * as projectConfig from "../../functions/projectConfig.js";
 
 describe("Backend", () => {
   const FUNCTION_NAME: backend.TargetIds = {

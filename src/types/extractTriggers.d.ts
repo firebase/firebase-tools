@@ -4,7 +4,7 @@
  * @param {ParsedTriggerDefinition[]} triggers array of EmulatedTriggerDefinitions to extend (in-place).
  * @param {string=} prefix optional function name prefix, for example when using grouped functions.
  */
-import { ParsedTriggerDefinition } from "../emulator/functionsEmulatorShared";
+import { ParsedTriggerDefinition } from "../emulator/functionsEmulatorShared.js";
 
 export declare function extractTriggers(
   mod: Array<object>, // eslint-disable-line @typescript-eslint/ban-types

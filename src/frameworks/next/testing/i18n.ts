@@ -1,4 +1,4 @@
-import type { DomainLocale } from "next/dist/server/config";
+import type { DomainLocale } from "next/dist/server/config.js";
 
 export const pathsWithCustomRoutesInternalPrefix = [
   `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/:slug(\\d{1,})`,

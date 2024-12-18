@@ -1,6 +1,6 @@
-import { Emulators, ListenSpec } from "../types";
-import { ExpressBasedEmulator } from "../ExpressBasedEmulator";
-import { resolveHostAndAssignPorts } from "../portUtils";
+import { Emulators, ListenSpec } from "../types.js";
+import { ExpressBasedEmulator } from "../ExpressBasedEmulator.js";
+import { resolveHostAndAssignPorts } from "../portUtils.js";
 
 /**
  * A thing that acts like an emulator by just occupying a port.

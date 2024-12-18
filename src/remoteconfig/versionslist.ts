@@ -1,8 +1,8 @@
-import { remoteConfigApiOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { ListVersionsResult } from "./interfaces";
-import { logger } from "../logger";
+import { remoteConfigApiOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { ListVersionsResult } from "./interfaces.js";
+import { logger } from "../logger.js";
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),

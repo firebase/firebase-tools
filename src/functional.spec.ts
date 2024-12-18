@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { flatten } from "lodash";
-import { SameType } from "./metaprogramming";
+import _ from "lodash";
+import { SameType } from "./metaprogramming.js";
 
-import * as f from "./functional";
+import * as f from "./functional.js";
 
 describe("functional", () => {
   describe("flatten", () => {
@@ -52,7 +52,7 @@ describe("functional", () => {
     });
 
     it("can iterate an empty array", () => {
-      expect([...flatten([])]).to.deep.equal([]);
+      expect([..._.flatten([])]).to.deep.equal([]);
     });
 
     it("can noop arrays", () => {

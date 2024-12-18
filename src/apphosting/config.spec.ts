@@ -1,14 +1,12 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as yaml from "yaml";
 import * as path from "path";
-import * as fsImport from "../fsutils";
-import * as promptImport from "../prompt";
-import * as dialogs from "./secrets/dialogs";
-import * as config from "./config";
-import { NodeType } from "yaml/dist/nodes/Node";
-import { AppHostingYamlConfig } from "./yaml";
-
+import * as fsImport from "../fsutils.js";
+import * as promptImport from "../prompt.js";
+import * as dialogs from "./secrets/dialogs.js";
+import * as config from "./config.js";
+import { AppHostingYamlConfig } from "./yaml.js";
 
 describe("config", () => {
   describe("discoverBackendRoot", () => {
@@ -58,7 +56,7 @@ describe("config", () => {
 
   describe("get/setEnv", () => {
     it("sets new envs", () => {
-      const doc = new yaml.Document<NodeType<config.Config>>();
+      const doc = new yaml.Document<config.NodeType<config.Config>>();
       const env: config.Env = {
         variable: "VARIABLE",
         value: "value",
@@ -75,7 +73,7 @@ describe("config", () => {
     });
 
     it("overwrites envs", () => {
-      const doc = new yaml.Document<NodeType<config.Config>>();
+      const doc = new yaml.Document<config.NodeType<config.Config>>();
       const env: config.Env = {
         variable: "VARIABLE",
         value: "value",
@@ -110,7 +108,7 @@ env:
     secret: api-key
 `;
 
-      const doc = yaml.parseDocument(rawDoc) as yaml.Document<NodeType<config.Config>>;
+      const doc = yaml.parseDocument(rawDoc) as yaml.Document<config.NodeType<config.Config>>;
       config.upsertEnv(doc, {
         variable: "GOOGLE_API_KEY",
         secret: "api-key",

@@ -1,15 +1,15 @@
 import * as clc from "colorette";
 
-import * as args from "./args";
-import * as backend from "./backend";
-import * as build from "./build";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import * as functionsConfig from "../../functionsConfig";
-import * as functionsEnv from "../../functions/env";
-import * as runtimes from "./runtimes";
-import * as supported from "./runtimes/supported";
-import * as validate from "./validate";
-import * as ensure from "./ensure";
+import * as args from "./args.js";
+import * as backend from "./backend.js";
+import * as build from "./build.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
+import * as functionsConfig from "../../functionsConfig.js";
+import * as functionsEnv from "../../functions/env.js";
+import * as runtimes from "./runtimes/index.js";
+import * as supported from "./runtimes/supported/index.js";
+import * as validate from "./validate.js";
+import * as ensure from "./ensure.js";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -18,36 +18,36 @@ import {
   eventarcOrigin,
   pubsubOrigin,
   storageOrigin,
-} from "../../api";
-import { Options } from "../../options";
+} from "../../api.js";
+import { Options } from "../../options.js";
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
   targetCodebases,
-} from "./functionsDeployHelper";
-import { logLabeledBullet } from "../../utils";
-import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { logger } from "../../logger";
-import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles } from "./checkIam";
-import { FirebaseError } from "../../error";
+} from "./functionsDeployHelper.js";
+import { logLabeledBullet } from "../../utils.js";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload.js";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts.js";
+import { needProjectId, needProjectNumber } from "../../projectUtils.js";
+import { logger } from "../../logger.js";
+import { ensureTriggerRegions } from "./triggerRegionHelper.js";
+import { ensureServiceAgentRoles } from "./checkIam.js";
+import { FirebaseError } from "../../error.js";
 import {
   configForCodebase,
   normalizeAndValidate,
   ValidatedConfig,
-} from "../../functions/projectConfig";
-import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
-import { generateServiceIdentity } from "../../gcp/serviceusage";
-import { applyBackendHashToBackends } from "./cache/applyHash";
-import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive } from "../../functional";
-import { prepareDynamicExtensions } from "../extensions/prepare";
-import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
-import { DeployOptions } from "..";
+} from "../../functions/projectConfig.js";
+import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1.js";
+import { generateServiceIdentity } from "../../gcp/serviceusage.js";
+import { applyBackendHashToBackends } from "./cache/applyHash.js";
+import { allEndpoints, Backend } from "./backend.js";
+import { assertExhaustive } from "../../functional.js";
+import { prepareDynamicExtensions } from "../extensions/prepare.js";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args.js";
+import { DeployOptions } from "../index.js";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 

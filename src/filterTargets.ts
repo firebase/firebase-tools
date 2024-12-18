@@ -1,7 +1,6 @@
-import { intersection, difference } from "lodash";
-import { FirebaseError } from "./error";
-import { Options } from "./options";
-
+import _ from "lodash";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 /**
  * Filters targets from options with valid targets as specified.
@@ -14,14 +13,14 @@ export function filterTargets(options: Options, validTargets: string[]): string[
     return options.config.has(t);
   });
   if (options.only) {
-    targets = intersection(
+    targets = _.intersection(
       targets,
       options.only.split(",").map((opt: string) => {
         return opt.split(":")[0];
       }),
     );
   } else if (options.except) {
-    targets = difference(targets, options.except.split(","));
+    targets = _.difference(targets, options.except.split(","));
   }
   if (targets.length === 0) {
     let msg = "Cannot understand what targets to deploy/serve.";

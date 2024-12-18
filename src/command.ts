@@ -1,19 +1,18 @@
 import * as clc from "colorette";
 import { CommanderStatic } from "commander";
-import { first, last, size, head, keys, values } from "lodash";
+import _ from "lodash";
 
-import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
-import { loadRC } from "./rc";
-import { Config } from "./config";
-import { configstore } from "./configstore";
-import { detectProjectRoot } from "./detectProjectRoot";
-import { trackEmulator, trackGA4 } from "./track";
-import { selectAccount, setActiveAccount } from "./auth";
-import { getProject } from "./management/projects";
-import { requireAuth } from "./requireAuth";
-import { Options } from "./options";
-
+import { FirebaseError } from "./error.js";
+import { getInheritedOption, setupLoggers, withTimeout } from "./utils.js";
+import { loadRC } from "./rc.js";
+import { Config } from "./config.js";
+import { configstore } from "./configstore.js";
+import { detectProjectRoot } from "./detectProjectRoot.js";
+import { trackEmulator, trackGA4 } from "./track.js";
+import { selectAccount, setActiveAccount } from "./auth.js";
+import { getProject } from "./management/projects.js";
+import { requireAuth } from "./requireAuth.js";
+import { Options } from "./options.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -51,7 +50,7 @@ export class Command {
    * @param cmd the command to create.
    */
   constructor(private cmd: string) {
-    this.name = first(cmd.split(" ")) || "";
+    this.name = _.first(cmd.split(" ")) || "";
   }
 
   /**
@@ -174,7 +173,7 @@ export class Command {
     cmd.action((...args: any[]) => {
       const runner = this.runner();
       const start = process.uptime();
-      const options = last(args);
+      const options = _.last(args);
       // We do not want to provide more arguments to the action functions than
       // we are able to - we're not sure what the ripple effects are. Our
       // action functions are supposed to be of the form (options, ...args)
@@ -368,11 +367,11 @@ export class Command {
       // Look up aliases
       options.projectAlias = options.project;
       options.project = rcProject;
-    } else if (!options.project && size(aliases) === 1) {
+    } else if (!options.project && _.size(aliases) === 1) {
       // If there's only a single alias, use that.
       // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
-      options.projectAlias = head(keys(aliases));
-      options.project = head(values(aliases));
+      options.projectAlias = _.head(_.keys(aliases));
+      options.project = _.head(_.values(aliases));
     } else if (!options.project && aliases["default"]) {
       // If there's an alias named 'default', default to that.
       options.projectAlias = "default";
@@ -405,7 +404,7 @@ export class Command {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none
-      if (typeof last(args) !== "object" || last(args) === null) {
+      if (typeof _.last(args) !== "object" || _.last(args) === null) {
         args.push({});
       }
 
@@ -416,7 +415,7 @@ export class Command {
         args.splice(args.length - 1, 0, "");
       }
 
-      const options = last(args);
+      const options = _.last(args);
       await this.prepare(options);
 
       for (const before of this.befores) {

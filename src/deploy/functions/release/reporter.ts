@@ -1,11 +1,11 @@
-import * as backend from "../backend";
+import * as backend from "../backend.js";
 import * as clc from "colorette";
 
-import * as args from "../args";
-import { logger } from "../../../logger";
-import { trackGA4 } from "../../../track";
-import * as utils from "../../../utils";
-import { getFunctionLabel } from "../functionsDeployHelper";
+import * as args from "../args.js";
+import { logger } from "../../../logger.js";
+import { trackGA4 } from "../../../track.js";
+import * as utils from "../../../utils.js";
+import { getFunctionLabel } from "../functionsDeployHelper.js";
 
 export interface DeployResult {
   endpoint: backend.Endpoint;

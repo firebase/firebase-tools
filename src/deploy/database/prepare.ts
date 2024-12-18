@@ -1,12 +1,12 @@
 import * as clc from "colorette";
 import * as path from "path";
 
-import { FirebaseError } from "../../error";
-import { parseBoltRules } from "../../parseBoltRules";
-import * as rtdb from "../../rtdb";
-import * as utils from "../../utils";
-import * as dbRulesConfig from "../../database/rulesConfig";
-import { DeployOptions } from "..";
+import { FirebaseError } from "../../error.js";
+import { parseBoltRules } from "../../parseBoltRules.js";
+import * as rtdb from "../../rtdb.js";
+import * as utils from "../../utils.js";
+import * as dbRulesConfig from "../../database/rulesConfig.js";
+import { DeployOptions } from "../index.js";
 
 export function prepare(context: any, options: DeployOptions): Promise<any> {
   const rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);

@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { logger } from "../logger";
-import { loadCodebases } from "../deploy/functions/prepare";
-import { normalizeAndValidate } from "../functions/projectConfig";
-import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { needProjectId } from "../projectUtils";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { logger } from "../logger.js";
+import { loadCodebases } from "../deploy/functions/prepare.js";
+import { normalizeAndValidate } from "../functions/projectConfig.js";
+import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig.js";
+import { needProjectId } from "../projectUtils.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("internaltesting:functions:discover")
   .description("discover function triggers defined in the current project directory")

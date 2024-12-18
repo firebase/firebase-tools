@@ -1,14 +1,14 @@
 "use strict";
 
 import * as clc from "colorette";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { FirestoreDelete } from "../firestore/delete";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { FirestoreOptions } from "../firestore/options";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { FirestoreDelete } from "../firestore/delete.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { FirestoreOptions } from "../firestore/options.js";
 
 function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions): string {
   if (options.allCollections) {

@@ -1,8 +1,8 @@
-import type { RouteHas } from "next/dist/lib/load-custom-routes";
-import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
-import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
-import type { HostingHeaders } from "../../firebaseConfig";
-import type { CONFIG_FILES } from "./constants";
+import type { RouteHas } from "next/dist/lib/load-custom-routes.js";
+import type { ImageConfigComplete } from "next/dist/shared/lib/image-config.js";
+import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin.js";
+import type { HostingHeaders } from "../../firebaseConfig.js";
+import type { CONFIG_FILES } from "./constants.js";
 
 export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];

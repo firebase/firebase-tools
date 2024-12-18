@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as functionsConfig from "./functionsConfig";
+import * as functionsConfig from "./functionsConfig.js";
 
 describe("config.parseSetArgs", () => {
   it("should throw if a reserved namespace is used", () => {

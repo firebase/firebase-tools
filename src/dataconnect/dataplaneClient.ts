@@ -1,6 +1,6 @@
-import { dataconnectOrigin } from "../api";
-import { Client, ClientResponse } from "../apiv2";
-import * as types from "./types";
+import { dataconnectOrigin } from "../api.js";
+import { Client, ClientResponse } from "../apiv2.js";
+import * as types from "./types.js";
 
 export const DATACONNECT_API_VERSION = "v1beta";
 

@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as checkIam from "./checkIam";
-import * as storage from "../../gcp/storage";
-import * as rm from "../../gcp/resourceManager";
-import * as backend from "./backend";
+import sinon from "sinon";
+import * as checkIam from "./checkIam.js";
+import * as storage from "../../gcp/storage.js";
+import * as rm from "../../gcp/resourceManager.js";
+import * as backend from "./backend.js";
 
 const projectId = "my-project";
 const projectNumber = "123456789";

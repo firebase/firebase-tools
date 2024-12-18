@@ -1,10 +1,10 @@
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { runOrigin } from "../api";
-import * as proto from "./proto";
-import * as iam from "./iam";
-import { backoff } from "../throttler/throttler";
-import { logger } from "../logger";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { runOrigin } from "../api.js";
+import * as proto from "./proto.js";
+import * as iam from "./iam.js";
+import { backoff } from "../throttler/throttler.js";
+import { logger } from "../logger.js";
 
 const API_VERSION = "v1";
 

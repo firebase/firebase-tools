@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fs from "fs";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../api";
+import * as api from "../api.js";
 import {
   AndroidAppMetadata,
   AppPlatform,
@@ -17,10 +17,10 @@ import {
   IosAppMetadata,
   listFirebaseApps,
   WebAppMetadata,
-} from "./apps";
-import * as pollUtils from "../operation-poller";
-import { FirebaseError } from "../error";
-import { firebaseApiOrigin } from "../api";
+} from "./apps.js";
+import * as pollUtils from "../operation-poller.js";
+import { FirebaseError } from "../error.js";
+import { firebaseApiOrigin } from "../api.js";
 import { Buffer } from "node:buffer";
 
 const PROJECT_ID = "the-best-firebase-project";

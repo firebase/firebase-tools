@@ -1,9 +1,9 @@
-import { requirePermissions } from "../../../requirePermissions";
-import { Options } from "../../../options";
-import { ensure } from "../../../ensureApiEnabled";
-import { Config } from "../../../config";
-import * as manifest from "../../../extensions/manifest";
-import { extensionsOrigin } from "../../../api";
+import { requirePermissions } from "../../../requirePermissions.js";
+import { Options } from "../../../options.js";
+import { ensure } from "../../../ensureApiEnabled.js";
+import { Config } from "../../../config.js";
+import * as manifest from "../../../extensions/manifest.js";
+import { extensionsOrigin } from "../../../api.js";
 
 /**
  * Set up a new firebase project for extensions.

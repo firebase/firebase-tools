@@ -1,14 +1,14 @@
-import * as Chain from "stream-chain";
+import Chain from "stream-chain";
 import * as clc from "colorette";
-import * as Filter from "stream-json/filters/Filter";
+import * as Filter from "stream-json/filters/Filter.js";
 import * as stream from "stream";
-import * as StreamObject from "stream-json/streamers/StreamObject";
+import * as StreamObject from "stream-json/streamers/StreamObject.js";
+import pLimit from "p-limit";
 
 import { URL } from "url";
-import { Client, ClientResponse } from "../apiv2";
+import { Client, ClientResponse } from "../apiv2.js";
 import { FetchError } from "node-fetch";
-import { FirebaseError } from "../error";
-import * as pLimit from "p-limit";
+import { FirebaseError } from "../error.js";
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
 

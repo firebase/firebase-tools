@@ -1,10 +1,10 @@
 import { bold } from "colorette";
-import { serviceUsageOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as poller from "../operation-poller";
-import { LongRunningOperation } from "../operation-poller";
+import { serviceUsageOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
+import * as poller from "../operation-poller.js";
+import { LongRunningOperation } from "../operation-poller.js";
 
 const API_VERSION = "v1beta1";
 const SERVICE_USAGE_ORIGIN = serviceUsageOrigin();

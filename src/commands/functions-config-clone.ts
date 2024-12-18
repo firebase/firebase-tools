@@ -1,13 +1,13 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import * as functionsConfig from "../functionsConfig";
-import { functionsConfigClone } from "../functionsConfigClone";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as functionsConfig from "../functionsConfig.js";
+import { functionsConfigClone } from "../functionsConfigClone.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("functions:config:clone")
   .description("clone environment config from another project")

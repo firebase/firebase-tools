@@ -1,20 +1,20 @@
 import * as clc from "colorette";
 import * as fs from "fs";
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 
-import { Command } from "../command";
-import DatabaseImporter from "../database/import";
-import { Emulators } from "../emulator/types";
-import { FirebaseError, getErrMsg } from "../error";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
-import { DatabaseInstance, populateInstanceDetails } from "../management/database";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
+import { Command } from "../command.js";
+import DatabaseImporter from "../database/import.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { Options } from "../options.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { promptOnce } from "../prompt.js";
+import { DatabaseInstance, populateInstanceDetails } from "../management/database.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
 
 interface DatabaseImportOptions extends Options {
   instance: string;

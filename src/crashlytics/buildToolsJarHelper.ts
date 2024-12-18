@@ -1,14 +1,13 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import * as downloadUtils from "../downloadUtils";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import * as downloadUtils from "../downloadUtils.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 import { rmSync } from "node:fs";
-import * as utils from "../utils";
-
+import * as utils from "../utils.js";
 
 const JAR_CACHE_DIR =
   process.env.FIREBASE_CRASHLYTICS_BUILDTOOLS_PATH ||

@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { RulesDeploy } from "../../rulesDeploy";
+import { RulesDeploy } from "../../rulesDeploy.js";
 
-import { default as release } from "./release";
-import { RC } from "../../rc";
+import { default as release } from "./release.js";
+import { RC } from "../../rc.js";
 
 describe("storage.release", () => {
   it("should not release anything if there are no deployable configs", async () => {

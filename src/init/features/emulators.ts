@@ -1,12 +1,12 @@
 import * as clc from "colorette";
-import * as utils from "../../utils";
-import { prompt } from "../../prompt";
-import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
-import { Constants } from "../../emulator/constants";
-import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
-import { Setup } from "../index";
-import { AdditionalInitFns } from "../../emulator/initEmulators";
-import { Config } from "../../config";
+import * as utils from "../../utils.js";
+import { prompt } from "../../prompt.js";
+import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types.js";
+import { Constants } from "../../emulator/constants.js";
+import { downloadIfNecessary } from "../../emulator/downloadableEmulators.js";
+import { Setup } from "../index.js";
+import { AdditionalInitFns } from "../../emulator/initEmulators.js";
+import { Config } from "../../config.js";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];

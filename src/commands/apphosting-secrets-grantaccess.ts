@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId, needProjectNumber } from "../projectUtils";
-import { FirebaseError } from "../error";
-import { requireAuth } from "../requireAuth";
-import * as secretManager from "../gcp/secretManager";
-import { requirePermissions } from "../requirePermissions";
-import * as apphosting from "../gcp/apphosting";
-import * as secrets from "../apphosting/secrets";
-import { getBackendForAmbiguousLocation } from "../apphosting/backend";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
+import { FirebaseError } from "../error.js";
+import { requireAuth } from "../requireAuth.js";
+import * as secretManager from "../gcp/secretManager.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as apphosting from "../gcp/apphosting.js";
+import * as secrets from "../apphosting/secrets/index.js";
+import { getBackendForAmbiguousLocation } from "../apphosting/backend.js";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretName>")
   .description("grant service accounts permissions to the provided secret")

@@ -1,4 +1,4 @@
-import * as refs from "./refs";
+import * as refs from "./refs.js";
 
 /**
  * Interface for representing a metric to be rendered by the extension's CLI.

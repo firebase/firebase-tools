@@ -1,25 +1,24 @@
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
-import * as express from "express";
+import express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
-import * as _ from "lodash";
+import _ from "lodash";
 
-import { EmulatorLog } from "./types";
-import { Constants } from "./constants";
+import { EmulatorLog } from "./types.js";
+import { Constants } from "./constants.js";
 import {
   findModuleRoot,
   FunctionsRuntimeBundle,
   HttpConstants,
   SignatureType,
-} from "./functionsEmulatorShared";
-import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
-import { EventUtils } from "./events/types";
+} from "./functionsEmulatorShared.js";
+import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils.js";
+import { EventUtils } from "./events/types.js";
 import { Buffer } from "node:buffer";
-
 
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;

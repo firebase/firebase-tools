@@ -12,7 +12,6 @@ import * as scheduler from "../../src/gcp/cloudscheduler";
 import { Endpoint } from "../../src/deploy/functions/backend";
 import { requireAuth } from "../../src/requireAuth";
 
-
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");

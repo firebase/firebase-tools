@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
 
-import { StoredFileMetadata } from "./metadata";
-import { StorageCloudFunctions } from "./cloudFunctions";
-import { StorageLayer } from "./files";
-import { ForbiddenError, NotFoundError } from "./errors";
-import { Persistence } from "./persistence";
-import { FirebaseRulesValidator } from "./rules/utils";
-import { UploadService } from "./upload";
-import { FakeEmulator } from "../testing/fakeEmulator";
-import { Emulators } from "../types";
-import { EmulatorRegistry } from "../registry";
+import { StoredFileMetadata } from "./metadata.js";
+import { StorageCloudFunctions } from "./cloudFunctions.js";
+import { StorageLayer } from "./files.js";
+import { ForbiddenError, NotFoundError } from "./errors.js";
+import { Persistence } from "./persistence.js";
+import { FirebaseRulesValidator } from "./rules/utils.js";
+import { UploadService } from "./upload.js";
+import { FakeEmulator } from "../testing/fakeEmulator.js";
+import { Emulators } from "../types.js";
+import { EmulatorRegistry } from "../registry.js";
 import { Buffer } from "node:buffer";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {

@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/fileUtils";
-import { FirebaseError } from "../error";
-import { migrateSchema } from "../dataconnect/schemaMigration";
-import { requireAuth } from "../requireAuth";
-import { requirePermissions } from "../requirePermissions";
-import { ensureApis } from "../dataconnect/ensureApis";
-import { logLabeledSuccess } from "../utils";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { pickService } from "../dataconnect/fileUtils.js";
+import { FirebaseError } from "../error.js";
+import { migrateSchema } from "../dataconnect/schemaMigration.js";
+import { requireAuth } from "../requireAuth.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { ensureApis } from "../dataconnect/ensureApis.js";
+import { logLabeledSuccess } from "../utils.js";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrates your CloudSQL database's schema to match your local DataConnect schema")

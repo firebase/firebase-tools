@@ -1,8 +1,8 @@
-import { Command } from "../command";
-const Table = require("cli-table");
-import * as experiments from "../experiments";
-import { partition } from "../functional";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import * as experiments from "../experiments.js";
+import { partition } from "../functional.js";
+import { logger } from "../logger.js";
+import Table from "cli-table";
 
 export const command = new Command("experiments:list")
   .description(

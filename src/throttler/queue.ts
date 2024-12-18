@@ -1,4 +1,4 @@
-import { Throttler, ThrottlerOptions } from "./throttler";
+import { Throttler, ThrottlerOptions } from "./throttler.js";
 
 export class Queue<T, R> extends Throttler<T, R> {
   cursor: number = 0;

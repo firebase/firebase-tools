@@ -1,9 +1,9 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import * as utils from "../utils";
-import * as auth from "../auth";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import * as auth from "../auth.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("login:use <email>")
   .description(

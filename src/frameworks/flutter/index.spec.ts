@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { EventEmitter } from "events";
 import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
@@ -7,8 +7,8 @@ import * as fsExtra from "fs-extra";
 import * as fsPromises from "fs/promises";
 import { join } from "path";
 
-import * as flutterUtils from "./utils";
-import { discover, build, ɵcodegenPublicDirectory, init } from ".";
+import * as flutterUtils from "./utils.js";
+import { discover, build, ɵcodegenPublicDirectory, init } from "./index.js";
 import { Buffer } from "node:buffer";
 
 describe("Flutter", () => {

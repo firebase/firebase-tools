@@ -1,13 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
-import * as utils from "../../utils";
-import { Constants } from "../constants";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators, EmulatorInstance, EmulatorInfo } from "../types";
-import { createApp } from "./server";
-import { FirebaseError } from "../../error";
-import { trackEmulator } from "../../track";
+import * as utils from "../../utils.js";
+import { Constants } from "../constants.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { Emulators, EmulatorInstance, EmulatorInfo } from "../types.js";
+import { createApp } from "./server.js";
+import { FirebaseError } from "../../error.js";
+import { trackEmulator } from "../../track.js";
 
 export interface AuthEmulatorArgs {
   projectId: string;

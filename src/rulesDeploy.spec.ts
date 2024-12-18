@@ -1,18 +1,18 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { FirebaseError } from "./error";
-import * as prompt from "./prompt";
-import * as resourceManager from "./gcp/resourceManager";
-import * as projectNumber from "./getProjectNumber";
-import { readFileSync } from "fs-extra";
-import { RulesetFile } from "./gcp/rules";
-import { Config } from "./config";
-import * as gcp from "./gcp";
+import { FirebaseError } from "./error.js";
+import * as prompt from "./prompt.js";
+import * as resourceManager from "./gcp/resourceManager.js";
+import * as projectNumber from "./getProjectNumber.js";
+import { readFileSync } from "fs";
+import { RulesetFile } from "./gcp/rules.js";
+import { Config } from "./config.js";
+import * as gcp from "./gcp/index.js";
 
-import { RulesDeploy, RulesetServiceType } from "./rulesDeploy";
-import { FIXTURE_DIR, FIXTURE_FIRESTORE_RULES_PATH } from "./test/fixtures/rulesDeploy";
-import { FIXTURE_DIR as CROSS_SERVICE_FIXTURE_DIR } from "./test/fixtures/rulesDeployCrossService";
+import { RulesDeploy, RulesetServiceType } from "./rulesDeploy.js";
+import { FIXTURE_DIR, FIXTURE_FIRESTORE_RULES_PATH } from "./test/fixtures/rulesDeploy/index.js";
+import { FIXTURE_DIR as CROSS_SERVICE_FIXTURE_DIR } from "./test/fixtures/rulesDeployCrossService/index.js";
 
 describe("RulesDeploy", () => {
   const BASE_OPTIONS: { cwd: string; project: string; config: any } = {

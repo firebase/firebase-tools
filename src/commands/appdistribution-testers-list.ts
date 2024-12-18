@@ -1,16 +1,14 @@
-import * as ora from "ora";
-import { AppDistributionClient } from "../appdistribution/client";
-import { getProjectName } from "../appdistribution/options-parser-util";
-import { ListTestersResponse, Tester } from "../appdistribution/types";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { Options } from "../options";
-import { requireAuth } from "../requireAuth";
-import * as utils from "../utils";
-
-const Table = require("cli-table");
-
+import ora from "ora";
+import { AppDistributionClient } from "../appdistribution/client.js";
+import { getProjectName } from "../appdistribution/options-parser-util.js";
+import { ListTestersResponse, Tester } from "../appdistribution/types.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import { requireAuth } from "../requireAuth.js";
+import * as utils from "../utils.js";
+import Table from "cli-table";
 export const command = new Command("appdistribution:testers:list [group]")
   .description("list testers in project")
   .before(requireAuth)

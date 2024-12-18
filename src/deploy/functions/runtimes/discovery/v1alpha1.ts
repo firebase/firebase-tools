@@ -1,12 +1,12 @@
-import * as build from "../../build";
-import * as backend from "../../backend";
-import * as params from "../../params";
-import { Runtime } from "../supported";
+import * as build from "../../build.js";
+import * as backend from "../../backend.js";
+import * as params from "../../params.js";
+import { Runtime } from "../supported/index.js";
 
-import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
-import { assertKeyTypes, requireKeys } from "./parsing";
-import { FirebaseError } from "../../../../error";
-import { nullsafeVisitor } from "../../../../functional";
+import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto.js";
+import { assertKeyTypes, requireKeys } from "./parsing.js";
+import { FirebaseError } from "../../../../error.js";
+import { nullsafeVisitor } from "../../../../functional.js";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +

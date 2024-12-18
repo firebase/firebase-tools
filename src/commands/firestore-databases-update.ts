@@ -1,15 +1,15 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import * as fsi from "../firestore/api";
-import * as types from "../firestore/api-types";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { PrettyPrint } from "../firestore/pretty-print";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import * as fsi from "../firestore/api.js";
+import * as types from "../firestore/api-types.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { PrettyPrint } from "../firestore/pretty-print.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(

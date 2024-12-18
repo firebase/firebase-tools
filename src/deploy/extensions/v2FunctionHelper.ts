@@ -1,11 +1,11 @@
-import { getProjectNumber } from "../../getProjectNumber";
-import * as resourceManager from "../../gcp/resourceManager";
-import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
-import { ensure } from "../../ensureApiEnabled";
-import * as planner from "./planner";
-import { needProjectId } from "../../projectUtils";
-import { computeOrigin } from "../../api";
+import { getProjectNumber } from "../../getProjectNumber.js";
+import * as resourceManager from "../../gcp/resourceManager.js";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
+import { ensure } from "../../ensureApiEnabled.js";
+import * as planner from "./planner.js";
+import { needProjectId } from "../../projectUtils.js";
+import { computeOrigin } from "../../api.js";
 
 const SERVICE_AGENT_ROLE = "roles/eventarc.eventReceiver";
 

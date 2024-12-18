@@ -1,5 +1,5 @@
-import type { RoutesManifestRedirect } from "../interfaces";
-import { supportedPaths, unsupportedPaths } from "./paths";
+import type { RoutesManifestRedirect } from "../interfaces.js";
+import { supportedPaths, unsupportedPaths } from "./paths.js";
 
 export const supportedRedirects: RoutesManifestRedirect[] = supportedPaths.map((path) => ({
   source: path,

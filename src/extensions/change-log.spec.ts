@@ -1,11 +1,12 @@
 import * as chai from "chai";
 import { expect } from "chai";
-chai.use(require("chai-as-promised"));
-import * as sinon from "sinon";
+import chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+import sinon from "sinon";
 
-import * as changelog from "./change-log";
-import * as extensionApi from "./extensionsApi";
-import { ExtensionVersion } from "./types";
+import * as changelog from "./change-log.js";
+import * as extensionApi from "./extensionsApi.js";
+import { ExtensionVersion } from "./types.js";
 
 function testExtensionVersion(version: string, releaseNotes?: string): ExtensionVersion {
   return {

@@ -1,13 +1,12 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import * as names from "../dataconnect/names";
-import * as client from "../dataconnect/client";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { ensureApis } from "../dataconnect/ensureApis";
-const Table = require("cli-table");
-
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import * as names from "../dataconnect/names.js";
+import * as client from "../dataconnect/client.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { ensureApis } from "../dataconnect/ensureApis.js";
+import Table from "cli-table";
 export const command = new Command("dataconnect:services:list")
   .description("list all deployed services in your Firebase project")
   .before(requirePermissions, [

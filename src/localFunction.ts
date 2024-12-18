@@ -1,11 +1,11 @@
 import * as uuid from "uuid";
 
-import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
-import * as utils from "./utils";
-import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
-import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
-import { AuthMode, AuthType, EventOptions } from "./emulator/events/types";
-import { Client, ClientResponse, ClientVerbOptions } from "./apiv2";
+import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue.js";
+import * as utils from "./utils.js";
+import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared.js";
+import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell.js";
+import { AuthMode, AuthType, EventOptions } from "./emulator/events/types.js";
+import { Client, ClientResponse, ClientVerbOptions } from "./apiv2.js";
 
 // HTTPS_SENTINEL is sent when a HTTPS call is made via functions:shell.
 export const HTTPS_SENTINEL = "Request sent to function.";

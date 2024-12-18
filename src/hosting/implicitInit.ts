@@ -1,12 +1,12 @@
-import * as _ from "lodash";
+import _ from "lodash";
 import * as clc from "colorette";
 
-import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
-import * as utils from "../utils";
-import { logger } from "../logger";
-import { EmulatorRegistry } from "../emulator/registry";
-import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types";
-import { readTemplateSync } from "../templates";
+import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types.js";
+import { readTemplateSync } from "../templates.js";
 
 const INIT_TEMPLATE = readTemplateSync("hosting/init.js");
 

@@ -1,4 +1,4 @@
-import { NpmLsReturn } from "../interfaces";
+import { NpmLsReturn } from "../interfaces.js";
 
 export const npmLsReturn: NpmLsReturn = {
   version: "0.1.0",

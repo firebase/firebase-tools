@@ -1,16 +1,15 @@
-import { last, sortBy } from "lodash";
 import { bold } from "colorette";
-import * as open from "open";
+import open from "open";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { getChannel, listChannels, normalizeName } from "../hosting/api";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { requireConfig } from "../requireConfig";
-import { logLabeledBullet } from "../utils";
-import { promptOnce } from "../prompt";
-import { requireHostingSite } from "../requireHostingSite";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { getChannel, listChannels, normalizeName } from "../hosting/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireConfig } from "../requireConfig.js";
+import { logLabeledBullet } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { requireHostingSite } from "../requireHostingSite.js";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -32,13 +31,21 @@ export const command = new Command("hosting:channel:open [channelId]")
           throw new FirebaseError(`Please provide a channelId.`);
         }
 
-        const channels = await listChannels(projectId, siteId);
-        sortBy(channels, ["name"]);
+        let channels = await listChannels(projectId, siteId);
+          channels.sort((a, b) => {
+            if (a.name < b.name) {
+            return -1;
+          }
+          if (a.name > b.name) {
+            return 1;
+          }
+          return 0;
+        });
 
         channelId = await promptOnce({
           type: "list",
           message: "Which channel would you like to open?",
-          choices: channels.map((c) => last(c.name.split("/")) || c.name),
+          choices: channels.map((c) => c.name.split("/").pop() || c.name),
         });
       }
 

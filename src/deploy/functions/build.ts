@@ -1,13 +1,13 @@
-import * as backend from "./backend";
-import * as proto from "../../gcp/proto";
-import * as api from "../../.../../api";
-import * as params from "./params";
-import { FirebaseError } from "../../error";
-import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
-import { FirebaseConfig } from "./args";
-import { Runtime } from "./runtimes/supported";
-import { ExprParseError } from "./cel";
+import * as backend from "./backend.js";
+import * as proto from "../../gcp/proto.js";
+import * as api from "../../.../../api.js";
+import * as params from "./params.js";
+import { FirebaseError } from "../../error.js";
+import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional.js";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env.js";
+import { FirebaseConfig } from "./args.js";
+import { Runtime } from "./runtimes/supported/index.js";
+import { ExprParseError } from "./cel.js";
 import { defineSecret } from "firebase-functions/params";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */

@@ -1,11 +1,11 @@
-import type { BufferReader } from '../buffer-reader';
-import type { BufferWriter } from '../buffer-writer';
-import type { ConnectionState } from '../connection.types';
-import type { AuthFlow } from './base-auth-flow';
-import { CertAuthFlow, type CertAuthOptions } from './cert';
-import { Md5AuthFlow, type Md5AuthOptions } from './md5';
-import { PasswordAuthFlow, type PasswordAuthOptions } from './password';
-import type { TrustAuthOptions } from './trust';
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import type { ConnectionState } from '../connection.types.js';
+import type { AuthFlow } from './base-auth-flow.js';
+import { CertAuthFlow, type CertAuthOptions } from './cert.js';
+import { Md5AuthFlow, type Md5AuthOptions } from './md5.js';
+import { PasswordAuthFlow, type PasswordAuthOptions } from './password.js';
+import type { TrustAuthOptions } from './trust.js';
 
 export type AuthOptions =
   | TrustAuthOptions

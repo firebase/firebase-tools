@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import { obtainStorageBindings } from "./storage";
-import * as storage from "../../../gcp/storage";
+import sinon from "sinon";
+import { obtainStorageBindings } from "./storage.js";
+import * as storage from "../../../gcp/storage.js";
 
 const projectNumber = "123456789";
 

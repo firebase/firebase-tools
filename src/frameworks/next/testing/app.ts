@@ -1,6 +1,6 @@
-import { PrerenderManifest } from "next/dist/build";
-import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import type { ActionManifest, AppPathRoutesManifest, AppPathsManifest } from "../interfaces";
+import { PrerenderManifest } from "next/dist/build/index.js";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin.js";
+import type { ActionManifest, AppPathRoutesManifest, AppPathsManifest } from "../interfaces.js";
 
 export const appPathsManifest: AppPathsManifest = {
   "/api/test/route": "app/api/test/route.js",

@@ -2,12 +2,12 @@ import * as path from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { ExtensionSpec, Param } from "./types";
-import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper";
-import * as askUserForParam from "./askUserForParam";
-import * as env from "../functions/env";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { ExtensionSpec, Param } from "./types.js";
+import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper.js";
+import * as askUserForParam from "./askUserForParam.js";
+import * as env from "../functions/env.js";
 
 const NONINTERACTIVE_ERROR_MESSAGE =
   "As of firebase-tools@11, `ext:install`, `ext:update` and `ext:configure` are interactive only commands. " +
@@ -64,7 +64,8 @@ export function setNewDefaults(params: Param[], newDefaults: { [key: string]: st
     if (newDefaults[param.param]) {
       param.default = newDefaults[param.param];
     } else if (
-      (param.param === `firebaseextensions.v1beta.function/location` && newDefaults["LOCATION"])
+      param.param === `firebaseextensions.v1beta.function/location` &&
+      newDefaults["LOCATION"]
     ) {
       // Special case handling for when we are updating from LOCATION to system param location.
       param.default = newDefaults["LOCATION"];

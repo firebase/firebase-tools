@@ -1,11 +1,11 @@
-import * as utils from "../../utils";
-import { Connector, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertConnector } from "../../dataconnect/client";
-import { promptDeleteConnector } from "../../dataconnect/prompts";
-import { Options } from "../../options";
-import { ResourceFilter } from "../../dataconnect/filters";
-import { migrateSchema } from "../../dataconnect/schemaMigration";
-import { needProjectId } from "../../projectUtils";
+import * as utils from "../../utils.js";
+import { Connector, ServiceInfo } from "../../dataconnect/types.js";
+import { listConnectors, upsertConnector } from "../../dataconnect/client.js";
+import { promptDeleteConnector } from "../../dataconnect/prompts.js";
+import { Options } from "../../options.js";
+import { ResourceFilter } from "../../dataconnect/filters.js";
+import { migrateSchema } from "../../dataconnect/schemaMigration.js";
+import { needProjectId } from "../../projectUtils.js";
 
 /**
  * Release deploys schemas and connectors.

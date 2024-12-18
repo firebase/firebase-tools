@@ -1,4 +1,4 @@
-import { FrameworkSpec } from "./types";
+import { FrameworkSpec } from "./types.js";
 
 export const frameworkSpecs: FrameworkSpec[] = [
   {

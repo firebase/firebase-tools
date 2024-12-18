@@ -1,15 +1,15 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { EventEmitter } from "events";
 import type { ChildProcess } from "child_process";
 import { Readable, Writable } from "stream";
 import * as fsExtra from "fs-extra";
 import * as crossSpawn from "cross-spawn";
 
-import * as frameworksUtils from "../utils";
-import { discover as discoverNuxt2 } from "../nuxt2";
-import { discover as discoverNuxt3, getDevModeHandle } from ".";
-import type { NuxtOptions } from "./interfaces";
+import * as frameworksUtils from "../utils.js";
+import { discover as discoverNuxt2 } from "../nuxt2/index.js";
+import { discover as discoverNuxt3, getDevModeHandle } from "./index.js";
+import type { NuxtOptions } from "./interfaces.js";
 
 describe("Nuxt 2 utils", () => {
   describe("nuxtAppDiscovery", () => {

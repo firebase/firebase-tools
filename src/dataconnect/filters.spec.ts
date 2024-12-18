@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { getResourceFilters, ResourceFilter } from "./filters";
+import { getResourceFilters, ResourceFilter } from "./filters.js";
 
 describe("getResourceFilters", () => {
   const cases: {

@@ -1,13 +1,13 @@
 import * as clc from "colorette";
 
-import * as env from "./env";
-import * as functionsConfig from "../functionsConfig";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { getProjectId } from "../projectUtils";
-import { loadRC } from "../rc";
-import { logWarning } from "../utils";
-import { flatten } from "../functional";
+import * as env from "./env.js";
+import * as functionsConfig from "../functionsConfig.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { getProjectId } from "../projectUtils.js";
+import { loadRC } from "../rc.js";
+import { logWarning } from "../utils.js";
+import { flatten } from "../functional.js";
 
 export interface ProjectConfigInfo {
   projectId: string;

@@ -1,6 +1,6 @@
-import type { Options } from "./options";
+import type { Options } from "./options.js";
 
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 export default function requireInteractive(options: Options) {
   if (options.nonInteractive) {

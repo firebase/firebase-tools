@@ -1,9 +1,9 @@
 import { resolve } from "path";
 import { expect } from "chai";
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
-import { archiveDirectory } from "./archiveDirectory";
-import { FIXTURE_DIR } from "./test/fixtures/config-imports";
+import { archiveDirectory } from "./archiveDirectory.js";
+import { FIXTURE_DIR } from "./test/fixtures/config-imports/index.js";
 
 describe("archiveDirectory", () => {
   it("should archive happy little directories", async () => {
@@ -13,6 +13,6 @@ describe("archiveDirectory", () => {
   });
 
   it("should throw a happy little error if the directory doesn't exist", async () => {
-    await expect(archiveDirectory(resolve(__dirname, "foo"), {})).to.be.rejectedWith(FirebaseError);
+    await expect(archiveDirectory(resolve("a/fake/path/foo"), {})).to.be.rejectedWith(FirebaseError);
   });
 });

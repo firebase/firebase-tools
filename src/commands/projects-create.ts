@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
 import {
   createFirebaseProjectAndLog,
   ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
-} from "../management/projects";
-import { FirebaseProjectMetadata } from "../types/project";
-import { prompt } from "../prompt";
-import { requireAuth } from "../requireAuth";
+} from "../management/projects.js";
+import { FirebaseProjectMetadata } from "../types/project/index.js";
+import { prompt } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
 
 export const command = new Command("projects:create [projectId]")
   .description(

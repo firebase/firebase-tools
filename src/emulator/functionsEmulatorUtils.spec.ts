@@ -6,7 +6,7 @@ import {
   compareVersionStrings,
   parseRuntimeVersion,
   isLocalHost,
-} from "./functionsEmulatorUtils";
+} from "./functionsEmulatorUtils.js";
 
 describe("FunctionsEmulatorUtils", () => {
   describe("extractParamsFromPath", () => {

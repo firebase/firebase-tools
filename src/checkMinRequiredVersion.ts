@@ -1,9 +1,8 @@
 import * as semver from "semver";
 
-import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
-
-const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
+import { configstore } from "./configstore.js";
+import { FirebaseError } from "./error.js";
+import pkg from "../package.json" with { type: "json" };
 
 /**
  * Checks if the CLI is on a recent enough version to use a command.

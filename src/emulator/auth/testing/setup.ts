@@ -1,9 +1,9 @@
 import { Suite } from "mocha";
-import { useFakeTimers } from "sinon";
-import * as supertest from "supertest";
-import { createApp } from "../server";
-import { AgentProjectState } from "../state";
-import { SingleProjectMode } from "..";
+import sinon from "sinon";
+import supertest from "supertest";
+import { createApp } from "../server.js";
+import { AgentProjectState } from "../state.js";
+import { SingleProjectMode } from "../index.js";
 
 export const PROJECT_ID = "example";
 
@@ -27,7 +27,7 @@ export function describeAuthEmulator(
 
     let clock: sinon.SinonFakeTimers;
     beforeEach(() => {
-      clock = useFakeTimers();
+      clock = sinon.useFakeTimers();
     });
     afterEach(() => clock.restore());
     return fn.call(this, { authApi: () => supertest(authApp), getClock: () => clock });

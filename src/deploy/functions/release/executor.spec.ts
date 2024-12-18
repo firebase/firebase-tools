@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as executor from "./executor";
+import * as executor from "./executor.js";
 
 describe("Executor", () => {
   describe("QueueExecutor", () => {

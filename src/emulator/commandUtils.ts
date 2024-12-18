@@ -1,27 +1,26 @@
 import * as clc from "colorette";
 import * as childProcess from "child_process";
 
-import * as controller from "../emulator/controller";
-import { Config } from "../config";
-import * as utils from "../utils";
-import { logger } from "../logger";
+import * as controller from "../emulator/controller.js";
+import { Config } from "../config.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
 import * as path from "path";
-import { Constants } from "./constants";
-import { requireAuth } from "../requireAuth";
-import { requireConfig } from "../requireConfig";
-import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
-import { FirebaseError } from "../error";
-import { EmulatorRegistry } from "./registry";
-import { getProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import * as fsutils from "../fsutils";
+import { Constants } from "./constants.js";
+import { requireAuth } from "../requireAuth.js";
+import { requireConfig } from "../requireConfig.js";
+import { Emulators, ALL_SERVICE_EMULATORS } from "./types.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorRegistry } from "./registry.js";
+import { getProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import * as fsutils from "../fsutils.js";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-const Table = require("cli-table");
-import { emulatorSession } from "../track";
-import { setEnvVarsForEmulators } from "./env";
-import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
-
+import { emulatorSession } from "../track.js";
+import { setEnvVarsForEmulators } from "./env.js";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook.js";
+import Table from "cli-table";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =

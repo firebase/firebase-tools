@@ -1,12 +1,12 @@
 import * as yaml from "yaml";
 import * as clc from "colorette";
 
-import { Client } from "../apiv2";
-import { extensionsOrigin } from "../api";
-import { FirebaseError, getErrMsg, getErrStatus } from "../error";
-import { logger } from "../logger";
-import * as operationPoller from "../operation-poller";
-import * as refs from "./refs";
+import { Client } from "../apiv2.js";
+import { extensionsOrigin } from "../api.js";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error.js";
+import { logger } from "../logger.js";
+import * as operationPoller from "../operation-poller.js";
+import * as refs from "./refs.js";
 import {
   Extension,
   ExtensionInstance,
@@ -14,7 +14,7 @@ import {
   ExtensionSpec,
   ExtensionVersion,
   isExtensionInstance,
-} from "./types";
+} from "./types.js";
 
 const EXTENSIONS_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;

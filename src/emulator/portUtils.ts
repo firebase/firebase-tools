@@ -3,14 +3,13 @@ import * as tcpport from "tcp-port-used";
 import * as dns from "dns";
 import { createServer } from "node:net";
 
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED, Resolver } from "./dns";
-import { Emulators, ListenSpec } from "./types";
-import { Constants } from "./constants";
-import { EmulatorLogger } from "./emulatorLogger";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
+import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED, Resolver } from "./dns.js";
+import { Emulators, ListenSpec } from "./types.js";
+import { Constants } from "./constants.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
 import { execSync } from "node:child_process";
-
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports

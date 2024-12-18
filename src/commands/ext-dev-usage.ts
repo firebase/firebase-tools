@@ -1,17 +1,17 @@
-const Table = require("cli-table");
 import * as clc from "colorette";
-import * as utils from "../utils";
-import { Command } from "../command";
-import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudmonitoring";
-import { requireAuth } from "../requireAuth";
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils";
-import { getPublisherProfile, listExtensions } from "../extensions/publisherApi";
-import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
-import { FirebaseError, getErrMsg, getError } from "../error";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { shortenUrl } from "../shortenUrl";
+import * as utils from "../utils.js";
+import { Command } from "../command.js";
+import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudmonitoring.js";
+import { requireAuth } from "../requireAuth.js";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils.js";
+import { getPublisherProfile, listExtensions } from "../extensions/publisherApi.js";
+import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper.js";
+import { FirebaseError, getErrMsg, getError } from "../error.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import { shortenUrl } from "../shortenUrl.js";
+import Table from "cli-table";
 
 export const command = new Command("ext:dev:usage <publisherId>")
   .description("get usage for an extension")

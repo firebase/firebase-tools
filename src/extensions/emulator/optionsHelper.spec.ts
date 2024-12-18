@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as optionsHelper from "./optionsHelper";
-import { ExtensionSpec, Param, ParamType } from "../types";
-import * as paramHelper from "../paramHelper";
+import * as optionsHelper from "./optionsHelper.js";
+import { ExtensionSpec, Param, ParamType } from "../types.js";
+import * as paramHelper from "../paramHelper.js";
 
 describe("optionsHelper", () => {
   describe("getParams", () => {

@@ -1,18 +1,18 @@
 import * as clc from "colorette";
 import * as semver from "semver";
 
-import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError, getErrMsg, getError } from "../error";
-import { logger } from "../logger";
-import { getProjectId, needProjectId } from "../projectUtils";
-import * as extensionsApi from "../extensions/extensionsApi";
-import { ExtensionVersion, ExtensionSource } from "../extensions/types";
-import * as refs from "../extensions/refs";
-import * as secretsUtils from "../extensions/secretsUtils";
-import * as paramHelper from "../extensions/paramHelper";
+import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError, getErrMsg, getError } from "../error.js";
+import { logger } from "../logger.js";
+import { getProjectId, needProjectId } from "../projectUtils.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import { ExtensionVersion, ExtensionSource } from "../extensions/types.js";
+import * as refs from "../extensions/refs.js";
+import * as secretsUtils from "../extensions/secretsUtils.js";
+import * as paramHelper from "../extensions/paramHelper.js";
 import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
@@ -20,16 +20,16 @@ import {
   promptForValidInstanceId,
   diagnoseAndFixProject,
   isLocalPath,
-} from "../extensions/extensionsHelper";
-import { resolveVersion } from "../deploy/extensions/planner";
-import { getRandomString } from "../extensions/utils";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { trackGA4 } from "../track";
-import { confirm } from "../prompt";
-import { Options } from "../options";
-import * as manifest from "../extensions/manifest";
-import { displayDeveloperTOSWarning } from "../extensions/tos";
+} from "../extensions/extensionsHelper.js";
+import { resolveVersion } from "../deploy/extensions/planner.js";
+import { getRandomString } from "../extensions/utils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { trackGA4 } from "../track.js";
+import { confirm } from "../prompt.js";
+import { Options } from "../options.js";
+import * as manifest from "../extensions/manifest.js";
+import { displayDeveloperTOSWarning } from "../extensions/tos.js";
 
 /**
  * Command for installing an extension

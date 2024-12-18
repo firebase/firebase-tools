@@ -1,7 +1,7 @@
 import * as clc from "colorette";
-import * as _ from "lodash";
+import _ from "lodash";
 
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 import {
   addFirebaseToCloudProjectAndLog,
   createFirebaseProjectAndLog,
@@ -9,11 +9,11 @@ import {
   getOrPromptProject,
   PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
-} from "../../management/projects";
-import { FirebaseProjectMetadata } from "../../types/project";
-import { logger } from "../../logger";
-import { prompt, promptOnce } from "../../prompt";
-import * as utils from "../../utils";
+} from "../../management/projects.js";
+import { FirebaseProjectMetadata } from "../../types/project/index.js";
+import { logger } from "../../logger.js";
+import { prompt, promptOnce } from "../../prompt.js";
+import * as utils from "../../utils.js";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";

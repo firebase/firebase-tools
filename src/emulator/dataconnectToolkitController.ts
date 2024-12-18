@@ -1,8 +1,8 @@
-import { EmulatorInstance, EmulatorInfo } from "./types";
-import { FirebaseError } from "../error";
-import * as portUtils from "./portUtils";
-import { connectableHostname } from "../utils";
-import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
+import { EmulatorInstance, EmulatorInfo } from "./types.js";
+import { FirebaseError } from "../error.js";
+import * as portUtils from "./portUtils.js";
+import { connectableHostname } from "../utils.js";
+import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator.js";
 
 const name = "Data Connect Toolkit";
 /**

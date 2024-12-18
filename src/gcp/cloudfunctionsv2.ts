@@ -1,22 +1,22 @@
-import { Client, ClientVerbOptions } from "../apiv2";
-import { FirebaseError } from "../error";
-import { functionsV2Origin } from "../api";
-import { logger } from "../logger";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
-import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
-import * as backend from "../deploy/functions/backend";
-import * as supported from "../deploy/functions/runtimes/supported";
-import * as proto from "./proto";
-import * as utils from "../utils";
-import * as projectConfig from "../functions/projectConfig";
+import { Client, ClientVerbOptions } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { functionsV2Origin } from "../api.js";
+import { logger } from "../logger.js";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
+import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as supported from "../deploy/functions/runtimes/supported/index.js";
+import * as proto from "./proto.js";
+import * as utils from "../utils.js";
+import * as projectConfig from "../functions/projectConfig.js";
 import {
   BLOCKING_EVENT_TO_LABEL_KEY,
   BLOCKING_LABEL,
   BLOCKING_LABEL_KEY_TO_EVENT,
   CODEBASE_LABEL,
   HASH_LABEL,
-} from "../functions/constants";
-import { RequireKeys } from "../metaprogramming";
+} from "../functions/constants.js";
+import { RequireKeys } from "../metaprogramming.js";
 
 export const API_VERSION = "v2";
 

@@ -1,4 +1,4 @@
-import { GraphqlError } from "./types";
+import { GraphqlError } from "./types.js";
 
 export function prettify(err: GraphqlError): string {
   const message = err.message;

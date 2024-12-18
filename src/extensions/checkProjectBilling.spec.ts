@@ -1,10 +1,11 @@
 import * as chai from "chai";
-chai.use(require("chai-as-promised"));
-import * as sinon from "sinon";
+import chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+import sinon from "sinon";
 
-import * as checkProjectBilling from "./checkProjectBilling";
-import * as prompt from "../prompt";
-import * as cloudbilling from "../gcp/cloudbilling";
+import * as checkProjectBilling from "./checkProjectBilling.js";
+import * as prompt from "../prompt.js";
+import * as cloudbilling from "../gcp/cloudbilling.js";
 
 const expect = chai.expect;
 

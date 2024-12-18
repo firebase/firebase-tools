@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import { Options } from "./options";
-import { RC } from "./rc";
+import { Options } from "./options.js";
+import { RC } from "./rc.js";
 
-import { checkValidTargetFilters } from "./checkValidTargetFilters";
+import { checkValidTargetFilters } from "./checkValidTargetFilters.js";
 
 const SAMPLE_OPTIONS: Options = {
   cwd: "/",

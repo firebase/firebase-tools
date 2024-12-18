@@ -1,8 +1,8 @@
-import * as nock from "nock";
-import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "./gcp/firedata";
-import { requireTosAcceptance } from "./requireTosAcceptance";
-import { Options } from "./options";
-import { RC } from "./rc";
+import nock from "nock";
+import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "./gcp/firedata.js";
+import { requireTosAcceptance } from "./requireTosAcceptance.js";
+import { Options } from "./options.js";
+import { RC } from "./rc.js";
 import { expect } from "chai";
 
 const SAMPLE_OPTIONS: Options = {

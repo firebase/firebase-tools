@@ -1,7 +1,7 @@
 import { sync as spawnSync } from "cross-spawn";
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 import { readFile } from "fs/promises";
-import { pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { join } from "path";
 import * as yaml from "yaml";
 
@@ -58,8 +58,8 @@ export function getAdditionalBuildArgs(pubSpec: Record<string, any>): string[] {
  * and returns an empty object.
  */
 export async function getPubSpec(dir: string): Promise<Record<string, any>> {
-  if (!(await pathExists(join(dir, "pubspec.yaml")))) return {};
-  if (!(await pathExists(join(dir, "web")))) return {};
+  if (!(await fs.pathExists(join(dir, "pubspec.yaml")))) return {};
+  if (!(await fs.pathExists(join(dir, "web")))) return {};
 
   try {
     const pubSpecBuffer = await readFile(join(dir, "pubspec.yaml"));

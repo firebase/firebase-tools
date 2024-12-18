@@ -1,6 +1,6 @@
-import { FirebaseError } from "../../../error";
-import { FrameworkSpec, FileSystem } from "./types";
-import { logger } from "../../../logger";
+import { FirebaseError } from "../../../error.js";
+import { FrameworkSpec, FileSystem } from "./types.js";
+import { logger } from "../../../logger.js";
 
 /**
  *

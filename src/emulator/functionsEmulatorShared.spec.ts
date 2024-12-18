@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import { BackendInfo, EmulatableBackend } from "./functionsEmulator";
-import * as functionsEmulatorShared from "./functionsEmulatorShared";
+import { BackendInfo, EmulatableBackend } from "./functionsEmulator.js";
+import * as functionsEmulatorShared from "./functionsEmulatorShared.js";
 import {
   Extension,
   ExtensionSpec,
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../extensions/types";
+} from "../extensions/types.js";
 
 const baseDef = {
   platform: "gcfv1" as const,

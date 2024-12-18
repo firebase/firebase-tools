@@ -1,12 +1,11 @@
 import * as pg from "pg";
-import * as ora from "ora";
+import ora from "ora";
 import * as clc from "colorette";
-import { logger } from "../../logger";
-import { confirm } from "../../prompt";
+import { logger } from "../../logger.js";
+import { confirm } from "../../prompt.js";
+import Table from "cli-table";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
-
 // Not comprehensive list, used for best offer prompting.
 const destructiveSqlKeywords = ["DROP", "DELETE"];
 

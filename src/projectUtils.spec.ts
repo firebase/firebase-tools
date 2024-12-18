@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { needProjectNumber, needProjectId, getAliases, getProjectId } from "./projectUtils";
-import * as projects from "./management/projects";
-import { RC } from "./rc";
+import { needProjectNumber, needProjectId, getAliases, getProjectId } from "./projectUtils.js";
+import * as projects from "./management/projects.js";
+import { RC } from "./rc.js";
 
 describe("getProjectId", () => {
   it("should prefer projectId, falling back to project", () => {

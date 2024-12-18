@@ -2,12 +2,12 @@ import * as path from "path";
 import { markedTerminal } from "marked-terminal";
 import { marked } from "marked";
 
-import { Options } from "../../options";
-import { isObject } from "../../error";
-import { ExtensionSpec, ParamType } from "../types";
-import { confirm } from "../../prompt";
-import * as secretsUtils from "../secretsUtils";
-import { logLabeledBullet } from "../../utils";
+import { Options } from "../../options.js";
+import { isObject } from "../../error.js";
+import { ExtensionSpec, ParamType } from "../types.js";
+import { confirm } from "../../prompt.js";
+import * as secretsUtils from "../secretsUtils.js";
+import { logLabeledBullet } from "../../utils.js";
 import {
   writeFile,
   copyDirectory,
@@ -18,12 +18,11 @@ import {
   getInstallPathPrefix,
   getCodebaseDir,
   isTypescriptCodebase,
-} from "./common";
-import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig";
-import { SpecParamType } from "../extensionsHelper";
-import { FirebaseError, getErrMsg } from "../../error";
-import { spawnWithOutput } from "../../init/spawn";
-
+} from "./common.js";
+import { ALLOWED_EVENT_ARC_REGIONS } from "../askUserForEventsConfig.js";
+import { SpecParamType } from "../extensionsHelper.js";
+import { FirebaseError, getErrMsg } from "../../error.js";
+import { spawnWithOutput } from "../../init/spawn.js";
 
 marked.use(markedTerminal() as any);
 

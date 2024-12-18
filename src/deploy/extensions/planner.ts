@@ -1,22 +1,22 @@
 import * as semver from "semver";
 
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as refs from "../../extensions/refs";
-import { FirebaseError, getErrMsg } from "../../error";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as refs from "../../extensions/refs.js";
+import { FirebaseError, getErrMsg } from "../../error.js";
 import {
   getFirebaseProjectParams,
   isLocalPath,
   substituteParams,
   substituteSecretParams,
-} from "../../extensions/extensionsHelper";
-import { logger } from "../../logger";
-import { readInstanceParam } from "../../extensions/manifest";
-import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper";
-import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
-import { ExtensionVersion, Extension, ExtensionSpec } from "../../extensions/types";
-import { partitionRecord } from "../../functional";
-import { getEventArcChannel } from "../../extensions/askUserForEventsConfig";
-import { DynamicExtension } from "../../extensions/runtimes/common";
+} from "../../extensions/extensionsHelper.js";
+import { logger } from "../../logger.js";
+import { readInstanceParam } from "../../extensions/manifest.js";
+import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper.js";
+import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper.js";
+import { ExtensionVersion, Extension, ExtensionSpec } from "../../extensions/types.js";
+import { partitionRecord } from "../../functional.js";
+import { getEventArcChannel } from "../../extensions/askUserForEventsConfig.js";
+import { DynamicExtension } from "../../extensions/runtimes/common.js";
 
 export interface InstanceSpec {
   instanceId: string;

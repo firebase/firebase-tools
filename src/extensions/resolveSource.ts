@@ -1,5 +1,5 @@
-import { Client } from "../apiv2";
-import { firebaseExtensionsRegistryOrigin } from "../api";
+import { Client } from "../apiv2.js";
+import { firebaseExtensionsRegistryOrigin } from "../api.js";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 

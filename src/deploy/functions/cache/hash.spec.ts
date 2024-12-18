@@ -4,8 +4,8 @@ import {
   getEndpointHash,
   getSecretsHash,
   getSourceHash,
-} from "./hash";
-import { Endpoint, empty } from "../backend";
+} from "./hash.js";
+import { Endpoint, empty } from "../backend.js";
 import { resolve } from "path";
 
 const EMPTY_WANT_BACKEND = empty();

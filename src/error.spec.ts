@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 describe("error", () => {
   describe("FirebaseError", () => {

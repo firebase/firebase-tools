@@ -1,26 +1,26 @@
 import { bold, underline } from "colorette";
 import * as fs from "fs";
 import * as yaml from "yaml";
-import * as ora from "ora";
+import ora from "ora";
 import * as path from "path";
 import * as libsodium from "libsodium-wrappers";
 
-import { Setup } from "../..";
-import { loginGithub } from "../../../auth";
-import { dirExistsSync } from "../../../fsutils";
+import { Setup } from "../../index.js";
+import { loginGithub } from "../../../auth.js";
+import { dirExistsSync } from "../../../fsutils.js";
 import {
   createServiceAccount,
   createServiceAccountKey,
   deleteServiceAccount,
   listServiceAccountKeys,
-} from "../../../gcp/iam";
-import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
-import { logger } from "../../../logger";
-import { prompt } from "../../../prompt";
-import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
-import { githubApiOrigin, githubClientId } from "../../../api";
-import { Client } from "../../../apiv2";
-import { FirebaseError } from "../../../error";
+} from "../../../gcp/iam.js";
+import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager.js";
+import { logger } from "../../../logger.js";
+import { prompt } from "../../../prompt.js";
+import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils.js";
+import { githubApiOrigin, githubClientId } from "../../../api.js";
+import { Client } from "../../../apiv2.js";
+import { FirebaseError } from "../../../error.js";
 
 import { Buffer } from "node:buffer";
 

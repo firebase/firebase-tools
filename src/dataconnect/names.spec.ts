@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as names from "./names";
+import * as names from "./names.js";
 
 describe("names.ts", () => {
   describe("parseServiceName", () => {

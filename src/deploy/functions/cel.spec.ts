@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { resolveExpression, ExprParseError } from "./cel";
-import { ParamValue } from "./params";
+import { resolveExpression, ExprParseError } from "./cel.js";
+import { ParamValue } from "./params.js";
 
 function stringV(value: string): ParamValue {
   return new ParamValue(value, false, { string: true, number: false, boolean: false, list: false });

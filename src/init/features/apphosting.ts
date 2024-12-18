@@ -1,8 +1,8 @@
 import * as clc from "colorette";
-import * as utils from "../../utils";
-import { Config } from "../../config";
-import { readTemplateSync } from "../../templates";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
+import * as utils from "../../utils.js";
+import { Config } from "../../config.js";
+import { readTemplateSync } from "../../templates.js";
+import { checkBillingEnabled } from "../../gcp/cloudbilling.js";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 

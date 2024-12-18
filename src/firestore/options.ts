@@ -1,6 +1,6 @@
-import { Options } from "../options";
-import { DayOfWeek } from "../gcp/firestore";
-import * as types from "../firestore/api-types";
+import { Options } from "../options.js";
+import { DayOfWeek } from "../gcp/firestore.js";
+import * as types from "../firestore/api-types.js";
 
 /**
  * The set of fields that the Firestore commands need from Options.

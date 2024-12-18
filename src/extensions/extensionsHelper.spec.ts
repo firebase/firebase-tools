@@ -1,16 +1,16 @@
 import * as clc from "colorette";
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { FirebaseError } from "../error";
-import * as extensionsApi from "./extensionsApi";
-import * as publisherApi from "./publisherApi";
-import * as extensionsHelper from "./extensionsHelper";
-import * as getProjectNumber from "../getProjectNumber";
-import * as functionsConfig from "../functionsConfig";
-import { storage } from "../gcp";
-import * as archiveDirectory from "../archiveDirectory";
-import * as prompt from "../prompt";
+import { FirebaseError } from "../error.js";
+import * as extensionsApi from "./extensionsApi.js";
+import * as publisherApi from "./publisherApi.js";
+import * as extensionsHelper from "./extensionsHelper.js";
+import * as getProjectNumber from "../getProjectNumber.js";
+import * as functionsConfig from "../functionsConfig.js";
+import { storage } from "../gcp/index.js";
+import * as archiveDirectory from "../archiveDirectory.js";
+import * as prompt from "../prompt.js";
 import {
   ExtensionSource,
   ExtensionSpec,
@@ -19,9 +19,9 @@ import {
   Extension,
   Visibility,
   RegistryLaunchStage,
-} from "./types";
+} from "./types.js";
 import { Readable } from "stream";
-import { ArchiveResult } from "../archiveDirectory";
+import { ArchiveResult } from "../archiveDirectory.js";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {

@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import DatabaseRemove from "./remove";
-import { FakeRemoveRemote } from "./fakeRemoveRemote.spec";
-import { FakeListRemote } from "./fakeListRemote.spec";
+import DatabaseRemove from "./remove.js";
+import { FakeRemoveRemote } from "./fakeRemoveRemote.spec.js";
+import { FakeListRemote } from "./fakeListRemote.spec.js";
 const HOST = "https://firebaseio.com";
 
 describe("DatabaseRemove", () => {

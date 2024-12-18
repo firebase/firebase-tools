@@ -1,13 +1,13 @@
-import { MockFileSystem } from "./mockFileSystem";
+import { MockFileSystem } from "./mockFileSystem.js";
 import { expect } from "chai";
 import {
   frameworkMatcher,
   removeEmbededFrameworks,
   filterFrameworksWithFiles,
   filterFrameworksWithDependencies,
-} from "./frameworkMatcher";
-import { frameworkSpecs } from "./frameworkSpec";
-import { FrameworkSpec } from "./types";
+} from "./frameworkMatcher.js";
+import { frameworkSpecs } from "./frameworkSpec.js";
+import { FrameworkSpec } from "./types.js";
 
 describe("frameworkMatcher", () => {
   let fileSystem: MockFileSystem;

@@ -1,22 +1,22 @@
 import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
+import Chain from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
-import * as Pick from "stream-json/filters/Pick";
-import * as StreamArray from "stream-json/streamers/StreamArray";
+import * as Pick from "stream-json/filters/Pick.js";
+import * as StreamArray from "stream-json/streamers/StreamArray.js";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
-import { requirePermissions } from "../requirePermissions";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { Options } from "../options.js";
+import { requirePermissions } from "../requirePermissions.js";
 import {
   serialImportUsers,
   transArrayToUser,
   validateOptions,
   validateUserJson,
-} from "../accountImporter";
+} from "../accountImporter.js";
 
 const MAX_BATCH_SIZE = 1000;
 

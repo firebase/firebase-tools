@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as postinstall from "./postinstall";
-import { EmulatorRegistry } from "../registry";
-import { Emulators } from "../types";
-import { FakeEmulator } from "../testing/fakeEmulator";
+import * as postinstall from "./postinstall.js";
+import { EmulatorRegistry } from "../registry.js";
+import { Emulators } from "../types.js";
+import { FakeEmulator } from "../testing/fakeEmulator.js";
 
 describe("replaceConsoleLinks", () => {
   let host: string;

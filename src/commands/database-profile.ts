@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { populateInstanceDetails } from "../management/database";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { profiler } from "../profiler";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { Command } from "../command.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { profiler } from "../profiler.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
 
 const description = "profile the Realtime Database and generate a usage report";
 

@@ -1,5 +1,5 @@
-import { envOverride } from "../utils";
-import { Constants } from "../emulator/constants";
+import { envOverride } from "../utils.js";
+import { Constants } from "../emulator/constants.js";
 
 /**
  * Get base URL for RealtimeDatabase. Preference order: emulator host env override, realtime URL env override, and then specified host.

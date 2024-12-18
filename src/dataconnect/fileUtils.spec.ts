@@ -1,10 +1,10 @@
-import * as mockfs from "mock-fs";
+import mockfs from "mock-fs";
 
 import { expect } from "chai";
-import { getPlatformFromFolder } from "./fileUtils";
-import { generateSdkYaml } from "../init/features/dataconnect/sdk";
-import { ConnectorYaml, Platform } from "./types";
-import FileSystem from "mock-fs/lib/filesystem";
+import { getPlatformFromFolder } from "./fileUtils.js";
+import { generateSdkYaml } from "../init/features/dataconnect/sdk.js";
+import { ConnectorYaml, Platform } from "./types.js";
+import FileSystem from "mock-fs/lib/filesystem.js";
 
 describe("getPlatformFromFolder", () => {
   const cases: {

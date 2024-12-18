@@ -1,11 +1,10 @@
-const Table = require("cli-table");
-
-import { Command } from "../command";
-import { Site, getSite } from "../hosting/api";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { Site, getSite } from "../hosting/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
+import Table from "cli-table";
 
 export const command = new Command("hosting:sites:get <siteId>")
   .description("print info about a Firebase Hosting site")

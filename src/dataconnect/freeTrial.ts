@@ -1,6 +1,6 @@
-import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
-import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
-import * as utils from "../utils";
+import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring.js";
+import { listInstances } from "../gcp/cloudsql/cloudsqladmin.js";
+import * as utils from "../utils.js";
 import * as clc from "colorette";
 
 export function freeTrialTermsLink(): string {

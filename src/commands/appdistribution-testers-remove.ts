@@ -1,10 +1,10 @@
-import { Command } from "../command";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError, getErrMsg } from "../error";
-import { AppDistributionClient } from "../appdistribution/client";
-import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { AppDistributionClient } from "../appdistribution/client.js";
+import { getEmails, getProjectName } from "../appdistribution/options-parser-util.js";
+import { logger } from "../logger.js";
 
 export const command = new Command("appdistribution:testers:remove [emails...]")
   .description("remove testers from a project (or group)")

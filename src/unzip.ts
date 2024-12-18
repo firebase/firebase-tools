@@ -3,9 +3,9 @@ import * as path from "path";
 import * as zlib from "zlib";
 import { Readable, Transform, TransformCallback } from "stream";
 import { promisify } from "util";
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 import { pipeline } from "stream";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 import { Buffer } from "node:buffer";
 
 const pipelineAsync = promisify(pipeline);

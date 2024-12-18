@@ -1,11 +1,10 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
-
-import { listInstances } from "./extensionsApi";
-import { logger } from "../logger";
-import { last, logLabeledBullet } from "../utils";
-import { logPrefix } from "./extensionsHelper";
-import * as extensionsUtils from "./utils";
+import { listInstances } from "./extensionsApi.js";
+import { logger } from "../logger.js";
+import { last, logLabeledBullet } from "../utils.js";
+import { logPrefix } from "./extensionsHelper.js";
+import * as extensionsUtils from "./utils.js";
+import Table from "cli-table";
 
 /**
  * Lists the extensions installed under a project

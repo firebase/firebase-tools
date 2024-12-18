@@ -1,9 +1,9 @@
-import * as _ from "lodash";
+import _ from "lodash";
 
-import * as gcp from "../../gcp";
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { FirebaseError } from "../../error";
-import { DeployOptions } from "..";
+import * as gcp from "../../gcp/index.js";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import { FirebaseError } from "../../error.js";
+import { DeployOptions } from "../index.js";
 
 /**
  * Prepares for a Firebase Storage deployment.

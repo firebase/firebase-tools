@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
-import { Command } from "../command";
+import { Command } from "../command.js";
 import {
   ReleaseStage,
   logPrefix,
@@ -10,20 +10,19 @@ import {
   uploadExtensionVersionFromGitHubSource,
   ensureExtensionsPublisherApiEnabled,
   getMissingPublisherError,
-} from "../extensions/extensionsHelper";
-import * as refs from "../extensions/refs";
-import { findExtensionYaml } from "../extensions/localHelper";
-import { consoleInstallLink } from "../extensions/publishHelpers";
-import { ExtensionVersion, PublisherProfile } from "../extensions/types";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError, getErrStatus } from "../error";
-import { acceptLatestPublisherTOS } from "../extensions/tos";
-import * as utils from "../utils";
-import { Options } from "../options";
-import { getPublisherProfile } from "../extensions/publisherApi";
-import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
-import { getProject } from "../management/projects";
-
+} from "../extensions/extensionsHelper.js";
+import * as refs from "../extensions/refs.js";
+import { findExtensionYaml } from "../extensions/localHelper.js";
+import { consoleInstallLink } from "../extensions/publishHelpers.js";
+import { ExtensionVersion, PublisherProfile } from "../extensions/types.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError, getErrStatus } from "../error.js";
+import { acceptLatestPublisherTOS } from "../extensions/tos.js";
+import * as utils from "../utils.js";
+import { Options } from "../options.js";
+import { getPublisherProfile } from "../extensions/publisherApi.js";
+import { getPublisherProjectFromName } from "../extensions/extensionsHelper.js";
+import { getProject } from "../management/projects.js";
 
 // TODO(joehan): Go update @types/marked-terminal
 marked.use(markedTerminal() as any);

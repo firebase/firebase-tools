@@ -4,12 +4,12 @@ import * as path from "node:path";
 import * as yaml from "yaml";
 import { Socket } from "node:net";
 
-import * as _ from "lodash";
+import _ from "lodash";
 import * as url from "url";
 import * as http from "http";
 import * as clc from "colorette";
-import * as open from "open";
-import * as ora from "ora";
+import open from "open";
+import ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
@@ -18,13 +18,14 @@ import { AssertionError } from "assert";
 import { stripVTControlCharacters } from "node:util";
 import { getPortPromise as getPort } from "portfinder";
 
-import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg, getError } from "./error";
-import { logger, LogLevel } from "./logger";
-import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { promptOnce } from "./prompt";
-import { readTemplateSync } from "./templates";
-import { isVSCodeExtension } from "./vsCodeUtils";
+import { configstore } from "./configstore.js";
+import { FirebaseError, getErrMsg, getError } from "./error.js";
+import { logger, LogLevel } from "./logger.js";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator.js";
+import { promptOnce } from "./prompt.js";
+import { readTemplateSync } from "./templates.js";
+import { isVSCodeExtension } from "./vsCodeUtils.js";
+import * as api from "./api.js"
 
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -38,7 +39,6 @@ export const vscodeEnvVars: { [key: string]: string } = {};
  * Create a Firebase Console URL for the specified path and project.
  */
 export function consoleUrl(project: string, path: string): string {
-  const api = require("./api");
   return `${api.consoleOrigin()}/project/${project}${path}`;
 }
 

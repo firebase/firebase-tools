@@ -1,4 +1,4 @@
-import { AppBundle } from "../interfaces";
+import { AppBundle } from "../interfaces.js";
 
 export interface FileSystem {
   exists(file: string): Promise<boolean>;

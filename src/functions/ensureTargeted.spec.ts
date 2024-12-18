@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ensureTargeted } from "./ensureTargeted";
+import { ensureTargeted } from "./ensureTargeted.js";
 
 describe("ensureTargeted", () => {
   it("does nothing if 'functions' is included", () => {

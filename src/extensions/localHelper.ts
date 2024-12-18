@@ -2,11 +2,11 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as yaml from "yaml";
 
-import { fileExistsSync } from "../fsutils";
-import { FirebaseError, isObject } from "../error";
-import { ExtensionSpec, isExtensionSpec, LifecycleEvent, LifecycleStage } from "./types";
-import { logger } from "../logger";
-import { validateSpec } from "./extensionsHelper";
+import { fileExistsSync } from "../fsutils.js";
+import { FirebaseError, isObject } from "../error.js";
+import { ExtensionSpec, isExtensionSpec, LifecycleEvent, LifecycleStage } from "./types.js";
+import { logger } from "../logger.js";
+import { validateSpec } from "./extensionsHelper.js";
 
 export const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";

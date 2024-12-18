@@ -1,11 +1,11 @@
-import * as proto from "../gcp/proto";
-import { Client } from "../apiv2";
-import { needProjectId } from "../projectUtils";
-import { apphostingOrigin, apphostingP4SADomain } from "../api";
-import { ensure } from "../ensureApiEnabled";
-import * as deploymentTool from "../deploymentTool";
-import { FirebaseError } from "../error";
-import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
+import * as proto from "../gcp/proto.js";
+import { Client } from "../apiv2.js";
+import { needProjectId } from "../projectUtils.js";
+import { apphostingOrigin, apphostingP4SADomain } from "../api.js";
+import { ensure } from "../ensureApiEnabled.js";
+import * as deploymentTool from "../deploymentTool.js";
+import { FirebaseError } from "../error.js";
+import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming.js";
 
 export const API_VERSION = "v1beta";
 

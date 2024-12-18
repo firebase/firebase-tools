@@ -1,8 +1,11 @@
+import:
+  - tsx
 require:
-  - ts-node/register
   - source-map-support/register
-  - src/test/helpers/mocha-bootstrap.ts
+  - src/test/helpers/mocha-bootstrap.js
 file:
-  - src/test/helpers/global-mock-auth.ts
+  - src/test/helpers/global-mock-auth.js
 timeout: 1000
 recursive: true
+node-options:
+  - "experimental-specifier-resolution=node"

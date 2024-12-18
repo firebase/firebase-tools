@@ -1,16 +1,17 @@
-import { logger } from "../logger";
-import { prepareFrameworks } from "../frameworks";
-import * as experiments from "../experiments";
-import { trackEmulator } from "../track";
-import { getProjectId } from "../projectUtils";
-import { Constants } from "../emulator/constants";
-import * as config from "../hosting/config";
-
-
-const { FunctionsServer } = require("./functions");
-
+import { logger } from "../logger.js";
+import { prepareFrameworks } from "../frameworks/index.js";
+import * as experiments from "../experiments.js";
+import { trackEmulator } from "../track.js";
+import { getProjectId } from "../projectUtils.js";
+import { Constants } from "../emulator/constants.js";
+import * as config from "../hosting/config.js";
+import { FunctionsServer } from "./functions.js";
 const TARGETS: {
-  [key: string]: { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
+  [key: string]: {
+    start: (o: any, args: any) => void;
+    stop: (o: any) => void;
+    connect: () => void;
+  };
 } = {
   hosting: require("./hosting"),
   functions: new FunctionsServer(),
@@ -37,7 +38,7 @@ export async function serve(options: any): Promise<void> {
   });
   await Promise.all(
     targetNames.map((targetName: string) => {
-      return TARGETS[targetName].start(options);
+      return TARGETS[targetName].start(options, {});
     }),
   );
   await Promise.all(

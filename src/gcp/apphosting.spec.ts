@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as apphosting from "./apphosting";
+import sinon from "sinon";
+import * as apphosting from "./apphosting.js";
 
 describe("apphosting", () => {
   describe("getNextBuildId", () => {

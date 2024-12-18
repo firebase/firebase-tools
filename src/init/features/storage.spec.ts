@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as _ from "lodash";
-import * as sinon from "sinon";
+import _ from "lodash";
+import sinon from "sinon";
 
-import { Config } from "../../config";
-import { doSetup } from "./storage";
-import * as prompt from "../../prompt";
+import { Config } from "../../config.js";
+import { doSetup } from "./storage.js";
+import * as prompt from "../../prompt.js";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

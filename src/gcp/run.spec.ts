@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as run from "./run";
-import { Client } from "../apiv2";
+import sinon from "sinon";
+import * as run from "./run.js";
+import { Client } from "../apiv2.js";
 
 describe("run", () => {
   describe("setInvokerCreate", () => {

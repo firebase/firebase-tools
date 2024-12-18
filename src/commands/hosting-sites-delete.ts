@@ -1,13 +1,13 @@
 import { bold, underline } from "colorette";
-import { Command } from "../command";
-import { logLabeledSuccess } from "../utils";
-import { getSite, deleteSite } from "../hosting/api";
-import { promptOnce } from "../prompt";
-import { FirebaseError } from "../error";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { requireConfig } from "../requireConfig";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { logLabeledSuccess } from "../utils.js";
+import { getSite, deleteSite } from "../hosting/api.js";
+import { promptOnce } from "../prompt.js";
+import { FirebaseError } from "../error.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireConfig } from "../requireConfig.js";
+import { logger } from "../logger.js";
 
 const LOG_TAG = "hosting:sites";
 

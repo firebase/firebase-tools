@@ -1,17 +1,16 @@
-import { size } from "lodash";
-import AbortController from "abort-controller";
+import { AbortController } from "abort-controller";
 import * as clc from "colorette";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import * as zlib from "zlib";
 
-import { Client } from "../../apiv2";
-import { Queue } from "../../throttler/queue";
-import { hostingApiOrigin } from "../../api";
-import { load, dump, HashRecord } from "./hashcache";
-import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
+import { Client } from "../../apiv2.js";
+import { Queue } from "../../throttler/queue.js";
+import { hostingApiOrigin } from "../../api.js";
+import { load, dump, HashRecord } from "./hashcache.js";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
 
 import { Buffer } from "node:buffer";
 
@@ -196,7 +195,7 @@ export class Uploader {
 
     this.populateBatch["/" + filePath] = hash;
 
-    const curBatchSize = size(this.populateBatch);
+    const curBatchSize = Object.entries(this.populateBatch).length;
     if (curBatchSize > 0 && curBatchSize % this.populateBatchSize === 0) {
       this.queuePopulate();
     }

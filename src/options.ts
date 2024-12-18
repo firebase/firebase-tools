@@ -1,5 +1,5 @@
-import { Config } from "./config";
-import { RC } from "./rc";
+import { Config } from "./config.js";
+import { RC } from "./rc.js";
 
 // Options come from command-line options and stored config values
 // TODO: actually define all of this stuff in command.ts and import it from there.

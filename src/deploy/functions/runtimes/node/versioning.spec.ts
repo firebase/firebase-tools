@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as utils from "../../../../utils";
-import * as versioning from "./versioning";
+import * as utils from "../../../../utils.js";
+import * as versioning from "./versioning.js";
 
 describe("checkFunctionsSDKVersion", () => {
   let warningSpy: sinon.SinonSpy;

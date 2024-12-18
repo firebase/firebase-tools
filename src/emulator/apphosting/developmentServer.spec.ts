@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
-import * as sinon from "sinon";
-import { detectPackageManager } from "./developmentServer";
+import sinon from "sinon";
+import { detectPackageManager } from "./developmentServer.js";
 import { expect } from "chai";
 
 describe("utils", () => {

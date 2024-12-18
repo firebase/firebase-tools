@@ -1,9 +1,8 @@
-import { Client } from "../apiv2";
-import { developerConnectOrigin, developerConnectP4SADomain } from "../api";
-import { generateServiceIdentityAndPoll } from "./serviceusage";
-import { FirebaseError } from "../error";
-import { extractRepoSlugFromUri } from "../apphosting/githubConnections";
-
+import { Client } from "../apiv2.js";
+import { developerConnectOrigin, developerConnectP4SADomain } from "../api.js";
+import { generateServiceIdentityAndPoll } from "./serviceusage.js";
+import { FirebaseError } from "../error.js";
+import { extractRepoSlugFromUri } from "../apphosting/githubConnections.js";
 
 const PAGE_SIZE_MAX = 1000;
 const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;

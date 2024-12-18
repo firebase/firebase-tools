@@ -1,17 +1,17 @@
-import * as args from "../deploy/functions/args";
-import * as backend from "../deploy/functions/backend";
-import * as secrets from "../functions/secrets";
-import * as secretManager from "../gcp/secretManager";
+import * as args from "../deploy/functions/args.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as secrets from "../functions/secrets.js";
+import * as secretManager from "../gcp/secretManager.js";
 
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId, needProjectNumber } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import { isFirebaseManaged } from "../deploymentTool";
-import { logBullet, logSuccess } from "../utils";
-import { promptOnce } from "../prompt";
-import { destroySecretVersion } from "../gcp/secretManager";
-import { requireAuth } from "../requireAuth";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { isFirebaseManaged } from "../deploymentTool.js";
+import { logBullet, logSuccess } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { destroySecretVersion } from "../gcp/secretManager.js";
+import { requireAuth } from "../requireAuth.js";
 
 export const command = new Command("functions:secrets:prune")
   .withForce("Destroys unused secrets without prompt")

@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
-import { logPrefix } from "./extensionsHelper";
-import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { InstanceSpec, getExtensionVersion } from "../deploy/extensions/planner";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { logPrefix } from "./extensionsHelper.js";
+import { humanReadable } from "../deploy/extensions/deploymentSummary.js";
+import { InstanceSpec, getExtensionVersion } from "../deploy/extensions/planner.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);

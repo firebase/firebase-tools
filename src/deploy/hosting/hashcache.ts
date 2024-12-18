@@ -1,7 +1,7 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as path from "path";
 
-import { logger } from "../../logger";
+import { logger } from "../../logger.js";
 
 function cachePath(cwd: string, name: string): string {
   return path.resolve(cwd, `.firebase/hosting.${name}.cache`);

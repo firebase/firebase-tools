@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
-import * as utils from "../utils";
-import { logger } from "../logger";
-import { EmulatorLog, Emulators } from "./types";
-import { tryParse } from "../utils";
-import { LogData } from "./loggingEmulator";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import { EmulatorLog, Emulators } from "./types.js";
+import { tryParse } from "../utils.js";
+import { LogData } from "./loggingEmulator.js";
 
 /**
  * DEBUG - lowest level, not needed for most usages.

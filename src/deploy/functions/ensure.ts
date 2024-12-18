@@ -1,13 +1,13 @@
 import * as clc from "colorette";
 
-import { ensure } from "../../ensureApiEnabled";
-import { FirebaseError, isBillingError } from "../../error";
-import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
-import { getProject, ProjectInfo } from "../../management/projects";
-import { assertExhaustive } from "../../functional";
-import { cloudbuildOrigin } from "../../api";
-import * as backend from "./backend";
+import { ensure } from "../../ensureApiEnabled.js";
+import { FirebaseError, isBillingError } from "../../error.js";
+import { logLabeledBullet, logLabeledSuccess } from "../../utils.js";
+import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager.js";
+import { getProject, ProjectInfo } from "../../management/projects.js";
+import { assertExhaustive } from "../../functional.js";
+import { cloudbuildOrigin } from "../../api.js";
+import * as backend from "./backend.js";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 

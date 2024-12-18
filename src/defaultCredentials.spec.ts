@@ -1,15 +1,14 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-import * as api from "./api";
-import { configstore } from "./configstore";
-import * as defaultCredentials from "./defaultCredentials";
-import { getGlobalDefaultAccount } from "./auth";
-import { Account } from "./types/auth";
-
+import * as api from "./api.js";
+import { configstore } from "./configstore.js";
+import * as defaultCredentials from "./defaultCredentials.js";
+import { getGlobalDefaultAccount } from "./auth.js";
+import { Account } from "./types/auth/index.js";
 
 describe("defaultCredentials", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

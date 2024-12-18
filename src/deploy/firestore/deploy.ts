@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
-import { FirestoreApi } from "../../firestore/api";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { IndexContext } from "./prepare";
+import { FirestoreApi } from "../../firestore/api.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import { IndexContext } from "./prepare.js";
 
 /**
  * Deploys Firestore Rules.

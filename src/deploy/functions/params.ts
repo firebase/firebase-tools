@@ -1,13 +1,13 @@
-import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
-import { promptOnce } from "../../prompt";
-import * as build from "./build";
-import { assertExhaustive, partition } from "../../functional";
-import * as secretManager from "../../gcp/secretManager";
-import { listBuckets } from "../../gcp/storage";
-import { isCelExpression, resolveExpression } from "./cel";
-import { FirebaseConfig } from "./args";
-import { labels as secretLabels } from "../../gcp/secretManager";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
+import { promptOnce } from "../../prompt.js";
+import * as build from "./build.js";
+import { assertExhaustive, partition } from "../../functional.js";
+import * as secretManager from "../../gcp/secretManager.js";
+import { listBuckets } from "../../gcp/storage.js";
+import { isCelExpression, resolveExpression } from "./cel.js";
+import { FirebaseConfig } from "./args.js";
+import { labels as secretLabels } from "../../gcp/secretManager.js";
 
 // A convenience type containing options for Prompt's select
 interface ListItem {

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as util from "./util";
+import * as util from "./util.js";
 
 describe("IndexNameParsing", () => {
   it("should parse an index name correctly", () => {

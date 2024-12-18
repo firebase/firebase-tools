@@ -1,6 +1,6 @@
-import * as fs from "fs-extra";
-import { FirebaseError, getErrMsg } from "../error";
-import { logger } from "../logger";
+import * as fs from "fs";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { logger } from "../logger.js";
 import * as pathUtil from "path";
 
 export enum DistributionFileType {
@@ -29,16 +29,8 @@ export class Distribution {
     ) {
       throw new FirebaseError("Unsupported file format, should be .ipa, .apk or .aab");
     }
-
-    let stat;
-    try {
-      stat = fs.statSync(path);
-    } catch (err: unknown) {
-      logger.info(getErrMsg(err));
+    if (!fs.statSync(path)) {
       throw new FirebaseError(`File ${path} does not exist: verify that file points to a binary`);
-    }
-    if (!stat.isFile()) {
-      throw new FirebaseError(`${path} is not a file. Verify that it points to a binary.`);
     }
 
     this.path = path;

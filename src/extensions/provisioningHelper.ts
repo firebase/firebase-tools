@@ -1,12 +1,12 @@
 import { marked } from "marked";
 
-import { ExtensionSpec } from "./types";
-import { firebaseStorageOrigin, firedataOrigin } from "../api";
-import { Client } from "../apiv2";
-import { flattenArray } from "../functional";
-import { FirebaseError } from "../error";
-import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
-import { logger } from "../logger";
+import { ExtensionSpec } from "./types.js";
+import { firebaseStorageOrigin, firedataOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { flattenArray } from "../functional.js";
+import { FirebaseError } from "../error.js";
+import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner.js";
+import { logger } from "../logger.js";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {

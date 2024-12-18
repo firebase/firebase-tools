@@ -3,16 +3,16 @@ import * as fs from "fs";
 import * as fse from "fs-extra";
 import * as http from "http";
 
-import { logger } from "../logger";
-import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
-import { EmulatorRegistry } from "./registry";
-import { FirebaseError } from "../error";
-import { EmulatorHub } from "./hub";
-import { getDownloadDetails } from "./downloadableEmulators";
-import { DatabaseEmulator } from "./databaseEmulator";
-import { DataConnectEmulator } from "./dataconnectEmulator";
+import { logger } from "../logger.js";
+import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorHub } from "./hub.js";
+import { getDownloadDetails } from "./downloadableEmulators.js";
+import { DatabaseEmulator } from "./databaseEmulator.js";
+import { DataConnectEmulator } from "./dataconnectEmulator.js";
 import { rmSync } from "node:fs";
-import { trackEmulator } from "../track";
+import { trackEmulator } from "../track.js";
 
 export interface FirestoreExportMetadata {
   version: string;

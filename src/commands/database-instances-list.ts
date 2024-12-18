@@ -1,21 +1,20 @@
-const Table = require("cli-table");
-
-import { Command } from "../command";
+import { Command } from "../command.js";
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import * as experiments from "../experiments";
-import { needProjectId } from "../projectUtils";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import * as experiments from "../experiments.js";
+import { needProjectId } from "../projectUtils.js";
 import {
   listDatabaseInstances,
   DatabaseInstance,
   DatabaseLocation,
   parseDatabaseLocation,
-} from "../management/database";
+} from "../management/database.js";
+import Table from "cli-table";
 
 export const command = new Command("database:instances:list")
   .description("list realtime database instances, optionally filtered by a specified location")

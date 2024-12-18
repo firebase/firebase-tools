@@ -1,4 +1,4 @@
-import { ExpressionValue } from "./expressionValue";
+import { ExpressionValue } from "./expressionValue.js";
 
 export enum RulesetOperationMethod {
   READ = "read",

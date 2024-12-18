@@ -1,11 +1,11 @@
-import * as iam from "./iam";
+import * as iam from "./iam.js";
 
-import { logLabeledSuccess } from "../utils";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
-import { secretManagerOrigin } from "../api";
-import * as ensureApiEnabled from "../ensureApiEnabled";
-import { needProjectId } from "../projectUtils";
+import { logLabeledSuccess } from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { Client } from "../apiv2.js";
+import { secretManagerOrigin } from "../api.js";
+import * as ensureApiEnabled from "../ensureApiEnabled.js";
+import { needProjectId } from "../projectUtils.js";
 import { Buffer } from "node:buffer";
 
 // Matches projects/{PROJECT}/secrets/{SECRET}

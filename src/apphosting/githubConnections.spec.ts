@@ -1,13 +1,13 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
-import * as prompt from "../prompt";
-import * as poller from "../operation-poller";
-import * as devconnect from "../gcp/devConnect";
-import * as repo from "./githubConnections";
-import * as utils from "../utils";
-import * as srcUtils from "../getProjectNumber";
-import * as rm from "../gcp/resourceManager";
-import { FirebaseError } from "../error";
+import * as prompt from "../prompt.js";
+import * as poller from "../operation-poller.js";
+import * as devconnect from "../gcp/devConnect.js";
+import * as repo from "./githubConnections.js";
+import * as utils from "../utils.js";
+import * as srcUtils from "../getProjectNumber.js";
+import * as rm from "../gcp/resourceManager.js";
+import { FirebaseError } from "../error.js";
 
 const projectId = "projectId";
 const location = "us-central1";

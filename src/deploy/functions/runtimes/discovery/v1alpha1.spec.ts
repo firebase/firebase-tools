@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
-import * as backend from "../../backend";
-import * as build from "../../build";
-import { Runtime } from "../supported";
-import * as v1alpha1 from "./v1alpha1";
-import { BEFORE_CREATE_EVENT } from "../../../../functions/events/v1";
-import { Param } from "../../params";
-import { FirebaseError } from "../../../../error";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import { Runtime } from "../supported/index.js";
+import * as v1alpha1 from "./v1alpha1.js";
+import { BEFORE_CREATE_EVENT } from "../../../../functions/events/v1.js";
+import { Param } from "../../params.js";
+import { FirebaseError } from "../../../../error.js";
 
 const PROJECT = "project";
 const REGION = "region";

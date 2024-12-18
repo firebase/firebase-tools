@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import * as configExport from "./runtimeConfigExport";
-import * as env from "./env";
-import * as sinon from "sinon";
-import * as rc from "../rc";
+import * as configExport from "./runtimeConfigExport.js";
+import * as env from "./env.js";
+import sinon from "sinon";
+import * as rc from "../rc.js";
 
 describe("functions-config-export", () => {
   describe("getAllProjects", () => {

@@ -1,9 +1,9 @@
-import { Command } from "../command";
-import { requirePermissions } from "../requirePermissions";
-import * as metadata from "../database/metadata";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { Command } from "../command.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as metadata from "../database/metadata.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
 
 export const command = new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")

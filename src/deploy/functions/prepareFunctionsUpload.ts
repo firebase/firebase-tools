@@ -1,18 +1,18 @@
-import * as archiver from "archiver";
+import archiver from "archiver";
 import * as clc from "colorette";
-import * as filesize from "filesize";
+import filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
 
-import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { getSourceHash } from "./cache/hash";
-import * as backend from "./backend";
-import * as functionsConfig from "../../functionsConfig";
-import * as utils from "../../utils";
-import * as fsAsync from "../../fsAsync";
-import * as projectConfig from "../../functions/projectConfig";
+import { FirebaseError } from "../../error.js";
+import { logger } from "../../logger.js";
+import { getSourceHash } from "./cache/hash.js";
+import * as backend from "./backend.js";
+import * as functionsConfig from "../../functionsConfig.js";
+import * as utils from "../../utils.js";
+import * as fsAsync from "../../fsAsync.js";
+import * as projectConfig from "../../functions/projectConfig.js";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 

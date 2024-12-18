@@ -1,11 +1,11 @@
-import { getProjectNumber } from "../getProjectNumber";
-import * as utils from "../utils";
-import { ensure } from "../ensureApiEnabled";
-import { needProjectId } from "../projectUtils";
-import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
-import * as secretManagerApi from "../gcp/secretManager";
-import { logger } from "../logger";
-import { secretManagerOrigin } from "../api";
+import { getProjectNumber } from "../getProjectNumber.js";
+import * as utils from "../utils.js";
+import { ensure } from "../ensureApiEnabled.js";
+import { needProjectId } from "../projectUtils.js";
+import { ExtensionInstance, ExtensionSpec, ParamType } from "./types.js";
+import * as secretManagerApi from "../gcp/secretManager.js";
+import { logger } from "../logger.js";
+import { secretManagerOrigin } from "../api.js";
 
 export const SECRET_LABEL = "firebase-extensions-managed";
 export const SECRET_ROLE = "secretmanager.secretAccessor";

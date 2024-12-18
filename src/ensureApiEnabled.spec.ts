@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { check, ensure, POLL_SETTINGS } from "./ensureApiEnabled";
+import { check, ensure, POLL_SETTINGS } from "./ensureApiEnabled.js";
 
 const FAKE_PROJECT_ID = "my_project";
 const FAKE_API = "myapi.googleapis.com";

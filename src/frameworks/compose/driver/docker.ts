@@ -1,11 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { AppBundle, Driver, Hook } from "../interfaces";
-import { BUNDLE_PATH, genHookScript } from "./hooks";
-import { RuntimeSpec } from "../discover/types";
-
+import { AppBundle, Driver, Hook } from "../interfaces.js";
+import { BUNDLE_PATH, genHookScript } from "./hooks.js";
+import { RuntimeSpec } from "../discover/types.js";
 
 const ADAPTER_SCRIPTS_PATH = "./.firebase/adapters" as const;
 

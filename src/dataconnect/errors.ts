@@ -1,4 +1,4 @@
-import { IncompatibleSqlSchemaError } from "./types";
+import { IncompatibleSqlSchemaError } from "./types.js";
 
 const INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING = "IncompatibleSqlSchemaError";
 const PRECONDITION_ERROR_TYPESTRING = "type.googleapis.com/google.rpc.PreconditionFailure";

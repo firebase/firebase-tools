@@ -1,7 +1,7 @@
-import { dataconnectOrigin } from "../api";
-import { Client } from "../apiv2";
-import * as operationPoller from "../operation-poller";
-import * as types from "./types";
+import { dataconnectOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import * as operationPoller from "../operation-poller.js";
+import * as types from "./types.js";
 
 const DATACONNECT_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;

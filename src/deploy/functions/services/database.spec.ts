@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Endpoint } from "../backend";
-import * as database from "./database";
+import { Endpoint } from "../backend.js";
+import * as database from "./database.js";
 
 const projectNumber = "123456789";
 

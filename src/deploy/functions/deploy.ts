@@ -2,18 +2,17 @@ import { setGracefulCleanup } from "tmp";
 import * as clc from "colorette";
 import * as fs from "fs";
 
-import { checkHttpIam } from "./checkIam";
-import { logLabeledWarning, logSuccess, logWarning } from "../../utils";
-import { Options } from "../../options";
-import { configForCodebase } from "../../functions/projectConfig";
-import * as args from "./args";
-import * as gcs from "../../gcp/storage";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as gcfv2 from "../../gcp/cloudfunctionsv2";
-import * as backend from "./backend";
-import { findEndpoint } from "./backend";
-import { deploy as extDeploy } from "../extensions";
-
+import { checkHttpIam } from "./checkIam.js";
+import { logLabeledWarning, logSuccess, logWarning } from "../../utils.js";
+import { Options } from "../../options.js";
+import { configForCodebase } from "../../functions/projectConfig.js";
+import * as args from "./args.js";
+import * as gcs from "../../gcp/storage.js";
+import * as gcf from "../../gcp/cloudfunctions.js";
+import * as gcfv2 from "../../gcp/cloudfunctionsv2.js";
+import * as backend from "./backend.js";
+import { findEndpoint } from "./backend.js";
+import { deploy as extDeploy } from "../extensions/index.js";
 
 setGracefulCleanup();
 

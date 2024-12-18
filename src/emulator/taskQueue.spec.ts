@@ -1,10 +1,10 @@
-import * as _ from "lodash";
-import * as sinon from "sinon";
+import _ from "lodash";
+import sinon from "sinon";
 import * as nodeFetch from "node-fetch";
-import AbortController from "abort-controller";
+import { AbortController } from "abort-controller";
 import { expect } from "chai";
-import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue";
-import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
+import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue.js";
+import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator.js";
 
 describe("Queue Test", () => {
   it("should create an empty task queue", () => {

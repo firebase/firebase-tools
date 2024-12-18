@@ -1,13 +1,12 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
-
-import { Command } from "../command";
-import { FirebaseError, getErrMsg } from "../error";
-import { last, logLabeledBullet } from "../utils";
-import { listExtensions } from "../extensions/publisherApi";
-import { logger } from "../logger";
-import { logPrefix, unpackExtensionState } from "../extensions/extensionsHelper";
-import { requireAuth } from "../requireAuth";
+import { Command } from "../command.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { last, logLabeledBullet } from "../utils.js";
+import { listExtensions } from "../extensions/publisherApi.js";
+import { logger } from "../logger.js";
+import { logPrefix, unpackExtensionState } from "../extensions/extensionsHelper.js";
+import { requireAuth } from "../requireAuth.js";
+import Table from "cli-table";
 
 /**
  * List all extensions uploaded under publisher ID.

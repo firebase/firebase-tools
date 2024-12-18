@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Endpoint } from "../backend";
-import * as testLab from "./testLab";
+import { Endpoint } from "../backend.js";
+import * as testLab from "./testLab.js";
 
 const projectNumber = "123456789";
 

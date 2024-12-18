@@ -1,11 +1,10 @@
 import { bold } from "colorette";
-const Table = require("cli-table");
-
-import { Command } from "../command";
-import { Site, listSites } from "../hosting/api";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { Site, listSites } from "../hosting/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import Table from "cli-table";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 

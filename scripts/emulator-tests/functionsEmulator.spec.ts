@@ -3,9 +3,9 @@ import * as fsp from "fs/promises";
 import * as path from "path";
 
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
 
@@ -17,7 +17,6 @@ import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
-
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;

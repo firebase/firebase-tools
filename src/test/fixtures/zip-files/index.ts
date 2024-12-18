@@ -1,6 +1,6 @@
 import { join } from "path";
 
-const zipFixturesDir = __dirname;
+const zipFixturesDir = import.meta.dirname;
 const testDataDir = join(zipFixturesDir, "node-unzipper-testData");
 
 export const ZIP_CASES = [

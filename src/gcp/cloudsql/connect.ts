@@ -1,17 +1,17 @@
 import * as pg from "pg";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
-import { requireAuth } from "../../requireAuth";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { dataconnectP4SADomain } from "../../api";
-import * as cloudSqlAdminClient from "./cloudsqladmin";
-import { UserType } from "./types";
-import * as utils from "../../utils";
-import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
-import { Options } from "../../options";
-import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
+import { requireAuth } from "../../requireAuth.js";
+import { needProjectId, needProjectNumber } from "../../projectUtils.js";
+import { dataconnectP4SADomain } from "../../api.js";
+import * as cloudSqlAdminClient from "./cloudsqladmin.js";
+import { UserType } from "./types.js";
+import * as utils from "../../utils.js";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
+import { Options } from "../../options.js";
+import { FBToolsAuthClient } from "./fbToolsAuthClient.js";
+import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions.js";
 
 export async function execute(
   sqlStatements: string[],

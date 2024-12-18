@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { FirestoreApi } from "./api";
-import { FirebaseError } from "../error";
-import * as API from "./api-types";
-import * as Spec from "./api-spec";
-import * as sort from "./api-sort";
+import { FirestoreApi } from "./api.js";
+import { FirebaseError } from "../error.js";
+import * as API from "./api-types.js";
+import * as Spec from "./api-spec.js";
+import * as sort from "./api-sort.js";
 
 const idx = new FirestoreApi();
 

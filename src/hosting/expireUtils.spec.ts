@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import { calculateChannelExpireTTL } from "./expireUtils";
-import { FirebaseError } from "../error";
+import { calculateChannelExpireTTL } from "./expireUtils.js";
+import { FirebaseError } from "../error.js";
 
 describe("calculateChannelExpireTTL", () => {
   const goodTests = [

@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fsExtra from "fs-extra";
 
-import { discover } from ".";
+import { discover } from "./index.js";
 
 describe("Angular", () => {
   describe("discovery", () => {

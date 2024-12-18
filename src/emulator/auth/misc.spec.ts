@@ -1,14 +1,14 @@
 import { expect } from "chai";
-import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { decodeRefreshToken, encodeRefreshToken, RefreshTokenRecord, UserInfo } from "./state";
+import jsonwebtoken from "jsonwebtoken";
+import { decodeRefreshToken, encodeRefreshToken, RefreshTokenRecord, UserInfo } from "./state.js";
 import {
   getAccountInfoByIdToken,
   PROJECT_ID,
   registerTenant,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
-} from "./testing/helpers";
-import { describeAuthEmulator } from "./testing/setup";
+} from "./testing/helpers.js";
+import { describeAuthEmulator } from "./testing/setup.js";
 import {
   deleteAccount,
   expectStatusCode,
@@ -16,10 +16,10 @@ import {
   registerAnonUser,
   updateAccountByLocalId,
   expectUserNotExistsForIdToken,
-} from "./testing/helpers";
-import { FirebaseJwtPayload, SESSION_COOKIE_MAX_VALID_DURATION } from "./operations";
-import { toUnixTimestamp } from "./utils";
-import { SingleProjectMode } from ".";
+} from "./testing/helpers.js";
+import { FirebaseJwtPayload, SESSION_COOKIE_MAX_VALID_DURATION } from "./operations.js";
+import { toUnixTimestamp } from "./utils.js";
+import { SingleProjectMode } from "./index.js";
 
 describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {
@@ -96,8 +96,8 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     const user = await getAccountInfoByIdToken(authApi(), idToken);
     expect(user.lastLoginAt).not.to.be.undefined;
     const lastLoginAtSeconds = Math.floor(parseInt(user.lastLoginAt!, 10) / 1000);
-    const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-      header: JwtHeader;
+    const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+      header: jsonwebtoken.JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -249,8 +249,8 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         const sessionCookie = res.body.sessionCookie;
         expect(sessionCookie).to.be.a("string");
 
-        const decoded = decodeJwt(sessionCookie, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(sessionCookie, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "session cookie is invalid").not.to.be.null;
@@ -259,7 +259,7 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         expect(decoded!.payload.exp).to.equal(toUnixTimestamp(new Date()) + validDuration);
         expect(decoded!.payload.iss).to.equal(`https://session.firebase.google.com/${PROJECT_ID}`);
 
-        const idTokenProps = decodeJwt(idToken) as Partial<FirebaseJwtPayload>;
+        const idTokenProps = jsonwebtoken.decode(idToken) as Partial<FirebaseJwtPayload>;
         delete idTokenProps.iss;
         delete idTokenProps.iat;
         delete idTokenProps.exp;
@@ -304,8 +304,8 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         const sessionCookie = res.body.sessionCookie;
         expect(sessionCookie).to.be.a("string");
 
-        const decoded = decodeJwt(sessionCookie, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(sessionCookie, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "session cookie is invalid").not.to.be.null;

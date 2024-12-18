@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { identityOrigin, hostingApiOrigin } from "../api";
-import { FirebaseError } from "../error";
-import * as hostingApi from "./api";
+import { identityOrigin, hostingApiOrigin } from "../api.js";
+import { FirebaseError } from "../error.js";
+import * as hostingApi from "./api.js";
 
 const TEST_CHANNELS_RESPONSE = {
   channels: [

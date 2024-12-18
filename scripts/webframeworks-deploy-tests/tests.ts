@@ -11,7 +11,6 @@ import { fileExistsSync } from "../../src/fsutils";
 import { IS_WINDOWS } from "../../src/utils";
 import { readFile } from "fs/promises";
 
-
 const NEXT_OUTPUT_PATH = `${__dirname}/.firebase/demo-nextjs`;
 const ANGULAR_OUTPUT_PATH = `${__dirname}/.firebase/demo-angular`;
 const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;

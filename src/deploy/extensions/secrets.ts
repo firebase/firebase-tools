@@ -1,20 +1,20 @@
 import * as clc from "colorette";
 
-import * as secretUtils from "../../extensions/secretsUtils";
-import * as secretManager from "../../gcp/secretManager";
+import * as secretUtils from "../../extensions/secretsUtils.js";
+import * as secretManager from "../../gcp/secretManager.js";
 
-import { Payload } from "./args";
+import { Payload } from "./args.js";
 import {
   getExtensionVersion,
   DeploymentInstanceSpec,
   InstanceSpec,
   getExtensionSpec,
-} from "./planner";
-import { promptCreateSecret } from "../../extensions/askUserForParam";
-import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
-import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { logLabeledBullet } from "../../utils";
+} from "./planner.js";
+import { promptCreateSecret } from "../../extensions/askUserForParam.js";
+import { ExtensionSpec, Param, ParamType } from "../../extensions/types.js";
+import { FirebaseError } from "../../error.js";
+import { logger } from "../../logger.js";
+import { logLabeledBullet } from "../../utils.js";
 
 /**
  * handleSecretParams checks each spec for secret params, and validates that the secrets in the configuration exist.

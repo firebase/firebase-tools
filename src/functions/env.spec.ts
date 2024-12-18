@@ -4,8 +4,8 @@ import * as os from "os";
 import { rmSync } from "node:fs";
 import { expect } from "chai";
 
-import * as env from "./env";
-import { FirebaseError } from "../error";
+import * as env from "./env.js";
+import { FirebaseError } from "../error.js";
 
 describe("functions/env", () => {
   describe("parse", () => {

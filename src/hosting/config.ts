@@ -1,7 +1,7 @@
 import { bold } from "colorette";
-import { cloneDeep, logLabeledWarning } from "../utils";
+import { cloneDeep, logLabeledWarning } from "../utils.js";
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 import {
   HostingMultiple,
   HostingSingle,
@@ -11,13 +11,13 @@ import {
   FunctionsRewrite,
   LegacyFunctionsRewrite,
   HostingSource,
-} from "../firebaseConfig";
-import { partition } from "../functional";
-import { dirExistsSync } from "../fsutils";
-import { resolveProjectPath } from "../projectPath";
-import { HostingOptions } from "./options";
+} from "../firebaseConfig.js";
+import { partition } from "../functional.js";
+import { dirExistsSync } from "../fsutils.js";
+import { resolveProjectPath } from "../projectPath.js";
+import { HostingOptions } from "./options.js";
 import * as path from "node:path";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 
 // After validating a HostingMultiple and resolving targets, we will instead
 // have a HostingResolved.

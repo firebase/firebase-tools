@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 /**
  * Throw an error if 'obj' does not have a value for the property 'prop'.

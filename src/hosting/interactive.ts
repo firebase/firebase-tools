@@ -1,8 +1,8 @@
-import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
-import { needProjectId, needProjectNumber } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { Site, createSite } from "./api";
+import { FirebaseError } from "../error.js";
+import { logWarning } from "../utils.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import { Site, createSite } from "./api.js";
 
 const nameSuggestion = new RegExp("try something like `(.+)`");
 // const prompt = "Please provide an unique, URL-friendly id for the site (<id>.web.app):";

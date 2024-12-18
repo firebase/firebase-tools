@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { genHookScript } from "./hooks";
-import { AppBundle } from "../interfaces";
+import { genHookScript } from "./hooks.js";
+import { AppBundle } from "../interfaces.js";
 
 describe("genHookScript", () => {
   const BUNDLE: AppBundle = {

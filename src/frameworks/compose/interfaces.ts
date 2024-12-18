@@ -1,4 +1,4 @@
-import { RuntimeSpec } from "./discover/types";
+import { RuntimeSpec } from "./discover/types.js";
 
 export interface AppBundle {
   version: "v1alpha";

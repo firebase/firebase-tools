@@ -1,8 +1,11 @@
-import { getExtensionVersion, DeploymentInstanceSpec } from "../deploy/extensions/planner";
-import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { logger } from "../logger";
-import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
-import { getActiveSecrets } from "./secretsUtils";
+import { getExtensionVersion, DeploymentInstanceSpec } from "../deploy/extensions/planner.js";
+import { humanReadable } from "../deploy/extensions/deploymentSummary.js";
+import { logger } from "../logger.js";
+import {
+  parseSecretVersionResourceName,
+  toSecretVersionResourceName,
+} from "../gcp/secretManager.js";
+import { getActiveSecrets } from "./secretsUtils.js";
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
  * and replaces it with a parameterized version that can be used on other projects.

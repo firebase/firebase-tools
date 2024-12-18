@@ -1,14 +1,14 @@
 import * as clc from "colorette";
 
-import { getFunctionLabel } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
-import { confirm, promptOnce } from "../../prompt";
-import { logger } from "../../logger";
-import * as backend from "./backend";
-import * as pricing from "./pricing";
-import * as utils from "../../utils";
-import { Options } from "../../options";
-import { EndpointUpdate } from "./release/planner";
+import { getFunctionLabel } from "./functionsDeployHelper.js";
+import { FirebaseError } from "../../error.js";
+import { confirm, promptOnce } from "../../prompt.js";
+import { logger } from "../../logger.js";
+import * as backend from "./backend.js";
+import * as pricing from "./pricing.js";
+import * as utils from "../../utils.js";
+import { Options } from "../../options.js";
+import { EndpointUpdate } from "./release/planner.js";
 
 /**
  * Checks if a deployment will create any functions with a failure policy

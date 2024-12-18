@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
-import * as triggerHelper from "./triggerHelper";
-import { Resource } from "../types";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared.js";
+import * as triggerHelper from "./triggerHelper.js";
+import { Resource } from "../types.js";
 
 describe("triggerHelper", () => {
   describe("functionResourceToEmulatedTriggerDefintion", () => {

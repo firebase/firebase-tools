@@ -1,7 +1,7 @@
-import { firestoreOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { firestoreOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
 
 /**
  * Determine the Firestore database type for a given project. One of:

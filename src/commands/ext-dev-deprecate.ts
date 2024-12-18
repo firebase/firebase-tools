@@ -1,16 +1,16 @@
 import * as clc from "colorette";
 import * as semver from "semver";
 
-import * as refs from "../extensions/refs";
-import * as utils from "../utils";
-import { Command } from "../command";
-import { confirm } from "../prompt";
-import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi";
-import { parseVersionPredicate } from "../extensions/versionHelper";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import { Options } from "../options";
+import * as refs from "../extensions/refs.js";
+import * as utils from "../utils.js";
+import { Command } from "../command.js";
+import { confirm } from "../prompt.js";
+import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper.js";
+import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi.js";
+import { parseVersionPredicate } from "../extensions/versionHelper.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import { Options } from "../options.js";
 
 interface ExtDevDeprecateOptions extends Options {
   message: string;

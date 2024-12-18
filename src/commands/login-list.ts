@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
-import { User } from "../types/auth";
-import { Command } from "../command";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import * as auth from "../auth";
+import { User } from "../types/auth/index.js";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import * as auth from "../auth.js";
 
 export const command = new Command("login:list")
   .description("list authorized CLI accounts")

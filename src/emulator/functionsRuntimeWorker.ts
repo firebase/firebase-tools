@@ -1,15 +1,14 @@
 import * as http from "http";
 import * as uuid from "uuid";
 
-import { FunctionsRuntimeInstance } from "./functionsEmulator";
-import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { EmulatedTriggerDefinition, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import { FunctionsRuntimeInstance } from "./functionsEmulator.js";
+import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types.js";
+import { EmulatedTriggerDefinition, FunctionsRuntimeBundle } from "./functionsEmulatorShared.js";
 import { EventEmitter } from "events";
-import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
-import { FirebaseError } from "../error";
+import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger.js";
+import { FirebaseError } from "../error.js";
 import { Serializable } from "child_process";
-import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
-
+import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery/index.js";
 
 type LogListener = (el: EmulatorLog) => any;
 

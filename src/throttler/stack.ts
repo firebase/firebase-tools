@@ -1,4 +1,4 @@
-import { Throttler, ThrottlerOptions } from "./throttler";
+import { Throttler, ThrottlerOptions } from "./throttler.js";
 
 export class Stack<T, R> extends Throttler<T, R> {
   lastTotal: number = 0;

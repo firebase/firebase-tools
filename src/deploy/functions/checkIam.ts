@@ -1,19 +1,19 @@
 import { bold } from "colorette";
 
-import { logger } from "../../logger";
-import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
-import { Options } from "../../options";
-import { flattenArray } from "../../functional";
-import * as iam from "../../gcp/iam";
-import * as gce from "../../gcp/computeEngine";
-import * as args from "./args";
-import * as backend from "./backend";
-import { trackGA4 } from "../../track";
-import * as utils from "../../utils";
+import { logger } from "../../logger.js";
+import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper.js";
+import { FirebaseError } from "../../error.js";
+import { Options } from "../../options.js";
+import { flattenArray } from "../../functional.js";
+import * as iam from "../../gcp/iam.js";
+import * as gce from "../../gcp/computeEngine.js";
+import * as args from "./args.js";
+import * as backend from "./backend.js";
+import { trackGA4 } from "../../track.js";
+import * as utils from "../../utils.js";
 
-import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
-import { Service, serviceForEndpoint } from "./services";
+import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager.js";
+import { Service, serviceForEndpoint } from "./services/index.js";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";

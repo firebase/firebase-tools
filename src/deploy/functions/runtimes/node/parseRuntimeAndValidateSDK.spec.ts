@@ -1,12 +1,11 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 // Have to disable this because no @types/cjson available
 // eslint-disable-next-line
-const cjson = require("cjson");
-
-import { FirebaseError } from "../../../../error";
-import * as runtime from "./parseRuntimeAndValidateSDK";
+import { FirebaseError } from "../../../../error.js";
+import * as runtime from "./parseRuntimeAndValidateSDK.js";
+import cjson from "cjson";
 
 describe("getRuntimeChoice", () => {
   const sandbox = sinon.createSandbox();

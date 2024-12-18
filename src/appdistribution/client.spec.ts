@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import { join } from "path";
-import * as fs from "fs-extra";
-import * as nock from "nock";
+import * as fs from "fs";
+import nock from "nock";
 import { rmSync } from "node:fs";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient } from "./client";
-import { BatchRemoveTestersResponse, Group, TestDevice } from "./types";
-import { appDistributionOrigin } from "../api";
-import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
+import { AppDistributionClient } from "./client.js";
+import { BatchRemoveTestersResponse, Group, TestDevice } from "./types.js";
+import { appDistributionOrigin } from "../api.js";
+import { Distribution } from "./distribution.js";
+import { FirebaseError } from "../error.js";
 
 tmp.setGracefulCleanup();
 
@@ -20,8 +20,6 @@ describe("distribution", () => {
   const appName = `${projectName}/apps/1:123456789:ios:abc123def456`;
   const groupName = `${projectName}/groups/my-group`;
   const binaryFile = join(tempdir.name, "app.ipa");
-  fs.ensureFileSync(binaryFile);
-  const mockDistribution = new Distribution(binaryFile);
   const appDistributionClient = new AppDistributionClient();
 
   let sandbox: sinon.SinonSandbox;
@@ -173,12 +171,16 @@ describe("distribution", () => {
 
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
+      sandbox.stub(fs, "existsSync").returns(true);
+      const mockDistribution = new Distribution(binaryFile);
       nock(appDistributionOrigin()).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
       await expect(appDistributionClient.uploadRelease(appName, mockDistribution)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
     it("should return token if upload succeeds", async () => {
+      sandbox.stub(fs, "existsSync").returns(true);
+      const mockDistribution = new Distribution(binaryFile);
       const fakeOperation = "fake-operation-name";
       nock(appDistributionOrigin())
         .post(`/upload/v1/${appName}/releases:upload`)

@@ -9,7 +9,6 @@ import {
   TEST_SETUP_TIMEOUT,
 } from "../utils";
 
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
 
 describe("Multiple Storage Deploy Targets", () => {

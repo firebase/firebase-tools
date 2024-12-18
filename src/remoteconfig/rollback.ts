@@ -1,6 +1,6 @@
-import { remoteConfigApiOrigin } from "../api";
-import { Client } from "../apiv2";
-import { RemoteConfigTemplate } from "./interfaces";
+import { remoteConfigApiOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { RemoteConfigTemplate } from "./interfaces.js";
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),

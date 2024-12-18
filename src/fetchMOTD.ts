@@ -1,15 +1,12 @@
 import * as clc from "colorette";
 import * as semver from "semver";
 
-import { Client } from "./apiv2";
-import { configstore } from "./configstore";
-import { logger } from "./logger";
-import { realtimeOrigin } from "./api";
-import * as utils from "./utils";
-
-
-const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
-
+import { Client } from "./apiv2.js";
+import { configstore } from "./configstore.js";
+import { logger } from "./logger.js";
+import { realtimeOrigin } from "./api.js";
+import * as utils from "./utils.js";
+import pkg from "../package.json" with { type: "json" };
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 
 /**

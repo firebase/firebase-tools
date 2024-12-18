@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as express from "express";
-import * as nock from "nock";
-import * as sinon from "sinon";
-import * as supertest from "supertest";
+import express from "express";
+import nock from "nock";
+import sinon from "sinon";
+import supertest from "supertest";
 
-import { cloudRunApiOrigin } from "../api";
-import cloudRunProxy, { CloudRunProxyOptions, CloudRunProxyRewrite } from "./cloudRunProxy";
+import { cloudRunApiOrigin } from "../api.js";
+import cloudRunProxy, { CloudRunProxyOptions, CloudRunProxyRewrite } from "./cloudRunProxy.js";
 
 describe("cloudRunProxy", () => {
   const fakeOptions: CloudRunProxyOptions = {

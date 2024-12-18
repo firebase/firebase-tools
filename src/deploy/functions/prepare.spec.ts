@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as backend from "./backend";
-import * as prepare from "./prepare";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
+import * as backend from "./backend.js";
+import * as prepare from "./prepare.js";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1.js";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {

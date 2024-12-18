@@ -1,8 +1,8 @@
-import { ALL_EMULATORS, Emulators } from "./types";
-import { EmulatorRegistry } from "./registry";
+import { ALL_EMULATORS, Emulators } from "./types.js";
+import { EmulatorRegistry } from "./registry.js";
 import { expect } from "chai";
-import { FakeEmulator } from "./testing/fakeEmulator";
-import * as express from "express";
+import { FakeEmulator } from "./testing/fakeEmulator.js";
+import express from "express";
 import * as os from "os";
 
 describe("EmulatorRegistry", () => {

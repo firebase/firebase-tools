@@ -5,11 +5,11 @@ import {
   randomDigits,
   isValidPhoneNumber,
   DeepPartial,
-} from "./utils";
-import { MakeRequired } from "./utils";
-import { AuthCloudFunction } from "./cloudFunctions";
-import { assert, BadRequestError } from "./errors";
-import { MfaEnrollments, Schemas } from "./types";
+} from "./utils.js";
+import { MakeRequired } from "./utils.js";
+import { AuthCloudFunction } from "./cloudFunctions.js";
+import { assert, BadRequestError } from "./errors.js";
+import { MfaEnrollments, Schemas } from "./types.js";
 import { Buffer } from "node:buffer";
 
 export const PROVIDER_PASSWORD = "password";

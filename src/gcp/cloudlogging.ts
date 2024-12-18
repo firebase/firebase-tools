@@ -1,6 +1,6 @@
-import { cloudloggingOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { cloudloggingOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
 
 const API_VERSION = "v2";
 

@@ -1,13 +1,13 @@
 import { expect } from "chai";
 
-import { Options } from "../../../options";
-import { RC } from "../../../rc";
-import { getStorageRulesConfig } from "./config";
-import { createTmpDir, StorageRulesFiles } from "../../testing/fixtures";
-import { FirebaseError } from "../../../error";
-import { Persistence } from "../persistence";
-import { RulesConfig } from "..";
-import { SourceFile } from "./types";
+import { Options } from "../../../options.js";
+import { RC } from "../../../rc.js";
+import { getStorageRulesConfig } from "./config.js";
+import { createTmpDir, StorageRulesFiles } from "../../testing/fixtures.js";
+import { FirebaseError } from "../../../error.js";
+import { Persistence } from "../persistence.js";
+import { RulesConfig } from "../index.js";
+import { SourceFile } from "./types.js";
 import { Buffer } from "node:buffer";
 
 const PROJECT_ID = "test-project";

@@ -1,13 +1,13 @@
-import * as _ from "lodash";
+import _ from "lodash";
 import * as clc from "colorette";
 
-import { firebaseApiOrigin } from "./api";
-import { Client } from "./apiv2";
-import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
-import { FirebaseError } from "./error";
-import { needProjectId } from "./projectUtils";
-import * as runtimeconfig from "./gcp/runtimeconfig";
-import * as args from "./deploy/functions/args";
+import { firebaseApiOrigin } from "./api.js";
+import { Client } from "./apiv2.js";
+import { ensure as ensureApiEnabled } from "./ensureApiEnabled.js";
+import { FirebaseError } from "./error.js";
+import { needProjectId } from "./projectUtils.js";
+import * as runtimeconfig from "./gcp/runtimeconfig.js";
+import * as args from "./deploy/functions/args.js";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 

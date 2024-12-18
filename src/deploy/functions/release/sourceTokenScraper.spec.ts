@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { SourceTokenScraper } from "./sourceTokenScraper";
+import { SourceTokenScraper } from "./sourceTokenScraper.js";
 
 describe("SourceTokenScraper", () => {
   it("immediately provides the first result", async () => {

@@ -1,20 +1,20 @@
 import * as clc from "colorette";
 import { marked } from "marked";
 
-import { Command } from "../command";
-import { registerPublisherProfile } from "../extensions/publisherApi";
-import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { Command } from "../command.js";
+import { registerPublisherProfile } from "../extensions/publisherApi.js";
+import { needProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
 import {
   ensureExtensionsApiEnabled,
   ensureExtensionsPublisherApiEnabled,
   logPrefix,
-} from "../extensions/extensionsHelper";
-import { acceptLatestPublisherTOS } from "../extensions/tos";
-import { requirePermissions } from "../requirePermissions";
-import { FirebaseError, getErrMsg, getErrStatus } from "../error";
-import * as utils from "../utils";
-import { PublisherProfile } from "../extensions/types";
+} from "../extensions/extensionsHelper.js";
+import { acceptLatestPublisherTOS } from "../extensions/tos.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error.js";
+import * as utils from "../utils.js";
+import { PublisherProfile } from "../extensions/types.js";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.

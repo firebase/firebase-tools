@@ -1,13 +1,13 @@
-import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
-import * as paramHelper from "../paramHelper";
-import * as specHelper from "./specHelper";
-import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Param, ParamType } from "../types";
-import * as extensionsHelper from "../extensionsHelper";
-import * as planner from "../../deploy/extensions/planner";
-import { needProjectId } from "../../projectUtils";
-import { SecretEnvVar } from "../../deploy/functions/backend";
-import { Runtime } from "../../deploy/functions/runtimes/supported";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared.js";
+import * as paramHelper from "../paramHelper.js";
+import * as specHelper from "./specHelper.js";
+import * as triggerHelper from "./triggerHelper.js";
+import { ExtensionSpec, Param, ParamType } from "../types.js";
+import * as extensionsHelper from "../extensionsHelper.js";
+import * as planner from "../../deploy/extensions/planner.js";
+import { needProjectId } from "../../projectUtils.js";
+import { SecretEnvVar } from "../../deploy/functions/backend.js";
+import { Runtime } from "../../deploy/functions/runtimes/supported/index.js";
 
 /**
  * TODO: Better name? Also, should this be in extensionsEmulator instead?

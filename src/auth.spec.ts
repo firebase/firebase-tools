@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 import {
   getAdditionalAccounts,
@@ -7,9 +7,9 @@ import {
   getGlobalDefaultAccount,
   getProjectDefaultAccount,
   selectAccount,
-} from "./auth";
-import { configstore } from "./configstore";
-import { Account } from "./types/auth";
+} from "./auth.js";
+import { configstore } from "./configstore.js";
+import { Account } from "./types/auth/index.js";
 
 describe("auth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

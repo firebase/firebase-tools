@@ -1,7 +1,7 @@
-import * as iam from "../gcp/iam";
-import { getIamPolicy, setIamPolicy } from "../gcp/resourceManager";
-import * as cloudSqlAdmin from "../gcp/cloudsql/cloudsqladmin";
-import { FirebaseError } from "../error";
+import * as iam from "../gcp/iam.js";
+import { getIamPolicy, setIamPolicy } from "../gcp/resourceManager.js";
+import * as cloudSqlAdmin from "../gcp/cloudsql/cloudsqladmin.js";
+import { FirebaseError } from "../error.js";
 
 export async function grantRolesToCloudSqlServiceAccount(
   projectId: string,

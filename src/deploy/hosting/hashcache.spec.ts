@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { existsSync, mkdirpSync, readFileSync, writeFileSync } from "fs-extra";
+import * as fs from "fs-extra";
 import { join } from "path";
 import * as tmp from "tmp";
 
-import { load, dump, HashRecord } from "./hashcache";
+import { load, dump, HashRecord } from "./hashcache.js";
 
 tmp.setGracefulCleanup();
 
@@ -19,8 +19,8 @@ describe("hashcache", () => {
 
     expect(() => dump(dir.name, name, data)).to.not.throw();
 
-    expect(existsSync(join(dir.name, ".firebase", `hosting.${name}.cache`))).to.be.true;
-    expect(readFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "utf8")).to.equal(
+    expect(fs.existsSync(join(dir.name, ".firebase", `hosting.${name}.cache`))).to.be.true;
+    expect(fs.readFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "utf8")).to.equal(
       "foo,0,deadbeef\n",
     );
   });
@@ -28,8 +28,8 @@ describe("hashcache", () => {
   it("should be able to load configuration from a file", () => {
     const dir = tmp.dirSync();
     const name = "testcache";
-    mkdirpSync(join(dir.name, ".firebase"));
-    writeFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "bar,4,alivebeef\n");
+    fs.mkdirpSync(join(dir.name, ".firebase"));
+    fs.writeFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "bar,4,alivebeef\n");
 
     expect(load(dir.name, name)).to.deep.equal(
       new Map<string, HashRecord>([["bar", { mtime: 4, hash: "alivebeef" }]]),

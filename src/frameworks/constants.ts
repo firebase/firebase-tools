@@ -1,7 +1,6 @@
-import { SupportLevel } from "./interfaces";
+import { SupportLevel } from "./interfaces.js";
 import * as clc from "colorette";
-import * as experiments from "../experiments";
-
+import * as experiments from "../experiments.js";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
 

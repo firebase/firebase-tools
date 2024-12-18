@@ -1,12 +1,12 @@
-import { RulesConfig } from "..";
-import { FirebaseError } from "../../../error";
-import { readFile } from "../../../fsutils";
-import { Options } from "../../../options";
-import { SourceFile } from "./types";
-import { Constants } from "../../constants";
-import { Emulators } from "../../types";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { absoluteTemplateFilePath } from "../../../templates";
+import { RulesConfig } from "../index.js";
+import { FirebaseError } from "../../../error.js";
+import { readFile } from "../../../fsutils.js";
+import { Options } from "../../../options.js";
+import { SourceFile } from "./types.js";
+import { Constants } from "../../constants.js";
+import { Emulators } from "../../types.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { absoluteTemplateFilePath } from "../../../templates.js";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);

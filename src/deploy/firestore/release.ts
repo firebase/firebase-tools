@@ -1,5 +1,5 @@
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { RulesContext } from "./prepare";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import { RulesContext } from "./prepare.js";
 
 /**
  * Releases Firestore rules.

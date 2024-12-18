@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import * as yaml from "yaml";
-import * as sinon from "sinon";
-import * as nock from "nock";
+import sinon from "sinon";
+import nock from "nock";
 
-import * as api from "../../../../api";
-import { FirebaseError } from "../../../../error";
-import * as discovery from ".";
-import * as build from "../../build";
+import * as api from "../../../../api.js";
+import { FirebaseError } from "../../../../error.js";
+import * as discovery from "./index.js";
+import * as build from "../../build.js";
 
 const MIN_ENDPOINT = {
   entryPoint: "entrypoint",

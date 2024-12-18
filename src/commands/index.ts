@@ -1,4 +1,4 @@
-import * as experiments from "../experiments";
+import * as experiments from "../experiments.js";
 
 /**
  * Loads all commands for our parser.

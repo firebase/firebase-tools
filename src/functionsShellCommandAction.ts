@@ -1,23 +1,22 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as clc from "colorette";
 import * as repl from "repl";
-import * as _ from "lodash";
+import _ from "lodash";
 import * as util from "util";
 
-import * as shell from "./emulator/functionsEmulatorShell";
-import * as commandUtils from "./emulator/commandUtils";
-import { FunctionsServer } from "./serve/functions";
-import LocalFunction from "./localFunction";
-import * as utils from "./utils";
-import { logger } from "./logger";
-import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
-import { EmulatorHubClient } from "./emulator/hubClient";
-import { resolveHostAndAssignPorts } from "./emulator/portUtils";
-import { Constants } from "./emulator/constants";
-import { Options } from "./options";
-import { HTTPS_SENTINEL } from "./localFunction";
-import { needProjectId } from "./projectUtils";
-
+import * as shell from "./emulator/functionsEmulatorShell.js";
+import * as commandUtils from "./emulator/commandUtils.js";
+import { FunctionsServer } from "./serve/functions.js";
+import LocalFunction from "./localFunction.js";
+import * as utils from "./utils.js";
+import { logger } from "./logger.js";
+import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types.js";
+import { EmulatorHubClient } from "./emulator/hubClient.js";
+import { resolveHostAndAssignPorts } from "./emulator/portUtils.js";
+import { Constants } from "./emulator/constants.js";
+import { Options } from "./options.js";
+import { HTTPS_SENTINEL } from "./localFunction.js";
+import { needProjectId } from "./projectUtils.js";
 
 const serveFunctions = new FunctionsServer();
 

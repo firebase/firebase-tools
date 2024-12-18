@@ -1,9 +1,9 @@
-import * as apphosting from "../gcp/apphosting";
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { FirebaseError } from "../error";
-import { createRollout } from "../apphosting/rollout";
+import * as apphosting from "../gcp/apphosting.js";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { FirebaseError } from "../error.js";
+import { createRollout } from "../apphosting/rollout.js";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")

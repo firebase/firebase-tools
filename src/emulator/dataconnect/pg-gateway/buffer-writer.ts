@@ -1,4 +1,4 @@
-import { copy } from "./utils";
+import { copy } from "./utils.js";
 /**
  * binary data  BufferWriter tuned for encoding binary specific to the postgres binary protocol
  *

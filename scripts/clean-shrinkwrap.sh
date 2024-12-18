@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
 
-npx ts-node ./scripts/clean-shrinkwrap.ts "$1"
+npx tsx ./scripts/clean-shrinkwrap.ts "$1"

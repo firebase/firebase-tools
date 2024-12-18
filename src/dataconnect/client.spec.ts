@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as client from "./client";
-import { dataconnectOrigin } from "../api";
+import * as client from "./client.js";
+import { dataconnectOrigin } from "../api.js";
 
 const API_VERSION = "v1beta";
 describe("DataConnect control plane client", () => {

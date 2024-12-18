@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "./state";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "./state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   registerUser,
@@ -9,7 +9,7 @@ import {
   updateProjectConfig,
   registerTenant,
   updateConfig,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
   it("should report not registered user as not registered", async () => {

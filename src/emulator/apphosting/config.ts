@@ -3,8 +3,8 @@ import {
   APPHOSTING_BASE_YAML_FILE,
   APPHOSTING_LOCAL_YAML_FILE,
   listAppHostingFilesInPath,
-} from "../../apphosting/config";
-import { AppHostingYamlConfig } from "../../apphosting/yaml";
+} from "../../apphosting/config.js";
+import { AppHostingYamlConfig } from "../../apphosting/yaml.js";
 
 /**
  * Loads in apphosting.yaml & apphosting.local.yaml, giving

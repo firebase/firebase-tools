@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as path from "path";
-import { RC, loadRC, RCData } from "./rc";
-import { CONFLICT_RC_DIR, FIREBASE_JSON_PATH, INVALID_RC_DIR } from "./test/fixtures/fbrc";
+import { RC, loadRC, RCData } from "./rc.js";
+import { CONFLICT_RC_DIR, FIREBASE_JSON_PATH, INVALID_RC_DIR } from "./test/fixtures/fbrc/index.js";
 
 const EMPTY_DATA: RCData = { projects: {}, targets: {}, etags: {} };
 
@@ -13,7 +13,7 @@ describe("RC", () => {
     });
 
     it("should be an empty object when not in project dir", () => {
-      const result = loadRC({ cwd: __dirname });
+      const result = loadRC({ cwd: import.meta.dirname });
       return expect(result.data).to.deep.eq(EMPTY_DATA);
     });
 
@@ -23,7 +23,7 @@ describe("RC", () => {
     });
 
     it("should load from the right directory when --config is specified", () => {
-      const cwd = __dirname;
+      const cwd = import.meta.dirname;
       const result = loadRC({ cwd, configPath: path.relative(cwd, FIREBASE_JSON_PATH) });
       expect(result.projects.default).to.eq("top");
     });

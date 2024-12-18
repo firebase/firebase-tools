@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
+import * as prepareFunctionsUpload from "./prepareFunctionsUpload.js";
 
 describe("prepareFunctionsUpload", () => {
   describe("convertToSortedKeyValueArray", () => {

@@ -1,4 +1,4 @@
-import * as nock from "nock";
+import nock from "nock";
 import {
   APPHOSTING_TOS_ID,
   APP_CHECK_TOS_ID,
@@ -6,7 +6,7 @@ import {
   getAcceptanceStatus,
   getTosStatus,
   isProductTosAccepted,
-} from "./firedata";
+} from "./firedata.js";
 import { expect } from "chai";
 
 const SAMPLE_RESPONSE = {

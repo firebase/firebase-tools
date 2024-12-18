@@ -1,24 +1,24 @@
-const morgan = require("morgan");
 import { isIPv4 } from "net";
 import { server as superstatic } from "superstatic";
 import * as clc from "colorette";
 
-import { detectProjectRoot } from "../detectProjectRoot";
-import { FirebaseError } from "../error";
-import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
-import { initMiddleware } from "../hosting/initMiddleware";
-import * as config from "../hosting/config";
-import cloudRunProxy from "../hosting/cloudRunProxy";
-import { functionsProxy } from "../hosting/functionsProxy";
+import { detectProjectRoot } from "../detectProjectRoot.js";
+import { FirebaseError } from "../error.js";
+import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit.js";
+import { initMiddleware } from "../hosting/initMiddleware.js";
+import * as config from "../hosting/config.js";
+import cloudRunProxy from "../hosting/cloudRunProxy.js";
+import { functionsProxy } from "../hosting/functionsProxy.js";
 import { Writable } from "stream";
-import { EmulatorLogger } from "../emulator/emulatorLogger";
-import { Emulators } from "../emulator/types";
-import { createDestroyer } from "../utils";
-import { requireHostingSite } from "../requireHostingSite";
-import { getProjectId } from "../projectUtils";
-import { checkListenable } from "../emulator/portUtils";
+import { EmulatorLogger } from "../emulator/emulatorLogger.js";
+import { Emulators } from "../emulator/types.js";
+import { createDestroyer } from "../utils.js";
+import { requireHostingSite } from "../requireHostingSite.js";
+import { getProjectId } from "../projectUtils.js";
+import { checkListenable } from "../emulator/portUtils.js";
 import { IncomingMessage, ServerResponse } from "http";
 import { Buffer } from "node:buffer";
+import morgan from "morgan";
 
 let destroyServer: undefined | (() => Promise<void>) = undefined;
 

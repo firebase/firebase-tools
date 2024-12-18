@@ -1,7 +1,7 @@
 import { join, posix } from "path";
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { copy, pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { mkdir } from "fs/promises";
 
 import {
@@ -10,14 +10,14 @@ import {
   FrameworkType,
   SupportLevel,
   BUILD_TARGET_PURPOSE,
-} from "../interfaces";
+} from "../interfaces.js";
 import {
   simpleProxy,
   relativeRequire,
   getNodeModuleBin,
   warnIfCustomBuildScript,
   findDependency,
-} from "../utils";
+} from "../utils.js";
 import {
   getAllTargets,
   getAngularVersion,
@@ -25,10 +25,9 @@ import {
   getBuildConfig,
   getContext,
   getServerConfig,
-} from "./utils";
-import { I18N_ROOT, SHARP_VERSION } from "../constants";
-import { FirebaseError } from "../../error";
-
+} from "./utils.js";
+import { I18N_ROOT, SHARP_VERSION } from "../constants.js";
+import { FirebaseError } from "../../error.js";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;
@@ -40,8 +39,8 @@ const DEFAULT_BUILD_SCRIPT = ["ng build"];
 export const supportedRange = "16 - 18";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
-  if (!(await pathExists(join(dir, "package.json")))) return;
-  if (!(await pathExists(join(dir, "angular.json")))) return;
+  if (!(await fs.pathExists(join(dir, "package.json")))) return;
+  if (!(await fs.pathExists(join(dir, "angular.json")))) return;
   const version = getAngularVersion(dir);
   return { mayWantBackend: true, version };
 }
@@ -127,15 +126,15 @@ export async function ɵcodegenPublicDirectory(
   if (locales) {
     await Promise.all([
       defaultLocale
-        ? await copy(join(sourceDir, outputPath, defaultLocale), join(destDir, baseHref))
+        ? await fs.copy(join(sourceDir, outputPath, defaultLocale), join(destDir, baseHref))
         : Promise.resolve(),
       ...locales.map(async (locale) => {
         await mkdir(join(destDir, I18N_ROOT, locale, baseHref), { recursive: true });
-        await copy(join(sourceDir, outputPath, locale), join(destDir, I18N_ROOT, locale, baseHref));
+        await fs.copy(join(sourceDir, outputPath, locale), join(destDir, I18N_ROOT, locale, baseHref));
       }),
     ]);
   } else {
-    await copy(join(sourceDir, outputPath), join(destDir, baseHref));
+    await fs.copy(join(sourceDir, outputPath), join(destDir, baseHref));
   }
 }
 
@@ -188,11 +187,11 @@ export async function ɵcodegenFunctionsDirectory(
   await Promise.all([
     serverOutputPath
       ? mkdir(join(destDir, serverOutputPath), { recursive: true }).then(() =>
-          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath)),
+        fs.copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath)),
         )
       : Promise.resolve(),
     mkdir(join(destDir, browserOutputPath), { recursive: true }).then(() =>
-      copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath)),
+      fs.copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath)),
     ),
   ]);
 

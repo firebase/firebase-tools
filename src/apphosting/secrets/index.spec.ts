@@ -1,16 +1,16 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as apphosting from "../../gcp/apphosting";
-import * as secrets from ".";
-import * as iam from "../../gcp/iam";
-import * as gcb from "../../gcp/cloudbuild";
-import * as gce from "../../gcp/computeEngine";
-import * as gcsmImport from "../../gcp/secretManager";
-import * as utilsImport from "../../utils";
-import * as promptImport from "../../prompt";
+import * as apphosting from "../../gcp/apphosting.js";
+import * as secrets from "./index.js";
+import * as iam from "../../gcp/iam.js";
+import * as gcb from "../../gcp/cloudbuild.js";
+import * as gce from "../../gcp/computeEngine.js";
+import * as gcsmImport from "../../gcp/secretManager.js";
+import * as utilsImport from "../../utils.js";
+import * as promptImport from "../../prompt.js";
 
-import { Secret } from "../yaml";
+import { Secret } from "../yaml.js";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;

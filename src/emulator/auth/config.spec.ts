@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { expectStatusCode } from "./testing/helpers";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import { expectStatusCode } from "./testing/helpers.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 
 describeAuthEmulator("config management", ({ authApi }) => {
   describe("updateConfig", () => {

@@ -1,9 +1,9 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requireConfig } from "../requireConfig";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requireConfig } from "../requireConfig.js";
+import * as utils from "../utils.js";
 
 interface targetMap {
   [target: string]: string[];

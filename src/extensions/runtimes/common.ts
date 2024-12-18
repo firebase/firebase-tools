@@ -1,23 +1,22 @@
 import * as fs from "fs";
 import * as path from "path";
-import { confirm } from "../../prompt";
-import * as fsutils from "../../fsutils";
-import { logLabeledBullet } from "../../utils";
-import { FirebaseError, getErrMsg } from "../../error";
-import { Options } from "../../options";
+import { confirm } from "../../prompt.js";
+import * as fsutils from "../../fsutils.js";
+import { logLabeledBullet } from "../../utils.js";
+import { FirebaseError, getErrMsg } from "../../error.js";
+import { Options } from "../../options.js";
 import {
   DEFAULT_CODEBASE,
   configForCodebase,
   normalizeAndValidate,
-} from "../../functions/projectConfig";
-import { Build, DynamicExtension } from "../../deploy/functions/build";
-import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
-import { ExtensionSpec } from "../types";
-import * as functionRuntimes from "../../deploy/functions/runtimes";
-import * as nodeRuntime from "./node";
+} from "../../functions/projectConfig.js";
+import { Build, DynamicExtension } from "../../deploy/functions/build.js";
+import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper.js";
+import { ExtensionSpec } from "../types.js";
+import * as functionRuntimes from "../../deploy/functions/runtimes/index.js";
+import * as nodeRuntime from "./node.js";
 
-
-export { DynamicExtension } from "../../deploy/functions/build";
+export type { DynamicExtension } from "../../deploy/functions/build.js";
 
 /**
  * Fixes unreadable dark blue on black background to be cyan

@@ -1,5 +1,5 @@
-import type { RoutesManifestHeader } from "../interfaces";
-import { supportedPaths, unsupportedPaths } from "./paths";
+import type { RoutesManifestHeader } from "../interfaces.js";
+import { supportedPaths, unsupportedPaths } from "./paths.js";
 
 export const supportedHeaders: RoutesManifestHeader[] = [
   ...supportedPaths.map((path) => ({

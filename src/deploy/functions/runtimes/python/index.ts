@@ -5,15 +5,19 @@ import { promisify } from "util";
 
 import * as portfinder from "portfinder";
 
-import * as runtimes from "..";
-import * as backend from "../../backend";
-import * as discovery from "../discovery";
-import * as supported from "../supported";
-import { logger } from "../../../../logger";
-import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
-import { FirebaseError } from "../../../../error";
-import { Build } from "../../build";
-import { assertExhaustive } from "../../../../functional";
+import * as runtimes from "../index.js";
+import * as backend from "../../backend.js";
+import * as discovery from "../discovery/index.js";
+import * as supported from "../supported/index.js";
+import { logger } from "../../../../logger.js";
+import {
+  DEFAULT_VENV_DIR,
+  runWithVirtualEnv,
+  virtualEnvCmd,
+} from "../../../../functions/python.js";
+import { FirebaseError } from "../../../../error.js";
+import { Build } from "../../build.js";
+import { assertExhaustive } from "../../../../functional.js";
 
 import { Buffer } from "node:buffer";
 

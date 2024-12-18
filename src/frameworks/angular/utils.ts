@@ -1,15 +1,15 @@
 import type { JsonObject } from "@angular-devkit/core";
 import type { Target } from "@angular-devkit/architect";
-import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
-import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
+import type { ProjectDefinition } from "@angular-devkit/core/src/workspace/index.js";
+import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node/index.js";
 
-import { AngularI18nConfig } from "./interfaces";
-import { findDependency, relativeRequire, validateLocales } from "../utils";
-import { FirebaseError } from "../../error";
+import { AngularI18nConfig } from "./interfaces.js";
+import { findDependency, relativeRequire, validateLocales } from "../utils.js";
+import { FirebaseError } from "../../error.js";
 import { join, posix, sep } from "path";
-import { BUILD_TARGET_PURPOSE } from "../interfaces";
+import { BUILD_TARGET_PURPOSE } from "../interfaces.js";
 import { AssertionError } from "assert";
-import { assertIsString } from "../../utils";
+import { assertIsString } from "../../utils.js";
 import { coerce } from "semver";
 
 async function localesForTarget(

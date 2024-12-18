@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { ensureApis } from "../dataconnect/ensureApis";
-import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
-import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { ensureApis } from "../dataconnect/ensureApis.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { pickService } from "../dataconnect/fileUtils.js";
+import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions.js";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 

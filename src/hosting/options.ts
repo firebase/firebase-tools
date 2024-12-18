@@ -1,7 +1,7 @@
-import { FirebaseConfig } from "../firebaseConfig";
-import { assertImplements } from "../metaprogramming";
-import { Options } from "../options";
-import { HostingResolved } from "./config";
+import { FirebaseConfig } from "../firebaseConfig.js";
+import { assertImplements } from "../metaprogramming.js";
+import { Options } from "../options.js";
+import { HostingResolved } from "./config.js";
 
 /**
  * The set of fields that the Hosting codebase needs from Options.

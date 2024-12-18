@@ -1,12 +1,10 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { FirebaseError } from "../../../../error";
-import * as validate from "./validate";
-import * as fsutils from "../../../../fsutils";
-
-const cjson = require("cjson");
-
+import { FirebaseError } from "../../../../error.js";
+import * as validate from "./validate.js";
+import * as fsutils from "../../../../fsutils.js";
+import cjson from "cjson";
 describe("validate", () => {
   describe("packageJsonIsValid", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();

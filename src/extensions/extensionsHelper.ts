@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
@@ -8,38 +8,38 @@ import * as path from "path";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
-import { createUnzipTransform } from "./../unzip";
+import { createUnzipTransform } from "./../unzip.js";
 marked.use(markedTerminal() as any);
 
-import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
-import { archiveDirectory } from "../archiveDirectory";
-import { convertOfficialExtensionsToList } from "./utils";
-import { getFirebaseConfig } from "../functionsConfig";
-import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getExtensionRegistry } from "./resolveSource";
-import { FirebaseError } from "../error";
-import { diagnose } from "./diagnose";
-import { checkResponse } from "./askUserForParam";
-import { ensure, check } from "../ensureApiEnabled";
-import { deleteObject, uploadObject } from "../gcp/storage";
-import { getProjectId } from "../projectUtils";
-import { createSource, getInstance } from "./extensionsApi";
+import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api.js";
+import { archiveDirectory } from "../archiveDirectory.js";
+import { convertOfficialExtensionsToList } from "./utils.js";
+import { getFirebaseConfig } from "../functionsConfig.js";
+import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig.js";
+import { getExtensionRegistry } from "./resolveSource.js";
+import { FirebaseError } from "../error.js";
+import { diagnose } from "./diagnose.js";
+import { checkResponse } from "./askUserForParam.js";
+import { ensure, check } from "../ensureApiEnabled.js";
+import { deleteObject, uploadObject } from "../gcp/storage.js";
+import { getProjectId } from "../projectUtils.js";
+import { createSource, getInstance } from "./extensionsApi.js";
 import {
   createExtensionVersionFromGitHubSource,
   createExtensionVersionFromLocalSource,
   getExtension,
   getExtensionVersion,
   listExtensionVersions,
-} from "./publisherApi";
-import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
-import * as refs from "./refs";
-import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
-import { confirm, promptOnce } from "../prompt";
-import { logger } from "../logger";
-import { envOverride, logLabeledError } from "../utils";
-import { getLocalChangelog } from "./change-log";
-import { getProjectNumber } from "../getProjectNumber";
-import { Constants } from "../emulator/constants";
+} from "./publisherApi.js";
+import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types.js";
+import * as refs from "./refs.js";
+import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper.js";
+import { confirm, promptOnce } from "../prompt.js";
+import { logger } from "../logger.js";
+import { envOverride, logLabeledError } from "../utils.js";
+import { getLocalChangelog } from "./change-log.js";
+import { getProjectNumber } from "../getProjectNumber.js";
+import { Constants } from "../emulator/constants.js";
 import { defineSecret } from "firebase-functions/params";
 
 /**
@@ -761,7 +761,7 @@ async function fetchExtensionSource(
   )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
-    if (response.ok) {
+    if (response.ok && response.body) {
       await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
   } catch (err) {

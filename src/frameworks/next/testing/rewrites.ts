@@ -1,5 +1,5 @@
-import type { RoutesManifestRewrite, RoutesManifestRewriteObject } from "../interfaces";
-import { supportedPaths, unsupportedPaths } from "./paths";
+import type { RoutesManifestRewrite, RoutesManifestRewriteObject } from "../interfaces.js";
+import { supportedPaths, unsupportedPaths } from "./paths.js";
 
 export const supportedRewritesArray: RoutesManifestRewrite[] = supportedPaths.map((path) => ({
   source: path,

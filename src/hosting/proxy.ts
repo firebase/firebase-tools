@@ -1,13 +1,12 @@
-import { capitalize, includes } from "lodash";
 import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
 import { URL } from "url";
 
-import { Client, HttpMethod } from "../apiv2";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { Client, HttpMethod } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
@@ -19,12 +18,12 @@ function makeVary(vary: string | null = ""): string {
   const varies = vary.split(/, ?/).map((v) => {
     return v
       .split("-")
-      .map((part) => capitalize(part))
+      .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
       .join("-");
   });
 
   REQUIRED_VARY_VALUES.forEach((requiredVary) => {
-    if (!includes(varies, requiredVary)) {
+    if (!varies.includes(requiredVary)) {
       varies.push(requiredVary);
     }
   });
@@ -174,7 +173,7 @@ export function proxyRequestHandler(
       res.setHeader(key, value as string[]);
     }
     res.statusCode = proxyRes.status;
-    proxyRes.response.body.pipe(res);
+    proxyRes.response?.body?.pipe(res);
   };
 }
 

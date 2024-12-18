@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload, parseBlockingFunctionJwt } from "./operations";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import nock from "nock";
+import jsonwebtoken from "jsonwebtoken";
+import { FirebaseJwtPayload, parseBlockingFunctionJwt } from "./operations.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   registerUser,
@@ -23,7 +23,7 @@ import {
   BEFORE_SIGN_IN_URL,
   DISPLAY_NAME,
   PHOTO_URL,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("email link sign-in", ({ authApi }) => {
   it("should send OOB code to new emails and create account on sign-in", async () => {
@@ -47,8 +47,8 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(res.body.isNewUser).to.equal(true);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -364,8 +364,8 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -585,8 +585,8 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -654,8 +654,8 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -711,8 +711,8 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           expect(res.body.isNewUser).to.equal(false);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;

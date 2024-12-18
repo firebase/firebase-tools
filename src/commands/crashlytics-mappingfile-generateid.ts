@@ -1,9 +1,9 @@
-import { Command } from "../command";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
 
-import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
+import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper.js";
+import { Options } from "../options.js";
+import { FirebaseError } from "../error.js";
 
 interface CommandOptions extends Options {
   resourceFile: string;

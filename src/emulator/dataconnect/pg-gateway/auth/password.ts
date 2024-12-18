@@ -1,10 +1,10 @@
-import { createBackendErrorMessage } from '../backend-error';
-import type { BufferReader } from '../buffer-reader';
-import type { BufferWriter } from '../buffer-writer';
-import { closeSignal } from '../connection';
-import type { ConnectionState } from '../connection.types';
-import { BackendMessageCode } from '../message-codes';
-import { BaseAuthFlow } from './base-auth-flow';
+import { createBackendErrorMessage } from '../backend-error.js';
+import type { BufferReader } from '../buffer-reader.js';
+import type { BufferWriter } from '../buffer-writer.js';
+import { closeSignal } from '../connection.js';
+import type { ConnectionState } from '../connection.types.js';
+import { BackendMessageCode } from '../message-codes.js';
+import { BaseAuthFlow } from './base-auth-flow.js';
 
 type BufferSource = ArrayBufferView | ArrayBuffer;
 

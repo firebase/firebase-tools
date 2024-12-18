@@ -1,19 +1,18 @@
 import { execSync } from "child_process";
 import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
-import { copy, pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { join } from "path";
 import { stripVTControlCharacters } from "node:util";
-import { FrameworkType, SupportLevel } from "../interfaces";
-import { promptOnce } from "../../prompt";
+import { FrameworkType, SupportLevel } from "../interfaces.js";
+import { promptOnce } from "../../prompt.js";
 import {
   simpleProxy,
   warnIfCustomBuildScript,
   findDependency,
   getNodeModuleBin,
   relativeRequire,
-} from "../utils";
-
+} from "../utils.js";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -58,8 +57,8 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: false });
   const depth = plugin ? undefined : 0;
   const configFilesExist = await Promise.all([
-    pathExists(join(dir, "vite.config.js")),
-    pathExists(join(dir, "vite.config.ts")),
+    fs.pathExists(join(dir, "vite.config.js")),
+    fs.pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
   const version: string | undefined = findDependency("vite", {
@@ -110,7 +109,7 @@ export async function build(root: string, target: string) {
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
   const viteDistPath = join(root, viteConfig.build.outDir);
-  await copy(viteDistPath, dest);
+  await fs.copy(viteDistPath, dest);
 }
 
 export async function getDevModeHandle(dir: string) {

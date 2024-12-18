@@ -1,7 +1,7 @@
-import * as winston from "winston";
+import winston from "winston";
 import * as Transport from "winston-transport";
 
-import { isVSCodeExtension } from "./vsCodeUtils";
+import { isVSCodeExtension } from "./vsCodeUtils.js";
 import { EventEmitter } from "events";
 
 /**

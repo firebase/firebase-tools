@@ -1,6 +1,6 @@
-import { confirm } from "../prompt";
-import * as utils from "../utils";
-import { deleteConnector } from "./client";
+import { confirm } from "../prompt.js";
+import * as utils from "../utils.js";
+import { deleteConnector } from "./client.js";
 
 export async function promptDeleteConnector(
   options: { force?: boolean; nonInteractive?: boolean },

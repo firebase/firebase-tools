@@ -1,24 +1,24 @@
 import * as clc from "colorette";
 
-import { DeployOptions } from "../";
-import { load } from "../../dataconnect/load";
-import { readFirebaseJson } from "../../dataconnect/fileUtils";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import { needProjectId } from "../../projectUtils";
-import { getResourceFilters, toString } from "../../dataconnect/filters";
-import { build } from "../../dataconnect/build";
-import { ensureApis } from "../../dataconnect/ensureApis";
-import { requireTosAcceptance } from "../../requireTosAcceptance";
-import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
-import { parseServiceName } from "../../dataconnect/names";
-import { FirebaseError } from "../../error";
-import { requiresVector } from "../../dataconnect/types";
-import { diffSchema } from "../../dataconnect/schemaMigration";
+import { DeployOptions } from "../index.js";
+import { load } from "../../dataconnect/load.js";
+import { readFirebaseJson } from "../../dataconnect/fileUtils.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
+import { needProjectId } from "../../projectUtils.js";
+import { getResourceFilters, toString } from "../../dataconnect/filters.js";
+import { build } from "../../dataconnect/build.js";
+import { ensureApis } from "../../dataconnect/ensureApis.js";
+import { requireTosAcceptance } from "../../requireTosAcceptance.js";
+import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata.js";
+import { provisionCloudSql } from "../../dataconnect/provisionCloudSql.js";
+import { checkBillingEnabled } from "../../gcp/cloudbilling.js";
+import { parseServiceName } from "../../dataconnect/names.js";
+import { FirebaseError } from "../../error.js";
+import { requiresVector } from "../../dataconnect/types.js";
+import { diffSchema } from "../../dataconnect/schemaMigration.js";
 import { join } from "node:path";
-import { upgradeInstructions } from "../../dataconnect/freeTrial";
+import { upgradeInstructions } from "../../dataconnect/freeTrial.js";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.

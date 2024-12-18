@@ -1,11 +1,11 @@
 import * as clc from "colorette";
 
-import * as gcp from "../../../gcp";
-import * as fsutils from "../../../fsutils";
-import { prompt, promptOnce } from "../../../prompt";
-import { logger } from "../../../logger";
-import * as utils from "../../../utils";
-import { readTemplateSync } from "../../../templates";
+import * as gcp from "../../../gcp/index.js";
+import * as fsutils from "../../../fsutils.js";
+import { prompt, promptOnce } from "../../../prompt.js";
+import { logger } from "../../../logger.js";
+import * as utils from "../../../utils.js";
+import { readTemplateSync } from "../../../templates.js";
 
 const DEFAULT_RULES_FILE = "firestore.rules";
 

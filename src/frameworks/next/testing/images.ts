@@ -1,4 +1,4 @@
-import type { ExportMarker, ImagesManifest } from "../interfaces";
+import type { ExportMarker, ImagesManifest } from "../interfaces.js";
 
 export const exportMarkerWithoutImage: ExportMarker = {
   version: 1,

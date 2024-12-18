@@ -1,9 +1,9 @@
-import * as commandUtils from "./commandUtils";
+import * as commandUtils from "./commandUtils.js";
 import { expect } from "chai";
-import { FirebaseError } from "../error";
-import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./commandUtils";
+import { FirebaseError } from "../error.js";
+import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./commandUtils.js";
 import * as path from "path";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {

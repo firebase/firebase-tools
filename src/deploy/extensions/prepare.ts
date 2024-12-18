@@ -1,26 +1,26 @@
-import * as planner from "./planner";
-import * as deploymentSummary from "./deploymentSummary";
-import * as prompt from "../../prompt";
-import * as refs from "../../extensions/refs";
-import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
-import { logger } from "../../logger";
-import { Context, Payload } from "./args";
-import { FirebaseError } from "../../error";
-import { requirePermissions } from "../../requirePermissions";
-import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
-import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
-import { checkSpecForSecrets } from "./secrets";
-import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
-import { detectEtagChanges } from "../../extensions/etags";
-import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
+import * as planner from "./planner.js";
+import * as deploymentSummary from "./deploymentSummary.js";
+import * as prompt from "../../prompt.js";
+import * as refs from "../../extensions/refs.js";
+import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils.js";
+import { logger } from "../../logger.js";
+import { Context, Payload } from "./args.js";
+import { FirebaseError } from "../../error.js";
+import { requirePermissions } from "../../requirePermissions.js";
+import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper.js";
+import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils.js";
+import { checkSpecForSecrets } from "./secrets.js";
+import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings.js";
+import { detectEtagChanges } from "../../extensions/etags.js";
+import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper.js";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos.js";
 import {
   extractExtensionsFromBuilds,
   extensionMatchesAnyFilter,
-} from "../../extensions/runtimes/common";
-import { Build } from "../functions/build";
-import { getEndpointFilters } from "../functions/functionsDeployHelper";
-import { DeployOptions } from "..";
+} from "../../extensions/runtimes/common.js";
+import { Build } from "../functions/build.js";
+import { getEndpointFilters } from "../functions/functionsDeployHelper.js";
+import { DeployOptions } from "../index.js";
 
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;

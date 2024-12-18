@@ -1,11 +1,11 @@
 import * as uuid from "uuid";
 
-import * as utils from "../utils";
-import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { CloudEvent, EventOptions, LegacyEvent } from "./events/types";
+import * as utils from "../utils.js";
+import { FunctionsEmulator } from "./functionsEmulator.js";
+import { EmulatedTriggerDefinition } from "./functionsEmulatorShared.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
+import { CloudEvent, EventOptions, LegacyEvent } from "./events/types.js";
 
 interface FunctionsShellController {
   call(trigger: EmulatedTriggerDefinition, data: any, opts: any): void;

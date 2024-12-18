@@ -1,12 +1,12 @@
 import * as path from "path";
 
-import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../logger";
-import * as fsutils from "../../../../fsutils";
+import { FirebaseError } from "../../../../error.js";
+import { logger } from "../../../../logger.js";
+import * as fsutils from "../../../../fsutils.js";
+import cjson from "cjson";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
-const cjson = require("cjson");
 
 /**
  * Asserts that functions source directory exists and source file is present.

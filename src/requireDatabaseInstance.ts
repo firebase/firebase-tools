@@ -1,6 +1,6 @@
 import * as clc from "colorette";
-import { FirebaseError, getError } from "./error";
-import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
+import { FirebaseError, getError } from "./error.js";
+import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance.js";
 
 /**
  * Error message to be returned when the default database instance is found to be missing.

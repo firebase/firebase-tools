@@ -1,12 +1,12 @@
 import { existsSync } from "fs";
-import { pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
 import { glob, sync as globSync } from "glob";
-import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin.js";
 import { coerce, satisfies } from "semver";
 
-import { findDependency, isUrl, readJSON } from "../utils";
+import { findDependency, isUrl, readJSON } from "../utils.js";
 import type {
   RoutesManifest,
   ExportMarker,
@@ -23,7 +23,7 @@ import type {
   AppPathRoutesManifest,
   ActionManifest,
   NextConfigFileName,
-} from "./interfaces";
+} from "./interfaces.js";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
@@ -32,11 +32,11 @@ import {
   WEBPACK_LAYERS,
   CONFIG_FILES,
   ESBUILD_VERSION,
-} from "./constants";
-import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { IS_WINDOWS } from "../../utils";
+} from "./constants.js";
+import { dirExistsSync, fileExistsSync } from "../../fsutils.js";
+import { IS_WINDOWS } from "../../utils.js";
 import { execSync } from "child_process";
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 
 export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
@@ -203,8 +203,8 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
   if (isDevMode) {
     const [middlewareJs, middlewareTs] = await Promise.all([
-      pathExists(join(dir, "middleware.js")),
-      pathExists(join(dir, "middleware.ts")),
+      fs.pathExists(join(dir, "middleware.js")),
+      fs.pathExists(join(dir, "middleware.ts")),
     ]);
 
     return middlewareJs || middlewareTs;

@@ -1,14 +1,14 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as yaml from "yaml";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as localHelper from "./localHelper";
-import { FirebaseError } from "../error";
-import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext";
-import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall";
-import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid";
-import { FIXTURE_DIR as EXT_INVALID_SPEC } from "../test/fixtures/extension-yamls/valid-yaml-invalid-spec";
+import * as localHelper from "./localHelper.js";
+import { FirebaseError } from "../error.js";
+import { FIXTURE_DIR as EXT_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext/index.js";
+import { FIXTURE_DIR as EXT_PREINSTALL_FIXTURE_DIRECTORY } from "../test/fixtures/extension-yamls/sample-ext-preinstall/index.js";
+import { FIXTURE_DIR as INVALID_EXT_DIRECTORY } from "../test/fixtures/extension-yamls/invalid/index.js";
+import { FIXTURE_DIR as EXT_INVALID_SPEC } from "../test/fixtures/extension-yamls/valid-yaml-invalid-spec/index.js";
 
 describe("localHelper", () => {
   const sandbox = sinon.createSandbox();
@@ -36,7 +36,7 @@ describe("localHelper", () => {
     });
 
     it("should return a nice error if there is no extension.yaml", async () => {
-      await expect(localHelper.getLocalExtensionSpec(__dirname)).to.be.rejectedWith(FirebaseError);
+      await expect(localHelper.getLocalExtensionSpec(import.meta.dirname)).to.be.rejectedWith(FirebaseError);
     });
 
     describe("with an invalid YAML file", () => {

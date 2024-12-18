@@ -3,30 +3,30 @@ import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
-import { mkdirp, pathExists, stat } from "fs-extra";
+import * as fs from "fs-extra";
 import { glob } from "glob";
 import * as process from "node:process";
 
-import { needProjectId } from "../projectUtils";
-import { hostingConfig } from "../hosting/config";
-import { listDemoSites, listSites } from "../hosting/api";
-import { getAppConfig, AppPlatform } from "../management/apps";
-import { promptOnce } from "../prompt";
-import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
-import { getCredentialPathAsync } from "../defaultCredentials";
-import { getProjectDefaultAccount } from "../auth";
-import { formatHost } from "../emulator/functionsEmulatorShared";
-import { Constants } from "../emulator/constants";
-import { FirebaseError } from "../error";
-import { requireHostingSite } from "../requireHostingSite";
-import * as experiments from "../experiments";
-import { implicitInit } from "../hosting/implicitInit";
+import { needProjectId } from "../projectUtils.js";
+import { hostingConfig } from "../hosting/config.js";
+import { listDemoSites, listSites } from "../hosting/api.js";
+import { getAppConfig, AppPlatform } from "../management/apps.js";
+import { promptOnce } from "../prompt.js";
+import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types.js";
+import { getCredentialPathAsync } from "../defaultCredentials.js";
+import { getProjectDefaultAccount } from "../auth.js";
+import { formatHost } from "../emulator/functionsEmulatorShared.js";
+import { Constants } from "../emulator/constants.js";
+import { FirebaseError } from "../error.js";
+import { requireHostingSite } from "../requireHostingSite.js";
+import * as experiments from "../experiments.js";
+import { implicitInit } from "../hosting/implicitInit.js";
 import {
   findDependency,
   conjoinOptions,
   frameworksCallToAction,
   getFrameworksBuildTarget,
-} from "./utils";
+} from "./utils.js";
 import {
   ALLOWED_SSR_REGIONS,
   DEFAULT_REGION,
@@ -39,7 +39,7 @@ import {
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
-} from "./constants";
+} from "./constants.js";
 import {
   BUILD_TARGET_PURPOSE,
   BuildResult,
@@ -47,14 +47,14 @@ import {
   Framework,
   FrameworkContext,
   FrameworksOptions,
-} from "./interfaces";
-import { logWarning } from "../utils";
-import { ensureTargeted } from "../functions/ensureTargeted";
+} from "./interfaces.js";
+import { logWarning } from "../utils.js";
+import { ensureTargeted } from "../functions/ensureTargeted.js";
 import { isDeepStrictEqual } from "util";
-import { resolveProjectPath } from "../projectPath";
-import { logger } from "../logger";
-import { WebFrameworks } from "./frameworks";
-import { constructDefaultWebSetup } from "../fetchWebSetup";
+import { resolveProjectPath } from "../projectPath.js";
+import { logger } from "../logger.js";
+import { WebFrameworks } from "./frameworks.js";
+import { constructDefaultWebSetup } from "../fetchWebSetup.js";
 import { Buffer } from "node:buffer";
 
 export { WebFrameworks };
@@ -336,8 +336,8 @@ export async function prepareFrameworks(
       config.trailingSlash ??= trailingSlash;
       if (i18n) config.i18n ??= { root: I18N_ROOT };
 
-      if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
-      await mkdirp(hostingDist);
+      if (await fs.pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
+      await fs.mkdirp(hostingDist);
 
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget, {
         project,
@@ -389,8 +389,8 @@ export async function prepareFrameworks(
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
-      if (await pathExists(functionsDist)) {
-        const functionsDistStat = await stat(functionsDist);
+      if (await fs.pathExists(functionsDist)) {
+        const functionsDistStat = await fs.stat(functionsDist);
         if (functionsDistStat?.isDirectory()) {
           const files = await readdir(functionsDist);
           for (const file of files) {
@@ -401,7 +401,7 @@ export async function prepareFrameworks(
           await rm(functionsDist);
         }
       } else {
-        await mkdirp(functionsDist);
+        await fs.mkdirp(functionsDist);
       }
 
       const {
@@ -474,8 +474,8 @@ export async function prepareFrameworks(
       )) {
         if (version.startsWith("file:")) {
           const path = version.replace(/^file:/, "");
-          if (!(await pathExists(path))) continue;
-          const stats = await stat(path);
+          if (!(await fs.pathExists(path))) continue;
+          const stats = await fs.stat(path);
           if (stats.isDirectory()) {
             const result = spawnSync(
               "npm",
@@ -504,12 +504,12 @@ export async function prepareFrameworks(
         // continue
       });
 
-      if (await pathExists(getProjectPath(".npmrc"))) {
+      if (await fs.pathExists(getProjectPath(".npmrc"))) {
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
 
       let dotEnvContents = "";
-      if (await pathExists(getProjectPath(".env"))) {
+      if (await fs.pathExists(getProjectPath(".env"))) {
         dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
       }
 
@@ -561,7 +561,7 @@ ${
         );
       }
     } else {
-      if (await pathExists(functionsDist)) {
+      if (await fs.pathExists(functionsDist)) {
         await rm(functionsDist, { recursive: true });
       }
     }

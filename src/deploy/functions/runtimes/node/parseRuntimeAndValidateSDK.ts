@@ -1,12 +1,11 @@
 import * as path from "path";
 
-import { FirebaseError } from "../../../../error";
-import * as supported from "../supported";
+import { FirebaseError } from "../../../../error.js";
+import * as supported from "../supported/index.js";
+import cjson from "cjson";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const cjson = require("cjson");
-
 const supportedNodeVersions: string[] = Object.keys(supported.RUNTIMES)
   .filter((s) => supported.runtimeIsLanguage(s as supported.Runtime, "nodejs"))
   .filter((s) => !supported.isDecommissioned(s as supported.Runtime))

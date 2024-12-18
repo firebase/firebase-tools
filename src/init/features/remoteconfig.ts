@@ -1,7 +1,7 @@
-import { promptOnce } from "../../prompt";
-import * as fsutils from "../../fsutils";
+import { promptOnce } from "../../prompt.js";
+import * as fsutils from "../../fsutils.js";
 import * as clc from "colorette";
-import { Config } from "../../config";
+import { Config } from "../../config.js";
 
 interface RemoteConfig {
   template?: string;

@@ -1,12 +1,12 @@
-import * as planner from "../../deploy/extensions/planner";
-import { shouldStart } from "../controller";
-import { Constants } from "../constants";
-import { check } from "../../ensureApiEnabled";
-import { getFunctionService } from "../functionsEmulatorShared";
-import { EmulatableBackend } from "../functionsEmulator";
-import { ParsedTriggerDefinition } from "../functionsEmulatorShared";
-import { Emulators } from "../types";
-import { Options } from "../../options";
+import * as planner from "../../deploy/extensions/planner.js";
+import { shouldStart } from "../controller.js";
+import { Constants } from "../constants.js";
+import { check } from "../../ensureApiEnabled.js";
+import { getFunctionService } from "../functionsEmulatorShared.js";
+import { EmulatableBackend } from "../functionsEmulator.js";
+import { ParsedTriggerDefinition } from "../functionsEmulatorShared.js";
+import { Emulators } from "../types.js";
+import { Options } from "../../options.js";
 
 const EMULATED_APIS = [
   "storage-component.googleapis.com",

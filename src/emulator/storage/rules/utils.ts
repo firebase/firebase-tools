@@ -1,8 +1,8 @@
-import { StorageRulesetInstance } from "./runtime";
-import { RulesResourceMetadata } from "../metadata";
-import { RulesetOperationMethod } from "./types";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
+import { StorageRulesetInstance } from "./runtime.js";
+import { RulesResourceMetadata } from "../metadata.js";
+import { RulesetOperationMethod } from "./types.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
 
 /** Variable overrides to be passed to the rules evaluator. */
 export type RulesVariableOverrides = {

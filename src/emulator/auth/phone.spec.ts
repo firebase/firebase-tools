@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "./operations";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import nock from "nock";
+import jsonwebtoken from "jsonwebtoken";
+import { FirebaseJwtPayload } from "./operations.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   registerAnonUser,
@@ -23,7 +23,7 @@ import {
   PHOTO_URL,
   BEFORE_SIGN_IN_PATH,
   BEFORE_SIGN_IN_URL,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
   it("should return fake recaptcha params", async () => {
@@ -137,8 +137,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -477,8 +477,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -541,8 +541,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -619,8 +619,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;

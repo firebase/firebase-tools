@@ -1,15 +1,15 @@
-import * as archiver from "archiver";
-import * as filesize from "filesize";
+import archiver from "archiver";
+import filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
 
-import { FirebaseError, getError } from "./error";
-import { listFiles } from "./listFiles";
-import { logger } from "./logger";
+import { FirebaseError, getError } from "./error.js";
+import { listFiles } from "./listFiles.js";
+import { logger } from "./logger.js";
 import { Readable, Writable } from "stream";
-import * as fsAsync from "./fsAsync";
+import * as fsAsync from "./fsAsync.js";
 
 export interface ArchiveOptions {
   /** Type of archive to create. */

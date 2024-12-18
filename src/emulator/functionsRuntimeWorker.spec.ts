@@ -1,11 +1,11 @@
 import * as httpMocks from "node-mocks-http";
-import * as nock from "nock";
+import nock from "nock";
 import { expect } from "chai";
-import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
+import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator.js";
 import { EventEmitter } from "events";
-import { RuntimeWorker, RuntimeWorkerPool, RuntimeWorkerState } from "./functionsRuntimeWorker";
-import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
-import { EmulatorLog, FunctionsExecutionMode } from "./types";
+import { RuntimeWorker, RuntimeWorkerPool, RuntimeWorkerState } from "./functionsRuntimeWorker.js";
+import { EmulatedTriggerDefinition } from "./functionsEmulatorShared.js";
+import { EmulatorLog, FunctionsExecutionMode } from "./types.js";
 import { ChildProcess } from "child_process";
 
 /**

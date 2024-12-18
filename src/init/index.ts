@@ -1,10 +1,9 @@
-import { capitalize } from "lodash";
 import * as clc from "colorette";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as features from "./features";
-import { RCData } from "../rc";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as features from "./features/index.js";
+import { RCData } from "../rc.js";
 
 export interface Setup {
   config: Record<string, any>;
@@ -47,7 +46,8 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       );
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
+    const capitalizedFeature = nextFeature[0].toUpperCase() + nextFeature.slice(1).toLowerCase()
+    logger.info(clc.bold(`\n${clc.white("===")} ${capitalizedFeature} Setup`));
 
     const fn = featureFns.get(nextFeature);
     if (!fn) {

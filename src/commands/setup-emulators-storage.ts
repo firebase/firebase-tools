@@ -1,6 +1,6 @@
-import { Command } from "../command";
-import { downloadEmulator } from "../emulator/download";
-import { Emulators } from "../emulator/types";
+import { Command } from "../command.js";
+import { downloadEmulator } from "../emulator/download.js";
+import { Emulators } from "../emulator/types.js";
 
 const EMULATOR_NAME = Emulators.STORAGE;
 

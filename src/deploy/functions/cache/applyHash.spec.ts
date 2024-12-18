@@ -1,8 +1,8 @@
-import * as hash from "./hash";
-import { applyBackendHashToBackends } from "./applyHash";
-import * as backend from "../backend";
+import * as hash from "./hash.js";
+import { applyBackendHashToBackends } from "./applyHash.js";
+import * as backend from "../backend.js";
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 const EMPTY_ENDPOINT: backend.Endpoint = {
   id: "id",

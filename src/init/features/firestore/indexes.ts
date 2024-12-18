@@ -1,11 +1,11 @@
 import * as clc from "colorette";
 
-import { FirebaseError } from "../../../error";
-import * as api from "../../../firestore/api";
-import * as fsutils from "../../../fsutils";
-import { prompt, promptOnce } from "../../../prompt";
-import { logger } from "../../../logger";
-import { readTemplateSync } from "../../../templates";
+import { FirebaseError } from "../../../error.js";
+import * as api from "../../../firestore/api.js";
+import * as fsutils from "../../../fsutils.js";
+import { prompt, promptOnce } from "../../../prompt.js";
+import { logger } from "../../../logger.js";
+import { readTemplateSync } from "../../../templates.js";
 
 const indexes = new api.FirestoreApi();
 

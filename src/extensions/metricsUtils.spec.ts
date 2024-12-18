@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as clc from "colorette";
 
-import { buildMetricsTableRow, parseBucket, parseTimeseriesResponse } from "./metricsUtils";
-import { TimeSeriesResponse, MetricKind, ValueType } from "../gcp/cloudmonitoring";
-import { BucketedMetric } from "./metricsTypeDef";
+import { buildMetricsTableRow, parseBucket, parseTimeseriesResponse } from "./metricsUtils.js";
+import { TimeSeriesResponse, MetricKind, ValueType } from "../gcp/cloudmonitoring.js";
+import { BucketedMetric } from "./metricsTypeDef.js";
 
 describe("metricsUtil", () => {
   describe(`${parseBucket.name}`, () => {

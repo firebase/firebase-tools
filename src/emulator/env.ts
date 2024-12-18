@@ -1,6 +1,6 @@
-import { Constants } from "./constants";
-import { EmulatorInfo, Emulators } from "./types";
-import { formatHost } from "./functionsEmulatorShared";
+import { Constants } from "./constants.js";
+import { EmulatorInfo, Emulators } from "./types.js";
+import { formatHost } from "./functionsEmulatorShared.js";
 
 /**
  * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).

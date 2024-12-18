@@ -2,16 +2,16 @@ import * as clc from "colorette";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import * as refs from "./refs";
-import { Config } from "../config";
-import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
-import { logger } from "../logger";
-import { confirm, promptOnce } from "../prompt";
-import { readEnvFile } from "./paramHelper";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import { isLocalPath } from "./extensionsHelper";
-import { ParamType } from "./types";
+import * as refs from "./refs.js";
+import { Config } from "../config.js";
+import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner.js";
+import { logger } from "../logger.js";
+import { confirm, promptOnce } from "../prompt.js";
+import { readEnvFile } from "./paramHelper.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
+import { isLocalPath } from "./extensionsHelper.js";
+import { ParamType } from "./types.js";
 
 export const ENV_DIRECTORY = "extensions";
 

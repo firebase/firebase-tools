@@ -1,11 +1,11 @@
-import * as cors from "cors";
-import * as express from "express";
+import cors from "cors";
+import express from "express";
 import * as bodyParser from "body-parser";
 
-import * as utils from "../utils";
-import { Emulators, EmulatorInstance, EmulatorInfo, ListenSpec } from "./types";
+import * as utils from "../utils.js";
+import { Emulators, EmulatorInstance, EmulatorInfo, ListenSpec } from "./types.js";
 import { createServer } from "node:http";
-import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED } from "./dns";
+import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED } from "./dns.js";
 import { ListenOptions } from "node:net";
 
 export interface ExpressBasedEmulatorOptions {

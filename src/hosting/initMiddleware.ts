@@ -1,9 +1,9 @@
 import { IncomingMessage, ServerResponse } from "http";
 
-import { Client } from "../apiv2";
-import { TemplateServerResponse } from "./implicitInit";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { TemplateServerResponse } from "./implicitInit.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 

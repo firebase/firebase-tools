@@ -1,13 +1,13 @@
-import { Options } from "../../options";
-import * as client from "../../dataconnect/client";
-import * as utils from "../../utils";
-import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
-import { needProjectId } from "../../projectUtils";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
-import { parseServiceName } from "../../dataconnect/names";
-import { ResourceFilter } from "../../dataconnect/filters";
-import { vertexAIOrigin } from "../../api";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { Options } from "../../options.js";
+import * as client from "../../dataconnect/client.js";
+import * as utils from "../../utils.js";
+import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types.js";
+import { needProjectId } from "../../projectUtils.js";
+import { provisionCloudSql } from "../../dataconnect/provisionCloudSql.js";
+import { parseServiceName } from "../../dataconnect/names.js";
+import { ResourceFilter } from "../../dataconnect/filters.js";
+import { vertexAIOrigin } from "../../api.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
 import { join } from "node:path";
 
 /**

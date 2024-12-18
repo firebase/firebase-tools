@@ -1,13 +1,12 @@
 import fetch from "node-fetch";
-import * as ua from "universal-analytics";
+import ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
-import { getGlobalDefaultAccount } from "./auth";
+import { getGlobalDefaultAccount } from "./auth.js";
 
-import { configstore } from "./configstore";
-import { logger } from "./logger";
-
-const pkg = require("../package.json");
-
+import { configstore } from "./configstore.js";
+import { logger } from "./logger.js";
+import pkg from "../package.json" with { type: "json" };
+import { readFileSync } from 'fs';
 type cliEventNames =
   | "command_execution"
   | "product_deploy"
@@ -352,7 +351,7 @@ function isDebugMode(): boolean {
   const account = getGlobalDefaultAccount();
   if (account?.user.email.endsWith("@google.com")) {
     try {
-      require("../tsconfig.json");
+      readFileSync("../tsconfig.json");
       logger.info(
         `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
       );

@@ -1,15 +1,15 @@
 import * as fs from "fs";
-import * as ora from "ora";
+import ora from "ora";
 import * as readline from "readline";
 import * as tmp from "tmp";
-import AbortController from "abort-controller";
+import { AbortController } from "abort-controller";
 
-import { Client } from "./apiv2";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
-import { logger } from "./logger";
-import { ProfileReport, ProfileReportOptions } from "./profileReport";
-import { responseToError } from "./responseToError";
-import * as utils from "./utils";
+import { Client } from "./apiv2.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api.js";
+import { logger } from "./logger.js";
+import { ProfileReport, ProfileReportOptions } from "./profileReport.js";
+import { responseToError } from "./responseToError.js";
+import * as utils from "./utils.js";
 
 import { Buffer } from "node:buffer";
 

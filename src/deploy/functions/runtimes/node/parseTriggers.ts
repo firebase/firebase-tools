@@ -1,19 +1,18 @@
 import * as path from "path";
-import * as _ from "lodash";
+import _ from "lodash";
 import { fork } from "child_process";
 
-import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../logger";
-import * as backend from "../../backend";
-import * as build from "../../build";
-import * as api from "../../../../api";
-import * as proto from "../../../../gcp/proto";
-import { Runtime } from "../../runtimes/supported";
-import * as events from "../../../../functions/events";
-import { nullsafeVisitor } from "../../../../functional";
+import { FirebaseError } from "../../../../error.js";
+import { logger } from "../../../../logger.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import * as api from "../../../../api.js";
+import * as proto from "../../../../gcp/proto.js";
+import { Runtime } from "../../runtimes/supported/index.js";
+import * as events from "../../../../functions/events/index.js";
+import { nullsafeVisitor } from "../../../../functional.js";
 
-
-const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
+const TRIGGER_PARSER = path.resolve(import.meta.dirname, "./triggerParser.js");
 
 export interface ScheduleRetryConfig {
   retryCount?: number;

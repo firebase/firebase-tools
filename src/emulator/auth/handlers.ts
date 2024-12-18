@@ -1,9 +1,9 @@
 import { URL } from "url";
-import * as express from "express";
-import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations";
-import { ProjectState, ProviderUserInfo } from "./state";
-import { BadRequestError, NotImplementedError } from "./errors";
-import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
+import express from "express";
+import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations.js";
+import { ProjectState, ProviderUserInfo } from "./state.js";
+import { BadRequestError, NotImplementedError } from "./errors.js";
+import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui.js";
 
 /**
  * Register routes for emulator-only handlers.

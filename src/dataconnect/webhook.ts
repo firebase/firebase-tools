@@ -2,10 +2,8 @@
  * Webhook send API used to notify VSCode of states within
  */
 
-import fetch from "node-fetch";
-import { logger } from "../logger";
-import { AbortSignal } from "node-fetch/externals";
-
+import { logger } from "../logger.js";
+import * as apiv2 from "../apiv2.js";
 
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",
@@ -26,15 +24,20 @@ export async function sendVSCodeMessage(body: WebhookBody) {
   const jsonBody = JSON.stringify(body);
 
   try {
-    return await fetch(`http://localhost:${port}/vscode/notify`, {
+    const client = new apiv2.Client({
+      auth: false,
+      urlPrefix: `http://localhost:${port}`,
+    });
+    return client.request({
       method: "POST",
+      path: "vscode/notify",
+      body: jsonBody,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
         "x-mantle-admin": "all",
       },
-      body: jsonBody,
-      signal: AbortSignal.timeout(3000) as unknown as AbortSignal, // necessary due to https://github.com/node-fetch/node-fetch/issues/1652
+      timeout: 3000,
     });
   } catch (e) {
     logger.debug(

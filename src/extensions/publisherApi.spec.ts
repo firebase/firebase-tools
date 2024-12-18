@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../api";
-import * as refs from "./refs";
-import * as publisherApi from "./publisherApi";
+import * as api from "../api.js";
+import * as refs from "./refs.js";
+import * as publisherApi from "./publisherApi.js";
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 const VERSION = "v1beta";
 const PROJECT_ID = "test-project";

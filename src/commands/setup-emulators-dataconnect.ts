@@ -1,8 +1,8 @@
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { Options } from "../options";
-import { logger } from "../logger";
-import { downloadIfNecessary } from "../emulator/downloadableEmulators";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { Options } from "../options.js";
+import { logger } from "../logger.js";
+import { downloadIfNecessary } from "../emulator/downloadableEmulators.js";
 
 const NAME = Emulators.DATACONNECT;
 

@@ -1,10 +1,10 @@
-import * as api from "../../hosting/api";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import { convertConfig } from "./convertConfig";
-import { Context } from "./context";
-import { FirebaseError } from "../../error";
-import { Payload as FunctionsPayload } from "../functions/args";
+import * as api from "../../hosting/api.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
+import { convertConfig } from "./convertConfig.js";
+import { Context } from "./context.js";
+import { FirebaseError } from "../../error.js";
+import { Payload as FunctionsPayload } from "../functions/args.js";
 
 /**
  *  Release finalized a Hosting release.

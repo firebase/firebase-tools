@@ -1,14 +1,12 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
-import { requireAuth } from "../requireAuth";
-import { listSecretVersions } from "../gcp/secretManager";
-import * as secretManager from "../gcp/secretManager";
-import { requirePermissions } from "../requirePermissions";
-
-const Table = require("cli-table");
-
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import { requireAuth } from "../requireAuth.js";
+import { listSecretVersions } from "../gcp/secretManager.js";
+import * as secretManager from "../gcp/secretManager.js";
+import { requirePermissions } from "../requirePermissions.js";
+import Table from "cli-table";
 export const command = new Command("apphosting:secrets:describe <secretName>")
   .description("Get metadata for secret and its versions.")
   .before(requireAuth)

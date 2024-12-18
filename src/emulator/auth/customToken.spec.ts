@@ -1,21 +1,21 @@
 import { expect } from "chai";
-import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload, CUSTOM_TOKEN_AUDIENCE } from "./operations";
-import { PROVIDER_CUSTOM } from "./state";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import jsonwebtoken from "jsonwebtoken";
+import { FirebaseJwtPayload, CUSTOM_TOKEN_AUDIENCE } from "./operations.js";
+import { PROVIDER_CUSTOM } from "./state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
   updateAccountByLocalId,
   signInWithEmailLink,
   registerTenant,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   it("should create new account from custom token (unsigned)", async () => {
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims }, "fake-secret", {
+    const token = jsonwebtoken.sign({ uid, claims }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -33,8 +33,8 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -72,8 +72,8 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -103,8 +103,8 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
         expectStatusCode(200, res);
         const idToken = res.body.id_token;
         expect(idToken).to.be.a("string");
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -149,7 +149,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   });
 
   it("should error if custom token addresses the wrong audience", async () => {
-    const token = signJwt({ uid: "foo" }, "fake-secret", {
+    const token = jsonwebtoken.sign({ uid: "foo" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -169,7 +169,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   });
 
   it("should error if custom token contains no uid", async () => {
-    const token = signJwt(
+    const token = jsonwebtoken.sign(
       {
         /* no uid */
       },
@@ -252,7 +252,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "fake-secret", {
+    const token = jsonwebtoken.sign({ uid, claims, tenant_id: "not-matching-tenant-id" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -275,7 +275,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "fake-secret", {
+    const token = jsonwebtoken.sign({ uid, claims, tenant_id: tenant.tenantId }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 

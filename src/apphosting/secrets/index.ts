@@ -1,14 +1,14 @@
-import { FirebaseError, getErrStatus, getError } from "../../error";
-import * as iam from "../../gcp/iam";
-import * as gcsm from "../../gcp/secretManager";
-import * as gcb from "../../gcp/cloudbuild";
-import * as gce from "../../gcp/computeEngine";
-import * as apphosting from "../../gcp/apphosting";
-import { FIREBASE_MANAGED } from "../../gcp/secretManager";
-import { isFunctionsManaged } from "../../gcp/secretManager";
-import * as utils from "../../utils";
-import * as prompt from "../../prompt";
-import { Secret } from "../yaml";
+import { FirebaseError, getErrStatus, getError } from "../../error.js";
+import * as iam from "../../gcp/iam.js";
+import * as gcsm from "../../gcp/secretManager.js";
+import * as gcb from "../../gcp/cloudbuild.js";
+import * as gce from "../../gcp/computeEngine.js";
+import * as apphosting from "../../gcp/apphosting.js";
+import { FIREBASE_MANAGED } from "../../gcp/secretManager.js";
+import { isFunctionsManaged } from "../../gcp/secretManager.js";
+import * as utils from "../../utils.js";
+import * as prompt from "../../prompt.js";
+import { Secret } from "../yaml.js";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {

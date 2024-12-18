@@ -1,8 +1,8 @@
 import * as chai from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as prompt from "../../prompt";
-import * as params from "./params";
+import * as prompt from "../../prompt.js";
+import * as params from "./params.js";
 
 const expect = chai.expect;
 const fakeConfig = {

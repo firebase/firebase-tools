@@ -1,9 +1,9 @@
 import { bold } from "colorette";
-import { getProjectId } from "./projectUtils";
-import { requireAuth } from "./requireAuth";
-import { logger } from "./logger";
-import { FirebaseError, getErrMsg } from "./error";
-import { testIamPermissions } from "./gcp/iam";
+import { getProjectId } from "./projectUtils.js";
+import { requireAuth } from "./requireAuth.js";
+import { logger } from "./logger.js";
+import { FirebaseError, getErrMsg } from "./error.js";
+import { testIamPermissions } from "./gcp/iam.js";
 
 // Permissions required for all commands.
 const BASE_PERMISSIONS = ["firebase.projects.get"];

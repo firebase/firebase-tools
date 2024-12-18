@@ -1,11 +1,10 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
-import { copy, existsSync } from "fs-extra";
+import * as fs from "fs-extra";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
-import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
-import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
-
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces.js";
+import { FirebaseError } from "../../error.js";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils.js";
+import { getAstroVersion, getBootstrapScript, getConfig } from "./utils.js";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
@@ -13,7 +12,7 @@ export const type = FrameworkType.MetaFramework;
 export const supportedRange = "2 - 4";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
-  if (!existsSync(join(dir, "package.json"))) return;
+  if (!fs.existsSync(join(dir, "package.json"))) return;
   const version = getAstroVersion(dir);
   if (!version) return;
   const { output } = await getConfig(dir);
@@ -44,13 +43,13 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { outDir, output } = await getConfig(root);
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
   const assetPath = join(root, outDir, output !== "static" ? "client" : "");
-  await copy(assetPath, dest);
+  await fs.copy(assetPath, dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { outDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
-  await copy(join(sourceDir, outDir, "server"), join(destDir));
+  await fs.copy(join(sourceDir, outDir, "server"), join(destDir));
   return {
     packageJson,
     bootstrapScript: getBootstrapScript(),

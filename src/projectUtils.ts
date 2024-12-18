@@ -1,10 +1,9 @@
-import { getProject } from "./management/projects";
-import { RC } from "./rc";
+import { getProject } from "./management/projects.js";
+import { RC } from "./rc.js";
 
 import * as clc from "colorette";
 import { marked } from "marked";
-
-const { FirebaseError } = require("./error");
+import { FirebaseError } from "./error.js";
 
 /**
  * Retrieves the projectId from a command's options context.

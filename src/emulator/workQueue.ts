@@ -1,9 +1,8 @@
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
+import * as utils from "../utils.js";
+import { FirebaseError } from "../error.js";
 
-import { EmulatorLogger } from "./emulatorLogger";
-import { Emulators, FunctionsExecutionMode } from "./types";
-
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { Emulators, FunctionsExecutionMode } from "./types.js";
 
 export type Work = {
   type?: string;

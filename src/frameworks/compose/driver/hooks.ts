@@ -1,4 +1,4 @@
-import { AppBundle, Hook } from "../interfaces";
+import { AppBundle, Hook } from "../interfaces.js";
 
 export const BUNDLE_PATH = "/home/firebase/app/.firebase/.output/bundle.json" as const;
 

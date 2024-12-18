@@ -1,11 +1,8 @@
 // https://github.com/supabase-community/pg-gateway
 
 import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
-// Unfortunately, we need to dynamically import the Postgres extensions.
-// They are only available as ESM, and if we import them normally,
-// our tsconfig will convert them to requires, which will cause errors
-// during module resolution.
-const { dynamicImport } = require(true && "../../dynamicImport");
+import { vector } from "@electric-sql/pglite/vector";
+import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
 import * as net from "node:net";
 import * as fs from "fs";
 
@@ -14,10 +11,10 @@ import {
   type PostgresConnection,
   FrontendMessageCode,
   BackendMessageCode,
-} from "./pg-gateway/index";
-import { fromNodeSocket } from "./pg-gateway/platforms/node";
-import { logger } from "../../logger";
-import { hasMessage } from "../../error";
+} from "./pg-gateway/index.js";
+import { fromNodeSocket } from "./pg-gateway/platforms/node/index.js";
+import { logger } from "../../logger.js";
+import { hasMessage } from "../../error.js";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -85,13 +82,11 @@ export class PostgresServer {
     if (!this.db) {
       // Not all schemas will need vector installed, but we don't have an good way
       // to swap extensions after starting PGLite, so we always include it.
-      const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
-      const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
       const pgliteArgs: PGliteOptions = {
         debug: this.debug,
         extensions: {
           vector,
-          uuidOssp,
+          uuid_ossp,
         },
         dataDir: this.dataDirectory,
       };

@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import * as path from "path";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fs from "fs-extra";
 
-import * as downloadableEmulators from "./downloadableEmulators";
-import { Emulators } from "./types";
-
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { Emulators } from "./types.js";
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 

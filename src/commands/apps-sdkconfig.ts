@@ -1,7 +1,7 @@
-import * as ora from "ora";
+import ora from "ora";
 import * as fs from "fs-extra";
 
-import { Command } from "../command";
+import { Command } from "../command.js";
 import {
   AppConfigurationData,
   AppMetadata,
@@ -10,14 +10,14 @@ import {
   getAppConfigFile,
   getAppPlatform,
   listFirebaseApps,
-} from "../management/apps";
-import { needProjectId } from "../projectUtils";
-import { getOrPromptProject } from "../management/projects";
-import { FirebaseError } from "../error";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { Options } from "../options";
+} from "../management/apps.js";
+import { needProjectId } from "../projectUtils.js";
+import { getOrPromptProject } from "../management/projects.js";
+import { FirebaseError } from "../error.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import { Options } from "../options.js";
 
 function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {

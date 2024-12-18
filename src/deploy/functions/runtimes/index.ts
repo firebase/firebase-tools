@@ -1,10 +1,10 @@
-import * as backend from "../backend";
-import * as build from "../build";
-import * as node from "./node";
-import * as python from "./python";
-import * as validate from "../validate";
-import { FirebaseError } from "../../../error";
-import * as supported from "./supported";
+import * as backend from "../backend.js";
+import * as build from "../build.js";
+import * as node from "./node/index.js";
+import * as python from "./python/index.js";
+import * as validate from "../validate.js";
+import { FirebaseError } from "../../../error.js";
+import * as supported from "./supported/index.js";
 
 /**
  * RuntimeDelegate is a language-agnostic strategy for managing

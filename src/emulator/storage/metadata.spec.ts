@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { toSerializedDate } from "./metadata";
+import { toSerializedDate } from "./metadata.js";
 
 describe("toSerializedDate", () => {
   it("correctly serializes date", () => {

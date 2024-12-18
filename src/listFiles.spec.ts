@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import { listFiles } from "./listFiles";
-import { FIXTURE_DIR } from "./test/fixtures/ignores";
+import { listFiles } from "./listFiles.js";
+import { FIXTURE_DIR } from "./test/fixtures/ignores/index.js";
 
 describe("listFiles", () => {
   // for details, see the file structure and firebase.json in test/fixtures/ignores

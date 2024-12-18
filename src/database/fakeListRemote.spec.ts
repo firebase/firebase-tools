@@ -1,6 +1,6 @@
 import * as chai from "chai";
 
-import { ListRemote } from "./listRemote";
+import { ListRemote } from "./listRemote.js";
 
 const expect = chai.expect;
 

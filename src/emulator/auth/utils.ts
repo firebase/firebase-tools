@@ -1,8 +1,8 @@
 import { URL } from "url";
-import * as express from "express";
-import { EmulatorRegistry } from "../registry";
-import { Emulators } from "../types";
-import { EmulatorLogger } from "../emulatorLogger";
+import express from "express";
+import { EmulatorRegistry } from "../registry.js";
+import { Emulators } from "../types.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
 
 /**
  * Utility type to take all fields from T but mark some of them (K) as required.

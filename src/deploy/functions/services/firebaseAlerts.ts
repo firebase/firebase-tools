@@ -1,5 +1,5 @@
-import * as backend from "../backend";
-import { FirebaseError } from "../../../error";
+import * as backend from "../backend.js";
+import { FirebaseError } from "../../../error.js";
 
 /**
  * Sets a Firebase Alerts event trigger's region to 'global' since the service is global

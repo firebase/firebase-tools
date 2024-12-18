@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as utils from "./utils";
-import * as promptImport from "../prompt";
-import * as sinon from "sinon";
+import * as utils from "./utils.js";
+import * as promptImport from "../prompt.js";
+import sinon from "sinon";
 
 describe("utils", () => {
   describe("getEnvironmentName", () => {

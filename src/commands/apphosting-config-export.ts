@@ -1,13 +1,12 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { requireAuth } from "../requireAuth";
-import * as secretManager from "../gcp/secretManager";
-import { requirePermissions } from "../requirePermissions";
-import { discoverBackendRoot, exportConfig } from "../apphosting/config";
-import { FirebaseError } from "../error";
-import { detectProjectRoot } from "../detectProjectRoot";
-
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireAuth } from "../requireAuth.js";
+import * as secretManager from "../gcp/secretManager.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { discoverBackendRoot, exportConfig } from "../apphosting/config.js";
+import { FirebaseError } from "../error.js";
+import { detectProjectRoot } from "../detectProjectRoot.js";
 
 export const command = new Command("apphosting:config:export")
   .description(

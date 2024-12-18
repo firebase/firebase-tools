@@ -1,14 +1,14 @@
 import { bold } from "colorette";
 
-import { Command } from "../command";
-import { interactiveCreateHostingSite } from "../hosting/interactive";
-import { last, logLabeledSuccess } from "../utils";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
-import { requirePermissions } from "../requirePermissions";
-import { Site } from "../hosting/api";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { interactiveCreateHostingSite } from "../hosting/interactive.js";
+import { last, logLabeledSuccess } from "../utils.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { Options } from "../options.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Site } from "../hosting/api.js";
+import { FirebaseError } from "../error.js";
 
 const LOG_TAG = "hosting:sites";
 

@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { Backup, deleteBackup, getBackup } from "../gcp/firestore";
-import { promptOnce } from "../prompt";
+import { Command } from "../command.js";
+import { Backup, deleteBackup, getBackup } from "../gcp/firestore.js";
+import { promptOnce } from "../prompt.js";
 import * as clc from "colorette";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { FirebaseError } from "../error";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("firestore:backups:delete <backup>")
   .description("Delete a backup under your Cloud Firestore database.")

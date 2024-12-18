@@ -3,19 +3,19 @@ import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
-import AbortController from "abort-controller";
+import { AbortController } from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
 
-import * as auth from "./auth";
-import { FirebaseError } from "./error";
-import { logger } from "./logger";
-import { responseToError } from "./responseToError";
-import * as FormData from "form-data";
+import * as auth from "./auth.js";
+import { FirebaseError } from "./error.js";
+import { logger } from "./logger.js";
+import { responseToError } from "./responseToError.js";
+import FormData from "form-data";
+import pkg from "../package.json" with { type: "json" };
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
-const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
 export const STANDARD_HEADERS: Record<string, string> = {

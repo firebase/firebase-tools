@@ -1,8 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as utils from "./utils";
-
+import * as utils from "./utils.js";
 
 describe("utils", () => {
   describe("consoleUrl", () => {

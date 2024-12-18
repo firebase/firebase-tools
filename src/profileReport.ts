@@ -1,11 +1,11 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
 import * as fs from "fs";
-import * as _ from "lodash";
+import _ from "lodash";
 import * as readline from "readline";
 
-import { FirebaseError } from "./error";
-import { logger } from "./logger";
+import { FirebaseError } from "./error.js";
+import { logger } from "./logger.js";
+import Table from "cli-table";
 
 const DATA_LINE_REGEX = /^data: /;
 
@@ -597,7 +597,7 @@ export class ProfileReport {
         write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
-    const writeTable = (title: string, table: typeof Table) => {
+    const writeTable = (title: string, table: Table) => {
       writeTitle(title);
       write(table.toString() + "\n");
     };

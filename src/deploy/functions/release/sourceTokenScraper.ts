@@ -1,6 +1,6 @@
-import { FirebaseError } from "../../../error";
-import { assertExhaustive } from "../../../functional";
-import { logger } from "../../../logger";
+import { FirebaseError } from "../../../error.js";
+import { assertExhaustive } from "../../../functional.js";
+import { logger } from "../../../logger.js";
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
 interface TokenFetchResult {

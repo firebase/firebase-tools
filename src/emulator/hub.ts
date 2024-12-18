@@ -1,21 +1,21 @@
-import * as express from "express";
+import express from "express";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
 
-import * as utils from "../utils";
-import { logger } from "../logger";
-import { Emulators, EmulatorInfo, ListenSpec } from "./types";
-import { HubExport } from "./hubExport";
-import { EmulatorRegistry } from "./registry";
-import { FunctionsEmulator } from "./functionsEmulator";
-import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
-import { PortName } from "./portUtils";
-import { DataConnectEmulator } from "./dataconnectEmulator";
-import { isVSCodeExtension } from "../vsCodeUtils";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import { Emulators, EmulatorInfo, ListenSpec } from "./types.js";
+import { HubExport } from "./hubExport.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FunctionsEmulator } from "./functionsEmulator.js";
+import { ExpressBasedEmulator } from "./ExpressBasedEmulator.js";
+import { PortName } from "./portUtils.js";
+import { DataConnectEmulator } from "./dataconnectEmulator.js";
+import { isVSCodeExtension } from "../vsCodeUtils.js";
+import pkg from "../../package.json" with { type: "json" };
 
 // We use the CLI version from package.json
-const pkg = require("../../package.json");
 
 export interface Locator {
   version: string;

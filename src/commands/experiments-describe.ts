@@ -1,10 +1,10 @@
 import { bold } from "colorette";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import * as experiments from "../experiments";
-import { logger } from "../logger";
-import { last } from "../utils";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import * as experiments from "../experiments.js";
+import { logger } from "../logger.js";
+import { last } from "../utils.js";
 
 export const command = new Command("experiments:describe <experiment>")
   .description("describe what an experiment does when enabled")

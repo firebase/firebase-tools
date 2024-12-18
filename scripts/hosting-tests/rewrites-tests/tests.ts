@@ -9,7 +9,6 @@ import { command as functionsDelete } from "../../../src/commands/functions-dele
 import fetch, { Request } from "node-fetch";
 import { FirebaseError } from "../../../src/error";
 
-
 tmp.setGracefulCleanup();
 
 // Run this test manually by:

@@ -5,15 +5,15 @@ import {
   EmulatorInfo,
   DownloadableEmulatorDetails,
   DownloadableEmulators,
-} from "./types";
-import { FirebaseError } from "../error";
-import * as portUtils from "./portUtils";
-import { Constants } from "./constants";
-import { EmulatorLogger } from "./emulatorLogger";
-import * as express from "express";
-import { connectableHostname } from "../utils";
-import { Client, ClientOptions } from "../apiv2";
-import { get as getDownloadableEmulatorDetails } from "./downloadableEmulators";
+} from "./types.js";
+import { FirebaseError } from "../error.js";
+import * as portUtils from "./portUtils.js";
+import { Constants } from "./constants.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import express from "express";
+import { connectableHostname } from "../utils.js";
+import { Client, ClientOptions } from "../apiv2.js";
+import { get as getDownloadableEmulatorDetails } from "./downloadableEmulators.js";
 /**
  * Static registry for running emulators to discover each other.
  *

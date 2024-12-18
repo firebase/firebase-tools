@@ -1,6 +1,6 @@
-import { Command } from "../command";
-import * as commandUtils from "../emulator/commandUtils";
-import { emulatorExec, shutdownWhenKilled } from "../emulator/commandUtils";
+import { Command } from "../command.js";
+import * as commandUtils from "../emulator/commandUtils.js";
+import { emulatorExec, shutdownWhenKilled } from "../emulator/commandUtils.js";
 
 export const command = new Command("emulators:exec <script>")
   .before(commandUtils.setExportOnExitOptions)

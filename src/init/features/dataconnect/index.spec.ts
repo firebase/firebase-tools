@@ -1,11 +1,11 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
 import * as fs from "fs-extra";
 
-import * as init from "./index";
-import { Config } from "../../../config";
-import { RCData } from "../../../rc";
-import * as provison from "../../../dataconnect/provisionCloudSql";
+import * as init from "./index.js";
+import { Config } from "../../../config.js";
+import { RCData } from "../../../rc.js";
+import * as provison from "../../../dataconnect/provisionCloudSql.js";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 

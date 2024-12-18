@@ -6,7 +6,6 @@
 import { execSync } from "child_process";
 import { extname, resolve } from "path";
 
-
 const root = resolve(__dirname, "..");
 
 const deletedFileRegex = /^D\s.+$/;

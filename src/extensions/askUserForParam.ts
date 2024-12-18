@@ -1,18 +1,18 @@
-import * as _ from "lodash";
+import _ from "lodash";
 import * as clc from "colorette";
 import { marked } from "marked";
 
-import { Param, ParamOption, ParamType } from "./types";
-import * as secretManagerApi from "../gcp/secretManager";
-import * as secretsUtils from "./secretsUtils";
-import { logPrefix, substituteParams } from "./extensionsHelper";
-import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import * as utils from "../utils";
-import { ParamBindingOptions } from "./paramHelper";
-import { needProjectId } from "../projectUtils";
-import { partition } from "../functional";
+import { Param, ParamOption, ParamType } from "./types.js";
+import * as secretManagerApi from "../gcp/secretManager.js";
+import * as secretsUtils from "./secretsUtils.js";
+import { logPrefix, substituteParams } from "./extensionsHelper.js";
+import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import * as utils from "../utils.js";
+import { ParamBindingOptions } from "./paramHelper.js";
+import { needProjectId } from "../projectUtils.js";
+import { partition } from "../functional.js";
 
 /**
  * Location where the secret value is stored.

@@ -1,14 +1,14 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import * as fsutils from "../../fsutils";
-import * as validate from "./validate";
-import * as projectPath from "../../projectPath";
-import * as secretManager from "../../gcp/secretManager";
-import * as backend from "./backend";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
-import { resolveCpuAndConcurrency } from "./prepare";
+import { FirebaseError } from "../../error.js";
+import * as fsutils from "../../fsutils.js";
+import * as validate from "./validate.js";
+import * as projectPath from "../../projectPath.js";
+import * as secretManager from "../../gcp/secretManager.js";
+import * as backend from "./backend.js";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1.js";
+import { resolveCpuAndConcurrency } from "./prepare.js";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {

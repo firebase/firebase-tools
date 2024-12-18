@@ -1,13 +1,13 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
-import { createRollout, orchestrateRollout } from "./rollout";
-import * as devConnect from "../gcp/devConnect";
-import * as githubConnections from "../apphosting/githubConnections";
-import * as apphosting from "../gcp/apphosting";
-import * as backend from "./backend";
-import { FirebaseError } from "../error";
-import * as poller from "../operation-poller";
-import * as utils from "../utils";
+import { createRollout, orchestrateRollout } from "./rollout.js";
+import * as devConnect from "../gcp/devConnect.js";
+import * as githubConnections from "../apphosting/githubConnections.js";
+import * as apphosting from "../gcp/apphosting.js";
+import * as backend from "./backend.js";
+import { FirebaseError } from "../error.js";
+import * as poller from "../operation-poller.js";
+import * as utils from "../utils.js";
 
 describe("apphosting rollouts", () => {
   const user = "user";

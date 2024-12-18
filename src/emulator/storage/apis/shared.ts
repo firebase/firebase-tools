@@ -1,8 +1,8 @@
 import { gunzipSync } from "zlib";
-import { StoredFileMetadata } from "../metadata";
+import { StoredFileMetadata } from "../metadata.js";
 import { Request, Response } from "express";
-import { crc32cToString } from "../crc";
-import { encodeRFC5987 } from "../rfc";
+import { crc32cToString } from "../crc.js";
+import { encodeRFC5987 } from "../rfc.js";
 import { Buffer } from "node:buffer";
 
 /** Populates an object media GET Express response. */

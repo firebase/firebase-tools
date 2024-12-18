@@ -1,10 +1,9 @@
-import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
-import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect";
-import { testIamPermissions } from "../iam";
-import { logger } from "../../logger";
-import { concat } from "lodash";
-import { FirebaseError } from "../../error";
+import { Options } from "../../options.js";
+import { needProjectId } from "../../projectUtils.js";
+import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect.js";
+import { testIamPermissions } from "../iam.js";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
 
 export function firebaseowner(databaseId: string) {
   return `firebaseowner_${databaseId}_public`;
@@ -221,22 +220,22 @@ export async function setupSQLPermissions(
     revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`);
   }
 
-  const sqlRoleSetupCmds = concat(
+  const sqlRoleSetupCmds = [
     // For backward compatibality we sometimes need to revoke some roles.
-    revokes,
+    ...revokes,
 
     // We shoud make sure schema exists since this setup runs prior to executing the diffs.
-    [`CREATE SCHEMA IF NOT EXISTS "public"`],
+    `CREATE SCHEMA IF NOT EXISTS "public"`,
 
     // Create and setup the owner role permissions.
-    ownerRolePermissions(databaseId, superuser, "public"),
+    ...ownerRolePermissions(databaseId, superuser, "public"),
 
     // Create and setup writer role permissions.
-    writerRolePermissions(databaseId, superuser, "public"),
+    ...writerRolePermissions(databaseId, superuser, "public"),
 
     // Create and setup reader role permissions.
-    readerRolePermissions(databaseId, superuser, "public"),
-  );
+    ...readerRolePermissions(databaseId, superuser, "public"),
+  ];
 
   return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
 }

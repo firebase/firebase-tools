@@ -1,8 +1,8 @@
-import { MemoryOptions } from "../deploy/functions/backend";
-import { Runtime } from "../deploy/functions/runtimes/supported";
-import * as proto from "../gcp/proto";
-import { SpecParamType } from "./extensionsHelper";
-import { isObject } from "../error";
+import { MemoryOptions } from "../deploy/functions/backend.js";
+import { Runtime } from "../deploy/functions/runtimes/supported/index.js";
+import * as proto from "../gcp/proto.js";
+import { SpecParamType } from "./extensionsHelper.js";
+import { isObject } from "../error.js";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",

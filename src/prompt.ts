@@ -1,10 +1,11 @@
 import * as inquirer from "inquirer";
 import AutocompletePrompt from "inquirer-autocomplete-prompt";
 
-import { fileExistsSync, dirExistsSync } from "./fsutils";
-import { FirebaseError } from "./error";
-import { Config } from "./config";
-import { logger } from "./logger";
+import { fileExistsSync, dirExistsSync } from "./fsutils.js";
+import { FirebaseError } from "./error.js";
+import { Config } from "./config.js";
+import { logger } from "./logger.js";
+import autocomplete from "inquirer-autocomplete-prompt";
 
 declare module "inquirer" {
   interface QuestionMap<T> {
@@ -13,7 +14,7 @@ declare module "inquirer" {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-argument
-inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
+inquirer.default.registerPrompt("autocomplete", autocomplete);
 
 /**
  * Question type for inquirer. See
@@ -68,7 +69,7 @@ export async function prompt(
     );
   }
 
-  const answers = await inquirer.prompt(prompts);
+  const answers = await inquirer.default.prompt(prompts);
   Object.keys(answers).forEach((k) => {
     options[k] = answers[k];
   });

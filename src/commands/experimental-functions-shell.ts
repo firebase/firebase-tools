@@ -1,7 +1,7 @@
-import { actionFunction } from "../functionsShellCommandAction";
-import { Command } from "../command";
-import { requireConfig } from "../requireConfig";
-import { requirePermissions } from "../requirePermissions";
+import { actionFunction } from "../functionsShellCommandAction.js";
+import { Command } from "../command.js";
+import { requireConfig } from "../requireConfig.js";
+import { requirePermissions } from "../requirePermissions.js";
 
 export const command = new Command("experimental:functions:shell")
   .description(

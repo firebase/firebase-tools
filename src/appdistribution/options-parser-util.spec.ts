@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { getLoginCredential, parseTestDevices } from "./options-parser-util";
-import { FirebaseError } from "../error";
-import * as fs from "fs-extra";
+import { getLoginCredential, parseTestDevices } from "./options-parser-util.js";
+import { FirebaseError } from "../error.js";
+import fs from "fs-extra";
 import { rmSync } from "node:fs";
 import * as tmp from "tmp";
 import { join } from "path";

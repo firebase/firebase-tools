@@ -1,4 +1,4 @@
-import { ExtendableError } from "exegesis/lib/errors";
+import { ExtendableError } from "exegesis/lib/errors.js";
 
 // https://cloud.google.com/apis/design/errors#http_mapping
 // https://cloud.google.com/identity-platform/docs/use-rest-api#handling_errors

@@ -1,10 +1,10 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
 
-import * as iam from "./iam";
-import * as secretManager from "./secretManager";
-import { FirebaseError } from "../error";
-import { ensureServiceAgentRole } from "./secretManager";
+import * as iam from "./iam.js";
+import * as secretManager from "./secretManager.js";
+import { FirebaseError } from "../error.js";
+import { ensureServiceAgentRole } from "./secretManager.js";
 
 describe("secretManager", () => {
   describe("parseSecretResourceName", () => {

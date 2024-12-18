@@ -1,14 +1,13 @@
 import { bold } from "colorette";
-const Table = require("cli-table");
-
-import { Channel, listChannels } from "../hosting/api";
-import { Command } from "../command";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
-import { requireConfig } from "../requireConfig";
-import { datetimeString } from "../utils";
-import { requireHostingSite } from "../requireHostingSite";
+import { Channel, listChannels } from "../hosting/api.js";
+import { Command } from "../command.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import { requireConfig } from "../requireConfig.js";
+import { datetimeString } from "../utils.js";
+import { requireHostingSite } from "../requireHostingSite.js";
+import Table from "cli-table";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 

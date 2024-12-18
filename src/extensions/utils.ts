@@ -1,12 +1,12 @@
-import { promptOnce } from "../prompt";
+import { promptOnce } from "../prompt.js";
 import {
   ParamOption,
   Resource,
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
-} from "./types";
-import { RegistryEntry } from "./resolveSource";
-import { Runtime } from "../deploy/functions/runtimes/supported";
+} from "./types.js";
+import { RegistryEntry } from "./resolveSource.js";
+import { Runtime } from "../deploy/functions/runtimes/supported/index.js";
 
 /**
  * Modified version of the once function from prompt, to return as a joined string.

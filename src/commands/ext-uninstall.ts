@@ -1,14 +1,14 @@
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
 import {
   ensureExtensionsApiEnabled,
   diagnoseAndFixProject,
   logPrefix,
-} from "../extensions/extensionsHelper";
-import { requirePermissions } from "../requirePermissions";
-import { logLabeledWarning } from "../utils";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
+} from "../extensions/extensionsHelper.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { logLabeledWarning } from "../utils.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")

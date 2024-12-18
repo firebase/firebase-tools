@@ -1,8 +1,8 @@
-import { Client, ClientResponse } from "../../apiv2";
-import { cloudSQLAdminOrigin } from "../../api";
-import * as operationPoller from "../../operation-poller";
-import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
-import { FirebaseError } from "../../error";
+import { Client, ClientResponse } from "../../apiv2.js";
+import { cloudSQLAdminOrigin } from "../../api.js";
+import * as operationPoller from "../../operation-poller.js";
+import { Instance, Database, User, UserType, DatabaseFlag } from "./types.js";
+import { FirebaseError } from "../../error.js";
 const API_VERSION = "v1";
 
 const client = new Client({

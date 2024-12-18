@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as api from "../../hosting/api";
-import { Context } from "./context";
-import * as convertConfigPkg from "./convertConfig";
+import * as api from "../../hosting/api.js";
+import { Context } from "./context.js";
+import * as convertConfigPkg from "./convertConfig.js";
 
-import { release } from "./release";
-import { last } from "../../utils";
+import { release } from "./release.js";
+import { last } from "../../utils.js";
 
 describe("release", () => {
   const PROJECT = "fake-project";

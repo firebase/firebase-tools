@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
-import * as planner from "./planner";
-import * as refs from "../../extensions/refs";
+import * as planner from "./planner.js";
+import * as refs from "../../extensions/refs.js";
 
 /**
  * humanReadable returns a human readable instanceID and reference

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { parseObjectUploadMultipartRequest } from "./multipart";
+import { parseObjectUploadMultipartRequest } from "./multipart.js";
 import { randomBytes } from "crypto";
 import { Buffer } from "node:buffer";
 

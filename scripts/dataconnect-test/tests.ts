@@ -8,7 +8,6 @@ import * as client from "../../src/dataconnect/client";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
 import { requireAuth } from "../../src/requireAuth";
 
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 

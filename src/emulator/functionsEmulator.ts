@@ -1,23 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as express from "express";
+import express from "express";
 import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
-import * as cors from "cors";
+import cors from "cors";
 import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
-import { Account } from "../types/auth";
-import { logger } from "../logger";
-import { trackEmulator } from "../track";
-import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
+import { Account } from "../types/auth/index.js";
+import { logger } from "../logger.js";
+import { trackEmulator } from "../track.js";
+import { Constants } from "./constants.js";
+import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types.js";
 import * as chokidar from "chokidar";
 import * as portfinder from "portfinder";
 
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 import {
   EmulatedTriggerDefinition,
@@ -37,35 +37,34 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
-} from "./functionsEmulatorShared";
-import { EmulatorRegistry } from "./registry";
-import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
-import { PubsubEmulator } from "./pubsubEmulator";
-import { FirebaseError } from "../error";
-import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
+} from "./functionsEmulatorShared.js";
+import { EmulatorRegistry } from "./registry.js";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger.js";
+import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker.js";
+import { PubsubEmulator } from "./pubsubEmulator.js";
+import { FirebaseError } from "../error.js";
+import { WorkQueue, Work } from "./workQueue.js";
+import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils.js";
+import { getCredentialPathAsync } from "../defaultCredentials.js";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
-} from "./adminSdkConfig";
-import { functionIdsAreValid } from "../deploy/functions/validate";
-import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
-import { accessSecretVersion } from "../gcp/secretManager";
-import * as runtimes from "../deploy/functions/runtimes";
-import * as backend from "../deploy/functions/backend";
-import * as functionsEnv from "../functions/env";
-import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
-import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
-import { resolveBackend } from "../deploy/functions/build";
-import { setEnvVarsForEmulators } from "./env";
-import { runWithVirtualEnv } from "../functions/python";
-import { Runtime } from "../deploy/functions/runtimes/supported";
-import { ExtensionsEmulator } from "./extensionsEmulator";
+} from "./adminSdkConfig.js";
+import { functionIdsAreValid } from "../deploy/functions/validate.js";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types.js";
+import { accessSecretVersion } from "../gcp/secretManager.js";
+import * as runtimes from "../deploy/functions/runtimes/index.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as functionsEnv from "../functions/env.js";
+import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1.js";
+import { BlockingFunctionsConfig } from "../gcp/identityPlatform.js";
+import { resolveBackend } from "../deploy/functions/build.js";
+import { setEnvVarsForEmulators } from "./env.js";
+import { runWithVirtualEnv } from "../functions/python.js";
+import { Runtime } from "../deploy/functions/runtimes/supported/index.js";
+import { ExtensionsEmulator } from "./extensionsEmulator.js";
 import { Buffer } from "node:buffer";
-
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -1559,7 +1558,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     backend: EmulatableBackend,
     envs: Record<string, string>,
   ): Promise<FunctionsRuntimeInstance> {
-    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+    const args = [path.join(import.meta.dirname, "functionsEmulatorRuntime")];
     if (this.debugMode) {
       if (process.env.FIREPIT_VERSION) {
         this.logger.log(

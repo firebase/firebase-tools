@@ -1,13 +1,12 @@
-import { includes } from "lodash";
 import { RequestHandler } from "express";
 
-import { proxyRequestHandler } from "./proxy";
-import { needProjectId } from "../projectUtils";
-import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators } from "../emulator/types";
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { HostingRewrites, LegacyFunctionsRewrite } from "../firebaseConfig";
-import { FirebaseError } from "../error";
+import { proxyRequestHandler } from "./proxy.js";
+import { needProjectId } from "../projectUtils.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { Emulators } from "../emulator/types.js";
+import { FunctionsEmulator } from "../emulator/functionsEmulator.js";
+import { HostingRewrites, LegacyFunctionsRewrite } from "../firebaseConfig.js";
+import { FirebaseError } from "../error.js";
 
 export interface FunctionsProxyOptions {
   port: number;
@@ -43,7 +42,7 @@ export function functionsProxy(
       let url = `https://${region}-${projectId}.cloudfunctions.net/${functionId}`;
       let destLabel = "live";
 
-      if (includes(options.targets, "functions")) {
+      if (options.targets?.includes("functions")) {
         destLabel = "local";
 
         // If the functions emulator is running we know the port, otherwise

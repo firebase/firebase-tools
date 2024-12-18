@@ -1,10 +1,10 @@
 import { basename, dirname } from "path";
-import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config, Env, store } from "./config";
+import { readFileFromDirectory, wrappedSafeLoad } from "../utils.js";
+import { Config, Env, store } from "./config.js";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
-import { fileExistsSync } from "../fsutils";
-import { FirebaseError } from "../error";
+import { fileExistsSync } from "../fsutils.js";
+import { FirebaseError } from "../error.js";
 
 export type EnvironmentVariable = Omit<Env, "secret">;
 export type Secret = Omit<Env, "availability" | "value">;

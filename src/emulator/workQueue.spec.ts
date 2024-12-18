@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import { WorkQueue } from "./workQueue";
-import { FunctionsExecutionMode } from "./types";
+import { WorkQueue } from "./workQueue.js";
+import { FunctionsExecutionMode } from "./types.js";
 
 function resolveIn(ms: number) {
   if (ms === 0) {

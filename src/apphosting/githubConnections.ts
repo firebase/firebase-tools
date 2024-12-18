@@ -1,21 +1,22 @@
 import * as clc from "colorette";
 
-import * as devConnect from "../gcp/devConnect";
-import * as rm from "../gcp/resourceManager";
-import * as poller from "../operation-poller";
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
-import { getProjectNumber } from "../getProjectNumber";
+import * as devConnect from "../gcp/devConnect.js";
+import * as rm from "../gcp/resourceManager.js";
+import * as poller from "../operation-poller.js";
+import * as utils from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { getProjectNumber } from "../getProjectNumber.js";
 import {
   apphostingGitHubAppInstallationURL,
   developerConnectOrigin,
   githubApiOrigin,
-} from "../api";
+} from "../api.js";
 
 import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
-import { Client } from "../apiv2";
+import inquirer from "inquirer";
+import { DistinctChoice } from "inquirer";
+import { Client } from "../apiv2.js";
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
 
@@ -319,7 +320,7 @@ export async function promptGitHubInstallation(
     type: "autocomplete",
     name: "installation",
     message: "Which GitHub account do you want to use?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+    source: (_: any, input = ""): Promise<DistinctChoice[]> => {
       return new Promise((resolve) =>
         resolve([
           new inquirer.Separator(),
@@ -420,7 +421,7 @@ async function promptCloneUri(
     type: "autocomplete",
     name: "cloneUri",
     message: "Which GitHub repo do you want to deploy?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+    source: (_: any, input = ""): Promise<DistinctChoice[]> => {
       return new Promise((resolve) =>
         resolve([
           new inquirer.Separator(),
@@ -457,7 +458,7 @@ export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink)
     type: "autocomplete",
     name: "branch",
     message: "Pick a branch for continuous deployment",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+    source: (_: any, input = ""): Promise<DistinctChoice[]> => {
       return new Promise((resolve) =>
         resolve([
           ...fuzzy.filter(input, Array.from(branches)).map((result) => {

@@ -1,8 +1,8 @@
-import { FirebaseError } from "../../../../error";
-import * as utils from "../../../../utils";
-import { Language, RUNTIMES, Runtime, RuntimeOf } from "./types";
+import { FirebaseError } from "../../../../error.js";
+import * as utils from "../../../../utils.js";
+import { Language, RUNTIMES, Runtime, RuntimeOf } from "./types.js";
 
-export * from "./types";
+export * from "./types.js";
 
 /** Type deduction helper for a runtime string. */
 export function isRuntime(maybe: string): maybe is Runtime {
@@ -44,7 +44,7 @@ export function latest<T extends Language>(
       { exit: 1 },
     );
   }
-  return latest as  Runtime & RuntimeOf<T>;
+  return latest as Runtime & RuntimeOf<T>;
 }
 
 /**

@@ -1,11 +1,11 @@
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { Config } from "../../../config";
-import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
-import { runWithVirtualEnv } from "../../../functions/python";
-import { promptOnce } from "../../../prompt";
-import { latest } from "../../../deploy/functions/runtimes/supported";
-import { readTemplateSync } from "../../../templates";
+import { Config } from "../../../config.js";
+import { getPythonBinary } from "../../../deploy/functions/runtimes/python/index.js";
+import { runWithVirtualEnv } from "../../../functions/python.js";
+import { promptOnce } from "../../../prompt.js";
+import { latest } from "../../../deploy/functions/runtimes/supported/index.js";
+import { readTemplateSync } from "../../../templates.js";
 
 const MAIN_TEMPLATE = readTemplateSync("init/functions/python/main.py");
 const REQUIREMENTS_TEMPLATE = readTemplateSync("init/functions/python/requirements.txt");

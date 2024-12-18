@@ -1,5 +1,5 @@
-import * as backend from "../backend";
-import { FirebaseError } from "../../../error";
+import * as backend from "../backend.js";
+import { FirebaseError } from "../../../error.js";
 
 /**
  * Sets a database event trigger's region to the function region.

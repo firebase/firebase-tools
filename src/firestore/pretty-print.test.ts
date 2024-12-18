@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import * as API from "./api-types";
-import { PrettyPrint } from "./pretty-print";
+import * as API from "./api-types.js";
+import { PrettyPrint } from "./pretty-print.js";
 
 const printer = new PrettyPrint();
 

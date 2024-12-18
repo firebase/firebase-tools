@@ -1,9 +1,9 @@
 import * as clc from "colorette";
-import { prompt, promptOnce } from "../../prompt";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import * as fsutils from "../../fsutils";
-import { Config } from "../../config";
+import { prompt, promptOnce } from "../../prompt.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
+import * as fsutils from "../../fsutils.js";
+import { Config } from "../../config.js";
 import {
   createInstance,
   DatabaseInstance,
@@ -11,13 +11,13 @@ import {
   DatabaseLocation,
   checkInstanceNameAvailable,
   getDatabaseInstanceDetails,
-} from "../../management/database";
-import * as ora from "ora";
-import { ensure } from "../../ensureApiEnabled";
-import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
-import { FirebaseError } from "../../error";
-import { Client } from "../../apiv2";
-import { rtdbManagementOrigin } from "../../api";
+} from "../../management/database.js";
+import ora from "ora";
+import { ensure } from "../../ensureApiEnabled.js";
+import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance.js";
+import { FirebaseError } from "../../error.js";
+import { Client } from "../../apiv2.js";
+import { rtdbManagementOrigin } from "../../api.js";
 
 interface DatabaseSetup {
   projectId?: string;

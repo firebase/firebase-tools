@@ -2,8 +2,7 @@
 
 import { bold, red } from "colorette";
 
-import * as experiments from "./experiments";
-
+import * as experiments from "./experiments.js";
 
 function errorOut(name?: string): void {
   console.log(`${bold(red("Error:"))} Did not recognize preview feature ${bold(name || "")}`);

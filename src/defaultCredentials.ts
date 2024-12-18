@@ -1,10 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { clientId, clientSecret } from "./api";
-import { Tokens, User, Account } from "./types/auth";
-import { logger } from "./logger";
-
+import { clientId, clientSecret } from "./api.js";
+import { Tokens, User, Account } from "./types/auth/index.js";
+import { logger } from "./logger.js";
 
 // Interface for a valid JSON refresh token credential, so the
 // fields must be snake_case not camelCase.

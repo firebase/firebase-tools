@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as _ from "lodash";
-import * as sinon from "sinon";
-import { configstore } from "../../configstore";
+import _ from "lodash";
+import sinon from "sinon";
+import { configstore } from "../../configstore.js";
 
-import { doSetup } from "./project";
-import * as projectManager from "../../management/projects";
-import * as prompt from "../../prompt";
-import { Config } from "../../config";
-import { FirebaseProjectMetadata } from "../../types/project";
+import { doSetup } from "./project.js";
+import * as projectManager from "../../management/projects.js";
+import * as prompt from "../../prompt.js";
+import { Config } from "../../config.js";
+import { FirebaseProjectMetadata } from "../../types/project/index.js";
 
 const TEST_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "my-project-123",

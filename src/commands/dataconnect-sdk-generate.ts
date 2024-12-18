@@ -1,12 +1,12 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { Options } from "../options";
-import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { needProjectId } from "../projectUtils";
-import { load } from "../dataconnect/load";
-import { readFirebaseJson } from "../dataconnect/fileUtils";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { DataConnectEmulator } from "../emulator/dataconnectEmulator.js";
+import { needProjectId } from "../projectUtils.js";
+import { load } from "../dataconnect/load.js";
+import { readFirebaseJson } from "../dataconnect/fileUtils.js";
+import { logger } from "../logger.js";
 
 type GenerateOptions = Options & { watch?: boolean };
 

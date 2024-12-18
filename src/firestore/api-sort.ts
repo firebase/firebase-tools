@@ -1,7 +1,7 @@
-import * as API from "./api-types";
-import * as Spec from "./api-spec";
-import * as util from "./util";
-import { Backup, BackupSchedule } from "../gcp/firestore";
+import * as API from "./api-types.js";
+import * as Spec from "./api-spec.js";
+import * as util from "./util.js";
+import { Backup, BackupSchedule } from "../gcp/firestore.js";
 
 const QUERY_SCOPE_SEQUENCE = [
   API.QueryScope.COLLECTION_GROUP,

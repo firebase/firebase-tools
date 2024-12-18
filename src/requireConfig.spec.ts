@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { Config } from "./config";
-import { FirebaseError } from "./error";
-import { Options } from "./options";
-import { RC } from "./rc";
-import { requireConfig } from "./requireConfig";
-import { cloneDeep } from "./utils";
+import { Config } from "./config.js";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
+import { RC } from "./rc.js";
+import { requireConfig } from "./requireConfig.js";
+import { cloneDeep } from "./utils.js";
 
 const options: Options = {
   cwd: "",

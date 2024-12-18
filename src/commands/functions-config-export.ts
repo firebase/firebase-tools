@@ -2,20 +2,20 @@ import * as path from "path";
 
 import * as clc from "colorette";
 
-import requireInteractive from "../requireInteractive";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { testIamPermissions } from "../gcp/iam";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import { logBullet, logWarning } from "../utils";
-import { zip } from "../functional";
-import * as configExport from "../functions/runtimeConfigExport";
-import { requireConfig } from "../requireConfig";
+import requireInteractive from "../requireInteractive.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { testIamPermissions } from "../gcp/iam.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { logBullet, logWarning } from "../utils.js";
+import { zip } from "../functional.js";
+import * as configExport from "../functions/runtimeConfigExport.js";
+import { requireConfig } from "../requireConfig.js";
 
-import type { Options } from "../options";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import type { Options } from "../options.js";
+import { normalizeAndValidate } from "../functions/projectConfig.js";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",

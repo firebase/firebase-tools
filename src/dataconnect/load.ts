@@ -1,7 +1,7 @@
 import * as path from "path";
-import * as fileUtils from "./fileUtils";
-import { Config } from "../config";
-import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types";
+import * as fileUtils from "./fileUtils.js";
+import { Config } from "../config.js";
+import { ServiceInfo, toDatasource, SCHEMA_ID } from "./types.js";
 
 /**
  * loads schemas and connectors from  {sourceDirectory}/dataconnect.yaml

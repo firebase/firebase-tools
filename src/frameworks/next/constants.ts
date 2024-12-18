@@ -8,8 +8,8 @@ import type {
   ROUTES_MANIFEST as ROUTES_MANIFEST_TYPE,
   APP_PATHS_MANIFEST as APP_PATHS_MANIFEST_TYPE,
   SERVER_REFERENCE_MANIFEST as SERVER_REFERENCE_MANIFEST_TYPE,
-} from "next/constants";
-import type { WEBPACK_LAYERS as NEXTJS_WEBPACK_LAYERS } from "next/dist/lib/constants";
+} from "next/constants.js";
+import type { WEBPACK_LAYERS as NEXTJS_WEBPACK_LAYERS } from "next/dist/lib/constants.js";
 
 export const APP_PATH_ROUTES_MANIFEST: typeof APP_PATH_ROUTES_MANIFEST_TYPE =
   "app-path-routes-manifest.json";

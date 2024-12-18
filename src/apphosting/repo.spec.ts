@@ -1,14 +1,14 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
 
-import * as gcb from "../gcp/cloudbuild";
-import * as rm from "../gcp/resourceManager";
-import * as prompt from "../prompt";
-import * as poller from "../operation-poller";
-import * as repo from "./repo";
-import * as utils from "../utils";
-import * as srcUtils from "../getProjectNumber";
-import { FirebaseError } from "../error";
+import * as gcb from "../gcp/cloudbuild.js";
+import * as rm from "../gcp/resourceManager.js";
+import * as prompt from "../prompt.js";
+import * as poller from "../operation-poller.js";
+import * as repo from "./repo.js";
+import * as utils from "../utils.js";
+import * as srcUtils from "../getProjectNumber.js";
+import { FirebaseError } from "../error.js";
 
 const projectId = "projectId";
 const location = "us-central1";

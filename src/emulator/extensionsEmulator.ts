@@ -1,27 +1,25 @@
 import * as clc from "colorette";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-const Table = require("cli-table");
-
-import * as planner from "../deploy/extensions/planner";
-import { enableApiURI } from "../ensureApiEnabled";
-import { FirebaseError } from "../error";
-import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
-import { toExtensionVersionRef } from "../extensions/refs";
-import { Options } from "../options";
-import { shortenUrl } from "../shortenUrl";
-import { Constants } from "./constants";
-import { downloadExtensionVersion } from "./download";
-import { EmulatorLogger } from "./emulatorLogger";
-import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
-import { EmulatableBackend } from "./functionsEmulator";
-import { EmulatorRegistry } from "./registry";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
-import { Build } from "../deploy/functions/build";
-import { extractExtensionsFromBuilds } from "../extensions/runtimes/common";
-
+import * as planner from "../deploy/extensions/planner.js";
+import { enableApiURI } from "../ensureApiEnabled.js";
+import { FirebaseError } from "../error.js";
+import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper.js";
+import { toExtensionVersionRef } from "../extensions/refs.js";
+import { Options } from "../options.js";
+import { shortenUrl } from "../shortenUrl.js";
+import { Constants } from "./constants.js";
+import { downloadExtensionVersion } from "./download.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation.js";
+import { EmulatableBackend } from "./functionsEmulator.js";
+import { EmulatorRegistry } from "./registry.js";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types.js";
+import { Build } from "../deploy/functions/build.js";
+import { extractExtensionsFromBuilds } from "../extensions/runtimes/common.js";
+import Table from "cli-table";
 
 export interface ExtensionEmulatorArgs {
   options: Options;

@@ -5,7 +5,7 @@ import * as os from "os";
 import * as path from "path";
 import { rmSync } from "node:fs";
 
-import * as fsAsync from "./fsAsync";
+import * as fsAsync from "./fsAsync.js";
 
 // These tests work on the following directory structure:
 // <basedir>

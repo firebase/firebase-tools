@@ -1,5 +1,5 @@
-import * as backend from "./backend";
-import { serviceForEndpoint } from "./services";
+import * as backend from "./backend.js";
+import { serviceForEndpoint } from "./services/index.js";
 
 /**
  * Ensures the trigger regions are set and correct

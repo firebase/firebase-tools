@@ -1,7 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
-
 export enum Emulators {
   AUTH = "auth",
   HUB = "hub",

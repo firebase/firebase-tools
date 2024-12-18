@@ -1,14 +1,18 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
-
-import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
-import * as apphosting from "../../gcp/apphosting";
-import * as prompt from "../../prompt";
-import * as utils from "../../utils";
-import { logger } from "../../logger";
+import {
+  MultiServiceAccounts,
+  ServiceAccounts,
+  serviceAccountsForBackend,
+  toMulti,
+} from "./index.js";
+import * as apphosting from "../../gcp/apphosting.js";
+import * as prompt from "../../prompt.js";
+import * as utils from "../../utils.js";
+import { logger } from "../../logger.js";
 
 // TODO: Consider moving some of this into a common utility
-import * as env from "../../functions/env";
+import * as env from "../../functions/env.js";
+import Table from "cli-table";
 
 interface BackendMetadata {
   location: string;
@@ -178,8 +182,8 @@ export async function selectBackendServiceAccounts(
   const table = new Table({
     head: tableData[0],
     style: { head: ["green"] },
-    rows: tableData[1],
   });
+  table.push(...tableData[1]);
   logger.info(table.toString());
 
   const allAccounts = metadata.reduce((accum: Set<string>, row) => {

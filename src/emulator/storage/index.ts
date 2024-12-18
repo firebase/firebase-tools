@@ -1,24 +1,24 @@
 import { tmpdir } from "os";
-import * as utils from "../../utils";
-import { Constants } from "../constants";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
-import { createApp } from "./server";
-import { StorageLayer, StoredFile } from "./files";
-import { EmulatorLogger } from "../emulatorLogger";
-import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
-import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime";
-import { SourceFile } from "./rules/types";
-import * as express from "express";
+import * as utils from "../../utils.js";
+import { Constants } from "../constants.js";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../types.js";
+import { createApp } from "./server.js";
+import { StorageLayer, StoredFile } from "./files.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { createStorageRulesManager, StorageRulesManager } from "./rules/manager.js";
+import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime.js";
+import { SourceFile } from "./rules/types.js";
+import express from "express";
 import {
   getAdminCredentialValidator,
   getAdminOnlyFirebaseRulesValidator,
   getFirebaseRulesValidator,
   FirebaseRulesValidator,
-} from "./rules/utils";
-import { Persistence } from "./persistence";
-import { UploadService } from "./upload";
-import { CloudStorageBucketMetadata } from "./metadata";
-import { StorageCloudFunctions } from "./cloudFunctions";
+} from "./rules/utils.js";
+import { Persistence } from "./persistence.js";
+import { UploadService } from "./upload.js";
+import { CloudStorageBucketMetadata } from "./metadata.js";
+import { StorageCloudFunctions } from "./cloudFunctions.js";
 
 export type RulesConfig = {
   resource: string;

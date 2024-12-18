@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Endpoint } from "../backend";
-import * as remoteConfig from "./remoteConfig";
+import { Endpoint } from "../backend.js";
+import * as remoteConfig from "./remoteConfig.js";
 
 const projectNumber = "123456789";
 

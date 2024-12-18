@@ -1,7 +1,7 @@
-import { Constants } from "./emulator/constants";
-import { logger } from "./logger";
-import * as scopes from "./scopes";
-import * as utils from "./utils";
+import { Constants } from "./emulator/constants.js";
+import { logger } from "./logger.js";
+import * as scopes from "./scopes.js";
+import * as utils from "./utils.js";
 
 let commandScopes = new Set<string>();
 

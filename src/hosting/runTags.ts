@@ -1,8 +1,8 @@
 import { posix } from "node:path";
-import * as run from "../gcp/run";
-import * as api from "./api";
-import { FirebaseError } from "../error";
-import { flattenArray } from "../functional";
+import * as run from "../gcp/run.js";
+import * as api from "./api.js";
+import { FirebaseError } from "../error.js";
+import { flattenArray } from "../functional.js";
 
 /**
  * Sentinel to be used when creating an api.Rewrite with the tag option but

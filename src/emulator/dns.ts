@@ -1,6 +1,6 @@
 import { LookupAddress, LookupAllOptions, promises as dnsPromises } from "node:dns"; // Not using "dns/promises" for Node 14 compatibility.
 import { isIP } from "node:net";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 
 export const IPV4_LOOPBACK = { address: "127.0.0.1", family: 4 } as const;
 export const IPV6_LOOPBACK = { address: "::1", family: 6 } as const;

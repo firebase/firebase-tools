@@ -1,7 +1,7 @@
-import { Driver } from "../interfaces";
-import { LocalDriver } from "./local";
-import { DockerDriver } from "./docker";
-import { RuntimeSpec } from "../discover/types";
+import { Driver } from "../interfaces.js";
+import { LocalDriver } from "./local.js";
+import { DockerDriver } from "./docker.js";
+import { RuntimeSpec } from "../discover/types.js";
 
 export const SUPPORTED_MODES = ["local", "docker"] as const;
 export type Mode = (typeof SUPPORTED_MODES)[number];

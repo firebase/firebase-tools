@@ -1,14 +1,14 @@
-import { Uploader } from "./uploader";
-import { detectProjectRoot } from "../../detectProjectRoot";
-import { listFiles } from "../../listFiles";
-import { logger } from "../../logger";
-import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
+import { Uploader } from "./uploader.js";
+import { detectProjectRoot } from "../../detectProjectRoot.js";
+import { listFiles } from "../../listFiles.js";
+import { logger } from "../../logger.js";
+import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils.js";
 import { bold, cyan } from "colorette";
-import * as ora from "ora";
-import { Context, HostingDeploy } from "./context";
-import { Options } from "../../options";
-import { dirExistsSync } from "../../fsutils";
-import { FirebaseError } from "../../error";
+import ora from "ora";
+import { Context, HostingDeploy } from "./context.js";
+import { Options } from "../../options.js";
+import { dirExistsSync } from "../../fsutils.js";
+import { FirebaseError } from "../../error.js";
 
 /**
  * Uploads static assets to the upcoming Hosting versions.

@@ -2,18 +2,33 @@ import { resolve, join, dirname, basename } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 
-import * as fs from "../fsutils";
-import { NodeType } from "yaml/dist/nodes/Node";
-import * as prompt from "../prompt";
-import * as dialogs from "./secrets/dialogs";
-import { AppHostingYamlConfig } from "./yaml";
-import { FirebaseError } from "../error";
-import { promptForAppHostingYaml } from "./utils";
-import { fetchSecrets } from "./secrets";
-import { logger } from "../logger";
-import { updateOrCreateGitignore } from "../utils";
-import { getOrPromptProject } from "../management/projects";
+import * as fs from "../fsutils.js";
+import * as prompt from "../prompt.js";
+import * as dialogs from "./secrets/dialogs.js";
+import { AppHostingYamlConfig } from "./yaml.js";
+import { FirebaseError } from "../error.js";
+import { promptForAppHostingYaml } from "./utils.js";
+import { fetchSecrets } from "./secrets/index.js";
+import { logger } from "../logger.js";
+import { updateOrCreateGitignore } from "../utils.js";
+import { getOrPromptProject } from "../management/projects.js";
 
+// Copied from  "yaml/dist/nodes/Node.js" - we probably should not use this unexported type in the first place.
+export type NodeType<T> = T extends string | number | bigint | boolean | null | undefined
+  ? yaml.Scalar<T>
+  : T extends Date
+    ? yaml.Scalar<string | Date>
+    : T extends Array<any>
+      ? yaml.YAMLSeq<NodeType<T[number]>>
+      : T extends {
+            [key: string]: any;
+          }
+        ? yaml.YAMLMap<NodeType<keyof T>, NodeType<T[keyof T]>>
+        : T extends {
+              [key: number]: any;
+            }
+          ? yaml.YAMLMap<NodeType<keyof T>, NodeType<T[keyof T]>>
+          : Node;
 
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";

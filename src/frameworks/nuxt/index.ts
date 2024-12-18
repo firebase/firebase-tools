@@ -1,22 +1,26 @@
-import { copy, mkdirp, pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { readFile } from "fs/promises";
 import { join, posix } from "path";
 import { lt } from "semver";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { FrameworkType, SupportLevel } from "../interfaces";
-import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
-import { getNuxtVersion } from "./utils";
+import { FrameworkType, SupportLevel } from "../interfaces.js";
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
+  relativeRequire,
+} from "../utils.js";
+import { getNuxtVersion } from "./utils.js";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 export const supportedRange = "3";
 
-import { nuxtConfigFilesExist } from "./utils";
-import type { NuxtOptions } from "./interfaces";
-import { FirebaseError } from "../../error";
+import { nuxtConfigFilesExist } from "./utils.js";
+import type { NuxtOptions } from "./interfaces.js";
+import { FirebaseError } from "../../error.js";
 import { execSync } from "child_process";
-
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -26,7 +30,7 @@ const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
  * @return undefined if project is not Nuxt 2, { mayWantBackend: true, publicDirectory: string } otherwise
  */
 export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "package.json")))) return;
+  if (!(await fs.pathExists(join(dir, "package.json")))) return;
 
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
@@ -70,8 +74,8 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   } = await getConfig(root);
   const distPath = join(root, ".output", "public");
   const fullDest = join(dest, baseURL);
-  await mkdirp(fullDest);
-  await copy(distPath, fullDest);
+  await fs.mkdirp(fullDest);
+  await fs.copy(distPath, fullDest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string) {

@@ -1,10 +1,10 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { FirebaseError, getError } from "../error";
-import { logWarning } from "../utils";
-import * as apphosting from "../gcp/apphosting";
-import { printBackendsTable } from "./apphosting-backends-list";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { FirebaseError, getError } from "../error.js";
+import { logWarning } from "../utils.js";
+import * as apphosting from "../gcp/apphosting.js";
+import { printBackendsTable } from "./apphosting-backends-list.js";
 
 export const command = new Command("apphosting:backends:get <backend>")
   .description("print info about a Firebase App Hosting backend")

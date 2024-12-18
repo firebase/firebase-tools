@@ -1,14 +1,14 @@
 import * as path from "path";
 import * as clc from "colorette";
 
-import { FirebaseError } from "../../error";
-import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
-import { logger } from "../../logger";
-import * as fsutils from "../../fsutils";
-import * as backend from "./backend";
-import * as utils from "../../utils";
-import * as secrets from "../../functions/secrets";
-import { serviceForEndpoint } from "./services";
+import { FirebaseError } from "../../error.js";
+import { getSecretVersion, SecretVersion } from "../../gcp/secretManager.js";
+import { logger } from "../../logger.js";
+import * as fsutils from "../../fsutils.js";
+import * as backend from "./backend.js";
+import * as utils from "../../utils.js";
+import * as secrets from "../../functions/secrets.js";
+import { serviceForEndpoint } from "./services/index.js";
 
 function matchingIds(
   endpoints: backend.Endpoint[],

@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import requireInteractive from "../requireInteractive";
-import { createGitRepoLink } from "../apphosting/backend";
-import { ensureApiEnabled } from "../gcp/apphosting";
-import { APPHOSTING_TOS_ID } from "../gcp/firedata";
-import { requireTosAcceptance } from "../requireTosAcceptance";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import requireInteractive from "../requireInteractive.js";
+import { createGitRepoLink } from "../apphosting/backend.js";
+import { ensureApiEnabled } from "../gcp/apphosting.js";
+import { APPHOSTING_TOS_ID } from "../gcp/firedata.js";
+import { requireTosAcceptance } from "../requireTosAcceptance.js";
 
 export const command = new Command("apphosting:repos:create")
   .description("create a Firebase App Hosting Developer Connect Git Repository Link")

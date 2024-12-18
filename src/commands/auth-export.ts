@@ -2,11 +2,11 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as os from "os";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import { validateOptions, serialExportUsers } from "../accountExporter";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { validateOptions, serialExportUsers } from "../accountExporter.js";
 
 const MAX_BATCH_SIZE = 1000;
 

@@ -1,16 +1,17 @@
 import * as clc from "colorette";
 
-import * as gcb from "../gcp/cloudbuild";
-import * as rm from "../gcp/resourceManager";
-import * as poller from "../operation-poller";
-import * as utils from "../utils";
-import { cloudbuildOrigin } from "../api";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
-import { getProjectNumber } from "../getProjectNumber";
+import * as gcb from "../gcp/cloudbuild.js";
+import * as rm from "../gcp/resourceManager.js";
+import * as poller from "../operation-poller.js";
+import * as utils from "../utils.js";
+import { cloudbuildOrigin } from "../api.js";
+import { FirebaseError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { getProjectNumber } from "../getProjectNumber.js";
 
 import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
+import inquirer from "inquirer";
+import { DistinctChoice } from "inquirer";
 
 export interface ConnectionNameParts {
   projectId: string;
@@ -215,7 +216,7 @@ async function promptRepositoryUri(
     type: "autocomplete",
     name: "remoteUri",
     message: "Which GitHub repo do you want to deploy?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+    source: (_: any, input = ""): Promise<DistinctChoice[]> => {
       return new Promise((resolve) =>
         resolve([
           new inquirer.Separator(),

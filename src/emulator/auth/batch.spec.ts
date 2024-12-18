@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { decode as decodeJwt } from "jsonwebtoken";
-import { describeAuthEmulator } from "./testing/setup";
+import jsonwebtoken from "jsonwebtoken";
+import { describeAuthEmulator } from "./testing/setup.js";
 import {
   enrollPhoneMfa,
   expectStatusCode,
@@ -17,8 +17,8 @@ import {
   TEST_PHONE_NUMBER,
   updateAccountByLocalId,
   registerTenant,
-} from "./testing/helpers";
-import { UserInfo } from "./state";
+} from "./testing/helpers.js";
+import { UserInfo } from "./state.js";
 
 describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
   it("should allow listing all accounts", async () => {
@@ -201,7 +201,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     const user2SignIn = await signInWithPhoneNumber(authApi(), user2.phoneNumber);
     expect(user2SignIn.localId).to.equal(user2.localId);
 
-    expect(decodeJwt(user2SignIn.idToken, { json: true }) as any)
+    expect(jsonwebtoken.decode(user2SignIn.idToken, { json: true }) as any)
       .to.have.property("hello")
       .equal("world");
   });

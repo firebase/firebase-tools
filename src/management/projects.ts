@@ -1,15 +1,14 @@
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
-import { Client } from "../apiv2";
-import { FirebaseError, getErrStatus } from "../error";
-import { pollOperation } from "../operation-poller";
-import { Question, promptOnce } from "../prompt";
-import * as api from "../api";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project";
-
+import { Client } from "../apiv2.js";
+import { FirebaseError, getErrStatus } from "../error.js";
+import { pollOperation } from "../operation-poller.js";
+import { Question, promptOnce } from "../prompt.js";
+import * as api from "../api.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project/index.js";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -229,14 +228,14 @@ export async function promptAvailableProjectId(): Promise<string> {
   } else {
     const choices = projects
       .filter((p: CloudProjectInfo) => !!p)
-      .map((p) => {
+      .map((p: CloudProjectInfo) => {
         const projectId = getProjectId(p);
         return {
           name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
           value: projectId,
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
     return await promptOnce({
       type: "list",
       name: "id",

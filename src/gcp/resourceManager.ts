@@ -1,7 +1,6 @@
-import { findIndex } from "lodash";
-import { resourceManagerOrigin } from "../api";
-import { Client } from "../apiv2";
-import { Binding, getServiceAccount, Policy } from "./iam";
+import { resourceManagerOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { Binding, getServiceAccount, Policy } from "./iam.js";
 
 const API_VERSION = "v1";
 
@@ -79,8 +78,7 @@ export async function addServiceAccountToRoles(
   const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
 
   roles.forEach((roleName) => {
-    let bindingIndex = findIndex(
-      projectPolicy.bindings,
+    let bindingIndex = projectPolicy.bindings.findIndex(
       (binding: Binding) => binding.role === roleName,
     );
 

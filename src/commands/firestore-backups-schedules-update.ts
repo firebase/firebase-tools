@@ -1,15 +1,15 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { calculateRetention } from "../firestore/backupUtils";
-import { BackupSchedule, updateBackupSchedule } from "../gcp/firestore";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { PrettyPrint } from "../firestore/pretty-print";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { calculateRetention } from "../firestore/backupUtils.js";
+import { BackupSchedule, updateBackupSchedule } from "../gcp/firestore.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { PrettyPrint } from "../firestore/pretty-print.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("firestore:backups:schedules:update <backupSchedule>")
   .description("Update a backup schedule under your Cloud Firestore database.")

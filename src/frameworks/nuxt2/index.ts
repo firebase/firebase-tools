@@ -1,14 +1,13 @@
-import { copy, pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { readFile } from "fs/promises";
 import { basename, join, relative } from "path";
 import { gte } from "semver";
 
-import { SupportLevel, FrameworkType } from "../interfaces";
-import { getNodeModuleBin, relativeRequire } from "../utils";
-import { getNuxtVersion } from "../nuxt/utils";
-import { simpleProxy } from "../utils";
+import { SupportLevel, FrameworkType } from "../interfaces.js";
+import { getNodeModuleBin, relativeRequire } from "../utils.js";
+import { getNuxtVersion } from "../nuxt/utils.js";
+import { simpleProxy } from "../utils.js";
 import { spawn } from "cross-spawn";
-
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -28,7 +27,7 @@ async function getAndLoadNuxt(options: { rootDir: string; for: string }) {
  * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
  */
 export async function discover(rootDir: string) {
-  if (!(await pathExists(join(rootDir, "package.json")))) return;
+  if (!(await fs.pathExists(join(rootDir, "package.json")))) return;
   const version = getNuxtVersion(rootDir);
   if (!version || (version && gte(version, "3.0.0-0"))) return;
   return { mayWantBackend: true, version };
@@ -72,7 +71,7 @@ export async function ɵcodegenPublicDirectory(rootDir: string, dest: string) {
   const {
     app: { options },
   } = await getAndLoadNuxt({ rootDir, for: "build" });
-  await copy(options.generate.dir, dest);
+  await fs.copy(options.generate.dir, dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: string) {
@@ -89,10 +88,10 @@ export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: stri
   // with the same folder name (.firebase/<project-name>/functions/.nuxt).
   // This is because `loadNuxt` (called from `firebase-frameworks`) will only look
   // for the `.nuxt` directory in the destination directory.
-  await copy(buildDir, join(destDir, relative(rootDir, buildDir)));
+  await fs.copy(buildDir, join(destDir, relative(rootDir, buildDir)));
 
   // TODO pack this
-  await copy(configFilePath, join(destDir, basename(configFilePath)));
+  await fs.copy(configFilePath, join(destDir, basename(configFilePath)));
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
 }

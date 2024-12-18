@@ -2,22 +2,21 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import { randomBytes } from "crypto";
-import * as _ from "lodash";
-import * as express from "express";
+import _ from "lodash";
+import express from "express";
 import { CloudFunction } from "firebase-functions";
 
-import * as backend from "../deploy/functions/backend";
-import { Constants } from "./constants";
-import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
-import { ENV_DIRECTORY } from "../extensions/manifest";
-import { substituteParams } from "../extensions/extensionsHelper";
-import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
-import { replaceConsoleLinks } from "./extensions/postinstall";
-import { serviceForEndpoint } from "../deploy/functions/services";
-import { inferBlockingDetails } from "../deploy/functions/prepare";
-import * as events from "../functions/events";
-import { connectableHostname } from "../utils";
-
+import * as backend from "../deploy/functions/backend.js";
+import { Constants } from "./constants.js";
+import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator.js";
+import { ENV_DIRECTORY } from "../extensions/manifest.js";
+import { substituteParams } from "../extensions/extensionsHelper.js";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/types.js";
+import { replaceConsoleLinks } from "./extensions/postinstall.js";
+import { serviceForEndpoint } from "../deploy/functions/services/index.js";
+import { inferBlockingDetails } from "../deploy/functions/prepare.js";
+import * as events from "../functions/events/index.js";
+import { connectableHostname } from "../utils.js";
 
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [

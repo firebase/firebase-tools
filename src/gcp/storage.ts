@@ -2,11 +2,11 @@ import { Readable } from "stream";
 import * as path from "path";
 import * as clc from "colorette";
 
-import { firebaseStorageOrigin, storageOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { ensure } from "../ensureApiEnabled";
+import { firebaseStorageOrigin, storageOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { ensure } from "../ensureApiEnabled.js";
 
 /** Bucket Interface */
 interface BucketResponse {

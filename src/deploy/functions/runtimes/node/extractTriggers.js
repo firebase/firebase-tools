@@ -32,4 +32,4 @@ var extractTriggers = function (mod, triggers, prefix) {
   }
 };
 
-module.exports = extractTriggers;
+export default extractTriggers;

@@ -1,4 +1,4 @@
-import { FileSystem } from "./types";
+import { FileSystem } from "./types.js";
 
 export class MockFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};

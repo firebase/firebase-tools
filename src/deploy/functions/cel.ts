@@ -1,6 +1,6 @@
-import { FirebaseError } from "../../error";
-import { assertExhaustive } from "../../functional";
-import { ParamValue } from "./params";
+import { FirebaseError } from "../../error.js";
+import { assertExhaustive } from "../../functional.js";
+import { ParamValue } from "./params.js";
 
 type CelExpression = string;
 type IdentityExpression = CelExpression;

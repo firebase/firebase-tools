@@ -1,23 +1,23 @@
 import * as clc from "colorette";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as backend from "../deploy/functions/backend";
-import * as utils from "../utils";
-import * as proto from "./proto";
-import * as supported from "../deploy/functions/runtimes/supported";
-import * as iam from "./iam";
-import * as projectConfig from "../functions/projectConfig";
-import { Client } from "../apiv2";
-import { functionsOrigin } from "../api";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as utils from "../utils.js";
+import * as proto from "./proto.js";
+import * as supported from "../deploy/functions/runtimes/supported/index.js";
+import * as iam from "./iam.js";
+import * as projectConfig from "../functions/projectConfig.js";
+import { Client } from "../apiv2.js";
+import { functionsOrigin } from "../api.js";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
 import {
   BLOCKING_EVENT_TO_LABEL_KEY,
   BLOCKING_LABEL,
   BLOCKING_LABEL_KEY_TO_EVENT,
   CODEBASE_LABEL,
   HASH_LABEL,
-} from "../functions/constants";
+} from "../functions/constants.js";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin(), apiVersion: API_VERSION });

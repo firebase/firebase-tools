@@ -1,12 +1,12 @@
-import { readOrNull } from "../filesystem";
-import { FileSystem, FrameworkSpec, Runtime } from "../types";
-import { RuntimeSpec } from "../types";
-import { frameworkMatcher } from "../frameworkMatcher";
-import { LifecycleCommands } from "../types";
-import { Command } from "../types";
-import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../logger";
-import { conjoinOptions } from "../../../utils";
+import { readOrNull } from "../filesystem.js";
+import { FileSystem, FrameworkSpec, Runtime } from "../types.js";
+import { RuntimeSpec } from "../types.js";
+import { frameworkMatcher } from "../frameworkMatcher.js";
+import { LifecycleCommands } from "../types.js";
+import { Command } from "../types.js";
+import { FirebaseError } from "../../../../error.js";
+import { logger } from "../../../../logger.js";
+import { conjoinOptions } from "../../../utils.js";
 
 export interface PackageJSON {
   dependencies?: Record<string, string>;

@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
 import * as clc from "colorette";
 
-import * as utils from "../utils";
-import { promptOnce } from "../prompt";
-import { Options } from "../options";
-import { Account } from "../types/auth";
+import * as utils from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { Options } from "../options.js";
+import { Account } from "../types/auth/index.js";
 import {
   getAllAccounts,
   getGlobalDefaultAccount,
@@ -13,7 +13,7 @@ import {
   setRefreshToken,
   logout,
   setGlobalDefaultAccount,
-} from "../auth";
+} from "../auth.js";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")

@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import * as api from "../api";
-import { FirebaseError } from "../error";
-import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "./cloudmonitoring";
+import nock from "nock";
+import * as api from "../api.js";
+import { FirebaseError } from "../error.js";
+import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "./cloudmonitoring.js";
 
 const CLOUD_MONITORING_VERSION = "v3";
 const PROJECT_NUMBER = 1;

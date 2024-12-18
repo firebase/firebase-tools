@@ -1,17 +1,17 @@
 import * as clc from "colorette";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper.js";
+import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
 
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
-import { ExtensionSpec } from "../extensions/types";
+import { ExtensionSpec } from "../extensions/types.js";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 

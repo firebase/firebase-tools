@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tmpdir } from "os";
-import { findModuleRoot, FunctionsRuntimeBundle } from "../functionsEmulatorShared";
+import { findModuleRoot, FunctionsRuntimeBundle } from "../functionsEmulatorShared.js";
 
 export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;
@@ -10,7 +10,7 @@ export function createTmpDir(dirName: string) {
   return fs.mkdtempSync(path.join(tmpdir(), dirName));
 }
 
-export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
+export const MODULE_ROOT = findModuleRoot("firebase-tools", import.meta.dirname);
 export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } = {
   onCreate: {
     proto: {

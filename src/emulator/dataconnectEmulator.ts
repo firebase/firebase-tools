@@ -4,29 +4,29 @@ import { EventEmitter } from "events";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dataConnectLocalConnString } from "../api";
-import { Constants } from "./constants";
+import { dataConnectLocalConnString } from "../api.js";
+import { Constants } from "./constants.js";
 import {
   getPID,
   start,
   stop,
   downloadIfNecessary,
   isIncomaptibleArchError,
-} from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
-import { FirebaseError } from "../error";
-import { EmulatorLogger } from "./emulatorLogger";
-import { RC } from "../rc";
-import { BuildResult, requiresVector } from "../dataconnect/types";
-import { listenSpecsToString } from "./portUtils";
-import { Client, ClientResponse } from "../apiv2";
-import { EmulatorRegistry } from "./registry";
-import { logger } from "../logger";
-import { load } from "../dataconnect/load";
-import { Config } from "../config";
-import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
-import { cleanShutdown } from "./controller";
-import { connectableHostname } from "../utils";
+} from "./downloadableEmulators.js";
+import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { RC } from "../rc.js";
+import { BuildResult, requiresVector } from "../dataconnect/types.js";
+import { listenSpecsToString } from "./portUtils.js";
+import { Client, ClientResponse } from "../apiv2.js";
+import { EmulatorRegistry } from "./registry.js";
+import { logger } from "../logger.js";
+import { load } from "../dataconnect/load.js";
+import { Config } from "../config.js";
+import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer.js";
+import { cleanShutdown } from "./controller.js";
+import { connectableHostname } from "../utils.js";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;

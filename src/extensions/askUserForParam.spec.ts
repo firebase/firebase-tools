@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 import {
   ask,
@@ -7,13 +7,13 @@ import {
   checkResponse,
   getInquirerDefault,
   SecretLocation,
-} from "./askUserForParam";
-import * as utils from "../utils";
-import * as prompt from "../prompt";
-import { ParamType } from "./types";
-import * as extensionsHelper from "./extensionsHelper";
-import * as secretManagerApi from "../gcp/secretManager";
-import * as secretsUtils from "./secretsUtils";
+} from "./askUserForParam.js";
+import * as utils from "../utils.js";
+import * as prompt from "../prompt.js";
+import { ParamType } from "./types.js";
+import * as extensionsHelper from "./extensionsHelper.js";
+import * as secretManagerApi from "../gcp/secretManager.js";
+import * as secretsUtils from "./secretsUtils.js";
 
 describe("askUserForParam", () => {
   const testSpec = {

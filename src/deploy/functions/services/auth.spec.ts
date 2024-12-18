@@ -1,9 +1,9 @@
-import * as auth from "./auth";
-import * as backend from "../backend";
-import * as identityPlatform from "../../../gcp/identityPlatform";
-import * as sinon from "sinon";
+import * as auth from "./auth.js";
+import * as backend from "../backend.js";
+import * as identityPlatform from "../../../gcp/identityPlatform.js";
+import sinon from "sinon";
 import { expect } from "chai";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1.js";
 
 const BASE_EP = {
   id: "id",

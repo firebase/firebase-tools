@@ -1,11 +1,11 @@
 import { expect } from "chai";
 
-import * as specHelper from "./specHelper";
-import { Resource } from "../types";
-import { FirebaseError } from "../../error";
-import { Runtime } from "../../deploy/functions/runtimes/supported";
-import { FIXTURE_DIR as MINIMAL_EXT_DIR } from "../../test/fixtures/extension-yamls/minimal";
-import { FIXTURE_DIR as HELLO_WORLD_EXT_DIR } from "../../test/fixtures/extension-yamls/hello-world";
+import * as specHelper from "./specHelper.js";
+import { Resource } from "../types.js";
+import { FirebaseError } from "../../error.js";
+import { Runtime } from "../../deploy/functions/runtimes/supported/index.js";
+import { FIXTURE_DIR as MINIMAL_EXT_DIR } from "../../test/fixtures/extension-yamls/minimal/index.js";
+import { FIXTURE_DIR as HELLO_WORLD_EXT_DIR } from "../../test/fixtures/extension-yamls/hello-world/index.js";
 
 const testResource: Resource = {
   name: "test-resource",

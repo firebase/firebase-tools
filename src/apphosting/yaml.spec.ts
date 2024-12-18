@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { AppHostingYamlConfig } from "./yaml";
+import { AppHostingYamlConfig } from "./yaml.js";
 
 describe("yaml", () => {
   describe("environment variables", () => {

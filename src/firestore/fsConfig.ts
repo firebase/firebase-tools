@@ -1,6 +1,6 @@
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { Options } from "../options";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
 
 export interface ParsedFirestoreConfig {
   database: string;

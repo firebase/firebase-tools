@@ -2,7 +2,6 @@ import { expect } from "chai";
 
 import { CLIProcess } from "../integration-helpers/cli";
 
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
 const TEST_SETUP_TIMEOUT_MS = 10000;

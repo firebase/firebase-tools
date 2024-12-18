@@ -1,10 +1,10 @@
+import url from "url";
+import extractTriggers from "./extractTriggers.js";
+
 // This is an independently executed script that parses triggers
 // from a functions package directory.
 
-"use strict";
-
-var url = require("url");
-var extractTriggers = require("./extractTriggers");
+("use strict");
 var EXIT = function () {
   process.exit(0);
 };

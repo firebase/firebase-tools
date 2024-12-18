@@ -10,7 +10,6 @@ import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
 
-
 // Set these flags to control test behavior.
 const TEST_CONFIG = {
   // Set this to true to use production servers

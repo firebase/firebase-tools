@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as serviceUsage from "./serviceusage";
-import * as poller from "../operation-poller";
+import sinon from "sinon";
+import * as serviceUsage from "./serviceusage.js";
+import * as poller from "../operation-poller.js";
 
 describe("serviceusage", () => {
   let postStub: sinon.SinonStub;

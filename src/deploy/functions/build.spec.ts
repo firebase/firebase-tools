@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as build from "./build";
-import { ParamValue, Param } from "./params";
-import { FirebaseError } from "../../error";
+import * as build from "./build.js";
+import { ParamValue, Param } from "./params.js";
+import { FirebaseError } from "../../error.js";
 
 describe("toBackend", () => {
   it("populates backend info from Build", () => {

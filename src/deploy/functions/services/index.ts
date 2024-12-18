@@ -1,13 +1,13 @@
-import * as backend from "../backend";
-import * as iam from "../../../gcp/iam";
-import * as events from "../../../functions/events";
-import { AuthBlockingService } from "./auth";
-import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
-import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { ensureDatabaseTriggerRegion } from "./database";
-import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
-import { ensureTestLabTriggerRegion } from "./testLab";
-import { ensureFirestoreTriggerRegion } from "./firestore";
+import * as backend from "../backend.js";
+import * as iam from "../../../gcp/iam.js";
+import * as events from "../../../functions/events/index.js";
+import { AuthBlockingService } from "./auth.js";
+import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage.js";
+import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts.js";
+import { ensureDatabaseTriggerRegion } from "./database.js";
+import { ensureRemoteConfigTriggerRegion } from "./remoteConfig.js";
+import { ensureTestLabTriggerRegion } from "./testLab.js";
+import { ensureFirestoreTriggerRegion } from "./firestore.js";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();

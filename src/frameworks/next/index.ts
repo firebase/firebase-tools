@@ -3,23 +3,23 @@ import { spawn } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
-import type { PrerenderManifest } from "next/dist/build";
-import type { DomainLocale } from "next/dist/server/config";
-import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists, pathExistsSync, readFile } from "fs-extra";
+import type { PrerenderManifest } from "next/dist/build/index.js";
+import type { DomainLocale } from "next/dist/server/config.js";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin.js";
+import * as fs from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
-import { chain } from "stream-chain";
-import { parser } from "stream-json";
-import { pick } from "stream-json/filters/Pick";
-import { streamObject } from "stream-json/streamers/StreamObject";
-import { fileExistsSync } from "../../fsutils";
+import chain from "stream-chain";
+import parser from "stream-json";
+import * as pick from "stream-json/filters/Pick.js";
+import * as streamObject from "stream-json/streamers/StreamObject.js";
+import { fileExistsSync } from "../../fsutils.js";
 
-import { promptOnce } from "../../prompt";
-import { FirebaseError } from "../../error";
-import type { EmulatorInfo } from "../../emulator/types";
+import { promptOnce } from "../../prompt.js";
+import { FirebaseError } from "../../error.js";
+import type { EmulatorInfo } from "../../emulator/types.js";
 import {
   readJSON,
   simpleProxy,
@@ -28,14 +28,14 @@ import {
   findDependency,
   validateLocales,
   getNodeModuleBin,
-} from "../utils";
+} from "../utils.js";
 import {
   BuildResult,
   Framework,
   FrameworkContext,
   FrameworkType,
   SupportLevel,
-} from "../interfaces";
+} from "../interfaces.js";
 
 import {
   cleanEscapedChars,
@@ -58,8 +58,13 @@ import {
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
-} from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
+} from "./utils.js";
+import {
+  NODE_VERSION,
+  NPM_COMMAND_TIMEOUT_MILLIES,
+  SHARP_VERSION,
+  I18N_ROOT,
+} from "../constants.js";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -69,7 +74,7 @@ import type {
   MiddlewareManifest,
   ActionManifest,
   CustomBuildOptions,
-} from "./interfaces";
+} from "./interfaces.js";
 import {
   MIDDLEWARE_MANIFEST,
   PAGES_MANIFEST,
@@ -79,11 +84,10 @@ import {
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
   ESBUILD_VERSION,
-} from "./constants";
-import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
-import { logger } from "../../logger";
-import { parseStrict } from "../../functions/env";
-
+} from "./constants.js";
+import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api.js";
+import { logger } from "../../logger.js";
+import { parseStrict } from "../../functions/env.js";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -105,7 +109,7 @@ function getReactVersion(cwd: string): string | undefined {
  * Returns whether this codebase is a Next.js backend.
  */
 export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "package.json")))) return;
+  if (!(await fs.pathExists(join(dir, "package.json")))) return;
   const version = getNextVersion(dir);
   if (!(await whichNextConfigFile(dir)) && !version) return;
 
@@ -134,8 +138,8 @@ export async function build(
   if (context?.projectId) {
     const projectEnvPath = join(dir, `.env.${context.projectId}`);
 
-    if (await pathExists(projectEnvPath)) {
-      const projectEnvVars = parseStrict((await readFile(projectEnvPath)).toString());
+    if (await fs.pathExists(projectEnvPath)) {
+      const projectEnvVars = parseStrict((await fs.readFile(projectEnvPath)).toString());
 
       // Merge the parsed variables with the existing environment variables
       env = { ...projectEnvVars, ...env };
@@ -412,10 +416,10 @@ export async function ɵcodegenPublicDirectory(
 
   const publicPath = join(sourceDir, "public");
   await mkdir(join(destDir, basePath, "_next", "static"), { recursive: true });
-  if (await pathExists(publicPath)) {
-    await copy(publicPath, join(destDir, basePath));
+  if (await fs.pathExists(publicPath)) {
+    await fs.copy(publicPath, join(destDir, basePath));
   }
-  await copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
+  await fs.copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
 
   const [
     middlewareManifest,
@@ -561,7 +565,7 @@ export async function ɵcodegenPublicDirectory(
         fileExistsSync(`${sourcePath}.body`)
       ) {
         sourcePath += ".body";
-      } else if (!pathExistsSync(sourcePath)) {
+      } else if (!fs.pathExistsSync(sourcePath)) {
         console.error(`Cannot find ${path} in your compiled Next.js application.`);
         return;
       }
@@ -606,11 +610,11 @@ export async function ɵcodegenFunctionsDirectory(
     try {
       // Check if esbuild is installed using `npx which`, if not, install it
       let esbuildPath = findEsbuildPath();
-      if (!esbuildPath || !pathExistsSync(esbuildPath)) {
+      if (!esbuildPath || !fs.pathExistsSync(esbuildPath)) {
         console.warn("esbuild not found, installing...");
         installEsbuild(ESBUILD_VERSION);
         esbuildPath = findEsbuildPath();
-        if (!esbuildPath || !pathExistsSync(esbuildPath)) {
+        if (!esbuildPath || !fs.pathExistsSync(esbuildPath)) {
           throw new FirebaseError("Failed to locate esbuild after installation.");
         }
       }
@@ -627,11 +631,11 @@ export async function ɵcodegenFunctionsDirectory(
           cwd: sourceDir,
           timeout: NPM_COMMAND_TIMEOUT_MILLIES,
         });
-        const pipeline = chain([
+        const pipeline = chain.chain([
           npmLs.stdout,
-          parser({ packValues: false, packKeys: true, streamValues: false }),
-          pick({ filter: "dependencies" }),
-          streamObject(),
+          parser.parser({ packValues: false, packKeys: true, streamValues: false }),
+          pick.pick({ filter: "dependencies" }),
+          streamObject.streamObject(),
           ({ key, value }: { key: string; value: NpmLsDepdendency }) => [
             key,
             ...allDependencyNames(value),
@@ -669,12 +673,12 @@ export async function ɵcodegenFunctionsDirectory(
         `Unable to bundle ${configFile} for use in Cloud Functions, proceeding with deploy but problems may be encountered.`,
       );
       console.error(e.message || e);
-      await copy(join(sourceDir, configFile), join(destDir, configFile));
+      await fs.copy(join(sourceDir, configFile), join(destDir, configFile));
     }
   }
-  if (await pathExists(join(sourceDir, "public"))) {
+  if (await fs.pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));
-    await copy(join(sourceDir, "public"), join(destDir, "public"));
+    await fs.copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
   // Add the `sharp` library if app is using image optimization
@@ -700,12 +704,12 @@ export async function ɵcodegenFunctionsDirectory(
 
   const [productionDistDirfiles] = await Promise.all([
     getProductionDistDirFiles(sourceDir, distDir),
-    mkdirp(join(destDir, distDir)),
+    fs. mkdirp(join(destDir, distDir)),
   ]);
 
   await Promise.all(
     productionDistDirfiles.map((file) =>
-      copy(join(sourceDir, distDir, file), join(destDir, distDir, file), {
+      fs.copy(join(sourceDir, distDir, file), join(destDir, distDir, file), {
         recursive: true,
       }),
     ),

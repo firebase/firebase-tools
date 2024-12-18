@@ -1,8 +1,8 @@
-import { pathExists } from "fs-extra";
+import * as fs from "fs-extra";
 import { join } from "path";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators } from "../types";
-import { FirebaseError } from "../../error";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { Emulators } from "../types.js";
+import { FirebaseError } from "../../error.js";
 
 export const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 
@@ -17,15 +17,15 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
  * @returns PackageManager
  */
 export async function detectPackageManager(rootdir: string): Promise<PackageManager> {
-  if (await pathExists(join(rootdir, "pnpm-lock.yaml"))) {
+  if (await fs.pathExists(join(rootdir, "pnpm-lock.yaml"))) {
     return "pnpm";
   }
 
-  if (await pathExists(join(rootdir, "yarn.lock"))) {
+  if (await fs.pathExists(join(rootdir, "yarn.lock"))) {
     return "yarn";
   }
 
-  if (await pathExists(join(rootdir, "package-lock.json"))) {
+  if (await fs.pathExists(join(rootdir, "package-lock.json"))) {
     return "npm";
   }
 

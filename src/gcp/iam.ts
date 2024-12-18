@@ -1,8 +1,7 @@
-import { resourceManagerOrigin, iamOrigin } from "../api";
-import { logger } from "../logger";
-import { Client } from "../apiv2";
-import * as utils from "../utils";
-
+import { resourceManagerOrigin, iamOrigin } from "../api.js";
+import { logger } from "../logger.js";
+import { Client } from "../apiv2.js";
+import * as utils from "../utils.js";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 

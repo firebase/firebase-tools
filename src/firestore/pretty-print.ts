@@ -1,12 +1,11 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
-
-import * as sort from "./api-sort";
-import * as types from "./api-types";
-import { logger } from "../logger";
-import * as util from "./util";
-import { consoleUrl } from "../utils";
-import { Backup, BackupSchedule } from "../gcp/firestore";
+import * as sort from "./api-sort.js";
+import * as types from "./api-types.js";
+import { logger } from "../logger.js";
+import * as util from "./util.js";
+import { consoleUrl } from "../utils.js";
+import { Backup, BackupSchedule } from "../gcp/firestore.js";
+import Table from "cli-table";
 
 export class PrettyPrint {
   /**

@@ -1,18 +1,18 @@
 import { bold, yellow } from "colorette";
 
-import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
-import { Command } from "../command";
-import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { FirebaseError } from "../error";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
-import { requireConfig } from "../requireConfig";
+import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api.js";
+import { Command } from "../command.js";
+import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils.js";
+import { FirebaseError } from "../error.js";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import { requireConfig } from "../requireConfig.js";
 import { marked } from "marked";
-import { requireHostingSite } from "../requireHostingSite";
-import { errNoDefaultSite } from "../getDefaultHostingSite";
+import { requireHostingSite } from "../requireHostingSite.js";
+import { errNoDefaultSite } from "../getDefaultHostingSite.js";
 
 const LOG_TAG = "hosting:channel";
 

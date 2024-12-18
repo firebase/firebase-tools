@@ -1,15 +1,15 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { convertConfig } from "./convertConfig";
-import * as backend from "../functions/backend";
-import { Context, HostingDeploy } from "./context";
-import { HostingSingle } from "../../firebaseConfig";
-import * as api from "../../hosting/api";
-import { FirebaseError } from "../../error";
-import { Payload } from "../functions/args";
-import * as runTags from "../../hosting/runTags";
-import * as experiments from "../../experiments";
+import { convertConfig } from "./convertConfig.js";
+import * as backend from "../functions/backend.js";
+import { Context, HostingDeploy } from "./context.js";
+import { HostingSingle } from "../../firebaseConfig.js";
+import * as api from "../../hosting/api.js";
+import { FirebaseError } from "../../error.js";
+import { Payload } from "../functions/args.js";
+import * as runTags from "../../hosting/runTags.js";
+import * as experiments from "../../experiments.js";
 
 const FUNCTION_ID = "functionId";
 const SERVICE_ID = "function-id";

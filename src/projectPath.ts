@@ -1,6 +1,6 @@
 import * as path from "path";
-import { detectProjectRoot } from "./detectProjectRoot";
-import { FirebaseError } from "./error";
+import { detectProjectRoot } from "./detectProjectRoot.js";
+import { FirebaseError } from "./error.js";
 
 /**
  * Returns a fully qualified path to the wanted file/directory inside the project.

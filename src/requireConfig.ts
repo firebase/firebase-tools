@@ -1,5 +1,5 @@
-import { FirebaseError } from "./error";
-import { Options } from "./options";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 /**
  * Rejects if there is no config in `options`.

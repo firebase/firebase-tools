@@ -1,10 +1,10 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
-import { Constants } from "./constants";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types.js";
+import { Constants } from "./constants.js";
 import { SPLAT } from "triple-beam";
 import * as WebSocket from "ws";
 import { LogEntry } from "winston";
-import * as TransportStream from "winston-transport";
-import { logger } from "../logger";
+import TransportStream from "winston-transport";
+import { logger } from "../logger.js";
 import { stripVTControlCharacters } from "node:util";
 import { setImmediate } from "node:timers";
 
@@ -86,7 +86,7 @@ class WebSocketTransport extends TransportStream {
 
   start(options: EmulatorInfo) {
     this.wss = new WebSocket.Server(options);
-    this.wss.on("connection", (ws) => {
+    this.wss.on("connection", (ws: WebSocket) => {
       this.connections.add(ws);
       ws.once("close", () => this.connections.delete(ws));
       this.history.forEach((bundle) => {

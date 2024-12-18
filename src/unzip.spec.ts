@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as fs from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
-import { unzip } from "./unzip";
-import { ZIP_CASES } from "./test/fixtures/zip-files";
+import { unzip } from "./unzip.js";
+import { ZIP_CASES } from "./test/fixtures/zip-files/index.js";
 
 describe("unzip", () => {
   let tempDir: string;

@@ -1,7 +1,7 @@
-import { FrameworkType } from "../interfaces";
-import { initViteTemplate, viteDiscoverWithNpmDependency } from "../vite";
+import { FrameworkType } from "../interfaces.js";
+import { initViteTemplate, viteDiscoverWithNpmDependency } from "../vite/index.js";
 
-export * from "../vite";
+export * from "../vite/index.js";
 
 export const name = "Lit";
 export const type = FrameworkType.Framework;

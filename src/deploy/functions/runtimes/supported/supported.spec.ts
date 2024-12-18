@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as supported from ".";
-import * as utils from "../../../../utils";
-import * as sinon from "sinon";
-import { FirebaseError } from "../../../../error";
+import * as supported from "./index.js";
+import * as utils from "../../../../utils.js";
+import sinon from "sinon";
+import { FirebaseError } from "../../../../error.js";
 
 describe("supported runtimes", () => {
   it("sorts latest numerically, not lexographically", () => {

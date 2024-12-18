@@ -1,15 +1,15 @@
-import { logger } from "../../logger";
-import * as utils from "../../utils";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
 import {
   getAllAccounts,
   loginAdditionalAccount,
   setActiveAccount,
   findAccountByEmail,
   setProjectAccount,
-} from "../../auth";
-import { Account } from "../../types/auth";
-import { promptOnce } from "../../prompt";
-import { FirebaseError } from "../../error";
+} from "../../auth.js";
+import { Account } from "../../types/auth/index.js";
+import { promptOnce } from "../../prompt.js";
+import { FirebaseError } from "../../error.js";
 
 async function promptForAccount() {
   logger.info();

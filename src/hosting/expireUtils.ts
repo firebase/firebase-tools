@@ -1,5 +1,5 @@
-import { FirebaseError } from "../error";
-import { HostingOptions } from "./options";
+import { FirebaseError } from "../error.js";
+import { HostingOptions } from "./options.js";
 
 /**
  * A regex to test for valid duration strings.

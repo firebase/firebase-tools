@@ -1,7 +1,7 @@
 import * as semver from "semver";
-import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring";
-import { Bucket, BucketedMetric } from "./metricsTypeDef";
-import * as refs from "./refs";
+import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring.js";
+import { Bucket, BucketedMetric } from "./metricsTypeDef.js";
+import * as refs from "./refs.js";
 import * as clc from "colorette";
 
 /**

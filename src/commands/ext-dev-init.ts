@@ -1,14 +1,14 @@
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { Config } from "../config";
-import { FirebaseError, getErrMsg, getError } from "../error";
-import { promptOnce } from "../prompt";
-import { logger } from "../logger";
-import * as npmDependencies from "../init/features/functions/npm-dependencies";
-import { readTemplateSync } from "../templates";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { Config } from "../config.js";
+import { FirebaseError, getErrMsg, getError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { logger } from "../logger.js";
+import * as npmDependencies from "../init/features/functions/npm-dependencies.js";
+import { readTemplateSync } from "../templates.js";
 
 marked.use(markedTerminal() as any);
 

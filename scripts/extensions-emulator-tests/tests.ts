@@ -6,7 +6,6 @@ import * as path from "path";
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
 /*

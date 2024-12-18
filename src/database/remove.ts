@@ -1,8 +1,8 @@
 import * as pathLib from "path";
 
-import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
-import { ListRemote, RTDBListRemote } from "./listRemote";
-import { Stack } from "../throttler/stack";
+import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote.js";
+import { ListRemote, RTDBListRemote } from "./listRemote.js";
+import { Stack } from "../throttler/stack.js";
 
 function chunkList<T>(ls: T[], chunkSize: number): T[][] {
   const chunks = [];

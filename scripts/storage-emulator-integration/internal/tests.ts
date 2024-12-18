@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import { StorageRulesFiles } from "../../../src/emulator/testing/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
 import {
@@ -8,7 +8,6 @@ import {
   readEmulatorConfig,
   TEST_SETUP_TIMEOUT,
 } from "../utils";
-
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
 const EMULATOR_CONFIG = readEmulatorConfig();

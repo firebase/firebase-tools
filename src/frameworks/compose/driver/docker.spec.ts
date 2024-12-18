@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { DockerfileBuilder } from "./docker";
+import { DockerfileBuilder } from "./docker.js";
 
 describe("DockerfileBuilder", () => {
   describe("from", () => {

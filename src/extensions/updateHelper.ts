@@ -1,18 +1,18 @@
 import * as clc from "colorette";
 import * as semver from "semver";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as extensionsApi from "./extensionsApi";
-import { ExtensionSource, ExtensionSpec } from "./types";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as extensionsApi from "./extensionsApi.js";
+import { ExtensionSource, ExtensionSpec } from "./types.js";
 import {
   createSourceFromLocation,
   logPrefix,
   SourceOrigin,
   isLocalOrURLPath,
-} from "./extensionsHelper";
-import * as utils from "../utils";
-import { displayExtensionVersionInfo } from "./displayExtensionInfo";
+} from "./extensionsHelper.js";
+import * as utils from "../utils.js";
+import { displayExtensionVersionInfo } from "./displayExtensionInfo.js";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(

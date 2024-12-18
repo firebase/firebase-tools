@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   registerUser,
@@ -9,7 +9,7 @@ import {
   inspectOobs,
   registerTenant,
   updateConfig,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
   it("should generate OOB code for verify email", async () => {

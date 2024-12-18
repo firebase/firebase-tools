@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
-import * as rtdb from "../../rtdb";
-import * as utils from "../../utils";
+import * as rtdb from "../../rtdb.js";
+import * as utils from "../../utils.js";
 
 export function release(context: any): Promise<any> {
   if (

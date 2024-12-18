@@ -1,6 +1,6 @@
-import { Runtime, FileSystem, FrameworkSpec, RuntimeSpec } from "./types";
-import { NodejsRuntime } from "./runtime/node";
-import { FirebaseError } from "../../../error";
+import { Runtime, FileSystem, FrameworkSpec, RuntimeSpec } from "./types.js";
+import { NodejsRuntime } from "./runtime/node.js";
+import { FirebaseError } from "../../../error.js";
 
 const supportedRuntimes: Runtime[] = [new NodejsRuntime()];
 

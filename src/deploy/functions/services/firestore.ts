@@ -1,6 +1,6 @@
-import * as backend from "../backend";
-import * as firestore from "../../../gcp/firestore";
-import { FirebaseError } from "../../../error";
+import * as backend from "../backend.js";
+import * as firestore from "../../../gcp/firestore.js";
+import { FirebaseError } from "../../../error.js";
 
 const dbCache = new Map<string, firestore.Database>();
 

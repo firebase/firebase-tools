@@ -1,25 +1,25 @@
 import * as fs from "fs-extra";
 
-import { Command } from "../command";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
-import { AppDistributionClient } from "../appdistribution/client";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
+import { AppDistributionClient } from "../appdistribution/client.js";
 import {
   AabInfo,
   IntegrationState,
   UploadReleaseResult,
   TestDevice,
   ReleaseTest,
-} from "../appdistribution/types";
-import { FirebaseError, getErrMsg, getErrStatus } from "../error";
-import { Distribution, DistributionFileType } from "../appdistribution/distribution";
+} from "../appdistribution/types.js";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error.js";
+import { Distribution, DistributionFileType } from "../appdistribution/distribution.js";
 import {
   ensureFileExists,
   getAppName,
   getLoginCredential,
   parseTestDevices,
   parseIntoStringArray,
-} from "../appdistribution/options-parser-util";
+} from "../appdistribution/options-parser-util.js";
 
 const TEST_MAX_POLLING_RETRIES = 40;
 const TEST_POLLING_INTERVAL_MILLIS = 30_000;

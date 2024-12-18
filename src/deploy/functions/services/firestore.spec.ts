@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import { ensureFirestoreTriggerRegion } from "./firestore";
-import * as firestore from "../../../gcp/firestore";
+import sinon from "sinon";
+import { ensureFirestoreTriggerRegion } from "./firestore.js";
+import * as firestore from "../../../gcp/firestore.js";
 
 const projectNumber = "123456789";
 

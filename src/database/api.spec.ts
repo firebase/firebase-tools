@@ -1,8 +1,7 @@
 import { expect } from "chai";
 
-import * as utils from "../utils";
-import { realtimeOriginOrEmulatorOrCustomUrl, realtimeOriginOrCustomUrl } from "./api";
-
+import * as utils from "../utils.js";
+import { realtimeOriginOrEmulatorOrCustomUrl, realtimeOriginOrCustomUrl } from "./api.js";
 
 describe("api", () => {
   afterEach(() => {

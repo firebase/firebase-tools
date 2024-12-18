@@ -1,6 +1,5 @@
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
-
 
 // NOTE: This code duplicates scripts/integration-helpers/cli.ts.
 // There are minor differences in handling stdout/stderr that triggered forking of the code,

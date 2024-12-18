@@ -1,7 +1,7 @@
-import { rulesOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { rulesOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 const API_VERSION = "v1";
 

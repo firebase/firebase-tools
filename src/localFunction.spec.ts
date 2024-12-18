@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import LocalFunction from "./localFunction";
-import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared";
-import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell";
+import LocalFunction from "./localFunction.js";
+import { EmulatedTriggerDefinition } from "./emulator/functionsEmulatorShared.js";
+import { FunctionsEmulatorShell } from "./emulator/functionsEmulatorShell.js";
 
 const EMULATED_TRIGGER: EmulatedTriggerDefinition = {
   id: "fn",

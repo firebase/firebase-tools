@@ -1,13 +1,12 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as path from "path";
 
-import * as node from ".";
-import * as versioning from "./versioning";
-import * as utils from "../../../../utils";
-import { FirebaseError } from "../../../../error";
-import { Runtime } from "../supported";
-
+import * as node from "./index.js";
+import * as versioning from "./versioning.js";
+import * as utils from "../../../../utils.js";
+import { FirebaseError } from "../../../../error.js";
+import { Runtime } from "../supported/index.js";
 
 const PROJECT_ID = "test-project";
 const PROJECT_DIR = "/some/path";

@@ -1,9 +1,9 @@
-import * as supported from "../../deploy/functions/runtimes/supported";
-import { ExtensionSpec, Resource } from "../types";
-import { FirebaseError } from "../../error";
-import { substituteParams } from "../extensionsHelper";
-import { getResourceRuntime } from "../utils";
-import { readFileFromDirectory, wrappedSafeLoad } from "../../utils";
+import * as supported from "../../deploy/functions/runtimes/supported/index.js";
+import { ExtensionSpec, Resource } from "../types.js";
+import { FirebaseError } from "../../error.js";
+import { substituteParams } from "../extensionsHelper.js";
+import { getResourceRuntime } from "../utils.js";
+import { readFileFromDirectory, wrappedSafeLoad } from "../../utils.js";
 
 const SPEC_FILE = "extension.yaml";
 const POSTINSTALL_FILE = "POSTINSTALL.md";

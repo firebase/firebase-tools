@@ -1,8 +1,8 @@
 import { URLSearchParams } from "url";
-import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
-import * as express from "express";
+import jsonwebtoken from "jsonwebtoken";
+import express from "express";
 import fetch from "node-fetch";
-import AbortController from "abort-controller";
+import { AbortController } from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,
@@ -15,10 +15,10 @@ import {
   MakeRequired,
   isValidPhoneNumber,
   randomBase64UrlStr,
-} from "./utils";
-import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors";
-import { Emulators } from "../types";
-import { EmulatorLogger } from "../emulatorLogger";
+} from "./utils.js";
+import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors.js";
+import { Emulators } from "../types.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
 import {
   ProjectState,
   OobRequestType,
@@ -36,8 +36,8 @@ import {
   TenantProjectState,
   MfaConfig,
   BlockingFunctionEvents,
-} from "./state";
-import { MfaEnrollments, Schemas } from "./types";
+} from "./state.js";
+import { MfaEnrollments, Schemas } from "./types.js";
 import { Buffer } from "node:buffer";
 
 /**
@@ -672,7 +672,7 @@ function createSessionCookie(
   const { payload } = parseIdToken(state, reqBody.idToken);
   const issuedAt = toUnixTimestamp(new Date());
   const expiresAt = issuedAt + validDuration;
-  const sessionCookie = signJwt(
+  const sessionCookie = jsonwebtoken.sign(
     {
       ...payload,
       iat: issuedAt,
@@ -1367,8 +1367,8 @@ function signInWithCustomToken(
     }
     // Don't check payload.aud for JSON strings, making them easier to construct.
   } else {
-    const decoded = decodeJwt(reqBody.token, { complete: true }) as unknown as {
-      header: JwtHeader;
+    const decoded = jsonwebtoken.decode(reqBody.token, { complete: true }) as unknown as {
+      header: jsonwebtoken.JwtHeader;
       payload: typeof payload;
     } | null;
     if (state instanceof TenantProjectState) {
@@ -2367,8 +2367,8 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
-  const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-    header: JwtHeader;
+  const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+    header: jsonwebtoken.JwtHeader;
     payload: FirebaseJwtPayload;
   } | null;
   assert(decoded, "INVALID_ID_TOKEN");
@@ -2467,7 +2467,7 @@ function generateJwt(
     },
   };
 
-  const jwtStr = signJwt(
+  const jwtStr = jsonwebtoken.sign(
     customPayloadFields,
     // secretOrPrivateKey is required for jsonwebtoken v9, see
     // https://github.com/auth0/node-jsonwebtoken/wiki/Migration-Notes:-v8-to-v9
@@ -2649,7 +2649,7 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
       );
     }
   } else {
-    const decoded = decodeJwt(idTokenOrJsonClaims, { json: true }) as any;
+    const decoded = jsonwebtoken.decode(idTokenOrJsonClaims, { json: true }) as any;
     if (!decoded) {
       return undefined;
     }
@@ -3329,7 +3329,7 @@ function generateBlockingFunctionJwt(
     jwt.oauth_refresh_token = oauthTokens.oauthRefreshToken;
   }
 
-  const jwtStr = signJwt(jwt, "fake-secret", {
+  const jwtStr = jsonwebtoken.sign(jwt, "fake-secret", {
     algorithm: "none",
   });
 
@@ -3337,7 +3337,7 @@ function generateBlockingFunctionJwt(
 }
 
 export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
-  const decoded = decodeJwt(jwt, { json: true }) as any as BlockingFunctionsJwtPayload;
+  const decoded = jsonwebtoken.decode(jwt, { json: true }) as any as BlockingFunctionsJwtPayload;
   assert(decoded, "((Invalid blocking function jwt.))");
   assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
   assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");

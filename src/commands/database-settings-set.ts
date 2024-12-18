@@ -1,16 +1,16 @@
 import { URL } from "url";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
-import { Emulators } from "../emulator/types";
-import { FirebaseError, getError } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { realtimeOriginOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError, getError } from "../error.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { realtimeOriginOrCustomUrl } from "../database/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("database:settings:set <path> <value>")
   .description("set the realtime database setting at path.")

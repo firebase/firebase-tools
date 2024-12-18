@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../api";
-import * as tos from "./tos";
+import * as api from "../api.js";
+import * as tos from "./tos.js";
 
 describe("tos", () => {
   afterEach(() => {

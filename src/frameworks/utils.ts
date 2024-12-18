@@ -1,4 +1,4 @@
-import { readJSON as originalReadJSON } from "fs-extra";
+import fs from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
@@ -7,9 +7,9 @@ import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 import { satisfies as semverSatisfied } from "semver";
 
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { fileExistsSync } from "../fsutils";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
+import { fileExistsSync } from "../fsutils.js";
 import { pathToFileURL } from "url";
 import {
   DEFAULT_DOCS_URL,
@@ -18,9 +18,12 @@ import {
   MAILING_LIST_URL,
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
-} from "./constants";
-import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
+} from "./constants.js";
+import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces.js";
 
+import Module from "node:module";
+
+const require = Module.createRequire(import.meta.url);
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -45,7 +48,7 @@ export function readJSON<JsonType = any>(
   file: string,
   options?: ReadOptions | BufferEncoding | string,
 ): Promise<JsonType> {
-  return originalReadJSON(file, options) as Promise<JsonType>;
+  return fs.readJSON(file, options) as Promise<JsonType>;
 }
 
 /**
@@ -313,11 +316,11 @@ export function relativeRequire(
 export function relativeRequire(
   dir: string,
   mod: "next/dist/server/config",
-): Promise<typeof import("next/dist/server/config")>;
+): Promise<typeof import("next/dist/server/config.js")>;
 export function relativeRequire(
   dir: string,
   mod: "next/constants",
-): Promise<typeof import("next/constants")>;
+): Promise<typeof import("next/constants.js")>;
 export function relativeRequire(
   dir: string,
   mod: "next",

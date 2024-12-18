@@ -1,19 +1,19 @@
 import * as clc from "colorette";
 
-import { logger } from "../../../logger";
-import { promptOnce } from "../../../prompt";
-import { requirePermissions } from "../../../requirePermissions";
-import { Options } from "../../../options";
-import { ensure } from "../../../ensureApiEnabled";
-import { Config } from "../../../config";
+import { logger } from "../../../logger.js";
+import { promptOnce } from "../../../prompt.js";
+import { requirePermissions } from "../../../requirePermissions.js";
+import { Options } from "../../../options.js";
+import { ensure } from "../../../ensureApiEnabled.js";
+import { Config } from "../../../config.js";
 import {
   normalizeAndValidate,
   configForCodebase,
   validateCodebase,
   assertUnique,
-} from "../../../functions/projectConfig";
-import { FirebaseError } from "../../../error";
-import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
+} from "../../../functions/projectConfig.js";
+import { FirebaseError } from "../../../error.js";
+import { functionsOrigin, runtimeconfigOrigin } from "../../../api.js";
 
 const MAX_ATTEMPTS = 5;
 

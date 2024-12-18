@@ -1,7 +1,7 @@
-import { logger } from "../logger";
-import RetriesExhaustedError from "./errors/retries-exhausted-error";
-import TimeoutError from "./errors/timeout-error";
-import TaskError from "./errors/task-error";
+import { logger } from "../logger.js";
+import RetriesExhaustedError from "./errors/retries-exhausted-error.js";
+import TimeoutError from "./errors/timeout-error.js";
+import TaskError from "./errors/task-error.js";
 
 /**
  * Creates a promise to wait for the nth backoff.

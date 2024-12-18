@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { calculateRetention } from "./backupUtils";
+import { calculateRetention } from "./backupUtils.js";
 
 describe("calculateRetention", () => {
   it("should accept minutes", () => {

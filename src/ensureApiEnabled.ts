@@ -1,10 +1,10 @@
 import { bold } from "colorette";
 
-import { trackGA4 } from "./track";
-import { serviceUsageOrigin } from "./api";
-import { Client } from "./apiv2";
-import * as utils from "./utils";
-import { FirebaseError, isBillingError } from "./error";
+import { trackGA4 } from "./track.js";
+import { serviceUsageOrigin } from "./api.js";
+import { Client } from "./apiv2.js";
+import * as utils from "./utils.js";
+import { FirebaseError, isBillingError } from "./error.js";
 
 export const POLL_SETTINGS = {
   pollInterval: 10000,

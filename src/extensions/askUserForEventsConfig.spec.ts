@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
 import {
   askForEventArcLocation,
   askForAllowedEventTypes,
   checkAllowedEventTypesResponse,
-} from "./askUserForEventsConfig";
-import * as utils from "../utils";
-import * as prompt from "../prompt";
+} from "./askUserForEventsConfig.js";
+import * as utils from "../utils.js";
+import * as prompt from "../prompt.js";
 
 describe("checkAllowedEventTypesResponse", () => {
   let logWarningSpy: sinon.SinonSpy;

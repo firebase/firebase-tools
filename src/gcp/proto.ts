@@ -1,5 +1,5 @@
-import { FirebaseError } from "../error";
-import { RecursiveKeyOf } from "../metaprogramming";
+import { FirebaseError } from "../error.js";
+import { RecursiveKeyOf } from "../metaprogramming.js";
 
 /**
  * A type alias used to annotate interfaces as using a google.protobuf.Duration.

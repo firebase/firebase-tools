@@ -1,6 +1,6 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
-import { start as apphostingStart } from "./serve";
-import { logger } from "./developmentServer";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../types.js";
+import { start as apphostingStart } from "./serve.js";
+import { logger } from "./developmentServer.js";
 interface AppHostingEmulatorArgs {
   options?: any;
   port?: number;

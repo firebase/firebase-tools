@@ -1,11 +1,11 @@
 import { RequestHandler } from "express";
 
-import { Client } from "../apiv2";
-import { cloudRunApiOrigin } from "../api";
-import { errorRequestHandler, proxyRequestHandler } from "./proxy";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
+import { Client } from "../apiv2.js";
+import { cloudRunApiOrigin } from "../api.js";
+import { errorRequestHandler, proxyRequestHandler } from "./proxy.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
 
 export interface CloudRunProxyOptions {
   project?: string;

@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as args from "./args";
-import * as backend from "./backend";
-import * as deploy from "./deploy";
+import * as args from "./args.js";
+import * as backend from "./backend.js";
+import * as deploy from "./deploy.js";
 
 describe("deploy", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {

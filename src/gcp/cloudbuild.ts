@@ -1,5 +1,5 @@
-import { Client } from "../apiv2";
-import { cloudbuildOrigin } from "../api";
+import { Client } from "../apiv2.js";
+import { cloudbuildOrigin } from "../api.js";
 
 const PAGE_SIZE_MAX = 100;
 

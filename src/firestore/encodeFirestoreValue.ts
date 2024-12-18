@@ -1,6 +1,6 @@
-import * as _ from "lodash";
+import _ from "lodash";
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 import { Buffer } from "node:buffer";
 
 function isPlainObject(input: any): boolean {

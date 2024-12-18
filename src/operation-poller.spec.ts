@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import * as sinon from "sinon";
+import nock from "nock";
+import sinon from "sinon";
 
-import { FirebaseError } from "./error";
-import { OperationPollerOptions, pollOperation } from "./operation-poller";
-import TimeoutError from "./throttler/errors/timeout-error";
+import { FirebaseError } from "./error.js";
+import { OperationPollerOptions, pollOperation } from "./operation-poller.js";
+import TimeoutError from "./throttler/errors/timeout-error.js";
 
 const TEST_ORIGIN = "https://firebasedummy.googleapis.com.com";
 const VERSION = "v1";

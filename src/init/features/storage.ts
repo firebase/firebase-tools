@@ -1,8 +1,8 @@
 import * as clc from "colorette";
 
-import { logger } from "../../logger";
-import { promptOnce } from "../../prompt";
-import { readTemplateSync } from "../../templates";
+import { logger } from "../../logger.js";
+import { promptOnce } from "../../prompt.js";
+import { readTemplateSync } from "../../templates.js";
 
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
 

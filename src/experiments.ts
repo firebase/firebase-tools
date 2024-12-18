@@ -1,10 +1,9 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
+import leven from "leven";
 import { basename } from "path";
-import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
-
+import { configstore } from "./configstore.js";
+import { FirebaseError } from "./error.js";
+import { isRunningInGithubAction } from "./init/features/hosting/github.js";
 
 export interface Experiment {
   shortDescription: string;

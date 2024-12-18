@@ -1,13 +1,13 @@
-import { logger } from "../../../logger";
-import * as apiEnabled from "../../../ensureApiEnabled";
-import { requirePermissions } from "../../../requirePermissions";
-import { checkDatabaseType } from "../../../firestore/checkDatabaseType";
-import * as rules from "./rules";
-import * as indexes from "./indexes";
-import { FirebaseError } from "../../../error";
+import { logger } from "../../../logger.js";
+import * as apiEnabled from "../../../ensureApiEnabled.js";
+import { requirePermissions } from "../../../requirePermissions.js";
+import { checkDatabaseType } from "../../../firestore/checkDatabaseType.js";
+import * as rules from "./rules.js";
+import * as indexes from "./indexes.js";
+import { FirebaseError } from "../../../error.js";
 
 import * as clc from "colorette";
-import { promptOnce } from "../../../prompt";
+import { promptOnce } from "../../../prompt.js";
 
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(

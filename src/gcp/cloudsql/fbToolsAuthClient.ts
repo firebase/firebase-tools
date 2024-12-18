@@ -1,8 +1,8 @@
 import { AuthClient } from "google-auth-library";
 import { GaxiosOptions, GaxiosPromise, GaxiosResponse } from "gaxios";
 
-import * as apiv2 from "../../apiv2";
-import { FirebaseError } from "../../error";
+import * as apiv2 from "../../apiv2.js";
+import { FirebaseError } from "../../error.js";
 
 // FBToolsAuthClient implements google-auth-library.AuthClient
 // using apiv2.ts and our normal OAuth2 flow.

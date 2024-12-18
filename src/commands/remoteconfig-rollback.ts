@@ -1,12 +1,12 @@
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
-import { requireAuth } from "../requireAuth";
-import { rollbackTemplate } from "../remoteconfig/rollback";
-import { requirePermissions } from "../requirePermissions";
-import { getVersions } from "../remoteconfig/versionslist";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
+import { rollbackTemplate } from "../remoteconfig/rollback.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { getVersions } from "../remoteconfig/versionslist.js";
 
-import { needProjectId } from "../projectUtils";
+import { needProjectId } from "../projectUtils.js";
 
 export const command = new Command("remoteconfig:rollback")
   .description(

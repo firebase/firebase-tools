@@ -1,9 +1,9 @@
-import { Client } from "../apiv2";
-import { firebaseApiOrigin } from "../api";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { pollOperation } from "../operation-poller";
-import { readTemplateSync } from "../templates";
+import { Client } from "../apiv2.js";
+import { firebaseApiOrigin } from "../api.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { pollOperation } from "../operation-poller.js";
+import { readTemplateSync } from "../templates.js";
 import { Buffer } from "node:buffer";
 
 const TIMEOUT_MILLIS = 30000;

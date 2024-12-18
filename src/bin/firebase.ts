@@ -2,7 +2,6 @@
 
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
-const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
@@ -11,7 +10,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-import * as updateNotifierPkg from "update-notifier-cjs";
+import updateNotifierPkg from "update-notifier";
 import * as clc from "colorette";
 import { markedTerminal } from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
@@ -24,13 +23,13 @@ import { SPLAT } from "triple-beam";
 import { stripVTControlCharacters } from "node:util";
 import * as fs from "node:fs";
 
-import { configstore } from "../configstore";
-import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
-import { logger } from "../logger";
-import * as client from "..";
-import * as fsutils from "../fsutils";
-import * as utils from "../utils";
+import { configstore } from "../configstore.js";
+import { errorOut } from "../errorOut.js";
+import { handlePreviewToggles } from "../handlePreviewToggles.js";
+import { logger } from "../logger.js";
+import client from "../index.js";
+import * as fsutils from "../fsutils.js";
+import * as utils from "../utils.js";
 import * as winston from "winston";
 
 const args = process.argv.slice(2);
@@ -94,8 +93,9 @@ if (utils.envOverrides.length) {
 logger.debug("-".repeat(70));
 logger.debug();
 
-import { enableExperimentsFromCliEnvVariable } from "../experiments";
-import { fetchMOTD } from "../fetchMOTD";
+import { enableExperimentsFromCliEnvVariable } from "../experiments.js";
+import { fetchMOTD } from "../fetchMOTD.js";
+import pkg from "../../package.json" with { type: "json" };
 
 enableExperimentsFromCliEnvVariable();
 fetchMOTD();

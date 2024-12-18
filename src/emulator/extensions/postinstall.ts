@@ -1,5 +1,5 @@
-import { EmulatorRegistry } from "../registry";
-import { Emulators } from "../types";
+import { EmulatorRegistry } from "../registry.js";
+import { Emulators } from "../types.js";
 
 /**
  * replaceConsoleLinks replaces links to production Firebase console with links to the corresponding Emulator UI page.

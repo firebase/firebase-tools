@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { readFileSync } from "fs-extra";
-import * as nock from "nock";
+import { readFileSync } from "fs";
+import nock from "nock";
 import { gunzipSync, gzipSync } from "zlib";
 
-import { downloadToTmp } from "./downloadUtils";
-import { FirebaseError } from "./error";
+import { downloadToTmp } from "./downloadUtils.js";
+import { FirebaseError } from "./error.js";
 
 describe("downloadToTmp", () => {
   it("should download a file", async () => {

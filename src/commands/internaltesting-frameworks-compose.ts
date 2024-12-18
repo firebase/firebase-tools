@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { logger } from "../logger";
-import { Mode, SUPPORTED_MODES } from "../frameworks/compose/driver";
-import { compose } from "../frameworks/compose";
-import { FirebaseError } from "../error";
-import { LocalFileSystem } from "../frameworks/compose/discover/filesystem";
-import { frameworkSpecs } from "../frameworks/compose/discover/frameworkSpec";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { logger } from "../logger.js";
+import { Mode, SUPPORTED_MODES } from "../frameworks/compose/driver/index.js";
+import { compose } from "../frameworks/compose/index.js";
+import { FirebaseError } from "../error.js";
+import { LocalFileSystem } from "../frameworks/compose/discover/filesystem.js";
+import { frameworkSpecs } from "../frameworks/compose/discover/frameworkSpec.js";
 
 export const command = new Command("internaltesting:frameworks:compose")
   .option("-m, --mode <mode>", "Composer mode (local or docker)", "local")

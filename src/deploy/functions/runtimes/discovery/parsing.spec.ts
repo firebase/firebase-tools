@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { FirebaseError } from "../../../../error";
-import * as parsing from "./parsing";
+import { FirebaseError } from "../../../../error.js";
+import * as parsing from "./parsing.js";
 
 describe("requireKeys", () => {
   it("accepts found keys", () => {

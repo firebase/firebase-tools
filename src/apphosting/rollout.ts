@@ -1,19 +1,19 @@
-import * as apphosting from "../gcp/apphosting";
-import { FirebaseError } from "../error";
-import * as ora from "ora";
-import { getRepoDetailsFromBackend, listAllBranches } from "../gcp/devConnect";
+import * as apphosting from "../gcp/apphosting.js";
+import { FirebaseError } from "../error.js";
+import ora from "ora";
+import { getRepoDetailsFromBackend, listAllBranches } from "../gcp/devConnect.js";
 import {
   getGitHubBranch,
   getGitHubCommit,
   GitHubCommitInfo,
   promptGitHubBranch,
-} from "../apphosting/githubConnections";
-import * as poller from "../operation-poller";
+} from "../apphosting/githubConnections.js";
+import * as poller from "../operation-poller.js";
 
-import { logBullet, sleep } from "../utils";
-import { apphostingOrigin, consoleOrigin } from "../api";
-import { DeepOmit } from "../metaprogramming";
-import { getBackendForAmbiguousLocation, getBackendForLocation } from "./backend";
+import { logBullet, sleep } from "../utils.js";
+import { apphostingOrigin, consoleOrigin } from "../api.js";
+import { DeepOmit } from "../metaprogramming.js";
+import { getBackendForAmbiguousLocation, getBackendForLocation } from "./backend.js";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),

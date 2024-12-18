@@ -1,10 +1,8 @@
-"use strict";
+import chai from "chai";
+import extractTriggers from "./extractTriggers.js";
 
-const chai = require("chai");
+("use strict");
 const expect = chai.expect;
-
-const extractTriggers = require("./extractTriggers");
-
 describe("extractTriggers", function () {
   const fnWithTrigger = function () {};
   fnWithTrigger.__trigger = { service: "function.with.trigger" };

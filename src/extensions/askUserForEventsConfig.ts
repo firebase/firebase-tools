@@ -1,9 +1,9 @@
-import { promptOnce } from "../prompt";
-import * as extensionsApi from "../extensions/extensionsApi";
-import { EventDescriptor, ExtensionInstance } from "./types";
-import * as utils from "../utils";
+import { promptOnce } from "../prompt.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import { EventDescriptor, ExtensionInstance } from "./types.js";
+import * as utils from "../utils.js";
 import * as clc from "colorette";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 import { marked } from "marked";
 
 export interface InstanceEventsConfig {

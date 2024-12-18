@@ -3,27 +3,27 @@ import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
 import * as semver from "semver";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import fetch from "node-fetch";
 
-import { FirebaseError } from "../../../../error";
-import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
-import { logger } from "../../../../logger";
+import { FirebaseError } from "../../../../error.js";
+import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK.js";
+import { logger } from "../../../../logger.js";
 import {
   logLabeledBullet,
   logLabeledSuccess,
   logLabeledWarning,
   randomInt,
-} from "../../../../utils";
-import * as backend from "../../backend";
-import * as build from "../../build";
-import * as discovery from "../discovery";
-import { DelegateContext } from "..";
-import * as supported from "../supported";
-import * as validate from "./validate";
-import * as versioning from "./versioning";
-import * as parseTriggers from "./parseTriggers";
-import { fileExistsSync } from "../../../../fsutils";
+} from "../../../../utils.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import * as discovery from "../discovery/index.js";
+import { DelegateContext } from "../index.js";
+import * as supported from "../supported/index.js";
+import * as validate from "./validate.js";
+import * as versioning from "./versioning.js";
+import * as parseTriggers from "./parseTriggers.js";
+import { fileExistsSync } from "../../../../fsutils.js";
 
 import { Buffer } from "node:buffer";
 

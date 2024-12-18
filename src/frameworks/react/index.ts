@@ -1,7 +1,7 @@
-import { FrameworkType } from "../interfaces";
-import { initViteTemplate, vitePluginDiscover } from "../vite";
+import { FrameworkType } from "../interfaces.js";
+import { initViteTemplate, vitePluginDiscover } from "../vite/index.js";
 
-export * from "../vite";
+export * from "../vite/index.js";
 
 export const name = "React";
 export const type = FrameworkType.Framework;

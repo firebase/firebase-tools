@@ -1,27 +1,27 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as fabricator from "./fabricator";
-import * as reporter from "./reporter";
-import * as executor from "./executor";
-import * as gcfNSV2 from "../../../gcp/cloudfunctionsv2";
-import * as gcfNS from "../../../gcp/cloudfunctions";
-import * as eventarcNS from "../../../gcp/eventarc";
-import * as pollerNS from "../../../operation-poller";
-import * as pubsubNS from "../../../gcp/pubsub";
-import * as schedulerNS from "../../../gcp/cloudscheduler";
-import * as runNS from "../../../gcp/run";
-import * as cloudtasksNS from "../../../gcp/cloudtasks";
-import * as backend from "../backend";
-import * as scraper from "./sourceTokenScraper";
-import * as planner from "./planner";
-import * as v2events from "../../../functions/events/v2";
-import * as v1events from "../../../functions/events/v1";
-import * as servicesNS from "../services";
-import * as identityPlatformNS from "../../../gcp/identityPlatform";
-import { AuthBlockingService } from "../services/auth";
+import * as fabricator from "./fabricator.js";
+import * as reporter from "./reporter.js";
+import * as executor from "./executor.js";
+import * as gcfNSV2 from "../../../gcp/cloudfunctionsv2.js";
+import * as gcfNS from "../../../gcp/cloudfunctions.js";
+import * as eventarcNS from "../../../gcp/eventarc.js";
+import * as pollerNS from "../../../operation-poller.js";
+import * as pubsubNS from "../../../gcp/pubsub.js";
+import * as schedulerNS from "../../../gcp/cloudscheduler.js";
+import * as runNS from "../../../gcp/run.js";
+import * as cloudtasksNS from "../../../gcp/cloudtasks.js";
+import * as backend from "../backend.js";
+import * as scraper from "./sourceTokenScraper.js";
+import * as planner from "./planner.js";
+import * as v2events from "../../../functions/events/v2.js";
+import * as v1events from "../../../functions/events/v1.js";
+import * as servicesNS from "../services/index.js";
+import * as identityPlatformNS from "../../../gcp/identityPlatform.js";
+import { AuthBlockingService } from "../services/auth.js";
 import { deepCopy } from "@angular-devkit/core";
-import * as gce from "../../../gcp/computeEngine";
+import * as gce from "../../../gcp/computeEngine.js";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic

@@ -1,4 +1,4 @@
-import { MockFileSystem } from "./mockFileSystem";
+import { MockFileSystem } from "./mockFileSystem.js";
 import { expect } from "chai";
 
 describe("MockFileSystem", () => {

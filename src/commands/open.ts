@@ -1,15 +1,15 @@
 import * as clc from "colorette";
-import * as open from "open";
+import open from "open";
 
-import { FirebaseError } from "../error";
-import * as api from "../api";
-import { Command } from "../command";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as utils from "../utils";
-import { requireHostingSite } from "../requireHostingSite";
+import { FirebaseError } from "../error.js";
+import * as api from "../api.js";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import * as utils from "../utils.js";
+import { requireHostingSite } from "../requireHostingSite.js";
 
 interface Link {
   name: string;

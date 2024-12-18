@@ -1,6 +1,6 @@
-import { VALID_DEPLOY_TARGETS } from "./commands/deploy";
-import { FirebaseError } from "./error";
-import { Options } from "./options";
+import { VALID_DEPLOY_TARGETS } from "./commands/deploy.js";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 /** Returns targets from `only` only for the specified deploy types. */
 function targetsForTypes(only: string[], ...types: string[]): string[] {

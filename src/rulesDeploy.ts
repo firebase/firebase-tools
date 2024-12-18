@@ -1,16 +1,16 @@
-import * as _ from "lodash";
+import _ from "lodash";
 import { bold } from "colorette";
 import * as fs from "fs-extra";
 
-import * as gcp from "./gcp";
-import { logger } from "./logger";
-import { FirebaseError, getErrStatus } from "./error";
-import * as utils from "./utils";
+import * as gcp from "./gcp/index.js";
+import { logger } from "./logger.js";
+import { FirebaseError, getErrStatus } from "./error.js";
+import * as utils from "./utils.js";
 
-import { promptOnce } from "./prompt";
-import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
-import { getProjectNumber } from "./getProjectNumber";
-import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";
+import { promptOnce } from "./prompt.js";
+import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules.js";
+import { getProjectNumber } from "./getProjectNumber.js";
+import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager.js";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;

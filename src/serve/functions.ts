@@ -3,14 +3,14 @@ import {
   EmulatableBackend,
   FunctionsEmulator,
   FunctionsEmulatorArgs,
-} from "../emulator/functionsEmulator";
-import { needProjectId } from "../projectUtils";
-import { getProjectDefaultAccount } from "../auth";
-import { Options } from "../options";
-import * as projectConfig from "../functions/projectConfig";
-import * as utils from "../utils";
-import { EmulatorRegistry } from "../emulator/registry";
-import { parseInspectionPort } from "../emulator/commandUtils";
+} from "../emulator/functionsEmulator.js";
+import { needProjectId } from "../projectUtils.js";
+import { getProjectDefaultAccount } from "../auth.js";
+import { Options } from "../options.js";
+import * as projectConfig from "../functions/projectConfig.js";
+import * as utils from "../utils.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { parseInspectionPort } from "../emulator/commandUtils.js";
 
 export class FunctionsServer {
   emulator?: FunctionsEmulator;

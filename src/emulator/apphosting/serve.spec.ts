@@ -1,13 +1,13 @@
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
-import * as portUtils from "../portUtils";
-import * as spawn from "../../init/spawn";
-import * as serve from "./serve";
-import { DEFAULT_PORTS } from "../constants";
-import * as utils from "./developmentServer";
-import * as configsImport from "./config";
-import * as projectPathImport from "../../projectPath";
-import { AppHostingYamlConfig } from "../../apphosting/yaml";
+import * as portUtils from "../portUtils.js";
+import * as spawn from "../../init/spawn.js";
+import * as serve from "./serve.js";
+import { DEFAULT_PORTS } from "../constants.js";
+import * as utils from "./developmentServer.js";
+import * as configsImport from "./config.js";
+import * as projectPathImport from "../../projectPath.js";
+import { AppHostingYamlConfig } from "../../apphosting/yaml.js";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;

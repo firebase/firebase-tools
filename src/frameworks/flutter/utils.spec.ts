@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { EventEmitter } from "events";
 import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
-import { assertFlutterCliExists, getAdditionalBuildArgs, getPubSpec } from "./utils";
+import { assertFlutterCliExists, getAdditionalBuildArgs, getPubSpec } from "./utils.js";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as fsExtra from "fs-extra";

@@ -1,10 +1,10 @@
-import * as proto from "./proto";
+import * as proto from "./proto.js";
 
-import { Client } from "../apiv2";
-import { cloudTasksOrigin } from "../api";
-import * as iam from "./iam";
-import * as backend from "../deploy/functions/backend";
-import { nullsafeVisitor } from "../functional";
+import { Client } from "../apiv2.js";
+import { cloudTasksOrigin } from "../api.js";
+import * as iam from "./iam.js";
+import * as backend from "../deploy/functions/backend.js";
+import { nullsafeVisitor } from "../functional.js";
 
 const API_VERSION = "v2";
 

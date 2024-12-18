@@ -2,7 +2,7 @@ import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { gunzipSync } from "zlib";
 import { TEST_ENV } from "./env";

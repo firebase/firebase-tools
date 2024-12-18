@@ -1,12 +1,12 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { Backup, listBackups, ListBackupsResponse } from "../gcp/firestore";
-import { logWarning } from "../utils";
-import { PrettyPrint } from "../firestore/pretty-print";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { Backup, listBackups, ListBackupsResponse } from "../gcp/firestore.js";
+import { logWarning } from "../utils.js";
+import { PrettyPrint } from "../firestore/pretty-print.js";
 
 export const command = new Command("firestore:backups:list")
   .description("List all Cloud Firestore backups in a given location")

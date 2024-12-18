@@ -1,6 +1,6 @@
-import { AppMetadata, AppPlatform, createWebApp, listFirebaseApps } from "../management/apps";
-import { FirebaseError } from "../error";
-import { logSuccess, logWarning } from "../utils";
+import { AppMetadata, AppPlatform, createWebApp, listFirebaseApps } from "../management/apps.js";
+import { FirebaseError } from "../error.js";
+import { logSuccess, logWarning } from "../utils.js";
 
 const CREATE_NEW_FIREBASE_WEB_APP = "CREATE_NEW_WEB_APP";
 const CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP = "CONTINUE_WITHOUT_SELECTING_FIREBASE_WEB_APP";

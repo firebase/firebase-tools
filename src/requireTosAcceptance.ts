@@ -1,14 +1,14 @@
-import type { Options } from "./options";
+import type { Options } from "./options.js";
 
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 import {
   APPHOSTING_TOS_ID,
   DATA_CONNECT_TOS_ID,
   TosId,
   getTosStatus,
   isProductTosAccepted,
-} from "./gcp/firedata";
-import { consoleOrigin } from "./api";
+} from "./gcp/firedata.js";
+import { consoleOrigin } from "./api.js";
 
 const consoleLandingPage = new Map<TosId, string>([
   [APPHOSTING_TOS_ID, `${consoleOrigin()}/project/_/apphosting`],

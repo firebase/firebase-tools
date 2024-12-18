@@ -1,11 +1,11 @@
 import * as path from "path";
-import * as utils from "./developmentServer";
+import * as utils from "./developmentServer.js";
 
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { expect } from "chai";
-import { getLocalAppHostingConfiguration } from "./config";
-import * as configImport from "../../apphosting/config";
-import { AppHostingYamlConfig } from "../../apphosting/yaml";
+import { getLocalAppHostingConfiguration } from "./config.js";
+import * as configImport from "../../apphosting/config.js";
+import { AppHostingYamlConfig } from "../../apphosting/yaml.js";
 
 describe("environments", () => {
   let joinStub: sinon.SinonStub;

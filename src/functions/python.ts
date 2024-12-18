@@ -1,8 +1,8 @@
 import * as path from "path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as cp from "child_process";
-import { logger } from "../logger";
-import { IS_WINDOWS } from "../utils";
+import { logger } from "../logger.js";
+import { IS_WINDOWS } from "../utils.js";
 
 /**
  * Default directory for python virtual environment.

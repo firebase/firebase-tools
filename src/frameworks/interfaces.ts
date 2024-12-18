@@ -1,8 +1,8 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { EmulatorInfo } from "../emulator/types";
-import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
-import { HostingOptions } from "../hosting/options";
-import { Options } from "../options";
+import { EmulatorInfo } from "../emulator/types.js";
+import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig.js";
+import { HostingOptions } from "../hosting/options.js";
+import { Options } from "../options.js";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority

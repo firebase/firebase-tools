@@ -15,28 +15,27 @@
  */
 
 import * as fs from "fs";
-import * as inquirer from "inquirer";
+import inquirer from "inquirer";
 import * as path from "path";
 import * as semver from "semver";
 import * as clc from "colorette";
 
-import { doSetup as functionsSetup } from "../functions";
-import { Config } from "../../../config";
-import { confirm } from "../../../prompt";
-import { wrapSpawn, spawnWithOutput } from "../../spawn";
-import { Options } from "../../../options";
-import { getProjectId } from "../../../projectUtils";
-import { ensure } from "../../../ensureApiEnabled";
-import { logger } from "../../../logger";
-import { FirebaseError, getErrMsg, isObject } from "../../../error";
-import { Setup } from "../..";
+import { doSetup as functionsSetup } from "../functions/index.js";
+import { Config } from "../../../config.js";
+import { confirm } from "../../../prompt.js";
+import { wrapSpawn, spawnWithOutput } from "../../spawn.js";
+import { Options } from "../../../options.js";
+import { getProjectId } from "../../../projectUtils.js";
+import { ensure } from "../../../ensureApiEnabled.js";
+import { logger } from "../../../logger.js";
+import { FirebaseError, getErrMsg, isObject } from "../../../error.js";
+import { Setup } from "../../index.js";
 import {
   logLabeledBullet,
   logLabeledError,
   logLabeledSuccess,
   logLabeledWarning,
-} from "../../../utils";
-
+} from "../../../utils.js";
 
 interface GenkitInfo {
   genkitVersion: string;
@@ -515,7 +514,7 @@ function generateSampleFile(
   }
   const commentedModelImport = `${modelImportComment}${modelImport}`;
   const templatePath = path.join(
-    __dirname,
+    import.meta.dirname,
     `../../../../templates/genkit/firebase.${templateVersion}.template`,
   );
   const template = fs.readFileSync(templatePath, "utf8");

@@ -1,21 +1,21 @@
 import { Router } from "express";
-import { Emulators } from "../../types";
+import { Emulators } from "../../types.js";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
   IncomingMetadata,
   StoredFileMetadata,
-} from "../metadata";
-import { sendFileBytes } from "./shared";
-import { EmulatorRegistry } from "../../registry";
-import { StorageEmulator } from "../index";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { GetObjectResponse, ListObjectsResponse } from "../files";
+} from "../metadata.js";
+import { sendFileBytes } from "./shared.js";
+import { EmulatorRegistry } from "../../registry.js";
+import { StorageEmulator } from "../index.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { GetObjectResponse, ListObjectsResponse } from "../files.js";
 import type { Request, Response } from "express";
-import { parseObjectUploadMultipartRequest } from "../multipart";
-import { Upload, UploadNotActiveError } from "../upload";
-import { ForbiddenError, NotFoundError } from "../errors";
-import { reqBodyToBuffer } from "../../shared/request";
+import { parseObjectUploadMultipartRequest } from "../multipart.js";
+import { Upload, UploadNotActiveError } from "../upload.js";
+import { ForbiddenError, NotFoundError } from "../errors.js";
+import { reqBodyToBuffer } from "../../shared/request.js";
 import type { Query } from "express-serve-static-core";
 
 import { Buffer } from "node:buffer";

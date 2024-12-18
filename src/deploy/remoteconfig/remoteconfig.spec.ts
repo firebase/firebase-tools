@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import * as sinon from "sinon";
+import nock from "nock";
+import sinon from "sinon";
 
-import { remoteConfigApiOrigin } from "../../api";
-import * as rcDeploy from "./functions";
-import { FirebaseError } from "../../error";
-import * as remoteconfig from "../../remoteconfig/get";
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import { remoteConfigApiOrigin } from "../../api.js";
+import * as rcDeploy from "./functions.js";
+import { FirebaseError } from "../../error.js";
+import * as remoteconfig from "../../remoteconfig/get.js";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces.js";
 
 const PROJECT_NUMBER = "001";
 

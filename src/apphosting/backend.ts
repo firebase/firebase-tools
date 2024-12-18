@@ -1,8 +1,8 @@
 import * as clc from "colorette";
-import * as poller from "../operation-poller";
-import * as apphosting from "../gcp/apphosting";
-import * as githubConnections from "./githubConnections";
-import { logBullet, logSuccess, logWarning, sleep } from "../utils";
+import * as poller from "../operation-poller.js";
+import * as apphosting from "../gcp/apphosting.js";
+import * as githubConnections from "./githubConnections.js";
+import { logBullet, logSuccess, logWarning, sleep } from "../utils.js";
 import {
   apphostingOrigin,
   artifactRegistryDomain,
@@ -12,21 +12,21 @@ import {
   developerConnectOrigin,
   iamOrigin,
   secretManagerOrigin,
-} from "../api";
-import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
-import { addServiceAccountToRoles } from "../gcp/resourceManager";
-import * as iam from "../gcp/iam";
-import { FirebaseError, getErrStatus, getError } from "../error";
-import { promptOnce } from "../prompt";
-import { DEFAULT_LOCATION } from "./constants";
-import { ensure } from "../ensureApiEnabled";
-import * as deploymentTool from "../deploymentTool";
-import { DeepOmit } from "../metaprogramming";
-import { webApps } from "./app";
-import { GitRepositoryLink } from "../gcp/devConnect";
-import * as ora from "ora";
+} from "../api.js";
+import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting.js";
+import { addServiceAccountToRoles } from "../gcp/resourceManager.js";
+import * as iam from "../gcp/iam.js";
+import { FirebaseError, getErrStatus, getError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { DEFAULT_LOCATION } from "./constants.js";
+import { ensure } from "../ensureApiEnabled.js";
+import * as deploymentTool from "../deploymentTool.js";
+import { DeepOmit } from "../metaprogramming.js";
+import { webApps } from "./app.js";
+import { GitRepositoryLink } from "../gcp/devConnect.js";
+import ora from "ora";
 import fetch from "node-fetch";
-import { orchestrateRollout } from "./rollout";
+import { orchestrateRollout } from "./rollout.js";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 

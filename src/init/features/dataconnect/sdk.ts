@@ -3,12 +3,12 @@ import * as fs from "fs";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dirExistsSync } from "../../../fsutils";
-import { promptForDirectory, promptOnce } from "../../../prompt";
-import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-import { Config } from "../../../config";
-import { Setup } from "../..";
-import { load } from "../../../dataconnect/load";
+import { dirExistsSync } from "../../../fsutils.js";
+import { promptForDirectory, promptOnce } from "../../../prompt.js";
+import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils.js";
+import { Config } from "../../../config.js";
+import { Setup } from "../../index.js";
+import { load } from "../../../dataconnect/load.js";
 import {
   ConnectorInfo,
   ConnectorYaml,
@@ -16,12 +16,11 @@ import {
   JavascriptSDK,
   KotlinSDK,
   Platform,
-} from "../../../dataconnect/types";
-import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
-import { FirebaseError } from "../../../error";
-import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet } from "../../../utils";
-
+} from "../../../dataconnect/types.js";
+import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator.js";
+import { FirebaseError } from "../../../error.js";
+import _ from "lodash";
+import { logSuccess, logBullet } from "../../../utils.js";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
@@ -129,7 +128,7 @@ export function generateSdkYaml(
   if (targetPlatform === Platform.IOS) {
     const swiftSdk = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`)),
-      package: upperFirst(camelCase(connectorYaml.connectorId)) + "Connector",
+      package: _.upperFirst(_.camelCase(connectorYaml.connectorId)) + "Connector",
     };
     connectorYaml.generate.swiftSdk = swiftSdk;
   }
@@ -148,7 +147,7 @@ export function generateSdkYaml(
   }
 
   if (targetPlatform === Platform.FLUTTER) {
-    const pkg = `${snakeCase(connectorYaml.connectorId)}_connector`;
+    const pkg = `${_.snakeCase(connectorYaml.connectorId)}_connector`;
     const dartSdk: DartSDK = {
       outputDir: path.relative(
         connectorDir,
@@ -162,7 +161,7 @@ export function generateSdkYaml(
   if (targetPlatform === Platform.ANDROID) {
     const kotlinSdk: KotlinSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`)),
-      package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
+      package: `connectors.${_.snakeCase(connectorYaml.connectorId)}`,
     };
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required or enforced. If one of them is present (preferring the

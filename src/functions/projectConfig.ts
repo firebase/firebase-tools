@@ -1,5 +1,5 @@
-import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
-import { FirebaseError } from "../error";
+import { FunctionsConfig, FunctionConfig } from "../firebaseConfig.js";
+import { FirebaseError } from "../error.js";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
 export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };

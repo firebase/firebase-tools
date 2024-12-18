@@ -1,3 +1,3 @@
-export { prepare } from "./prepare";
-export { deploy } from "./deploy";
-export { release } from "./release";
+export { prepare } from "./prepare.js";
+export { deploy } from "./deploy.js";
+export { release } from "./release/index.js";

@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import { FirebaseError } from "../error";
-import { HostingConfig, HostingMultiple, HostingSingle } from "../firebaseConfig";
+import { FirebaseError } from "../error.js";
+import { HostingConfig, HostingMultiple, HostingSingle } from "../firebaseConfig.js";
 
-import * as config from "./config";
-import { HostingOptions } from "./options";
-import { cloneDeep } from "../utils";
-import { setEnabled } from "../experiments";
-import { FIREBASE_JSON_PATH, FIXTURE_DIR } from "../test/fixtures/simplehosting";
+import * as config from "./config.js";
+import { HostingOptions } from "./options.js";
+import { cloneDeep } from "../utils.js";
+import { setEnabled } from "../experiments.js";
+import { FIREBASE_JSON_PATH, FIXTURE_DIR } from "../test/fixtures/simplehosting/index.js";
 
 function options(
   hostingConfig: HostingConfig,

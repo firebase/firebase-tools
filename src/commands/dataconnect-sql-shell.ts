@@ -2,21 +2,21 @@ import * as pg from "pg";
 import * as clc from "colorette";
 import { Connector, IpAddressTypes, AuthTypes } from "@google-cloud/cloud-sql-connector";
 
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { ensureApis } from "../dataconnect/ensureApis";
-import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
-import { getIdentifiers } from "../dataconnect/schemaMigration";
-import { requireAuth } from "../requireAuth";
-import { getIAMUser } from "../gcp/cloudsql/connect";
-import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { prompt, Question } from "../prompt";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
-import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { ensureApis } from "../dataconnect/ensureApis.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { pickService } from "../dataconnect/fileUtils.js";
+import { getIdentifiers } from "../dataconnect/schemaMigration.js";
+import { requireAuth } from "../requireAuth.js";
+import { getIAMUser } from "../gcp/cloudsql/connect.js";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin.js";
+import { prompt, Question } from "../prompt.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
+import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient.js";
+import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive.js";
 
 // Not a comprehensive list, used for keyword coloring.
 const sqlKeywords = [

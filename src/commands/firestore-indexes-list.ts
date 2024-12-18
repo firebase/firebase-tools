@@ -1,14 +1,14 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import * as fsi from "../firestore/api";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { FirestoreOptions } from "../firestore/options";
-import { PrettyPrint } from "../firestore/pretty-print";
-import { needProjectId } from "../projectUtils";
+import { Command } from "../command.js";
+import * as fsi from "../firestore/api.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { FirestoreOptions } from "../firestore/options.js";
+import { PrettyPrint } from "../firestore/pretty-print.js";
+import { needProjectId } from "../projectUtils.js";
 
 export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")

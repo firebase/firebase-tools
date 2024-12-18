@@ -2,19 +2,18 @@ import * as clc from "colorette";
 import * as os from "os";
 import * as path from "path";
 
-import { Command } from "../command";
-import { Config } from "../config";
-import { getAllAccounts } from "../auth";
-import { init, Setup } from "../init";
-import { logger } from "../logger";
-import { prompt, promptOnce } from "../prompt";
-import { requireAuth } from "../requireAuth";
-import * as fsutils from "../fsutils";
-import * as utils from "../utils";
-import { Options } from "../options";
-import { isEnabled } from "../experiments";
-import { readTemplateSync } from "../templates";
-
+import { Command } from "../command.js";
+import { Config } from "../config.js";
+import { getAllAccounts } from "../auth.js";
+import { init, Setup } from "../init/index.js";
+import { logger } from "../logger.js";
+import { prompt, promptOnce } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
+import * as fsutils from "../fsutils.js";
+import * as utils from "../utils.js";
+import { Options } from "../options.js";
+import { isEnabled } from "../experiments.js";
+import { readTemplateSync } from "../templates.js";
 
 const homeDir = os.homedir();
 

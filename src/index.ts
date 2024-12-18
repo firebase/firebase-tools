@@ -1,13 +1,11 @@
 import * as program from "commander";
 import * as clc from "colorette";
-import * as leven from "leven";
+import leven from "leven";
 
-import { logger } from "./logger";
-import { setupLoggers } from "./utils";
-
-
-const pkg = require("../package.json");
-
+import * as logger from "./logger.js";
+import { setupLoggers } from "./utils.js";
+import { errorOut } from "./errorOut.js";
+import pkg from "../package.json" with { type: "json" };
 program.version(pkg.version);
 program.option(
   "-P, --project <alias_or_project_id>",
@@ -26,8 +24,8 @@ program.option("-c, --config <path>", "path to the firebase.json file to use for
 
 const client = {
   cli: program,
-  logger: require("./logger"),
-  errorOut: require("./errorOut").errorOut,
+  logger,
+  errorOut,
   getCommand: (name: string) => {
     for (let i = 0; i < client.cli.commands.length; i++) {
       if (client.cli.commands[i]._name === name) {
@@ -52,8 +50,8 @@ function suggestCommands(cmd: string, cmdList: string[]): string | undefined {
     return leven(c, cmd) < c.length * 0.4;
   });
   if (suggestion) {
-    logger.error();
-    logger.error("Did you mean " + clc.bold(suggestion) + "?");
+    logger.logger.error();
+    logger.logger.error("Did you mean " + clc.bold(suggestion) + "?");
     return suggestion;
   }
 }
@@ -80,11 +78,11 @@ program.action((_, args) => {
   setupLoggers();
 
   const cmd = args[0];
-  logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
+  logger.logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
-    logger.error();
-    logger.error(
+    logger.logger.error();
+    logger.logger.error(
       clc.bold(cmd) + " has been renamed, please run",
       clc.bold("firebase " + RENAMED_COMMANDS[cmd]),
       "instead",
@@ -102,4 +100,4 @@ program.action((_, args) => {
 });
 
 // NB: Keep this export line to keep firebase-tools-as-a-module working.
-export = client;
+export default client;

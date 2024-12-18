@@ -1,4 +1,4 @@
-import * as backend from "./backend";
+import * as backend from "./backend.js";
 
 // This file takes data from
 // https://cloud.google.com/functions/pricing and

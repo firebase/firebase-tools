@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
 import * as stream from "stream";
-import { extractReadableIndex, formatNumber, ProfileReport } from "./profileReport";
-import { SAMPLE_INPUT_PATH, SAMPLE_OUTPUT_PATH } from "./test/fixtures/profiler-data";
+import { extractReadableIndex, formatNumber, ProfileReport } from "./profileReport.js";
+import { SAMPLE_INPUT_PATH, SAMPLE_OUTPUT_PATH } from "./test/fixtures/profiler-data/index.js";
 
 function combinerFunc(obj1: any, obj2: any): any {
   return { count: obj1.count + obj2.count };

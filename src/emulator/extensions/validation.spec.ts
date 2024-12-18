@@ -1,16 +1,16 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as validation from "./validation";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import * as controller from "../controller";
-import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
-import { EmulatableBackend } from "../functionsEmulator";
-import { Emulators } from "../types";
-import { EventTrigger, ParsedTriggerDefinition } from "../functionsEmulatorShared";
-import { Options } from "../../options";
-import { RC } from "../../rc";
-import { Config } from "../../config";
+import * as validation from "./validation.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
+import * as controller from "../controller.js";
+import { DeploymentInstanceSpec } from "../../deploy/extensions/planner.js";
+import { EmulatableBackend } from "../functionsEmulator.js";
+import { Emulators } from "../types.js";
+import { EventTrigger, ParsedTriggerDefinition } from "../functionsEmulatorShared.js";
+import { Options } from "../../options.js";
+import { RC } from "../../rc.js";
+import { Config } from "../../config.js";
 
 const TEST_OPTIONS: Options = {
   cwd: ".",

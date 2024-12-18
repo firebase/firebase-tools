@@ -1,20 +1,19 @@
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 import * as clc from "colorette";
 import * as childProcess from "child_process";
-import { FirebaseError } from "../error";
-const needProjectId = require("../projectUtils").needProjectId;
-import { logger } from "../logger";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 import * as path from "path";
-import { Options } from "../options";
-import { isVSCodeExtension } from "../vsCodeUtils";
-
+import { Options } from "../options.js";
+import { isVSCodeExtension } from "../vsCodeUtils.js";
+import { needProjectId } from '../projectUtils.js';
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
   const isVSCode = isVSCodeExtension();
   const nodeExecutable = isVSCode ? "node" : process.execPath;
   const crossEnvShellPath = isVSCode
-    ? path.resolve(__dirname, "./cross-env/dist/bin/cross-env-shell.js")
+    ? path.resolve(import.meta.dirname, "./cross-env/dist/bin/cross-env-shell.js")
     : path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js");
   const translatedCommand =
     '"' + nodeExecutable + '" "' + crossEnvShellPath + '" "' + escapedCommand + '"';

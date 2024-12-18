@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Buffer } from "node:buffer";
-"use strict";
+("use strict");
 
 /**
  * Integration test for testing function deploys. Run:

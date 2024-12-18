@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
-import { logger } from "../../logger";
-import { DeploymentType } from "./tasks";
+import { logger } from "../../logger.js";
+import { DeploymentType } from "./tasks.js";
 
 interface ErrorInfo {
   instanceId: string;

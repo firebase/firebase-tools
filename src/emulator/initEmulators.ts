@@ -1,14 +1,13 @@
 // specific initialization steps for an emulator
 
 import { join } from "path";
-import { promptOnce } from "../prompt";
-import { detectStartCommand } from "./apphosting/developmentServer";
-import { EmulatorLogger } from "./emulatorLogger";
-import { Emulators } from "./types";
-import { exportConfig } from "../apphosting/config";
-import { detectProjectRoot } from "../detectProjectRoot";
-import { Config } from "../config";
-
+import { promptOnce } from "../prompt.js";
+import { detectStartCommand } from "./apphosting/developmentServer.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { Emulators } from "./types.js";
+import { exportConfig } from "../apphosting/config.js";
+import { detectProjectRoot } from "../detectProjectRoot.js";
+import { Config } from "../config.js";
 
 type InitFn = (config: Config) => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;

@@ -1,9 +1,9 @@
-import { Command } from "../command";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
-import * as metadata from "../database/metadata";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { Command } from "../command.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as metadata from "../database/metadata.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
 
 export const command = new Command("database:rules:release <rulesetId>")
   .description("mark a staged ruleset as the stable ruleset")

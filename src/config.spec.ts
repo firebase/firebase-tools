@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import { Config } from "./config";
-import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
-import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
-import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
+import { Config } from "./config.js";
+import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config/index.js";
+import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports/index.js";
+import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level/index.js";
 
 describe("Config", () => {
   describe("#load", () => {
     it("should load a cjson file when configPath is specified", () => {
-      const cwd = __dirname;
+      const cwd = import.meta.dirname;
       const config = Config.load({
         cwd,
         configPath: path.relative(cwd, VALID_CONFIG_PATH),

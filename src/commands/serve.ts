@@ -1,15 +1,14 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import { requirePermissions } from "../requirePermissions";
-import { requireConfig } from "../requireConfig";
-import { serve } from "../serve/index";
-import { filterTargets } from "../filterTargets";
-import { needProjectNumber } from "../projectUtils";
-import { FirebaseError } from "../error";
-
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { requireConfig } from "../requireConfig.js";
+import { serve } from "../serve/index.js";
+import { filterTargets } from "../filterTargets.js";
+import { needProjectNumber } from "../projectUtils.js";
+import { FirebaseError } from "../error.js";
 
 const VALID_TARGETS = ["hosting", "functions"];
 const REQUIRES_AUTH = ["hosting", "functions"];

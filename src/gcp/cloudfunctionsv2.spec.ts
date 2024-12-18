@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as cloudfunctionsv2 from "./cloudfunctionsv2";
-import * as backend from "../deploy/functions/backend";
-import * as events from "../functions/events";
-import * as projectConfig from "../functions/projectConfig";
-import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
-import { functionsV2Origin } from "../api";
-import { FirebaseError } from "../error";
+import * as cloudfunctionsv2 from "./cloudfunctionsv2.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as events from "../functions/events/index.js";
+import * as projectConfig from "../functions/projectConfig.js";
+import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants.js";
+import { functionsV2Origin } from "../api.js";
+import { FirebaseError } from "../error.js";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {

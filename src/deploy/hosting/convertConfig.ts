@@ -1,16 +1,16 @@
-import { FirebaseError } from "../../error";
-import { HostingSource } from "../../firebaseConfig";
-import { HostingDeploy } from "./context";
-import * as api from "../../hosting/api";
-import * as backend from "../functions/backend";
-import { Context, Payload as FunctionsPayload } from "../functions/args";
-import { last, logLabeledBullet, logLabeledWarning } from "../../utils";
-import * as proto from "../../gcp/proto";
+import { FirebaseError } from "../../error.js";
+import { HostingSource } from "../../firebaseConfig.js";
+import { HostingDeploy } from "./context.js";
+import * as api from "../../hosting/api.js";
+import * as backend from "../functions/backend.js";
+import { Context, Payload as FunctionsPayload } from "../functions/args.js";
+import { last, logLabeledBullet, logLabeledWarning } from "../../utils.js";
+import * as proto from "../../gcp/proto.js";
 import { bold } from "colorette";
-import * as runTags from "../../hosting/runTags";
-import { assertExhaustive } from "../../functional";
-import * as experiments from "../../experiments";
-import { logger } from "../../logger";
+import * as runTags from "../../hosting/runTags.js";
+import { assertExhaustive } from "../../functional.js";
+import * as experiments from "../../experiments.js";
+import { logger } from "../../logger.js";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp

@@ -1,26 +1,26 @@
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { needProjectId, getProjectId } from "../projectUtils";
-import * as extensionsApi from "../extensions/extensionsApi";
-import { ExtensionSpec, Param } from "../extensions/types";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { needProjectId, getProjectId } from "../projectUtils.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import { ExtensionSpec, Param } from "../extensions/types.js";
 import {
   logPrefix,
   diagnoseAndFixProject,
   createSourceFromLocation,
   isLocalPath,
-} from "../extensions/extensionsHelper";
-import * as paramHelper from "../extensions/paramHelper";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { logger } from "../logger";
-import * as refs from "../extensions/refs";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
-import { partition } from "../functional";
-import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
-import { displayDeveloperTOSWarning } from "../extensions/tos";
+} from "../extensions/extensionsHelper.js";
+import * as paramHelper from "../extensions/paramHelper.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import * as refs from "../extensions/refs.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
+import { partition } from "../functional.js";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
+import { displayDeveloperTOSWarning } from "../extensions/tos.js";
 
 /**
  * Command for configuring an existing extension instance

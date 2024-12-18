@@ -1,10 +1,10 @@
 import * as clc from "colorette";
 
-import { Client } from "./apiv2";
-import { googleOrigin } from "./api";
-import { logger } from "./logger";
-import { FirebaseError } from "./error";
-import * as utils from "./utils";
+import { Client } from "./apiv2.js";
+import { googleOrigin } from "./api.js";
+import { logger } from "./logger.js";
+import { FirebaseError } from "./error.js";
+import * as utils from "./utils.js";
 import { Buffer } from "node:buffer";
 
 const apiClient = new Client({

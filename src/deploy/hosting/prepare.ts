@@ -1,18 +1,18 @@
-import { FirebaseError } from "../../error";
-import * as api from "../../hosting/api";
-import * as config from "../../hosting/config";
-import * as deploymentTool from "../../deploymentTool";
+import { FirebaseError } from "../../error.js";
+import * as api from "../../hosting/api.js";
+import * as config from "../../hosting/config.js";
+import * as deploymentTool from "../../deploymentTool.js";
 import * as clc from "colorette";
-import { Context } from "./context";
-import { DeployOptions } from "../";
-import { HostingOptions } from "../../hosting/options";
-import { assertExhaustive, zipIn } from "../../functional";
-import { trackGA4 } from "../../track";
-import * as utils from "../../utils";
-import { HostingSource, RunRewrite } from "../../firebaseConfig";
-import * as backend from "../functions/backend";
-import { ensureTargeted } from "../../functions/ensureTargeted";
-import { generateSSRCodebaseId } from "../../frameworks";
+import { Context } from "./context.js";
+import { DeployOptions } from "../index.js";
+import { HostingOptions } from "../../hosting/options.js";
+import { assertExhaustive, zipIn } from "../../functional.js";
+import { trackGA4 } from "../../track.js";
+import * as utils from "../../utils.js";
+import { HostingSource, RunRewrite } from "../../firebaseConfig.js";
+import * as backend from "../functions/backend.js";
+import { ensureTargeted } from "../../functions/ensureTargeted.js";
+import { generateSSRCodebaseId } from "../../frameworks/index.js";
 
 function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag

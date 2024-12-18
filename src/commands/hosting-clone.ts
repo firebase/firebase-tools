@@ -1,8 +1,8 @@
 import { bold } from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
 import {
   getChannel,
   createChannel,
@@ -10,10 +10,10 @@ import {
   createRelease,
   addAuthDomains,
   normalizeName,
-} from "../hosting/api";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
+} from "../hosting/api.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")

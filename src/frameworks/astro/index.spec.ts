@@ -1,20 +1,20 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import { EventEmitter } from "events";
 import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 
-import * as astroUtils from "./utils";
-import * as frameworkUtils from "../utils";
+import * as astroUtils from "./utils.js";
+import * as frameworkUtils from "../utils.js";
 import {
   discover,
   getDevModeHandle,
   build,
   ɵcodegenPublicDirectory,
   ɵcodegenFunctionsDirectory,
-} from ".";
-import { FirebaseError } from "../../error";
+} from "./index.js";
+import { FirebaseError } from "../../error.js";
 import { join } from "path";
 
 describe("Astro", () => {

@@ -1,6 +1,6 @@
-import { Backend, allEndpoints } from "../backend";
-import * as args from "../args";
-import { getEndpointHash, getEnvironmentVariablesHash, getSecretsHash } from "./hash";
+import { Backend, allEndpoints } from "../backend.js";
+import * as args from "../args.js";
+import { getEndpointHash, getEnvironmentVariablesHash, getSecretsHash } from "./hash.js";
 
 /**
  *

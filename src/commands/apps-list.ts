@@ -1,12 +1,11 @@
 import * as clc from "colorette";
-import * as ora from "ora";
-const Table = require("cli-table");
-
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
+import ora from "ora";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
+import Table from "cli-table";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 

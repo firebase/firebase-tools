@@ -1,5 +1,5 @@
-import { Queue } from "../../../throttler/queue";
-import { ThrottlerOptions } from "../../../throttler/throttler";
+import { Queue } from "../../../throttler/queue.js";
+import { ThrottlerOptions } from "../../../throttler/throttler.js";
 
 /**
  * An Executor runs lambdas (which may be async).

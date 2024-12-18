@@ -1,15 +1,15 @@
-import { cloneDeep } from "lodash";
+import _ from "lodash";
 import { expect } from "chai";
-import * as express from "express";
-import * as nock from "nock";
-import * as sinon from "sinon";
-import * as supertest from "supertest";
+import express from "express";
+import nock from "nock";
+import sinon from "sinon";
+import supertest from "supertest";
 
-import { functionsProxy, FunctionsProxyOptions } from "./functionsProxy";
-import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators } from "../emulator/types";
-import { FakeEmulator } from "../emulator/testing/fakeEmulator";
-import { HostingRewrites } from "../firebaseConfig";
+import { functionsProxy, FunctionsProxyOptions } from "./functionsProxy.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { Emulators } from "../emulator/types.js";
+import { FakeEmulator } from "../emulator/testing/fakeEmulator.js";
+import { HostingRewrites } from "../firebaseConfig.js";
 
 describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {
@@ -73,7 +73,7 @@ describe("functionsProxy", () => {
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
     nock("http://127.0.0.1:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -91,7 +91,7 @@ describe("functionsProxy", () => {
   it("should resolve a function that returns middleware that proxies to a local version in another region", async () => {
     nock("http://127.0.0.1:7778").get("/project-foo/europe-west3/bar/").reply(200, "local version");
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -111,7 +111,7 @@ describe("functionsProxy", () => {
       .get("/project-foo/us-central1/bar/")
       .reply(301, "", { location: "/over-here" });
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -132,7 +132,7 @@ describe("functionsProxy", () => {
       .get("/project-foo/us-central1/bar/")
       .reply(301, "", { location: "https://example.com/foo" });
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -153,7 +153,7 @@ describe("functionsProxy", () => {
       .post("/project-foo/us-central1/bar/", "data")
       .reply(200, "you got post data");
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -175,7 +175,7 @@ describe("functionsProxy", () => {
       .query({ key: "value" })
       .reply(200, "query!");
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -196,7 +196,7 @@ describe("functionsProxy", () => {
       .get("/project-foo/us-central1/bar/")
       .reply(301, "redirected", { Location: "https://example.com" });
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);
@@ -218,7 +218,7 @@ describe("functionsProxy", () => {
         "Set-Cookie": ["foo=bar", "bar=zap"],
       });
 
-    const options = cloneDeep(fakeOptions);
+    const options = _.cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
     const mwGenerator = functionsProxy(options);

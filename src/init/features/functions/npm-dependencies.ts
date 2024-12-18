@@ -1,6 +1,6 @@
-import { logger } from "../../../logger";
-import { prompt } from "../../../prompt";
-import { wrapSpawn } from "../../spawn";
+import { logger } from "../../../logger.js";
+import { prompt } from "../../../prompt.js";
+import { wrapSpawn } from "../../spawn.js";
 
 export async function askInstallDependencies(setup: any, config: any): Promise<void> {
   await prompt(setup, [

@@ -1,5 +1,5 @@
-import * as api from "../api";
-import { ensure } from "../ensureApiEnabled";
+import * as api from "../api.js";
+import { ensure } from "../ensureApiEnabled.js";
 
 export async function ensureApis(projectId: string): Promise<void> {
   const prefix = "dataconnect";

@@ -1,7 +1,7 @@
-import AbortController from "abort-controller";
-import { EmulatorLogger } from "./emulatorLogger";
-import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
-import { Emulators } from "./types";
+import { AbortController } from "abort-controller";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator.js";
+import { Emulators } from "./types.js";
 import fetch from "node-fetch";
 
 class Node<T> {

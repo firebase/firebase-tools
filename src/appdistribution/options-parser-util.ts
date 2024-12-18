@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
-import { FirebaseError } from "../error";
-import { needProjectNumber } from "../projectUtils";
-import { FieldHints, LoginCredential, TestDevice } from "./types";
+import { FirebaseError } from "../error.js";
+import { needProjectNumber } from "../projectUtils.js";
+import { FieldHints, LoginCredential, TestDevice } from "./types.js";
 
 /**
  * Takes in comma-separated string or a path to a comma- or newline-separated

@@ -1,16 +1,16 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId, needProjectNumber } from "../projectUtils";
-import { requireAuth } from "../requireAuth";
-import * as gcsm from "../gcp/secretManager";
-import * as apphosting from "../gcp/apphosting";
-import { requirePermissions } from "../requirePermissions";
-import * as secrets from "../apphosting/secrets";
-import * as dialogs from "../apphosting/secrets/dialogs";
-import * as config from "../apphosting/config";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
+import { requireAuth } from "../requireAuth.js";
+import * as gcsm from "../gcp/secretManager.js";
+import * as apphosting from "../gcp/apphosting.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as secrets from "../apphosting/secrets/index.js";
+import * as dialogs from "../apphosting/secrets/dialogs.js";
+import * as config from "../apphosting/config.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")

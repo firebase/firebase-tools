@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as proto from "./proto";
+import * as proto from "./proto.js";
 
 describe("proto", () => {
   describe("duration", () => {

@@ -1,13 +1,13 @@
 import * as clc from "colorette";
 
-import * as operationPoller from "../operation-poller";
-import * as refs from "./refs";
+import * as operationPoller from "../operation-poller.js";
+import * as refs from "./refs.js";
 
-import { extensionsPublisherOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { populateSpec, refNotFoundError } from "./extensionsApi";
-import { Extension, ExtensionVersion, PublisherProfile } from "./types";
+import { extensionsPublisherOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { populateSpec, refNotFoundError } from "./extensionsApi.js";
+import { Extension, ExtensionVersion, PublisherProfile } from "./types.js";
 
 const PUBLISHER_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;

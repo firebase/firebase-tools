@@ -1,8 +1,8 @@
-import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { prettify } from "./graphqlError";
-import { DeploymentMetadata } from "./types";
+import { DataConnectEmulator } from "../emulator/dataconnectEmulator.js";
+import { Options } from "../options.js";
+import { FirebaseError } from "../error.js";
+import { prettify } from "./graphqlError.js";
+import { DeploymentMetadata } from "./types.js";
 
 export async function build(options: Options, configDir: string): Promise<DeploymentMetadata> {
   const buildResult = await DataConnectEmulator.build({ configDir });

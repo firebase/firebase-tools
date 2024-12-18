@@ -1,9 +1,9 @@
-import * as utils from "../utils";
-import * as poller from "../operation-poller";
-import * as gcfV1 from "../gcp/cloudfunctions";
-import * as gcfV2 from "../gcp/cloudfunctionsv2";
-import * as backend from "../deploy/functions/backend";
-import { functionsOrigin, functionsV2Origin } from "../api";
+import * as utils from "../utils.js";
+import * as poller from "../operation-poller.js";
+import * as gcfV1 from "../gcp/cloudfunctions.js";
+import * as gcfV2 from "../gcp/cloudfunctionsv2.js";
+import * as backend from "../deploy/functions/backend.js";
+import { functionsOrigin, functionsV2Origin } from "../api.js";
 import {
   createSecret,
   destroySecretVersion,
@@ -16,20 +16,18 @@ import {
   patchSecret,
   Secret,
   SecretVersion,
-} from "../gcp/secretManager";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
-import { promptOnce } from "../prompt";
-import { validateKey } from "./env";
-import { logger } from "../logger";
-import { assertExhaustive } from "../functional";
-import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
-import { labels } from "../gcp/secretManager";
-import { needProjectId } from "../projectUtils";
-
-const Table = require("cli-table");
-
+} from "../gcp/secretManager.js";
+import { Options } from "../options.js";
+import { FirebaseError } from "../error.js";
+import { logWarning } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { validateKey } from "./env.js";
+import { logger } from "../logger.js";
+import { assertExhaustive } from "../functional.js";
+import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager.js";
+import { labels } from "../gcp/secretManager.js";
+import { needProjectId } from "../projectUtils.js";
+import Table from "cli-table";
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,
 // but don't have time to find out. Taking a shortcut and copying the values directly in

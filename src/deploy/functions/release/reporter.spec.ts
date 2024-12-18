@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import { logger } from "../../../logger";
-import * as backend from "../backend";
-import * as reporter from "./reporter";
-import * as track from "../../../track";
-import * as events from "../../../functions/events";
-import * as args from "../args";
+import { logger } from "../../../logger.js";
+import * as backend from "../backend.js";
+import * as reporter from "./reporter.js";
+import * as track from "../../../track.js";
+import * as events from "../../../functions/events/index.js";
+import * as args from "../args.js";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
   platform: "gcfv1",

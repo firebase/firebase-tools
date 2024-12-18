@@ -1,4 +1,4 @@
-import { AUTH_BLOCKING_EVENTS } from "./events/v1";
+import { AUTH_BLOCKING_EVENTS } from "./events/v1.js";
 
 export const CODEBASE_LABEL = "firebase-functions-codebase";
 export const HASH_LABEL = "firebase-functions-hash";

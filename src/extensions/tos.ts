@@ -1,10 +1,10 @@
-import { Client } from "../apiv2";
-import { extensionsTOSOrigin } from "../api";
-import { logger } from "../logger";
-import { confirm } from "../prompt";
-import { FirebaseError } from "../error";
-import { logPrefix } from "./extensionsHelper";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { extensionsTOSOrigin } from "../api.js";
+import { logger } from "../logger.js";
+import { confirm } from "../prompt.js";
+import { FirebaseError } from "../error.js";
+import { logPrefix } from "./extensionsHelper.js";
+import * as utils from "../utils.js";
 
 const VERSION = "v1";
 const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/extensions/${tos}`;

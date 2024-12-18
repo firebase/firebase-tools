@@ -2,17 +2,17 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as fsExtra from "fs-extra";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as glob from "glob";
 import * as childProcess from "child_process";
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 
 import {
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   ESBUILD_VERSION,
-} from "./constants";
+} from "./constants.js";
 
 import {
   cleanEscapedChars,
@@ -38,10 +38,10 @@ import {
   getRoutesWithServerAction,
   findEsbuildPath,
   installEsbuild,
-} from "./utils";
+} from "./utils.js";
 
-import * as frameworksUtils from "../utils";
-import * as fsUtils from "../../fsutils";
+import * as frameworksUtils from "../utils.js";
+import * as fsUtils from "../../fsutils.js";
 
 import {
   exportMarkerWithImage,
@@ -70,8 +70,8 @@ import {
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
   serverReferenceManifest,
-} from "./testing";
-import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
+} from "./testing/index.js";
+import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n.js";
 
 describe("Next.js utils", () => {
   describe("cleanEscapedChars", () => {

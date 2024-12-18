@@ -3,13 +3,12 @@
  * Internal documentation: https://source.corp.google.com/piper///depot/google3/google/firebase/database/v1beta/rtdb_service.proto
  */
 
-import { Client } from "../apiv2";
-import { Constants } from "../emulator/constants";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { rtdbManagementOrigin } from "../api";
-import * as utils from "../utils";
-
+import { Client } from "../apiv2.js";
+import { Constants } from "../emulator/constants.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { rtdbManagementOrigin } from "../api.js";
+import * as utils from "../utils.js";
 
 export const MGMT_API_VERSION = "v1beta";
 export const APP_LIST_PAGE_SIZE = 100;

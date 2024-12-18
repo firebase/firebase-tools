@@ -1,12 +1,11 @@
-import { Command } from "../command";
-import { datetimeString } from "../utils";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
-import * as apphosting from "../gcp/apphosting";
-
-const Table = require("cli-table");
+import { Command } from "../command.js";
+import { datetimeString } from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { Options } from "../options.js";
+import * as apphosting from "../gcp/apphosting.js";
+import Table from "cli-table";
 const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")

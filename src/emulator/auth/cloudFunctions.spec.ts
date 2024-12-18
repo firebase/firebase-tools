@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { AuthCloudFunction } from "./cloudFunctions";
-import { EmulatorRegistry } from "../registry";
-import { Emulators } from "../types";
-import { FakeEmulator } from "../testing/fakeEmulator";
+import { AuthCloudFunction } from "./cloudFunctions.js";
+import { EmulatorRegistry } from "../registry.js";
+import { Emulators } from "../types.js";
+import { FakeEmulator } from "../testing/fakeEmulator.js";
 
 describe("cloudFunctions", () => {
   describe("dispatch", () => {

@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as artifactregistry from "../../gcp/artifactregistry";
-import * as backend from "./backend";
-import * as containerCleaner from "./containerCleaner";
-import * as docker from "../../gcp/docker";
+import * as artifactregistry from "../../gcp/artifactregistry.js";
+import * as backend from "./backend.js";
+import * as containerCleaner from "./containerCleaner.js";
+import * as docker from "../../gcp/docker.js";
 
-import * as poller from "../../operation-poller";
-import * as utils from "../../utils";
+import * as poller from "../../operation-poller.js";
+import * as utils from "../../utils.js";
 
 describe("CleanupBuildImages", () => {
   let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;

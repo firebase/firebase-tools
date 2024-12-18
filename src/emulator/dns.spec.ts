@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import { IPV4_LOOPBACK, IPV6_LOOPBACK, Resolver } from "./dns";
+import sinon from "sinon";
+import { IPV4_LOOPBACK, IPV6_LOOPBACK, Resolver } from "./dns.js";
 
 const IPV4_ADDR1 = { address: "169.254.20.1", family: 4 };
 const IPV4_ADDR2 = { address: "169.254.20.2", family: 4 };

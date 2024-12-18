@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as fs from "fs-extra";
 
-import { FirebaseError } from "../error";
-import { ExtensionSpec, Param, ParamType } from "./types";
-import * as extensionsHelper from "./extensionsHelper";
-import * as paramHelper from "./paramHelper";
-import * as prompt from "../prompt";
-import { cloneDeep } from "../utils";
+import { FirebaseError } from "../error.js";
+import { ExtensionSpec, Param, ParamType } from "./types.js";
+import * as extensionsHelper from "./extensionsHelper.js";
+import * as paramHelper from "./paramHelper.js";
+import * as prompt from "../prompt.js";
+import { cloneDeep } from "../utils.js";
 
 const PROJECT_ID = "test-proj";
 const INSTANCE_ID = "ext-instance";

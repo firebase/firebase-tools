@@ -1,12 +1,12 @@
 import * as clc from "colorette";
 
-import { loadCJSON } from "../../loadCJSON";
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import * as utils from "../../utils";
-import { Options } from "../../options";
-import * as fsConfig from "../../firestore/fsConfig";
-import { logger } from "../../logger";
-import { DeployOptions } from "..";
+import { loadCJSON } from "../../loadCJSON.js";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import * as utils from "../../utils.js";
+import { Options } from "../../options.js";
+import * as fsConfig from "../../firestore/fsConfig.js";
+import { logger } from "../../logger.js";
+import { DeployOptions } from "../index.js";
 
 export interface RulesContext {
   databaseId: string;

@@ -1,4 +1,4 @@
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 import * as clc from "colorette";
 
 /* istanbul ignore next */

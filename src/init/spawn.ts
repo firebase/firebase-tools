@@ -1,7 +1,6 @@
-import * as spawn from "cross-spawn";
-import { logger } from "../logger";
-import { getErrStack, isObject } from "../error";
-
+import spawn from "cross-spawn";
+import { logger } from "../logger.js";
+import { getErrStack, isObject } from "../error.js";
 
 /**
  * wrapSpawn is cross platform spawn

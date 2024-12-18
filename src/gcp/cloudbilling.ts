@@ -1,6 +1,6 @@
-import { cloudbillingOrigin } from "../api";
-import { Client } from "../apiv2";
-import * as utils from "../utils";
+import { cloudbillingOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import * as utils from "../utils.js";
 
 const API_VERSION = "v1";
 const client = new Client({ urlPrefix: cloudbillingOrigin(), apiVersion: API_VERSION });

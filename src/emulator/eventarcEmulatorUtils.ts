@@ -1,5 +1,5 @@
-import { CloudEvent } from "./events/types";
-import { FirebaseError } from "../error";
+import { CloudEvent } from "./events/types.js";
+import { FirebaseError } from "../error.js";
 
 const BUILT_IN_ATTRS: string[] = ["time", "datacontenttype", "subject"];
 

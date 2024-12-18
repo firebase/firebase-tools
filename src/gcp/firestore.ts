@@ -1,8 +1,8 @@
-import { firestoreOrigin, firestoreOriginOrEmulator } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import { Duration, assertOneOf, durationFromSeconds } from "./proto";
-import { FirebaseError } from "../error";
+import { firestoreOrigin, firestoreOriginOrEmulator } from "../api.js";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import { Duration, assertOneOf, durationFromSeconds } from "./proto.js";
+import { FirebaseError } from "../error.js";
 
 const prodOnlyClient = new Client({
   auth: true,

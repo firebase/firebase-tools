@@ -1,9 +1,9 @@
 import * as clc from "colorette";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import * as extensionsApi from "../extensions/extensionsApi";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
 import {
   ensureExtensionsApiEnabled,
   logPrefix,
@@ -11,19 +11,19 @@ import {
   SourceOrigin,
   diagnoseAndFixProject,
   isLocalPath,
-} from "../extensions/extensionsHelper";
-import * as paramHelper from "../extensions/paramHelper";
-import { inferUpdateSource } from "../extensions/updateHelper";
-import * as secretsUtils from "../extensions/secretsUtils";
-import * as refs from "../extensions/refs";
-import { getProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { confirm } from "../prompt";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
-import { displayDeveloperTOSWarning } from "../extensions/tos";
+} from "../extensions/extensionsHelper.js";
+import * as paramHelper from "../extensions/paramHelper.js";
+import { inferUpdateSource } from "../extensions/updateHelper.js";
+import * as secretsUtils from "../extensions/secretsUtils.js";
+import * as refs from "../extensions/refs.js";
+import { getProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { confirm } from "../prompt.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
+import { displayDeveloperTOSWarning } from "../extensions/tos.js";
 
 /**
  * Command for updating an existing extension instance

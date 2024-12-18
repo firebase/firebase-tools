@@ -1,8 +1,8 @@
-import { MockFileSystem } from "../mockFileSystem";
+import { MockFileSystem } from "../mockFileSystem.js";
 import { expect } from "chai";
-import { NodejsRuntime, PackageJSON } from "./node";
-import { FrameworkSpec } from "../types";
-import { FirebaseError } from "../../../../error";
+import { NodejsRuntime, PackageJSON } from "./node.js";
+import { FrameworkSpec } from "../types.js";
+import { FirebaseError } from "../../../../error.js";
 
 describe("NodejsRuntime", () => {
   let nodeJSRuntime: NodejsRuntime;

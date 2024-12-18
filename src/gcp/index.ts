@@ -1,8 +1,8 @@
-export * as cloudbilling from "./cloudbilling";
-export * as cloudfunctions from "./cloudfunctions";
-export * as cloudscheduler from "./cloudscheduler";
-export * as cloudlogging from "./cloudlogging";
-export * as iam from "./iam";
-export * as pubsub from "./pubsub";
-export * as storage from "./storage";
-export * as rules from "./rules";
+export * as cloudbilling from "./cloudbilling.js";
+export * as cloudfunctions from "./cloudfunctions.js";
+export * as cloudscheduler from "./cloudscheduler.js";
+export * as cloudlogging from "./cloudlogging.js";
+export * as iam from "./iam.js";
+export * as pubsub from "./pubsub.js";
+export * as storage from "./storage.js";
+export * as rules from "./rules.js";

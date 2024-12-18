@@ -4,14 +4,14 @@
  */
 
 import { isIPv4 } from "net";
-import { checkListenable } from "../portUtils";
-import { detectStartCommand } from "./developmentServer";
-import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
-import { spawnWithCommandString } from "../../init/spawn";
-import { logger } from "./developmentServer";
-import { Emulators } from "../types";
-import { getLocalAppHostingConfiguration } from "./config";
-import { resolveProjectPath } from "../../projectPath";
+import { checkListenable } from "../portUtils.js";
+import { detectStartCommand } from "./developmentServer.js";
+import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants.js";
+import { spawnWithCommandString } from "../../init/spawn.js";
+import { logger } from "./developmentServer.js";
+import { Emulators } from "../types.js";
+import { getLocalAppHostingConfiguration } from "./config.js";
+import { resolveProjectPath } from "../../projectPath.js";
 
 interface StartOptions {
   port?: number;

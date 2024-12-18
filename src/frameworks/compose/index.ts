@@ -1,7 +1,7 @@
-import { AppBundle } from "./interfaces";
-import { getDriver, Mode } from "./driver";
-import { discover } from "./discover";
-import { FrameworkSpec, FileSystem } from "./discover/types";
+import { AppBundle } from "./interfaces.js";
+import { getDriver, Mode } from "./driver/index.js";
+import { discover } from "./discover/index.js";
+import { FrameworkSpec, FileSystem } from "./discover/types.js";
 
 /**
  * Run composer in the specified execution context.

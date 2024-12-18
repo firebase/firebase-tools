@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as nock from "nock";
-import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "./operations";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "./state";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import nock from "nock";
+import jsonwebtoken from "jsonwebtoken";
+import { FirebaseJwtPayload } from "./operations.js";
+import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "./state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -30,7 +30,7 @@ import {
   BLOCKING_FUNCTION_HOST,
   DISPLAY_NAME,
   PHOTO_URL,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
 
@@ -76,8 +76,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         ]);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -134,8 +134,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         ]);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -193,8 +193,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         );
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -583,8 +583,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -627,8 +627,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1081,8 +1081,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).not.to.have.property("photoUrl");
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1125,8 +1125,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(rawUserInfo).to.eql(attributeStatements);
 
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded!.payload.firebase)
@@ -1182,8 +1182,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1244,8 +1244,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1320,8 +1320,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(res.body.isNewUser).to.equal(true);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1392,8 +1392,8 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(!!res.body.isNewUser).to.equal(false);
 
           const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-            header: JwtHeader;
+          const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+            header: jsonwebtoken.JwtHeader;
             payload: FirebaseJwtPayload;
           } | null;
           expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;

@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as resourceManager from "../../gcp/resourceManager";
-import * as pn from "../../getProjectNumber";
-import * as v2FunctionHelper from "./v2FunctionHelper";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import * as projectUtils from "../../projectUtils";
+import sinon from "sinon";
+import * as resourceManager from "../../gcp/resourceManager.js";
+import * as pn from "../../getProjectNumber.js";
+import * as v2FunctionHelper from "./v2FunctionHelper.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
+import * as projectUtils from "../../projectUtils.js";
 
 const GOOD_BINDING = {
   role: "roles/eventarc.eventReceiver",

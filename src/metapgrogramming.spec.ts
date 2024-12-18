@@ -7,7 +7,7 @@ import {
   DeepOmit,
   RequireKeys,
   DeepExtract,
-} from "./metaprogramming";
+} from "./metaprogramming.js";
 
 describe("metaprogramming", () => {
   it("can calcluate recursive keys", () => {

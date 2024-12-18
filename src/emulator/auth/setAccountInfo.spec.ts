@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "./operations";
-import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "./state";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import jsonwebtoken from "jsonwebtoken";
+import { FirebaseJwtPayload } from "./operations.js";
+import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "./state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,
@@ -21,7 +21,7 @@ import {
   TEST_PHONE_NUMBER_3,
   TEST_INVALID_PHONE_NUMBER,
   registerTenant,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow updating and deleting displayName and photoUrl", async () => {
@@ -67,8 +67,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         // Updating password causes new tokens to be issued.
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -102,8 +102,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         // Adding password causes new tokens to be issued.
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -138,8 +138,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         // Setting email causes new tokens to be issued.
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -167,8 +167,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         // Changing email causes new tokens to be issued.
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
-        const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
@@ -1148,8 +1148,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => expectStatusCode(200, res));
 
     const { idToken } = await signInWithEmailLink(authApi(), email);
-    const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
-      header: JwtHeader;
+    const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
+      header: jsonwebtoken.JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;

@@ -1,21 +1,21 @@
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
 import * as uuid from "uuid";
-import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
+import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata.js";
 import { Request, Response, Router } from "express";
-import { StorageEmulator } from "../index";
-import { sendFileBytes } from "./shared";
-import { EmulatorRegistry } from "../../registry";
-import { parseObjectUploadMultipartRequest } from "../multipart";
-import { NotFoundError, ForbiddenError } from "../errors";
+import { StorageEmulator } from "../index.js";
+import { sendFileBytes } from "./shared.js";
+import { EmulatorRegistry } from "../../registry.js";
+import { parseObjectUploadMultipartRequest } from "../multipart.js";
+import { NotFoundError, ForbiddenError } from "../errors.js";
 import {
   NotCancellableError,
   Upload,
   UploadNotActiveError,
   UploadPreviouslyFinalizedError,
-} from "../upload";
-import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse } from "../files";
+} from "../upload.js";
+import { reqBodyToBuffer } from "../../shared/request.js";
+import { ListObjectsResponse } from "../files.js";
 
 import { Buffer } from "node:buffer";
 

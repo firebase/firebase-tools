@@ -1,4 +1,4 @@
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 interface serviceName {
   projectId: string;

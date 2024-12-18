@@ -1,18 +1,18 @@
-import * as angular from "./angular";
-import * as astro from "./astro";
-import * as express from "./express";
-import * as lit from "./lit";
-import * as next from "./next";
-import * as nuxt from "./nuxt";
-import * as nuxt2 from "./nuxt2";
-import * as preact from "./preact";
-import * as svelte from "./svelte";
-import * as svelekit from "./sveltekit";
-import * as react from "./react";
-import * as vite from "./vite";
-import * as flutter from "./flutter";
+import * as angular from "./angular/index.js";
+import * as astro from "./astro/index.js";
+import * as express from "./express/index.js";
+import * as lit from "./lit/index.js";
+import * as next from "./next/index.js";
+import * as nuxt from "./nuxt/index.js";
+import * as nuxt2 from "./nuxt2/index.js";
+import * as preact from "./preact/index.js";
+import * as svelte from "./svelte/index.js";
+import * as svelekit from "./sveltekit/index.js";
+import * as react from "./react/index.js";
+import * as vite from "./vite/index.js";
+import * as flutter from "./flutter/index.js";
 
-import { Framework } from "./interfaces";
+import { Framework } from "./interfaces.js";
 
 export const WebFrameworks: Record<string, Framework> = {
   angular,

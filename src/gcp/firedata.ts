@@ -1,6 +1,6 @@
-import { Client } from "../apiv2";
-import { firedataOrigin } from "../api";
-import { FirebaseError } from "../error";
+import { Client } from "../apiv2.js";
+import { firedataOrigin } from "../api.js";
+import { FirebaseError } from "../error.js";
 
 const client = new Client({ urlPrefix: firedataOrigin(), auth: true, apiVersion: "v1" });
 

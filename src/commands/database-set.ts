@@ -1,20 +1,19 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { FirebaseError, getErrMsg } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { promptOnce } from "../prompt.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import { requirePermissions } from "../requirePermissions.js";
 import { URL } from "url";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as utils from "../utils";
-
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")

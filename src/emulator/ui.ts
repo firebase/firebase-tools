@@ -1,15 +1,15 @@
-import * as express from "express";
+import express from "express";
 import * as path from "path";
-import { Emulators, ListenSpec } from "./types";
-import * as downloadableEmulators from "./downloadableEmulators";
-import { EmulatorRegistry } from "./registry";
-import { FirebaseError } from "../error";
-import { EmulatorLogger } from "./emulatorLogger";
-import { Constants } from "./constants";
-import { emulatorSession } from "../track";
-import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
-import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
-import { EmulatorHub } from "./hub";
+import { Emulators, ListenSpec } from "./types.js";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { Constants } from "./constants.js";
+import { emulatorSession } from "../track.js";
+import { ExpressBasedEmulator } from "./ExpressBasedEmulator.js";
+import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments.js";
+import { EmulatorHub } from "./hub.js";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];

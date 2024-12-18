@@ -1,19 +1,24 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 import * as clc from "colorette";
 
-import { FirebaseConfig } from "../../firebaseConfig";
-import { HostingOptions } from "../../hosting/options";
-import { Context } from "./context";
-import { Options } from "../../options";
-import * as hostingApi from "../../hosting/api";
-import * as tracking from "../../track";
-import * as deploymentTool from "../../deploymentTool";
-import * as config from "../../hosting/config";
-import * as utils from "../../utils";
-import { addPinnedFunctionsToOnlyString, hasPinnedFunctions, prepare, unsafePins } from "./prepare";
-import { cloneDeep } from "../../utils";
-import * as backend from "../functions/backend";
+import { FirebaseConfig } from "../../firebaseConfig.js";
+import { HostingOptions } from "../../hosting/options.js";
+import { Context } from "./context.js";
+import { Options } from "../../options.js";
+import * as hostingApi from "../../hosting/api.js";
+import * as tracking from "../../track.js";
+import * as deploymentTool from "../../deploymentTool.js";
+import * as config from "../../hosting/config.js";
+import * as utils from "../../utils.js";
+import {
+  addPinnedFunctionsToOnlyString,
+  hasPinnedFunctions,
+  prepare,
+  unsafePins,
+} from "./prepare.js";
+import { cloneDeep } from "../../utils.js";
+import * as backend from "../functions/backend.js";
 
 describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;

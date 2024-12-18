@@ -1,9 +1,9 @@
-import { FirebaseError } from "./error";
-import { SiteType, listSites } from "./hosting/api";
-import { logger } from "./logger";
-import { getFirebaseProject } from "./management/projects";
-import { needProjectId } from "./projectUtils";
-import { last } from "./utils";
+import { FirebaseError } from "./error.js";
+import { SiteType, listSites } from "./hosting/api.js";
+import { logger } from "./logger.js";
+import { getFirebaseProject } from "./management/projects.js";
+import { needProjectId } from "./projectUtils.js";
+import { last } from "./utils.js";
 
 export const errNoDefaultSite = new FirebaseError(
   "Could not determine the default site for the project.",

@@ -1,11 +1,15 @@
 import { expect } from "chai";
 import { join } from "node:path";
 
-import * as planner from "../deploy/extensions/planner";
-import { ExtensionsEmulator } from "./extensionsEmulator";
-import { EmulatableBackend } from "./functionsEmulator";
-import { Extension, ExtensionVersion, RegistryLaunchStage, Visibility } from "../extensions/types";
-
+import * as planner from "../deploy/extensions/planner.js";
+import { ExtensionsEmulator } from "./extensionsEmulator.js";
+import { EmulatableBackend } from "./functionsEmulator.js";
+import {
+  Extension,
+  ExtensionVersion,
+  RegistryLaunchStage,
+  Visibility,
+} from "../extensions/types.js";
 
 const TEST_EXTENSION: Extension = {
   name: "publishers/firebase/extensions/storage-resize-images",

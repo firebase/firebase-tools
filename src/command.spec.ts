@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
-import * as rc from "./rc";
-import * as nock from "nock";
+import sinon from "sinon";
+import * as rc from "./rc.js";
+import nock from "nock";
 
-import { Command, validateProjectId } from "./command";
-import { FirebaseError } from "./error";
+import { Command, validateProjectId } from "./command.js";
+import { FirebaseError } from "./error.js";
 
 describe("Command", () => {
   let command: Command;

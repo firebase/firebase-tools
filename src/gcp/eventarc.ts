@@ -1,7 +1,6 @@
-import { Client } from "../apiv2";
-import { eventarcOrigin } from "../api";
-import { last } from "lodash";
-import { fieldMasks } from "./proto";
+import { Client } from "../apiv2.js";
+import { eventarcOrigin } from "../api.js";
+import { fieldMasks } from "./proto.js";
 
 export const API_VERSION = "v1";
 
@@ -68,7 +67,7 @@ export async function createChannel(channel: Channel): Promise<Operation> {
   const pathParts = channel.name.split("/");
 
   const res = await client.post<Channel, Operation>(pathParts.slice(0, -1).join("/"), channel, {
-    queryParams: { channelId: last(pathParts)! },
+    queryParams: { channelId: pathParts.pop()! },
   });
   return res.body;
 }

@@ -1,29 +1,28 @@
 import * as clc from "colorette";
-import { logger } from "../logger";
-import { hostingOrigin } from "../api";
+import { logger } from "../logger.js";
+import { hostingOrigin } from "../api.js";
 import { bold, underline, white } from "colorette";
-import { includes, each } from "lodash";
-import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
-import { FirebaseError } from "../error";
-import { AnalyticsParams, trackGA4 } from "../track";
-import { lifecycleHooks } from "./lifecycleHooks";
-import * as experiments from "../experiments";
-import * as HostingTarget from "./hosting";
-import * as DatabaseTarget from "./database";
-import * as FirestoreTarget from "./firestore";
-import * as FunctionsTarget from "./functions";
-import * as StorageTarget from "./storage";
-import * as RemoteConfigTarget from "./remoteconfig";
-import * as ExtensionsTarget from "./extensions";
-import * as DataConnectTarget from "./dataconnect";
-import { prepareFrameworks } from "../frameworks";
-import { HostingDeploy } from "./hosting/context";
-import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
-import { isRunningInGithubAction } from "../init/features/hosting/github";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
-import { requirePermissions } from "../requirePermissions";
-import { Options } from "../options";
+import { needProjectId } from "../projectUtils.js";
+import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { AnalyticsParams, trackGA4 } from "../track.js";
+import { lifecycleHooks } from "./lifecycleHooks.js";
+import * as experiments from "../experiments.js";
+import * as HostingTarget from "./hosting/index.js";
+import * as DatabaseTarget from "./database/index.js";
+import * as FirestoreTarget from "./firestore/index.js";
+import * as FunctionsTarget from "./functions/index.js";
+import * as StorageTarget from "./storage/index.js";
+import * as RemoteConfigTarget from "./remoteconfig/index.js";
+import * as ExtensionsTarget from "./extensions/index.js";
+import * as DataConnectTarget from "./dataconnect/index.js";
+import { prepareFrameworks } from "../frameworks/index.js";
+import { HostingDeploy } from "./hosting/context.js";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare.js";
+import { isRunningInGithubAction } from "../init/features/hosting/github.js";
+import { TARGET_PERMISSIONS } from "../commands/deploy.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Options } from "../options.js";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -145,12 +144,12 @@ export const deploy = async function (
   logSuccess(bold(underline(successMessage)));
   logger.info();
 
-  const deployedHosting = includes(targetNames, "hosting");
+  const deployedHosting = targetNames.includes("hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys as HostingDeploy[], (deploy) => {
+    for (const deploy of context.hosting.deploys as HostingDeploy[]) {
       logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
-    });
+    };
     const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
     return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
   } else {

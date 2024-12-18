@@ -1,4 +1,4 @@
-import { RC } from "../rc";
+import { RC } from "../rc.js";
 
 export function saveEtags(
   rc: RC,

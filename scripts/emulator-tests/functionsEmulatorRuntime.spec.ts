@@ -2,11 +2,11 @@ import { expect } from "chai";
 
 import * as http from "http";
 import * as fs from "fs/promises";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as path from "path";
 import { ChildProcess } from "child_process";
 
-import * as express from "express";
+import express from "express";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/v1/firestore";
 
@@ -17,7 +17,6 @@ import {
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
 import { streamToString } from "../../src/utils";
-
 
 const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
 const ADMIN_SDK_CONFIG = {

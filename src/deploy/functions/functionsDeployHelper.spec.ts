@@ -1,10 +1,10 @@
 import { expect } from "chai";
 
-import * as backend from "./backend";
-import * as helper from "./functionsDeployHelper";
-import { Options } from "../../options";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
-import { EndpointFilter, parseFunctionSelector } from "./functionsDeployHelper";
+import * as backend from "./backend.js";
+import * as helper from "./functionsDeployHelper.js";
+import { Options } from "../../options.js";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig.js";
+import { EndpointFilter, parseFunctionSelector } from "./functionsDeployHelper.js";
 
 describe("functionsDeployHelper", () => {
   const ENDPOINT: backend.Endpoint = {

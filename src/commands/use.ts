@@ -1,14 +1,13 @@
 import * as clc from "colorette";
 
-import { Command } from "../command";
-import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
-import { logger } from "../logger";
-import { Options } from "../options";
-import { prompt } from "../prompt";
-import { requireAuth } from "../requireAuth";
-import { validateProjectId } from "../command";
-import * as utils from "../utils";
-
+import { Command } from "../command.js";
+import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import { prompt } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
+import { validateProjectId } from "../command.js";
+import * as utils from "../utils.js";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {

@@ -1,9 +1,9 @@
-import { Command } from "../command";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError, getErrMsg } from "../error";
-import { AppDistributionClient } from "../appdistribution/client";
-import { getProjectName } from "../appdistribution/options-parser-util";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError, getErrMsg } from "../error.js";
+import { AppDistributionClient } from "../appdistribution/client.js";
+import { getProjectName } from "../appdistribution/options-parser-util.js";
 
 export const command = new Command("appdistribution:groups:delete <alias>")
   .description("delete group from a project")

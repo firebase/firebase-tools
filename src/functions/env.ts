@@ -2,9 +2,9 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { logBullet, logWarning } from "../utils";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { logBullet, logWarning } from "../utils.js";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 

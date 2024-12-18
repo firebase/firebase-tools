@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
 import { BinaryLike } from "crypto";
-import { Backend, Endpoint } from "../backend";
-import { getSecretVersions } from "../../../functions/secrets";
+import { Backend, Endpoint } from "../backend.js";
+import { getSecretVersions } from "../../../functions/secrets.js";
 
 /**
  * Generates a hash from the environment variables of a {@link Backend}.

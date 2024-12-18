@@ -1,11 +1,11 @@
-import { FirebaseError } from "../error";
-import { hostingApiOrigin } from "../api";
-import { Client } from "../apiv2";
-import * as operationPoller from "../operation-poller";
-import { DEFAULT_DURATION } from "../hosting/expireUtils";
-import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
-import * as proto from "../gcp/proto";
-import { getHostnameFromUrl } from "../utils";
+import { FirebaseError } from "../error.js";
+import { hostingApiOrigin } from "../api.js";
+import { Client } from "../apiv2.js";
+import * as operationPoller from "../operation-poller.js";
+import { DEFAULT_DURATION } from "../hosting/expireUtils.js";
+import { getAuthDomains, updateAuthDomains } from "../gcp/auth.js";
+import * as proto from "../gcp/proto.js";
+import { getHostnameFromUrl } from "../utils.js";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 

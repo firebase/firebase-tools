@@ -1,8 +1,8 @@
-import { webApps } from "./app";
-import * as apps from "../management/apps";
-import * as sinon from "sinon";
+import { webApps } from "./app.js";
+import * as apps from "../management/apps.js";
+import sinon from "sinon";
 import { expect } from "chai";
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 describe("app", () => {
   const projectId = "projectId";

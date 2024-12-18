@@ -1,10 +1,10 @@
 import * as chokidar from "chokidar";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
-import { SourceFile } from "./types";
-import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime";
-import { RulesConfig } from "..";
-import { readFile } from "../../../fsutils";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
+import { SourceFile } from "./types.js";
+import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from "./runtime.js";
+import { RulesConfig } from "../index.js";
+import { readFile } from "../../../fsutils.js";
 
 /**
  * Keeps track of rules source file(s) and generated ruleset(s), either one for all storage

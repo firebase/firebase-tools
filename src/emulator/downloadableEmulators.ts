@@ -1,4 +1,3 @@
-const lsofi = require("lsofi");
 import {
   Emulators,
   DownloadableEmulators,
@@ -6,22 +5,23 @@ import {
   DownloadableEmulatorDetails,
   EmulatorDownloadDetails,
   EmulatorUpdateDetails,
-} from "./types";
-import { Constants } from "./constants";
+} from "./types.js";
+import { Constants } from "./constants.js";
 
-import { FirebaseError, hasMessage } from "../error";
+import { FirebaseError, hasMessage } from "../error.js";
 import * as childProcess from "child_process";
-import * as utils from "../utils";
-import { EmulatorLogger } from "./emulatorLogger";
+import * as utils from "../utils.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
 
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
-import { EmulatorRegistry } from "./registry";
-import { downloadEmulator } from "../emulator/download";
-import * as experiments from "../experiments";
+import { EmulatorRegistry } from "./registry.js";
+import { downloadEmulator } from "../emulator/download.js";
+import * as experiments from "../experiments.js";
 import * as process from "process";
+import lsofi from "lsofi";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 

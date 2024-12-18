@@ -1,14 +1,13 @@
-import * as _ from "lodash";
+import _ from "lodash";
 import * as clc from "colorette";
 import * as cjson from "cjson";
 import * as fs from "fs";
 import * as path from "path";
 
-import { detectProjectRoot } from "./detectProjectRoot";
-import { FirebaseError } from "./error";
-import * as fsutils from "./fsutils";
-import * as utils from "./utils";
-
+import { detectProjectRoot } from "./detectProjectRoot.js";
+import { FirebaseError } from "./error.js";
+import * as fsutils from "./fsutils.js";
+import * as utils from "./utils.js";
 
 // "exclusive" target implies that a resource can only be assigned a single target name
 const TARGET_TYPES: { [type: string]: { resource: string; exclusive: boolean } } = {

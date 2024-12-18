@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import { describeAuthEmulator, PROJECT_ID } from "./testing/setup.js";
 import {
   expectStatusCode,
   registerUser,
@@ -7,7 +7,7 @@ import {
   getSigninMethods,
   expectUserNotExistsForIdToken,
   registerTenant,
-} from "./testing/helpers";
+} from "./testing/helpers.js";
 
 describeAuthEmulator("accounts:delete", ({ authApi }) => {
   it("should delete the user of the idToken", async () => {

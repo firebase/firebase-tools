@@ -1,9 +1,8 @@
 import { expect } from "chai";
 
-import { FirebaseError } from "../error";
-import { encodeFirestoreValue } from "./encodeFirestoreValue";
+import { FirebaseError } from "../error.js";
+import { encodeFirestoreValue } from "./encodeFirestoreValue.js";
 import { Buffer } from "node:buffer";
-
 
 describe("encodeFirestoreValue", () => {
   it("should encode known types", () => {

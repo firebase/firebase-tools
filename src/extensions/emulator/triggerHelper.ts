@@ -1,18 +1,18 @@
-import * as backend from "../../deploy/functions/backend";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
+import * as backend from "../../deploy/functions/backend.js";
+import { EmulatorLogger } from "../../emulator/emulatorLogger.js";
 import {
   EventSchedule,
   getServiceFromEventType,
   ParsedTriggerDefinition,
-} from "../../emulator/functionsEmulatorShared";
-import { Emulators } from "../../emulator/types";
-import { FirebaseError } from "../../error";
+} from "../../emulator/functionsEmulatorShared.js";
+import { Emulators } from "../../emulator/types.js";
+import { FirebaseError } from "../../error.js";
 import {
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
   Resource,
-} from "../../extensions/types";
-import * as proto from "../../gcp/proto";
+} from "../../extensions/types.js";
+import * as proto from "../../gcp/proto.js";
 
 const SUPPORTED_SYSTEM_PARAMS = {
   "firebaseextensions.v1beta.function": {

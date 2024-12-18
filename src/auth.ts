@@ -1,22 +1,22 @@
 import * as clc from "colorette";
-import * as FormData from "form-data";
+import FormData from "form-data";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
-import * as opn from "open";
+import opn from "open";
 import * as portfinder from "portfinder";
 import * as url from "url";
 
-import * as apiv2 from "./apiv2";
-import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg } from "./error";
-import * as utils from "./utils";
-import { logger } from "./logger";
-import { promptOnce } from "./prompt";
-import * as scopes from "./scopes";
-import { clearCredentials } from "./defaultCredentials";
+import * as apiv2 from "./apiv2.js";
+import { configstore } from "./configstore.js";
+import { FirebaseError, getErrMsg } from "./error.js";
+import * as utils from "./utils.js";
+import { logger } from "./logger.js";
+import { promptOnce } from "./prompt.js";
+import * as scopes from "./scopes.js";
+import { clearCredentials } from "./defaultCredentials.js";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
-import { trackGA4 } from "./track";
+import { trackGA4 } from "./track.js";
 import {
   authOrigin,
   authProxyOrigin,
@@ -26,7 +26,7 @@ import {
   githubClientSecret,
   githubOrigin,
   googleOrigin,
-} from "./api";
+} from "./api.js";
 import {
   Account,
   AuthError,
@@ -36,9 +36,9 @@ import {
   TokensWithTTL,
   GitHubAuthResponse,
   UserCredentials,
-} from "./types/auth";
-import { readTemplate } from "./templates";
-import { refreshAuth } from "./requireAuth";
+} from "./types/auth/index.js";
+import { readTemplate } from "./templates.js";
+import { refreshAuth } from "./requireAuth.js";
 
 portfinder.setBasePort(9005);
 

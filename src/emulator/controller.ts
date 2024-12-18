@@ -1,12 +1,12 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
-import * as fsConfig from "../firestore/fsConfig";
+import * as fsConfig from "../firestore/fsConfig.js";
 
-import { logger } from "../logger";
-import { trackEmulator, trackGA4 } from "../track";
-import * as utils from "../utils";
-import { EmulatorRegistry } from "./registry";
+import { logger } from "../logger.js";
+import { trackEmulator, trackGA4 } from "../track.js";
+import * as utils from "../utils.js";
+import { EmulatorRegistry } from "./registry.js";
 import {
   ALL_EMULATORS,
   ALL_SERVICE_EMULATORS,
@@ -15,52 +15,52 @@ import {
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
   isEmulator,
-} from "./types";
-import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
-import * as commandUtils from "./commandUtils";
-import { EmulatorHub } from "./hub";
-import { ExportMetadata, HubExport } from "./hubExport";
-import { EmulatorUI } from "./ui";
-import { LoggingEmulator } from "./loggingEmulator";
-import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { EmulatorHubClient } from "./hubClient";
-import { confirm, promptOnce } from "../prompt";
+} from "./types.js";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants.js";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator.js";
+import { FirebaseError } from "../error.js";
+import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils.js";
+import * as commandUtils from "./commandUtils.js";
+import { EmulatorHub } from "./hub.js";
+import { ExportMetadata, HubExport } from "./hubExport.js";
+import { EmulatorUI } from "./ui.js";
+import { LoggingEmulator } from "./loggingEmulator.js";
+import * as dbRulesConfig from "../database/rulesConfig.js";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger.js";
+import { EmulatorHubClient } from "./hubClient.js";
+import { confirm, promptOnce } from "../prompt.js";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
-} from "./commandUtils";
-import { fileExistsSync } from "../fsutils";
-import { getStorageRulesConfig } from "./storage/rules/config";
-import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
-import { getProjectDefaultAccount } from "../auth";
-import { Options } from "../options";
-import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
-import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
-import { requiresJava } from "./downloadableEmulators";
-import { prepareFrameworks } from "../frameworks";
-import * as experiments from "../experiments";
-import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+} from "./commandUtils.js";
+import { fileExistsSync } from "../fsutils.js";
+import { getStorageRulesConfig } from "./storage/rules/config.js";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance.js";
+import { getProjectDefaultAccount } from "../auth.js";
+import { Options } from "../options.js";
+import { ParsedTriggerDefinition } from "./functionsEmulatorShared.js";
+import { ExtensionsEmulator } from "./extensionsEmulator.js";
+import { normalizeAndValidate } from "../functions/projectConfig.js";
+import { requiresJava } from "./downloadableEmulators.js";
+import { prepareFrameworks } from "../frameworks/index.js";
+import * as experiments from "../experiments.js";
+import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils.js";
+import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported/index.js";
 
-import { AuthEmulator, SingleProjectMode } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { EventarcEmulator } from "./eventarcEmulator";
-import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { PubsubEmulator } from "./pubsubEmulator";
-import { StorageEmulator } from "./storage";
-import { readFirebaseJson } from "../dataconnect/fileUtils";
-import { TasksEmulator } from "./tasksEmulator";
-import { AppHostingEmulator } from "./apphosting";
-import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
-import { dataConnectLocalConnString } from "../api";
+import { AuthEmulator, SingleProjectMode } from "./auth/index.js";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator.js";
+import { EventarcEmulator } from "./eventarcEmulator.js";
+import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator.js";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator.js";
+import { HostingEmulator } from "./hostingEmulator.js";
+import { PubsubEmulator } from "./pubsubEmulator.js";
+import { StorageEmulator } from "./storage/index.js";
+import { readFirebaseJson } from "../dataconnect/fileUtils.js";
+import { TasksEmulator } from "./tasksEmulator.js";
+import { AppHostingEmulator } from "./apphosting/index.js";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook.js";
+import { dataConnectLocalConnString } from "../api.js";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",

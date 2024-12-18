@@ -1,6 +1,5 @@
-import * as Configstore from "configstore";
+import Configstore from "configstore";
+import pkg from "../package.json" with { type: "json" };
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pkg = require("../package.json");
-
 export const configstore = new Configstore(pkg.name);

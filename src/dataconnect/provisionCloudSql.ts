@@ -1,9 +1,9 @@
-import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import * as utils from "../utils";
-import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
-import { Instance } from "../gcp/cloudsql/types";
-import { promiseWithSpinner } from "../utils";
-import { logger } from "../logger";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin.js";
+import * as utils from "../utils.js";
+import { grantRolesToCloudSqlServiceAccount } from "./checkIam.js";
+import { Instance } from "../gcp/cloudsql/types.js";
+import { promiseWithSpinner } from "../utils.js";
+import { logger } from "../logger.js";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -12,8 +12,8 @@ import {
   freeTrialTermsLink,
   printFreeTrialUnavailable,
   checkFreeTrialInstanceUsed,
-} from "./freeTrial";
-import { FirebaseError } from "../error";
+} from "./freeTrial.js";
+import { FirebaseError } from "../error.js";
 
 export async function provisionCloudSql(args: {
   projectId: string;

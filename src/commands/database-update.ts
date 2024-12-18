@@ -2,19 +2,18 @@ import { URL } from "url";
 import * as clc from "colorette";
 import * as fs from "fs";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as utils from "../utils";
-
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError } from "../error.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { promptOnce } from "../prompt.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")

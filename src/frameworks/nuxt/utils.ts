@@ -1,6 +1,6 @@
-import { pathExists } from "fs-extra";
+import * as fs  from "fs-extra";
 import { join } from "path";
-import { findDependency } from "../utils";
+import { findDependency } from "../utils.js";
 
 export function getNuxtVersion(cwd: string): string | undefined {
   return findDependency("nuxt", {
@@ -17,8 +17,8 @@ export function getNuxtVersion(cwd: string): string | undefined {
  */
 export async function nuxtConfigFilesExist(dir: string): Promise<boolean> {
   const configFilesExist = await Promise.all([
-    pathExists(join(dir, "nuxt.config.js")),
-    pathExists(join(dir, "nuxt.config.ts")),
+    fs.pathExists(join(dir, "nuxt.config.js")),
+    fs.pathExists(join(dir, "nuxt.config.ts")),
   ]);
 
   return configFilesExist.some((it) => it);

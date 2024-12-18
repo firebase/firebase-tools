@@ -1,11 +1,11 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { accessSecretVersion } from "../gcp/secretManager";
-import { requireAuth } from "../requireAuth";
-import * as secretManager from "../gcp/secretManager";
-import { requirePermissions } from "../requirePermissions";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { accessSecretVersion } from "../gcp/secretManager.js";
+import { requireAuth } from "../requireAuth.js";
+import * as secretManager from "../gcp/secretManager.js";
+import { requirePermissions } from "../requirePermissions.js";
 
 export const command = new Command("apphosting:secrets:access <secretName[@version]>")
   .description(

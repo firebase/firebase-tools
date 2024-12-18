@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
+import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils.js";
 
 describe("eventarcEmulatorUtils", () => {
   describe("cloudEventFromProtoToJson", () => {

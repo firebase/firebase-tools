@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import sinon from "sinon";
 
-import * as planner from "./planner";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import { ExtensionInstance, Extension } from "../../extensions/types";
+import * as planner from "./planner.js";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import { ExtensionInstance, Extension } from "../../extensions/types.js";
 
 function extension(latest?: string, latestApproved?: string): Extension {
   return {

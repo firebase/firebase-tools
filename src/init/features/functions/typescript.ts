@@ -1,7 +1,7 @@
-import { askInstallDependencies } from "./npm-dependencies";
-import { prompt } from "../../../prompt";
-import { configForCodebase } from "../../../functions/projectConfig";
-import { readTemplateSync } from "../../../templates";
+import { askInstallDependencies } from "./npm-dependencies.js";
+import { prompt } from "../../../prompt.js";
+import { configForCodebase } from "../../../functions/projectConfig.js";
+import { readTemplateSync } from "../../../templates.js";
 
 const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/typescript/package.lint.json");
 const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(

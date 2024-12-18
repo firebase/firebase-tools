@@ -3,7 +3,7 @@ import { tmpdir } from "os";
 import * as fs from "fs";
 
 import { v4 as uuidV4 } from "uuid";
-import { Persistence } from "./persistence";
+import { Persistence } from "./persistence.js";
 import { Buffer } from "node:buffer";
 
 describe("Persistence", () => {

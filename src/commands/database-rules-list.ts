@@ -1,10 +1,10 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
-import * as metadata from "../database/metadata";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as metadata from "../database/metadata.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
 
 export const command = new Command("database:rules:list")
   .description("list realtime database rulesets")

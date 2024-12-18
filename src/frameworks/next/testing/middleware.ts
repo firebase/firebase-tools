@@ -1,4 +1,4 @@
-import type { MiddlewareManifestV1, MiddlewareManifestV2 } from "../interfaces";
+import type { MiddlewareManifestV1, MiddlewareManifestV2 } from "../interfaces.js";
 
 export const middlewareV2ManifestWhenUsed: MiddlewareManifestV2 = {
   sortedMiddleware: ["/"],

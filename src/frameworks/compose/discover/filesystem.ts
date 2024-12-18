@@ -1,8 +1,8 @@
-import { FileSystem } from "./types";
-import { pathExists, readFile } from "fs-extra";
+import { FileSystem } from "./types.js";
+import * as fs from "fs-extra";
 import * as path from "path";
-import { FirebaseError } from "../../../error";
-import { logger } from "../../../logger";
+import { FirebaseError } from "../../../error.js";
+import { logger } from "../../../logger.js";
 
 /**
  * Find files or read file contents present in the directory.
@@ -16,7 +16,7 @@ export class LocalFileSystem implements FileSystem {
   async exists(file: string): Promise<boolean> {
     try {
       if (!(file in this.contentCache)) {
-        this.existsCache[file] = await pathExists(path.resolve(this.cwd, file));
+        this.existsCache[file] = await fs.pathExists(path.resolve(this.cwd, file));
       }
 
       return this.existsCache[file];
@@ -28,7 +28,7 @@ export class LocalFileSystem implements FileSystem {
   async read(file: string): Promise<string> {
     try {
       if (!(file in this.contentCache)) {
-        const fileContents = await readFile(path.resolve(this.cwd, file), "utf-8");
+        const fileContents = await fs.readFile(path.resolve(this.cwd, file), "utf-8");
         this.contentCache[file] = fileContents;
       }
       return this.contentCache[file];

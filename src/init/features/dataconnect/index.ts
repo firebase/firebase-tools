@@ -2,28 +2,27 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { confirm, promptOnce } from "../../../prompt";
-import { Config } from "../../../config";
-import { Setup } from "../..";
-import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
-import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
-import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
+import { confirm, promptOnce } from "../../../prompt.js";
+import { Config } from "../../../config.js";
+import { Setup } from "../../index.js";
+import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql.js";
+import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial.js";
+import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin.js";
+import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis.js";
 import {
   listLocations,
   listAllServices,
   getSchema,
   listConnectors,
-} from "../../../dataconnect/client";
-import { Schema, Service, File, Platform } from "../../../dataconnect/types";
-import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
-import { logger } from "../../../logger";
-import { readTemplateSync } from "../../../templates";
-import { logBullet } from "../../../utils";
-import { checkBillingEnabled } from "../../../gcp/cloudbilling";
-import * as sdk from "./sdk";
-import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-
+} from "../../../dataconnect/client.js";
+import { Schema, Service, File, Platform } from "../../../dataconnect/types.js";
+import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names.js";
+import { logger } from "../../../logger.js";
+import { readTemplateSync } from "../../../templates.js";
+import { logBullet } from "../../../utils.js";
+import { checkBillingEnabled } from "../../../gcp/cloudbilling.js";
+import * as sdk from "./sdk.js";
+import { getPlatformFromFolder } from "../../../dataconnect/fileUtils.js";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");

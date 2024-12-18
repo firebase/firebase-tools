@@ -1,11 +1,11 @@
 import { expect } from "chai";
 
-import { FirebaseError } from "../../../../error";
-import * as backend from "../../backend";
-import * as build from "../../build";
-import * as parseTriggers from "./parseTriggers";
-import * as api from "../../../../api";
-import { BEFORE_CREATE_EVENT } from "../../../../functions/events/v1";
+import { FirebaseError } from "../../../../error.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import * as parseTriggers from "./parseTriggers.js";
+import * as api from "../../../../api.js";
+import { BEFORE_CREATE_EVENT } from "../../../../functions/events/v1.js";
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
   return (

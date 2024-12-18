@@ -1,7 +1,7 @@
 import { join } from "path";
-import { readdirSync, statSync } from "fs-extra";
-import * as _ from "lodash";
-import * as minimatch from "minimatch";
+import { readdirSync, statSync } from "fs";
+import _ from "lodash";
+import minimatch from "minimatch";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.

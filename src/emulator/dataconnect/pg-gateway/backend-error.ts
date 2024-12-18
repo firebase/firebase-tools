@@ -1,5 +1,5 @@
-import { BufferWriter } from './buffer-writer';
-import { BackendMessageCode } from './message-codes';
+import { BufferWriter } from './buffer-writer.js';
+import { BackendMessageCode } from './message-codes.js';
 
 export interface BackendError {
   severity: 'ERROR' | 'FATAL' | 'PANIC';

@@ -1,15 +1,15 @@
-import * as cors from "cors";
-import * as express from "express";
+import cors from "cors";
+import express from "express";
 import * as exegesisExpress from "exegesis-express";
-import { ValidationError } from "exegesis/lib/errors";
-import * as _ from "lodash";
-import { SingleProjectMode } from "./index";
+import { ValidationError } from "exegesis/lib/errors.js";
+import _ from "lodash";
+import { SingleProjectMode } from "./index.js";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators } from "../types";
-import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
-import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state";
-import apiSpecUntyped from "./apiSpec";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { Emulators } from "../types.js";
+import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations.js";
+import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state.js";
+import apiSpecUntyped from "./apiSpec.js";
 import {
   PromiseController,
   ExegesisContext,
@@ -28,13 +28,12 @@ import {
   InternalError,
   BadRequestError,
   assert,
-} from "./errors";
-import { logError } from "./utils";
-import { camelCase } from "lodash";
-import { registerHandlers } from "./handlers";
+} from "./errors.js";
+import { logError } from "./utils.js";
+import { registerHandlers } from "./handlers.js";
 import * as bodyParser from "body-parser";
 import { URLSearchParams } from "url";
-import { decode, JwtHeader } from "jsonwebtoken";
+import * as jsonwebtoken from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
 
 const API_SPEC_PATH = "/emulator/openapi.json";
@@ -538,8 +537,8 @@ function toExegesisController(
       // Perform initial token parsing to get correct project state
       if (ctx.requestBody?.idToken) {
         const idToken = ctx.requestBody?.idToken;
-        const decoded = decode(idToken, { complete: true }) as any as {
-          header: JwtHeader;
+        const decoded = jsonwebtoken.decode(idToken, { complete: true }) as any as {
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         if (decoded?.payload.firebase.tenant && targetTenantId) {
@@ -644,7 +643,7 @@ function convertKeysToCamelCase(body: any): any {
   for (const key of Object.keys(body)) {
     // Google REST API mappings accept both snake_case and camelCase params,
     // so let's normalize it.
-    result[camelCase(key)] = convertKeysToCamelCase(body[key]);
+    result[_.camelCase(key)] = convertKeysToCamelCase(body[key]);
   }
   return result;
 }

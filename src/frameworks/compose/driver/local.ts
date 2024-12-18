@@ -1,10 +1,9 @@
 import * as fs from "node:fs";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { AppBundle, Hook, Driver } from "../interfaces";
-import { BUNDLE_PATH, genHookScript } from "./hooks";
-import { RuntimeSpec } from "../discover/types";
-
+import { AppBundle, Hook, Driver } from "../interfaces.js";
+import { BUNDLE_PATH, genHookScript } from "./hooks.js";
+import { RuntimeSpec } from "../discover/types.js";
 
 export class LocalDriver implements Driver {
   constructor(readonly spec: RuntimeSpec) {}

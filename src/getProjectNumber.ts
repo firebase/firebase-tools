@@ -1,5 +1,5 @@
-import { getProject } from "./management/projects";
-import { needProjectId } from "./projectUtils";
+import { getProject } from "./management/projects.js";
+import { needProjectId } from "./projectUtils.js";
 /**
  * Fetches the project number.
  * @param options CLI options.

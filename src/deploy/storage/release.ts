@@ -1,6 +1,4 @@
-import { get } from "lodash";
-
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
 
 /**
  * Releases Firebase Storage rules.
@@ -9,8 +7,8 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
  * @return the list of buckets deployed.
  */
 export default async function (context: any, options: any): Promise<string[]> {
-  const rulesConfigsToDeploy: any[] = get(context, "storage.rulesConfigsToDeploy", []);
-  const rulesDeploy: RulesDeploy = get(context, "storage.rulesDeploy");
+  const rulesConfigsToDeploy: any[] = context?.storage?.rulesConfigsToDeploy ?? [];
+  const rulesDeploy: RulesDeploy = context?.storage?.rulesDeploy;
   if (!rulesConfigsToDeploy.length || !rulesDeploy) {
     return [];
   }
