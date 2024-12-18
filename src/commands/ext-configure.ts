@@ -126,7 +126,10 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     return;
   });
 
-function infoImmutableParams(immutableParams: Param[], paramValues: { [key: string]: string }) {
+function infoImmutableParams(
+  immutableParams: Param[],
+  paramValues: { [key: string]: string },
+): void {
   if (!immutableParams.length) {
     return;
   }

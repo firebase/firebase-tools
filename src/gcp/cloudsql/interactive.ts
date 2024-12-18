@@ -5,7 +5,7 @@ import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 // Not comprehensive list, used for best offer prompting.
 const destructiveSqlKeywords = ["DROP", "DELETE"];

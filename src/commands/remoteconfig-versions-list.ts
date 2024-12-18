@@ -7,11 +7,11 @@ import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
 import { datetimeString } from "../utils";
 
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-function pushTableContents(table: typeof Table, version: Version): number {
+function pushTableContents(table: Table, version: Version): number {
   return table.push([
     version.updateUser?.email,
     version.versionNumber,

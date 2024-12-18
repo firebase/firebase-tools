@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 import * as sort from "./api-sort";
 import * as types from "./api-types";

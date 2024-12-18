@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -15,9 +15,9 @@ function logCertificatesList(certificates: AppAndroidShaData[]): void {
   const tableHead = ["App Id", "SHA Id", "SHA Hash", "SHA Hash Type"];
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
   certificates.forEach(({ name, shaHash, certType }) => {
-    /* the name property has the following value 
+    /* the name property has the following value
     "projects/projectId/androidApps/appId/sha/shaId" as it comes from the json response
-    so we slpit the string in order to get appId and shaId. 
+    so we split the string in order to get appId and shaId.
     Property shaId can be used by the end user to delete a SHA hash record.*/
     const splitted = name.split("/");
     const appId = splitted[3];

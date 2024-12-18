@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 import { Command } from "../command";
 import { FirebaseError, getErrMsg } from "../error";

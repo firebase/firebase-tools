@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 import { listInstances } from "./extensionsApi";
 import { logger } from "../logger";

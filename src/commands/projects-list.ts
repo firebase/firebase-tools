@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as ora from "ora";
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 import { Command } from "../command";
 import { listFirebaseProjects } from "../management/projects";

@@ -9,9 +9,11 @@ import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 import { readTemplateSync } from "../templates";
+import { Options } from "../options";
+
 marked.use(markedTerminal() as any);
 
-function readCommonTemplates() {
+function readCommonTemplates(): Record<string, string> {
   return {
     integrationTestFirebaseJsonTemplate: readTemplateSync("extensions/integration-test.json"),
     integrationTestEnvTemplate: readTemplateSync("extensions/integration-test.env"),
@@ -28,13 +30,13 @@ function readCommonTemplates() {
 export const command = new Command("ext:dev:init")
   .description("initialize files for writing an extension in the current directory")
   .before(checkMinRequiredVersion, "extDevMinVersion")
-  .action(async (options: any) => {
+  .action(async (options: Options) => {
     const cwd = options.cwd || process.cwd();
     const config = new Config({}, { projectDir: cwd, cwd: cwd });
 
     try {
       let welcome: string;
-      const lang = await promptOnce({
+      const lang: string = (await promptOnce<Record<string, string>>({
         type: "list",
         name: "language",
         message: "In which language do you want to write the Cloud Functions for your extension?",
@@ -49,7 +51,7 @@ export const command = new Command("ext:dev:init")
             value: "typescript",
           },
         ],
-      });
+      })) as string;
       switch (lang) {
         case "javascript": {
           await javascriptSelected(config);
@@ -68,7 +70,7 @@ export const command = new Command("ext:dev:init")
 
       await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
-      return logger.info("\n" + marked(welcome));
+      return logger.info("\n" + (await marked(welcome)));
     } catch (err: unknown) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(

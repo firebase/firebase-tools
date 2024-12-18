@@ -6,7 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
 
-const Table = require("cli-table");
+import Table = require("cli-table");
 const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")

@@ -1,4 +1,9 @@
 import * as clc from "colorette";
+
+// TODO: change to `import Table = require("cli-table");` once the "rows:"
+// issue below has been fixed. ("rows" is not a member of TableOptions)
+// The issue is currently hidden because Table here is an `any` so
+// type checking is skipped.
 const Table = require("cli-table");
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
@@ -178,7 +183,7 @@ export async function selectBackendServiceAccounts(
   const table = new Table({
     head: tableData[0],
     style: { head: ["green"] },
-    rows: tableData[1],
+    rows: tableData[1], // TODO: "rows" is not a field in TableOptions.
   });
   logger.info(table.toString());
 

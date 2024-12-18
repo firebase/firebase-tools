@@ -12,7 +12,7 @@ import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { Options } from "../options";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
+import Table = require("cli-table");
 
 function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
