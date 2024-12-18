@@ -21,7 +21,7 @@ export interface BaseOptions {
   account?: string;
   json: boolean;
   nonInteractive: boolean;
-  interactive: boolean; // deprecated, use nonInteractive instead
+  interactive: boolean;
   debug: boolean;
 
   rc: RC;

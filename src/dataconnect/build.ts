@@ -32,13 +32,13 @@ export async function build(
       (w) => w.extensions?.warningLevel && w.extensions?.warningLevel === "REQUIRE_ACK",
     );
     const choices = [
-      { name: "Accept all changes and proceed", value: "proceed" },
+      { name: "Acknowledge all changes and proceed", value: "proceed" },
       { name: "Reject changes and abort", value: "abort" },
     ];
     if (requiredAcks.length) {
       utils.logLabeledWarning(
         "dataconnect",
-        `There are changes in your schema or connectors that may break your existing applications. These changes require explicit acknowledgement to deploy:\n` +
+        `There are changes in your schema or connectors that may break your existing applications. These changes require explicit acknowledgement to proceed. You may either reject the changes and update your sources with the suggested workaround(s), if any, or acknowledge these changes and proceed with the deployment:\n` +
           requiredAcks.map(prettifyWithWorkaround).join("\n"),
       );
       if (options.nonInteractive && !options.force) {
@@ -47,7 +47,7 @@ export async function build(
         );
       } else if (!options.nonInteractive && !options.force && !dryRun) {
         const result = await promptOnce({
-          message: "Would you like to proceed with these changes?",
+          message: "Would you like to proceed with these breaking changes?",
           type: "list",
           choices,
           default: "abort",

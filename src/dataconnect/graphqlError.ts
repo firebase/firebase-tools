@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { GraphqlError } from "./types";
 
 export function prettify(err: GraphqlError): string {
@@ -16,9 +17,9 @@ export function prettifyWithWorkaround(err: GraphqlError): string {
   if (!err.extensions?.workarounds?.length) {
     return prettify(err);
   }
-  let prettified = prettify(err);
+  let prettified = `\n${clc.bold("Issue:")} ${prettify(err)}`;
   for (const w of err.extensions.workarounds) {
-    prettified += `\nWorkaround: ${w.Description}\nReason: ${w.Reason}`;
+    prettified += `\n${clc.bold("Workaround:")} ${w.Description}\n${clc.bold("Reason:")} ${w.Reason}`;
   }
   return prettified;
 }
