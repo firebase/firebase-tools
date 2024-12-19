@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { join } from "path";
 import { stripVTControlCharacters } from "node:util";
 import { FrameworkType, SupportLevel } from "../interfaces.js";

@@ -30,7 +30,7 @@ import { logger } from "../logger.js";
 import client from "../index.js";
 import * as fsutils from "../fsutils.js";
 import * as utils from "../utils.js";
-import * as winston from "winston";
+import winston from "winston";
 
 const args = process.argv.slice(2);
 let cmd: CommanderStatic;

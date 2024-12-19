@@ -1,7 +1,7 @@
 import { join, posix } from "path";
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { mkdir } from "fs/promises";
 
 import {

@@ -28,7 +28,7 @@ export async function sendVSCodeMessage(body: WebhookBody) {
       auth: false,
       urlPrefix: `http://localhost:${port}`,
     });
-    return client.request({
+    const resp =  await client.request({
       method: "POST",
       path: "vscode/notify",
       body: jsonBody,
@@ -39,6 +39,7 @@ export async function sendVSCodeMessage(body: WebhookBody) {
       },
       timeout: 3000,
     });
+    return resp;
   } catch (e) {
     logger.debug(
       `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.`,

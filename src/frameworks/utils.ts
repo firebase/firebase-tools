@@ -25,10 +25,6 @@ import Module from "node:module";
 
 const require = Module.createRequire(import.meta.url);
 
-// Use "true &&"" to keep typescript from compiling this file and rewriting
-// the import statement into a require
-const { dynamicImport } = require(true && "../dynamicImport");
-
 const NPM_ROOT_TIMEOUT_MILLIES = 5_000;
 const NPM_ROOT_MEMO = new Map<string, string>();
 
@@ -368,10 +364,10 @@ export async function relativeRequire(dir: string, mod: string) {
     if (isEsm) {
       // in case path resolves to a cjs file, use main from package.json
       if (extname(path) === ".cjs" && packageJson?.main) {
-        return dynamicImport(join(dirname(path), packageJson.main));
+        return import(join(dirname(path), packageJson.main));
       }
 
-      return dynamicImport(pathToFileURL(path).toString());
+      return import(pathToFileURL(path).toString());
     } else {
       return requireFunc(path);
     }

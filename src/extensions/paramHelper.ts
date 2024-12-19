@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as clc from "colorette";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";

@@ -1,4 +1,4 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { FirebaseError } from "../error.js";
 import { needProjectNumber } from "../projectUtils.js";
 import { FieldHints, LoginCredential, TestDevice } from "./types.js";

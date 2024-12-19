@@ -4,7 +4,7 @@ import { FirebaseConfig } from "./firebaseConfig.js";
 
 import _ from "lodash";
 import * as clc from "colorette";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as path from "path";
 import { detectProjectRoot } from "./detectProjectRoot.js";
 import { FirebaseError } from "./error.js";

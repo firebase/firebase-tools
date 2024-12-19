@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as path from "path";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import * as refs from "./refs.js";
 import { Config } from "../config.js";

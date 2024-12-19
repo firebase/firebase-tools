@@ -1,5 +1,5 @@
 import { FileSystem } from "./types.js";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as path from "path";
 import { FirebaseError } from "../../../error.js";
 import { logger } from "../../../logger.js";

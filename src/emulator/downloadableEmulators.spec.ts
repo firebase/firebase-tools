@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as path from "path";
 import sinon from "sinon";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import * as downloadableEmulators from "./downloadableEmulators.js";
 import { Emulators } from "./types.js";

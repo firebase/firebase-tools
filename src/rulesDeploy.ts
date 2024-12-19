@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { bold } from "colorette";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import * as gcp from "./gcp/index.js";
 import { logger } from "./logger.js";

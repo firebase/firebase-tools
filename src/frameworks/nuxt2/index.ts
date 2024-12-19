@@ -1,4 +1,4 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { readFile } from "fs/promises";
 import { basename, join, relative } from "path";
 import { gte } from "semver";

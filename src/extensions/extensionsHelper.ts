@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";

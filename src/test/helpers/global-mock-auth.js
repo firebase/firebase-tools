@@ -1,12 +1,12 @@
 import sinon from "sinon";
 import { before, after } from "mocha";
-import { mockAuth } from "./index.js";
+import esmock from "esmock";
 
-const authSandbox = sinon.createSandbox();
-before(() => {
-  mockAuth(authSandbox);
-});
+export const globalMocks = 
+{
+  "../../auth.js": {
+    getAccessToken: sinon.stub().resolves({ access_token: "an_access_token" }),
+  }
+};
 
-after(() => {
-  authSandbox.restore();
-});
+esmock()

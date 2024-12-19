@@ -1,7 +1,7 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types.js";
 import { Constants } from "./constants.js";
 import { SPLAT } from "triple-beam";
-import * as WebSocket from "ws";
+import WebSocket from "ws";
 import { LogEntry } from "winston";
 import TransportStream from "winston-transport";
 import { logger } from "../logger.js";

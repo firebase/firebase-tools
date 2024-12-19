@@ -5,9 +5,6 @@ import { fileURLToPath } from "url";
 
 import Module from "node:module";
 
-const require = Module.createRequire(import.meta.url);
-const { dynamicImport } = require(true && "../../dynamicImport");
-
 export function getBootstrapScript() {
   // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
   // need to convert the export to `handle` to work with express integration
@@ -21,11 +18,11 @@ export async function getConfig(cwd: string) {
   let config;
   const configPath = join(astroDirectory, "dist", "core", "config", "config.js");
   if (gte(version!, "2.9.7")) {
-    const { resolveConfig } = await dynamicImport(configPath);
+    const { resolveConfig } = await import(configPath);
     const { astroConfig } = await resolveConfig({ root: cwd }, "build");
     config = astroConfig;
   } else {
-    const { openConfig }: any = await dynamicImport(configPath);
+    const { openConfig }: any = await import(configPath);
     const logging: any = undefined; // TODO figure out the types here
     const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
     config = astroConfig;

@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build/index.js";
 import type { DomainLocale } from "next/dist/server/config.js";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin.js";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";

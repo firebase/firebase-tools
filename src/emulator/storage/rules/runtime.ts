@@ -2,7 +2,7 @@ import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
 import AsyncLock from "async-lock";
 import * as jwt from "jsonwebtoken";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { Buffer } from "node:buffer";
 
 import { FirebaseError } from "../../../error.js";

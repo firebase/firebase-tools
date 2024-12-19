@@ -1,6 +1,6 @@
 import { join, basename } from "path";
 import * as clc from "colorette";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import { confirm, promptOnce } from "../../../prompt.js";
 import { Config } from "../../../config.js";

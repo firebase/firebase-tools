@@ -31,7 +31,7 @@ import {
 } from "./errors.js";
 import { logError } from "./utils.js";
 import { registerHandlers } from "./handlers.js";
-import * as bodyParser from "body-parser";
+import bodyParser from "body-parser";
 import { URLSearchParams } from "url";
 import * as jsonwebtoken from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;

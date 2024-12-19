@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
 import { glob, sync as globSync } from "glob";
@@ -437,7 +437,7 @@ export async function hasStaticAppNotFoundComponent(
   sourceDir: string,
   distDir: string,
 ): Promise<boolean> {
-  return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
+  return fs.pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
 }
 
 /**
@@ -491,7 +491,7 @@ export async function getProductionDistDirFiles(
  */
 export async function whichNextConfigFile(dir: string): Promise<NextConfigFileName | null> {
   for (const file of CONFIG_FILES) {
-    if (await pathExists(join(dir, file))) return file;
+    if (await fs.pathExists(join(dir, file))) return file;
   }
 
   return null;

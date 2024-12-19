@@ -3,7 +3,7 @@ import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { glob } from "glob";
 import * as process from "node:process";
 

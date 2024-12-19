@@ -4,7 +4,7 @@ import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
-import * as bodyParser from "body-parser";
+import bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import _ from "lodash";
 
@@ -30,15 +30,6 @@ let FUNCTION_SIGNATURE: string;
 let FUNCTION_DEBUG_MODE: string;
 
 let developerPkgJSON: PackageJSON | undefined;
-
-/**
- * Dynamically load import function to prevent TypeScript from
- * transpiling into a require.
- *
- * See https://github.com/microsoft/TypeScript/issues/43329.
- */
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-const dynamicImport = new Function("modulePath", "return import(modulePath)");
 
 function noOp(): false {
   return false;
@@ -918,7 +909,7 @@ async function loadTriggers(): Promise<any> {
     const modulePath = require.resolve(process.cwd());
     // Resolve module path to file:// URL. Required for windows support.
     const moduleURL = pathToFileURL(modulePath).href;
-    triggerModule = await dynamicImport(moduleURL);
+    triggerModule = await import(moduleURL);
   }
   return triggerModule;
 }

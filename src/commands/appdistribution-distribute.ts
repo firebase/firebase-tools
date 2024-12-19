@@ -1,4 +1,4 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import { Command } from "../command.js";
 import * as utils from "../utils.js";

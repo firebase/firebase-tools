@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import * as clc from "colorette";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup.js";

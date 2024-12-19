@@ -1,4 +1,4 @@
-import * as program from "commander";
+import program from "commander";
 import * as clc from "colorette";
 import leven from "leven";
 
@@ -36,7 +36,8 @@ const client = {
   },
 };
 
-require("./commands").load(client);
+import * as commands from "./commands/index.js";
+await commands.load(client);
 
 /**
  * Checks to see if there is a different command similar to the provided one.

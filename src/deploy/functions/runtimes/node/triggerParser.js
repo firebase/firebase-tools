@@ -9,15 +9,6 @@ var EXIT = function () {
   process.exit(0);
 };
 
-/**
- * Dynamically load import function to prevent TypeScript from
- * transpiling into a require.
- *
- * See https://github.com/microsoft/TypeScript/issues/43329.
- */
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-const dynamicImport = new Function("modulePath", "return import(modulePath)");
-
 async function loadModule(packageDir) {
   try {
     return require(packageDir);
@@ -26,7 +17,7 @@ async function loadModule(packageDir) {
       const modulePath = require.resolve(packageDir);
       // Resolve module path to file:// URL. Required for windows support.
       const moduleURL = url.pathToFileURL(modulePath).href;
-      return await dynamicImport(moduleURL);
+      return await import(moduleURL);
     }
     throw e;
   }

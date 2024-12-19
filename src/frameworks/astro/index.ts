@@ -1,5 +1,5 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces.js";
 import { FirebaseError } from "../../error.js";

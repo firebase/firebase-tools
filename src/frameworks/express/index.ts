@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces.js";
@@ -7,10 +7,6 @@ import { BuildResult, FrameworkType, SupportLevel } from "../interfaces.js";
 import Module from "node:module";
 
 const require = Module.createRequire(import.meta.url);
-
-// Use "true &&"" to keep typescript from compiling this file and rewriting
-// the import statement into a require
-const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Express.js";
 export const support = SupportLevel.Preview;
@@ -59,7 +55,7 @@ async function getBootstrapScript(
       entry = require(root);
       bootstrapScript = `const bootstrap = Promise.resolve(require('${name}'))`;
     } catch (e) {
-      entry = await dynamicImport(root).catch(() => undefined);
+      entry = await import(root).catch(() => undefined);
       bootstrapScript = `const bootstrap = import('${name}')`;
     }
   }

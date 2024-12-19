@@ -3,7 +3,7 @@ import { logger } from "../logger.js";
 import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
 import { requirePermissions } from "../requirePermissions.js";
 import * as metadata from "../database/metadata.js";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as path from "path";
 import { Emulators } from "../emulator/types.js";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";

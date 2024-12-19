@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import * as bodyParser from "body-parser";
+import bodyParser from "body-parser";
 
 import * as utils from "../utils.js";
 import { Emulators, EmulatorInstance, EmulatorInfo, ListenSpec } from "./types.js";

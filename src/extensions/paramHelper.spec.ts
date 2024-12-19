@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import sinon from "sinon";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import { FirebaseError } from "../error.js";
 import { ExtensionSpec, Param, ParamType } from "./types.js";

@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import ProgressBar from "progress";
 import * as tmp from "tmp";
 

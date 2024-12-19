@@ -77,7 +77,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
 
         const idToken = res.body.idToken;
         const decoded = jsonwebtoken.decode(idToken, { complete: true }) as unknown as {
-          header: jsonwebtoken.jsonwebtoken.JwtHeader;
+          header: jsonwebtoken.JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;

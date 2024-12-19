@@ -1,6 +1,6 @@
 import sinon from "sinon";
 import { expect } from "chai";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 
 import * as init from "./index.js";
 import { Config } from "../../../config.js";

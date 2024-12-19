@@ -1,13 +1,10 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { join } from "path";
 import { FrameworkType, SupportLevel } from "../interfaces.js";
 import { viteDiscoverWithNpmDependency, build as viteBuild } from "../vite/index.js";
 import { SvelteKitConfig } from "./interfaces.js";
 import { fileExistsSync } from "../../fsutils.js";
 import Module from "node:module";
-
-const require = Module.createRequire(import.meta.url);
-const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "SvelteKit";
 export const support = SupportLevel.Experimental;
@@ -50,7 +47,7 @@ async function getConfig(root: string): Promise<SvelteKitConfig> {
   const configPath = ["svelte.config.js", "svelte.config.mjs"]
     .map((filename) => join(root, filename))
     .find(fileExistsSync);
-  const config = configPath ? (await dynamicImport(configPath)).default : {};
+  const config = configPath ? (await import(configPath)).default : {};
   config.kit ||= {};
   config.kit.outDir ||= ".svelte-kit";
   return config;

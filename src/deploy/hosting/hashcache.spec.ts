@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { join } from "path";
 import * as tmp from "tmp";
 

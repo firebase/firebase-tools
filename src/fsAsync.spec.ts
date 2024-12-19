@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as crypto from "crypto";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
 import { rmSync } from "node:fs";

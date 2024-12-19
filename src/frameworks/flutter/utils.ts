@@ -1,7 +1,7 @@
 import { sync as spawnSync } from "cross-spawn";
 import { FirebaseError } from "../../error.js";
 import { readFile } from "fs/promises";
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import { join } from "path";
 import * as yaml from "yaml";
 

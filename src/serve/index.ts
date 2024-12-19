@@ -6,6 +6,8 @@ import { getProjectId } from "../projectUtils.js";
 import { Constants } from "../emulator/constants.js";
 import * as config from "../hosting/config.js";
 import { FunctionsServer } from "./functions.js";
+import * as hosting from "./hosting.js";
+
 const TARGETS: {
   [key: string]: {
     start: (o: any, args: any) => void;
@@ -13,7 +15,7 @@ const TARGETS: {
     connect: () => void;
   };
 } = {
-  hosting: require("./hosting"),
+  hosting: hosting,
   functions: new FunctionsServer(),
 };
 

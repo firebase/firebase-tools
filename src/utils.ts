@@ -1,4 +1,4 @@
-import * as fs from "fs-extra";
+import fs from "fs-extra";
 import * as tty from "tty";
 import * as path from "node:path";
 import * as yaml from "yaml";
@@ -12,7 +12,7 @@ import open from "open";
 import ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
-import * as winston from "winston";
+import winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
 import { stripVTControlCharacters } from "node:util";
