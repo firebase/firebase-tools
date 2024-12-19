@@ -8,7 +8,7 @@ import * as url from "url";
 
 import * as apiv2 from "./apiv2.js";
 import { configstore } from "./configstore.js";
-import { FirebaseError, getErrMsg } from "./error.js";
+import { FirebaseError } from "./error.js";
 import * as utils from "./utils.js";
 import { logger } from "./logger.js";
 import { promptOnce } from "./prompt.js";
@@ -38,7 +38,6 @@ import {
   UserCredentials,
 } from "./types/auth/index.js";
 import { readTemplate } from "./templates.js";
-import { refreshAuth } from "./requireAuth.js";
 
 portfinder.setBasePort(9005);
 
@@ -253,7 +252,7 @@ const _nonce = Math.floor(Math.random() * (2 << 29) + 1).toString();
 const getPort = portfinder.getPortPromise;
 
 // in-memory cache, so we have it for successive calls
-let lastAccessToken: TokensWithExpiration | undefined;
+export let lastAccessToken: TokensWithExpiration | undefined;
 
 function getCallbackUrl(port?: number): string {
   if (typeof port === "undefined") {
@@ -654,7 +653,7 @@ function logoutCurrentSession(refreshToken: string) {
   deleteAccount(account);
 }
 
-async function refreshTokens(
+export async function refreshTokens(
   refreshToken: string,
   authScopes: string[],
 ): Promise<TokensWithExpiration> {
@@ -727,22 +726,6 @@ async function refreshTokens(
     }
 
     throw invalidCredentialError();
-  }
-}
-
-export async function getAccessToken(refreshToken: string, authScopes: string[]): Promise<Tokens> {
-  if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
-    return lastAccessToken;
-  }
-  if (refreshToken) {
-    return refreshTokens(refreshToken, authScopes);
-  } else {
-    try {
-      return refreshAuth();
-    } catch (err: unknown) {
-      logger.debug(`Unable to refresh token: ${getErrMsg(err)}`);
-    }
-    throw new FirebaseError("Unable to getAccessToken");
   }
 }
 

@@ -8,6 +8,7 @@ import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
 
 import * as auth from "./auth.js";
+import gat from "./getAccessToken.js";
 import { FirebaseError } from "./error.js";
 import { logger } from "./logger.js";
 import { responseToError } from "./responseToError.js";
@@ -133,7 +134,7 @@ export async function getAccessToken(): Promise<string> {
     return accessToken;
   }
 
-  const data = await auth.getAccessToken(refreshToken, []);
+  const data = await gat(refreshToken, []);
   return data.access_token;
 }
 
