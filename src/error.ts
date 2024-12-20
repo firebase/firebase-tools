@@ -50,7 +50,24 @@ export function getErrMsg(err: unknown, defaultMsg?: string): string {
   return JSON.stringify(err);
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+/**
+ * Safely gets an error stack (or error message if no stack is available)
+ * from an unknown object
+ * @param err The potential error object
+ * @return a string representing the error stack or the error message.
+ */
+export function getErrStack(err: unknown): string {
+  if (err instanceof Error) {
+    return err.stack || err.message;
+  }
+  return getErrMsg(err);
+}
+
+/**
+ * A typeguard for objects
+ * @param value The value to check
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -104,3 +121,8 @@ export function isBillingError(e: {
     );
   });
 }
+
+/**
+ * Checks whether an unknown object (such as an error) has a message field
+ */
+export const hasMessage = (e: any): e is { message: string } => !!e?.message;

@@ -217,6 +217,10 @@ export type EmulatorsConfig = {
     host?: string;
     /** @TJS-type integer */
     port?: number;
+    startCommand?: string;
+    /**
+     * @deprecated
+     */
     startCommandOverride?: string;
     rootDirectory?: string;
   };

@@ -28,7 +28,7 @@ import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { confirm } from "../prompt";
+import { confirm, promptOnce } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
@@ -884,6 +884,7 @@ export async function startAll(
       postgresListen: listenForEmulator["dataconnect.postgres"],
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
+      debug: options.debug,
     };
 
     if (exportMetadata.dataconnect) {
@@ -893,6 +894,26 @@ export async function startAll(
         importDirAbsPath,
         exportMetadata.dataconnect.path,
       );
+      const dataDirectory = options.config.get("emulators.dataconnect.dataDir");
+      if (exportMetadataFilePath && dataDirectory) {
+        EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
+          "WARN",
+          "dataconnect",
+          "'firebase.json#emulators.dataconnect.dataDir' is set and `--import` flag was passed. " +
+            "This will overwrite any data saved from previous runs.",
+        );
+        if (
+          !options.nonInteractive &&
+          !(await promptOnce({
+            type: "confirm",
+            message: `Do you wish to continue and overwrite data in ${dataDirectory}?`,
+            default: false,
+          }))
+        ) {
+          await cleanShutdown();
+          return { deprecationNotices: [] };
+        }
+      }
 
       EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
         "BULLET",
@@ -952,10 +973,18 @@ export async function startAll(
 
   if (listenForEmulator.apphosting) {
     const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+    if (apphostingConfig?.startCommandOverride) {
+      const apphostingLogger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
+      apphostingLogger.logLabeled(
+        "WARN",
+        Emulators.APPHOSTING,
+        "The `firebase.json#emulators.apphosting.startCommandOverride` config is deprecated, please use `firebase.json#emulators.apphosting.startCommand` to set a custom start command instead",
+      );
+    }
     const apphostingEmulator = new AppHostingEmulator({
       host: apphostingAddr.host,
       port: apphostingAddr.port,
-      startCommandOverride: apphostingConfig?.startCommandOverride,
+      startCommand: apphostingConfig?.startCommand || apphostingConfig?.startCommandOverride,
       rootDirectory: apphostingConfig?.rootDirectory,
       options,
     });

@@ -1,5 +1,6 @@
 import { join, basename } from "path";
 import * as clc from "colorette";
+import * as fs from "fs-extra";
 
 import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
@@ -8,7 +9,6 @@ import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
-import * as experiments from "../../../experiments";
 import {
   listLocations,
   listAllServices,
@@ -25,9 +25,6 @@ import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
-const DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE = readTemplateSync(
-  "init/dataconnect/dataconnect-fdccompatiblemode.yaml",
-);
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -79,6 +76,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
   const info = await askQuestions(setup, isBillingEnabled);
+  // Most users will want to perist data between emulator runs, so set this to a reasonable default.
+
+  const dir: string = config.get("dataconnect.source", "dataconnect");
+  const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
+  config.set("emulators.dataconnect.dataDir", dataDir);
   await actuate(setup, config, info);
 
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
@@ -195,7 +197,11 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
+  } else {
+    // Even if the schema is empty, lets give them an empty .gql file to get started.
+    fs.ensureFileSync(join(dir, "schema", "schema.gql"));
   }
+
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
   }
@@ -234,9 +240,7 @@ function subDataconnectYamlValues(replacementValues: {
     connectorDirs: "__connectorDirs__",
     locationId: "__location__",
   };
-  let replaced = experiments.isEnabled("fdccompatiblemode")
-    ? DATACONNECT_YAML_COMPAT_EXPERIMENT_TEMPLATE
-    : DATACONNECT_YAML_TEMPLATE;
+  let replaced = DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }

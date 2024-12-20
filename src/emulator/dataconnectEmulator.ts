@@ -6,7 +6,13 @@ import * as path from "path";
 
 import { dataConnectLocalConnString } from "../api";
 import { Constants } from "./constants";
-import { getPID, start, stop, downloadIfNecessary } from "./downloadableEmulators";
+import {
+  getPID,
+  start,
+  stop,
+  downloadIfNecessary,
+  isIncomaptibleArchError,
+} from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -34,6 +40,7 @@ export interface DataConnectEmulatorArgs {
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
   importPath?: string;
+  debug?: boolean;
 }
 
 export interface DataConnectGenerateArgs {
@@ -83,7 +90,6 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-
     await start(Emulators.DATACONNECT, {
       auto_download: this.args.auto_download,
       listen: listenSpecsToString(this.args.listen),
@@ -91,6 +97,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       enable_output_schema_extensions: this.args.enable_output_schema_extensions,
       enable_output_generated_sdk: this.args.enable_output_generated_sdk,
     });
+
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
       const info = await load(this.args.projectId, this.args.config, this.args.configDir);
@@ -110,7 +117,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         const postgresDumpPath = this.args.importPath
           ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
-        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory, postgresDumpPath);
+        this.postgresServer = new PostgresServer({
+          dataDirectory,
+          importPath: postgresDumpPath,
+          debug: this.args.debug,
+        });
         const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
@@ -159,6 +170,9 @@ export class DataConnectEmulator implements EmulatorInstance {
         "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
       );
       return;
+    }
+    if (this.postgresServer) {
+      await this.postgresServer.stop();
     }
     return stop(Emulators.DATACONNECT);
   }
@@ -211,7 +225,13 @@ export class DataConnectEmulator implements EmulatorInstance {
       cmd.push("--watch");
     }
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
-
+    if (isIncomaptibleArchError(res.error)) {
+      throw new FirebaseError(
+        `Unknown system error when running the Data Connect toolkit. ` +
+          `You may be able to fix this by installing Rosetta: ` +
+          `softwareupdate --install-rosetta`,
+      );
+    }
     logger.info(res.stderr);
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
@@ -231,6 +251,13 @@ export class DataConnectEmulator implements EmulatorInstance {
     const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    if (isIncomaptibleArchError(res.error)) {
+      throw new FirebaseError(
+        `Unkown system error when running the Data Connect toolkit. ` +
+          `You may be able to fix this by installing Rosetta: ` +
+          `softwareupdate --install-rosetta`,
+      );
+    }
     if (res.error) {
       throw new FirebaseError(`Error starting up Data Connect build: ${res.error.message}`, {
         original: res.error,
