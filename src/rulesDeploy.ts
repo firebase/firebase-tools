@@ -7,7 +7,7 @@ import { logger } from "./logger.js";
 import { FirebaseError, getErrStatus } from "./error.js";
 import * as utils from "./utils.js";
 
-import { promptOnce } from "./prompt.js";
+import * as prompt from "./prompt.js";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules.js";
 import { getProjectNumber } from "./getProjectNumber.js";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager.js";
@@ -114,11 +114,13 @@ export class RulesDeploy {
   async checkStorageRulesIamPermissions(rulesContent?: string): Promise<void> {
     // Skip if no cross-service rules
     if (rulesContent?.match(CROSS_SERVICE_FUNCTIONS) === null) {
+      console.log(rulesContent);
       return;
     }
 
     // Skip if non-interactive
     if (this.options.nonInteractive) {
+      console.log("fuck2");
       return;
     }
 
@@ -133,7 +135,7 @@ export class RulesDeploy {
       // Prompt user to ask if they want to add the service account
       const addRole =
         this.options.force ||
-        (await promptOnce(
+        (await prompt.promptOnce(
           {
             type: "confirm",
             name: "rulesRole",
@@ -213,7 +215,7 @@ export class RulesDeploy {
       if (history.length > RULESET_COUNT_LIMIT) {
         const confirm =
           this.options.force ||
-          (await promptOnce(
+          (await prompt.promptOnce(
             {
               type: "confirm",
               name: "force",
