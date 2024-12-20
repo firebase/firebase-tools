@@ -243,6 +243,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
+    /** @TJS-type integer */
     port?: number | string;
   };
   extensions?: {};
