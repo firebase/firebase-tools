@@ -549,10 +549,7 @@
                             "type": "string"
                         },
                         "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
+                            "type": "integer"
                         }
                     },
                     "type": "object"
