@@ -94,7 +94,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
     if (testCases.length && (options.testUsernameResource || options.testPasswordResource)) {
       throw new FirebaseError(
-        "Password and username resource names are not supported for the AI testing agent.",
+        "Password and username resource names are not supported for the testing agent.",
       );
     }
     const loginCredential = getLoginCredential({
