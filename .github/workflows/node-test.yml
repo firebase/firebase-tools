@@ -89,6 +89,10 @@ jobs:
           distribution: temurin
 
       - uses: actions/checkout@v4
+      - uses: actions/setup-chrome
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -184,6 +188,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - uses: actions/setup-chrome
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - name: Cache firebase emulators
         uses: actions/cache@v3
         with:
