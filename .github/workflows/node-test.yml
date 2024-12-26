@@ -89,7 +89,7 @@ jobs:
           distribution: temurin
 
       - uses: actions/checkout@v4
-      - uses: actions/setup-chrome
+      - uses: browser-actions/setup-chrome
         with:
           install-dependencies: true
           install-chromedriver: true
@@ -188,7 +188,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
-      - uses: actions/setup-chrome
+      - uses: browser-actions/setup-chrome
         with:
           install-dependencies: true
           install-chromedriver: true
