@@ -151,7 +151,7 @@ jobs:
   integration:
     needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
