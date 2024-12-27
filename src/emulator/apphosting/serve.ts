@@ -12,6 +12,8 @@ import { logger } from "./developmentServer";
 import { Emulators } from "../types";
 import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
+import { EmulatorRegistry } from "../registry";
+import { setEnvVarsForEmulators } from "../env";
 
 interface StartOptions {
   port?: number;
@@ -55,6 +57,7 @@ async function serve(
   }
 
   const environmentVariablesToInject = {
+    ...getEmulatorEnvs(),
     ...environmentVariablesAsRecord,
     PORT: port.toString(),
   };
@@ -80,4 +83,12 @@ function availablePort(host: string, port: number): Promise<boolean> {
     port,
     family: isIPv4(host) ? "IPv4" : "IPv6",
   });
+}
+
+function getEmulatorEnvs(): Record<string, string> {
+  const envs: Record<string, string> = {};
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+  setEnvVarsForEmulators(envs, emulatorInfos);
+
+  return envs;
 }
