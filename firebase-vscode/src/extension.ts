@@ -20,7 +20,6 @@ import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
 import {
   AnalyticsLogger,
-  DATA_CONNECT_EVENT_NAME,
   IDX_METRIC_NOTICE,
 } from "./analytics";
 import { env } from "./core/env";
@@ -29,12 +28,12 @@ import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-hig
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
-  const analyticsLogger = new AnalyticsLogger();
+  const analyticsLogger = new AnalyticsLogger(context);
 
   // Suggest installing the GraphQL syntax highlighter extension
   await suggestGraphqlSyntaxExtension();
 
-  await setupFirebasePath(analyticsLogger.logger);
+  await setupFirebasePath(analyticsLogger);
   const settings = getSettings();
   logSetup();
   pluginLogger.debug("Activating Firebase extension.");
@@ -60,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const [emulatorsController, coreDisposable] = await registerCore(
     broker,
     context,
-    analyticsLogger.logger,
+    analyticsLogger,
   );
 
   context.subscriptions.push(
@@ -78,7 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
       broker,
       authService,
       emulatorsController,
-      analyticsLogger.logger,
+      analyticsLogger,
     ),
   );
 }

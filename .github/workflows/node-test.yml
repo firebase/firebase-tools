@@ -89,6 +89,11 @@ jobs:
           distribution: temurin
 
       - uses: actions/checkout@v4
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1.7.2
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -146,7 +151,7 @@ jobs:
   integration:
     needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -176,6 +181,7 @@ jobs:
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
           - npm run test:dataconnect-deploy
+          - npm run test:dataconnect-emulator
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -183,6 +189,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1.7.2
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - name: Cache firebase emulators
         uses: actions/cache@v3
         with:
@@ -231,6 +242,7 @@ jobs:
           - npm run test:storage-deploy
           # - npm run test:storage-emulator-integration
           # - npm run test:dataconnect-deploy #  TODO (joehanley): Reenable this - it should be safe to run in parallel
+          # - npm run test:dataconnect-emulator # TODO (joehanley): Figure out why this is failing
           - npm run test:frameworks
     steps:
       - name: Setup Java JDK
@@ -260,7 +272,7 @@ jobs:
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        run: type *debug.log
+        run: dir "*.log" /s/b | type
 
   check-package-lock:
     runs-on: ubuntu-latest

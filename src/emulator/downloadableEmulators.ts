@@ -9,7 +9,7 @@ import {
 } from "./types";
 import { Constants } from "./constants";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, hasMessage } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.7.4",
-          expectedSize: 25277184,
-          expectedChecksum: "74f6b66c79a8a903132c7ab26c644593",
+          version: "1.7.5",
+          expectedSize: 25281280,
+          expectedChecksum: "85d0de96b5c08b553fd8506a2bc381bb",
         }
       : process.platform === "win32"
         ? {
-            version: "1.7.4",
-            expectedSize: 25707520,
-            expectedChecksum: "66eec92e2d57ae42a8b58f33b65b4184",
+            version: "1.7.5",
+            expectedSize: 25711616,
+            expectedChecksum: "c99d67fa8e74d41760b96122b055b8e2",
           }
         : {
-            version: "1.7.4",
+            version: "1.7.5",
             expectedSize: 25190552,
-            expectedChecksum: "acb7be487020afa6e1a597ceb8c6e862",
+            expectedChecksum: "61d966b781e6f2887f8b38ec271b54e2",
           },
 };
 
@@ -655,7 +655,6 @@ export async function start(
 }
 
 export function isIncomaptibleArchError(err: unknown): boolean {
-  const hasMessage = (e: any): e is { message: string } => !!e?.message;
   return (
     hasMessage(err) &&
     /Unknown system error/.test(err.message ?? "") &&

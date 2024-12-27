@@ -2,6 +2,7 @@ import vscode, { env, TelemetryLogger, TelemetrySender } from "vscode";
 import { pluginLogger } from "./logger-wrapper";
 import { AnalyticsParams, trackVSCode } from "../../src/track";
 import { env as monospaceEnv } from "../src/core/env";
+import { getSettings } from "./utils/settings";
 
 export const IDX_METRIC_NOTICE = `
 When you use the Firebase Data Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
@@ -35,12 +36,12 @@ export enum DATA_CONNECT_EVENT_NAME {
 }
 
 export class AnalyticsLogger {
-  readonly logger: TelemetryLogger;
+  readonly logger: TelemetryLogger | IDXLogger;
   private disposable: vscode.Disposable;
   private sessionCharCount = 0; // Track total chars for the session
 
-  constructor() {
-    this.logger = env.createTelemetryLogger(
+  constructor(context: vscode.ExtensionContext) {
+    this.logger = monospaceEnv.value.isMonospace ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context) : env.createTelemetryLogger(
       new GA4TelemetrySender(pluginLogger),
     );
 
@@ -146,6 +147,19 @@ export class AnalyticsLogger {
   }
 }
 
+export class IDXLogger {
+  constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
+  public logUsage(eventName: string, data?: any) {
+    const packageJson = this.context.extension.packageJSON;
+    data = { ...data, extversion: packageJson.version, extname: this.context.extension.id, isidx: true };
+    this.sender.sendEventData(eventName, data);
+  }
+
+  public logError() {
+    // TODO
+  }
+}
+
 class GA4TelemetrySender implements TelemetrySender {
   private hasSentData = false;
   constructor(readonly pluginLogger: { warn: (s: string) => void }) {}
@@ -154,12 +168,6 @@ class GA4TelemetrySender implements TelemetrySender {
     eventName: string,
     data?: Record<string, any> | undefined,
   ): void {
-    // telemtry flag does not exist in monospace
-    if (!env.isTelemetryEnabled && !monospaceEnv.value.isMonospace) {
-      this.pluginLogger.warn("Telemetry is not enabled.");
-      return;
-    }
-
     // telemetry logger adds prefixes to eventName and params that are disallowed in GA4
     eventName = eventName.replace(
       "GoogleCloudTools.firebase-dataconnect-vscode/",
@@ -176,19 +184,24 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
-    const idxPrepend = monospaceEnv.value.isMonospace ? "idx_" : "";
+    data = addFirebaseBinaryMetadata(data);
     if (!this.hasSentData) {
       trackVSCode(
-        `${idxPrepend}${DATA_CONNECT_EVENT_NAME.EXTENSION_USED}`,
+        DATA_CONNECT_EVENT_NAME.EXTENSION_USED,
         data as AnalyticsParams,
       );
       this.hasSentData = true;
     }
-    trackVSCode(`${idxPrepend}${eventName}`, data as AnalyticsParams);
+    trackVSCode(eventName, data as AnalyticsParams);
   }
 
   sendErrorData(error: Error, data?: Record<string, any> | undefined): void {
     // n/a
     // TODO: Sanatize error messages for user data
   }
+}
+
+function addFirebaseBinaryMetadata(data?: Record<string, any> | undefined) {
+  const settings = getSettings();
+  return { ...data, binary_kind: settings.firebaseBinaryKind };
 }

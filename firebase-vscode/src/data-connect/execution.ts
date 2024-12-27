@@ -2,7 +2,6 @@ import vscode, {
   ConfigurationTarget,
   Disposable,
   ExtensionContext,
-  TelemetryLogger,
 } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerWebview } from "../webview";
@@ -23,13 +22,13 @@ import { DataConnectService } from "./service";
 import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { InstanceType } from "./code-lens-provider";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
@@ -190,7 +189,7 @@ export function registerExecution(
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
       (ast, location, instanceType: InstanceType) => {
-        telemetryLogger.logUsage(
+        analyticsLogger.logger.logUsage(
           instanceType === InstanceType.LOCAL
             ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
             : DATA_CONNECT_EVENT_NAME.RUN_PROD,

@@ -5,7 +5,7 @@ import { dataConnectConfigs } from "./config";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runCommand } from "./terminal";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
 
 function createDeployOnlyCommand(serviceConnectorMap: {
@@ -28,7 +28,7 @@ function createDeployOnlyCommand(serviceConnectorMap: {
 
 export function registerFdcDeploy(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: vscode.TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): vscode.Disposable {
   const settings = getSettings();
 
@@ -42,16 +42,12 @@ export function registerFdcDeploy(
   );
 
   const deployAllCmd = vscode.commands.registerCommand("fdc.deploy-all", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_ALL);
     deploySpy.call(`${settings.firebasePath} deploy --only dataconnect`);
   });
 
   const deployCmd = vscode.commands.registerCommand("fdc.deploy", async () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_INDIVIDUAL, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.DEPLOY_INDIVIDUAL);
     const configs = await firstWhereDefined(dataConnectConfigs).then(
       (c) => c.requireValue,
     );

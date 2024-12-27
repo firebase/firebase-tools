@@ -40,6 +40,7 @@ export interface DataConnectEmulatorArgs {
   enable_output_schema_extensions: boolean;
   enable_output_generated_sdk: boolean;
   importPath?: string;
+  debug?: boolean;
 }
 
 export interface DataConnectGenerateArgs {
@@ -117,7 +118,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         const postgresDumpPath = this.args.importPath
           ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
-        this.postgresServer = new PostgresServer(dbId, "postgres", dataDirectory, postgresDumpPath);
+        this.postgresServer = new PostgresServer({
+          dataDirectory,
+          importPath: postgresDumpPath,
+          debug: this.args.debug,
+        });
         const server = await this.postgresServer.createPGServer(pgHost, pgPort);
         const connectableHost = connectableHostname(pgHost);
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
@@ -166,6 +171,9 @@ export class DataConnectEmulator implements EmulatorInstance {
         "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
       );
       return;
+    }
+    if (this.postgresServer) {
+      await this.postgresServer.stop();
     }
     return stop(Emulators.DATACONNECT);
   }

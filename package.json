@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "13.27.0",
+  "version": "13.29.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -29,6 +29,7 @@
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
     "test:dataconnect-deploy": "bash ./scripts/dataconnect-test/run.sh",
+    "test:dataconnect-emulator": "bash ./scripts/dataconnect-emulator-tests/run.sh",
     "test:all-emulators": "npm run test:emulator && npm run test:extensions-emulator && npm run test:import-export && npm run test:storage-emulator-integration",
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
