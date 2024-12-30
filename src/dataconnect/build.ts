@@ -14,7 +14,12 @@ export async function build(
 ): Promise<DeploymentMetadata> {
   const args: { configDir: string; projectId?: string } = { configDir };
   if (experiments.isEnabled("fdcconnectorevolution") && options.projectId) {
-    process.env["DATA_CONNECT_PREVIEW"] = "conn_evolution";
+    const flags = process.env["DATA_CONNECT_PREVIEW"];
+    if (flags) {
+      process.env["DATA_CONNECT_PREVIEW"] = flags + ",conn_evolution";
+    } else {
+      process.env["DATA_CONNECT_PREVIEW"] = "conn_evolution";
+    }
     args.projectId = options.projectId;
   }
   const buildResult = await DataConnectEmulator.build(args);
@@ -26,10 +31,10 @@ export async function build(
       );
     }
     const interactiveAcks = buildResult.errors.filter(
-      (w) => w.extensions?.warningLevel && w.extensions?.warningLevel === "INTERACTIVE_ACK",
+      (w) => w.extensions?.warningLevel === "INTERACTIVE_ACK",
     );
     const requiredAcks = buildResult.errors.filter(
-      (w) => w.extensions?.warningLevel && w.extensions?.warningLevel === "REQUIRE_ACK",
+      (w) => w.extensions?.warningLevel === "REQUIRE_ACK",
     );
     const choices = [
       { name: "Acknowledge all changes and proceed", value: "proceed" },
@@ -43,7 +48,7 @@ export async function build(
       );
       if (options.nonInteractive && !options.force) {
         throw new FirebaseError(
-          "Explicit acknowledgement required for breaking schema or connector changes.",
+          "Explicit acknowledgement required for breaking schema or connector changes. Rerun this command with --force to deploy these changes.",
         );
       } else if (!options.nonInteractive && !options.force && !dryRun) {
         const result = await promptOnce({
