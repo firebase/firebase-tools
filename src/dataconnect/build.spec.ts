@@ -6,6 +6,9 @@ import { GraphqlError } from "./types";
 
 describe("handleBuildErrors", () => {
   let promptOnceStub: sinon.SinonStub;
+  before(() => {
+    sinon.verifyAndRestore();
+  });
   beforeEach(() => {
     promptOnceStub = sinon
       .stub(prompt, "promptOnce")
