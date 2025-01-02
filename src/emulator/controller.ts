@@ -884,6 +884,7 @@ export async function startAll(
       postgresListen: listenForEmulator["dataconnect.postgres"],
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
+      debug: options.debug,
     };
 
     if (exportMetadata.dataconnect) {

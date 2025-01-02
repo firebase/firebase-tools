@@ -89,6 +89,11 @@ jobs:
           distribution: temurin
 
       - uses: actions/checkout@v4
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1.7.2
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -146,7 +151,7 @@ jobs:
   integration:
     needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -184,6 +189,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1.7.2
+        with:
+          install-dependencies: true
+          install-chromedriver: true
       - name: Cache firebase emulators
         uses: actions/cache@v3
         with:

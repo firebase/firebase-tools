@@ -1,6 +1,6 @@
 // https://github.com/supabase-community/pg-gateway
 
-import { PGlite, PGliteOptions } from "@electric-sql/pglite";
+import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
@@ -18,25 +18,28 @@ import {
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
 import { hasMessage } from "../../error";
+
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
+DECLARE _clear text;
 BEGIN
-   EXECUTE
-   (SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
+   SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
     FROM   pg_class
     WHERE  relkind = 'r'
     AND    relnamespace = 'public'::regnamespace
-   );
+   INTO _clear;
+  EXECUTE COALESCE(_clear, 'select now()');
 END
 $do$;`;
 
 export class PostgresServer {
-  private username: string;
-  private database: string;
   private dataDirectory?: string;
   private importPath?: string;
+  private debug: DebugLevel;
 
   public db: PGlite | undefined = undefined;
+  private server: net.Server | undefined = undefined;
+
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
@@ -67,6 +70,7 @@ export class PostgresServer {
         server.emit("error", err);
       });
     });
+    this.server = server;
 
     const listeningPromise = new Promise<void>((resolve) => {
       server.listen(port, host, () => {
@@ -84,9 +88,7 @@ export class PostgresServer {
       const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
       const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
       const pgliteArgs: PGliteOptions = {
-        username: this.username,
-        database: this.database,
-        debug: 0,
+        debug: this.debug,
         extensions: {
           vector,
           uuidOssp,
@@ -132,11 +134,20 @@ export class PostgresServer {
     }
   }
 
-  constructor(database: string, username: string, dataDirectory?: string, importPath?: string) {
-    this.username = username;
-    this.database = database;
-    this.dataDirectory = dataDirectory;
-    this.importPath = importPath;
+  public async stop(): Promise<void> {
+    if (this.db) {
+      await this.db.close();
+    }
+    if (this.server) {
+      this.server.close();
+    }
+    return;
+  }
+
+  constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
+    this.dataDirectory = args.dataDirectory;
+    this.importPath = args.importPath;
+    this.debug = args.debug ? 5 : 0;
   }
 }
 
