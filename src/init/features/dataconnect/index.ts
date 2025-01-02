@@ -1,5 +1,6 @@
 import { join, basename } from "path";
 import * as clc from "colorette";
+import * as fs from "fs-extra";
 
 import { confirm, promptOnce } from "../../../prompt";
 import { Config } from "../../../config";
@@ -196,7 +197,11 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     for (const f of info.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
     }
+  } else {
+    // Even if the schema is empty, lets give them an empty .gql file to get started.
+    fs.ensureFileSync(join(dir, "schema", "schema.gql"));
   }
+
   for (const c of info.connectors) {
     await writeConnectorFiles(config, c);
   }
