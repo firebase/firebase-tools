@@ -181,7 +181,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
       }
 
       await instance.clearData();
-      res.status(200).send("Data cleared");
+      res.status(200).json({ success: true });
     });
 
     return app;

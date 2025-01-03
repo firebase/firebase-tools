@@ -1,10 +1,10 @@
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react";
-import React, { useEffect } from "react";
+import React from "react";
 import { Spacer } from "./ui/Spacer";
-import { PanelSection } from "./ui/PanelSection";
-import { EmulatorInfo } from "../../../src/emulator/types";
+import type { EmulatorInfo } from "../../../src/emulator/types";
 import { RunningEmulatorInfo } from "../messaging/types";
 import { Body, Label } from "./ui/Text";
+import { broker } from "../globals/html-broker";
 import styles from "./EmulatorPanel.scss";
 import { ExternalLink } from "./ui/ExternalLink";
 import { Icon } from "./ui/Icon";
@@ -31,7 +31,8 @@ export function EmulatorPanel({
           </VSCodeLink>
         </>
       )}
-
+      <Spacer size="medium" />
+      <RunningEmulatorControlButtons infos={emulatorInfo.displayInfo} />
       <Spacer size="large" />
       <Body>
         <ExternalLink
@@ -64,5 +65,25 @@ function FormatEmulatorRunningInfo({ infos }: { infos: EmulatorInfo[] }) {
           </li>
         ))}
     </ul>
+  );
+}
+
+function RunningEmulatorControlButtons({ infos }: { infos: EmulatorInfo[] }) {
+  return (
+    <>
+      <VSCodeButton
+        onClick={() => broker.send("fdc.clear-emulator-data")}
+        appearance="secondary"
+      >
+        Clear Data Connect data
+      </VSCodeButton>
+      <Spacer size="small"></Spacer>
+      <VSCodeButton
+        onClick={() => broker.send("runEmulatorsExport")}
+        appearance="secondary"
+      >
+        Export emulator data
+      </VSCodeButton>
+    </>
   );
 }
