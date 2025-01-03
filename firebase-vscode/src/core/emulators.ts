@@ -32,15 +32,13 @@ export class EmulatorsController implements Disposable {
     // called by emulator UI
     this.subscriptions.push(
       broker.on("fdc.clear-emulator-data", () => {
-        this.clearDataConnectData();
+        vscode.commands.executeCommand("firebase.emulators.clearData");
       }),
     );
 
     this.subscriptions.push(broker.on("runEmulatorsExport", () => {
-      // TODO: optional debug mode
       // TODO: Let users choose a export directory
-      const settings = getSettings();
-      this.exportEmulatorData(settings.exportPath);
+      vscode.commands.executeCommand("firebase.emulators.exportData")
     }))
   }
 
@@ -58,6 +56,17 @@ export class EmulatorsController implements Disposable {
   private readonly emulatorsStoppped = vscode.commands.registerCommand(
     "firebase.emulators.stopped",
     this.setEmulatorsStopped.bind(this),
+  );
+
+  private readonly clearEmulatorData = vscode.commands.registerCommand(
+    "firebase.emulators.clearData",
+    this.clearDataConnectData.bind(this),
+  );
+
+
+  private readonly exportEmulatorDataCommand= vscode.commands.registerCommand(
+    "firebase.emulators.exportData",
+    this.exportEmulatorData.bind(this),
   );
 
   readonly emulators: { status: EmulatorsStatus; infos?: RunningEmulatorInfo } =
@@ -149,7 +158,9 @@ export class EmulatorsController implements Disposable {
     }
   }
 
-  async exportEmulatorData(exportDir: string): Promise<void> {
+  async exportEmulatorData(): Promise<void> {
+    const settings = getSettings();
+    const exportDir = settings.exportPath;
     const hubClient = this.getHubClient();
     if (hubClient) {
       // TODO: Make exportDir configurable
@@ -178,5 +189,6 @@ export class EmulatorsController implements Disposable {
     this.findRunningEmulatorsCommand.dispose();
     this.emulatorStatusItem.dispose();
     this.emulatorsStoppped.dispose();
+    this.clearEmulatorData.dispose();
   }
 }
