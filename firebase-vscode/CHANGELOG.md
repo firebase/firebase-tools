@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Feature] Added `debug` setting to run commands with `--debug`
+
 ## 0.12.0
 
 - Updated internal firebase-tools dependency to 13.29.1

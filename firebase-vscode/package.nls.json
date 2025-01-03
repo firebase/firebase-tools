@@ -4,6 +4,7 @@
   "ext.config.firebasePath": "Path to the `Firebase` module, e.g. `./node_modules/firebase`",
   "ext.config.hosting.useFrameworks": "Enable web frameworks",
   "ext.config.npmPath": "Path to NPM executable in local environment",
+  "ext.config.debug": "When true, add the --debug flag to any commands run by the extension",
   "ext.config.title": "Prettier",
   "ext.config.idx.viewMetricNotice": "Show data collection notice on next startup (IDX Only)"
 }
