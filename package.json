@@ -98,6 +98,9 @@
       "src/test/**/*"
     ]
   },
+  "overrides" : {
+    "nan": "^2.22.0"
+  },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.0",
     "@google-cloud/cloud-sql-connector": "^1.3.3",
