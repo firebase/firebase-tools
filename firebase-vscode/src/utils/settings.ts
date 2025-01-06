@@ -7,6 +7,7 @@ export interface Settings {
   readonly npmPath: string;
   readonly useFrameworks: boolean;
   readonly shouldShowIdxMetricNotice: boolean;
+  readonly debug: boolean;
 }
 
 // TODO: Temporary fallback for bashing, this should probably point to the global firebase binary on the system
@@ -37,6 +38,7 @@ export function getSettings(): Settings {
       "idx.viewMetricNotice",
       true,
     ),
+    debug: config.get<boolean>("debug", false),
   };
 }
 
