@@ -65,7 +65,7 @@ export function runTerminalTask(
       vscode.TaskScope.Workspace,
       taskName,
       "firebase",
-      new vscode.ShellExecution(`${command} ${settings.debug ? "--debug" : ""}`, executionOptions),
+      new vscode.ShellExecution(`${command}${settings.debug ? " --debug" : ""}`, executionOptions),
     );
     task.presentationOptions = presentationOptions;
     await vscode.tasks.executeTask(task);
