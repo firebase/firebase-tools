@@ -1,0 +1,1 @@
+- Updated `cross-env` and `cross-spawn` dependencies to avoid vulnerable versions. (#7979)
