@@ -77,6 +77,11 @@
           "default": true,
           "markdownDescription": "%ext.config.idx.viewMetricNotice%",
           "scope": "application"
+        },
+        "firebase.debug": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%ext.config.debug%"
         }
       }
     },
