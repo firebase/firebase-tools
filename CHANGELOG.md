@@ -1,3 +1,3 @@
 - Improved error messaging when using a project that does not have Firebase enabled.
-- Changes default CF3 runtime to nodejs22 (#8037)
-- Fixed an issue where `--import` would error for the Data Connect emulator if `dataDir` was also set.
+- Updated `cross-env` and `cross-spawn` dependencies to avoid vulnerable versions. (#7979)
+- Fixed an issue with the Data Connect emulator where `dataDir` and `--export` were relative to the current directory insead of `firebase.json`.

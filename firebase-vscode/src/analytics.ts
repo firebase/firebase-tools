@@ -2,6 +2,7 @@ import vscode, { env, TelemetryLogger, TelemetrySender } from "vscode";
 import { pluginLogger } from "./logger-wrapper";
 import { AnalyticsParams, trackVSCode } from "../../src/track";
 import { env as monospaceEnv } from "../src/core/env";
+import { getSettings } from "./utils/settings";
 
 export const IDX_METRIC_NOTICE = `
 When you use the Firebase Data Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
@@ -183,6 +184,7 @@ class GA4TelemetrySender implements TelemetrySender {
       }
     }
     data = { ...data };
+    data = addFirebaseBinaryMetadata(data);
     if (!this.hasSentData) {
       trackVSCode(
         DATA_CONNECT_EVENT_NAME.EXTENSION_USED,
@@ -197,4 +199,9 @@ class GA4TelemetrySender implements TelemetrySender {
     // n/a
     // TODO: Sanatize error messages for user data
   }
+}
+
+function addFirebaseBinaryMetadata(data?: Record<string, any> | undefined) {
+  const settings = getSettings();
+  return { ...data, binary_kind: settings.firebaseBinaryKind };
 }

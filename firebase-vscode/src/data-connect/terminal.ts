@@ -17,6 +17,7 @@ export function setTerminalEnvVars(envVar: string, value: string) {
 }
 
 export function runCommand(command: string) {
+  const settings = getSettings();
   const terminalOptions: TerminalOptions = {
     name: "Data Connect Terminal",
     env: environmentVariables,
@@ -30,6 +31,9 @@ export function runCommand(command: string) {
   if (currentProjectId.value) {
     command = `${command} --project ${currentProjectId.value}`;
   }
+  if (settings.debug) {
+    command = `${command} --debug`;
+  }
   terminal.sendText(command);
 }
 
@@ -38,6 +42,7 @@ export function runTerminalTask(
   command: string,
   presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
+  const settings = getSettings();
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
     vscode.tasks.onDidEndTaskProcess(async (e) => {
@@ -60,7 +65,7 @@ export function runTerminalTask(
       vscode.TaskScope.Workspace,
       taskName,
       "firebase",
-      new vscode.ShellExecution(command, executionOptions),
+      new vscode.ShellExecution(`${command}${settings.debug ? " --debug" : ""}`, executionOptions),
     );
     task.presentationOptions = presentationOptions;
     await vscode.tasks.executeTask(task);
@@ -74,9 +79,7 @@ export function registerTerminalTasks(
   const settings = getSettings();
 
   const loginTaskBroker = broker.on("executeLogin", () => {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
     runTerminalTask(
       "firebase login",
       `${settings.firebasePath} login --no-localhost`,
@@ -86,9 +89,7 @@ export function registerTerminalTasks(
   });
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS, {
-      firebase_binary_kind: settings.firebaseBinaryKind,
-    });
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
     // TODO: optional debug mode
     runTerminalTask(
       "firebase emulators",
