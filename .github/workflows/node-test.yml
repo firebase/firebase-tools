@@ -117,7 +117,7 @@ jobs:
           run: npm run test:e2e
           working-directory: firebase-vscode
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: screenshots
