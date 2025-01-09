@@ -2,11 +2,11 @@
 import { ValidateFunction, ErrorObject } from "ajv";
 import * as fs from "fs";
 import * as path from "path";
+import { Ajv } from "ajv";
+import addFormats from "ajv-formats";
 
-const Ajv = require("ajv");
-const addFormats = require("ajv-formats");
-
-const ajv = new Ajv();
+// We need to allow union types becuase typescript-json-schema generates them sometimes.
+const ajv = new Ajv({ allowUnionTypes: true });
 addFormats(ajv);
 let _VALIDATOR: ValidateFunction | undefined = undefined;
 
