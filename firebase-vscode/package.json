@@ -91,6 +91,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%ext.config.emulators.exportOnExit%"
+        },
+        "firebase.debug": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%ext.config.debug%"
         }
       }
     },

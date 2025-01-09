@@ -9,5 +9,5 @@
   "ext.config.emulators.importPath": "Path to import emulator data from",
   "ext.config.emulators.exportPath": "Path to export emulator data to",
   "ext.config.emulators.exportOnExit": "If true, data will be exported to exportPath when the emulator shuts down"
-
+  "ext.config.debug": "When true, add the --debug flag to any commands run by the extension",
 }
