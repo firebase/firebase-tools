@@ -51,6 +51,7 @@ export interface DataConnectGenerateArgs {
 
 export interface DataConnectBuildArgs {
   configDir: string;
+  projectId?: string;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -113,9 +114,12 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        let dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        if (dataDirectory) {
+          dataDirectory = this.args.config.path(dataDirectory);
+        }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.importPath, "postgres.tar.gz")
+          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,
@@ -204,7 +208,9 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async exportData(exportPath: string): Promise<void> {
     if (this.postgresServer) {
-      await this.postgresServer.exportData(path.join(exportPath, "postgres.tar.gz"));
+      await this.postgresServer.exportData(
+        path.join(this.args.config.path(exportPath), "postgres.tar.gz"),
+      );
     } else {
       throw new FirebaseError(
         "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
@@ -249,6 +255,9 @@ export class DataConnectEmulator implements EmulatorInstance {
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
+    if (args.projectId) {
+      cmd.push(`--project_id=${args.projectId}`);
+    }
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (isIncomaptibleArchError(res.error)) {

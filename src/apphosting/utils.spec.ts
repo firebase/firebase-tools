@@ -23,6 +23,9 @@ describe("utils", () => {
     beforeEach(() => {
       prompt = sinon.stub(promptImport);
     });
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
     it("should prompt with the correct options", async () => {
       const apphostingFileNameToPathMap = new Map<string, string>([
         ["apphosting.yaml", "/parent/cwd/apphosting.yaml"],
