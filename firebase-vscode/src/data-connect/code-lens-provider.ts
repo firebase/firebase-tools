@@ -97,6 +97,18 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           document.fileName,
         );
 
+        // Add only at top of document
+        if (line === 0) {
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `Generate Operation`,
+              command: "firebase.dataConnect.generateOperation",
+              tooltip: "Generate a new operation",
+              arguments: [x, operationLocation, InstanceType.PRODUCTION],
+            }),
+          );
+        }
+
         if (service) {
           if (this.emulatorsController.areEmulatorsRunning()) {
             codeLenses.push(
@@ -151,6 +163,18 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const documentPath = document.fileName;
+
+        // Add only at top of document
+        if (line === 0) {
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `Generate Schema`,
+              command: "firebase.dataConnect.generateSchema",
+              tooltip: "Generate a new schema",
+              arguments: [documentNode, x, documentPath],
+            }),
+          );
+        }
 
         codeLenses.push(
           new vscode.CodeLens(range, {

@@ -74,7 +74,8 @@ function EmulatorsPanel() {
         <>
           <Spacer size="medium"></Spacer>
           <label>
-            Emulator start-up is taking a while. In case of error, click refresh.
+            Emulator start-up is taking a while. In case of error, click
+            refresh.
           </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
@@ -146,8 +147,17 @@ function DataConnect() {
       </Label>
 
       <Spacer size="xlarge" />
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => {
+          // TODO create a new command for this
+          // broker.send("fdc.generate-schema");
+        }}
+      >
+        Generate schema
+      </VSCodeButton>
 
-      <Spacer size="small" />
+      <Spacer size="xlarge" />
       <VSCodeButton onClick={() => broker.send("fdc.deploy-all")}>
         Deploy to production
       </VSCodeButton>
