@@ -1,6 +1,6 @@
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser } from "./connect";
+import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
 import { concat } from "lodash";
@@ -23,6 +23,12 @@ export const fdcSqlRoleMap = {
   writer: firebasewriter,
   reader: firebasereader,
 };
+
+export type TableMetaData = {
+  name: string;
+  owner: string;
+  hasRowSecurity: boolean
+}
 
 // Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
 // Throw an error if commands fails due to another reason like connection issues.
@@ -239,4 +245,119 @@ export async function setupSQLPermissions(
   );
 
   return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
+}
+
+export enum SchemaSetupStatus {
+  NotSetup = 'not-setup',
+  GreenField = 'greenfield',
+  BrownField = 'brownfield',
+  Unknown = 'unknown', // We couldn't figure it out, possibly because of partial setup
+}
+
+export enum UserAccessLevel {
+  OWNER = 'owner',
+  WRITER = 'writer',
+  READER = 'reader',
+  NONE = 'none'
+}
+
+export async function getTablesMetaData(instanceId: string, databaseId: string, schema: string, options: Options): Promise<TableMetaData[] | null> {
+  const cmd = `SELECT ("tablename", "tableowner", "rowsecurity") FROM pg_tables WHERE schemaname='${schema}'`
+
+  try {
+    const res = await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, [cmd], /** silent=*/ true);
+    const tables = res[0].rows.map(row => {
+      return {
+        name: row.tablename,
+        owner: row.tableowner,
+        hasRowSecurity: row.rowsecurity}})
+
+    return tables;
+  } catch (e) {
+    logger.error(`Failed To get tables metadata with error: ${e}`)
+    return null
+  }
+}
+
+export async function getUserAccessLevel(instanceId: string, databaseId: string, options: Options): Promise<UserAccessLevel> {
+  const iamUser = (await getIAMUser(options)).user;
+
+  const checkUserMembership = async (role: string): Promise<boolean> => {
+    const cmd = [`SELECT pg_has_role('${iamUser}', '${role}', 'member');`]
+    try {
+      const results = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, cmd, /** silent=*/ true)
+      return results[0].rows[0].pg_has_role
+    } catch (e) {
+      if (e instanceof FirebaseError && e.message.includes(`role "${role}" does not exist`)) {
+        return false
+      } else {
+        throw e
+      }
+    }
+  }
+
+  if (await (checkUserMembership(firebaseowner(databaseId)))) {
+    return UserAccessLevel.OWNER
+  }
+  if (await checkUserMembership(firebasewriter(databaseId))) {
+    return UserAccessLevel.WRITER
+  }
+  if (await checkUserMembership(firebasereader(databaseId))) {
+    return UserAccessLevel.READER
+  }
+  return UserAccessLevel.NONE
+}
+
+// Used for migration, greenfield and brownfield setup
+// Note: this is a quick check, it wouldn't catch cases where setup was possibly interrupted and setup is in intermediate state.
+export async function determineSchemaSetupStatus(instanceId: string, databaseId: string, options: Options): Promise<SchemaSetupStatus> {
+  const checkRoleExists = async (role: string): Promise<boolean> => {
+    const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL;`]
+    const result = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, cmd, /** silent=*/ true)
+    return result[0].rows[0]
+  }
+  // If owner exists -> greenfield
+  if (await checkRoleExists(firebaseowner(databaseId))) {
+    return SchemaSetupStatus.GreenField
+  }
+  // If writer exists -> brownfield
+  if (await checkRoleExists(firebasewriter(databaseId))) {
+    return SchemaSetupStatus.BrownField
+  }
+
+  return SchemaSetupStatus.NotSetup
+}
+
+export async function greenFieldSQLSetup(
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+  silent: boolean = false,
+) {
+  // Step 0: Get tables metadata and prompt user for action if any tables found
+  
+
+  // Step 1: Confirm or Create firebase roles
+
+  // Step 2: Give the specified owner writer permissions
+
+  // Step 3: Transfer ownership from original owner to firebaseowner
+
+  // Step 4: Grant P4SA and User needed permissions
+}
+
+
+export async function brownFieldSQLSetup(
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+  silent: boolean = false,
+) {
+  // Step 0: Get tables metadata and prompt user for action if any tables found
+
+  // Step 1: Grant firebasesuperuser access to the original owner
+
+  // Step 2: Using firebasesuperuser, grant reader and writer permissions on existing tables and setup default permissions for future tables
+
+  // Step 3: 
 }

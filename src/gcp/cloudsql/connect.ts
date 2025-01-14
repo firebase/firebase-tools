@@ -23,7 +23,7 @@ export async function execute(
     password?: string;
     silent?: boolean;
   },
-) {
+): Promise<pg.QueryResult[]> {
   const logFn = opts.silent ? logger.debug : logger.info;
   const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
   const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
@@ -92,11 +92,12 @@ export async function execute(
   }
 
   const conn = await pool.connect();
+  const results: pg.QueryResult[] = []
   logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
-      await conn.query(s);
+      results.push(await conn.query(s));
     } catch (err) {
       throw new FirebaseError(`Error executing ${err}`);
     }
@@ -105,6 +106,7 @@ export async function execute(
   conn.release();
   await pool.end();
   connector.close();
+  return results
 }
 
 export async function executeSqlCmdsAsIamUser(
@@ -113,7 +115,7 @@ export async function executeSqlCmdsAsIamUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-): Promise<void> {
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   const { user: iamUser } = await getIAMUser(options);
 
@@ -135,7 +137,7 @@ export async function executeSqlCmdsAsSuperUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-) {
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
