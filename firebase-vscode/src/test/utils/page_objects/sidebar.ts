@@ -101,7 +101,7 @@ export class StudioView {
   }
 
   get clearEmulatorDataBtn() {
-    return $("vscode-button=SClear Data Connect data");
+    return $("vscode-button=Clear Data Connect data");
   }
 
   get exportEmulatorDataBtn() {
