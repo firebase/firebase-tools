@@ -457,7 +457,7 @@ export function toDNSCompatibleId(id: string): string {
   let defaultServiceId = basename(id)
     .toLowerCase()
     .replaceAll(/[^a-z0-9-]/g, "")
-    .slice(0, 61);
+    .slice(0, 63);
   while (defaultServiceId.endsWith("-") && defaultServiceId.length) {
     defaultServiceId = defaultServiceId.slice(0, defaultServiceId.length - 1);
   }

@@ -185,9 +185,9 @@ describe("init dataconnect", () => {
         expected: "this-is-compatible",
       },
       {
-        description: "Should cut to 61 characters",
+        description: "Should cut to 63 characters",
         input: "a".repeat(1000),
-        expected: "a".repeat(61),
+        expected: "a".repeat(63),
       },
     ];
     for (const c of cases) {
