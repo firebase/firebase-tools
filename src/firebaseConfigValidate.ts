@@ -31,14 +31,14 @@ export function getValidator(): ValidateFunction {
 
 export function getErrorMessage(e: ErrorObject) {
   if (e.keyword === "additionalProperties") {
-    return `Object "${e.dataPath}" in "firebase.json" has unknown property: ${JSON.stringify(
+    return `Object "${e.instancePath}" in "firebase.json" has unknown property: ${JSON.stringify(
       e.params,
     )}`;
   } else if (e.keyword === "required") {
     return `Object "${
-      e.dataPath
+      e.instancePath
     }" in "firebase.json" is missing required property: ${JSON.stringify(e.params)}`;
   } else {
-    return `Field "${e.dataPath}" in "firebase.json" is possibly invalid: ${e.message}`;
+    return `Field "${e.instancePath}" in "firebase.json" is possibly invalid: ${e.message}`;
   }
 }
