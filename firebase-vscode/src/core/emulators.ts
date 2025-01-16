@@ -23,23 +23,24 @@ export class EmulatorsController implements Disposable {
       }),
     );
 
+    // Subscription to open up settings window
     this.subscriptions.push(
       broker.on("fdc.open-emulator-settings", () => {
         vscode.commands.executeCommand( 'workbench.action.openSettings', 'firebase.emulators' );
       })
-    )
+    );
 
-    // called by emulator UI
+    // Subscription to trigger clear emulator data when button is clicked.
     this.subscriptions.push(
       broker.on("fdc.clear-emulator-data", () => {
         vscode.commands.executeCommand("firebase.emulators.clearData");
       }),
     );
 
+    // Subscription to trigger emulator exports when button is clicked.
     this.subscriptions.push(broker.on("runEmulatorsExport", () => {
-      // TODO: Let users choose a export directory
       vscode.commands.executeCommand("firebase.emulators.exportData")
-    }))
+    }));
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
@@ -58,13 +59,13 @@ export class EmulatorsController implements Disposable {
     this.setEmulatorsStopped.bind(this),
   );
 
-  private readonly clearEmulatorData = vscode.commands.registerCommand(
+  private readonly clearEmulatorDataCommand = vscode.commands.registerCommand(
     "firebase.emulators.clearData",
     this.clearDataConnectData.bind(this),
   );
 
 
-  private readonly exportEmulatorDataCommand= vscode.commands.registerCommand(
+  private readonly exportEmulatorDataCommand = vscode.commands.registerCommand(
     "firebase.emulators.exportData",
     this.exportEmulatorData.bind(this),
   );
@@ -189,6 +190,7 @@ export class EmulatorsController implements Disposable {
     this.findRunningEmulatorsCommand.dispose();
     this.emulatorStatusItem.dispose();
     this.emulatorsStoppped.dispose();
-    this.clearEmulatorData.dispose();
+    this.clearEmulatorDataCommand.dispose();
+    this.exportEmulatorDataCommand.dispose();
   }
 }
