@@ -141,7 +141,9 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
       }))
     );
   } else {
-    info.serviceId = info.serviceId || basename(process.cwd());
+    // Ensure that the suggested name is DNS compatible
+    const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
+    info.serviceId = info.serviceId || defaultServiceId;
     info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId || "app"}-fdc`;
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
@@ -446,4 +448,21 @@ async function locationChoices(setup: Setup) {
       { name: "asia-southeast1", value: "asia-southeast1" },
     ];
   }
+}
+
+/**
+ * Converts any string to a DNS friendly service ID.
+ */
+export function toDNSCompatibleId(id: string): string {
+  let defaultServiceId = basename(id)
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9-]/g, "")
+    .slice(0, 63);
+  while (defaultServiceId.endsWith("-") && defaultServiceId.length) {
+    defaultServiceId = defaultServiceId.slice(0, defaultServiceId.length - 1);
+  }
+  while (defaultServiceId.startsWith("-") && defaultServiceId.length) {
+    defaultServiceId = defaultServiceId.slice(1, defaultServiceId.length);
+  }
+  return defaultServiceId || "app";
 }
