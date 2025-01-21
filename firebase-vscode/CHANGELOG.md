@@ -1,6 +1,7 @@
 ## NEXT
 
-- [Feature] Added `debug` setting to run commands with `--debug`
+- [Added] Added support for emulator import/export.
+- [Added] Added `debug` setting to run commands with `--debug`
 
 ## 0.12.0
 
