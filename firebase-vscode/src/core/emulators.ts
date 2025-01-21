@@ -6,6 +6,9 @@ import { EmulatorsStatus, RunningEmulatorInfo } from "../messaging/types";
 import { EmulatorHubClient } from "../../../src/emulator/hubClient";
 import { GetEmulatorsResponse } from "../../../src/emulator/hub";
 import { EmulatorInfo } from "../emulator/types";
+import { signal } from "@preact/signals-core";
+import { dataConnectConfigs } from "../data-connect/config";
+import { runEmulatorIssuesStream } from "../data-connect/emulator-stream";
 import { getSettings } from "../utils/settings";
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
@@ -107,6 +110,8 @@ export class EmulatorsController implements Disposable {
     };
     this.emulators.status = "running";
     this.notifyEmulatorStateChanged();
+
+    this.connectToEmulatorStream();
   }
 
   public setEmulatorsStarting() {
@@ -183,6 +188,21 @@ export class EmulatorsController implements Disposable {
 
   public areEmulatorsRunning() {
     return this.emulators.status === "running";
+  }
+
+  /** FDC specific functions */
+  readonly isPostgresEnabled = signal(false);
+  private connectToEmulatorStream() {
+    const configs = dataConnectConfigs.value?.tryReadValue!;
+
+    if (this.getLocalEndpoint()) {
+      // only if FDC emulator endpoint is found
+      runEmulatorIssuesStream(
+        configs,
+        this.getLocalEndpoint()!,
+        this.isPostgresEnabled,
+      );
+    }
   }
 
   dispose(): void {

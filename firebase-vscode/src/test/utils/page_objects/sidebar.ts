@@ -7,11 +7,30 @@ import { TEXT } from "../../../../webviews/globals/ux-text";
 export class FirebaseSidebar {
   constructor(readonly workbench: Workbench) {}
 
-
   async openExtensionSidebar() {
     const sidebar = await $(`a[aria-label="Firebase Data Connect"]`);
     await sidebar.waitForDisplayed();
     await sidebar.click();
+    await this.refresh();
+
+    // single retry to work around Syntax Highlighter download
+    try {
+      (await browser.$(".monaco-workbench .part.sidebar")).waitForExist({
+        timeout: 2000,
+      });
+    } catch (e) {
+      await this.open();
+    }
+  }
+
+  async waitForSidebar() {
+    const sidebar = await browser.$$(".monaco-workbench .part.sideba");
+  }
+
+  async refresh() {
+    await browser.executeWorkbench((vs: typeof vscode) => {
+      return vs.commands.executeCommand("firebase.refresh");
+    });
   }
   async open() {
     await browser.executeWorkbench((vs: typeof vscode) => {
