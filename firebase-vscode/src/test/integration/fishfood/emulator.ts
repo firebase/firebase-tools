@@ -8,8 +8,8 @@ import { mockUser } from "../../utils/user";
 import { mockProject, schemaPath } from "../../utils/projects";
 import { EditorView } from "../../utils/page_objects/editor";
 
-firebaseSuite("Emulator #1", async function () {
-  firebaseTest("Data connect emulator has export, clear,", async function () {
+firebaseSuite("Emulator", async function () {
+  firebaseTest("Data connect emulator has export, clear, and connect to stream", async function () {
     const workbench = await browser.getWorkbench();
     const sidebar = new FirebaseSidebar(workbench);
     const commands = new FirebaseCommands();
@@ -39,28 +39,8 @@ firebaseSuite("Emulator #1", async function () {
     await sidebar.exportEmulatorData();
     const exportNotification = await notifications.getExportNotification();
     expect(exportNotification).toExist();
-  });
-});
 
-firebaseSuite("Emulator #2", async function () {
-  firebaseTest("Data connect emulator connects to emulator stream", async function () {
-    const workbench = await browser.getWorkbench();
-    const sidebar = new FirebaseSidebar(workbench);
-    const commands = new FirebaseCommands();
-
-    await sidebar.openExtensionSidebar();
-    await commands.waitForUser();
-
-    await mockUser({ email: "test@gmail.com" });
-    await mockProject("test-project");
-    await sidebar.startEmulators();
-    console.log("Waiting for emulators to start...");
-    await commands.waitForEmulators();
-    const current = await sidebar.currentEmulators();
-
-    expect(current).toContain("dataconnect :9399");
-
-    // Test 1: edit the schema to cause a migration error
+    // Test 3: edit the schema to cause a migration error
     const editor = new EditorView(workbench);
     await editor.openFile(schemaPath);
 
