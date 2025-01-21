@@ -3,7 +3,6 @@ import * as fs from "fs";
 
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
-import setupVscodeEnv from "./utils/install-extensions";
 
 export const vscodeConfigs = {
   browserName: "vscode",
