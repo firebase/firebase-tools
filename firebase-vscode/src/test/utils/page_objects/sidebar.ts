@@ -24,7 +24,7 @@ export class FirebaseSidebar {
   }
 
   async waitForSidebar() {
-    const sidebar = await browser.$$(".monaco-workbench .part.sideba");
+    const sidebar = await browser.$$(".monaco-workbench .part.sidebar");
   }
 
   async refresh() {
