@@ -32,6 +32,7 @@ import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
+import { GeminiAssistController } from "./gemini-assist";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -155,6 +156,8 @@ export function registerFdc(
     emulatorController,
   );
 
+  const geminiAssist = new GeminiAssistController(analyticsLogger, broker);
+
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
@@ -231,6 +234,7 @@ export function registerFdc(
     registerFdcSdkGeneration(broker, analyticsLogger),
     registerTerminalTasks(broker, analyticsLogger),
     operationCodeLensProvider,
+
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
       // inside the test_projects folder.
@@ -256,6 +260,7 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    geminiAssist,
     refreshCommand,
     {
       dispose: () => {

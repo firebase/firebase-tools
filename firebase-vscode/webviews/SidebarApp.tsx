@@ -150,8 +150,7 @@ function DataConnect() {
       <VSCodeButton
         appearance="secondary"
         onClick={() => {
-          // TODO create a new command for this
-          // broker.send("fdc.generate-schema");
+          broker.send("fdc.generate-schema");
         }}
       >
         Generate schema
