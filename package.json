@@ -68,7 +68,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=18.0.0 || >=20.0.0"
+    "node": "^20.0.0 || ^22.0.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -155,7 +155,7 @@
     "sql-formatter": "^15.3.0",
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
-    "superstatic": "^9.1.0",
+    "superstatic": "firebase/superstatic#jh-url",
     "tar": "^6.1.11",
     "tcp-port-used": "^1.0.2",
     "tmp": "^0.2.3",
@@ -256,5 +256,12 @@
     "typescript": "^4.5.4",
     "typescript-json-schema": "^0.65.1",
     "vite": "^4.2.1"
+  },
+  "overrides": {
+    "ajv-formats": "3.0.1",
+    "ajv": "^8.17.1",
+    "node-fetch": {
+      "whatwg-url": "^14.0.0"
+    }
   }
 }
