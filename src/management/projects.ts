@@ -423,17 +423,21 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
   return projects;
 }
 
+async function _getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
+  const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
+    method: "GET",
+    path: `/projects/${projectId}`,
+    timeout: TIMEOUT_MILLIS,
+  });
+  return res.body;
+}
 /**
  * Gets the Firebase project information identified by the specified project ID
  */
 export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
   try {
-    const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
-      method: "GET",
-      path: `/projects/${projectId}`,
-      timeout: TIMEOUT_MILLIS,
-    });
-    return res.body;
+    const projectMetadata = await _getFirebaseProject(projectId);
+    return projectMetadata;
   } catch (err: any) {
     if (getErrStatus(err) === 404) {
       try {
@@ -480,4 +484,27 @@ export interface ProjectInfo {
 export async function getProject(projectId: string): Promise<ProjectInfo> {
   const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
   return response.body;
+}
+
+/**
+ * Check whether a project is registered as a Firebase project.
+ * @param projectId the project ID to check
+ * @returns true if it is a firebase project, false if it is a core app project, errors if the project does not exist.
+ */
+export async function isFirebaseProject(projectId: string): Promise<boolean> {
+  try {
+    await _getFirebaseProject(projectId);
+    return true;
+  } catch (err: unknown) {
+    await getProject(projectId);
+    return false;
+  }
+}
+
+export function printAddFirebaseMessage(projectId: string): void {
+  utils.logWarning(
+    `${clc.bold(projectId)} has limited access to some Firebase services. ` +
+      `Update this project to access all Firebase capabilities, including this Firebase service: ` +
+      `${utils.addFirebaseToCloudProjectLink(projectId)}`,
+  );
 }

@@ -48,6 +48,7 @@ function logProjectCount(arr: FirebaseProjectMetadata[] = []): void {
 
 export const command = new Command("projects:list")
   .description("list all Firebase projects you have access to")
+  .firebaseNotRequired()
   .before(requireAuth)
   .action(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

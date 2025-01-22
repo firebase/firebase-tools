@@ -8,6 +8,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("target:apply <type> <name> <resources...>")
   .description("apply a deploy target to a resource")
+  .firebaseNotRequired()
   .before(requireConfig)
   .action((type, name, resources, options) => {
     if (!options.project) {

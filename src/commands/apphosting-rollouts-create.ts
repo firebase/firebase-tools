@@ -7,6 +7,7 @@ import { createRollout } from "../apphosting/rollout";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
+  .firebaseNotRequired()
   .option("-l, --location <location>", "specify the region of the backend", "-")
   .option(
     "-b, --git-branch <gitBranch>",

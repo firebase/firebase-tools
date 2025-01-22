@@ -13,6 +13,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
+  .firebaseNotRequired()
   .option(
     "--location <locationId>",
     "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)",

@@ -18,7 +18,7 @@ const TEST_OPTIONS: Options = {
   only: "",
   except: "",
   force: false,
-  filteredTargets: [""],
+  filteredTargets: [],
   nonInteractive: true,
   interactive: false,
   json: false,

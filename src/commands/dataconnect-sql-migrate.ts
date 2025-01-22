@@ -11,6 +11,7 @@ import { logLabeledSuccess } from "../utils";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrates your CloudSQL database's schema to match your local DataConnect schema")
+  .firebaseNotRequired()
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

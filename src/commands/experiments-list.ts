@@ -8,6 +8,7 @@ export const command = new Command("experiments:list")
   .description(
     "list all experiments, along with a description of each experiment and whether it is currently enabled",
   )
+  .firebaseNotRequired()
   .action(() => {
     const table = new Table({
       head: ["Enabled", "Name", "Description"],

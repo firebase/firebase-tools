@@ -8,6 +8,7 @@ import * as utils from "../utils";
 
 export const command = new Command("login:ci")
   .description("generate an access token for use in non-interactive environments")
+  .firebaseNotRequired()
   .option(
     "--no-localhost",
     "copy and paste a code instead of starting a local server for authentication",

@@ -121,6 +121,7 @@ ${[...featureNames]
 
 export const command = new Command("init [feature]")
   .description(DESCRIPTION)
+  .firebaseNotRequired()
   .before(requireAuth)
   .action(initAction);
 

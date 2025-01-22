@@ -8,6 +8,7 @@ import { last } from "../utils";
 
 export const command = new Command("experiments:describe <experiment>")
   .description("describe what an experiment does when enabled")
+  .firebaseNotRequired()
   .action((experiment: string) => {
     if (!experiments.isValidExperiment(experiment)) {
       let message = `Cannot find experiment ${bold(experiment)}`;
