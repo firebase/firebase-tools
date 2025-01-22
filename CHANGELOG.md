@@ -1,7 +1,0 @@
-- Updated `cross-env` and `cross-spawn` dependencies to avoid vulnerable versions. (#7979)
-- Fixed an issue with the Data Connect emulator where `dataDir` and `--export` were relative to the current directory insead of `firebase.json`.
-- `init dataconnect` now suggests DNS compatible service IDs.
-- Updated the Firebase Data Connect local toolkit to v1.7.6, which includes several bug fixes:
-  - Fixed an issue in generated Dart code when an operation name ends in a number
-  - Fixed an issue with `@check` and `@redact` directives on list fields
-  - Fixed an issue with null literals in `any` type fields
