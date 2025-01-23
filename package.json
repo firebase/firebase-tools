@@ -258,8 +258,10 @@
     "vite": "^4.2.1"
   },
   "overrides": {
-    "ajv-formats": "3.0.1",
-    "ajv": "^8.17.1",
+    "@angular-devkit/core": {
+      "ajv-formats": "3.0.1",
+      "ajv": "^8.17.1"
+    },
     "node-fetch": {
       "whatwg-url": "^14.0.0"
     }
