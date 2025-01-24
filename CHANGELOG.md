@@ -1,3 +1,0 @@
-- Updated `cross-env` and `cross-spawn` dependencies to avoid vulnerable versions. (#7979)
-- Fixed an issue with the Data Connect emulator where `dataDir` and `--export` were relative to the current directory insead of `firebase.json`.
-- `init dataconnect` now suggests DNS compatible service IDs.

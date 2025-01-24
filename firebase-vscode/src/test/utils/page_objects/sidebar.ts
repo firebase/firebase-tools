@@ -49,6 +49,20 @@ export class FirebaseSidebar {
     });
   }
 
+  async clearEmulatorData() {
+    return this.runInStudioContext(async (studio) => {
+      const btn = await studio.clearEmulatorDataBtn;
+      return btn.click();
+    });
+  }
+
+  async exportEmulatorData() {
+    return this.runInStudioContext(async (studio) => {
+      const btn = await studio.exportEmulatorDataBtn;
+      return btn.click();
+    });
+  }
+
   async startDeploy() {
     return this.runInStudioContext(async (studio) => {
       await studio.fdcDeployElement.waitForDisplayed();
@@ -84,6 +98,14 @@ export class StudioView {
 
   get startEmulatorsBtn() {
     return $("vscode-button=Start emulators");
+  }
+
+  get clearEmulatorDataBtn() {
+    return $("vscode-button=Clear Data Connect data");
+  }
+
+  get exportEmulatorDataBtn() {
+    return $("vscode-button=Export emulator data");
   }
 
   get addSdkToAppBtn() {
