@@ -47,6 +47,14 @@ export class EmulatorHubClient {
     return res.body;
   }
 
+  async clearDataConnectData(): Promise<void> {
+    // This is a POST operation that should not be retried / multicast, so we
+    // will try to find the right origin first via GET.
+    const origin = await this.getStatus();
+    const apiClient = new Client({ urlPrefix: origin, auth: false });
+    await apiClient.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT);
+  }
+
   async postExport(options: ExportOptions): Promise<void> {
     // This is a POST operation that should not be retried / multicast, so we
     // will try to find the right origin first via GET.
