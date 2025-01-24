@@ -1,0 +1,1 @@
+- Fixed a Data Connect emualtor issue where prepared stataements would be persisted after terminated connections.
