@@ -3,6 +3,9 @@ import { expect } from "chai";
 import * as backend from "./backend";
 import * as prepare from "./prepare";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
+import * as sinon from "sinon";
+import * as prompt from "../../prompt";
+import { FirebaseError } from "../../error";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -289,6 +292,129 @@ describe("prepare", () => {
       expect(endpoint2InBackend1.targetedByOnly).to.be.false;
       expect(endpoint1InBackend1.targetedByOnly).to.be.true;
       expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+  });
+
+  describe("warnIfNewGenkitFunctionIsMissingSecrets", () => {
+    const nonGenkitEndpoint: backend.Endpoint = {
+      id: "nonGenkit",
+      platform: "gcfv2",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    const genkitEndpointWithSecrets: backend.Endpoint = {
+      id: "genkitWithSecrets",
+      platform: "gcfv2",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      callableTrigger: {
+        genkitAction: "action",
+      },
+      secretEnvironmentVariables: [
+        {
+          key: "SECRET",
+          secret: "secret",
+          projectId: "project",
+        },
+      ],
+    };
+
+    const genkitEndpointWithoutSecrets: backend.Endpoint = {
+      id: "genkitWithoutSecrets",
+      platform: "gcfv2",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      callableTrigger: {
+        genkitAction: "action",
+      },
+    };
+
+    let confirm: sinon.SinonStub<
+      Parameters<typeof prompt.confirm>,
+      ReturnType<typeof prompt.confirm>
+    >;
+
+    beforeEach(() => {
+      confirm = sinon.stub(prompt, "confirm");
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("should not prompt if there are no genkit functions", async () => {
+      await prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+        backend.empty(),
+        backend.of(nonGenkitEndpoint),
+        {} as any,
+      );
+      expect(confirm).to.not.be.called;
+    });
+
+    it("should not prompt if all genkit functions have secrets", async () => {
+      await prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+        backend.empty(),
+        backend.of(genkitEndpointWithSecrets),
+        {} as any,
+      );
+      expect(confirm).to.not.be.called;
+    });
+
+    it("should not prompt if the function is already deployed", async () => {
+      await prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+        backend.of(genkitEndpointWithoutSecrets),
+        backend.of(genkitEndpointWithoutSecrets),
+        {} as any,
+      );
+      expect(confirm).to.not.be.called;
+    });
+
+    it("should not prompt if force is true", async () => {
+      await prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+        backend.empty(),
+        backend.of(genkitEndpointWithoutSecrets),
+        { force: true } as any,
+      );
+      expect(confirm).to.not.be.called;
+    });
+
+    it("should throw if missing secrets and noninteractive", async () => {
+      await expect(
+        prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+          backend.empty(),
+          backend.of(genkitEndpointWithoutSecrets),
+          { nonInteractive: true } as any,
+        ),
+      ).to.be.rejectedWith(FirebaseError);
+    });
+
+    it("should prompt if missing secrets and interactive", async () => {
+      confirm.resolves(true);
+      await prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+        backend.empty(),
+        backend.of(genkitEndpointWithoutSecrets),
+        {} as any,
+      );
+      expect(confirm).to.be.calledOnce;
+    });
+
+    it("should throw if user declines to deploy", async () => {
+      confirm.resolves(false);
+      await expect(
+        prepare.warnIfNewGenkitFunctionIsMissingSecrets(
+          backend.empty(),
+          backend.of(genkitEndpointWithoutSecrets),
+          {} as any,
+        ),
+      ).to.be.rejectedWith(FirebaseError);
     });
   });
 });
