@@ -152,7 +152,12 @@ export class IDXLogger {
   constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
   public logUsage(eventName: string, data?: any) {
     const packageJson = this.context.extension.packageJSON;
-    data = { ...data, extversion: packageJson.version, extname: this.context.extension.id, isidx: true };
+    data = {
+      ...data,
+      extversion: packageJson.version,
+      extname: "idx",
+      isidx: "true",
+    };
     this.sender.sendEventData(eventName, data);
   }
 
