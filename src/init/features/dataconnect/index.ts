@@ -144,7 +144,8 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     // Ensure that the suggested name is DNS compatible
     const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
     info.serviceId = info.serviceId || defaultServiceId;
-    info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
+    info.cloudSqlInstanceId =
+      info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
