@@ -1,6 +1,11 @@
 ## NEXT
 
-- [Feature] Added `debug` setting to run commands with `--debug`
+## 0.12.1
+
+- Updated internal `firebase-tools` dependency to 13.29.2
+- [Added] Added support for emulator import/export.
+- [Added] Added `debug` setting to run commands with `--debug`
+- [Fixed] Fixed a bug where emulator issues weren't being surfaced
 
 ## 0.12.0
 

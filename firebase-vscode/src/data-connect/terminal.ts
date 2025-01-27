@@ -90,12 +90,19 @@ export function registerTerminalTasks(
 
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
-    // TODO: optional debug mode
+
+    let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
+
+    if (settings.importPath) {
+      cmd += ` --import ${settings.importPath}`;
+    }
+    if (settings.exportOnExit) {
+      cmd += ` --export-on-exit ${settings.exportPath}`;
+    }
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
-      // emulators:start almost never ask interactive questions.
-      { focus: false },
+      cmd,
+      { focus: true },
     );
   });
 

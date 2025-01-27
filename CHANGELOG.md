@@ -1,3 +1,2 @@
-- Updated `cross-env` and `cross-spawn` dependencies to avoid vulnerable versions. (#7979)
-- Fixed an issue with the Data Connect emulator where `dataDir` and `--export` were relative to the current directory insead of `firebase.json`.
-- `init dataconnect` now suggests DNS compatible service IDs.
+- Fixed a Data Connect emulator issue where prepared statements would be persisted after terminated connections.
+- Added a warning when deploying a Genkit function without a secret as this is likely a bug (#8138)

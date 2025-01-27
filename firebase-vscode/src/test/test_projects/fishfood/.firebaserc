@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "dart-firebase-admin"
+    "default": "test-project"
   },
   "targets": {},
   "etags": {},
