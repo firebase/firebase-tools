@@ -36,12 +36,53 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
 } from "../../../utils";
+import * as experiments from "../../../experiments";
+import { findLast } from "lodash";
+import { log } from "console";
 
 interface GenkitInfo {
   genkitVersion: string;
   templateVersion: string;
   useInit: boolean;
   stopInstall: boolean;
+}
+
+const TEMPLATE_VERSIONS = ["0.9.0", "1.0.0"];
+
+interface NodeModuleInfo {
+  versions: Array<{
+    deprecated: boolean;
+    version: string;
+  }>;
+}
+
+async function genkitPreleaseVersion(): Promise<GenkitInfo> {
+  let latestVersion: string;
+  try {
+    const data = await (await fetch('https://registry.npmjs.com/genkit')).json() as NodeModuleInfo;
+    const versions = Object.values(data.versions).filter(v => !v.deprecated).map(v => v.version);
+    // Exclude other tags like dev
+    latestVersion = findLast(versions, (version) => /\d+\.\d+\.\d+(-(rc|dev)\.\d+)?/.test(version))!;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      "Unable to determine which genkit version to install.\n" +
+        `npm Error: ${getErrMsg(err)}\n\n` +
+        "For a possible workaround run\n  npm view genkit version\n" +
+        "and then set an environment variable:\n" +
+        "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
+        "and run `firebase init genkit` again",
+    );
+  }
+
+  const templateVersion = findLast(TEMPLATE_VERSIONS, (version) => semver.lte(latestVersion, version))!;
+  logLabeledBullet("genkit", `Installing Genkit CLI version ${latestVersion}`);
+  return {
+    genkitVersion: latestVersion,
+    templateVersion,
+    // genkit init is removed; use init steps here.
+    useInit: false,
+    stopInstall: false,
+  };
 }
 
 /**
@@ -58,6 +99,8 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
   if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
     semver.parse(process.env.GENKIT_DEV_VERSION);
     genkitVersion = process.env.GENKIT_DEV_VERSION;
+  } else if (experiments.isEnabled("genkitprerelease")){
+    return await genkitPreleaseVersion();
   } else {
     try {
       genkitVersion = await spawnWithOutput("npm", ["view", "genkit", "version"]);

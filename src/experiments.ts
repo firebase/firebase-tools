@@ -137,6 +137,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  genkitprerelease: {
+    shortDescription: "Create sample projects using release candidates of Genkit",
+    default: false,
+    public: true,
+  },
 
   fdcconnectorevolution: {
     shortDescription: "Enable Data Connect connector evolution warnings.",
