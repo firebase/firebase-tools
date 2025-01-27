@@ -144,7 +144,7 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     // Ensure that the suggested name is DNS compatible
     const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
     info.serviceId = info.serviceId || defaultServiceId;
-    info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId || "app"}-fdc`;
+    info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
@@ -370,7 +370,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
     info.cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `${info.serviceId || "app"}-fdc`,
+      default: `${info.serviceId.toLowerCase() || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {

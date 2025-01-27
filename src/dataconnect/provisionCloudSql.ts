@@ -69,6 +69,7 @@ export async function provisionCloudSql(args: {
     if (err.status !== 404) {
       throw err;
     }
+    cmekWarning();
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||
       utils.logLabeledBullet(
@@ -181,4 +182,11 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   }
 
   return reason;
+}
+
+function cmekWarning() {
+  const message = "The no-cost Cloud SQL trial instance does not support customer managed encryption keys.\n" +
+  "If you'd like to use a CMEK to encrypt your data, first create a CMEK encrypted instance (https://cloud.google.com/sql/docs/postgres/configure-cmek#createcmekinstance).\n" +
+  "Then, edit your `dataconnect.yaml` file to use the encrypted instance and redeploy.";
+  utils.logLabeledWarning("dataconnect", message);
 }
