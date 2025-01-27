@@ -1,1 +1,2 @@
-- Fixed a Data Connect emualtor issue where prepared stataements would be persisted after terminated connections.
+- Fixed a Data Connect emulator issue where prepared statements would be persisted after terminated connections.
+- Added a warning when deploying a Genkit function without a secret as this is likely a bug (#8138)
