@@ -387,6 +387,7 @@ describe("prepare", () => {
     });
 
     it("should throw if missing secrets and noninteractive", async () => {
+      confirm.resolves(false);
       await expect(
         prepare.warnIfNewGenkitFunctionIsMissingSecrets(
           backend.empty(),
@@ -394,6 +395,7 @@ describe("prepare", () => {
           { nonInteractive: true } as any,
         ),
       ).to.be.rejectedWith(FirebaseError);
+      expect(confirm).to.have.been.calledWithMatch({ nonInteractive: true });
     });
 
     it("should prompt if missing secrets and interactive", async () => {

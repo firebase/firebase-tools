@@ -524,14 +524,11 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   );
 
   if (newAndMissingSecrets.length) {
-    const msgBase =
+    const message =
       `The function(s) ${newAndMissingSecrets.map((e) => e.id).join(", ")} use Genkit but do not have access to a secret. ` +
       "This may cause the function to fail if it depends on an API key. To learn more about granting a function access to " +
-      "secrets, see https://firebase.google.com/docs/functions/config-env?gen=2nd#secret_parameters.";
-    if (options.nonInteractive) {
-      throw new FirebaseError(msgBase);
-    }
-    if (!(await prompt.confirm({ message: `${msgBase} Continue?` }))) {
+      "secrets, see https://firebase.google.com/docs/functions/config-env?gen=2nd#secret_parameters. Continue?";
+    if (!(await prompt.confirm({ message, nonInteractive: options.nonInteractive }))) {
       throw new FirebaseError("Aborted");
     }
   }
