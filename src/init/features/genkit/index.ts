@@ -38,7 +38,6 @@ import {
 } from "../../../utils";
 import * as experiments from "../../../experiments";
 import { findLast } from "lodash";
-import { log } from "console";
 
 interface GenkitInfo {
   genkitVersion: string;
@@ -47,6 +46,7 @@ interface GenkitInfo {
   stopInstall: boolean;
 }
 
+// TODO: Make dynamic.
 const TEMPLATE_VERSIONS = ["0.9.0", "1.0.0"];
 
 interface NodeModuleInfo {
@@ -59,10 +59,16 @@ interface NodeModuleInfo {
 async function genkitPreleaseVersion(): Promise<GenkitInfo> {
   let latestVersion: string;
   try {
-    const data = await (await fetch('https://registry.npmjs.com/genkit')).json() as NodeModuleInfo;
-    const versions = Object.values(data.versions).filter(v => !v.deprecated).map(v => v.version);
+    const data = (await (
+      await fetch("https://registry.npmjs.com/genkit")
+    ).json()) as NodeModuleInfo;
+    const versions = Object.values(data.versions)
+      .filter((v) => !v.deprecated)
+      .map((v) => v.version);
     // Exclude other tags like dev
-    latestVersion = findLast(versions, (version) => /\d+\.\d+\.\d+(-(rc|dev)\.\d+)?/.test(version))!;
+    latestVersion = findLast(versions, (version) =>
+      /\d+\.\d+\.\d+(-(rc|dev)\.\d+)?/.test(version),
+    )!;
   } catch (err: unknown) {
     throw new FirebaseError(
       "Unable to determine which genkit version to install.\n" +
@@ -74,7 +80,9 @@ async function genkitPreleaseVersion(): Promise<GenkitInfo> {
     );
   }
 
-  const templateVersion = findLast(TEMPLATE_VERSIONS, (version) => semver.lte(latestVersion, version))!;
+  const templateVersion = findLast(TEMPLATE_VERSIONS, (version) =>
+    semver.lte(latestVersion, version),
+  )!;
   logLabeledBullet("genkit", `Installing Genkit CLI version ${latestVersion}`);
   return {
     genkitVersion: latestVersion,
@@ -99,7 +107,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
   if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
     semver.parse(process.env.GENKIT_DEV_VERSION);
     genkitVersion = process.env.GENKIT_DEV_VERSION;
-  } else if (experiments.isEnabled("genkitprerelease")){
+  } else if (experiments.isEnabled("genkitprerelease")) {
     return await genkitPreleaseVersion();
   } else {
     try {
