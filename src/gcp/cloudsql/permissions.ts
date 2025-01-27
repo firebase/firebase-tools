@@ -1,21 +1,24 @@
 import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
-import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
+import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser, setupIAMUsers } from "./connect";
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
 import { concat } from "lodash";
 import { FirebaseError } from "../../error";
+import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 
-export function firebaseowner(databaseId: string) {
-  return `firebaseowner_${databaseId}_public`;
+export const DEFAULT_SCHEMA = 'public'
+
+export function firebaseowner(databaseId: string, schema: string = DEFAULT_SCHEMA) {
+  return `firebaseowner_${databaseId}_${schema}`;
 }
 
-export function firebasereader(databaseId: string) {
-  return `firebasereader_${databaseId}_public`;
+export function firebasereader(databaseId: string, schema: string = DEFAULT_SCHEMA) {
+  return `firebasereader_${databaseId}_${schema}`;
 }
 
-export function firebasewriter(databaseId: string) {
-  return `firebasewriter_${databaseId}_public`;
+export function firebasewriter(databaseId: string, schema: string = DEFAULT_SCHEMA) {
+  return `firebasewriter_${databaseId}_${schema}`;
 }
 
 export const fdcSqlRoleMap = {
@@ -210,6 +213,12 @@ export async function setupSQLPermissions(
 ) {
   const superuser = "firebasesuperuser";
 
+  const user = setupIAMUsers(instanceId, databaseId, options)
+
+  const projectNumber = await needProjectNumber(options);
+  const { user: fdcP4SAUser } = toDatabaseUser(
+      getDataConnectP4SA(projectNumber),
+  );
   // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
   if (
@@ -232,16 +241,21 @@ export async function setupSQLPermissions(
     revokes,
 
     // We shoud make sure schema exists since this setup runs prior to executing the diffs.
-    [`CREATE SCHEMA IF NOT EXISTS "public"`],
+    [`CREATE SCHEMA IF NOT EXISTS "${DEFAULT_SCHEMA}"`],
 
     // Create and setup the owner role permissions.
-    ownerRolePermissions(databaseId, superuser, "public"),
+    ownerRolePermissions(databaseId, superuser, DEFAULT_SCHEMA),
 
     // Create and setup writer role permissions.
-    writerRolePermissions(databaseId, superuser, "public"),
+    writerRolePermissions(databaseId, superuser, DEFAULT_SCHEMA),
 
     // Create and setup reader role permissions.
-    readerRolePermissions(databaseId, superuser, "public"),
+    readerRolePermissions(databaseId, superuser, DEFAULT_SCHEMA),
+
+    // Grant firebaseowner role to the current IAM user.
+    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
+    // Grant firebaswriter to the FDC P4SA user
+    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
   );
 
   return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
@@ -251,7 +265,7 @@ export enum SchemaSetupStatus {
   NotSetup = 'not-setup',
   GreenField = 'greenfield',
   BrownField = 'brownfield',
-  Unknown = 'unknown', // We couldn't figure it out, possibly because of partial setup
+  NotFound = 'not-found' // Schema not found
 }
 
 export enum UserAccessLevel {
@@ -261,7 +275,7 @@ export enum UserAccessLevel {
   NONE = 'none'
 }
 
-export async function getTablesMetaData(instanceId: string, databaseId: string, schema: string, options: Options): Promise<TableMetaData[] | null> {
+export async function getTablesMetaData(instanceId: string, databaseId: string, schema: string, options: Options): Promise<TableMetaData[]> {
   const cmd = `SELECT ("tablename", "tableowner", "rowsecurity") FROM pg_tables WHERE schemaname='${schema}'`
 
   try {
@@ -275,7 +289,7 @@ export async function getTablesMetaData(instanceId: string, databaseId: string, 
     return tables;
   } catch (e) {
     logger.error(`Failed To get tables metadata with error: ${e}`)
-    return null
+    throw new FirebaseError(`Failed To get tables metadata with error: ${e}`)
   }
 }
 
@@ -310,22 +324,54 @@ export async function getUserAccessLevel(instanceId: string, databaseId: string,
 
 // Used for migration, greenfield and brownfield setup
 // Note: this is a quick check, it wouldn't catch cases where setup was possibly interrupted and setup is in intermediate state.
-export async function determineSchemaSetupStatus(instanceId: string, databaseId: string, options: Options): Promise<SchemaSetupStatus> {
+export async function determineSchemaSetupStatus(instanceId: string, databaseId: string, schema: string, options: Options): Promise<{
+  schemaOwner: string | undefined,
+  setupStatus: SchemaSetupStatus
+}> {
+  const checkSchemaExists = await executeSqlCmdsAsSuperUser(
+    options, 
+    instanceId, 
+    databaseId,
+    /** cmd=*/ [`SELECT
+    CASE
+        WHEN EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = '${schema}')
+        THEN TRUE
+        ELSE FALSE
+    END AS schema_exists,
+    (SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = '${schema}') AS schema_owner;`],
+    /** silent=*/ true)
+  
+  if (!checkSchemaExists[0].rows[0].schema_exists) {
+    return {
+      schemaOwner: undefined,
+      setupStatus: SchemaSetupStatus.NotFound
+    }
+  }
+
   const checkRoleExists = async (role: string): Promise<boolean> => {
     const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL;`]
     const result = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, cmd, /** silent=*/ true)
     return result[0].rows[0]
   }
   // If owner exists -> greenfield
-  if (await checkRoleExists(firebaseowner(databaseId))) {
-    return SchemaSetupStatus.GreenField
+  if (await checkRoleExists(firebaseowner(databaseId, schema))) {
+    return {
+      schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
+      setupStatus: SchemaSetupStatus.GreenField
+    }
   }
   // If writer exists -> brownfield
-  if (await checkRoleExists(firebasewriter(databaseId))) {
-    return SchemaSetupStatus.BrownField
+  if (await checkRoleExists(firebasewriter(databaseId, schema))) {
+    return {
+      schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
+      setupStatus: SchemaSetupStatus.BrownField
+    }
   }
-
-  return SchemaSetupStatus.NotSetup
+  
+  return {
+    schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
+    setupStatus: SchemaSetupStatus.NotSetup
+  }
 }
 
 export async function greenFieldSQLSetup(

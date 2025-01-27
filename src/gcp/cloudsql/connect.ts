@@ -205,15 +205,6 @@ export async function setupIAMUsers(
   // 3. Setup FDC required SQL roles and permissions.
   await setupSQLPermissions(instanceId, databaseId, options, true);
 
-  // 4. Apply necessary grants.
-  const grants = [
-    // Grant firebaseowner role to the current IAM user.
-    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
-    // Grant firebaswriter to the FDC P4SA user
-    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
-  ];
-
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, /** silent=*/ true);
   return user;
 }
 
