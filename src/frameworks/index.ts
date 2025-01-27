@@ -48,7 +48,7 @@ import {
   FrameworkContext,
   FrameworksOptions,
 } from "./interfaces";
-import { logWarning } from "../utils";
+import { IS_WINDOWS, logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
@@ -525,7 +525,7 @@ ${
 }`.trimStart(),
       );
 
-      const envs = await glob(getProjectPath(".env.*"));
+      const envs = await glob(getProjectPath(".env.*"), { windowsPathsNoEscape: IS_WINDOWS });
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
