@@ -20,7 +20,7 @@
             },
             "schemaValidation": {
               "type": "string",
-              "enum": ["COMPATIBLE", "STRICT"]
+              "enum": ["COMPATIBLE", "STRICT"],
               "description": "Schema validation mode for schema migrations"
             }
           }
