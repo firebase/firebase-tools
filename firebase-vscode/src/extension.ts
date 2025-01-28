@@ -18,10 +18,7 @@ import {
 } from "./utils/settings";
 import { registerFdc } from "./data-connect";
 import { AuthService } from "./auth/service";
-import {
-  AnalyticsLogger,
-  IDX_METRIC_NOTICE,
-} from "./analytics";
+import { AnalyticsLogger, IDX_METRIC_NOTICE } from "./analytics";
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";

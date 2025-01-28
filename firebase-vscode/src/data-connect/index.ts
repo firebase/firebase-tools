@@ -156,7 +156,11 @@ export function registerFdc(
     emulatorController,
   );
 
-  const geminiAssist = new GeminiAssistController(analyticsLogger, broker);
+  const geminiAssist = new GeminiAssistController(
+    analyticsLogger,
+    broker,
+    context,
+  );
 
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(

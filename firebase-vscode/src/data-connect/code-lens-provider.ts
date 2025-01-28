@@ -104,7 +104,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               title: `Generate Operation`,
               command: "firebase.dataConnect.generateOperation",
               tooltip: "Generate a new operation",
-              arguments: [x, operationLocation, InstanceType.PRODUCTION],
+              arguments: [document.getText(), document.fileName],
             }),
           );
         }
@@ -171,7 +171,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
               title: `Generate Schema`,
               command: "firebase.dataConnect.generateSchema",
               tooltip: "Generate a new schema",
-              arguments: [documentNode, x, documentPath],
+              arguments: [document.getText(), documentPath],
             }),
           );
         }
