@@ -1,1 +1,4 @@
-Annotate onCallGenkit functions to allow for future Firebase Console annotations (#8135)
+- Fixed a Data Connect emulator issue where prepared statements would be persisted after terminated connections.
+- Added a warning when deploying a Genkit function without a secret as this is likely a bug (#8138)
+- Fixed `.env.*` files for web frameworks in Windows (#8086)
+- Annotate onCallGenkit functions to allow for future Firebase Console annotations (#8135)
