@@ -3,8 +3,8 @@ import vscode, {
   Disposable,
   ExtensionContext,
 } from "vscode";
-import { ExtensionBrokerImpl } from "../extension-broker";
-import { registerWebview } from "../webview";
+import { ExtensionBrokerImpl } from "../../extension-broker";
+import { registerWebview } from "../../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
 import {
   ExecutionItem,
@@ -18,12 +18,12 @@ import {
 } from "./execution-store";
 import { batch, effect } from "@preact/signals-core";
 import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
-import { DataConnectService } from "./service";
-import { DataConnectError, toSerializedError } from "../../common/error";
-import { OperationLocation } from "./types";
-import { InstanceType } from "./code-lens-provider";
-import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
-import { EmulatorsController } from "../core/emulators";
+import { DataConnectService } from "../service";
+import { DataConnectError, toSerializedError } from "../../../common/error";
+import { OperationLocation } from "../types";
+import { InstanceType } from "../code-lens-provider";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
+import { EmulatorsController } from "../../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,

@@ -116,6 +116,8 @@ export interface WebviewToExtensionParamsMap {
   executeLogin: void;
 
   getDocsLink: void;
+
+  openJSONFile: string;
 }
 
 export interface DataConnectResults {
@@ -130,6 +132,8 @@ export type ValueOrError<T> =
   | { error: string; value: undefined };
 
 export interface ExtensionToWebviewParamsMap {
+  notifyDataConnectResults: DataConnectResults;
+
   /** Triggered when the emulator UI/state changes */
   notifyEmulatorStateChanged: {
     status: EmulatorsStatus;
@@ -175,7 +179,6 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   // data connect specific
-  notifyDataConnectResults: DataConnectResults;
   notifyDataConnectRequiredArgs: { args: string[] };
 
   notifyIsLoadingUser: boolean;
