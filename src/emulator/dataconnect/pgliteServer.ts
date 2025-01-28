@@ -18,6 +18,7 @@ import {
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
 import { hasMessage } from "../../error";
+import { StringDecoder } from "node:string_decoder";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -54,6 +55,11 @@ export class PostgresServer {
             return;
           }
           const db = await getDb();
+          if (data[0] === FrontendMessageCode.Terminate) {
+            // When the frontend terminates a connection, throw out all prepared statements
+            // because the next client won't know about them (and may create overlapping statements)
+            await db.query("DEALLOCATE ALL");
+          }
           const result = await db.execProtocolRaw(data);
           // Extended query patch removes the extra Ready for Query messages that
           // pglite wrongly sends.
@@ -164,7 +170,9 @@ export class PGliteExtendedQueryPatch {
       FrontendMessageCode.Bind,
       FrontendMessageCode.Close,
     ];
-
+    const decoder = new StringDecoder();
+    const decoded = decoder.write(message as any as Buffer);
+    logger.debug(decoded);
     if (pipelineStartMessages.includes(message[0])) {
       this.isExtendedQuery = true;
     }
