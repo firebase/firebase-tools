@@ -23,6 +23,7 @@ export class GeminiAssistController {
           webviewOptions: {
             retainContextWhenHidden: true,
           },
+          supportsMultipleEditorsPerDocument: false,
         },
       ),
     );
@@ -62,6 +63,7 @@ export class GeminiAssistController {
       "vscode.openWith",
       uri,
       "firebase.dataConnect.schemaEditor",
+      vscode.ViewColumn.Two,
       { documentContent, documentPath },
     );
   }
@@ -280,7 +282,7 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
             const documentPath = message.documentPath;
 
             const fileName = await vscode.window.showInputBox({
-              prompt: "Enter new file name",
+              prompt: "Enter the file name",
             });
 
             if (fileName) {
@@ -292,12 +294,14 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
 
               if (fs.existsSync(newFilePath)) {
                 vscode.window.showErrorMessage(
-                  `File already exists: ${newFileName}`,
+                  `File with name ${newFileName} already exists!`,
                 );
               } else {
                 const uri = vscode.Uri.file(newFilePath);
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
-                vscode.window.showTextDocument(uri);
+                vscode.window.showTextDocument(uri, {
+                  viewColumn: vscode.ViewColumn.One,
+                });
               }
             }
             break;
@@ -449,6 +453,44 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
       margin-top: 16px;
       justify-content: flex-start;
     }
+
+    .hidden {
+      display: none !important;
+    }
+
+    pre {
+      position: relative;
+      margin: 0;
+      border-radius: 4px;
+      background-color: var(--vscode-editor-background);
+      overflow: auto;
+    }
+
+    .code-container {
+      position: relative;
+    }
+
+    .copy-button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      background-color: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid var(--vscode-button-border);
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .copy-button:hover {
+      background-color: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .copy-button:focus {
+      background-color: var(--vscode-button-secondaryHoverBackground);
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/graphql.min.js"></script>
@@ -463,9 +505,11 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
     <button id="generate">Generate</button>
   </div>
 
-  <pre><code id="highlightedCode" class="language-graphql"></code></pre>
+  <div class="code-container">
+    <pre><code id="highlightedCode" class="language-graphql"></code><button id="copyButton" class="copy-button">Copy</button></pre>
+  </div>
   
-  <div class="footer-buttons">
+  <div class="footer-buttons hidden">
     <button id="insert" class="button">Insert into Existing File</button>
     <button id="createNew" class="button">Create New File</button>
   </div>
@@ -475,6 +519,7 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
     let currentGeneratedContent = '';
     const vscode = acquireVsCodeApi();
     const generateButton = document.getElementById("generate");
+    const copyButton = document.getElementById("copyButton");
 
     generateButton.addEventListener("click", () => {
       const input = document.getElementById("input").value;
@@ -484,6 +529,13 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
       vscode.postMessage({
         command: "generateCode",
         input,
+      });
+    });
+
+    copyButton.addEventListener("click", () => {
+      navigator.clipboard.writeText(currentGeneratedContent).then(() => {
+        copyButton.textContent = "Copied!";
+        setTimeout(() => copyButton.textContent = "Copy", 2000);
       });
     });
 
@@ -520,6 +572,13 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Re-apply syntax highlighting
         hljs.highlightElement(codeBlock);
+
+        const footerButtons = document.querySelector('.footer-buttons');
+        if (currentGeneratedContent.trim()) {
+          footerButtons.classList.remove('hidden');
+        } else {
+          footerButtons.classList.add('hidden');
+        }
       }
     });
   </script>
