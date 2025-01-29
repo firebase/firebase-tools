@@ -101,7 +101,7 @@ export interface WebviewToExtensionParamsMap {
   "fdc.open-docs": void;
 
   /** Handles AI generation requests */
-  "fdc.generate-schema": void;
+  "fdc.generate-schema": { type: "schema" | "operation" };
 
   // Initialize "result" tab.
   getDataConnectResults: void;

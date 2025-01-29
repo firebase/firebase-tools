@@ -45,26 +45,37 @@ export class GeminiAssistController {
 
   private async generationEntrypoint(
     commandType: "operation" | "schema",
-    documentContent: string,
-    documentPath: string,
+    documentContent: string | undefined,
+    documentPath: string | undefined,
   ): Promise<void> {
-    const schemaTitle =
-      (documentPath.split("/").pop() || `new-${commandType}.gql`).split(
+    const gqlFiles = await this.collectGqlFiles(commandType);
+    if (gqlFiles.length === 0) {
+      vscode.window.showWarningMessage(
+        `No ${commandType} files found in the workspace.`,
+      );
+      return;
+    }
+
+    const gqlFilesString = JSON.stringify(gqlFiles);
+
+    const viewTitle =
+      (documentPath?.split("/").pop() || `new-${commandType}.gql`).split(
         ".",
       )[0] + "-generated";
 
-    const uri = vscode.Uri.parse(
-      `untitled:${schemaTitle}.gql?content=${encodeURIComponent(
-        documentContent,
-      )}&path=${encodeURIComponent(documentPath)}`,
+    const viewUri = vscode.Uri.parse(
+      `untitled:${viewTitle}.gql?${
+        documentContent ? `content=${encodeURIComponent(documentContent)}` : ""
+      }${documentPath ? `&path=${encodeURIComponent(documentPath)}&` : ""}${
+        gqlFilesString ? `&context=${encodeURIComponent(gqlFilesString)}` : ""
+      }`,
     );
 
     vscode.commands.executeCommand(
       "vscode.openWith",
-      uri,
+      viewUri,
       "firebase.dataConnect.schemaEditor",
-      vscode.ViewColumn.Two,
-      { documentContent, documentPath },
+      documentPath ? vscode.ViewColumn.Beside : vscode.ViewColumn.One,
     );
   }
 
@@ -107,8 +118,8 @@ export class GeminiAssistController {
   }
 
   async callGeminiApi(
-    document: vscode.TextDocument,
-    content: string[],
+    documentContent: string | undefined,
+    documentContext: string[],
     prompt: string,
   ): Promise<string> {
     // TODO: Call Gemini API with the document content, schema content, and prompt
@@ -214,11 +225,10 @@ export class GeminiAssistController {
   }
 
   private registerBrokerHandlers(broker: ExtensionBrokerImpl): void {
-    broker.on("fdc.generate-schema", async () => {
+    broker.on("fdc.generate-schema", async (args) => {
+      const { type } = args;
       try {
-        await vscode.commands.executeCommand(
-          "firebase.dataConnect.generateSchema",
-        );
+        this.generationEntrypoint(type, undefined, undefined);
       } catch (error) {
         vscode.window.showErrorMessage(`Failed to generate schema: ${error}`);
       }
@@ -256,6 +266,9 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
 
     const query = new URLSearchParams(document.uri.query);
     const documentContent = query.get("content") || "";
+    const documentContext = JSON.parse(
+      query.get("context") || "[]",
+    ) as string[];
     const documentPath = query.get("path") || "";
 
     webviewPanel.webview.html = this.getWebviewContent(documentPath);
@@ -266,8 +279,8 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
           case "generateCode": {
             const prompt = message.input;
             const generatedCode = await this.controller.callGeminiApi(
-              document,
-              await this.controller.collectGqlFiles("schema"),
+              documentContent,
+              documentContext,
               prompt,
             );
 
@@ -279,13 +292,29 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
           }
           case "createNewFile": {
             const content = message.content;
-            const documentPath = message.documentPath;
 
             const fileName = await vscode.window.showInputBox({
               prompt: "Enter the file name",
             });
 
             if (fileName) {
+              // If the document path is not provided, it means the user wants to create a new schema.
+              // Get the schema directory which is usually in dataconnect/schema.
+              if (
+                !vscode.workspace.workspaceFolders ||
+                vscode.workspace.workspaceFolders.length === 0
+              ) {
+                vscode.window.showErrorMessage("No workspace is open.");
+                return;
+              }
+              const documentPath = !message.documentPath
+                ? path.join(
+                    vscode.workspace.workspaceFolders![0].uri.fsPath,
+                    "dataconnect/schema",
+                    fileName,
+                  )
+                : message.documentPath;
+
               const dir = path.dirname(documentPath);
               const newFileName = fileName.endsWith(".gql")
                 ? fileName
@@ -310,15 +339,79 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
             const content = message.content;
             const documentPath = message.documentPath;
 
-            const uri = vscode.Uri.file(documentPath);
-            const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(document, {
-              viewColumn: vscode.ViewColumn.One,
-            });
+            const originalUri = vscode.Uri.file(documentPath);
+            const tempUri = vscode.Uri.file(path.join(os.tmpdir(), "temp.gql"));
 
-            editor.edit((editBuilder) => {
-              editBuilder.insert(new vscode.Position(0, 0), content);
-            });
+            try {
+              await vscode.workspace.fs.writeFile(
+                tempUri,
+                Buffer.from(content),
+              );
+
+              await vscode.commands.executeCommand<vscode.TextDocument>(
+                "vscode.diff",
+                originalUri,
+                tempUri,
+                "Original ↔ Proposed Changes",
+                { viewColumn: vscode.ViewColumn.One },
+              );
+
+              const choice = await vscode.window.showInformationMessage(
+                "Do you want to replace the original file?",
+                "Replace",
+                "Cancel",
+              );
+
+              if (choice === "Replace") {
+                const originalDocument =
+                  await vscode.workspace.openTextDocument(originalUri);
+                const edit = new vscode.WorkspaceEdit();
+
+                // Check if the active document is the diff, close it if it is
+                if (
+                  vscode.window.activeTextEditor?.document.uri.toString() ===
+                  tempUri.toString()
+                ) {
+                  await vscode.commands.executeCommand(
+                    "workbench.action.closeActiveEditor",
+                    { save: false },
+                  );
+                }
+
+                const fullRange = new vscode.Range(
+                  originalDocument.positionAt(0),
+                  originalDocument.positionAt(
+                    originalDocument.getText().length,
+                  ),
+                );
+
+                edit.replace(originalUri, fullRange, content);
+                await vscode.workspace.applyEdit(edit);
+
+                const editor = await vscode.window.showTextDocument(
+                  originalUri,
+                  {
+                    viewColumn: vscode.ViewColumn.One,
+                    selection: new vscode.Range(0, 0, 0, 0),
+                  },
+                );
+
+                editor.revealRange(
+                  new vscode.Range(0, 0, 0, 0),
+                  vscode.TextEditorRevealType.AtTop,
+                );
+              }
+            } finally {
+              try {
+                if (await vscode.workspace.fs.stat(tempUri)) {
+                  await vscode.workspace.fs.delete(tempUri, {
+                    useTrash: false,
+                  });
+                }
+              } catch (error) {
+                console.error("Error cleaning up temp file:", error);
+              }
+            }
             break;
           }
         }
@@ -339,7 +432,6 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
     );
 
     webviewPanel.onDidDispose(() => {
-      // Clean up resources
       changeDocumentSubscription.dispose();
     });
   }
@@ -355,7 +447,7 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
       : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs.min.css"; // Light+ equivalent
   }
 
-  private getWebviewContent(documentPath: string): string {
+  private getWebviewContent(documentPath: string | undefined): string {
     const themeUrl = this.getHighlightJsThemeUrl();
     return `
       <!DOCTYPE html>
@@ -510,7 +602,11 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
   </div>
   
   <div class="footer-buttons hidden">
-    <button id="insert" class="button">Insert into Existing File</button>
+    ${
+      documentPath
+        ? '<button id="insert" class="button">Replace Existing File</button>'
+        : ""
+    }
     <button id="createNew" class="button">Create New File</button>
   </div>
 
@@ -549,15 +645,17 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
       });
     });
 
-    document.getElementById("insert").addEventListener("click", () => {
-      if (!currentGeneratedContent) return;
-      
-      vscode.postMessage({
-        command: "insertIntoExistingFile",
-        content: currentGeneratedContent,
-        documentPath: documentPath
+    if (document.getElementById("insert")) {
+      document.getElementById("insert").addEventListener("click", () => {
+        if (!currentGeneratedContent) return;
+        
+        vscode.postMessage({
+          command: "insertIntoExistingFile",
+          content: currentGeneratedContent,
+          documentPath: documentPath
+        });
       });
-    });
+    }
 
     window.addEventListener("message", (event) => {
       if (event.data.command === "updateDocument") {
