@@ -43,7 +43,7 @@ export async function handleBuildErrors(
   }
 
   const requiredForces = errors.filter((w) => w.extensions?.warningLevel === "REQUIRE_FORCE");
-  if (requiredForces.length) {
+  if (requiredForces.length && !force) {
     utils.logLabeledError(
       "dataconnect",
       `There are changes in your schema or connectors that will result in broken behavior:\n` +
