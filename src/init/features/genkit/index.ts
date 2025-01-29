@@ -43,7 +43,6 @@ interface GenkitInfo {
   genkitVersion: string;
   templateVersion: string;
   useInit: boolean;
-  stopInstall: boolean;
 }
 
 // TODO: Make dynamic.
@@ -56,59 +55,18 @@ interface NodeModuleInfo {
   }>;
 }
 
-async function genkitPreleaseVersion(): Promise<GenkitInfo> {
-  let latestVersion: string;
-  try {
-    const data = (await (
-      await fetch("https://registry.npmjs.com/genkit")
-    ).json()) as NodeModuleInfo;
-    const versions = Object.values(data.versions)
-      .filter((v) => !v.deprecated)
-      .map((v) => v.version);
-    // Exclude other tags like dev
-    latestVersion = findLast(versions, (version) =>
-      /\d+\.\d+\.\d+(-(rc|dev)\.\d+)?/.test(version),
-    )!;
-  } catch (err: unknown) {
-    throw new FirebaseError(
-      "Unable to determine which genkit version to install.\n" +
-        `npm Error: ${getErrMsg(err)}\n\n` +
-        "For a possible workaround run\n  npm view genkit version\n" +
-        "and then set an environment variable:\n" +
-        "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
-        "and run `firebase init genkit` again",
-    );
-  }
-
-  const templateVersion = findLast(TEMPLATE_VERSIONS, (version) =>
-    semver.lte(latestVersion, version),
-  )!;
-  logLabeledBullet("genkit", `Installing Genkit CLI version ${latestVersion}`);
-  return {
-    genkitVersion: latestVersion,
-    templateVersion,
-    // genkit init is removed; use init steps here.
-    useInit: false,
-    stopInstall: false,
-  };
-}
-
 /**
  * Determines which version and template to install
  * @return a GenkitInfo object
  */
 async function getGenkitVersion(): Promise<GenkitInfo> {
   let genkitVersion: string;
-  let templateVersion = "0.9.0";
   let useInit = false;
-  let stopInstall = false;
 
   // Allow the installed version to be set for dev purposes.
   if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
     semver.parse(process.env.GENKIT_DEV_VERSION);
     genkitVersion = process.env.GENKIT_DEV_VERSION;
-  } else if (experiments.isEnabled("genkitprerelease")) {
-    return await genkitPreleaseVersion();
   } else {
     try {
       genkitVersion = await spawnWithOutput("npm", ["view", "genkit", "version"]);
@@ -128,30 +86,17 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     throw new FirebaseError("Unable to determine genkit version to install");
   }
 
-  if (semver.gte(genkitVersion, "1.0.0")) {
-    // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
-    const continueInstall = await confirm({
-      message:
-        clc.yellow(
-          `WARNING: The latest version of Genkit (${genkitVersion}) isn't supported by this\n` +
-            "version of firebase-tools. You can proceed, but the provided sample code may\n" +
-            "not work with the latest library. You can also try updating firebase-tools with\n" +
-            "npm install -g firebase-tools@latest, and then running this command again.\n\n",
-        ) + "Proceed with installing the latest version of Genkit?",
-      default: false,
-    });
-    if (!continueInstall) {
-      stopInstall = true;
-    }
-  } else if (semver.gte(genkitVersion, "0.6.0")) {
-    // if statement order is important
-    // variables already set above
-  } else {
+  let templateVersion = findLast(TEMPLATE_VERSIONS, (version) =>
+    semver.lte(genkitVersion, version),
+  )!;
+
+  // TODO: Do we want to up this to 0.9 and strip useInit since 0.6 has no template?
+  if (semver.lt(genkitVersion, "0.6.0")) {
     templateVersion = "";
     useInit = true;
   }
 
-  return { genkitVersion, templateVersion, useInit, stopInstall };
+  return { genkitVersion, templateVersion, useInit };
 }
 
 /**
@@ -172,10 +117,6 @@ export interface GenkitSetup extends Setup {
  */
 export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
   const genkitInfo = await getGenkitVersion();
-  if (genkitInfo.stopInstall) {
-    logLabeledWarning("genkit", "Stopped Genkit initialization");
-    return;
-  }
   if (setup.functions?.languageChoice !== "typescript") {
     const continueFunctions = await confirm({
       message:
