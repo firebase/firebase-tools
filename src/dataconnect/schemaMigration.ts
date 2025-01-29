@@ -15,7 +15,13 @@ import {
   iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
+  DEFAULT_SCHEMA,
+  determineSchemaSetupStatus,
+  SchemaSetupStatus
 } from "../gcp/cloudsql/permissions";
+import {
+  setupSchema
+} from "../commands/dataconnect-sql-setup"
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
@@ -238,7 +244,11 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
 
   // Run the database roles setup. This should be idempotent.
   await setupIAMUsers(instanceId, databaseId, options);
-
+  await setupSchema(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  const schemaSetupStatus = await determineSchemaSetupStatus(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  if (schemaSetupStatus.setupStatus !== SchemaSetupStatus.GreenField) {
+    throw new FirebaseError(`Schema migrations only work when FDC is setup in greenfield mode.`)
+  }
   // Upsert user account into the database.
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 

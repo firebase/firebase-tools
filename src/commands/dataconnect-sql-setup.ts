@@ -40,7 +40,7 @@ export async function setupSchema(instanceId: string, databaseId: string, schema
     return
   }
   else if (setupStatus.setupStatus === SchemaSetupStatus.BrownField) {
-    logger.info(`Detected schema "${schema}" is setup in brownfield mode. Skipping Setup`)
+    logger.info(`Detected schema "${schema}" is setup in brownfield mode.`)
   } else {
     logger.info(clc.yellow(`SQL database doesn't seem setup, continuing setup.`))
   }
