@@ -8,7 +8,16 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
-import { getTablesMetaData, setupSQLPermissions, determineSchemaSetupStatus, SchemaSetupStatus, firebaseowner, iamUserIsCSQLAdmin} from "../gcp/cloudsql/permissions";
+import {
+  getTablesMetaData,
+  setupSQLPermissions,
+  determineSchemaSetupStatus,
+  SchemaSetupStatus,
+  firebaseowner,
+  iamUserIsCSQLAdmin,
+  setupBrownfieldAsGreenfield,
+  setupBrownfieldSQL
+} from "../gcp/cloudsql/permissions";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { logger } from "../logger";
 import { promptOnce, confirm } from "../prompt";
@@ -21,10 +30,10 @@ export async function setupSchema(instanceId: string, databaseId: string, schema
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(`Only users with 'roles/cloudsql.admin' can setup SQL schemas.`)
   }
-  
+
   const setupStatus = await determineSchemaSetupStatus(instanceId, databaseId, schema, options)
   if (setupStatus.setupStatus === SchemaSetupStatus.NotFound) {
-    
+
   }
   if (setupStatus.setupStatus === SchemaSetupStatus.GreenField) {
     logger.info(`Detected schema "${schema}" is setup in greenfield mode. Skipping Setup.`)
@@ -38,13 +47,14 @@ export async function setupSchema(instanceId: string, databaseId: string, schema
   // If empty schema -> greenfield
   const tables = await getTablesMetaData(instanceId, databaseId, schema, options)
   if (tables.length === 0) {
-    logger.info(clc.yellow(`Found no tables in schema "${schema}", will setup as greenfield project.`))
+    logger.info(clc.yellow(`Found no tables in schema "${schema}", assuming greenfield project.`))
     setupSQLPermissions(instanceId, databaseId, options)
     return
   } else {
+    const tables = await getTablesMetaData(instanceId, databaseId, schema, options)
     const currentTablesOwners = [...new Set(tables.map(t => t.owner))]
     logger.info(`We found some existing object owners [${currentTablesOwners.join(", ")}] in your cloudsql "${schema}" schema.`)
-
+    
     const continueSetup = await confirm({
       message: clc.yellow(`Would you like FDC to handle SQL migrations for you moving forward?\n\
         This means we will transfer schema ownership to ${firebaseowner(databaseId, schema)}\n\
@@ -53,7 +63,9 @@ export async function setupSchema(instanceId: string, databaseId: string, schema
     });
 
     if (continueSetup) {
-      
+      setupBrownfieldAsGreenfield(instanceId, databaseId, options)
+    } else {
+      setupBrownfieldSQL(instanceId, databaseId, options)
     }
   }
 
