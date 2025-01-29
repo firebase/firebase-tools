@@ -41,6 +41,17 @@ export async function handleBuildErrors(
       `There are errors in your schema and connector files:\n${errors.map(prettify).join("\n")}`,
     );
   }
+
+  const requiredForces = errors.filter((w) => w.extensions?.warningLevel === "REQUIRE_FORCE");
+  if (requiredForces.length) {
+    utils.logLabeledError(
+      "dataconnect",
+      `There are changes in your schema or connectors that will result in broken behavior:\n` +
+        prettifyWithWorkaround(requiredForces),
+    );
+    throw new FirebaseError("Rerun this command with --force to deploy these changes.");
+  }
+
   const interactiveAcks = errors.filter((w) => w.extensions?.warningLevel === "INTERACTIVE_ACK");
   const requiredAcks = errors.filter((w) => w.extensions?.warningLevel === "REQUIRE_ACK");
   const choices = [
