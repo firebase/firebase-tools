@@ -1,9 +1,9 @@
 # # Example schema for simple movie review app
 
 # # User table is keyed by Firebase Auth UID.
-# type User @table(key: "uid") {
+# type User @table {
 #   # `@default(expr: "auth.uid")` sets it to Firebase Auth UID during insert and upsert.
-#   uid: String! @default(expr: "auth.uid")
+#   id: String! @default(expr: "auth.uid")
 #   username: String! @col(dataType: "varchar(50)")
 #   # The `user: User!` field in the Review table generates the following one-to-many query field.
 #   #  reviews_on_user: [Review!]!

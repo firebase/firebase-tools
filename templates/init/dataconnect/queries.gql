@@ -14,7 +14,7 @@
 # # List all users, only admins should be able to list all users, so we use NO_ACCESS
 # query ListUsers @auth(level: NO_ACCESS) {
 #   users {
-#     uid
+#     id
 #     username
 #   }
 # }
@@ -22,8 +22,8 @@
 # # Logged in user can list all their reviews and movie titles associated with the review
 # # Since the query requires the uid of the current authenticated user, the auth level is set to USER
 # query ListUserReviews @auth(level: USER) {
-#   user(key: { uid_expr: "auth.uid" }) {
-#     uid
+#   user(key: { id_expr: "auth.uid" }) {
+#     id
 #     username
 #     # <field>_on_<foreign_key_field> makes it easy to grab info from another table
 #     # Here, we use it to grab all the reviews written by the user.
@@ -56,7 +56,7 @@
 #       reviewDate
 #       rating
 #       user {
-#         uid
+#         id
 #         username
 #       }
 #     }
