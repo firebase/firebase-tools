@@ -72,6 +72,14 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: true,
   },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription: "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
