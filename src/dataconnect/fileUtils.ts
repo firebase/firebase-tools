@@ -2,11 +2,19 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types";
+import {
+  ConnectorYaml,
+  DataConnectYaml,
+  File,
+  Platform,
+  ServiceInfo,
+  SupportedFrameworks,
+} from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
+import { PackageJSON } from "../frameworks/compose/discover/runtime/node";
 
 export function readFirebaseJson(config?: Config): DataConnectMultiple {
   if (!config?.has("dataconnect")) {
@@ -151,4 +159,49 @@ export async function getPlatformFromFolder(dirPath: string) {
   // At this point, its not clear which platform the app directory is
   // because we found indicators for multiple platforms.
   return Platform.MULTIPLE;
+}
+
+export async function resolvePackageJson(
+  packageJsonPath: string,
+): Promise<PackageJSON | undefined> {
+  let validPackageJsonPath = packageJsonPath;
+  if (!packageJsonPath.endsWith("package.json")) {
+    validPackageJsonPath = path.join(packageJsonPath, "package.json");
+  }
+  validPackageJsonPath = path.resolve(validPackageJsonPath);
+  try {
+    return JSON.parse((await fs.readFile(validPackageJsonPath)).toString());
+  } catch {
+    return undefined;
+  }
+}
+
+export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react"];
+function lookForFramework(
+  key: "dependencies" | "devDependencies",
+  packageJson: PackageJSON,
+  frameworksUsed: (keyof SupportedFrameworks)[],
+) {
+  if (!packageJson[key]) {
+    return frameworksUsed;
+  }
+  Object.keys(packageJson[key]).forEach((dep) => {
+    if (
+      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks) &&
+      !frameworksUsed.includes(dep as keyof SupportedFrameworks)
+    ) {
+      frameworksUsed.push(dep as keyof SupportedFrameworks);
+    }
+  });
+  return frameworksUsed;
+}
+export function getFrameworksFromPackageJson(
+  packageJson: PackageJSON,
+): (keyof SupportedFrameworks)[] {
+  const frameworksUsed: (keyof SupportedFrameworks)[] = lookForFramework(
+    "dependencies",
+    packageJson,
+    [],
+  );
+  return lookForFramework("devDependencies", packageJson, frameworksUsed);
 }

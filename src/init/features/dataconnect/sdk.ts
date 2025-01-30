@@ -5,7 +5,12 @@ import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
 import { promptForDirectory, promptOnce } from "../../../prompt";
-import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
+import {
+  readFirebaseJson,
+  getPlatformFromFolder,
+  getFrameworksFromPackageJson,
+  resolvePackageJson,
+} from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
@@ -101,7 +106,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   });
 
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
-  const newConnectorYaml = generateSdkYaml(
+  const newConnectorYaml = await generateSdkYaml(
     targetPlatform,
     connectorYaml,
     connectorInfo.directory,
@@ -115,12 +120,12 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   return { connectorYamlContents, connectorInfo, displayIOSWarning };
 }
 
-export function generateSdkYaml(
+export async function generateSdkYaml(
   targetPlatform: Platform,
   connectorYaml: ConnectorYaml,
   connectorDir: string,
   appDir: string,
-): ConnectorYaml {
+): Promise<ConnectorYaml> {
   if (!connectorYaml.generate) {
     connectorYaml.generate = {};
   }
@@ -135,14 +140,41 @@ export function generateSdkYaml(
 
   if (targetPlatform === Platform.WEB) {
     const pkg = `${connectorYaml.connectorId}-connector`;
+    const packageJsonDir = path.relative(connectorDir, appDir);
     const javascriptSdk: JavascriptSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
       package: `@firebasegen/${pkg}`,
       // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       // TODO: Explore other platforms that can be automatically installed. Dart? Android?
-      packageJsonDir: path.relative(connectorDir, appDir),
+      packageJsonDir,
     };
+    const packageJson = await resolvePackageJson(appDir);
+    if (packageJson) {
+      const frameworksUsed = getFrameworksFromPackageJson(packageJson);
+      frameworksUsed.forEach((framework) => {
+        javascriptSdk[framework] = true;
+      });
+    }
+    // const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(framework => !frameworksUsed.includes(framework));
+    // if (unusedFrameworks.length > 0 && setup) {
+    //   const additionalFrameworks: { features: (keyof SupportedFrameworks)[] } = await prompt(
+    //     setup,
+    //     [
+    //       {
+    //         type: "checkbox",
+    //         name: "features",
+    //         message:
+    //           "Which framework would you like to generate SDKs for? " +
+    //           "Press Space to select features, then Enter to confirm your choices.",
+    //         choices: unusedFrameworks,
+    //       },
+    //     ],
+    //   );
+    //   additionalFrameworks.features.forEach((framework) => {
+    //     javascriptSdk[framework] = true;
+    //   });
+    // }
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
