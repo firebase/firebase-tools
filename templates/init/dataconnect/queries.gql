@@ -13,19 +13,21 @@
 
 # # List all users, only admins should be able to list all users, so we use NO_ACCESS
 # query ListUsers @auth(level: NO_ACCESS) {
-#   users { id, username }
+#   users {
+#     uid
+#     username
+#   }
 # }
 
-# # Logged in user can list all their reviews and movie titles associated with the review 
+# # Logged in user can list all their reviews and movie titles associated with the review
 # # Since the query requires the uid of the current authenticated user, the auth level is set to USER
 # query ListUserReviews @auth(level: USER) {
-#   user(key: {id_expr: "auth.uid"}) {
-#     id
+#   user(key: { uid_expr: "auth.uid" }) {
+#     uid
 #     username
 #     # <field>_on_<foreign_key_field> makes it easy to grab info from another table
 #     # Here, we use it to grab all the reviews written by the user.
 #     reviews: reviews_on_user {
-#       id
 #       rating
 #       reviewDate
 #       reviewText
@@ -50,12 +52,11 @@
 #       description
 #     }
 #     reviews: reviews_on_movie {
-#       id
 #       reviewText
 #       reviewDate
 #       rating
 #       user {
-#         id
+#         uid
 #         username
 #       }
 #     }
@@ -63,16 +64,10 @@
 # }
 
 # # Search for movies, actors, and reviews
-# query SearchMovie(
-#   $titleInput: String
-#   $genre: String
-# ) @auth(level: PUBLIC) {
+# query SearchMovie($titleInput: String, $genre: String) @auth(level: PUBLIC) {
 #   movies(
 #     where: {
-#       _and: [
-#         { genre: { eq: $genre } }
-#         { title: { contains: $titleInput } }
-#       ]
+#       _and: [{ genre: { eq: $genre } }, { title: { contains: $titleInput } }]
 #     }
 #   ) {
 #     id
