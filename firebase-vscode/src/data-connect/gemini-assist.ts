@@ -291,127 +291,11 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
             break;
           }
           case "createNewFile": {
-            const content = message.content;
-
-            const fileName = await vscode.window.showInputBox({
-              prompt: "Enter the file name",
-            });
-
-            if (fileName) {
-              // If the document path is not provided, it means the user wants to create a new schema.
-              // Get the schema directory which is usually in dataconnect/schema.
-              if (
-                !vscode.workspace.workspaceFolders ||
-                vscode.workspace.workspaceFolders.length === 0
-              ) {
-                vscode.window.showErrorMessage("No workspace is open.");
-                return;
-              }
-              const documentPath = !message.documentPath
-                ? path.join(
-                    vscode.workspace.workspaceFolders![0].uri.fsPath,
-                    "dataconnect/schema",
-                    fileName,
-                  )
-                : message.documentPath;
-
-              const dir = path.dirname(documentPath);
-              const newFileName = fileName.endsWith(".gql")
-                ? fileName
-                : `${fileName}.gql`;
-              const newFilePath = path.join(dir, newFileName);
-
-              if (fs.existsSync(newFilePath)) {
-                vscode.window.showErrorMessage(
-                  `File with name ${newFileName} already exists!`,
-                );
-              } else {
-                const uri = vscode.Uri.file(newFilePath);
-                await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
-                vscode.window.showTextDocument(uri, {
-                  viewColumn: vscode.ViewColumn.One,
-                });
-              }
-            }
+            this.createNewFile(message);
             break;
           }
           case "insertIntoExistingFile": {
-            const content = message.content;
-            const documentPath = message.documentPath;
-
-            const originalUri = vscode.Uri.file(documentPath);
-            const tempUri = vscode.Uri.file(path.join(os.tmpdir(), "temp.gql"));
-
-            try {
-              await vscode.workspace.fs.writeFile(
-                tempUri,
-                Buffer.from(content),
-              );
-
-              await vscode.commands.executeCommand<vscode.TextDocument>(
-                "vscode.diff",
-                originalUri,
-                tempUri,
-                "Original ↔ Proposed Changes",
-                { viewColumn: vscode.ViewColumn.One },
-              );
-
-              const choice = await vscode.window.showInformationMessage(
-                "Do you want to replace the original file?",
-                "Replace",
-                "Cancel",
-              );
-
-              if (choice === "Replace") {
-                const originalDocument =
-                  await vscode.workspace.openTextDocument(originalUri);
-                const edit = new vscode.WorkspaceEdit();
-
-                // Check if the active document is the diff, close it if it is
-                if (
-                  vscode.window.activeTextEditor?.document.uri.toString() ===
-                  tempUri.toString()
-                ) {
-                  await vscode.commands.executeCommand(
-                    "workbench.action.closeActiveEditor",
-                    { save: false },
-                  );
-                }
-
-                const fullRange = new vscode.Range(
-                  originalDocument.positionAt(0),
-                  originalDocument.positionAt(
-                    originalDocument.getText().length,
-                  ),
-                );
-
-                edit.replace(originalUri, fullRange, content);
-                await vscode.workspace.applyEdit(edit);
-
-                const editor = await vscode.window.showTextDocument(
-                  originalUri,
-                  {
-                    viewColumn: vscode.ViewColumn.One,
-                    selection: new vscode.Range(0, 0, 0, 0),
-                  },
-                );
-
-                editor.revealRange(
-                  new vscode.Range(0, 0, 0, 0),
-                  vscode.TextEditorRevealType.AtTop,
-                );
-              }
-            } finally {
-              try {
-                if (await vscode.workspace.fs.stat(tempUri)) {
-                  await vscode.workspace.fs.delete(tempUri, {
-                    useTrash: false,
-                  });
-                }
-              } catch (error) {
-                console.error("Error cleaning up temp file:", error);
-              }
-            }
+            await this.insertIntoExistingFile(message);
             break;
           }
         }
@@ -451,238 +335,361 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
     const themeUrl = this.getHighlightJsThemeUrl();
     return `
       <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Custom Editor</title>
-  <link rel="stylesheet" href="${themeUrl}">
-  <style>
-    body {
-      font-family: var(--vscode-font-family);
-      background-color: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      padding: 20px;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Custom Editor</title>
+        <link rel="stylesheet" href="${themeUrl}">
+        <style>
+          body {
+            font-family: var(--vscode-font-family);
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+          }
 
-    .title {
-      font-size: var(--vscode-editor-font-size);
-      font-weight: bold;
-      margin-bottom: 16px;
-    }
+          .title {
+            font-size: var(--vscode-editor-font-size);
+            font-weight: bold;
+            margin-bottom: 16px;
+          }
 
-    textarea {
-      width: 100%;
-      height: 100px;
-      max-height: 200px;
-      padding: 8px;
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-      resize: vertical;
-      box-sizing: border-box;
-    }
+          textarea {
+            width: 100%;
+            height: 100px;
+            max-height: 200px;
+            padding: 8px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            resize: vertical;
+            box-sizing: border-box;
+          }
 
-    textarea:focus {
-      outline: none;
-      border-color: var(--vscode-focusBorder);
-    }
+          textarea:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+          }
 
-    button {
-      padding: 8px 16px;
-      margin-top: 8px;
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-      transition: background-color 0.1s ease-out;
-    }
+          button {
+            padding: 8px 16px;
+            margin-top: 8px;
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            transition: background-color 0.1s ease-out;
+          }
 
-    button:hover {
-      background-color: var(--vscode-button-hoverBackground);
-    }
+          button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+          }
 
-    button:active {
-      background-color: var(--vscode-button-activeBackground);
-    }
+          button:active {
+            background-color: var(--vscode-button-activeBackground);
+          }
 
-    button:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
+          button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
 
-    button:focus {
-      outline: none;
-      background-color: var(--vscode-button-background);
-    }
+          button:focus {
+            outline: none;
+            background-color: var(--vscode-button-background);
+          }
 
-    .button-container {
-      margin-bottom: 16px;
-    }
+          .button-container {
+            margin-bottom: 16px;
+          }
 
-    pre {
-      margin: 0;
-    }
+          pre {
+            margin: 0;
+          }
 
-    code.hljs {
-      font-family: var(--vscode-editor-font-family);
-      font-size: var(--vscode-editor-font-size);
-    }
+          code.hljs {
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+          }
 
-    .footer-buttons {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px;
-      justify-content: flex-start;
-    }
+          .footer-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: flex-start;
+          }
 
-    .hidden {
-      display: none !important;
-    }
+          .hidden {
+            display: none !important;
+          }
 
-    pre {
-      position: relative;
-      margin: 0;
-      border-radius: 4px;
-      background-color: var(--vscode-editor-background);
-      overflow: auto;
-    }
+          pre {
+            position: relative;
+            margin: 0;
+            border-radius: 4px;
+            background-color: var(--vscode-editor-background);
+            overflow: auto;
+          }
 
-    .code-container {
-      position: relative;
-    }
+          .code-container {
+            position: relative;
+          }
 
-    .copy-button {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      padding: 4px 8px;
-      font-size: 12px;
-      background-color: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
-      cursor: pointer;
-      opacity: 0.8;
-    }
+          .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            font-size: 12px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.8;
+          }
 
-    .copy-button:hover {
-      background-color: var(--vscode-button-secondaryHoverBackground);
-    }
+          .copy-button:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+          }
 
-    .copy-button:focus {
-      background-color: var(--vscode-button-secondaryHoverBackground);
-    }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/graphql.min.js"></script>
-  <script>
+          .copy-button:focus {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+          }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/graphql.min.js"></script>
+        <script>
 
-  </script>
-</head>
-<body>
-  <textarea id="input" placeholder="Enter your prompt"></textarea>
+        </script>
+      </head>
+      <body>
+        <textarea id="input" placeholder="Enter your prompt"></textarea>
 
-  <div class="button-container">
-    <button id="generate">Generate</button>
-  </div>
+        <div class="button-container">
+          <button id="generate">Generate</button>
+        </div>
 
-  <div class="code-container">
-    <pre><code id="highlightedCode" class="language-graphql"></code><button id="copyButton" class="copy-button">Copy</button></pre>
-  </div>
-  
-  <div class="footer-buttons hidden">
-    ${
-      documentPath
-        ? '<button id="insert" class="button">Replace Existing File</button>'
-        : ""
-    }
-    <button id="createNew" class="button">Create New File</button>
-  </div>
-
-  <script>
-    const documentPath = "${documentPath}";
-    let currentGeneratedContent = '';
-    const vscode = acquireVsCodeApi();
-    const generateButton = document.getElementById("generate");
-    const copyButton = document.getElementById("copyButton");
-
-    generateButton.addEventListener("click", () => {
-      const input = document.getElementById("input").value;
-      generateButton.disabled = true;
-      generateButton.textContent = "Generating...";
-
-      vscode.postMessage({
-        command: "generateCode",
-        input,
-      });
-    });
-
-    copyButton.addEventListener("click", () => {
-      navigator.clipboard.writeText(currentGeneratedContent).then(() => {
-        copyButton.textContent = "Copied!";
-        setTimeout(() => copyButton.textContent = "Copy", 2000);
-      });
-    });
-
-    document.getElementById("createNew").addEventListener("click", () => {
-      if (!currentGeneratedContent) return;
-      
-      vscode.postMessage({
-        command: "createNewFile",
-        content: currentGeneratedContent,
-        documentPath: documentPath
-      });
-    });
-
-    if (document.getElementById("insert")) {
-      document.getElementById("insert").addEventListener("click", () => {
-        if (!currentGeneratedContent) return;
+        <div class="code-container">
+          <pre><code id="highlightedCode" class="language-graphql"></code><button id="copyButton" class="copy-button">Copy</button></pre>
+        </div>
         
-        vscode.postMessage({
-          command: "insertIntoExistingFile",
-          content: currentGeneratedContent,
-          documentPath: documentPath
-        });
-      });
-    }
+        <div class="footer-buttons hidden">
+          ${
+            documentPath
+              ? '<button id="insert" class="button">Insert into current file</button>'
+              : ""
+          }
+          <button id="createNew" class="button">Create new file</button>
+        </div>
 
-    window.addEventListener("message", (event) => {
-      if (event.data.command === "updateDocument") {
-        generateButton.disabled = false;
-        generateButton.textContent = "Generate";
+        <script>
+          const documentPath = "${documentPath}";
+          let currentGeneratedContent = '';
+          const vscode = acquireVsCodeApi();
+          const generateButton = document.getElementById("generate");
+          const copyButton = document.getElementById("copyButton");
 
-        currentGeneratedContent = event.data.content;
+          generateButton.addEventListener("click", () => {
+            const input = document.getElementById("input").value;
+            generateButton.disabled = true;
+            generateButton.textContent = "Generating...";
 
-        // Update the code block with highlighted content
-        const codeBlock = document.getElementById("highlightedCode");
-        codeBlock.innerHTML = currentGeneratedContent;
+            vscode.postMessage({
+              command: "generateCode",
+              input,
+            });
+          });
 
-        // Re-apply syntax highlighting
-        hljs.highlightElement(codeBlock);
+          copyButton.addEventListener("click", () => {
+            navigator.clipboard.writeText(currentGeneratedContent).then(() => {
+              copyButton.textContent = "Copied!";
+              setTimeout(() => copyButton.textContent = "Copy", 2000);
+            });
+          });
 
-        const footerButtons = document.querySelector('.footer-buttons');
-        if (currentGeneratedContent.trim()) {
-          footerButtons.classList.remove('hidden');
-        } else {
-          footerButtons.classList.add('hidden');
-        }
-      }
-    });
-  </script>
-</body>
-</html>
+          document.getElementById("createNew").addEventListener("click", () => {
+            if (!currentGeneratedContent) return;
+            
+            vscode.postMessage({
+              command: "createNewFile",
+              content: currentGeneratedContent,
+              documentPath: documentPath
+            });
+          });
+
+          if (document.getElementById("insert")) {
+            document.getElementById("insert").addEventListener("click", () => {
+              if (!currentGeneratedContent) return;
+              
+              vscode.postMessage({
+                command: "insertIntoExistingFile",
+                content: currentGeneratedContent,
+                documentPath: documentPath
+              });
+            });
+          }
+
+          window.addEventListener("message", (event) => {
+            if (event.data.command === "updateDocument") {
+              generateButton.disabled = false;
+              generateButton.textContent = "Generate";
+
+              currentGeneratedContent = event.data.content;
+
+              // Update the code block with highlighted content
+              const codeBlock = document.getElementById("highlightedCode");
+              codeBlock.innerHTML = currentGeneratedContent;
+
+              // Re-apply syntax highlighting
+              hljs.highlightElement(codeBlock);
+
+              const footerButtons = document.querySelector('.footer-buttons');
+              if (currentGeneratedContent.trim()) {
+                footerButtons.classList.remove('hidden');
+              } else {
+                footerButtons.classList.add('hidden');
+              }
+            }
+          });
+        </script>
+      </body>
+      </html>
 
     `;
+  }
+
+  private async createNewFile(message: any): Promise<void> {
+    const content = message.content;
+
+    const fileName = await vscode.window.showInputBox({
+      prompt: "Enter the file name",
+    });
+
+    if (fileName) {
+      // If the document path is not provided, it means the user wants to create a new schema.
+      // Get the schema directory which is usually in dataconnect/schema.
+
+      if (
+        !vscode.workspace.workspaceFolders ||
+        vscode.workspace.workspaceFolders.length === 0
+      ) {
+        vscode.window.showErrorMessage("No workspace is open.");
+        return;
+      }
+
+      const documentPath = !message.documentPath
+        ? path.join(
+            vscode.workspace.workspaceFolders![0].uri.fsPath,
+            "dataconnect/schema",
+            fileName,
+          )
+        : message.documentPath;
+
+      const dir = path.dirname(documentPath);
+      const newFileName = fileName.endsWith(".gql")
+        ? fileName
+        : `${fileName}.gql`;
+      const newFilePath = path.join(dir, newFileName);
+
+      if (fs.existsSync(newFilePath)) {
+        vscode.window.showErrorMessage(
+          `File with name ${newFileName} already exists!`,
+        );
+        return;
+      }
+
+      const uri = vscode.Uri.file(newFilePath);
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
+      vscode.window.showTextDocument(uri, {
+        viewColumn: vscode.ViewColumn.One,
+      });
+    }
+  }
+
+  private async insertIntoExistingFile(message: any): Promise<void> {
+    const content = message.content;
+    const documentPath = message.documentPath;
+
+    const edit = new vscode.WorkspaceEdit();
+
+    const originalUri = vscode.Uri.file(documentPath);
+    const originalContent = await vscode.workspace.fs.readFile(originalUri);
+    const tempUri = vscode.Uri.file(path.join(os.tmpdir(), "temp.gql"));
+
+    try {
+      // 1. Read original file content, append the generated content, and show diff view
+      fs.writeFileSync(
+        tempUri.fsPath,
+        Buffer.concat([originalContent, Buffer.from(content)]),
+      );
+
+      await vscode.commands.executeCommand<vscode.TextDocument>(
+        "vscode.diff",
+        originalUri,
+        tempUri,
+        "Original ↔ Proposed Changes",
+        { viewColumn: vscode.ViewColumn.One },
+      );
+
+      const choice = await vscode.window.showInformationMessage(
+        "Do you want to append the generated GQL to the original file?",
+        "Append",
+        "Cancel",
+      );
+
+      if (choice === "Append") {
+        const originalDocument =
+          await vscode.workspace.openTextDocument(originalUri);
+
+        if (
+          vscode.window.activeTextEditor?.document.uri.toString() ===
+          tempUri.toString()
+        ) {
+          await vscode.commands.executeCommand(
+            "workbench.action.closeActiveEditor",
+            { save: false },
+          );
+        }
+
+        edit.insert(
+          originalUri,
+          new vscode.Position(originalDocument.lineCount + 1, 0),
+          content,
+        );
+        await vscode.workspace.applyEdit(edit);
+
+        const editor = await vscode.window.showTextDocument(originalUri, {
+          viewColumn: vscode.ViewColumn.One,
+          selection: new vscode.Range(0, 0, 0, 0),
+        });
+
+        editor.revealRange(
+          new vscode.Range(0, 0, 0, 0),
+          vscode.TextEditorRevealType.AtTop,
+        );
+      }
+    } finally {
+      try {
+        if (await vscode.workspace.fs.stat(tempUri)) {
+          await vscode.workspace.fs.delete(tempUri, {
+            useTrash: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error cleaning up temp file:", error);
+      }
+    }
   }
 }
