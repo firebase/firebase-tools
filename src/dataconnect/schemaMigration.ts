@@ -4,7 +4,6 @@ import { format } from "sql-formatter";
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
-  setupIAMUsers,
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
@@ -16,12 +15,10 @@ import {
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
   DEFAULT_SCHEMA,
-  determineSchemaSetupStatus,
-  SchemaSetupStatus
+  getSchemaMetaData,
+  SchemaSetupStatus,
+  setupSQLPermissions
 } from "../gcp/cloudsql/permissions";
-import {
-  setupSchema
-} from "../commands/dataconnect-sql-setup"
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import { needProjectId } from "../projectUtils";
 import { promptOnce, confirm } from "../prompt";
@@ -243,14 +240,15 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   }
 
   // Run the database roles setup. This should be idempotent.
-  await setupIAMUsers(instanceId, databaseId, options);
-  await setupSchema(instanceId, databaseId, DEFAULT_SCHEMA, options);
-  const schemaSetupStatus = await determineSchemaSetupStatus(instanceId, databaseId, DEFAULT_SCHEMA, options);
-  if (schemaSetupStatus.setupStatus !== SchemaSetupStatus.GreenField) {
-    throw new FirebaseError(`Schema migrations only work when FDC is setup in greenfield mode.`)
+  await setupSQLPermissions(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  
+  // Edge case: we can't grant firebase owner unless database is greenfield.
+  if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField &&
+    fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)
+  ) {
+    throw new FirebaseError(`Can't grant owner rule for brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect sql:setup'`);
   }
-  // Upsert user account into the database.
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // Grant the role to the user.
   await executeSqlCmdsAsSuperUser(
@@ -361,10 +359,14 @@ async function handleIncompatibleSchemaError(args: {
         ${commandsToExecuteBySuperUser.join("\n")}`);
     }
 
-    // TODO (tammam-g): at some point we would want to only run this after notifying the admin but
-    // until we confirm stability it's ok to run it on every migration by admin user.
     if (userIsCSQLAdmin) {
-      await setupIAMUsers(instanceId, databaseId, options);
+      await setupSQLPermissions(instanceId, databaseId, DEFAULT_SCHEMA, options)
+    }
+
+    const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField)
+    {
+      throw new FirebaseError(`Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect sql:setup'`);
     }
 
     // Test if iam user has access to the roles required for this migration

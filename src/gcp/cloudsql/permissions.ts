@@ -6,6 +6,8 @@ import { logger } from "../../logger";
 import { concat } from "lodash";
 import { FirebaseError } from "../../error";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
+import { confirm } from "../../prompt";
+import * as clc from "colorette";
 
 export const DEFAULT_SCHEMA = 'public'
 export const FIREBASE_SUPER_USER = 'firebasesuperuser'
@@ -31,7 +33,27 @@ export const fdcSqlRoleMap = {
 export type TableMetaData = {
   name: string;
   owner: string;
-  hasRowSecurity: boolean
+}
+
+export enum SchemaSetupStatus {
+  NotSetup = 'not-setup',
+  GreenField = 'greenfield',
+  BrownField = 'brownfield',
+  NotFound = 'not-found' // Schema not found
+}
+
+export type SchemaMetaData = {
+  name: string
+  owner: string | null
+  tables: TableMetaData[]
+  setupStatus: SchemaSetupStatus
+}
+
+export enum UserAccessLevel {
+  OWNER = 'owner',
+  WRITER = 'writer',
+  READER = 'reader',
+  NONE = 'none'
 }
 
 // Returns true if "grantedRole" is granted to "granteeRole" and false otherwise.
@@ -103,7 +125,7 @@ export async function iamUserIsCSQLAdmin(options: Options): Promise<boolean> {
 
 // Creates the owner role, modifies schema owner to firebaseowner.
 function ownerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
-  const firebaseOwnerRole = firebaseowner(databaseId);
+  const firebaseOwnerRole = firebaseowner(databaseId, schema);
   return [
     `do
       $$
@@ -130,7 +152,7 @@ function ownerRolePermissions(databaseId: string, superuser: string, schema: str
 // The SQL permissions required for a role to read/write the FDC databases.
 // Requires the firebase_owner_* role to be the owner of the schema for default permissions.
 function writerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
-  const firebaseWriterRole = firebasewriter(databaseId);
+  const firebaseWriterRole = firebasewriter(databaseId, schema);
   return [
     `do
       $$
@@ -158,7 +180,7 @@ function writerRolePermissions(databaseId: string, superuser: string, schema: st
     `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
     // Set reader defaults for new tables
-    `SET ROLE = '${firebaseowner(databaseId)}';`,
+    `SET ROLE = '${firebaseowner(databaseId, schema)}';`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${firebaseWriterRole}";`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT USAGE ON SEQUENCES TO "${firebaseWriterRole}";`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseWriterRole}"`,
@@ -169,7 +191,7 @@ function writerRolePermissions(databaseId: string, superuser: string, schema: st
 // The SQL permissions required for a role to read the FDC databases.
 // Requires the firebase_owner_* role to be the owner of the schema for default permissions.
 function readerRolePermissions(databaseId: string, superuser: string, schema: string): string[] {
-  const firebaseReaderRole = firebasereader(databaseId);
+  const firebaseReaderRole = firebasereader(databaseId, schema);
   return [
     `do
       $$
@@ -196,7 +218,7 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
 
     // Set reader defaults for new tables.
     // Only the owner of the schema can set defaults.
-    `SET ROLE = '${firebaseowner(databaseId)}';`,
+    `SET ROLE = '${firebaseowner(databaseId, schema)}';`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT ON TABLES TO "${firebaseReaderRole}";`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, USAGE ON SEQUENCES TO "${firebaseReaderRole}";`,
     `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseReaderRole}"`,
@@ -204,9 +226,10 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
   ];
 }
 
-export async function alterSchemaTablesOwners(databaseId:string, newOwner:string, schema:string) {
-  return [
-     `DO $$
+export async function alterSchemaTablesOwnerToFirebaseOwner(databaseId: string, instanceId:string, schema: string, options: Options, silent?: boolean) {
+  const firebaseOwnerRole = firebaseowner(databaseId, schema);
+  const cmds = [
+    `DO $$
         DECLARE
           r RECORD;
         BEGIN
@@ -215,7 +238,7 @@ export async function alterSchemaTablesOwners(databaseId:string, newOwner:string
                     WHERE table_schema = '${schema}'
                       AND table_type = 'BASE TABLE' -- Important: only base tables
           LOOP
-            EXECUTE format('ALTER TABLE "${schema}.%I" OWNER TO "${newOwner}";', r.table_name);
+            EXECUTE format('ALTER TABLE "${schema}.%I" OWNER TO "${firebaseOwnerRole}";', r.table_name);
           END LOOP;
         END $$;
         
@@ -227,27 +250,22 @@ export async function alterSchemaTablesOwners(databaseId:string, newOwner:string
                     FROM information_schema.sequences
                     WHERE sequence_schema = '${schema}'
           LOOP
-            EXECUTE format('ALTER SEQUENCE "${schema}.%I" OWNER TO "${newOwner}";', r.sequence_name);
+            EXECUTE format('ALTER SEQUENCE "${schema}.%I" OWNER TO "${firebaseOwnerRole}";', r.sequence_name);
           END LOOP;
         END $$;
     `,
   ]
+
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, cmds, silent);
 }
 
-// Sets up all FDC roles (owner, writer, and reader).
-// Granting roles to users is done by the caller.
-export async function setupSQLPermissions(
+export async function greenFieldSchemaSetup(
   instanceId: string,
   databaseId: string,
+  schema: string,
   options: Options,
   silent: boolean = false,
 ) {
-  const user = setupIAMUsers(instanceId, databaseId, options)
-
-  const projectNumber = await needProjectNumber(options);
-  const { user: fdcP4SAUser } = toDatabaseUser(
-      getDataConnectP4SA(projectNumber),
-  );
   // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
   if (
@@ -265,21 +283,27 @@ export async function setupSQLPermissions(
     revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`);
   }
 
+  const user = (await getIAMUser(options)).user
+  const projectNumber = await needProjectNumber(options);
+  const { user: fdcP4SAUser } = toDatabaseUser(
+    getDataConnectP4SA(projectNumber),
+  );
+
   const sqlRoleSetupCmds = concat(
     // For backward compatibality we sometimes need to revoke some roles.
     revokes,
 
     // We shoud make sure schema exists since this setup runs prior to executing the diffs.
-    [`CREATE SCHEMA IF NOT EXISTS "${DEFAULT_SCHEMA}"`],
+    [`CREATE SCHEMA IF NOT EXISTS "${schema}"`],
 
     // Create and setup the owner role permissions.
-    ownerRolePermissions(databaseId, FIREBASE_SUPER_USER, DEFAULT_SCHEMA),
+    ownerRolePermissions(databaseId, FIREBASE_SUPER_USER, schema),
 
     // Create and setup writer role permissions.
-    writerRolePermissions(databaseId, FIREBASE_SUPER_USER, DEFAULT_SCHEMA),
+    writerRolePermissions(databaseId, FIREBASE_SUPER_USER, schema),
 
     // Create and setup reader role permissions.
-    readerRolePermissions(databaseId, FIREBASE_SUPER_USER, DEFAULT_SCHEMA),
+    readerRolePermissions(databaseId, FIREBASE_SUPER_USER, schema),
 
     // Grant firebaseowner role to the current IAM user.
     `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
@@ -287,38 +311,132 @@ export async function setupSQLPermissions(
     `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
   );
 
-  return executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
 }
 
-export enum SchemaSetupStatus {
-  NotSetup = 'not-setup',
-  GreenField = 'greenfield',
-  BrownField = 'brownfield',
-  NotFound = 'not-found' // Schema not found
+// Sets up all FDC roles (owner, writer, and reader).
+// Granting roles to users is done by the caller.
+export async function setupSQLPermissions(
+  instanceId: string,
+  databaseId: string,
+  schema: string,
+  options: Options,
+  silent: boolean = false,
+) {
+  // Step 0: Check current user can run setup and upsert IAM / P4SA users
+  logger.info(`Attempting to Setup SQL schema "${schema}".`)
+  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+  if (!userIsCSQLAdmin) {
+    throw new FirebaseError(`Only users with 'roles/cloudsql.admin' can setup SQL schemas.`)
+  }
+  await setupIAMUsers(instanceId, databaseId, options)
+
+  // Shortcut: No need to run setup if we determined database is already setup as greenfield.
+  const schemaInfo = await getSchemaMetaData(instanceId, databaseId, schema, options);
+  if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
+    logger.info(`Detected schema "${schema}" is setup in greenfield mode. Skipping Setup.`)
+    return
+  }
+
+  if (schemaInfo.setupStatus === SchemaSetupStatus.BrownField) {
+    logger.info(`Detected schema "${schema}" is already setup in brownfield mode.`)
+  }
+
+  // We need to setup the database
+  if (schemaInfo.tables.length === 0) {
+    logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`)
+    await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent)
+  }
+  else if (options.nonInteractive || options.force) {
+    throw new FirebaseError(`Schema "${schema}" isn't setup and can only be setup in interactive mode.`)
+  } else {
+    const currentTablesOwners = [...new Set(schemaInfo.tables.map(t => t.owner))]
+    logger.info(`We found some existing object owners [${currentTablesOwners.join(", ")}] in your cloudsql "${schema}" schema.`)
+
+    const continueSetup = await confirm({
+      message: clc.yellow(`Would you like FDC to handle SQL migrations for you moving forward?\n
+        This means we will transfer schema ownership to ${firebaseowner(databaseId, schema)}\n
+        Note: your existing migration tools/roles may lose access.`),
+      default: false,
+    });
+
+    if (continueSetup) {
+      await setupBrownfieldAsGreenfield(instanceId, databaseId, schema, options, silent)
+    } else {
+      logger.info(clc.yellow(`Setting up database in brownfield mode.\n
+      Note SQL migrations can't be done through FDC in this mode.`))
+      await brownfieldSqlSetup(instanceId, databaseId, schema, options, silent)
+    }
+  }
 }
 
-export enum UserAccessLevel {
-  OWNER = 'owner',
-  WRITER = 'writer',
-  READER = 'reader',
-  NONE = 'none'
-}
+export async function getSchemaMetaData(instanceId: string, databaseId: string, schema: string, options: Options): Promise<SchemaMetaData> {
+  // Check if schema exists
+  const checkSchemaExists = await executeSqlCmdsAsIamUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmd=*/[`SELECT
+    CASE
+        WHEN EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = '${schema}')
+        THEN TRUE
+        ELSE FALSE
+    END AS schema_exists,
+    (SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = '${schema}') AS schema_owner;`],
+    /** silent=*/ true)
+  if (!checkSchemaExists[0].rows[0].schema_exists) {
+    return {
+      name: schema,
+      owner: null,
+      setupStatus: SchemaSetupStatus.NotFound,
+      tables: []
+    }
+  }
+  const schemaOwner = checkSchemaExists[0].rows[0].schema_owner;
+  logger.info(`Got schema info ${JSON.stringify(checkSchemaExists[0].rows[0])}`)
 
-export async function getTablesMetaData(instanceId: string, databaseId: string, schema: string, options: Options): Promise<TableMetaData[]> {
-  const cmd = `SELECT ("tablename", "tableowner", "rowsecurity") FROM pg_tables WHERE schemaname='${schema}'`
+  // Get schema tables
+  const cmd = `SELECT tablename, tableowner FROM pg_tables WHERE schemaname='${schema}'`
+  const res = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, [cmd], /** silent=*/ true);
+  const tables = res[0].rows.map(row => {
+    return {
+      name: row.tablename,
+      owner: row.tableowner,
+    }
+  })
+  logger.info(`Got schema tables ${JSON.stringify(tables)}`)
 
-  try {
-    const res = await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, [cmd], /** silent=*/ true);
-    const tables = res[0].rows.map(row => {
-      return {
-        name: row.tablename,
-        owner: row.tableowner,
-        hasRowSecurity: row.rowsecurity}})
+  // If firebase writer role doesn't exist -> Schema not setup
+  const checkRoleExists = async (role: string): Promise<boolean> => {
+    const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL;`];
+    const result = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, cmd, /** silent=*/ true);
+    return result[0].rows[0];
+  }
+  if (!await checkRoleExists(firebasewriter(databaseId, schema))) {
+    return {
+      name: schema,
+      owner: schemaOwner,
+      setupStatus: SchemaSetupStatus.NotSetup,
+      tables: tables
+    }
+  }
 
-    return tables;
-  } catch (e) {
-    logger.error(`Failed To get tables metadata with error: ${e}`)
-    throw new FirebaseError(`Failed To get tables metadata with error: ${e}`)
+  // If schema owner and all table owners are firebaseowner -> Greenfield
+  if (tables.every(table => table.owner === firebaseowner) && schemaOwner === firebaseowner(databaseId, schema)) {
+    return {
+      name: schema,
+      owner: schemaOwner,
+      setupStatus: SchemaSetupStatus.GreenField,
+      tables: tables
+    }
+  };
+
+  // We have determined firebase writer exists but schema/table owner isn't firebaseowner -> Brownfield
+  return {
+    name: schema,
+    owner: schemaOwner,
+    setupStatus: SchemaSetupStatus.BrownField,
+    tables: tables
   }
 }
 
@@ -351,113 +469,68 @@ export async function getUserAccessLevel(instanceId: string, databaseId: string,
   return UserAccessLevel.NONE
 }
 
-// Used for migration, greenfield and brownfield setup
-// Note: this is a quick check, it wouldn't catch cases where setup was possibly interrupted and setup is in intermediate state.
-export async function determineSchemaSetupStatus(instanceId: string, databaseId: string, schema: string, options: Options): Promise<{
-  schemaOwner: string | undefined,
-  setupStatus: SchemaSetupStatus
-}> {
-  const checkSchemaExists = await executeSqlCmdsAsSuperUser(
-    options, 
-    instanceId, 
-    databaseId,
-    /** cmd=*/ [`SELECT
-    CASE
-        WHEN EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = '${schema}')
-        THEN TRUE
-        ELSE FALSE
-    END AS schema_exists,
-    (SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = '${schema}') AS schema_owner;`],
-    /** silent=*/ true)
-  
-  if (!checkSchemaExists[0].rows[0].schema_exists) {
-    return {
-      schemaOwner: undefined,
-      setupStatus: SchemaSetupStatus.NotFound
-    }
-  }
-
-  const checkRoleExists = async (role: string): Promise<boolean> => {
-    const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL;`]
-    const result = await executeSqlCmdsAsIamUser(options, instanceId, databaseId, cmd, /** silent=*/ true)
-    return result[0].rows[0]
-  }
-  // If owner exists -> greenfield
-  if (await checkRoleExists(firebaseowner(databaseId, schema))) {
-    return {
-      schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
-      setupStatus: SchemaSetupStatus.GreenField
-    }
-  }
-  // If writer exists -> brownfield
-  if (await checkRoleExists(firebasewriter(databaseId, schema))) {
-    return {
-      schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
-      setupStatus: SchemaSetupStatus.BrownField
-    }
-  }
-  
-  return {
-    schemaOwner: checkSchemaExists[0].rows[0].schema_owner,
-    setupStatus: SchemaSetupStatus.NotSetup
-  }
-}
-
 export async function setupBrownfieldAsGreenfield(
   instanceId: string,
   databaseId: string,
+  schema: string,
   options: Options,
   silent: boolean = false,
 ) {
-  const schema = DEFAULT_SCHEMA
-  // Step 0: Get current table owners
-  const tables = await getTablesMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options)
-  const currentTablesOwners = [...new Set(tables.map(t => t.owner))]
+  // Step 0: Get schema metadata
+  const schemaInfo = await getSchemaMetaData(instanceId, databaseId, schema, options)
 
-  // Step 1: Run our usual setup which creates necessary roles, transfers schema ownership, and gives nessary grants
-  await setupSQLPermissions(instanceId, databaseId, options, silent);
+  // Step 1: Run our usual setup which creates necessary roles, transfers schema ownership, and gives nessary grants.
+  await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent)
 
-  // Step 2: Give the found owners writer permissions
-  const grantPreviousOwnerWriter = currentTablesOwners.map(
+  // Step 2: Grant non firebase owners the writer role before changing the table owners. 
+  const firebaseOwnerRole = firebaseowner(databaseId, schema)
+  const nonFirebasetablesOwners = [...new Set(schemaInfo.tables.map(t => t.owner))].filter((owner) => owner !== firebaseOwnerRole)
+  const grantCmds = nonFirebasetablesOwners.map(
     (owner) => `GRANT "${firebasewriter(databaseId, schema)}" TO "${owner}"`
   )
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grantPreviousOwnerWriter, silent);
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grantCmds, silent);
 
-  // Step 3: Transfer ownership from original owner to firebaseowner
-  await alterSchemaTablesOwners(databaseId, firebaseowner(databaseId, schema), schema)
+  // Step 3: Alter table owners permissions 
+  await alterSchemaTablesOwnerToFirebaseOwner(databaseId, instanceId, schema, options, silent)
 }
 
 
-export async function setupBrownfieldSQL(
+export async function brownfieldSqlSetup(
   instanceId: string,
   databaseId: string,
+  schema: string,
   options: Options,
   silent: boolean = false,
 ) {
   // Step 0: Get tables metadata
-  const tables = await getTablesMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options)
-  const currentTablesOwners = [...new Set(tables.map(t => t.owner))]
+  const schemaInfo = await getSchemaMetaData(instanceId, databaseId, schema, options)
+  const uniqueTablesOwners = [...new Set(schemaInfo.tables.map(t => t.owner))]
 
   // Step 1: Grant firebasesuperuser access to the original owner
-  const grants = currentTablesOwners.map((owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`)
+  const grants = uniqueTablesOwners.map((owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`)
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, silent);
 
   // Step 2: Using firebasesuperuser, setup reader and writer permissions on existing tables and setup default permissions for future tables.
   const iamUser = (await getIAMUser(options)).user;
   const projectNumber = await needProjectNumber(options);
   const { user: fdcP4SAUser } = toDatabaseUser(
-      getDataConnectP4SA(projectNumber),
+    getDataConnectP4SA(projectNumber),
   );
+
   const brownfieldSetupCmds = [
     // Create and setup writer role permissions.
-    writerRolePermissions(databaseId, FIREBASE_SUPER_USER, DEFAULT_SCHEMA),
+    ...writerRolePermissions(databaseId, FIREBASE_SUPER_USER, schema),
 
     // Create and setup reader role permissions.
-    readerRolePermissions(databaseId, FIREBASE_SUPER_USER, DEFAULT_SCHEMA),
+    ...readerRolePermissions(databaseId, FIREBASE_SUPER_USER, schema),
 
     // Grant firebasewriter role to the current IAM user.
-    `GRANT "${firebasewriter(databaseId)}" TO "${iamUser}"`,
+    `GRANT "${firebasewriter(databaseId, schema)}" TO "${iamUser}"`,
     // Grant firebaswriter to the FDC P4SA user
-    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
+    `GRANT "${firebasewriter(databaseId, schema)}" TO "${fdcP4SAUser}"`,
   ]
+
+  // Setup Default permissions
+
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, brownfieldSetupCmds, silent)
 }
