@@ -4,12 +4,13 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { promptForDirectory, promptOnce } from "../../../prompt";
+import { promptForDirectory, promptOnce, prompt } from "../../../prompt";
 import {
   readFirebaseJson,
   getPlatformFromFolder,
   getFrameworksFromPackageJson,
   resolvePackageJson,
+  SUPPORTED_FRAMEWORKS,
 } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -21,6 +22,7 @@ import {
   JavascriptSDK,
   KotlinSDK,
   Platform,
+  SupportedFrameworks,
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
@@ -112,6 +114,29 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     connectorInfo.directory,
     appDir,
   );
+  if (targetPlatform === Platform.WEB) {
+    const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
+      (framework) => newConnectorYaml!.generate?.javascriptSdk![framework],
+    );
+    if (unusedFrameworks.length > 0 && setup) {
+      const additionalFrameworks: { features: (keyof SupportedFrameworks)[] } = await prompt(
+        setup,
+        [
+          {
+            type: "checkbox",
+            name: "features",
+            message:
+              "Which framework would you like to generate SDKs for? " +
+              "Press Space to select features, then Enter to confirm your choices.",
+            choices: unusedFrameworks,
+          },
+        ],
+      );
+      additionalFrameworks.features.forEach((framework) => {
+        newConnectorYaml!.generate!.javascriptSdk![framework] = true;
+      });
+    }
+  }
 
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
@@ -156,25 +181,7 @@ export async function generateSdkYaml(
         javascriptSdk[framework] = true;
       });
     }
-    // const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(framework => !frameworksUsed.includes(framework));
-    // if (unusedFrameworks.length > 0 && setup) {
-    //   const additionalFrameworks: { features: (keyof SupportedFrameworks)[] } = await prompt(
-    //     setup,
-    //     [
-    //       {
-    //         type: "checkbox",
-    //         name: "features",
-    //         message:
-    //           "Which framework would you like to generate SDKs for? " +
-    //           "Press Space to select features, then Enter to confirm your choices.",
-    //         choices: unusedFrameworks,
-    //       },
-    //     ],
-    //   );
-    //   additionalFrameworks.features.forEach((framework) => {
-    //     javascriptSdk[framework] = true;
-    //   });
-    // }
+
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 
