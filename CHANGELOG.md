@@ -1,0 +1,1 @@
+- Fixed issue where Extensions deployment fails due to `*.firebasestorage.app` not being recognized as a valid Storage bucket name. (#8152)
