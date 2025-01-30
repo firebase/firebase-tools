@@ -32,7 +32,7 @@
 #   description: String
 # }
 
-# # Reviews is a join table tween User and Movie.
+# # Reviews is a join table between User and Movie.
 # # It has a composite primary keys `userUid` and `movieId`.
 # # A user can leave reviews for many movies. A movie can have reviews from many users.
 # # User  <-> Review is a one-to-many relationship
