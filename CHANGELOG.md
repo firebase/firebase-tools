@@ -1,4 +1,0 @@
-- Fixed a Data Connect emulator issue where prepared statements would be persisted after terminated connections.
-- Added a warning when deploying a Genkit function without a secret as this is likely a bug (#8138)
-- Fixed `.env.*` files for web frameworks in Windows (#8086)
-- Updated the Firebase Data Connect local toolkit to v1.7.7, which includes fixes in Dart code generation around required argument typing, and changes the emulator to always serve local connector sources and surface errors if they're invalid or schema migration fails. (#8153)
