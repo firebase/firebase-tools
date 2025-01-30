@@ -185,7 +185,7 @@ function lookForFramework(
   if (!packageJson[key]) {
     return frameworksUsed;
   }
-  Object.keys(packageJson[key]).forEach((dep) => {
+  Object.keys(packageJson[key]!).forEach((dep) => {
     if (
       SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks) &&
       !frameworksUsed.includes(dep as keyof SupportedFrameworks)
