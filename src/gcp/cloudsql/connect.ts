@@ -150,7 +150,7 @@ export async function executeSqlCmdsAsSuperUser(
     temporaryPassword,
   );
 
-  return await execute([`SET ROLE = cloudsqlsuperuser`, ...cmds], {
+  return await execute([`SET ROLE = '${superuser}'`, ...cmds], {
     projectId,
     instanceId,
     databaseId,
@@ -201,9 +201,6 @@ export async function setupIAMUsers(
     getDataConnectP4SA(projectNumber),
   );
   await cloudSqlAdminClient.createUser(projectId, instanceId, fdcP4SAmode, fdcP4SAUser);
-
-  // 3. Setup FDC required SQL roles and permissions.
-  await setupSQLPermissions(instanceId, databaseId, options, true);
 
   return user;
 }
