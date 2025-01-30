@@ -118,7 +118,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
       (framework) => newConnectorYaml!.generate?.javascriptSdk![framework],
     );
-    if (unusedFrameworks.length > 0 && setup) {
+    if (unusedFrameworks.length > 0) {
       const additionalFrameworks: { features: (keyof SupportedFrameworks)[] } = await prompt(
         setup,
         [
