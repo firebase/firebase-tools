@@ -94,6 +94,10 @@ const extensionConfig = {
   module: {
     rules: [
       {
+        test: /\.html$/,
+        loader: "html-loader",
+      },
+      {
         test: /\.ts$/,
         exclude: [/node_modules/],
         use: [

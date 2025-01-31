@@ -3,6 +3,9 @@ import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
+// @ts-ignore
+import customEditorTemplate from "./custom-editor.html";
+
 import { AnalyticsLogger } from "../analytics";
 import { ExtensionBrokerImpl } from "../extension-broker";
 
@@ -17,8 +20,8 @@ export class GeminiAssistController {
 
     this.context.subscriptions.push(
       vscode.window.registerCustomEditorProvider(
-        "firebase.dataConnect.schemaEditor",
-        new SchemaEditorProvider(this.context, this),
+        "firebase.dataConnect.geminiEditor",
+        new GeminiEditorProvider(this.context, this),
         {
           webviewOptions: {
             retainContextWhenHidden: true,
@@ -49,22 +52,17 @@ export class GeminiAssistController {
     documentPath: string | undefined,
   ): Promise<void> {
     const gqlFiles = await this.collectGqlFiles(commandType);
-    if (gqlFiles.length === 0) {
-      vscode.window.showWarningMessage(
-        `No ${commandType} files found in the workspace.`,
-      );
-      return;
-    }
+    const gqlFilesString = gqlFiles.length > 0 ? JSON.stringify(gqlFiles) : "";
 
-    const gqlFilesString = JSON.stringify(gqlFiles);
-
-    const viewTitle =
+    const customEditorTitle =
       (documentPath?.split("/").pop() || `new-${commandType}.gql`).split(
         ".",
       )[0] + "-generated";
 
-    const viewUri = vscode.Uri.parse(
-      `untitled:${viewTitle}.gql?${
+    // To create a new editor that is not associated with a file, we use the `untitled` scheme.
+    // To pass data to the editor, since it's a webview, we use the query string.
+    const customEditorUri = vscode.Uri.parse(
+      `untitled:${customEditorTitle}.gql?${
         documentContent ? `content=${encodeURIComponent(documentContent)}` : ""
       }${documentPath ? `&path=${encodeURIComponent(documentPath)}&` : ""}${
         gqlFilesString ? `&context=${encodeURIComponent(gqlFilesString)}` : ""
@@ -73,8 +71,8 @@ export class GeminiAssistController {
 
     vscode.commands.executeCommand(
       "vscode.openWith",
-      viewUri,
-      "firebase.dataConnect.schemaEditor",
+      customEditorUri,
+      "firebase.dataConnect.geminiEditor",
       documentPath ? vscode.ViewColumn.Beside : vscode.ViewColumn.One,
     );
   }
@@ -180,7 +178,7 @@ export class GeminiAssistController {
         }
       }
 
-      return gqlFiles;
+      return gqlFiles || [];
     } catch (error) {
       throw new Error(`Failed to collect GQL files: ${error}`);
     }
@@ -235,21 +233,10 @@ export class GeminiAssistController {
     });
   }
 
-  private showTemporaryMessage(message: string): void {
-    try {
-      const disposable = vscode.window.setStatusBarMessage(message, 3000);
-      setTimeout(() => disposable.dispose(), 3000);
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Failed to show temporary message: ${error}`,
-      );
-    }
-  }
-
   dispose() {}
 }
 
-class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
+class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly controller: GeminiAssistController,
@@ -323,7 +310,9 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
   private getHighlightJsThemeUrl(): string {
     // Check if the current VS Code theme is dark or light
     const isDarkTheme =
-      vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark;
+      vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
+      vscode.window.activeColorTheme.kind ===
+        vscode.ColorThemeKind.HighContrast;
 
     // Use Highlight.js themes that closely match VS Code's default themes
     return isDarkTheme
@@ -333,241 +322,9 @@ class SchemaEditorProvider implements vscode.CustomTextEditorProvider {
 
   private getWebviewContent(documentPath: string | undefined): string {
     const themeUrl = this.getHighlightJsThemeUrl();
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Custom Editor</title>
-        <link rel="stylesheet" href="${themeUrl}">
-        <style>
-          body {
-            font-family: var(--vscode-font-family);
-            background-color: var(--vscode-editor-background);
-            color: var(--vscode-editor-foreground);
-            padding: 20px;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-          }
-
-          .title {
-            font-size: var(--vscode-editor-font-size);
-            font-weight: bold;
-            margin-bottom: 16px;
-          }
-
-          textarea {
-            width: 100%;
-            height: 100px;
-            max-height: 200px;
-            padding: 8px;
-            background-color: var(--vscode-input-background);
-            color: var(--vscode-input-foreground);
-            border: 1px solid var(--vscode-input-border);
-            border-radius: 4px;
-            font-family: var(--vscode-font-family);
-            font-size: var(--vscode-font-size);
-            resize: vertical;
-            box-sizing: border-box;
-          }
-
-          textarea:focus {
-            outline: none;
-            border-color: var(--vscode-focusBorder);
-          }
-
-          button {
-            padding: 8px 16px;
-            margin-top: 8px;
-            background-color: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: var(--vscode-font-family);
-            font-size: var(--vscode-font-size);
-            transition: background-color 0.1s ease-out;
-          }
-
-          button:hover {
-            background-color: var(--vscode-button-hoverBackground);
-          }
-
-          button:active {
-            background-color: var(--vscode-button-activeBackground);
-          }
-
-          button:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-          }
-
-          button:focus {
-            outline: none;
-            background-color: var(--vscode-button-background);
-          }
-
-          .button-container {
-            margin-bottom: 16px;
-          }
-
-          pre {
-            margin: 0;
-          }
-
-          code.hljs {
-            font-family: var(--vscode-editor-font-family);
-            font-size: var(--vscode-editor-font-size);
-          }
-
-          .footer-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-            justify-content: flex-start;
-          }
-
-          .hidden {
-            display: none !important;
-          }
-
-          pre {
-            position: relative;
-            margin: 0;
-            border-radius: 4px;
-            background-color: var(--vscode-editor-background);
-            overflow: auto;
-          }
-
-          .code-container {
-            position: relative;
-          }
-
-          .copy-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            padding: 4px 8px;
-            font-size: 12px;
-            background-color: var(--vscode-button-secondaryBackground);
-            color: var(--vscode-button-secondaryForeground);
-            border: 1px solid var(--vscode-button-border);
-            border-radius: 4px;
-            cursor: pointer;
-            opacity: 0.8;
-          }
-
-          .copy-button:hover {
-            background-color: var(--vscode-button-secondaryHoverBackground);
-          }
-
-          .copy-button:focus {
-            background-color: var(--vscode-button-secondaryHoverBackground);
-          }
-        </style>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/graphql.min.js"></script>
-        <script>
-
-        </script>
-      </head>
-      <body>
-        <textarea id="input" placeholder="Enter your prompt"></textarea>
-
-        <div class="button-container">
-          <button id="generate">Generate</button>
-        </div>
-
-        <div class="code-container">
-          <pre><code id="highlightedCode" class="language-graphql"></code><button id="copyButton" class="copy-button">Copy</button></pre>
-        </div>
-        
-        <div class="footer-buttons hidden">
-          ${
-            documentPath
-              ? '<button id="insert" class="button">Insert into current file</button>'
-              : ""
-          }
-          <button id="createNew" class="button">Create new file</button>
-        </div>
-
-        <script>
-          const documentPath = "${documentPath}";
-          let currentGeneratedContent = '';
-          const vscode = acquireVsCodeApi();
-          const generateButton = document.getElementById("generate");
-          const copyButton = document.getElementById("copyButton");
-
-          generateButton.addEventListener("click", () => {
-            const input = document.getElementById("input").value;
-            generateButton.disabled = true;
-            generateButton.textContent = "Generating...";
-
-            vscode.postMessage({
-              command: "generateCode",
-              input,
-            });
-          });
-
-          copyButton.addEventListener("click", () => {
-            navigator.clipboard.writeText(currentGeneratedContent).then(() => {
-              copyButton.textContent = "Copied!";
-              setTimeout(() => copyButton.textContent = "Copy", 2000);
-            });
-          });
-
-          document.getElementById("createNew").addEventListener("click", () => {
-            if (!currentGeneratedContent) return;
-            
-            vscode.postMessage({
-              command: "createNewFile",
-              content: currentGeneratedContent,
-              documentPath: documentPath
-            });
-          });
-
-          if (document.getElementById("insert")) {
-            document.getElementById("insert").addEventListener("click", () => {
-              if (!currentGeneratedContent) return;
-              
-              vscode.postMessage({
-                command: "insertIntoExistingFile",
-                content: currentGeneratedContent,
-                documentPath: documentPath
-              });
-            });
-          }
-
-          window.addEventListener("message", (event) => {
-            if (event.data.command === "updateDocument") {
-              generateButton.disabled = false;
-              generateButton.textContent = "Generate";
-
-              currentGeneratedContent = event.data.content;
-
-              // Update the code block with highlighted content
-              const codeBlock = document.getElementById("highlightedCode");
-              codeBlock.innerHTML = currentGeneratedContent;
-
-              // Re-apply syntax highlighting
-              hljs.highlightElement(codeBlock);
-
-              const footerButtons = document.querySelector('.footer-buttons');
-              if (currentGeneratedContent.trim()) {
-                footerButtons.classList.remove('hidden');
-              } else {
-                footerButtons.classList.add('hidden');
-              }
-            }
-          });
-        </script>
-      </body>
-      </html>
-
-    `;
+    return customEditorTemplate
+      .replace("{{themeUrl}}", themeUrl)
+      .replace("{{documentPath}}", documentPath || "");
   }
 
   private async createNewFile(message: any): Promise<void> {
