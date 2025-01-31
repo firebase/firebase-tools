@@ -218,7 +218,7 @@
 
         // Update the code block with highlighted content
         const codeBlock = document.getElementById("highlightedCode");
-        codeBlock.innerHTML = currentGeneratedContent;
+        codeBlock.textContent = currentGeneratedContent;
 
         // Re-apply syntax highlighting
         hljs.highlightElement(codeBlock);
