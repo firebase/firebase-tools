@@ -36,24 +36,20 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
 } from "../../../utils";
-import * as experiments from "../../../experiments";
-import { findLast } from "lodash";
 
 interface GenkitInfo {
   genkitVersion: string;
   templateVersion: string;
   useInit: boolean;
+  stopInstall: boolean;
 }
 
-// TODO: Make dynamic.
-const TEMPLATE_VERSIONS = ["0.9.0", "1.0.0"];
+// This is the next breaking change version past the latest template.
+const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
 
-interface NodeModuleInfo {
-  versions: Array<{
-    deprecated: boolean;
-    version: string;
-  }>;
-}
+// This is the latest template. It is the default.
+const LATEST_TEMPLATE = "1.0.0";
+
 
 /**
  * Determines which version and template to install
@@ -61,7 +57,9 @@ interface NodeModuleInfo {
  */
 async function getGenkitVersion(): Promise<GenkitInfo> {
   let genkitVersion: string;
+  let templateVersion = LATEST_TEMPLATE;
   let useInit = false;
+  let stopInstall = false;
 
   // Allow the installed version to be set for dev purposes.
   if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
@@ -86,17 +84,31 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     throw new FirebaseError("Unable to determine genkit version to install");
   }
 
-  let templateVersion = findLast(TEMPLATE_VERSIONS, (version) =>
-    semver.lte(genkitVersion, version),
-  )!;
-
-  // TODO: Do we want to up this to 0.9 and strip useInit since 0.6 has no template?
-  if (semver.lt(genkitVersion, "0.6.0")) {
+  if (semver.gte(genkitVersion, UNKNOWN_VERSION_TOO_HIGH)) {
+    // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
+    const continueInstall = await confirm({
+      message:
+        clc.yellow(
+          `WARNING: The latest version of Genkit (${genkitVersion}) isn't supported by this\n` +
+            "version of firebase-tools. You can proceed, but the provided sample code may\n" +
+            "not work with the latest library. You can also try updating firebase-tools with\n" +
+            "npm install -g firebase-tools@latest, and then running this command again.\n\n",
+        ) + "Proceed with installing the latest version of Genkit?",
+      default: false,
+    });
+    if (!continueInstall) {
+      stopInstall = true;
+    }
+  } else if (semver.gte(genkitVersion, "0.9.0")) {
+    templateVersion = "1.0.0";
+  } else if (semver.gte(genkitVersion, "0.6.0")) {
+    templateVersion = "0.9.0";
+  } else {
     templateVersion = "";
     useInit = true;
   }
 
-  return { genkitVersion, templateVersion, useInit };
+  return { genkitVersion, templateVersion, useInit, stopInstall };
 }
 
 /**
@@ -117,6 +129,10 @@ export interface GenkitSetup extends Setup {
  */
 export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
   const genkitInfo = await getGenkitVersion();
+  if (genkitInfo.stopInstall) {
+    logLabeledWarning("genkit", "Stopped Genkit initialization");
+    return;
+  }
   if (setup.functions?.languageChoice !== "typescript") {
     const continueFunctions = await confirm({
       message:

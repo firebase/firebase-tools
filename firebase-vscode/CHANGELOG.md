@@ -1,5 +1,10 @@
 ## NEXT
 
+## 0.12.2
+
+- Updated internal `firebase-tools` dependency to 13.29.3
+- [Fixed] Fixed a bug where results panel would break on API error
+
 ## 0.12.1
 
 - Updated internal `firebase-tools` dependency to 13.29.2
