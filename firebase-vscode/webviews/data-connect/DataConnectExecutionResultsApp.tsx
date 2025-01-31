@@ -31,14 +31,11 @@ export function DataConnectExecutionResultsApp() {
     // in case the user wants to see the response anyway.
     response = results.data;
     const errors = results.errors;
-
     if (errors && errors.length !== 0) {
       errorsDisplay = (
         <>
           <Label>Error</Label>
-          {errors.map((error) => (
-            <GraphQLErrorView error={error} />
-          ))}
+          <GraphQLErrorView errors={errors} />
         </>
       );
     }
@@ -106,27 +103,40 @@ function InternalErrorView({ error }: { error: SerializedError }) {
 }
 
 /** A view for when an execution returns status 200 but contains errors. */
-function GraphQLErrorView({ error }: { error: GraphQLError }) {
+function GraphQLErrorView({ errors }: { errors: readonly GraphQLError[] }) {
   let pathDisplay: JSX.Element | undefined;
-  if (error.path) {
-    // Renders the path as a series of kbd elements separated by commas
-    pathDisplay = (
-      <>
-        {error.path?.map((path, index) => {
-          const item = <kbd>{path}</kbd>;
+  // update path
+  const errorsWithPathDisplay = errors.map((error) => {
+    if (error.path) {
+      // Renders the path as a series of kbd elements separated by commas
+      return {
+        ...error,
+        pathDisplay: (
+          <>
+            {error.path?.map((path, index) => {
+              const item = <kbd>{path}</kbd>;
 
-          return index === 0 ? item : <>, {item}</>;
-        })}{" "}
-      </>
-    );
-  }
+              return index === 0 ? item : <>, {item}</>;
+            })}{" "}
+          </>
+        ),
+      };
+    }
+    return error;
+  });
 
   return (
-    <p style={{ whiteSpace: "pre-wrap" }}>
-      {pathDisplay}
-      {error.message}
-      {error.stack && <StackView stack={error.stack} />}
-    </p>
+    <>
+      {errorsWithPathDisplay.map((error) => {
+        return (
+          <p style={{ whiteSpace: "pre-wrap" }}>
+            {pathDisplay}
+            {error.message}
+            {error.stack && <StackView stack={error.stack} />}
+          </p>
+        );
+      })}
+    </>
   );
 }
 
