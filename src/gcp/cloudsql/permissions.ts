@@ -8,6 +8,7 @@ import { FirebaseError } from "../../error";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 import { confirm } from "../../prompt";
 import * as clc from "colorette";
+import M from "minimatch";
 
 export const DEFAULT_SCHEMA = 'public'
 export const FIREBASE_SUPER_USER = 'firebasesuperuser'
@@ -179,12 +180,43 @@ function writerRolePermissions(databaseId: string, superuser: string, schema: st
     // Grant execution on function which could be needed by some extensions.
     `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
-    // Set reader defaults for new tables
-    `SET ROLE = '${firebaseowner(databaseId, schema)}';`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${firebaseWriterRole}";`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT USAGE ON SEQUENCES TO "${firebaseWriterRole}";`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseWriterRole}"`,
-    `SET ROLE = cloudsqlsuperuser`,
+
+  ];
+}
+
+function defaultPermissions(databaseId: string, schema: string, ownerRole: string) {
+  const firebaseWriterRole = firebasewriter(databaseId, schema);
+  const firebaseReaderRole = firebasereader(databaseId, schema);
+  return [
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO ${firebaseWriterRole};`,
+
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT USAGE ON SEQUENCES TO ${firebaseWriterRole};`,
+    
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT EXECUTE ON FUNCTIONS TO ${firebaseWriterRole};`,
+    
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT SELECT ON TABLES TO ${firebaseReaderRole};`,
+    
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT USAGE ON SEQUENCES TO ${firebaseReaderRole};`,
+  
+    `ALTER DEFAULT PRIVILEGES
+      FOR ROLE ${ownerRole}
+      IN SCHEMA ${schema}
+      GRANT EXECUTE ON FUNCTIONS TO ${firebaseReaderRole};`
   ];
 }
 
@@ -215,48 +247,7 @@ function readerRolePermissions(databaseId: string, superuser: string, schema: st
 
     // Grant execution on function which could be needed by some extensions.
     `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
-
-    // Set reader defaults for new tables.
-    // Only the owner of the schema can set defaults.
-    `SET ROLE = '${firebaseowner(databaseId, schema)}';`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT ON TABLES TO "${firebaseReaderRole}";`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT SELECT, USAGE ON SEQUENCES TO "${firebaseReaderRole}";`,
-    `ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT EXECUTE ON FUNCTIONS TO "${firebaseReaderRole}"`,
-    `SET ROLE = cloudsqlsuperuser`,
   ];
-}
-
-export async function alterSchemaTablesOwnerToFirebaseOwner(databaseId: string, instanceId:string, schema: string, options: Options, silent?: boolean) {
-  const firebaseOwnerRole = firebaseowner(databaseId, schema);
-  const cmds = [
-    `DO $$
-        DECLARE
-          r RECORD;
-        BEGIN
-          FOR r IN SELECT table_name
-                    FROM information_schema.tables
-                    WHERE table_schema = '${schema}'
-                      AND table_type = 'BASE TABLE' -- Important: only base tables
-          LOOP
-            EXECUTE format('ALTER TABLE "${schema}.%I" OWNER TO "${firebaseOwnerRole}";', r.table_name);
-          END LOOP;
-        END $$;
-        
-        DO $$
-        DECLARE
-          r RECORD;
-        BEGIN
-          FOR r IN SELECT sequence_name
-                    FROM information_schema.sequences
-                    WHERE sequence_schema = '${schema}'
-          LOOP
-            EXECUTE format('ALTER SEQUENCE "${schema}.%I" OWNER TO "${firebaseOwnerRole}";', r.sequence_name);
-          END LOOP;
-        END $$;
-    `,
-  ]
-
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, cmds, silent);
 }
 
 export async function greenFieldSchemaSetup(
@@ -309,6 +300,8 @@ export async function greenFieldSchemaSetup(
     `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
     // Grant firebaswriter to the FDC P4SA user
     `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
+
+    defaultPermissions(databaseId, schema, firebaseowner(databaseId, schema))
   );
 
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
@@ -339,7 +332,7 @@ export async function setupSQLPermissions(
   }
 
   if (schemaInfo.setupStatus === SchemaSetupStatus.BrownField) {
-    logger.info(`Detected schema "${schema}" is already setup in brownfield mode.`)
+    logger.info(`Detected schema "${schema}" isn't fully setup or setup as brownfield project.`)
   }
 
   // We need to setup the database
@@ -355,7 +348,7 @@ export async function setupSQLPermissions(
 
     const continueSetup = await confirm({
       message: clc.yellow(`Would you like FDC to handle SQL migrations for you moving forward?\n
-        This means we will transfer schema ownership to ${firebaseowner(databaseId, schema)}\n
+        This means we will transfer schema and tables ownership to ${firebaseowner(databaseId, schema)}\n
         Note: your existing migration tools/roles may lose access.`),
       default: false,
     });
@@ -393,7 +386,6 @@ export async function getSchemaMetaData(instanceId: string, databaseId: string, 
     }
   }
   const schemaOwner = checkSchemaExists[0].rows[0].schema_owner;
-  logger.info(`Got schema info ${JSON.stringify(checkSchemaExists[0].rows[0])}`)
 
   // Get schema tables
   const cmd = `SELECT tablename, tableowner FROM pg_tables WHERE schemaname='${schema}'`
@@ -404,7 +396,6 @@ export async function getSchemaMetaData(instanceId: string, databaseId: string, 
       owner: row.tableowner,
     }
   })
-  logger.info(`Got schema tables ${JSON.stringify(tables)}`)
 
   // If firebase writer role doesn't exist -> Schema not setup
   const checkRoleExists = async (role: string): Promise<boolean> => {
@@ -422,7 +413,8 @@ export async function getSchemaMetaData(instanceId: string, databaseId: string, 
   }
 
   // If schema owner and all table owners are firebaseowner -> Greenfield
-  if (tables.every(table => table.owner === firebaseowner) && schemaOwner === firebaseowner(databaseId, schema)) {
+  const firebaseOwnerRole = firebaseowner(databaseId, schema)
+  if (tables.every(table => table.owner === firebaseOwnerRole) && schemaOwner === firebaseOwnerRole) {
     return {
       name: schema,
       owner: schemaOwner,
@@ -488,10 +480,17 @@ export async function setupBrownfieldAsGreenfield(
   const grantCmds = nonFirebasetablesOwners.map(
     (owner) => `GRANT "${firebasewriter(databaseId, schema)}" TO "${owner}"`
   )
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grantCmds, silent);
 
-  // Step 3: Alter table owners permissions 
-  await alterSchemaTablesOwnerToFirebaseOwner(databaseId, instanceId, schema, options, silent)
+  // Step 3: Alter table owners permissions
+  const alterTableCmds = schemaInfo.tables.map(
+    (table) => `ALTER TABLE "${schema}"."${table.name}" OWNER TO "${firebaseOwnerRole}";`
+  )
+
+  // Run sql commands
+  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, [
+    ...grantCmds,
+    ...alterTableCmds
+  ], silent);
 }
 
 
@@ -530,7 +529,12 @@ export async function brownfieldSqlSetup(
     `GRANT "${firebasewriter(databaseId, schema)}" TO "${fdcP4SAUser}"`,
   ]
 
-  // Setup Default permissions
-
+  // Add default Permissions
+  uniqueTablesOwners.forEach((
+    (owner) => {
+      brownfieldSetupCmds.push(...defaultPermissions(databaseId, schema, owner));
+    }
+  ))
+  
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, brownfieldSetupCmds, silent)
 }
