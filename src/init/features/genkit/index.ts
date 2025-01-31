@@ -98,7 +98,8 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     if (!continueInstall) {
       stopInstall = true;
     }
-  } else if (semver.gte(genkitVersion, "0.9.0")) {
+  } else if (semver.gte(genkitVersion, "1.0.0-rc.1")) {
+    // 1.0.0-rc.1 < 1.0.0
     templateVersion = "1.0.0";
   } else if (semver.gte(genkitVersion, "0.6.0")) {
     templateVersion = "0.9.0";
