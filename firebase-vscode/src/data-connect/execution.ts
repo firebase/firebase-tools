@@ -95,8 +95,8 @@ export function registerExecution(
       const yes = "Yes";
       const result = await vscode.window.showWarningMessage(
         "Trying to execute an operation on the emulator, but it isn't started yet. " +
-          "Do you wish to start it?",
-        { modal: true },
+          "Do you want to start it?",
+        { modal: false }, // TODO: Consider making modal. blocked by testing infra
         yes,
         always,
       );
@@ -115,7 +115,9 @@ export function registerExecution(
         analyticsLogger.logger.logUsage(
           DATA_CONNECT_EVENT_NAME.REFUSE_START_EMULATOR_FROM_EXECUTION,
         );
+        vscode.window.showErrorMessage("Cannot execute operation. Emulator not started.");
       }
+      return; // don't execute TODO: add the operation to a queue
     }
 
     // Warn against using mutations in production.
