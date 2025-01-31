@@ -50,7 +50,6 @@ const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
 // This is the latest template. It is the default.
 const LATEST_TEMPLATE = "1.0.0";
 
-
 /**
  * Determines which version and template to install
  * @return a GenkitInfo object
