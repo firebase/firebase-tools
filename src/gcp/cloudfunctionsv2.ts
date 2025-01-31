@@ -609,6 +609,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+    if (endpoint.callableTrigger.genkitAction) {
+      gcfFunction.labels["genkit-action"] = "true";
+    }
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
