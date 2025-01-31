@@ -11,7 +11,6 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -92,7 +91,7 @@ export async function execute(
   }
 
   const conn = await pool.connect();
-  const results: pg.QueryResult[] = []
+  const results: pg.QueryResult[] = [];
   logFn(`Logged in as ${opts.username}`);
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
@@ -106,7 +105,7 @@ export async function execute(
   conn.release();
   await pool.end();
   connector.close();
-  return results
+  return results;
 }
 
 export async function executeSqlCmdsAsIamUser(
