@@ -1,0 +1,1 @@
+- Fixes issue with custom 404 pages not being returned in Next.js in the emulator (#8035).
