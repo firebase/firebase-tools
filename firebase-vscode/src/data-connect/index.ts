@@ -156,10 +156,12 @@ export function registerFdc(
     emulatorController,
   );
 
+  const configs = dataConnectConfigs.value?.tryReadValue;
   const geminiAssist = new GeminiAssistController(
     analyticsLogger,
     broker,
     context,
+    dataConnectConfigs,
   );
 
   // register codelens

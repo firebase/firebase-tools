@@ -2,11 +2,14 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
+import { Signal } from "@preact/signals-core";
 
 // @ts-ignore
 import customEditorTemplate from "./custom-editor.html";
 
+import { Result } from "../result";
 import { AnalyticsLogger } from "../analytics";
+import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 
 export class GeminiAssistController {
@@ -14,6 +17,9 @@ export class GeminiAssistController {
     private readonly analyticsLogger: AnalyticsLogger,
     private readonly broker: ExtensionBrokerImpl,
     private readonly context: vscode.ExtensionContext,
+    private configs: Signal<
+      Result<ResolvedDataConnectConfigs | undefined> | undefined
+    >,
   ) {
     this.registerCommands();
     this.registerBrokerHandlers(broker);
@@ -21,7 +27,7 @@ export class GeminiAssistController {
     this.context.subscriptions.push(
       vscode.window.registerCustomEditorProvider(
         "firebase.dataConnect.geminiEditor",
-        new GeminiEditorProvider(this.context, this),
+        new GeminiEditorProvider(this.context, this, configs),
         {
           webviewOptions: {
             retainContextWhenHidden: true,
@@ -158,24 +164,39 @@ export class GeminiAssistController {
 
   async collectGqlFiles(type: "schema" | "operation"): Promise<string[]> {
     try {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders) {
-        vscode.window.showWarningMessage("No workspace is open.");
+      const service =
+        this.configs?.value?.tryReadValue?.findEnclosingServiceForPath(
+          vscode.window.activeTextEditor?.document.uri.fsPath || "",
+        );
+
+      if (!service) {
+        // The entrypoint is not a codelens file, so we can't determine the service.
         return [];
       }
 
       const gqlFiles: string[] = [];
-      for (const folder of workspaceFolders) {
-        const folderPath = folder.uri.fsPath;
-        const files = await this.findGqlFiles(folderPath);
+      const activeDocumentConnector = service.findEnclosingConnectorForPath(
+        vscode.window.activeTextEditor?.document.uri.fsPath || "",
+      );
 
-        for (const file of files) {
-          if (type === "schema" && this.isSchemaFile(file)) {
-            gqlFiles.push(file);
-          } else if (type === "operation" && this.isOperationFile(file)) {
+      switch (type) {
+        case "operation":
+          const files = await this.findGqlFiles(
+            activeDocumentConnector?.path || "",
+          );
+
+          for (const file of files) {
             gqlFiles.push(file);
           }
-        }
+          break;
+        case "schema":
+          const schemaPath = path.join(service.path, service.schemaDir);
+          const schemaFiles = await this.findGqlFiles(schemaPath);
+
+          for (const file of schemaFiles) {
+            gqlFiles.push(file);
+          }
+          break;
       }
 
       return gqlFiles || [];
@@ -240,6 +261,9 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly controller: GeminiAssistController,
+    private configs: Signal<
+      Result<ResolvedDataConnectConfigs | undefined> | undefined
+    >,
   ) {}
 
   resolveCustomTextEditor(
@@ -328,37 +352,32 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   private async createNewFile(message: any): Promise<void> {
+    const service =
+      this.configs?.value?.tryReadValue?.findEnclosingServiceForPath(
+        vscode.window.activeTextEditor?.document.uri.fsPath || "",
+      );
+
     const content = message.content;
+    let documentPath = message.documentPath;
 
     const fileName = await vscode.window.showInputBox({
       prompt: "Enter the file name",
     });
 
     if (fileName) {
-      // If the document path is not provided, it means the user wants to create a new schema.
-      // Get the schema directory which is usually in dataconnect/schema.
-
-      if (
-        !vscode.workspace.workspaceFolders ||
-        vscode.workspace.workspaceFolders.length === 0
-      ) {
-        vscode.window.showErrorMessage("No workspace is open.");
-        return;
+      if (!documentPath) {
+        // If no documetPath is provided, use the schema directory
+        documentPath = path.join(
+          vscode.workspace.workspaceFolders?.[0].uri.fsPath || "",
+          "dataconnect",
+          "schema",
+        );
       }
 
-      const documentPath = !message.documentPath
-        ? path.join(
-            vscode.workspace.workspaceFolders![0].uri.fsPath,
-            "dataconnect/schema",
-            fileName,
-          )
-        : message.documentPath;
-
-      const dir = path.dirname(documentPath);
       const newFileName = fileName.endsWith(".gql")
         ? fileName
         : `${fileName}.gql`;
-      const newFilePath = path.join(dir, newFileName);
+      const newFilePath = path.join(documentPath, newFileName);
 
       if (fs.existsSync(newFilePath)) {
         vscode.window.showErrorMessage(
