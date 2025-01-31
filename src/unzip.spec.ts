@@ -13,7 +13,7 @@ describe("unzip", () => {
   });
 
   after(async () => {
-    await fs.promises.rmdir(tempDir, { recursive: true });
+    await fs.promises.rm(tempDir, { recursive: true });
   });
 
   for (const { name, archivePath, inflatedDir } of ZIP_CASES) {
