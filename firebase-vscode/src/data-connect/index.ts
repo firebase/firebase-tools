@@ -32,6 +32,7 @@ import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
+import { emulators } from "../init/features";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -161,14 +162,6 @@ export function registerFdc(
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
-  const refreshCommand = vscode.commands.registerCommand(
-    "refreshCodelens",
-    () => {
-      operationCodeLensProvider.refresh();
-      schemaCodeLensProvider.refresh();
-      configureSdkCodeLensProvider.refresh();
-    },
-  );
 
   // activate FDC toolkit
   // activate language client/serer
@@ -222,7 +215,13 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerExecution(context, broker, fdcService, analyticsLogger),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      analyticsLogger,
+      emulatorController,
+    ),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, analyticsLogger),
@@ -256,7 +255,6 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
-    refreshCommand,
     {
       dispose: () => {
         client.stop();
