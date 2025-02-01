@@ -1,8 +1,6 @@
-import AbortController from "abort-controller";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 import { Emulators } from "./types";
-import fetch from "node-fetch";
 
 class Node<T> {
   public data: T;
@@ -298,7 +296,7 @@ export class TaskQueue {
         method: "POST",
         headers: headers,
         body: JSON.stringify(emulatedTask.task.httpRequest.body),
-        signal: signal,
+        signal,
       });
 
       const dispatchDeadline = emulatedTask.task.dispatchDeadline;

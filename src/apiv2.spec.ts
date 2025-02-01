@@ -1,7 +1,6 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as nock from "nock";
-import AbortController from "abort-controller";
 const proxySetup = require("proxy");
 
 import { Client } from "./apiv2";
