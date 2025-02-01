@@ -1,9 +1,6 @@
-import AbortController from "abort-controller";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 import { Emulators } from "./types";
-import { FirebaseError } from "../error";
-import fetch from "node-fetch";
 
 class Node<T> {
   public data: T;
@@ -294,16 +291,11 @@ export class TaskQueue {
         headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
       }
       const controller = new AbortController();
-      const signal = controller.signal as any;
-      signal.reason = "";
-      signal.throwIfAborted = () => {
-        throw new FirebaseError("Aborted");
-      };
       const request = fetch(emulatedTask.task.httpRequest.url, {
         method: "POST",
         headers: headers,
         body: JSON.stringify(emulatedTask.task.httpRequest.body),
-        signal: signal,
+        signal: controller.signal,
       });
 
       const dispatchDeadline = emulatedTask.task.dispatchDeadline;
