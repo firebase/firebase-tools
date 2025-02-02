@@ -42,9 +42,6 @@ export interface HttpsTriggered {
 
 /** API agnostic version of a Firebase callable function. */
 export type CallableTrigger = {
-  // NOTE: This is currently unused because GCF 2nd gen labels do not support
-  // the characterset that may be in a genkit action name.
-  // This should be set as a Cloud Run attribute once we move to Cloud Run Functions.
   genkitAction?: string;
 };
 
