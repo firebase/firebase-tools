@@ -26,7 +26,7 @@
 #   # @unique ensures each Movie can only one MovieMetadata.
 #   movie: Movie! @unique
 #   # The movie field adds the following foreign key field. Feel free to uncomment and customize it.
-#   #  movieId: UUID
+#   #  movieId: UUID!
 #   rating: Float
 #   releaseYear: Int
 #   description: String
