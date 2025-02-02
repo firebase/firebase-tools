@@ -44,13 +44,19 @@ interface GenkitInfo {
   stopInstall: boolean;
 }
 
+// This is the next breaking change version past the latest template.
+const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
+
+// This is the latest template. It is the default.
+const LATEST_TEMPLATE = "1.0.0";
+
 /**
  * Determines which version and template to install
  * @return a GenkitInfo object
  */
 async function getGenkitVersion(): Promise<GenkitInfo> {
   let genkitVersion: string;
-  let templateVersion = "0.9.0";
+  let templateVersion = LATEST_TEMPLATE;
   let useInit = false;
   let stopInstall = false;
 
@@ -77,7 +83,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     throw new FirebaseError("Unable to determine genkit version to install");
   }
 
-  if (semver.gte(genkitVersion, "1.0.0")) {
+  if (semver.gte(genkitVersion, UNKNOWN_VERSION_TOO_HIGH)) {
     // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
     const continueInstall = await confirm({
       message:
@@ -92,9 +98,11 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     if (!continueInstall) {
       stopInstall = true;
     }
+  } else if (semver.gte(genkitVersion, "1.0.0-rc.1")) {
+    // 1.0.0-rc.1 < 1.0.0
+    templateVersion = "1.0.0";
   } else if (semver.gte(genkitVersion, "0.6.0")) {
-    // if statement order is important
-    // variables already set above
+    templateVersion = "0.9.0";
   } else {
     templateVersion = "";
     useInit = true;
