@@ -11,12 +11,16 @@ import * as fsAsync from "./fsAsync";
 // <basedir>
 //   .hidden
 //   visible
+//   ignored/
+//     not-included
 //   subdir/
 //     subfile
 //       nesteddir/
 //         nestedfile
 //       node_modules/
 //         nestednodemodules
+//     ignored
+//        included
 //   node_modules
 //     subfile
 describe("fsAsync", () => {
@@ -24,18 +28,22 @@ describe("fsAsync", () => {
   const files = [
     ".hidden",
     "visible",
+    "ignored/not-included",
     "subdir/subfile",
     "subdir/nesteddir/nestedfile",
     "subdir/node_modules/nestednodemodules",
+    "subdir/ignored/included",
     "node_modules/subfile",
   ];
 
   before(() => {
     baseDir = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
     fs.mkdirSync(baseDir);
+    fs.mkdirSync(path.join(baseDir, "ignored"));
     fs.mkdirSync(path.join(baseDir, "subdir"));
     fs.mkdirSync(path.join(baseDir, "subdir", "nesteddir"));
     fs.mkdirSync(path.join(baseDir, "subdir", "node_modules"));
+    fs.mkdirSync(path.join(baseDir, "subdir", "ignored"));
     fs.mkdirSync(path.join(baseDir, "node_modules"));
     for (const file of files) {
       fs.writeFileSync(path.join(baseDir, file), file);
@@ -72,12 +80,13 @@ describe("fsAsync", () => {
     it("supports blob rules", async () => {
       const results = await fsAsync.readdirRecursive({
         path: baseDir,
-        ignore: ["**/node_modules/**"],
+        ignore: ["**/node_modules/**", "ignored/*"],
       });
 
       const gotFileNames = results.map((r) => r.name).sort();
       const expectFiles = files
         .filter((file) => !file.includes("node_modules"))
+        .filter((file) => !file.includes("not-included"))
         .map((file) => path.join(baseDir, file))
         .sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);

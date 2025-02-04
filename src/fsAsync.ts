@@ -16,22 +16,24 @@ export interface ReaddirRecursiveFile {
 }
 
 async function readdirRecursiveHelper(options: {
+  basePath: string;
   path: string;
   filter: (p: string) => boolean;
 }): Promise<ReaddirRecursiveFile[]> {
-  const dirContents = readdirSync(options.path);
+  const dirContents = readdirSync(join(options.basePath, options.path));
   const fullPaths = dirContents.map((n) => join(options.path, n));
   const filteredPaths = fullPaths.filter((p) => !options.filter(p));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
   for (const p of filteredPaths) {
-    const fstat = statSync(p);
+    const name = join(options.basePath, p);
+    const fstat = statSync(name);
     if (fstat.isFile()) {
-      filePromises.push(Promise.resolve({ name: p, mode: fstat.mode }));
+      filePromises.push(Promise.resolve({ name, mode: fstat.mode }));
     }
     if (!fstat.isDirectory()) {
       continue;
     }
-    filePromises.push(readdirRecursiveHelper({ path: p, filter: options.filter }));
+    filePromises.push(readdirRecursiveHelper({ ...options, path: p }));
   }
 
   const files = await Promise.all(filePromises);
@@ -58,7 +60,8 @@ export async function readdirRecursive(
     });
   };
   return readdirRecursiveHelper({
-    path: options.path,
+    basePath: options.path,
+    path: ".",
     filter: filter,
   });
 }
