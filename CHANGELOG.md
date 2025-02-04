@@ -1,3 +1,4 @@
+- Fixed issue where Extensions deployment fails due to `*.firebasestorage.app` not being recognized as a valid Storage bucket name. (#8152)
 - Fixes issue with custom 404 pages not being returned in Next.js in the emulator (#8035).
 - Annotate onCallGenkit functions to allow for future Firebase Console annotations (#8135)
 - Adds genkit 1.0.0 template (#8144)
