@@ -46,7 +46,7 @@ function Welcome() {
   return (
     <>
       <Body>
-        No <code>{configLabel}</code> detected in this project
+        No <code>{configLabel.value}</code> detected in this project
       </Body>
       <Spacer size="medium" />
       <VSCodeButton
@@ -74,7 +74,7 @@ function EmulatorsPanel() {
         <>
           <Spacer size="medium"></Spacer>
           <label>
-            Emulator start-up may take a while. In case of error, click reset.
+            Emulator start-up is taking a while. In case of error, click refresh.
           </label>
           <VSCodeProgressRing></VSCodeProgressRing>
           <Spacer size="medium"></Spacer>
@@ -85,7 +85,7 @@ function EmulatorsPanel() {
               showResetPanel.value = false;
             }}
           >
-            Reset Emulator View
+            Refresh Emulator View
           </VSCodeButton>
         </>
       );
@@ -93,7 +93,8 @@ function EmulatorsPanel() {
     return runningPanel;
   }
 
-  return (emulatorsRunningInfo.value?.infos && emulatorsRunningInfo.value?.status === "running") ? (
+  return emulatorsRunningInfo.value?.infos &&
+    emulatorsRunningInfo.value?.status === "running" ? (
     <Emulators emulatorInfo={emulatorsRunningInfo.value.infos!} />
   ) : (
     <>
@@ -104,6 +105,13 @@ function EmulatorsPanel() {
         Start emulators
       </VSCodeButton>
       <Spacer size="xsmall" />
+      <Label level={3}>
+        <a onClick={() => {
+          broker.send("fdc.open-emulator-settings")
+        }}>
+          Configure emulator
+        </a>
+      </Label>
       <Label level={3}>
         See also:{" "}
         <a href="https://firebase.google.com/docs/emulator-suite">

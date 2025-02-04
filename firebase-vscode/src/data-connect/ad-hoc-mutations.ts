@@ -1,4 +1,4 @@
-import vscode, { Disposable, TelemetryLogger } from "vscode";
+import vscode, { Disposable } from "vscode";
 import {
   DocumentNode,
   GraphQLInputField,
@@ -16,10 +16,13 @@ import {
 import { checkIfFileExists, upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { dataConnectConfigs } from "./config";
+import { firstWhereDefined } from "../utils/signal";
+import {AnalyticsLogger} from "../analytics";
 
 export function registerAdHoc(
   dataConnectService: DataConnectService,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   const defaultScalarValues = {
     Any: "{}",
@@ -47,6 +50,7 @@ export function registerAdHoc(
   async function schemaReadData(
     document: DocumentNode,
     ast: ObjectTypeDefinitionNode,
+    documentPath: string,
   ) {
     // TODO(rrousselGit) - this is a temporary solution due to the lack of a "schema".
     // As such, we hardcoded the list of allowed primitives.
@@ -62,8 +66,12 @@ export function registerAdHoc(
       "Any",
     ]);
 
-    const basePath = vscode.workspace.rootPath + "/dataconnect/";
-    const filePath = vscode.Uri.file(`${basePath}${ast.name.value}_read.gql`);
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    const dataconnectConfig =
+      configs.tryReadValue?.findEnclosingServiceForPath(documentPath);
+
+    const basePath = dataconnectConfig?.path;
+    const filePath = vscode.Uri.file(`${basePath}/${ast.name.value}_read.gql`);
 
     // Recursively build a query for the object type.
     // Returns undefined if the query is empty.
@@ -123,7 +131,7 @@ export function registerAdHoc(
       const queryName = `${ast.name.value.charAt(0).toLowerCase()}${ast.name.value.slice(1)}s`;
 
       return `
-# This is a file for you to write an un-named queries. 
+# This is a file for you to write an un-named query.
 # Only one un-named query is allowed per file.
 query {
   ${queryName}${buildRecursiveObjectQuery(ast)!}
@@ -136,44 +144,42 @@ query {
    * File will be created (unsaved) in operations/ folder, with an auto-generated named based on the schema type
    * Mutation will be generated with all
    * */
-  async function schemaAddData(ast: ObjectTypeDefinitionNode) {
+  async function schemaAddData(
+    ast: ObjectTypeDefinitionNode,
+    documentPath: string,
+  ) {
     // generate content for the file
+    const introspect = await dataConnectService.introspect();
+    if (!introspect.data) {
+      vscode.window.showErrorMessage(
+        "Failed to generate mutation. Please check your compilation errors.",
+      );
+      return;
+    }
+    const schema = buildClientSchema(introspect.data);
+    const dataType = schema.getType(`${ast.name.value}_Data`);
+    if (!isInputObjectType(dataType)) {
+      return;
+    }
+
+    // get root where dataconnect.yaml lives
+    const configs = await firstWhereDefined(dataConnectConfigs);
+    const dataconnectConfig =
+      configs.tryReadValue?.findEnclosingServiceForPath(documentPath);
+    const basePath = dataconnectConfig?.path;
+
+    const filePath = vscode.Uri.file(
+      `${basePath}/${ast.name.value}_insert.gql`,
+    );
+
+    await upsertFile(filePath, () => {
     const preamble =
       "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
-    const introspect = (await dataConnectService.introspect())?.data;
-    const schema = buildClientSchema(introspect!);
-    const dataType = schema.getType(`${ast.name.value}_Data`);
-    if (!isInputObjectType(dataType)) return;
-
-    const adhocMutation = print(
-      await makeAdHocMutation(
-        Object.values(dataType.getFields()),
-        ast.name.value,
-      ),
-    );
-    const content = [preamble, adhocMutation].join("\n");
-    const basePath = vscode.workspace.rootPath + "/dataconnect/";
-    const filePath = vscode.Uri.file(`${basePath}${ast.name.value}_insert.gql`);
-    const doesFileExist = await checkIfFileExists(filePath);
-
-    if (!doesFileExist) {
-      // opens unsaved text document with name "[mutationName]_insert.gql"
-
-      vscode.workspace
-        .openTextDocument(filePath.with({ scheme: "untitled" }))
-        .then((doc) => {
-          vscode.window.showTextDocument(doc).then((openDoc) => {
-            openDoc.edit((edit) => {
-              edit.insert(new vscode.Position(0, 0), content);
-            });
-          });
-        });
-    } else {
-      // Opens existing text document
-      vscode.workspace.openTextDocument(filePath).then((doc) => {
-        vscode.window.showTextDocument(doc);
-      });
-    }
+      const adhocMutation = print(
+        makeAdHocMutation(Object.values(dataType.getFields()), ast.name.value),
+      );
+      return [preamble, adhocMutation].join("\n");
+    });
   }
 
   function makeAdHocMutation(
@@ -185,7 +191,9 @@ query {
     for (const field of fields) {
       const type = getNamedType(field.type);
       const defaultValue = getDefaultScalarValue(type.name);
-      if (!defaultValue) continue;
+      if (!defaultValue) {
+        continue;
+      }
 
       argumentFields.push({
         kind: Kind.OBJECT_FIELD,
@@ -202,7 +210,10 @@ query {
         selections: [
           {
             kind: Kind.FIELD,
-            name: { kind: Kind.NAME, value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert` },
+            name: {
+              kind: Kind.NAME,
+              value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert`,
+            },
             arguments: [
               {
                 kind: Kind.ARGUMENT,
@@ -251,16 +262,16 @@ query {
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",
-      (ast) => {
-        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.ADD_DATA);
-        schemaAddData(ast);
+      (ast, uri) => {
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.ADD_DATA);
+        schemaAddData(ast, uri);
       },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaReadData",
-      (document, ast) => {
-        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.READ_DATA);
-        schemaReadData(document, ast);
+      (document, ast, uri) => {
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.READ_DATA);
+        schemaReadData(document, ast, uri);
       },
     ),
   );

@@ -13,7 +13,7 @@ import {
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
   getBackendForAmbiguousLocation,
-} from "./index";
+} from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 
@@ -136,12 +136,6 @@ describe("apphosting setup functions", () => {
       expect(updateTrafficStub).to.be.calledWith(projectId, location, backendId, {
         rolloutPolicy: {
           codebaseBranch: "main",
-          stages: [
-            {
-              progression: "IMMEDIATE",
-              targetPercent: 100,
-            },
-          ],
         },
       });
     });

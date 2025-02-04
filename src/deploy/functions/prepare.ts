@@ -48,6 +48,7 @@ import { assertExhaustive } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
+import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -239,6 +240,8 @@ export async function prepare(
   // ===Phase 5. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
+
+  await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
 
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
@@ -494,4 +497,39 @@ export async function loadCodebases(
     wantBuilds[codebase].runtime = codebaseConfig.runtime;
   }
   return wantBuilds;
+}
+
+// Genkit almost always requires an API key, so warn if the customer is about to deploy
+// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+// deploy of the function.
+export async function warnIfNewGenkitFunctionIsMissingSecrets(
+  have: backend.Backend,
+  want: backend.Backend,
+  options: DeployOptions,
+) {
+  if (options.force) {
+    return;
+  }
+
+  const newAndMissingSecrets = backend.allEndpoints(
+    backend.matchingBackend(want, (e) => {
+      if (!backend.isCallableTriggered(e) || !e.callableTrigger.genkitAction) {
+        return false;
+      }
+      if (e.secretEnvironmentVariables?.length) {
+        return false;
+      }
+      return !backend.hasEndpoint(have)(e);
+    }),
+  );
+
+  if (newAndMissingSecrets.length) {
+    const message =
+      `The function(s) ${newAndMissingSecrets.map((e) => e.id).join(", ")} use Genkit but do not have access to a secret. ` +
+      "This may cause the function to fail if it depends on an API key. To learn more about granting a function access to " +
+      "secrets, see https://firebase.google.com/docs/functions/config-env?gen=2nd#secret_parameters. Continue?";
+    if (!(await prompt.confirm({ message, nonInteractive: options.nonInteractive }))) {
+      throw new FirebaseError("Aborted");
+    }
+  }
 }

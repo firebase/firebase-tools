@@ -10,6 +10,8 @@ import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
 
+import { Secret } from "../yaml";
+
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
   let utils: sinon.SinonStubbedInstance<typeof utilsImport>;
@@ -254,6 +256,43 @@ describe("secrets", () => {
 
       expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
       expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, newBindings);
+    });
+  });
+
+  describe("fetchSecrets", () => {
+    const projectId = "randomProject";
+    it("correctly attempts to fetch secret and it's version", async () => {
+      const secretSource: Secret[] = [
+        {
+          variable: "PINNED_API_KEY",
+          secret: "myApiKeySecret@5",
+        },
+      ];
+
+      gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
+      await secrets.fetchSecrets(projectId, secretSource);
+
+      expect(gcsm.accessSecretVersion).calledOnce;
+      expect(gcsm.accessSecretVersion).calledWithExactly(projectId, "myApiKeySecret", "5");
+    });
+
+    it("fetches latest version if version not explicitely provided", async () => {
+      const secretSource: Secret[] = [
+        {
+          variable: "VERBOSE_API_KEY",
+          secret: "projects/test-project/secrets/secretID",
+        },
+      ];
+
+      gcsm.accessSecretVersion.returns(Promise.resolve("some-value"));
+      await secrets.fetchSecrets(projectId, secretSource);
+
+      expect(gcsm.accessSecretVersion).calledOnce;
+      expect(gcsm.accessSecretVersion).calledWithExactly(
+        projectId,
+        "projects/test-project/secrets/secretID",
+        "latest",
+      );
     });
   });
 });

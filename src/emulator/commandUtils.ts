@@ -468,8 +468,9 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
-  } catch {
+  } catch (err: unknown) {
     await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+    throw err;
   } finally {
     await controller.cleanShutdown();
   }
@@ -582,5 +583,5 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools no longer supports Java version before 11. " +
-  "Please upgrade to Java version 11 or above to continue using the emulators.";
+  "firebase-tools no longer supports Java versions before 11. " +
+  "Please install a JDK at version 11 or above to get a compatible runtime.";

@@ -1,5 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
+import * as fs from "fs-extra";
 
 import * as init from "./index";
 import { Config } from "../../../config";
@@ -17,9 +18,11 @@ describe("init dataconnect", () => {
     const sandbox = sinon.createSandbox();
     let provisionCSQLStub: sinon.SinonStub;
     let askWriteProjectFileStub: sinon.SinonStub;
+    let ensureSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
+      ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
     });
 
     afterEach(() => {
@@ -33,6 +36,7 @@ describe("init dataconnect", () => {
       expectedSource: string;
       expectedFiles: string[];
       expectCSQLProvisioning: boolean;
+      expectEnsureSchemaGQL: boolean;
     }[] = [
       {
         desc: "empty project should generate template",
@@ -47,14 +51,16 @@ describe("init dataconnect", () => {
           "dataconnect/connector/mutations.gql",
         ],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
-        desc: "exiting project should use existing directory",
+        desc: "existing project should use existing directory",
         requiredInfo: mockRequiredInfo(),
         config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
         expectedFiles: ["not-dataconnect/dataconnect.yaml"],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write schema files",
@@ -70,6 +76,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write connector files",
@@ -95,6 +102,7 @@ describe("init dataconnect", () => {
           "dataconnect/hello/queries.gql",
         ],
         expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: false,
       },
       {
         desc: "should provision cloudSQL resources ",
@@ -111,6 +119,22 @@ describe("init dataconnect", () => {
           "dataconnect/connector/mutations.gql",
         ],
         expectCSQLProvisioning: true,
+        expectEnsureSchemaGQL: false,
+      },
+      {
+        desc: "should handle schema with no files",
+        requiredInfo: mockRequiredInfo({
+          schemaGql: [],
+        }),
+        config: mockConfig({
+          dataconnect: {
+            source: "dataconnect",
+          },
+        }),
+        expectedSource: "dataconnect",
+        expectedFiles: ["dataconnect/dataconnect.yaml"],
+        expectCSQLProvisioning: false,
+        expectEnsureSchemaGQL: true,
       },
     ];
 
@@ -129,8 +153,46 @@ describe("init dataconnect", () => {
           c.requiredInfo,
         );
         expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
+        if (c.expectEnsureSchemaGQL) {
+          expect(ensureSyncStub).to.have.been.calledWith("dataconnect/schema/schema.gql");
+        }
         expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
         expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
+      });
+    }
+  });
+
+  describe("toDNSCompatibleId", () => {
+    const cases: { description: string; input: string; expected: string }[] = [
+      {
+        description: "Should noop compatible strings",
+        input: "this-is-compatible",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should lower case",
+        input: "This-Is-Compatible",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should strip special characters",
+        input: "this-is-compatible?~!@#$%^&*()_+=",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should strip trailing and leading -",
+        input: "---this-is-compatible---",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should cut to 63 characters",
+        input: "a".repeat(1000),
+        expected: "a".repeat(63),
+      },
+    ];
+    for (const c of cases) {
+      it(c.description, () => {
+        expect(init.toDNSCompatibleId(c.input)).to.equal(c.expected);
       });
     }
   });

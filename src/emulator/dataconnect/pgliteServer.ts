@@ -1,12 +1,14 @@
 // https://github.com/supabase-community/pg-gateway
 
-import { PGlite } from "@electric-sql/pglite";
+import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
+import * as fs from "fs";
+
 import {
   getMessages,
   type PostgresConnection,
@@ -15,15 +17,33 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
+import { hasMessage } from "../../error";
+import { StringDecoder } from "node:string_decoder";
+
+export const TRUNCATE_TABLES_SQL = `
+DO $do$
+DECLARE _clear text;
+BEGIN
+   SELECT 'TRUNCATE TABLE ' || string_agg(oid::regclass::text, ', ') || ' CASCADE'
+    FROM   pg_class
+    WHERE  relkind = 'r'
+    AND    relnamespace = 'public'::regnamespace
+   INTO _clear;
+  EXECUTE COALESCE(_clear, 'select now()');
+END
+$do$;`;
 
 export class PostgresServer {
-  private username: string;
-  private database: string;
+  private dataDirectory?: string;
+  private importPath?: string;
+  private debug: DebugLevel;
 
-  public db: PGlite | undefined;
+  public db: PGlite | undefined = undefined;
+  private server: net.Server | undefined = undefined;
+
   public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
-    const db: PGlite = await this.getDb();
-    await db.waitReady;
+    const getDb = this.getDb.bind(this);
+
     const server = net.createServer(async (socket) => {
       const connection: PostgresConnection = await fromNodeSocket(socket, {
         serverVersion: "16.3 (PGlite 0.2.0)",
@@ -33,6 +53,12 @@ export class PostgresServer {
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             return;
+          }
+          const db = await getDb();
+          if (data[0] === FrontendMessageCode.Terminate) {
+            // When the frontend terminates a connection, throw out all prepared statements
+            // because the next client won't know about them (and may create overlapping statements)
+            await db.query("DEALLOCATE ALL");
           }
           const result = await db.execProtocolRaw(data);
           // Extended query patch removes the extra Ready for Query messages that
@@ -50,41 +76,84 @@ export class PostgresServer {
         server.emit("error", err);
       });
     });
+    this.server = server;
+
     const listeningPromise = new Promise<void>((resolve) => {
       server.listen(port, host, () => {
         resolve();
       });
     });
-    await db.waitReady;
     await listeningPromise;
     return server;
   }
 
   async getDb(): Promise<PGlite> {
-    if (this.db) {
-      return this.db;
+    if (!this.db) {
+      // Not all schemas will need vector installed, but we don't have an good way
+      // to swap extensions after starting PGLite, so we always include it.
+      const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
+      const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
+      const pgliteArgs: PGliteOptions = {
+        debug: this.debug,
+        extensions: {
+          vector,
+          uuidOssp,
+        },
+        dataDir: this.dataDirectory,
+      };
+      if (this.importPath) {
+        logger.debug(`Importing from ${this.importPath}`);
+        const rf = fs.readFileSync(this.importPath);
+        const file = new File([rf], this.importPath);
+        pgliteArgs.loadDataDir = file;
+      }
+      this.db = await this.forceCreateDB(pgliteArgs);
+      await this.db.waitReady;
     }
-    // Not all schemas will need vector installed, but we don't have an good way
-    // to swap extensions after starting PGLite, so we always include it.
-    const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
-    const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
-    return PGlite.create({
-      username: this.username,
-      database: this.database,
-      debug: 0,
-      extensions: {
-        vector,
-        uuidOssp,
-      },
-      // TODO:  Use dataDir + loadDataDir to implement import/export.
-      // dataDir?: string;
-      // loadDataDir?: Blob | File;
-    });
+    return this.db;
   }
 
-  constructor(database: string, username: string) {
-    this.username = username;
-    this.database = database;
+  public async clearDb(): Promise<void> {
+    const db = await this.getDb();
+    await db.query(TRUNCATE_TABLES_SQL);
+  }
+
+  public async exportData(exportPath: string): Promise<void> {
+    const db = await this.getDb();
+    const dump = await db.dumpDataDir();
+    const arrayBuff = await dump.arrayBuffer();
+    fs.writeFileSync(exportPath, new Uint8Array(arrayBuff));
+  }
+
+  async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
+    try {
+      const db = await PGlite.create(pgliteArgs);
+      return db;
+    } catch (err: unknown) {
+      if (pgliteArgs.dataDir && hasMessage(err) && /Database already exists/.test(err.message)) {
+        // Clear out the current pglite data
+        fs.rmSync(pgliteArgs.dataDir, { force: true, recursive: true });
+        const db = await PGlite.create(pgliteArgs);
+        return db;
+      }
+      throw err;
+    }
+  }
+
+  public async stop(): Promise<void> {
+    if (this.db) {
+      await this.db.close();
+    }
+    if (this.server) {
+      this.server.close();
+    }
+    return;
+  }
+
+  constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
+    this.dataDirectory = args.dataDirectory;
+    this.importPath = args.importPath;
+    this.debug = args.debug ? 5 : 0;
   }
 }
 
@@ -101,7 +170,9 @@ export class PGliteExtendedQueryPatch {
       FrontendMessageCode.Bind,
       FrontendMessageCode.Close,
     ];
-
+    const decoder = new StringDecoder();
+    const decoded = decoder.write(message as any as Buffer);
+    logger.debug(decoded);
     if (pipelineStartMessages.includes(message[0])) {
       this.isExtendedQuery = true;
     }

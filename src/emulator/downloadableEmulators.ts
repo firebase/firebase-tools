@@ -9,7 +9,7 @@ import {
 } from "./types";
 import { Constants } from "./constants";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, hasMessage } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.5.1",
-          expectedSize: 25289472,
-          expectedChecksum: "92c425072db66c7e2cfa40b703ed807b",
+          version: "1.7.7",
+          expectedSize: 25359104,
+          expectedChecksum: "c5481addc04e14d10538add7aabda183",
         }
       : process.platform === "win32"
         ? {
-            version: "1.5.1",
-            expectedSize: 25720320,
-            expectedChecksum: "2a5c654770233b740980d5f98f24be73",
+            version: "1.7.7",
+            expectedSize: 25788416,
+            expectedChecksum: "9f7e5b9bcbca47de509fbc26cc1e0fa8",
           }
         : {
-            version: "1.5.1",
-            expectedSize: 25202840,
-            expectedChecksum: "f95156cbcac237268791638ea0eb10e7",
+            version: "1.7.7",
+            expectedSize: 25268376,
+            expectedChecksum: "fb239ecf5dcbf87b762d12a3e9dee012",
           },
 };
 
@@ -281,8 +281,8 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     shell: true,
   },
   ui: {
-    binary: "node",
-    args: [getExecPath(Emulators.UI)],
+    binary: "",
+    args: [],
     optionalArgs: [],
     joinArgs: false,
     shell: false,
@@ -468,6 +468,14 @@ async function _runBinary(
           emulator.name,
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`,
         );
+      } else if (isIncomaptibleArchError(e)) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          `Unknown system error when starting emulator binary. ` +
+            `You may be able to fix this by installing Rosetta: ` +
+            `softwareupdate --install-rosetta`,
+        );
       }
       _fatal(emulator.name, e);
     }
@@ -644,4 +652,12 @@ export async function start(
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
   return _runBinary(emulator, command, extraEnv);
+}
+
+export function isIncomaptibleArchError(err: unknown): boolean {
+  return (
+    hasMessage(err) &&
+    /Unknown system error/.test(err.message ?? "") &&
+    process.platform === "darwin"
+  );
 }

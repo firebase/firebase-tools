@@ -11,7 +11,7 @@ import {
   getFreeTrialInstanceId,
   freeTrialTermsLink,
   printFreeTrialUnavailable,
-  checkFreeTrialInstanceUsed,
+  isFreeTrialError,
 } from "./freeTrial";
 import { FirebaseError } from "../error";
 
@@ -69,11 +69,7 @@ export async function provisionCloudSql(args: {
     if (err.status !== 404) {
       throw err;
     }
-    const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
-    if (await checkFreeTrialInstanceUsed(projectId)) {
-      printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
-      throw new FirebaseError("No-cost Cloud SQL trial has already been used on this project.");
-    }
+    cmekWarning();
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     silent ||
       utils.logLabeledBullet(
@@ -84,27 +80,36 @@ export async function provisionCloudSql(args: {
           `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
       );
     if (!dryRun) {
-      const newInstance = await promiseWithSpinner(
-        () =>
-          cloudSqlAdminClient.createInstance(
-            projectId,
-            locationId,
-            instanceId,
-            enableGoogleMlIntegration,
-            waitForCreation,
-          ),
-        "Creating your instance...",
-      );
-      if (newInstance) {
-        silent || utils.logLabeledBullet("dataconnect", "Instance created");
-        connectionName = newInstance?.connectionName || "";
-      } else {
-        silent ||
-          utils.logLabeledBullet(
-            "dataconnect",
-            "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
-          );
-        return connectionName;
+      try {
+        const newInstance = await promiseWithSpinner(
+          () =>
+            cloudSqlAdminClient.createInstance(
+              projectId,
+              locationId,
+              instanceId,
+              enableGoogleMlIntegration,
+              waitForCreation,
+            ),
+          "Creating your instance...",
+        );
+        if (newInstance) {
+          silent || utils.logLabeledBullet("dataconnect", "Instance created");
+          connectionName = newInstance?.connectionName || "";
+        } else {
+          silent ||
+            utils.logLabeledBullet(
+              "dataconnect",
+              "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+            );
+          return connectionName;
+        }
+      } catch (err: any) {
+        if (await isFreeTrialError(err, projectId)) {
+          const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
+          printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
+          throw new FirebaseError("No-cost Cloud SQL trial has already been used on this project.");
+        }
+        throw err;
       }
     }
   }
@@ -177,4 +182,12 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   }
 
   return reason;
+}
+
+function cmekWarning() {
+  const message =
+    "The no-cost Cloud SQL trial instance does not support customer managed encryption keys.\n" +
+    "If you'd like to use a CMEK to encrypt your data, first create a CMEK encrypted instance (https://cloud.google.com/sql/docs/postgres/configure-cmek#createcmekinstance).\n" +
+    "Then, edit your `dataconnect.yaml` file to use the encrypted instance and redeploy.";
+  utils.logLabeledWarning("dataconnect", message);
 }

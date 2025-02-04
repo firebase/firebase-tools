@@ -1,1 +1,3 @@
-- Add support for deploying new blocking triggers. (#6384)
+- Fixes issue with custom 404 pages not being returned in Next.js in the emulator (#8035).
+- Annotate onCallGenkit functions to allow for future Firebase Console annotations (#8135)
+- Adds genkit 1.0.0 template (#8144)

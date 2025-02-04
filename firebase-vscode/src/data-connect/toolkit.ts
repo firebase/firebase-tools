@@ -10,6 +10,7 @@ import { DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
 import { Config } from "../config";
 import { RC } from "../rc";
 import { findOpenPort } from "../utils/port_utils";
+import { pluginLogger } from "../logger-wrapper";
 
 const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
@@ -46,10 +47,12 @@ export class DataConnectToolkit implements vscode.Disposable {
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
     };
+    pluginLogger.info(`Starting Data Connect toolkit on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
   }
 
   async stopFDCToolkit() {
+    pluginLogger.info(`Stopping Data Connect toolkit`);
     return DataConnectToolkitController.stop();
   }
 
@@ -65,26 +68,13 @@ export class DataConnectToolkit implements vscode.Disposable {
     return this.getFDCToolkitURL() + "/docs";
   }
 
-  readonly isPostgresEnabled = signal(false);
   private readonly subs: Array<() => void> = [];
-
-  // on schema reload, restart language server and run introspection again
-  private async schemaReload() {
-    vscode.commands.executeCommand("fdc-graphql.restart");
-    vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
-  }
 
   // Commands to run after the emulator is started successfully
   private async connectToToolkit() {
     vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
 
     const configs = dataConnectConfigs.value?.tryReadValue!;
-    runEmulatorIssuesStream(
-      configs,
-      this.getFDCToolkitURL(),
-      this.isPostgresEnabled,
-      this.schemaReload,
-    );
     runDataConnectCompiler(configs, this.getFDCToolkitURL());
   }
 

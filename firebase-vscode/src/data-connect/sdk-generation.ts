@@ -11,26 +11,47 @@ import { ConnectorYaml, Platform } from "../../../src/dataconnect/types";
 import * as yaml from "yaml";
 import * as fs from "fs-extra";
 import { getSettings } from "../utils/settings";
-import { FDC_APP_FOLDER, generateSdkYaml } from "../../../src/init/features/dataconnect/sdk";
+import {
+  FDC_APP_FOLDER,
+  generateSdkYaml,
+} from "../../../src/init/features/dataconnect/sdk";
+import { createE2eMockable } from "../utils/test_hooks";
+import { AnalyticsLogger} from "../analytics";
 
 export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: vscode.TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): vscode.Disposable {
   const settings = getSettings();
 
-  const initSdkCmd = vscode.commands.registerCommand("fdc.init-sdk", (args: { appFolder: string }) => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
-    // Lets do it from the right directory
-    setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
-    runCommand(`${settings.firebasePath} init dataconnect:sdk`);
-  });
+  // For testing purposes.
+  const selectFolderSpy = createE2eMockable(
+    async () => {
+      return selectAppFolder();
+    },
+    "select-folder",
+    async () => {
+      return Promise.resolve("src/test/test_projects/fishfood/test-node-app");
+    },
+  );
+
+  const initSdkCmd = vscode.commands.registerCommand(
+    "fdc.init-sdk",
+    (args: { appFolder: string }) => {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
+      // Lets do it from the right directory
+      setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
+      runCommand(`${settings.firebasePath} init dataconnect:sdk`);
+    },
+  );
 
   // codelense from inside connector.yaml file
   const configureSDKCodelense = vscode.commands.registerCommand(
     "fdc.connector.configure-sdk",
     async (connectorConfig) => {
-      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CODELENSE);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.INIT_SDK_CODELENSE,
+      );
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
       );
@@ -42,7 +63,7 @@ export function registerFdcSdkGeneration(
   const configureSDK = vscode.commands.registerCommand(
     "fdc.configure-sdk",
     async () => {
-      telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK);
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK);
       const configs = await firstWhereDefined(dataConnectConfigs).then(
         (c) => c.requireValue,
       );
@@ -64,9 +85,8 @@ export function registerFdcSdkGeneration(
           ? connectorIds[0]
           : await pickConnector(connectorIds);
       if (pickedConnectorId) {
-        const connectorConfig = serviceConfig?.findConnectorById(
-          pickedConnectorId,
-        );
+        const connectorConfig =
+          serviceConfig?.findConnectorById(pickedConnectorId);
         if (connectorConfig) {
           await openAndWriteYaml(connectorConfig);
         }
@@ -84,7 +104,7 @@ export function registerFdcSdkGeneration(
     // open connector.yaml file
     await vscode.window.showTextDocument(connectorYamlPath);
 
-    const appFolder = await selectAppFolder();
+    const appFolder = await selectFolderSpy.call();
     if (appFolder) {
       await writeYaml(
         appFolder,
@@ -184,7 +204,7 @@ async function pickService(serviceIds: string[]): Promise<string | undefined> {
     });
   });
 
-  const picked = await vscode.window.showQuickPick<{label: string}>(options, {
+  const picked = await vscode.window.showQuickPick<{ label: string }>(options, {
     title: "Select service",
     canPickMany: false,
   });
@@ -207,10 +227,13 @@ async function pickConnector(
     });
   });
 
-  const picked = await vscode.window.showQuickPick<{label: string}>(options as any, {
-    title: `Select connector to generate SDK for.`,
-    canPickMany: false,
-  });
+  const picked = await vscode.window.showQuickPick<{ label: string }>(
+    options as any,
+    {
+      title: `Select connector to generate SDK for.`,
+      canPickMany: false,
+    },
+  );
 
   return picked?.label;
 }

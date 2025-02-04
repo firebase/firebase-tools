@@ -8,7 +8,7 @@ import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import { promptOnce } from "./prompt";
@@ -230,14 +230,14 @@ function open(url: string): void {
 
 // Always create a new error so that the stack is useful
 function invalidCredentialError(): FirebaseError {
-  return new FirebaseError(
+  const message =
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
-    { exit: 1 },
-  );
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci");
+  logger.error(message);
+  return new FirebaseError(message, { exit: 1 });
 }
 
 const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;
@@ -318,7 +318,7 @@ async function getTokensFromAuthorizationCode(
       headers: form.getHeaders(),
       skipLog: { body: true, queryParams: true, resBody: true },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Error) {
       logger.debug("Token Fetch Error:", err.stack || "");
     } else {
@@ -515,7 +515,7 @@ async function loginWithLocalhost<ResultType>(
         const tokens = await getTokens(queryCode, callbackUrl);
         respondHtml(req, res, 200, successHtml);
         resolve(tokens);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(err);
@@ -565,6 +565,15 @@ export function loggedIn() {
   return !!lastAccessToken;
 }
 
+export function isExpired(tokens: Tokens | undefined): boolean {
+  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.expires_at;
+  if (hasExpiration(tokens)) {
+    return !(tokens && tokens.expires_at && tokens.expires_at > Date.now());
+  } else {
+    return !tokens;
+  }
+}
+
 export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
@@ -579,8 +588,8 @@ export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   const hasSameScopes = oldScopesJSON === newScopesJSON;
   // To avoid token expiration in the middle of a long process we only hand out
   // tokens if they have a _long_ time before the server rejects them.
-  const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
-  const valid = hasTokens && hasSameScopes && !isExpired;
+  const expired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
+  const valid = hasTokens && hasSameScopes && !expired;
   if (hasTokens) {
     logger.debug(
       `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
@@ -730,8 +739,8 @@ export async function getAccessToken(refreshToken: string, authScopes: string[])
   } else {
     try {
       return refreshAuth();
-    } catch (err: any) {
-      logger.debug(`Unable to refresh token: ${err}`);
+    } catch (err: unknown) {
+      logger.debug(`Unable to refresh token: ${getErrMsg(err)}`);
     }
     throw new FirebaseError("Unable to getAccessToken");
   }

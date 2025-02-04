@@ -1,149 +1,167 @@
-import * as emulatorUtils from "../../utils";
-import * as fsExtra from "fs-extra";
 import * as path from "path";
-import * as utils from "./utils";
+import * as utils from "./developmentServer";
 
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { getLocalAppHostingConfiguration, loadAppHostingYaml } from "./config";
-
-const SAMPLE_APPHOSTING_YAML_CONFIG_ONE = {
-  env: [
-    {
-      variable: "STORAGE_BUCKET",
-      value: "mybucket.appspot.com",
-      availability: ["BUILD", "RUNTIME"],
-    },
-    {
-      variable: "API_KEY",
-      secret: "myApiKeySecret",
-    },
-    {
-      variable: "PINNED_API_KEY",
-      secret: "myApiKeySecret@5",
-    },
-    {
-      variable: "VERBOSE_API_KEY",
-      secret: "projects/test-project/secrets/secretID",
-    },
-    {
-      variable: "PINNED_VERBOSE_API_KEY",
-      secret: "projects/test-project/secrets/secretID/versions/5",
-    },
-  ],
-};
-
-const SAMPLE_APPHOSTING_YAML_CONFIG_TWO = {
-  env: [
-    {
-      variable: "randomEnvOne",
-      value: "envOne",
-    },
-    {
-      variable: "randomEnvTwo",
-      value: "envTwo",
-    },
-    {
-      variable: "randomEnvThree",
-      value: "envThree",
-    },
-    { variable: "randomSecretOne", secret: "secretOne" },
-    { variable: "randomSecretTwo", secret: "secretTwo" },
-    { variable: "randomSecretThree", secret: "secretThree" },
-  ],
-};
-
-const SAMPLE_APPHOSTING_YAML_CONFIG_THREE = {
-  env: [
-    {
-      variable: "randomEnvOne",
-      value: "envOne",
-    },
-    {
-      variable: "randomEnvTwo",
-      value: "blah",
-    },
-    {
-      variable: "randomEnvFour",
-      value: "envFour",
-    },
-    { variable: "randomSecretOne", secret: "bleh" },
-    { variable: "randomSecretTwo", secret: "secretTwo" },
-    { variable: "randomSecretFour", secret: "secretFour" },
-  ],
-};
+import { getLocalAppHostingConfiguration } from "./config";
+import * as configImport from "../../apphosting/config";
+import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 describe("environments", () => {
-  let pathExistsStub: sinon.SinonStub;
   let joinStub: sinon.SinonStub;
   let loggerStub: sinon.SinonStub;
-  let readFileFromDirectoryStub: sinon.SinonStub;
-  let wrappedSafeLoadStub: sinon.SinonStub;
+  let loadAppHostingYamlStub: sinon.SinonStub;
+  let listAppHostingFilesInPathStub: sinon.SinonStub;
+
+  // Configs used for stubs
+  const apphostingYamlConfigOne = AppHostingYamlConfig.empty();
+  apphostingYamlConfigOne.addEnvironmentVariable({
+    variable: "randomEnvOne",
+    value: "ENV_ONE_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addEnvironmentVariable({
+    variable: "randomEnvTwo",
+    value: "ENV_TWO_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addEnvironmentVariable({
+    variable: "randomEnvThree",
+    value: "ENV_THREE_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretOne",
+    secret: "SECRET_ONE_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretTwo",
+    secret: "SECRET_TWO_FROM_CONFIG_ONE",
+  });
+  apphostingYamlConfigOne.addSecret({
+    variable: "randomSecretThree",
+    secret: "SECRET_THREE_FROM_CONFIG_ONE",
+  });
+
+  const apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
+  apphostingYamlConfigTwo.addEnvironmentVariable({
+    variable: "randomEnvOne",
+    value: "ENV_ONE_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addEnvironmentVariable({
+    variable: "randomEnvTwo",
+    value: "ENV_TWO_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addEnvironmentVariable({
+    variable: "randomEnvFour",
+    value: "ENV_FOUR_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretOne",
+    secret: "SECRET_ONE_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretTwo",
+    secret: "SECRET_TWO_FROM_CONFIG_TWO",
+  });
+  apphostingYamlConfigTwo.addSecret({
+    variable: "randomSecretFour",
+    secret: "SECRET_FOUR_FROM_CONFIG_TWO",
+  });
 
   beforeEach(() => {
-    pathExistsStub = sinon.stub(fsExtra, "pathExists");
+    loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
     joinStub = sinon.stub(path, "join");
     loggerStub = sinon.stub(utils, "logger");
-    readFileFromDirectoryStub = sinon.stub(emulatorUtils, "readFileFromDirectory");
-    wrappedSafeLoadStub = sinon.stub(emulatorUtils, "wrappedSafeLoad");
+    listAppHostingFilesInPathStub = sinon.stub(configImport, "listAppHostingFilesInPath");
   });
 
   afterEach(() => {
-    pathExistsStub.restore();
     joinStub.restore();
     loggerStub.restore();
-    readFileFromDirectoryStub.restore();
-    wrappedSafeLoadStub.restore();
-  });
-
-  describe("loadAppHostingYaml", () => {
-    it("should return a configuration in the correct format", async () => {
-      readFileFromDirectoryStub.returns({ source: "blah" });
-      wrappedSafeLoadStub.returns(SAMPLE_APPHOSTING_YAML_CONFIG_ONE);
-
-      const res = await loadAppHostingYaml("test", "test.yaml");
-      expect(JSON.stringify(res)).to.equal(
-        JSON.stringify({
-          environmentVariables: {
-            STORAGE_BUCKET: "mybucket.appspot.com",
-          },
-          secrets: {
-            API_KEY: "myApiKeySecret",
-            PINNED_API_KEY: "myApiKeySecret@5",
-            VERBOSE_API_KEY: "projects/test-project/secrets/secretID",
-            PINNED_VERBOSE_API_KEY: "projects/test-project/secrets/secretID/versions/5",
-          },
-        }),
-      );
-    });
+    sinon.verifyAndRestore();
   });
 
   describe("getLocalAppHostingConfiguration", () => {
+    it("should return an empty config if no base or local apphosting yaml files found", async () => {
+      listAppHostingFilesInPathStub.returns([]);
+
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
+      expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(JSON.stringify([]));
+      expect(JSON.stringify(apphostingConfig.secrets)).to.equal(JSON.stringify([]));
+    });
+
+    it("should return local config if only local config found", async () => {
+      listAppHostingFilesInPathStub.returns(["/parent/apphosting.local.yaml"]);
+      loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigOne);
+
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
+
+      expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
+        ]),
+      );
+
+      expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
+        ]),
+      );
+    });
+
+    it("should return base config if only base config found", async () => {
+      listAppHostingFilesInPathStub.returns(["/parent/apphosting.yaml"]);
+      loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigOne);
+
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
+
+      expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
+        ]),
+      );
+
+      expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_ONE" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
+        ]),
+      );
+    });
+
     it("should combine apphosting yaml files according to precedence", async () => {
-      pathExistsStub.returns(true);
-      readFileFromDirectoryStub.returns({ source: "blah" });
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
 
       // Second config takes precedence
-      wrappedSafeLoadStub.onFirstCall().returns(SAMPLE_APPHOSTING_YAML_CONFIG_TWO);
-      wrappedSafeLoadStub.onSecondCall().returns(SAMPLE_APPHOSTING_YAML_CONFIG_THREE);
+      loadAppHostingYamlStub.onFirstCall().returns(apphostingYamlConfigTwo);
+      loadAppHostingYamlStub.onSecondCall().returns(apphostingYamlConfigOne);
 
-      const apphostingConfig = await getLocalAppHostingConfiguration("test");
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
 
-      expect(JSON.stringify(apphostingConfig)).to.equal(
-        JSON.stringify({
-          environmentVariables: {
-            randomEnvOne: "envOne",
-            randomEnvTwo: "blah",
-            randomEnvThree: "envThree",
-            randomEnvFour: "envFour",
-          },
-          secrets: {
-            randomSecretOne: "bleh",
-            randomSecretTwo: "secretTwo",
-            randomSecretThree: "secretThree",
-            randomSecretFour: "secretFour",
-          },
-        }),
+      expect(JSON.stringify(apphostingConfig.environmentVariables)).to.equal(
+        JSON.stringify([
+          { variable: "randomEnvOne", value: "ENV_ONE_FROM_CONFIG_TWO" },
+          { variable: "randomEnvTwo", value: "ENV_TWO_FROM_CONFIG_TWO" },
+          { variable: "randomEnvThree", value: "ENV_THREE_FROM_CONFIG_ONE" },
+          { variable: "randomEnvFour", value: "ENV_FOUR_FROM_CONFIG_TWO" },
+        ]),
+      );
+
+      expect(JSON.stringify(apphostingConfig.secrets)).to.equal(
+        JSON.stringify([
+          { variable: "randomSecretOne", secret: "SECRET_ONE_FROM_CONFIG_TWO" },
+          { variable: "randomSecretTwo", secret: "SECRET_TWO_FROM_CONFIG_TWO" },
+          { variable: "randomSecretThree", secret: "SECRET_THREE_FROM_CONFIG_ONE" },
+          { variable: "randomSecretFour", secret: "SECRET_FOUR_FROM_CONFIG_TWO" },
+        ]),
       );
     });
   });
