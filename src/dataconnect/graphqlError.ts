@@ -17,7 +17,7 @@ export function prettifyWithWorkaround(errs: GraphqlError[]): string {
   const table = new Table({
     head: ["Issue", "Workaround", "Reason"],
     style: { head: ["yellow"] },
-    colWidths: [75, 75, 75],
+    colWidths: [50, 50, 50],
     wordWrap: true,
   });
   for (const e of errs) {
