@@ -1,25 +1,57 @@
+import * as ora from "ora";
 import * as fs from "fs-extra";
-import * as path from "path";
 
 import { Command } from "../command";
 import {
   AppConfig,
+  AppConfigurationData,
+  AppMetadata,
   AppPlatform,
+  getAppConfig,
   getAppConfigFile,
   getAppPlatform,
-  getPlatform,
-  getSdkConfig,
-  getSdkOutputPath,
-  sdkInit,
-  SdkInitOptions,
-  writeConfigToFile,
+  listFirebaseApps,
 } from "../management/apps";
+import { needProjectId } from "../projectUtils";
+import { getOrPromptProject } from "../management/projects";
+import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
+import { promptOnce } from "../prompt";
 import { Options } from "../options";
 
-interface AppsSdkConfigOptions extends Options {
-  out?: string | boolean;
+function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
+  if (!apps.length) {
+    throw new FirebaseError(
+      `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
+        "associated with this Firebase project",
+    );
+  }
+}
+
+async function selectAppInteractively(
+  apps: AppMetadata[],
+  appPlatform: AppPlatform,
+): Promise<AppMetadata> {
+  checkForApps(apps, appPlatform);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const choices = apps.map((app: any) => {
+    return {
+      name:
+        `${app.displayName || app.bundleId || app.packageName}` +
+        ` - ${app.appId} (${app.platform})`,
+      value: app,
+    };
+  });
+
+  return await promptOnce({
+    type: "list",
+    message:
+      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
+      "app to get the configuration data:",
+    choices,
+  });
 }
 
 export const command = new Command("apps:sdkconfig [platform] [appId]")
@@ -28,66 +60,81 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       "[platform] can be IOS, ANDROID or WEB (case insensitive)",
   )
   .option("-o, --out [file]", "(optional) write config output to a file")
-  // Note: Command behaves weirdly with optional string flags - when `--out`, options.out is a boolean
-  // but when `--out myFile.json`, options.out is a string
   .before(requireAuth)
-  .action(
-    async (
-      platform: AppPlatform = AppPlatform.PLATFORM_UNSPECIFIED,
-      appId = "",
-      options: AppsSdkConfigOptions,
-    ): Promise<AppConfig> => {
-      const config = options.config;
-      const appDir = process.cwd();
-      if (platform === AppPlatform.PLATFORM_UNSPECIFIED) {
-        // Auto-detect platform based on current directory if not specified
-        platform = await getPlatform(appDir, config);
+  .action(async (platform = "", appId = "", options: Options): Promise<AppConfigurationData> => {
+    let appPlatform = getAppPlatform(platform);
+
+    if (!appId) {
+      let projectId = needProjectId(options);
+      if (options.nonInteractive && !projectId) {
+        throw new FirebaseError("Must supply app and project ids in non-interactive mode.");
+      } else if (!projectId) {
+        const result = await getOrPromptProject(options);
+        projectId = result.projectId;
       }
 
-      let sdkConfig: AppConfig | undefined;
-      while (sdkConfig === undefined) {
-        try {
-          sdkConfig = await getSdkConfig(options, getAppPlatform(platform), appId);
-        } catch (e) {
-          if ((e as Error).message.includes("associated with this Firebase project")) {
-            await sdkInit(platform, options as SdkInitOptions);
-          } else {
-            throw e;
-          }
-        }
+      const apps = await listFirebaseApps(projectId, appPlatform);
+      // Fail out early if there's no apps.
+      checkForApps(apps, appPlatform);
+      // if there's only one app, we don't need to prompt interactively
+      if (apps.length === 1) {
+        // If there's only one, use it.
+        appId = apps[0].appId;
+        appPlatform = apps[0].platform;
+      } else if (options.nonInteractive) {
+        // If there's > 1 and we're non-interactive, fail.
+        throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
+      } else {
+        // > 1, ask what the user wants.
+        const appMetadata: AppMetadata = await selectAppInteractively(apps, appPlatform);
+        appId = appMetadata.appId;
+        appPlatform = appMetadata.platform;
       }
+    }
 
-      let writeToFile = false;
-      let outputPath: string = "";
-      if (typeof options.out === "boolean") {
-        writeToFile = options.out;
-        outputPath = getSdkOutputPath(appDir, platform);
-      } else if (typeof options.out === "string") {
-        writeToFile = true;
-        outputPath = options.out;
+    let configData: AppConfig;
+    const spinner = ora(
+      `Downloading configuration data of your Firebase ${appPlatform} app`,
+    ).start();
+    try {
+      configData = await getAppConfig(appId, appPlatform);
+    } catch (err: unknown) {
+      spinner.fail();
+      throw err;
+    }
+    spinner.succeed();
+
+    const fileInfo = getAppConfigFile(configData, appPlatform);
+    if (appPlatform === AppPlatform.WEB) {
+      fileInfo.sdkConfig = configData;
+    }
+
+    if (options.out === undefined) {
+      logger.info(fileInfo.fileContents);
+      return fileInfo;
+    }
+
+    const shouldUseDefaultFilename = options.out === true || options.out === "";
+    const filename = shouldUseDefaultFilename ? ('configFilename' in configData && configData.configFilename || 'config.json') : options.out as string;
+    if (fs.existsSync(filename)) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(`${filename} already exists`);
       }
+      const overwrite = await promptOnce({
+        type: "confirm",
+        default: false,
+        message: `${filename} already exists. Do you want to overwrite?`,
+      });
 
-      if (writeToFile) {
-        const outputDir = path.dirname(outputPath!);
-        fs.mkdirpSync(outputDir);
-        const fileInfo = getAppConfigFile(sdkConfig, platform);
-        await writeConfigToFile(outputPath!, options.nonInteractive, fileInfo.fileContents);
-        if (platform === AppPlatform.WEB) {
-          logger.info(`
-        How to use your JS SDK Config:
-        ES Module:
-        import { initializeApp } from 'firebase/app';
-        import json from './firebase-js-config.json';
-        initializeApp(json);
-        // CommonJS Module:
-        const { initializeApp } = require('firebase/app');
-        const json = require('./firebase-js-config.json');
-        initializeApp(json);// instead of initializeApp(config);
-        `);
-        }
-        logger.info(`App configuration is written in ${fileInfo}`);
+      if (!overwrite) {
+        // TODO(mtewani): Remove
+        return configData as unknown as AppConfigurationData;
       }
+    }
 
-      return sdkConfig;
-    },
-  );
+    fs.writeFileSync(filename, fileInfo.fileContents);
+    logger.info(`App configuration is written in ${filename}`);
+
+    // TODO(mtewani): Remove
+    return configData as unknown as AppConfigurationData;
+  });
