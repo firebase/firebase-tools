@@ -8,6 +8,7 @@
 
 # # Upsert (update or insert) a user's username based on their auth.uid
 # mutation UpsertUser($username: String!) @auth(level: USER) {
+#   # The "auth.uid" server value ensures that users can only register their own user.
 #   user_upsert(data: { id_expr: "auth.uid", username: $username })
 # }
 
@@ -27,5 +28,6 @@
 
 # # Logged in user can delete their review for a movie
 # mutation DeleteReview($movieId: UUID!) @auth(level: USER) {
+#   # The "auth.uid" server value ensures that users can only delete their own reviews.
 #   review_delete(key: { userId_expr: "auth.uid", movieId: $movieId })
 # }

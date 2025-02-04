@@ -13,7 +13,8 @@
 
 # # Movie is keyed by a randomly generated UUID.
 # type Movie @table {
-#   # `@table` adds the following primary key field. Feel free to uncomment and customize it.
+#   # If you do not pass a 'key' to `@table`, Data Connect automatically adds the following 'id' column.
+#   # Feel free to uncomment and customize it.
 #   #  id: UUID! @default(expr: "uuidV4()")
 #   title: String!
 #   imageUrl: String!

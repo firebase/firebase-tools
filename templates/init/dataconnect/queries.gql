@@ -19,8 +19,8 @@
 #   }
 # }
 
-# # Logged in user can list all their reviews and movie titles associated with the review
-# # Since the query requires the uid of the current authenticated user, the auth level is set to USER
+# # Logged in users can list all their reviews and movie titles associated with the review
+# # Since the query uses the uid of the current authenticated user, we set auth level to USER
 # query ListUserReviews @auth(level: USER) {
 #   user(key: { id_expr: "auth.uid" }) {
 #     id
