@@ -27,8 +27,7 @@ import { assertExhaustive } from "../functional";
 import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
 import { labels } from "../gcp/secretManager";
 import { needProjectId } from "../projectUtils";
-
-const Table = require("cli-table3");
+import * as Table from "cli-table3";
 
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,

@@ -1,5 +1,4 @@
-const Table = require("cli-table3");
-
+import * as Table from "cli-table3";
 import { Command } from "../command";
 import { Site, getSite } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";

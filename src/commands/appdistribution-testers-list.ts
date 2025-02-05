@@ -8,8 +8,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import * as utils from "../utils";
-
-const Table = require("cli-table3");
+import * as Table from "cli-table3";
 
 export const command = new Command("appdistribution:testers:list [group]")
   .description("list testers in project")
@@ -52,7 +51,7 @@ function printTestersTable(testers: Tester[]): void {
       .map((grp) => grp.split("/").pop())
       .sort()
       .join(";");
-    table.push([name, tester.displayName ?? "", tester.lastActivityTime, groups]);
+    table.push([name, tester.displayName ?? "", tester.lastActivityTime.toString(), groups]);
   }
 
   logger.info(table.toString());

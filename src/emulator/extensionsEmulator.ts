@@ -3,7 +3,7 @@ import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-const Table = require("cli-table3");
+import * as Table from "cli-table3";
 
 import * as planner from "../deploy/extensions/planner";
 import { enableApiURI } from "../ensureApiEnabled";
@@ -324,7 +324,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         );
         table.push([
           apiToWarn.apiName,
-          apiToWarn.instanceIds,
+          apiToWarn.instanceIds.toString(),
           apiToWarn.enabled ? "Yes" : "No",
           apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);
