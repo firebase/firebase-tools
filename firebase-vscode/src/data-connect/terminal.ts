@@ -1,4 +1,4 @@
-import { TelemetryLogger, TerminalOptions } from "vscode";
+import { TerminalOptions } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import vscode, { Disposable } from "vscode";
 import { checkLogin } from "../core/user";
@@ -6,18 +6,19 @@ import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
 import { currentProjectId } from "../core/project";
 
-const environmentVariables: Record<string, string> = {};
+let environmentVariables: Record<string, string> = {};
 
 const executionOptions: vscode.ShellExecutionOptions = {
   env: environmentVariables,
 };
 
-export function setTerminalEnvVars(envVar: string, value: string) {
-  environmentVariables[envVar] = value;
+export function setTerminalEnvVars(env: Record<string, string>) {
+  environmentVariables = {...environmentVariables, ...env};
 }
 
 export function runCommand(command: string) {
   const settings = getSettings();
+  setTerminalEnvVars(settings.extraEnv ?? {});
   const terminalOptions: TerminalOptions = {
     name: "Data Connect Terminal",
     env: environmentVariables,
@@ -43,6 +44,7 @@ export function runTerminalTask(
   presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
   const settings = getSettings();
+  setTerminalEnvVars(settings.extraEnv ?? {});
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
     vscode.tasks.onDidEndTaskProcess(async (e) => {

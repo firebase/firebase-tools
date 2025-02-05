@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { effect, signal } from "@preact/signals-core";
+import { effect } from "@preact/signals-core";
 import { firebaseRC } from "../core/config";
 import { dataConnectConfigs, firebaseConfig } from "./config";
-import { runEmulatorIssuesStream } from "./emulator-stream";
 import { runDataConnectCompiler } from "./core-compiler";
 import { DataConnectToolkitController } from "../../../src/emulator/dataconnectToolkitController";
 import { DataConnectEmulatorArgs } from "../emulator/dataconnectEmulator";
@@ -11,6 +10,7 @@ import { Config } from "../config";
 import { RC } from "../rc";
 import { findOpenPort } from "../utils/port_utils";
 import { pluginLogger } from "../logger-wrapper";
+import { getSettings } from "../utils/settings";
 
 const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
@@ -37,6 +37,7 @@ export class DataConnectToolkit implements vscode.Disposable {
   // special function to start FDC emulator with special flags & port
   async startFDCToolkit(configDir: string, config: Config, RC: RC) {
     const port = await findOpenPort(DEFAULT_PORT);
+    const settings = getSettings();
     const toolkitArgs: DataConnectEmulatorArgs = {
       projectId: "toolkit",
       listen: [{ address: "localhost", port, family: "IPv4" }],
@@ -46,6 +47,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       autoconnectToPostgres: false,
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
+      extraEnv: settings.extraEnv,
     };
     pluginLogger.info(`Starting Data Connect toolkit on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);

@@ -96,6 +96,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%ext.config.debug%"
+        },
+        "firebase.extraEnv": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "%ext.config.extraEnv%"
         }
       }
     },
