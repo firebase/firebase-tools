@@ -47,7 +47,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
     };
-    pluginLogger.info(`Starting Data Connect toolkit on port ${port}`);
+    pluginLogger.info(`Starting Data Connect toolkit (version ${DataConnectToolkitController.getVersion()}) on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
   }
 
