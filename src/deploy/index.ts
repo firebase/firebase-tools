@@ -79,7 +79,6 @@ export const deploy = async function (
           )
         : config.source
     ) {
-      console.log("preparing webframeworks");
       experiments.assertEnabled("webframeworks", "deploy a web framework from source");
       await prepareFrameworks("deploy", targetNames, context, options);
     }
