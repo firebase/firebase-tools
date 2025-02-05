@@ -69,7 +69,17 @@ export const deploy = async function (
 
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+    if (
+      Array.isArray(config)
+        ? config.some(
+            (it) =>
+              it.source &&
+              (!options.only.includes("hosting:") ||
+                new RegExp(`\\bhosting:${it.target}\\b`).exec(options.only)),
+          )
+        : config.source
+    ) {
+      console.log("preparing webframeworks");
       experiments.assertEnabled("webframeworks", "deploy a web framework from source");
       await prepareFrameworks("deploy", targetNames, context, options);
     }
