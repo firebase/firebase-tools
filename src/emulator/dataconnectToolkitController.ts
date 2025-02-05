@@ -1,15 +1,16 @@
-import { EmulatorInstance, EmulatorInfo } from "./types";
+import { EmulatorInfo, Emulators } from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { connectableHostname } from "../utils";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
+import { getDownloadDetails } from "./downloadableEmulators";
 
 const name = "Data Connect Toolkit";
 /**
  * Static controller for the VSCode Data Connect Toolkit
  */
 export class DataConnectToolkitController {
-  static instance: EmulatorInstance;
+  static instance: DataConnectEmulator;
   static isRunning = false;
 
   static async start(args: DataConnectEmulatorArgs): Promise<void> {
@@ -38,6 +39,10 @@ export class DataConnectToolkitController {
     } catch (e: any) {
       throw new FirebaseError(`Data Connect Toolkit failed to stop with error: ${e}`);
     }
+  }
+
+  static getVersion(): string {
+    return getDownloadDetails(Emulators.DATACONNECT).version;
   }
 
   /**
