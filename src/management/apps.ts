@@ -15,8 +15,6 @@ import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
 import { logBullet, logSuccess } from "../utils";
-import { dir } from "console";
-import { directory } from "mock-fs/lib/filesystem";
 import { AppsSdkConfigOptions } from "../commands/apps-configure";
 
 const TIMEOUT_MILLIS = 30000;

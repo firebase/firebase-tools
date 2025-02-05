@@ -11,7 +11,6 @@ import {
   getSdkConfig,
   getSdkOutputPath,
   sdkInit,
-  SdkInitOptions,
   writeConfigToFile,
 } from "../management/apps";
 import { requireAuth } from "../requireAuth";
@@ -93,7 +92,7 @@ export const command = new Command("apps:configure")
 
       logger.info(`App configuration is written in ${relativePath}`);
     }
-    await logUse(platform, relativePath);
+    logUse(platform, relativePath);
 
     return sdkConfig;
   });
