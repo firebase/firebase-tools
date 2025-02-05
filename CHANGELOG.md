@@ -1,1 +1,1 @@
-* Genkit init improvements around gcloud login and flow input values.
+- Genkit init improvements around gcloud login and flow input values.
