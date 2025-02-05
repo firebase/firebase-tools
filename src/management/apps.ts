@@ -193,7 +193,11 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
   }
   return appData;
 }
-export async function getSdkOutputPath(appDir: string, platform: AppPlatform, config: AppsSdkConfigOptions): Promise<string> {
+export async function getSdkOutputPath(
+  appDir: string,
+  platform: AppPlatform,
+  config: AppsSdkConfigOptions,
+): Promise<string> {
   switch (platform) {
     case AppPlatform.ANDROID:
       return findIntelligentPathForAndroid(appDir, config);
@@ -751,33 +755,36 @@ export async function deleteAppAndroidSha(
 
 async function findIntelligentPathForIOS(appDir: string) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
-  for(let i = 0; i < currentFiles.length; i++) {
+  for (let i = 0; i < currentFiles.length; i++) {
     const dirent = currentFiles[i];
-    const xcodeStr = '.xcodeProject';
+    const xcodeStr = ".xcodeProject";
     const file = dirent.name;
-    if(file.endsWith(xcodeStr)) {
+    if (file.endsWith(xcodeStr)) {
       return path.join(appDir, file.substring(0, file.length - xcodeStr.length));
-    } else if(file === 'Info.plist' || file === 'Assets.xcassets' || (dirent.isDirectory() && file === 'Preview Content')) {
+    } else if (
+      file === "Info.plist" ||
+      file === "Assets.xcassets" ||
+      (dirent.isDirectory() && file === "Preview Content")
+    ) {
       return appDir;
     }
   }
-  throw new Error('Could not determine path for GoogleService-Info.plist')
+  throw new Error("Could not determine path for GoogleService-Info.plist");
 }
 
 async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
-  
-  const paths = appDir.split('/');
+  const paths = appDir.split("/");
   // For when app/build.gradle is found
-  if(paths[0] === 'app') {
+  if (paths[0] === "app") {
     return appDir;
-  } else  {
+  } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
-    const numberOfDirs = currentFiles.filter(maybeDir => maybeDir.isDirectory());
-    if(numberOfDirs.length === 1) {
+    const numberOfDirs = currentFiles.filter((maybeDir) => maybeDir.isDirectory());
+    if (numberOfDirs.length === 1) {
       return numberOfDirs[0].path;
     }
-    let module = 'app';
-    if(!options.nonInteractive) {
+    let module = "app";
+    if (!options.nonInteractive) {
       module = await promptForDirectory({
         config: options.config,
         message: "What app module would you like to use?",
