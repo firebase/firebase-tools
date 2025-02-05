@@ -1,1 +1,3 @@
 - Enforce webframeworks enablement only on webframeworks sites (#8168)
+- Genkit init improvements around gcloud login and flow input values.
+- 
