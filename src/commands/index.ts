@@ -33,6 +33,7 @@ export function load(client: any): any {
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
+  client.apps.configure = loadCommand("apps-configure");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.apps.android = {};
   client.apps.android.sha = {};

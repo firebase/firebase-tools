@@ -15,6 +15,9 @@ import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
 import { logBullet, logSuccess } from "../utils";
+import { dir } from "console";
+import { directory } from "mock-fs/lib/filesystem";
+import { AppsSdkConfigOptions } from "../commands/apps-configure";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
@@ -74,7 +77,7 @@ export async function getPlatform(appDir: string, config: Config) {
       choices: platforms,
     });
   } else if (targetPlatform === Platform.FLUTTER) {
-    throw new FirebaseError(`Flutter is not supported by apps:sdkconfig. Please follow the link below to set up firebase for your flutter app:
+    throw new FirebaseError(`Flutter is not supported by apps:configure. Please follow the link below to set up firebase for your flutter app:
       https://firebase.google.com/docs/flutter/setup
     `);
   } else {
@@ -190,27 +193,14 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
   }
   return appData;
 }
-export function getSdkOutputPath(appDir: string, platform: AppPlatform): string {
+export async function getSdkOutputPath(appDir: string, platform: AppPlatform, config: AppsSdkConfigOptions): Promise<string> {
   switch (platform) {
     case AppPlatform.ANDROID:
-      // build.gradle can be in either / or /android/app. We always want to place the google-services.json in /android/app.
-      // So we check the current directory if it's app, and if so, we'll place it in the current directory, if not, we'll put it in the android/app dir.
-      // Fallback is just to the current app dir.
-      if (path.dirname(appDir) !== "app") {
-        try {
-          const fileNames = fs.readdirSync(path.join(appDir, "app"));
-          if (fileNames.includes("build.gradle")) {
-            appDir = path.join(appDir, "app");
-          }
-        } catch {
-          // Wasn't able to find app dir. Default to outputting to current directory.
-        }
-      }
-      return path.join(appDir, "google-services.json");
+      return findIntelligentPathForAndroid(appDir, config);
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
     case AppPlatform.IOS:
-      return path.join(appDir, "GoogleService-Info.plist");
+      return findIntelligentPathForIOS(appDir);
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
@@ -756,5 +746,43 @@ export async function deleteAppAndroidSha(
         original: err,
       },
     );
+  }
+}
+
+async function findIntelligentPathForIOS(appDir: string) {
+  const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
+  for(let i = 0; i < currentFiles.length; i++) {
+    const dirent = currentFiles[i];
+    const xcodeStr = '.xcodeProject';
+    const file = dirent.name;
+    if(file.endsWith(xcodeStr)) {
+      return path.join(appDir, file.substring(0, file.length - xcodeStr.length));
+    } else if(file === 'Info.plist' || file === 'Assets.xcassets' || (dirent.isDirectory() && file === 'Preview Content')) {
+      return appDir;
+    }
+  }
+  throw new Error('Could not determine path for GoogleService-Info.plist')
+}
+
+async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
+  
+  const paths = appDir.split('/');
+  // For when app/build.gradle is found
+  if(paths[0] === 'app') {
+    return appDir;
+  } else  {
+    const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
+    const numberOfDirs = currentFiles.filter(maybeDir => maybeDir.isDirectory());
+    if(numberOfDirs.length === 1) {
+      return numberOfDirs[0].path;
+    }
+    let module = 'app';
+    if(!options.nonInteractive) {
+      module = await promptForDirectory({
+        config: options.config,
+        message: "What app module would you like to use?",
+      });
+    }
+    return module;
   }
 }

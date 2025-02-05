@@ -29,6 +29,7 @@ function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   }
 }
 
+
 async function selectAppInteractively(
   apps: AppMetadata[],
   appPlatform: AppPlatform,
@@ -54,6 +55,10 @@ async function selectAppInteractively(
   });
 }
 
+interface AppsSdkConfigOptions extends Options {
+  out?: string | boolean;
+}
+
 export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +
@@ -61,7 +66,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
   )
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
-  .action(async (platform = "", appId = "", options: Options): Promise<AppConfigurationData> => {
+  .action(async (platform = "", appId = "", options: AppsSdkConfigOptions): Promise<AppConfigurationData> => {
     let appPlatform = getAppPlatform(platform);
 
     if (!appId) {
