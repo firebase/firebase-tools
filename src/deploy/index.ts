@@ -17,13 +17,15 @@ import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
+import { HostingConfig } from "../firebaseConfig";
 import { prepareFrameworks } from "../frameworks";
-import { HostingDeploy } from "./hosting/context";
+import { FrameworkContext } from "../frameworks/interfaces";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
+import { Context } from "./hosting/context";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -46,6 +48,27 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
+export const prepareFrameworksIfNeeded = async function (
+  targetNames: (keyof typeof TARGETS)[],
+  options: DeployOptions,
+  context: FrameworkContext,
+): Promise<void> {
+  const config = options.config.get("hosting") as HostingConfig;
+  if (
+    Array.isArray(config)
+      ? config.some(
+          (it) =>
+            it.source &&
+            (!options.only.includes("hosting:") ||
+              new RegExp(`\\bhosting:${it.target ?? ""}\\b`).exec(options.only)),
+        )
+      : config.source
+  ) {
+    experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+    await prepareFrameworks("deploy", targetNames, context, options);
+  }
+};
+
 /**
  * The `deploy()` function runs through a three step deploy process for a listed
  * number of deploy targets. This allows deploys to be done all together or
@@ -59,7 +82,7 @@ export const deploy = async function (
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
-  const context: any = Object.assign({ projectId }, customContext);
+  const context: Context = Object.assign({ projectId }, customContext);
   const predeploys: Chain = [];
   const prepares: Chain = [];
   const deploys: Chain = [];
@@ -68,20 +91,7 @@ export const deploy = async function (
   const startTime = Date.now();
 
   if (targetNames.includes("hosting")) {
-    const config = options.config.get("hosting");
-    if (
-      Array.isArray(config)
-        ? config.some(
-            (it) =>
-              it.source &&
-              (!options.only.includes("hosting:") ||
-                new RegExp(`\\bhosting:${it.target}\\b`).exec(options.only)),
-          )
-        : config.source
-    ) {
-      experiments.assertEnabled("webframeworks", "deploy a web framework from source");
-      await prepareFrameworks("deploy", targetNames, context, options);
-    }
+    await prepareFrameworksIfNeeded(targetNames, options, context);
   }
 
   if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
@@ -157,11 +167,11 @@ export const deploy = async function (
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys as HostingDeploy[], (deploy) => {
+    each(context.hosting?.deploys, (deploy) => {
       logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
     });
-    const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
-    return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
+    const versionNames = context.hosting?.deploys.map((deploy: any) => deploy.version);
+    return { hosting: versionNames?.length === 1 ? versionNames[0] : versionNames };
   } else {
     return { hosting: undefined };
   }
