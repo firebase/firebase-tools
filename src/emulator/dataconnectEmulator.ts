@@ -12,6 +12,7 @@ import {
   stop,
   downloadIfNecessary,
   isIncomaptibleArchError,
+  getDownloadDetails,
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
@@ -194,6 +195,10 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   getName(): Emulators {
     return Emulators.DATACONNECT;
+  }
+
+  getVersion(): string {
+    return getDownloadDetails(Emulators.DATACONNECT).version;
   }
 
   async clearData(): Promise<void> {
