@@ -1,5 +1,5 @@
 import { bold } from "colorette";
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";

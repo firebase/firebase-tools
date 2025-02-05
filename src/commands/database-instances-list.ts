@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 import { Command } from "../command";
 import * as clc from "colorette";

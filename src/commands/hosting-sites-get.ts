@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 import { Command } from "../command";
 import { Site, getSite } from "../hosting/api";

@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
 import * as apphosting from "../../gcp/apphosting";

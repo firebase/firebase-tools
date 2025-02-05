@@ -17,7 +17,7 @@ import { promptOnce } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-const Table = require("cli-table");
+const Table = require("cli-table3");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";

@@ -6,7 +6,7 @@ import * as client from "../dataconnect/client";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 export const command = new Command("dataconnect:services:list")
   .description("list all deployed services in your Firebase project")

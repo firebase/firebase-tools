@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+const Table = require("cli-table3");
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";

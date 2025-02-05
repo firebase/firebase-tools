@@ -3,7 +3,7 @@ import { marked } from "marked";
 import * as path from "path";
 import * as semver from "semver";
 import { markedTerminal } from "marked-terminal";
-const Table = require("cli-table");
+const Table = require("cli-table3");
 
 import { listExtensionVersions } from "./extensionsApi";
 import { readFile } from "./localHelper";
