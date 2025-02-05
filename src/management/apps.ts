@@ -198,11 +198,13 @@ export async function getSdkOutputPath(
 ): Promise<string> {
   switch (platform) {
     case AppPlatform.ANDROID:
-      return findIntelligentPathForAndroid(appDir, config);
+      const androidPath = await findIntelligentPathForAndroid(appDir, config);
+      return path.join(androidPath, 'google-services.json');
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
     case AppPlatform.IOS:
-      return findIntelligentPathForIOS(appDir);
+      const iosPath = await findIntelligentPathForIOS(appDir);
+      return path.join(iosPath, 'GoogleService-Info.plist');
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
@@ -619,11 +621,12 @@ export async function writeConfigToFile(
     });
 
     if (!overwrite) {
-      return;
+      return false;
     }
   }
   // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
   fs.writeFileSync(filename, fileContents);
+  return true;
 }
 
 /**
@@ -781,11 +784,12 @@ async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkCon
     if (numberOfDirs.length === 1) {
       return numberOfDirs[0].path;
     }
-    let module = "app";
+    let module = path.join(appDir, "app");
     if (!options.nonInteractive) {
       module = await promptForDirectory({
         config: options.config,
-        message: "What app module would you like to use?",
+        message: `What app module would you like to use? Relative to ${appDir}`, // TODO(mtewani): Should this be a list of available modules? Should we iterate through the current directory list one level to see what's available?
+        relativeTo: appDir,
       });
     }
     return module;

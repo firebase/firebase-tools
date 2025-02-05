@@ -25,7 +25,7 @@ export interface AppsSdkConfigOptions extends Options {
 function logUse(platform: AppPlatform, filePath: string) {
   switch (platform) {
     case AppPlatform.WEB:
-      console.log(`
+      logger.info(`
         How to use your JS SDK Config:
         ES Module:
         import { initializeApp } from 'firebase/app';
@@ -36,16 +36,17 @@ function logUse(platform: AppPlatform, filePath: string) {
         const json = require('./firebase-js-config.json');
         initializeApp(json);// instead of initializeApp(config);
       `);
+      break;
     case AppPlatform.ANDROID:
-      console.log(`
-        Visit https://firebase.google.com/docs/android/setup#add-config-file 
-        for information on editing your gradle file and adding Firebase SDKs to your app.
-      `);
+      logger.info(
+        `Visit https://firebase.google.com/docs/android/setup#add-config-file \nfor information on editing your gradle file and adding Firebase SDKs to your app.`,
+      );
+      break;
     case AppPlatform.IOS:
-      console.log(`
-        Visit https://firebase.google.com/docs/ios/setup#add-config-file 
-        for information on adding the config file to your targets and adding Firebase SDKs to your app.
-      `);
+      logger.info(
+        `Visit https://firebase.google.com/docs/ios/setup#add-config-file\nfor information on adding the config file to your targets and adding Firebase SDKs to your app.`,
+      );
+      break;
   }
 }
 
@@ -88,9 +89,11 @@ export const command = new Command("apps:configure")
       fs.mkdirpSync(outputDir);
       relativePath = path.relative(appDir, outputPath);
       const fileInfo = getAppConfigFile(sdkConfig, platform);
-      await writeConfigToFile(outputPath!, options.nonInteractive, fileInfo.fileContents);
+      let written = await writeConfigToFile(outputPath!, options.nonInteractive, fileInfo.fileContents);
 
-      logger.info(`App configuration is written in ${relativePath}`);
+      if(written) {
+        logger.info(`App configuration is written in ${relativePath}`);
+      }
     }
     logUse(platform, relativePath);
 
