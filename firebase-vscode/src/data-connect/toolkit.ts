@@ -49,7 +49,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       enable_output_schema_extensions: true,
       extraEnv: settings.extraEnv,
     };
-    pluginLogger.info(`Starting Data Connect toolkit on port ${port}`);
+    pluginLogger.info(`Starting Data Connect toolkit (version ${DataConnectToolkitController.getVersion()}) on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
   }
 
