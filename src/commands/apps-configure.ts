@@ -18,7 +18,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 
-export interface AppsSdkConfigOptions extends Options {
+export interface AppsConfigureOptions extends Options {
   out?: string | boolean;
 }
 
@@ -60,7 +60,7 @@ for information about adding your config file to your project.`,
 export const command = new Command("apps:configure")
   .description("Automatically download and create config of a Firebase app. ")
   .before(requireAuth)
-  .action(async (options: AppsSdkConfigOptions): Promise<AppConfig> => {
+  .action(async (options: AppsConfigureOptions): Promise<AppConfig> => {
     const config = options.config;
     const appDir = process.cwd();
     // auto-detect the platform

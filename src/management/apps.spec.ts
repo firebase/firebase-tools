@@ -25,7 +25,7 @@ import {
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
 import { firebaseApiOrigin } from "../api";
-import { AppsSdkConfigOptions } from "../commands/apps-configure";
+import { AppsConfigureOptions } from "../commands/apps-configure";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -696,7 +696,7 @@ describe("App management", () => {
         mockfs({ [c.folderName]: c.folderItems });
         const platform = await findIntelligentPathForAndroid(c.folderName, {
           nonInteractive: true,
-        } as AppsSdkConfigOptions);
+        } as AppsConfigureOptions);
         expect(platform).to.equal(c.output);
       });
     }
@@ -752,7 +752,7 @@ describe("App management", () => {
           await expect(
             findIntelligentPathForIOS(c.folderName, {
               nonInteractive: true,
-            } as AppsSdkConfigOptions),
+            } as AppsConfigureOptions),
           ).to.be.rejectedWith(
             Error,
             "We weren't able to automatically determine the output directory.",
@@ -760,7 +760,7 @@ describe("App management", () => {
         } else {
           const platform = await findIntelligentPathForIOS(c.folderName, {
             nonInteractive: true,
-          } as AppsSdkConfigOptions);
+          } as AppsConfigureOptions);
           expect(platform).to.equal(c.output);
         }
       });

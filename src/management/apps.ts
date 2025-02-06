@@ -15,7 +15,7 @@ import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
 import { logBullet, logSuccess, logWarning } from "../utils";
-import { AppsSdkConfigOptions } from "../commands/apps-configure";
+import { AppsConfigureOptions } from "../commands/apps-configure";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
@@ -198,7 +198,7 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
 export async function getSdkOutputPath(
   appDir: string,
   platform: AppPlatform,
-  config: AppsSdkConfigOptions,
+  config: AppsConfigureOptions,
 ): Promise<string> {
   switch (platform) {
     case AppPlatform.ANDROID:
@@ -760,7 +760,7 @@ export async function deleteAppAndroidSha(
   }
 }
 
-export async function findIntelligentPathForIOS(appDir: string, options: AppsSdkConfigOptions) {
+export async function findIntelligentPathForIOS(appDir: string, options: AppsConfigureOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
     const dirent = currentFiles[i];
@@ -790,7 +790,7 @@ export async function findIntelligentPathForIOS(appDir: string, options: AppsSdk
   return outputPath;
 }
 
-export async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
+export async function findIntelligentPathForAndroid(appDir: string, options: AppsConfigureOptions) {
   /**
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.
@@ -803,14 +803,14 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
     const dirs: string[] = [];
     for (const fileOrDir of currentFiles) {
-      if (fileOrDir.isDirectory()) {
-        if (fileOrDir.name === "src") {
+      if(fileOrDir.isDirectory()) {
+        if(fileOrDir.name === 'src') {
           return appDir;
         }
       }
     }
     let module = path.join(appDir, "app");
-    if (dirs.length === 1) {
+    if(dirs.length === 1) {
       return module;
     }
     if (!options.nonInteractive) {

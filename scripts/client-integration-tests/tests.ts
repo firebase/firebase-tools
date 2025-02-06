@@ -85,7 +85,8 @@ describe("apps:sdkconfig", () => {
 
     const config = await client.apps.sdkconfig("web", appID, opts);
 
-    expect(config.appId).to.equal(appID);
+    expect(config.sdkConfig).to.exist;
+    expect(config.sdkConfig.appId).to.equal(appID);
   });
 });
 
