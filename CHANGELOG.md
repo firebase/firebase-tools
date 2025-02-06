@@ -1,2 +1,3 @@
 - Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
+- Added new command `apps:configure` that automatically detects what SDK to download and places the file in the corresponding place.
