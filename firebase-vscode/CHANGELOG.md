@@ -1,6 +1,7 @@
 ## NEXT
 
-- Added `extraEnv` setting to help extension development.
+- [Added] Added `extraEnv` setting to help extension development.
+- [Added] Make Run Local button always present
 
 ## 0.12.2
 
