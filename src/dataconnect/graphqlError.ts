@@ -1,5 +1,9 @@
 import { GraphqlError } from "./types";
+<<<<<<< HEAD
 const Table = require("cli-table3");
+=======
+import * as Table from "cli-table3";
+>>>>>>> master
 
 export function prettify(err: GraphqlError): string {
   const message = err.message;

@@ -40,7 +40,9 @@ export function registerFdcSdkGeneration(
     (args: { appFolder: string }) => {
       analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
       // Lets do it from the right directory
-      setTerminalEnvVars(FDC_APP_FOLDER, args.appFolder);
+      const e: Record<string, string> = {}
+      e[FDC_APP_FOLDER] = args.appFolder;
+      setTerminalEnvVars(e);
       runCommand(`${settings.firebasePath} init dataconnect:sdk`);
     },
   );
@@ -166,7 +168,7 @@ export function registerFdcSdkGeneration(
       vscode.commands.executeCommand("fdc.init-sdk", { appFolder });
     } else {
       // generate yaml
-      const newConnectorYaml = generateSdkYaml(
+      const newConnectorYaml = await generateSdkYaml(
         platform,
         connectorYaml,
         connectorYamlFolderPath,

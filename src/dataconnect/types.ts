@@ -145,7 +145,11 @@ export interface Generate {
   dartSdk?: DartSDK;
 }
 
-export interface JavascriptSDK {
+export interface SupportedFrameworks {
+  react?: boolean;
+}
+
+export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
