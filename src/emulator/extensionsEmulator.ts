@@ -324,7 +324,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         );
         table.push([
           apiToWarn.apiName,
-          apiToWarn.instanceIds.toString(),
+          apiToWarn.instanceIds.join(", "),
           apiToWarn.enabled ? "Yes" : "No",
           apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);
