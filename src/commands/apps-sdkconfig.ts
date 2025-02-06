@@ -118,12 +118,12 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         fileInfo.sdkConfig = configData;
       }
 
-      if (options.out === undefined || !options.out) {
+      if (!options.out) {
         logger.info(fileInfo.fileContents);
         return fileInfo;
       }
 
-      const shouldUseDefaultFilename = options.out === "";
+      const shouldUseDefaultFilename = options.out === true ||  options.out === "";
       const filename = shouldUseDefaultFilename ? fileInfo.fileName : (options.out as string);
       if (fs.existsSync(filename)) {
         if (options.nonInteractive) {
