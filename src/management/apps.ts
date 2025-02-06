@@ -803,14 +803,14 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
     const dirs: string[] = [];
     for (const fileOrDir of currentFiles) {
-      if(fileOrDir.isDirectory()) {
-        if(fileOrDir.name === 'src') {
+      if (fileOrDir.isDirectory()) {
+        if (fileOrDir.name === "src") {
           return appDir;
         }
       }
     }
     let module = path.join(appDir, "app");
-    if(dirs.length === 1) {
+    if (dirs.length === 1) {
       return module;
     }
     if (!options.nonInteractive) {
