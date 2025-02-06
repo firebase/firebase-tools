@@ -132,9 +132,9 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
           },
         ],
       );
-      additionalFrameworks.features.forEach((framework) => {
+      for (const framework of additionalFrameworks.features) {
         newConnectorYaml!.generate!.javascriptSdk![framework] = true;
-      });
+      }
     }
   }
 
@@ -177,9 +177,9 @@ export async function generateSdkYaml(
     const packageJson = await resolvePackageJson(appDir);
     if (packageJson) {
       const frameworksUsed = getFrameworksFromPackageJson(packageJson);
-      frameworksUsed.forEach((framework) => {
+      for (const framework of frameworksUsed) {
         javascriptSdk[framework] = true;
-      });
+      }
     }
 
     connectorYaml.generate.javascriptSdk = javascriptSdk;

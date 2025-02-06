@@ -1,1 +1,1 @@
-- Added code generation of react hooks for Data Connect
+- Added code generation of React hooks for Data Connect

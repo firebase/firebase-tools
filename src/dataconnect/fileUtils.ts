@@ -177,31 +177,15 @@ export async function resolvePackageJson(
 }
 
 export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react"];
-function lookForFramework(
-  key: "dependencies" | "devDependencies",
-  packageJson: PackageJSON,
-  frameworksUsed: (keyof SupportedFrameworks)[],
-) {
-  if (!packageJson[key]) {
-    return frameworksUsed;
-  }
-  Object.keys(packageJson[key]!).forEach((dep) => {
-    if (
-      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks) &&
-      !frameworksUsed.includes(dep as keyof SupportedFrameworks)
-    ) {
-      frameworksUsed.push(dep as keyof SupportedFrameworks);
-    }
-  });
-  return frameworksUsed;
-}
 export function getFrameworksFromPackageJson(
   packageJson: PackageJSON,
 ): (keyof SupportedFrameworks)[] {
-  const frameworksUsed: (keyof SupportedFrameworks)[] = lookForFramework(
-    "dependencies",
-    packageJson,
-    [],
+  const devDependencies = Object.keys(packageJson.devDependencies ?? {});
+  const dependencies = Object.keys(packageJson.dependencies ?? {});
+  const matched = new Set(
+    [...devDependencies, ...dependencies].filter((dep) =>
+      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks),
+    ),
   );
-  return lookForFramework("devDependencies", packageJson, frameworksUsed);
+  return Array.from(matched) as (keyof SupportedFrameworks)[];
 }

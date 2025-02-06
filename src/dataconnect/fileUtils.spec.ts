@@ -203,7 +203,9 @@ describe("generateSdkYaml", () => {
         expect(modifiedYaml.generate?.javascriptSdk).to.deep.equal(c.output);
       });
     }
-    for (const f of SUPPORTED_FRAMEWORKS) {
+  });
+  for (const f of SUPPORTED_FRAMEWORKS) {
+    describe(`Check support for ${f} framework`, () => {
       const cases = [
         {
           desc: `can detect a ${f}`,
@@ -213,13 +215,14 @@ describe("generateSdkYaml", () => {
         {
           desc: `can detect not ${f}`,
           depName: `not-${f}`,
-          detect: false,
         },
       ];
       for (const c of cases) {
         it(c.desc, async () => {
           mockfs({
-            [appFolderDetectable]: { ["package.json"]: `{"dependencies": {"${c.depName}": "1"}}` },
+            [appFolderDetectable]: {
+              ["package.json"]: `{"dependencies": {"${c.depName}": "1"}}`,
+            },
           });
           const modifiedYaml = await generateSdkYaml(
             Platform.WEB,
@@ -227,15 +230,11 @@ describe("generateSdkYaml", () => {
             connectorYamlFolder,
             appFolderDetectable,
           );
-          if (c.detect) {
-            expect(modifiedYaml.generate?.javascriptSdk![f]).to.equal(true);
-          } else {
-            expect(modifiedYaml.generate?.javascriptSdk![f]).to.not.equal(true);
-          }
+          expect(modifiedYaml.generate?.javascriptSdk?.[f]).to.equal(c.detect);
         });
       }
-    }
-  });
+    });
+  }
 
   describe("IOS platform should add Swift SDK Generation", () => {
     const cases: {
