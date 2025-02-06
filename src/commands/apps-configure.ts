@@ -18,7 +18,6 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { Platform } from "../dataconnect/types";
-import { E } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
 
 export interface AppsConfigureOptions extends Options {
   out?: string | boolean;
@@ -60,7 +59,7 @@ for information about adding your config file to your project.`,
 }
 
 function toAppPlatform(str: string) {
-  switch(str.toUpperCase()) {
+  switch (str.toUpperCase()) {
     case Platform.ANDROID:
       return Platform.ANDROID as unknown as AppPlatform.ANDROID;
     case Platform.IOS:
@@ -68,7 +67,7 @@ function toAppPlatform(str: string) {
     case Platform.WEB:
       return Platform.WEB as unknown as AppPlatform.WEB;
   }
-  throw new Error(`Platform ${str} is not compatible with apps:configure`)
+  throw new Error(`Platform ${str} is not compatible with apps:configure`);
 }
 
 export const command = new Command("apps:configure [platform]")
@@ -108,9 +107,7 @@ export const command = new Command("apps:configure [platform]")
       }
     }
 
-    if (
-      tryParseOutBool !== undefined
-    ) {
+    if (tryParseOutBool !== undefined) {
       writeToFile = tryParseOutBool;
     } else if (typeof options.out === "string") {
       writeToFile = true;
