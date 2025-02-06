@@ -42,6 +42,7 @@ export interface DataConnectEmulatorArgs {
   enable_output_generated_sdk: boolean;
   importPath?: string;
   debug?: boolean;
+  extraEnv?: Record<string, string>;
 }
 
 export interface DataConnectGenerateArgs {
@@ -92,13 +93,17 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    await start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: resolvedConfigDir,
-      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
-      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
-    });
+    await start(
+      Emulators.DATACONNECT,
+      {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+        enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+      },
+      this.args.extraEnv,
+    );
 
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
