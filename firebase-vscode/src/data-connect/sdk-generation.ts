@@ -168,7 +168,7 @@ export function registerFdcSdkGeneration(
       vscode.commands.executeCommand("fdc.init-sdk", { appFolder });
     } else {
       // generate yaml
-      const newConnectorYaml = generateSdkYaml(
+      const newConnectorYaml = await generateSdkYaml(
         platform,
         connectorYaml,
         connectorYamlFolderPath,
