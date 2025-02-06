@@ -173,17 +173,6 @@
         "node": ">=18.0.0 || >=20.0.0"
       }
     },
-    "dataconnect-generated/js/default-connector": {
-      "version": "1.0.0",
-      "extraneous": true,
-      "license": "Apache-2.0",
-      "engines": {
-        "node": " >=18.0"
-      },
-      "peerDependencies": {
-        "firebase": "^10.14.0 || ^11.0.0"
-      }
-    },
     "node_modules/@aashutoshrathi/word-wrap": {
       "version": "1.2.6",
       "resolved": "https://registry.npmjs.org/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz",
