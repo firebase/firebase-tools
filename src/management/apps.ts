@@ -760,7 +760,7 @@ export async function deleteAppAndroidSha(
   }
 }
 
-async function findIntelligentPathForIOS(appDir: string, options: AppsSdkConfigOptions) {
+export async function findIntelligentPathForIOS(appDir: string, options: AppsSdkConfigOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
     const dirent = currentFiles[i];
@@ -790,18 +790,29 @@ async function findIntelligentPathForIOS(appDir: string, options: AppsSdkConfigO
   return outputPath;
 }
 
-async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
+export async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
+  /**
+   * android/build.gradle // if it's this, choose app
+   * android/app/build.gradle // if it's this, choose current dir.
+   */
   const paths = appDir.split("/");
   // For when app/build.gradle is found
   if (paths[0] === "app") {
     return appDir;
   } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
-    const numberOfDirs = currentFiles.filter((maybeDir) => maybeDir.isDirectory());
-    if (numberOfDirs.length === 1) {
-      return numberOfDirs[0].path;
+    const dirs: string[] = [];
+    for (const fileOrDir of currentFiles) {
+      if (fileOrDir.isDirectory()) {
+        if (fileOrDir.name === "src") {
+          return appDir;
+        }
+      }
     }
     let module = path.join(appDir, "app");
+    if (dirs.length === 1) {
+      return module;
+    }
     if (!options.nonInteractive) {
       module = await promptForDirectory({
         config: options.config,
