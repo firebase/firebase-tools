@@ -208,7 +208,12 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         originalRes.end();
       });
     } else {
-      const proxiedRes = proxyResponse(originalReq, originalRes, next);
+      const proxiedRes = proxyResponse(originalReq, originalRes, () => {
+        // This next function is called when the proxied response is a 404
+        // In that case we want to let the handler to use the original response
+        void hostOrRequestHandler(originalReq, originalRes, next);
+      });
+
       await hostOrRequestHandler(originalReq, proxiedRes, next);
     }
   };
