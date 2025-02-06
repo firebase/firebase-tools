@@ -93,14 +93,14 @@ export function registerExecution(
       !(await emulatorsController.areEmulatorsRunning())
     ) {
       vscode.window.showWarningMessage(
-        "Emulator is starting... Please retry `Run local` execution after it's started.",
-        { modal: false }, // TODO: Consider making modal. blocked by testing infra
+        "Automatically starting emulator... Please retry `Run local` execution after it's started.",
+        { modal: false },
       );
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
-        );
-        emulatorsController.startEmulators();
-        return;
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+      );
+      emulatorsController.startEmulators();
+      return;
     }
 
     // Warn against using mutations in production.
