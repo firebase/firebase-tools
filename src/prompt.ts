@@ -1,6 +1,6 @@
 import * as inquirer from "inquirer";
 import AutocompletePrompt from "inquirer-autocomplete-prompt";
-import * as path from 'path';
+import * as path from "path";
 
 import { fileExistsSync, dirExistsSync } from "./fsutils";
 import { FirebaseError } from "./error";
@@ -148,15 +148,13 @@ export async function promptForDirectory(args: {
   let dir: string = "";
   while (!dir) {
     const promptPath = await promptOnce({
-        message: args.message,
+      message: args.message,
     });
     let target: string;
-    if(args.relativeTo) {
+    if (args.relativeTo) {
       target = path.resolve(args.relativeTo, promptPath);
     } else {
-      target = args.config.path(
-        promptPath
-      );
+      target = args.config.path(promptPath);
     }
     if (fileExistsSync(target)) {
       logger.error(

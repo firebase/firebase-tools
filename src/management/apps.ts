@@ -14,7 +14,7 @@ import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
-import { logBullet, logSuccess } from "../utils";
+import { logBullet, logSuccess, logWarning } from "../utils";
 import { AppsSdkConfigOptions } from "../commands/apps-configure";
 
 const TIMEOUT_MILLIS = 30000;
@@ -53,7 +53,8 @@ export async function getPlatform(appDir: string, config: Config) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
     appDir = await promptForDirectory({
       config,
-      message: "Where is your app directory?",
+      relativeTo: appDir, // CWD is passed in as `appDir`, so we want it relative to the current directory instead of where firebase.json is.
+      message: "We couldn't determine what kind of app you're using. Where is your app directory?",
     });
     targetPlatform = await getPlatformFromFolder(appDir);
   }
@@ -70,13 +71,16 @@ export async function getPlatform(appDir: string, config: Config) {
       { name: "Android (Kotlin)", value: Platform.ANDROID },
     ];
     targetPlatform = await promptOnce({
-      message: "Which platform do you want to set up an SDK for?",
+      message:
+        "Which platform do you want to set up an SDK for? Note: We currently do not support automatically setting up C++ or Unity projects.",
       type: "list",
       choices: platforms,
     });
   } else if (targetPlatform === Platform.FLUTTER) {
-    throw new FirebaseError(`Flutter is not supported by apps:configure. Please follow the link below to set up firebase for your flutter app:
-      https://firebase.google.com/docs/flutter/setup
+    logWarning(`Detected ${targetPlatform} app in directory ${appDir}`);
+    throw new FirebaseError(`Flutter is not supported by apps:configure.
+Please follow the link below to set up firebase for your Flutter app:
+https://firebase.google.com/docs/flutter/setup
     `);
   } else {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
@@ -199,12 +203,12 @@ export async function getSdkOutputPath(
   switch (platform) {
     case AppPlatform.ANDROID:
       const androidPath = await findIntelligentPathForAndroid(appDir, config);
-      return path.join(androidPath, 'google-services.json');
+      return path.join(androidPath, "google-services.json");
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
     case AppPlatform.IOS:
-      const iosPath = await findIntelligentPathForIOS(appDir);
-      return path.join(iosPath, 'GoogleService-Info.plist');
+      const iosPath = await findIntelligentPathForIOS(appDir, config);
+      return path.join(iosPath, "GoogleService-Info.plist");
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
@@ -275,7 +279,9 @@ export async function getSdkConfig(
   }
 
   let configData: AppConfig;
-  const spinner = ora(`Downloading configuration data of your Firebase ${appPlatform} app`).start();
+  const spinner = ora(
+    `Downloading configuration data for your Firebase ${appPlatform} app`,
+  ).start();
   try {
     configData = await getAppConfig(appId, appPlatform);
   } catch (err: any) {
@@ -754,11 +760,11 @@ export async function deleteAppAndroidSha(
   }
 }
 
-async function findIntelligentPathForIOS(appDir: string) {
+async function findIntelligentPathForIOS(appDir: string, options: AppsSdkConfigOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
     const dirent = currentFiles[i];
-    const xcodeStr = ".xcodeProject";
+    const xcodeStr = ".xcodeproj";
     const file = dirent.name;
     if (file.endsWith(xcodeStr)) {
       return path.join(appDir, file.substring(0, file.length - xcodeStr.length));
@@ -770,7 +776,18 @@ async function findIntelligentPathForIOS(appDir: string) {
       return appDir;
     }
   }
-  throw new Error("Could not determine path for GoogleService-Info.plist");
+  let outputPath: string | null = null;
+  if (!options.nonInteractive) {
+    outputPath = await promptForDirectory({
+      config: options.config,
+      message: `We weren't able to automatically determine the output directory. Where would you like to output your config file?`,
+      relativeTo: appDir,
+    });
+  }
+  if (!outputPath) {
+    throw new Error("We weren't able to automatically determine the output directory.");
+  }
+  return outputPath;
 }
 
 async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkConfigOptions) {
@@ -788,8 +805,7 @@ async function findIntelligentPathForAndroid(appDir: string, options: AppsSdkCon
     if (!options.nonInteractive) {
       module = await promptForDirectory({
         config: options.config,
-        message: `What app module would you like to use? Relative to ${appDir}`, // TODO(mtewani): Should this be a list of available modules? Should we iterate through the current directory list one level to see what's available?
-        relativeTo: appDir,
+        message: `We weren't able to automatically determine the output directory. Where would you like to output your config file?`,
       });
     }
     return module;

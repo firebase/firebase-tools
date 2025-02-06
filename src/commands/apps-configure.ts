@@ -26,25 +26,32 @@ function logUse(platform: AppPlatform, filePath: string) {
   switch (platform) {
     case AppPlatform.WEB:
       logger.info(`
-        How to use your JS SDK Config:
-        ES Module:
-        import { initializeApp } from 'firebase/app';
-        import json from './${filePath || "firebase-sdk-config.json"}';
-        initializeApp(json);
-        // CommonJS Module:
-        const { initializeApp } = require('firebase/app');
-        const json = require('./firebase-js-config.json');
-        initializeApp(json);// instead of initializeApp(config);
-      `);
+How to use your JS SDK Config:
+ES Module:
+import { initializeApp } from 'firebase/app';
+import json from './${filePath || "firebase-sdk-config.json"}';
+initializeApp(json);
+// CommonJS Module:
+const { initializeApp } = require('firebase/app');
+const json = require('./firebase-js-config.json');
+initializeApp(json);// instead of initializeApp(config);`);
       break;
     case AppPlatform.ANDROID:
       logger.info(
-        `Visit https://firebase.google.com/docs/android/setup#add-config-file \nfor information on editing your gradle file and adding Firebase SDKs to your app.`,
+        `Visit https://firebase.google.com/docs/android/setup#add-config-file
+for information on editing your gradle file and adding Firebase SDKs to your app.
+
+If you're using Unity or C++, visit https://firebase.google.com/docs/cpp/setup?platform=android#add-config-file
+for information about adding your config file to your project.`,
       );
       break;
     case AppPlatform.IOS:
       logger.info(
-        `Visit https://firebase.google.com/docs/ios/setup#add-config-file\nfor information on adding the config file to your targets and adding Firebase SDKs to your app.`,
+        `Visit https://firebase.google.com/docs/ios/setup#add-config-file
+for information on adding the config file to your targets and adding Firebase SDKs to your app.
+
+If you're using Unity or C++, visit https://firebase.google.com/docs/cpp/setup?platform=ios#add-config-file
+for information about adding your config file to your project.`,
       );
       break;
   }
@@ -89,9 +96,13 @@ export const command = new Command("apps:configure")
       fs.mkdirpSync(outputDir);
       relativePath = path.relative(appDir, outputPath);
       const fileInfo = getAppConfigFile(sdkConfig, platform);
-      let written = await writeConfigToFile(outputPath!, options.nonInteractive, fileInfo.fileContents);
+      const written = await writeConfigToFile(
+        outputPath!,
+        options.nonInteractive,
+        fileInfo.fileContents,
+      );
 
-      if(written) {
+      if (written) {
         logger.info(`App configuration is written in ${relativePath}`);
       }
     }
