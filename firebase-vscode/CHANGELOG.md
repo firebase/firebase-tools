@@ -1,5 +1,6 @@
 ## NEXT
 
+- Updated internal 'firebase-tools` dependency to 13.30.0
 - [Added] Added `extraEnv` setting to help extension development.
 - [Added] Make Run Local button always present
 
