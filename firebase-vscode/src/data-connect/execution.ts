@@ -87,37 +87,20 @@ export function registerExecution(
       "alwaysAllowMutationsInProduction";
     const alwaysStartEmulator = "alwaysStartEmulator";
 
+    // notify users that emulator is starting
     if (
       instance === InstanceType.LOCAL &&
       !(await emulatorsController.areEmulatorsRunning())
     ) {
-      const always = "Yes (always)";
-      const yes = "Yes";
-      const result = await vscode.window.showWarningMessage(
-        "Trying to execute an operation on the emulator, but it isn't started yet. " +
-          "Do you want to start it?",
+      vscode.window.showWarningMessage(
+        "Emulator is starting... Please retry `Run local` execution after it's started.",
         { modal: false }, // TODO: Consider making modal. blocked by testing infra
-        yes,
-        always,
       );
-
-      // If the user selects "always", we update User settings.
-      if (result === always) {
-        configs.update(alwaysStartEmulator, true, ConfigurationTarget.Global);
-      }
-
-      if (result === yes || result === always) {
         analyticsLogger.logger.logUsage(
           DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
         );
         emulatorsController.startEmulators();
-      } else {
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.REFUSE_START_EMULATOR_FROM_EXECUTION,
-        );
-        vscode.window.showErrorMessage("Cannot execute operation. Emulator not started.");
-      }
-      return; // don't execute TODO: add the operation to a queue
+        return;
     }
 
     // Warn against using mutations in production.

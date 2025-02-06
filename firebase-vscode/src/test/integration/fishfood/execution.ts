@@ -38,11 +38,11 @@ firebaseSuite("Execution", async function () {
 
       // get start emulator notification
       const notificationUtil = new Notifications(workbench);      
-      const askToStartEmulatorNotif = await notificationUtil.getStartEmulatorNotification();
-      expect(askToStartEmulatorNotif).toExist();
+      const startEmulatorsNotif = await notificationUtil.getStartEmulatorNotification();
+      expect(startEmulatorsNotif).toExist();
       // should always exist due to check above; Click Yes
-      if (askToStartEmulatorNotif) 
-        notificationUtil.startEmulatorFromNotification(askToStartEmulatorNotif);
+      if (startEmulatorsNotif) 
+        notificationUtil.startEmulatorFromNotification(startEmulatorsNotif);
 
       console.log(
         "Starting emulators from local execution. Waiting for emulators to start...",
