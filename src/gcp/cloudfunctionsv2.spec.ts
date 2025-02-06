@@ -221,6 +221,23 @@ describe("cloudfunctionsv2", () => {
           [BLOCKING_LABEL]: "before-sign-in",
         },
       });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          callableTrigger: {
+            genkitAction: "flows/flow",
+          },
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          ...CLOUD_FUNCTION_V2.labels,
+          "deployment-callable": "true",
+          "genkit-action": "true",
+        },
+      });
     });
 
     it("should copy trival fields", () => {

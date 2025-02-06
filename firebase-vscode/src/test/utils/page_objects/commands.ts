@@ -26,6 +26,18 @@ export class FirebaseCommands {
     );
   }
 
+  async waitForEmulatorsStopped(): Promise<void> {
+    return browser.waitUntil(
+      async () => {
+        const emulators = await this.getEmulatorsStatus();
+        await browser.pause(1000);
+        console.log("Emulators status", emulators);
+        return emulators?.status === "stopped";
+      },
+      { timeout: 10000 },
+    );
+  }
+
   async waitForUser(): Promise<void> {
     return browser.waitUntil(async () => {
       return browser.executeWorkbench<void>(async (vs: typeof vscode) => {
