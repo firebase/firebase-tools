@@ -123,7 +123,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         return fileInfo;
       }
 
-      const shouldUseDefaultFilename = options.out === true ||  options.out === "";
+      const shouldUseDefaultFilename = options.out === true || options.out === "";
       const filename = shouldUseDefaultFilename ? fileInfo.fileName : (options.out as string);
       if (fs.existsSync(filename)) {
         if (options.nonInteractive) {
