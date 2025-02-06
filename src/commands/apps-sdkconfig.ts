@@ -118,7 +118,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         fileInfo.sdkConfig = configData;
       }
 
-      if (!options.out) {
+      if (options.out === undefined || options.out === false) {
         logger.info(fileInfo.fileContents);
         return fileInfo;
       }
