@@ -1,1 +1,2 @@
 - Genkit init improvements around gcloud login and flow input values.
+- Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
