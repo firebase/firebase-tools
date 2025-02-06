@@ -18,7 +18,7 @@ import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
 
-export function logPostAppCreationInformation(
+function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
   appPlatform: AppPlatform,
 ): void {
@@ -61,7 +61,7 @@ export const command = new Command("apps:create [platform] [displayName]")
   .before(requireAuth)
   .action(
     async (
-      platform: string = "",
+      platform = "",
       displayName: string | undefined,
       options: AppsCreateOptions,
     ): Promise<AppMetadata> => {

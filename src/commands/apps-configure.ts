@@ -81,7 +81,7 @@ export const command = new Command("apps:configure")
     }
 
     let writeToFile = true; // We should write to the config file by default.
-    let outputPath: string = "";
+    let outputPath = "";
     if (typeof options.out === "boolean" && !options.out) {
       writeToFile = options.out;
     } else if (typeof options.out === "string") {
@@ -89,15 +89,15 @@ export const command = new Command("apps:configure")
       outputPath = options.out;
     }
 
-    let relativePath: string = "";
+    let relativePath = "";
     if (writeToFile) {
       outputPath = outputPath || (await getSdkOutputPath(appDir, platform, options));
-      const outputDir = path.dirname(outputPath!);
+      const outputDir = path.dirname(outputPath);
       fs.mkdirpSync(outputDir);
       relativePath = path.relative(appDir, outputPath);
       const fileInfo = getAppConfigFile(sdkConfig, platform);
       const written = await writeConfigToFile(
-        outputPath!,
+        outputPath,
         options.nonInteractive,
         fileInfo.fileContents,
       );

@@ -630,8 +630,7 @@ export async function writeConfigToFile(
       return false;
     }
   }
-  // TODO(mtewani): Make the call to get the fileContents a part of one of these util fns.
-  fs.writeFileSync(filename, fileContents);
+  await fs.writeFile(filename, fileContents);
   return true;
 }
 
