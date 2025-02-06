@@ -17,6 +17,8 @@ import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { Platform } from "../dataconnect/types";
+import { E } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
 
 export interface AppsConfigureOptions extends Options {
   out?: string | boolean;
@@ -57,19 +59,32 @@ for information about adding your config file to your project.`,
   }
 }
 
-export const command = new Command("apps:configure")
+function toAppPlatform(str: string) {
+  switch(str.toUpperCase()) {
+    case Platform.ANDROID:
+      return Platform.ANDROID as unknown as AppPlatform.ANDROID;
+    case Platform.IOS:
+      return Platform.IOS as unknown as AppPlatform.IOS;
+    case Platform.WEB:
+      return Platform.WEB as unknown as AppPlatform.WEB;
+  }
+  throw new Error(`Platform ${str} is not compatible with apps:configure`)
+}
+
+export const command = new Command("apps:configure [platform]")
   .description("Automatically download and create config of a Firebase app. ")
   .before(requireAuth)
-  .action(async (options: AppsConfigureOptions): Promise<AppConfig> => {
+  .option("-o, --out [file]", "(optional) write config output to a file")
+  .action(async (platform = "", options: AppsConfigureOptions): Promise<AppConfig> => {
     const config = options.config;
     const appDir = process.cwd();
     // auto-detect the platform
-    const platform = await getPlatform(appDir, config);
+    const detectedPlatform = platform ? toAppPlatform(platform) : await getPlatform(appDir, config);
 
     let sdkConfig: AppConfig | undefined;
     while (sdkConfig === undefined) {
       try {
-        sdkConfig = await getSdkConfig(options, getAppPlatform(platform));
+        sdkConfig = await getSdkConfig(options, getAppPlatform(detectedPlatform));
       } catch (e) {
         if ((e as Error).message.includes("associated with this Firebase project")) {
           const projectId = needProjectId(options);
@@ -82,20 +97,33 @@ export const command = new Command("apps:configure")
 
     let writeToFile = true; // We should write to the config file by default.
     let outputPath = "";
-    if (typeof options.out === "boolean" && !options.out) {
-      writeToFile = options.out;
+    let tryParseOutBool: boolean | undefined;
+    if (options.out) {
+      if (typeof options.out === "boolean") {
+        tryParseOutBool = options.out;
+      } else if (options.out === "true") {
+        tryParseOutBool = true;
+      } else if (options.out === "false") {
+        tryParseOutBool = false;
+      }
+    }
+
+    if (
+      tryParseOutBool !== undefined
+    ) {
+      writeToFile = tryParseOutBool;
     } else if (typeof options.out === "string") {
       writeToFile = true;
       outputPath = options.out;
     }
 
+    const fileInfo = getAppConfigFile(sdkConfig, detectedPlatform);
     let relativePath = "";
     if (writeToFile) {
-      outputPath = outputPath || (await getSdkOutputPath(appDir, platform, options));
+      outputPath = outputPath || (await getSdkOutputPath(appDir, detectedPlatform, options));
       const outputDir = path.dirname(outputPath);
       fs.mkdirpSync(outputDir);
       relativePath = path.relative(appDir, outputPath);
-      const fileInfo = getAppConfigFile(sdkConfig, platform);
       const written = await writeConfigToFile(
         outputPath,
         options.nonInteractive,
@@ -105,8 +133,10 @@ export const command = new Command("apps:configure")
       if (written) {
         logger.info(`App configuration is written in ${relativePath}`);
       }
+      logUse(detectedPlatform, relativePath);
+    } else {
+      logger.info(fileInfo.fileContents);
     }
-    logUse(platform, relativePath);
 
     return sdkConfig;
   });
