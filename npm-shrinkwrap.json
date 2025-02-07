@@ -65,7 +65,7 @@
         "sql-formatter": "^15.3.0",
         "stream-chain": "^2.2.4",
         "stream-json": "^1.7.3",
-        "superstatic": "firebase/superstatic#jh-url",
+        "superstatic": "^9.2.0",
         "tar": "^6.1.11",
         "tcp-port-used": "^1.0.2",
         "tmp": "^0.2.3",
@@ -170,7 +170,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": "^20.0.0 || ^22.0.0"
+        "node": ">=18.0.0 || >=20.0.0 || >=22.0.0"
       }
     },
     "node_modules/@aashutoshrathi/word-wrap": {
@@ -6183,9 +6183,12 @@
       }
     },
     "node_modules/basic-auth-connect": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/basic-auth-connect/-/basic-auth-connect-1.0.0.tgz",
-      "integrity": "sha1-/bC0OWLKe0BFanwrtI/hc9otISI="
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/basic-auth-connect/-/basic-auth-connect-1.1.0.tgz",
+      "integrity": "sha512-rKcWjfiRZ3p5WS9e5q6msXa07s6DaFAMXoyowV+mb2xQG+oYdw2QEUyKi0Xp95JvXzShlM+oGy5QuqSK6TfC1Q==",
+      "dependencies": {
+        "tsscmp": "^1.0.6"
+      }
     },
     "node_modules/basic-auth-parser": {
       "version": "0.0.2",
@@ -18764,10 +18767,11 @@
       "dev": true
     },
     "node_modules/superstatic": {
-      "version": "9.1.0",
-      "resolved": "git+ssh://git@github.com/firebase/superstatic.git#c85ba718fab5ba75e815f0b4858a464bcb230a84",
+      "version": "9.2.0",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.2.0.tgz",
+      "integrity": "sha512-QrJAJIpAij0jJT1nEwYTB0SzDi4k0wYygu6GxK0ko8twiQgfgaOAZ7Hu99p02MTAsGho753zhzSvsw8We4PBEQ==",
       "dependencies": {
-        "basic-auth-connect": "^1.0.0",
+        "basic-auth-connect": "^1.1.0",
         "commander": "^10.0.0",
         "compression": "^1.7.0",
         "connect": "^3.7.0",
@@ -18781,7 +18785,7 @@
         "morgan": "^1.8.2",
         "on-finished": "^2.2.0",
         "on-headers": "^1.0.0",
-        "path-to-regexp": "^1.8.0",
+        "path-to-regexp": "^1.9.0",
         "router": "^2.0.0",
         "update-notifier-cjs": "^5.1.6"
       },
@@ -18814,7 +18818,7 @@
     "node_modules/superstatic/node_modules/isarray": {
       "version": "0.0.1",
       "resolved": "https://registry.npmjs.org/isarray/-/isarray-0.0.1.tgz",
-      "integrity": "sha1-ihis/Kmo9Bd+Cav8YDiTmwXR7t8="
+      "integrity": "sha512-D2S+3GLxWH+uhrNEcoh/fnmYeP8E8/zHl644d/jdA0g2uyXvy3sb0qxotE+ne0LtccHknQzWwZEzhak7oJ0COQ=="
     },
     "node_modules/superstatic/node_modules/minimatch": {
       "version": "6.2.0",
@@ -18831,9 +18835,9 @@
       }
     },
     "node_modules/superstatic/node_modules/path-to-regexp": {
-      "version": "1.8.0",
-      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-1.8.0.tgz",
-      "integrity": "sha512-n43JRhlUKUAlibEJhPeir1ncUID16QnEjNpwzNdO3Lm4ywrBpBZ5oLD0I6br9evr1Y9JTqwRtAh7JLoOzAQdVA==",
+      "version": "1.9.0",
+      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-1.9.0.tgz",
+      "integrity": "sha512-xIp7/apCFJuUHdDLWe8O1HIkb0kQrOMb/0u6FXQjemHn/ii5LrIzU6bdECnsiTF/GjZkMEKg1xdiZwNqDYlZ6g==",
       "dependencies": {
         "isarray": "0.0.1"
       }
@@ -19539,6 +19543,14 @@
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz",
       "integrity": "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==",
       "dev": true
+    },
+    "node_modules/tsscmp": {
+      "version": "1.0.6",
+      "resolved": "https://registry.npmjs.org/tsscmp/-/tsscmp-1.0.6.tgz",
+      "integrity": "sha512-LxhtAkPDTkVCMQjt2h6eBVY28KCjikZqZfMcC15YBeNjkgUpdCfBu5HoiOTDu86v6smE8yOjyEktJ8hlbANHQA==",
+      "engines": {
+        "node": ">=0.6.x"
+      }
     },
     "node_modules/tsutils": {
       "version": "3.21.0",
@@ -25622,9 +25634,12 @@
       }
     },
     "basic-auth-connect": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/basic-auth-connect/-/basic-auth-connect-1.0.0.tgz",
-      "integrity": "sha1-/bC0OWLKe0BFanwrtI/hc9otISI="
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/basic-auth-connect/-/basic-auth-connect-1.1.0.tgz",
+      "integrity": "sha512-rKcWjfiRZ3p5WS9e5q6msXa07s6DaFAMXoyowV+mb2xQG+oYdw2QEUyKi0Xp95JvXzShlM+oGy5QuqSK6TfC1Q==",
+      "requires": {
+        "tsscmp": "^1.0.6"
+      }
     },
     "basic-auth-parser": {
       "version": "0.0.2",
@@ -34951,10 +34966,11 @@
       }
     },
     "superstatic": {
-      "version": "git+ssh://git@github.com/firebase/superstatic.git#c85ba718fab5ba75e815f0b4858a464bcb230a84",
-      "from": "superstatic@firebase/superstatic#jh-url",
+      "version": "9.2.0",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.2.0.tgz",
+      "integrity": "sha512-QrJAJIpAij0jJT1nEwYTB0SzDi4k0wYygu6GxK0ko8twiQgfgaOAZ7Hu99p02MTAsGho753zhzSvsw8We4PBEQ==",
       "requires": {
-        "basic-auth-connect": "^1.0.0",
+        "basic-auth-connect": "^1.1.0",
         "commander": "^10.0.0",
         "compression": "^1.7.0",
         "connect": "^3.7.0",
@@ -34968,7 +34984,7 @@
         "morgan": "^1.8.2",
         "on-finished": "^2.2.0",
         "on-headers": "^1.0.0",
-        "path-to-regexp": "^1.8.0",
+        "path-to-regexp": "^1.9.0",
         "re2": "^1.17.7",
         "router": "^2.0.0",
         "update-notifier-cjs": "^5.1.6"
@@ -34990,7 +35006,7 @@
         "isarray": {
           "version": "0.0.1",
           "resolved": "https://registry.npmjs.org/isarray/-/isarray-0.0.1.tgz",
-          "integrity": "sha1-ihis/Kmo9Bd+Cav8YDiTmwXR7t8="
+          "integrity": "sha512-D2S+3GLxWH+uhrNEcoh/fnmYeP8E8/zHl644d/jdA0g2uyXvy3sb0qxotE+ne0LtccHknQzWwZEzhak7oJ0COQ=="
         },
         "minimatch": {
           "version": "6.2.0",
@@ -35001,9 +35017,9 @@
           }
         },
         "path-to-regexp": {
-          "version": "1.8.0",
-          "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-1.8.0.tgz",
-          "integrity": "sha512-n43JRhlUKUAlibEJhPeir1ncUID16QnEjNpwzNdO3Lm4ywrBpBZ5oLD0I6br9evr1Y9JTqwRtAh7JLoOzAQdVA==",
+          "version": "1.9.0",
+          "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-1.9.0.tgz",
+          "integrity": "sha512-xIp7/apCFJuUHdDLWe8O1HIkb0kQrOMb/0u6FXQjemHn/ii5LrIzU6bdECnsiTF/GjZkMEKg1xdiZwNqDYlZ6g==",
           "requires": {
             "isarray": "0.0.1"
           }
@@ -35557,6 +35573,11 @@
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz",
       "integrity": "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==",
       "dev": true
+    },
+    "tsscmp": {
+      "version": "1.0.6",
+      "resolved": "https://registry.npmjs.org/tsscmp/-/tsscmp-1.0.6.tgz",
+      "integrity": "sha512-LxhtAkPDTkVCMQjt2h6eBVY28KCjikZqZfMcC15YBeNjkgUpdCfBu5HoiOTDu86v6smE8yOjyEktJ8hlbANHQA=="
     },
     "tsutils": {
       "version": "3.21.0",
