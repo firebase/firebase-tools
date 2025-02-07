@@ -217,7 +217,7 @@ provide, the `Command.help` method accepts a long-form string to display for the
 
 #### Load the command
 
-Next, go to `command/index.js`, then add a line to load the command, for
+Next, go to `commands/index.ts`, then add a line to load the command, for
 example:
 
 ```javascript
