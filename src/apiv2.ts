@@ -1,12 +1,9 @@
-import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
-import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
-
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
@@ -365,7 +362,7 @@ export class Client {
     }
 
     if (options.signal) {
-      fetchOptions.signal = options.signal;
+      fetchOptions.signal = options.signal as RequestInit["signal"];
     }
 
     let reqTimeout: NodeJS.Timeout | undefined;
@@ -374,7 +371,7 @@ export class Client {
       reqTimeout = setTimeout(() => {
         controller.abort();
       }, options.timeout);
-      fetchOptions.signal = controller.signal;
+      fetchOptions.signal = controller.signal as RequestInit["signal"];
     }
 
     if (typeof options.body === "string" || isStream(options.body)) {
