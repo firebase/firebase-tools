@@ -1,6 +1,5 @@
-import { TerminalOptions } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, TelemetryLogger, TerminalOptions } from "vscode";
 import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
@@ -90,7 +89,7 @@ export function registerTerminalTasks(
     });
   });
 
-  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+  const startEmulatorsTask = () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
 
     let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
@@ -101,16 +100,25 @@ export function registerTerminalTasks(
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
+    vscode.window.showInformationMessage("Starting emulators... Please see terminal.");
     runTerminalTask(
       "firebase emulators",
       cmd,
       { focus: true },
     );
+  };
+  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
+    startEmulatorsTask();
   });
+  const startEmulatorsCommand = vscode.commands.registerCommand(
+    "firebase.emulators.start",
+    startEmulatorsTask,
+  );
 
   return Disposable.from(
     { dispose: loginTaskBroker },
     { dispose: startEmulatorsTaskBroker },
+    startEmulatorsCommand,
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {

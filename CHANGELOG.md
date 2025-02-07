@@ -1,1 +1,3 @@
+- Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
+- Fixes symbol generation when uploading Unity 6 symbols to Crashlytics.
