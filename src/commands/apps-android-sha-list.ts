@@ -1,5 +1,4 @@
-const Table = require("cli-table");
-
+import * as Table from "cli-table3";
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
 import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";

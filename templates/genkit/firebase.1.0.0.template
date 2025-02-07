@@ -24,7 +24,7 @@ $GENKIT_CONFIG_PLUGINS
 // Define a simple flow that prompts an LLM to generate menu suggestions.
 const menuSuggestionFlow = ai.defineFlow({
     name: "menuSuggestionFlow",
-    inputSchema: z.string(),
+    inputSchema: z.string().describe("A restaurant theme").default("seafood"),
     outputSchema: z.string(),
     streamSchema: z.string(),
   }, async (subject, { sendChunk }) => {
