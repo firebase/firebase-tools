@@ -1,2 +1,3 @@
 - Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
+- Removed dependencies on a number of packages and methods that causing deprecation warnings on Node 22.
