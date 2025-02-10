@@ -76,7 +76,7 @@ export interface ListTestersResponse {
 export interface Tester {
   name: string;
   displayName?: string;
-  groups: string[];
+  groups?: string[];
   lastActivityTime: Date;
 }
 

@@ -4,3 +4,4 @@
 - Fixes symbol generation when uploading Unity 6 symbols to Crashlytics. (#7867)
 - Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
 - Added Angular 19 as supported version. (#8145)
+- Fixed `appdistribution:testers:list` raising an error when a tester is not part of any group. (#8191)
