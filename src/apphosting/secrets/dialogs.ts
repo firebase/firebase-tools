@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
 import * as apphosting from "../../gcp/apphosting";
@@ -178,8 +178,8 @@ export async function selectBackendServiceAccounts(
   const table = new Table({
     head: tableData[0],
     style: { head: ["green"] },
-    rows: tableData[1],
   });
+  table.push(...tableData[1]);
   logger.info(table.toString());
 
   const allAccounts = metadata.reduce((accum: Set<string>, row) => {

@@ -1,5 +1,6 @@
-- Fixed issue where Extensions deployment fails due to `*.firebasestorage.app` not being recognized as a valid Storage bucket name. (#8152)
-- Fixes issue with custom 404 pages not being returned in Next.js in the emulator (#8035).
-- Annotate onCallGenkit functions to allow for future Firebase Console annotations (#8135)
-- Adds genkit 1.0.0 template (#8144)
 - Switched Data Connect from `v1beta` API to `v1` API.
+- Added code generation of React hooks for Data Connect
+- Genkit init improvements around gcloud login and flow input values.
+- Fixes symbol generation when uploading Unity 6 symbols to Crashlytics.
+- Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
+- Added Angular 19 as supported version. (#8145)
