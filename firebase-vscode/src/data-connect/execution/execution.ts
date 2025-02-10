@@ -132,6 +132,9 @@ export function registerExecution(
       }
     }
 
+    // Args verification
+    await verifyArgs(ast, executionArgsJSON.value);
+    return;
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
@@ -223,5 +226,28 @@ export function registerExecution(
         selectExecutionId(executionId);
       },
     ),
+    vscode.commands.registerCommand(
+      "firebase.openJsonDocument",
+      async (content) => {
+        await vscode.workspace.openTextDocument({ language: "json", content });
+      },
+    ),
   );
+}
+
+
+async function verifyArgs(ast: OperationDefinitionNode, jsonArgs: string) {
+  const args = JSON.parse(jsonArgs);
+  let modifiedArgs = args;
+  ast.variableDefinitions?.forEach(async (variable) => {
+    const varName = variable.variable.name.value;
+    const varType = variable.type.name.value;
+    console.log(variable.variable.name.value, varType, variable);
+    if (!Object.keys(args).includes(varName)) {
+      // open a prompt for variables
+      const newArg = await vscode.window.showInputBox({ prompt: `Missing arg: ${varName}` });
+      modifiedArgs[varName] = newArg;
+    }
+  });
+  console.log("harold new json args: ", modifiedArgs);
 }
