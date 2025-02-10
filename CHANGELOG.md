@@ -1,3 +1,4 @@
+- Switched Data Connect from `v1beta` API to `v1` API.
 - Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
 - Removed dependencies on some packages and methods that caused deprecation warnings on Node 22.
