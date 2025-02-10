@@ -1,5 +1,7 @@
 ## NEXT
 
+- Updated introspection endpoint to V1
+
 ## 0.13.0
 
 - Updated internal `firebase-tools` dependency to 13.30.0
