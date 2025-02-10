@@ -1,3 +1,6 @@
 - Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
-- Removed dependencies on a number of packages and methods that causing deprecation warnings on Node 22.
+- Removed dependencies on some packages and methods that caused deprecation warnings on Node 22.
+- Fixes symbol generation when uploading Unity 6 symbols to Crashlytics. (#7867)
+- Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
+- Added Angular 19 as supported version. (#8145)
