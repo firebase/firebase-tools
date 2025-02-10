@@ -32,6 +32,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   START_EMULATORS = "start_emulators",
   AUTO_COMPLETE = "auto_complete",
   SESSION_CHAR_COUNT = "session_char_count",
+  EMULATOR_EXPORT ="emulator_export",
   SETUP_FIREBASE_BINARY = "setup_firebase_binary",
 }
 
@@ -151,7 +152,12 @@ export class IDXLogger {
   constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
   public logUsage(eventName: string, data?: any) {
     const packageJson = this.context.extension.packageJSON;
-    data = { ...data, extversion: packageJson.version, extname: this.context.extension.id, isidx: true };
+    data = {
+      ...data,
+      extversion: packageJson.version,
+      extname: "idx",
+      isidx: "true",
+    };
     this.sender.sendEventData(eventName, data);
   }
 

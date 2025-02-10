@@ -4,6 +4,11 @@
   "ext.config.firebasePath": "Path to the `Firebase` module, e.g. `./node_modules/firebase`",
   "ext.config.hosting.useFrameworks": "Enable web frameworks",
   "ext.config.npmPath": "Path to NPM executable in local environment",
-  "ext.config.title": "Prettier",
-  "ext.config.idx.viewMetricNotice": "Show data collection notice on next startup (IDX Only)"
+  "ext.config.title": "Firebase Data Connect",
+  "ext.config.idx.viewMetricNotice": "Show data collection notice on next startup (IDX Only)",
+  "ext.config.emulators.importPath": "Path to import emulator data from",
+  "ext.config.emulators.exportPath": "Path to export emulator data to",
+  "ext.config.emulators.exportOnExit": "If true, data will be exported to exportPath when the emulator shuts down",
+  "ext.config.debug": "When true, add the --debug flag to any commands run by the extension",
+  "ext.config.extraEnv": "Extra environment variables to provide during deploy or emulation. Useful during extension development to enable experiments or hit non-production environments."
 }

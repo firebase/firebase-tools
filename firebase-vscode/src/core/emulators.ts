@@ -6,6 +6,10 @@ import { EmulatorsStatus, RunningEmulatorInfo } from "../messaging/types";
 import { EmulatorHubClient } from "../../../src/emulator/hubClient";
 import { GetEmulatorsResponse } from "../../../src/emulator/hub";
 import { EmulatorInfo } from "../emulator/types";
+import { signal } from "@preact/signals-core";
+import { dataConnectConfigs } from "../data-connect/config";
+import { runEmulatorIssuesStream } from "../data-connect/emulator-stream";
+import { getSettings } from "../utils/settings";
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.emulatorStatusItem.command = "firebase.openFirebaseRc";
@@ -21,11 +25,34 @@ export class EmulatorsController implements Disposable {
         this.setEmulatorsStarting();
       }),
     );
+
+    // Subscription to open up settings window
+    this.subscriptions.push(
+      broker.on("fdc.open-emulator-settings", () => {
+        vscode.commands.executeCommand( 'workbench.action.openSettings', 'firebase.emulators' );
+      })
+    );
+
+    // Subscription to trigger clear emulator data when button is clicked.
+    this.subscriptions.push(
+      broker.on("fdc.clear-emulator-data", () => {
+        vscode.commands.executeCommand("firebase.emulators.clearData");
+      }),
+    );
+
+    // Subscription to trigger emulator exports when button is clicked.
+    this.subscriptions.push(broker.on("runEmulatorsExport", () => {
+      vscode.commands.executeCommand("firebase.emulators.exportData")
+    }));
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
   private currExecId = 0;
 
+  public async startEmulators() {
+    this.setEmulatorsStarting();
+    vscode.commands.executeCommand("firebase.emulators.start");
+  }
   // called by webhook
   private readonly findRunningEmulatorsCommand =
     vscode.commands.registerCommand(
@@ -39,6 +66,17 @@ export class EmulatorsController implements Disposable {
     this.setEmulatorsStopped.bind(this),
   );
 
+  private readonly clearEmulatorDataCommand = vscode.commands.registerCommand(
+    "firebase.emulators.clearData",
+    this.clearDataConnectData.bind(this),
+  );
+
+
+  private readonly exportEmulatorDataCommand = vscode.commands.registerCommand(
+    "firebase.emulators.exportData",
+    this.exportEmulatorData.bind(this),
+  );
+
   readonly emulators: { status: EmulatorsStatus; infos?: RunningEmulatorInfo } =
     {
       status: "stopped",
@@ -48,7 +86,6 @@ export class EmulatorsController implements Disposable {
 
   notifyEmulatorStateChanged() {
     this.broker.send("notifyEmulatorStateChanged", this.emulators);
-    vscode.commands.executeCommand("refreshCodelens");
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
@@ -76,6 +113,8 @@ export class EmulatorsController implements Disposable {
     };
     this.emulators.status = "running";
     this.notifyEmulatorStateChanged();
+
+    this.connectToEmulatorStream();
   }
 
   public setEmulatorsStarting() {
@@ -105,13 +144,10 @@ export class EmulatorsController implements Disposable {
   }
 
   async findRunningCliEmulators(): Promise<
-    { status: EmulatorsStatus; infos?: RunningEmulatorInfo } | undefined
+    { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
   > {
-    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-    // TODO: think about what to without projectID, in potentially a logged out mode
-    const hubClient = new EmulatorHubClient(projectId!);
-
-    if (hubClient.foundHub()) {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
       const response: GetEmulatorsResponse = await hubClient.getEmulators();
 
       if (Object.values(response)) {
@@ -119,15 +155,60 @@ export class EmulatorsController implements Disposable {
       } else {
         this.setEmulatorsStopped();
       }
-    } else {
-      this.setEmulatorsStopped();
     }
-
     return this.emulators;
   }
 
-  public areEmulatorsRunning() {
-    return this.emulators.status === "running";
+  async clearDataConnectData(): Promise<void> {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      await hubClient.clearDataConnectData();
+      vscode.window.showInformationMessage(`Data Connect emulator data has been cleared.`);
+    }
+  }
+
+  async exportEmulatorData(): Promise<void> {
+    const settings = getSettings();
+    const exportDir = settings.exportPath;
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      // TODO: Make exportDir configurable
+      await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
+      vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);
+    }
+  }
+
+  private getHubClient(): EmulatorHubClient | undefined {
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+    // TODO: think about what to without projectID, in potentially a logged out mode
+    const hubClient = new EmulatorHubClient(projectId!);
+    if (hubClient.foundHub()) {
+      return hubClient;
+    } else {
+      this.setEmulatorsStopped();
+    }
+  }
+
+  public async areEmulatorsRunning(): Promise<boolean> {
+    if (this.emulators.status === "running") {
+      return true;
+    }
+    return (await this.findRunningCliEmulators())?.status === "running";
+  }
+
+  /** FDC specific functions */
+  readonly isPostgresEnabled = signal(false);
+  private connectToEmulatorStream() {
+    const configs = dataConnectConfigs.value?.tryReadValue!;
+
+    if (this.getLocalEndpoint()) {
+      // only if FDC emulator endpoint is found
+      runEmulatorIssuesStream(
+        configs,
+        this.getLocalEndpoint()!,
+        this.isPostgresEnabled,
+      );
+    }
   }
 
   dispose(): void {
@@ -135,5 +216,7 @@ export class EmulatorsController implements Disposable {
     this.findRunningEmulatorsCommand.dispose();
     this.emulatorStatusItem.dispose();
     this.emulatorsStoppped.dispose();
+    this.clearEmulatorDataCommand.dispose();
+    this.exportEmulatorDataCommand.dispose();
   }
 }

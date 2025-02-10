@@ -141,8 +141,11 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
       }))
     );
   } else {
-    info.serviceId = info.serviceId || basename(process.cwd());
-    info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId || "app"}-fdc`;
+    // Ensure that the suggested name is DNS compatible
+    const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
+    info.serviceId = info.serviceId || defaultServiceId;
+    info.cloudSqlInstanceId =
+      info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
@@ -368,7 +371,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
     info.cloudSqlInstanceId = await promptOnce({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       type: "input",
-      default: `${info.serviceId || "app"}-fdc`,
+      default: `${info.serviceId.toLowerCase() || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {
@@ -446,4 +449,21 @@ async function locationChoices(setup: Setup) {
       { name: "asia-southeast1", value: "asia-southeast1" },
     ];
   }
+}
+
+/**
+ * Converts any string to a DNS friendly service ID.
+ */
+export function toDNSCompatibleId(id: string): string {
+  let defaultServiceId = basename(id)
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9-]/g, "")
+    .slice(0, 63);
+  while (defaultServiceId.endsWith("-") && defaultServiceId.length) {
+    defaultServiceId = defaultServiceId.slice(0, defaultServiceId.length - 1);
+  }
+  while (defaultServiceId.startsWith("-") && defaultServiceId.length) {
+    defaultServiceId = defaultServiceId.slice(1, defaultServiceId.length);
+  }
+  return defaultServiceId || "app";
 }

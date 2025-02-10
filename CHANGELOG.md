@@ -1,0 +1,5 @@
+- Added code generation of React hooks for Data Connect
+- Genkit init improvements around gcloud login and flow input values.
+- Fixes symbol generation when uploading Unity 6 symbols to Crashlytics.
+- Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
+- Added Angular 19 as supported version. (#8145)

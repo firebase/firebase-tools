@@ -12,6 +12,7 @@ import {
   stop,
   downloadIfNecessary,
   isIncomaptibleArchError,
+  getDownloadDetails,
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
@@ -41,6 +42,7 @@ export interface DataConnectEmulatorArgs {
   enable_output_generated_sdk: boolean;
   importPath?: string;
   debug?: boolean;
+  extraEnv?: Record<string, string>;
 }
 
 export interface DataConnectGenerateArgs {
@@ -51,6 +53,7 @@ export interface DataConnectGenerateArgs {
 
 export interface DataConnectBuildArgs {
   configDir: string;
+  projectId?: string;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -90,13 +93,17 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    await start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: resolvedConfigDir,
-      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
-      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
-    });
+    await start(
+      Emulators.DATACONNECT,
+      {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+        enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+      },
+      this.args.extraEnv,
+    );
 
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
@@ -113,9 +120,12 @@ export class DataConnectEmulator implements EmulatorInstance {
           `FIREBASE_DATACONNECT_POSTGRESQL_STRING is set to ${clc.bold(connStr)} - using that instead of starting a new database`,
         );
       } else if (pgHost && pgPort) {
-        const dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        let dataDirectory = this.args.config.get("emulators.dataconnect.dataDir");
+        if (dataDirectory) {
+          dataDirectory = this.args.config.path(dataDirectory);
+        }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.importPath, "postgres.tar.gz")
+          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,
@@ -192,6 +202,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     return Emulators.DATACONNECT;
   }
 
+  getVersion(): string {
+    return getDownloadDetails(Emulators.DATACONNECT).version;
+  }
+
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
@@ -204,7 +218,9 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async exportData(exportPath: string): Promise<void> {
     if (this.postgresServer) {
-      await this.postgresServer.exportData(path.join(exportPath, "postgres.tar.gz"));
+      await this.postgresServer.exportData(
+        path.join(this.args.config.path(exportPath), "postgres.tar.gz"),
+      );
     } else {
       throw new FirebaseError(
         "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
@@ -249,6 +265,9 @@ export class DataConnectEmulator implements EmulatorInstance {
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
     const cmd = ["--logtostderr", "-v=2", "build", `--config_dir=${args.configDir}`];
+    if (args.projectId) {
+      cmd.push(`--project_id=${args.projectId}`);
+    }
 
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
     if (isIncomaptibleArchError(res.error)) {

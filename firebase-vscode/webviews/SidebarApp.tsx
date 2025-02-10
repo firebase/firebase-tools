@@ -107,6 +107,13 @@ function EmulatorsPanel() {
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
+        <a onClick={() => {
+          broker.send("fdc.open-emulator-settings")
+        }}>
+          Configure emulator
+        </a>
+      </Label>
+      <Label level={3}>
         See also:{" "}
         <a href="https://firebase.google.com/docs/emulator-suite">
           Introduction to Firebase emulators
