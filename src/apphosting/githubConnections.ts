@@ -114,15 +114,15 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 export async function getOrCreateFullyInstalledConnection(
   projectId: string,
   location: string,
-  connectionId?: string,
+  createConnectionId?: string,
 ): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
 
-  if (connectionId) {
+  if (createConnectionId) {
     // Check if the connection already exists.
     try {
-      const connection = await devConnect.getConnection(projectId, location, connectionId);
-      utils.logBullet(`Reusing existing connection ${connectionId}`);
+      const connection = await devConnect.getConnection(projectId, location, createConnectionId);
+      utils.logBullet(`Reusing existing connection ${createConnectionId}`);
       return connection;
     } catch (err: unknown) {
       // A 404 is expected if the connection doesn't exist. Otherwise, continue to throw the err.
@@ -160,19 +160,19 @@ export async function getOrCreateFullyInstalledConnection(
   if (connectionMatchingInstallation) {
     const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
 
-    if (!connectionId) {
+    if (!createConnectionId) {
       utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
       return connectionMatchingInstallation;
     }
   }
-  if (!connectionId) {
-    connectionId = generateConnectionId();
+  if (!createConnectionId) {
+    createConnectionId = generateConnectionId();
   }
 
   const connection = await createFullyInstalledConnection(
     projectId,
     location,
-    connectionId,
+    createConnectionId,
     oauthConn,
     installationId,
   );
