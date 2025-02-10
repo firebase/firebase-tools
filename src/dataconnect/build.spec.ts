@@ -126,6 +126,26 @@ describe("handleBuildErrors", () => {
       dryRun: false,
       expectErr: false,
     },
+    {
+      desc: "Required force evolution error, force=false",
+      graphqlErr: [
+        { message: "inaccessible error", extensions: { warningLevel: "REQUIRE_FORCE" } },
+      ],
+      nonInteractive: false,
+      force: false,
+      dryRun: false,
+      expectErr: true,
+    },
+    {
+      desc: "Required force evolution error, force=true",
+      graphqlErr: [
+        { message: "inaccessible error", extensions: { warningLevel: "REQUIRE_FORCE" } },
+      ],
+      nonInteractive: false,
+      force: true,
+      dryRun: false,
+      expectErr: false,
+    },
   ];
   for (const c of cases) {
     it(c.desc, async () => {
