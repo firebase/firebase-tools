@@ -47,7 +47,7 @@ function printTestersTable(testers: Tester[]): void {
 
   for (const tester of testers) {
     const name = tester.name.split("/").pop();
-    const groups = (tester.groups || [])
+    const groups = (tester.groups ?? [])
       .map((grp) => grp.split("/").pop())
       .sort()
       .join(";");
