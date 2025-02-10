@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
-const DATACONNECT_API_VERSION = "v1beta";
+const DATACONNECT_API_VERSION = "v1";
 const PAGE_SIZE_MAX = 100;
 
 const dataconnectClient = () =>
