@@ -73,7 +73,6 @@ async function awaitTlsReady(url: string): Promise<void> {
 export async function doSetup(
   projectId: string,
   webAppName: string | null,
-  location: string | null,
   serviceAccount: string | null,
 ): Promise<void> {
   await Promise.all([
@@ -89,21 +88,11 @@ export async function doSetup(
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
   await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
 
-  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-  if (location) {
-    if (!allowedLocations.includes(location)) {
-      throw new FirebaseError(
-        `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
-      );
-    }
-  }
-
-  location =
-    location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
+  const primaryRegion = await promptPrimaryRegion(projectId, "Select a primary region to host your backend:\n");
 
   const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
     projectId,
-    location,
+    primaryRegion,
   );
 
   const rootDir = await promptOnce({
@@ -120,7 +109,7 @@ export async function doSetup(
   logSuccess(`Repo linked successfully!\n`);
 
   logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location, {
+  const backendId = await promptNewBackendId(projectId, primaryRegion, {
     name: "backendId",
     type: "input",
     default: "my-web-app",
@@ -136,7 +125,7 @@ export async function doSetup(
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
     projectId,
-    location,
+    primaryRegion,
     backendId,
     gitRepositoryLink,
     serviceAccount,
@@ -145,7 +134,7 @@ export async function doSetup(
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
-  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
+  await setDefaultTrafficPolicy(projectId, primaryRegion, backendId, branch);
 
   const confirmRollout = await promptOnce({
     type: "confirm",
@@ -168,6 +157,8 @@ export async function doSetup(
   const createRolloutSpinner = ora(
     "Starting a new rollout; this may take a few minutes. It's safe to exit now.",
   ).start();
+  // TODO: remove this renaming when orchestrateRolloutArgs have been updated.
+  const location = primaryRegion
   await orchestrateRollout({
     projectId,
     location,
@@ -390,9 +381,34 @@ export async function deleteBackendAndPoll(
 /**
  * Prompts the user for a location. If there's only a single valid location, skips the prompt and returns that location.
  */
+export async function promptPrimaryRegion(
+  projectId: string,
+  prompt = "Please select a primary region:",
+): Promise<string> {
+  const allowedRegions = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
+  if (allowedRegions.length === 1) {
+    return allowedRegions[0];
+  }
+
+  const primaryRegion = (await promptOnce({
+    name: "primaryRegion",
+    type: "list",
+    default: DEFAULT_LOCATION,
+    message: prompt,
+    choices: allowedRegions,
+  })) as string;
+
+  logSuccess(`Primary Region set to ${primaryRegion}.\n`);
+
+  return primaryRegion;
+}
+
+/**
+ * Prompts the user for a location. If there's only a single valid location, skips the prompt and returns that location.
+ */
 export async function promptLocation(
   projectId: string,
-  prompt = "Please select a location:",
+  prompt = "Please select a primary region:",
 ): Promise<string> {
   const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
   if (allowedLocations.length === 1) {
@@ -407,7 +423,7 @@ export async function promptLocation(
     choices: allowedLocations,
   })) as string;
 
-  logSuccess(`Location set to ${location}.\n`);
+  logSuccess(`Primary Region set to ${location}.\n`);
 
   return location;
 }
