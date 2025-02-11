@@ -84,7 +84,7 @@ export async function handleBuildErrors(
     utils.logLabeledWarning(
       "dataconnect",
       `There are changes in your schema or connectors that may cause unexpected behavior in your existing applications:\n` +
-        interactiveAcks.map(prettify).join("\n"),
+        prettifyWithWorkaround(interactiveAcks),
     );
     if (!nonInteractive && !force && !dryRun) {
       const result = await promptOnce({
