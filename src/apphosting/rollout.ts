@@ -38,7 +38,6 @@ export async function createRollout(
 ): Promise<void> {
   let backend: apphosting.Backend;
   if (location === "-" || location === "") {
-    // TODO
     backend = await getBackend(
       projectId,
       backendId,
