@@ -495,12 +495,12 @@ export async function getBackend(
       logWarning(
         `You have multiple backends with the same ${backendId} ID. This is no longer supported. ` +
         "Please delete and recreate any backends that share an ID with another backend."
-      )
+      );
       if (force) {
         throw new FirebaseError(
           `Force cannot be used when multiple backends share the same ID`,
         );
-      };
+      }
       const options = { force: force, nonInteractive: false };
       const confirmed = await confirm({
 	...options,
