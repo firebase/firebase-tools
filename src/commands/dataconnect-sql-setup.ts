@@ -17,12 +17,11 @@ import {
   DEFAULT_SCHEMA,
   getSchemaMetaData,
 } from "../gcp/cloudsql/permissions";
-import {  setupIAMUsers } from "../gcp/cloudsql/connect";
+import { setupIAMUsers } from "../gcp/cloudsql/connect";
 import { logger } from "../logger";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { confirm } from "../prompt";
 import * as clc from "colorette";
-
 
 // Sets up all FDC roles (owner, writer, and reader).
 // Granting roles to users is done by the caller.
@@ -39,7 +38,9 @@ export async function setupSQLPermissions(
   logger.info(`Attempting to Setup SQL schema "${schema}".`);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
-    throw new FirebaseError(`Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`);
+    throw new FirebaseError(
+      `Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`,
+    );
   }
   await setupIAMUsers(instanceId, databaseId, options);
 
@@ -99,7 +100,6 @@ export async function setupSQLPermissions(
 
   return false;
 }
-
 
 export const command = new Command("dataconnect:sql:setup [serviceId]")
   .description("Setup your CloudSQL database")

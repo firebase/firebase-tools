@@ -236,13 +236,14 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
     );
   }
 
-  // Run the database roles setup. This should be idempotent.
+  // Make sure we have the right setup for the requested role grant.
   const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
     logger.info(`Detected schema "${schema}" is setup in greenfield mode. Skipping Setup.`);
-    return;
+  } else {
+    isGreenfieldSetup = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
   }
-  const isGreenfieldSetup = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
   if (!isGreenfieldSetup && fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)) {

@@ -1,10 +1,6 @@
 import { Options } from "../../options";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
-import {
-  executeSqlCmdsAsIamUser,
-  executeSqlCmdsAsSuperUser,
-  getIAMUser,
-} from "./connect";
+import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { testIamPermissions } from "../iam";
 import { logger } from "../../logger";
 import { concat } from "lodash";
@@ -441,7 +437,9 @@ export async function brownfieldSqlSetup(
 
   // Step 1: Grant firebasesuperuser access to the original owner
   const uniqueTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
-  const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map((owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`);
+  const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map(
+    (owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`,
+  );
 
   // Step 2: Using firebasesuperuser, setup reader and writer permissions on existing tables and setup default permissions for future tables.
   const iamUser = (await getIAMUser(options)).user;
@@ -467,11 +465,11 @@ export async function brownfieldSqlSetup(
     `GRANT "${firebasewriter(databaseId, schema)}" TO "${iamUser}"`,
     // Grant firebaswriter to the FDC P4SA user
     `GRANT "${firebasewriter(databaseId, schema)}" TO "${fdcP4SAUser}"`,
-    
+
     // Insures firebase roles have access to future tables
-    ...firebaseDefaultPermissions
+    ...firebaseDefaultPermissions,
   ];
   // Add default Permissions to each owner
-  
+
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, brownfieldSetupCmds, silent);
 }
