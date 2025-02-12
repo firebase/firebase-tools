@@ -23,12 +23,14 @@ import { DataConnectError, toSerializedError } from "../../common/error";
 import { OperationLocation } from "./types";
 import { InstanceType } from "./code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
+import { EmulatorsController } from "../core/emulators";
 
 export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
   analyticsLogger: AnalyticsLogger,
+  emulatorsController: EmulatorsController,
 ): Disposable {
   const treeDataProvider = new ExecutionHistoryTreeDataProvider();
   const executionHistoryTreeView = vscode.window.createTreeView(
@@ -80,8 +82,26 @@ export function registerExecution(
     instance: InstanceType,
   ) {
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
+
     const alwaysExecuteMutationsInProduction =
       "alwaysAllowMutationsInProduction";
+    const alwaysStartEmulator = "alwaysStartEmulator";
+
+    // notify users that emulator is starting
+    if (
+      instance === InstanceType.LOCAL &&
+      !(await emulatorsController.areEmulatorsRunning())
+    ) {
+      vscode.window.showWarningMessage(
+        "Automatically starting emulator... Please retry `Run local` execution after it's started.",
+        { modal: false },
+      );
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+      );
+      emulatorsController.startEmulators();
+      return;
+    }
 
     // Warn against using mutations in production.
     if (

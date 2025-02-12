@@ -1,7 +1,7 @@
 import * as mockfs from "mock-fs";
 
 import { expect } from "chai";
-import { getPlatformFromFolder } from "./fileUtils";
+import { getPlatformFromFolder, SUPPORTED_FRAMEWORKS } from "./fileUtils";
 import { generateSdkYaml } from "../init/features/dataconnect/sdk";
 import { ConnectorYaml, Platform } from "./types";
 import FileSystem from "mock-fs/lib/filesystem";
@@ -192,9 +192,9 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
+      it(c.desc, async () => {
         mockfs({ [appFolderDetectable]: { ["package.json"]: "{}" } });
-        const modifiedYaml = generateSdkYaml(
+        const modifiedYaml = await generateSdkYaml(
           Platform.WEB,
           sampleConnectorYaml,
           connectorYamlFolder,
@@ -204,6 +204,37 @@ describe("generateSdkYaml", () => {
       });
     }
   });
+  for (const f of SUPPORTED_FRAMEWORKS) {
+    describe(`Check support for ${f} framework`, () => {
+      const cases = [
+        {
+          desc: `can detect a ${f}`,
+          depName: f,
+          detect: true,
+        },
+        {
+          desc: `can detect not ${f}`,
+          depName: `not-${f}`,
+        },
+      ];
+      for (const c of cases) {
+        it(c.desc, async () => {
+          mockfs({
+            [appFolderDetectable]: {
+              ["package.json"]: `{"dependencies": {"${c.depName}": "1"}}`,
+            },
+          });
+          const modifiedYaml = await generateSdkYaml(
+            Platform.WEB,
+            sampleConnectorYaml,
+            connectorYamlFolder,
+            appFolderDetectable,
+          );
+          expect(modifiedYaml.generate?.javascriptSdk?.[f]).to.equal(c.detect);
+        });
+      }
+    });
+  }
 
   describe("IOS platform should add Swift SDK Generation", () => {
     const cases: {
@@ -237,8 +268,8 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
-        const modifiedYaml = generateSdkYaml(
+      it(c.desc, async () => {
+        const modifiedYaml = await generateSdkYaml(
           Platform.IOS,
           sampleConnectorYaml,
           connectorYamlFolder,
@@ -308,14 +339,14 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
+      it(c.desc, async () => {
         mockfs({
           [appFolderHasJava + "/app/src/main/java"]: {},
           [appFolderHasKotlin + "/app/src/main/kotlin"]: {},
           [appFolderHasBoth + "/app/src/main/java"]: {},
           [appFolderHasBoth + "/app/src/main/kotlin"]: {},
         });
-        const modifiedYaml = generateSdkYaml(
+        const modifiedYaml = await generateSdkYaml(
           Platform.ANDROID,
           sampleConnectorYaml,
           connectorYamlFolder,
@@ -358,8 +389,8 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
-        const modifiedYaml = generateSdkYaml(
+      it(c.desc, async () => {
+        const modifiedYaml = await generateSdkYaml(
           Platform.FLUTTER,
           sampleConnectorYaml,
           connectorYamlFolder,
@@ -370,9 +401,9 @@ describe("generateSdkYaml", () => {
     }
   });
 
-  it("should create generate object if it doesn't exist", () => {
+  it("should create generate object if it doesn't exist", async () => {
     const yamlWithoutGenerate: ConnectorYaml = { connectorId: "default-connector" };
-    const modifiedYaml = generateSdkYaml(
+    const modifiedYaml = await generateSdkYaml(
       Platform.WEB,
       yamlWithoutGenerate,
       connectorYamlFolder,
@@ -381,9 +412,9 @@ describe("generateSdkYaml", () => {
     expect(modifiedYaml.generate).to.exist;
   });
 
-  it("should not modify yaml for unknown platforms", () => {
+  it("should not modify yaml for unknown platforms", async () => {
     const unknownPlatform = "unknown" as Platform; // Type assertion for test
-    const modifiedYaml = generateSdkYaml(
+    const modifiedYaml = await generateSdkYaml(
       unknownPlatform,
       sampleConnectorYaml,
       connectorYamlFolder,

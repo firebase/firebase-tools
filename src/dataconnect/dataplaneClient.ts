@@ -2,7 +2,7 @@ import { dataconnectOrigin } from "../api";
 import { Client, ClientResponse } from "../apiv2";
 import * as types from "./types";
 
-export const DATACONNECT_API_VERSION = "v1beta";
+export const DATACONNECT_API_VERSION = "v1";
 
 export function dataconnectDataplaneClient(): Client {
   return new Client({

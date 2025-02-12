@@ -54,7 +54,7 @@ describe("init dataconnect", () => {
         expectEnsureSchemaGQL: false,
       },
       {
-        desc: "exiting project should use existing directory",
+        desc: "existing project should use existing directory",
         requiredInfo: mockRequiredInfo(),
         config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
@@ -158,6 +158,41 @@ describe("init dataconnect", () => {
         }
         expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
         expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
+      });
+    }
+  });
+
+  describe("toDNSCompatibleId", () => {
+    const cases: { description: string; input: string; expected: string }[] = [
+      {
+        description: "Should noop compatible strings",
+        input: "this-is-compatible",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should lower case",
+        input: "This-Is-Compatible",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should strip special characters",
+        input: "this-is-compatible?~!@#$%^&*()_+=",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should strip trailing and leading -",
+        input: "---this-is-compatible---",
+        expected: "this-is-compatible",
+      },
+      {
+        description: "Should cut to 63 characters",
+        input: "a".repeat(1000),
+        expected: "a".repeat(63),
+      },
+    ];
+    for (const c of cases) {
+      it(c.description, () => {
+        expect(init.toDNSCompatibleId(c.input)).to.equal(c.expected);
       });
     }
   });

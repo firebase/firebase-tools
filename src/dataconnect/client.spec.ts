@@ -4,7 +4,7 @@ import * as nock from "nock";
 import * as client from "./client";
 import { dataconnectOrigin } from "../api";
 
-const API_VERSION = "v1beta";
+const API_VERSION = "v1";
 describe("DataConnect control plane client", () => {
   afterEach(() => {
     nock.cleanAll();
