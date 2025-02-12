@@ -53,6 +53,7 @@ export async function setupSQLPermissions(
     });
     if (rerunSetup) {
       await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
+      logger.info(clc.green("Database setup complete."));
       return true;
     }
   } else {
@@ -63,6 +64,7 @@ export async function setupSQLPermissions(
   if (schemaInfo.tables.length === 0) {
     logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`);
     await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
+    logger.info(clc.green("Database setup complete."));
     return true;
   }
 
@@ -96,6 +98,7 @@ export async function setupSQLPermissions(
       ),
     );
     await brownfieldSqlSetup(instanceId, databaseId, schemaInfo, options, silent);
+    logger.info(clc.green("Brownfield database setup complete."));
   }
 
   return false;
