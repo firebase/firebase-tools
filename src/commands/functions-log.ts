@@ -37,7 +37,7 @@ export const command = new Command("functions:log")
         "desc",
       );
       functionsLog.logEntries(entries);
-      logger.info(`\nSee full logs at: ${url}`)
+      logger.info(`\nSee full logs at: ${url}`);
       return entries;
     } catch (err: any) {
       throw new FirebaseError(`Failed to list log entries ${err.message}`, { exit: 1 });
