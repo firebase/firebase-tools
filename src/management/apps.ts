@@ -15,7 +15,7 @@ import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
 import { logBullet, logSuccess, logWarning } from "../utils";
-import { AppsConfigureOptions } from "../commands/apps-configure";
+import { AppsInitOptions } from "../commands/apps-init";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
@@ -198,7 +198,7 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
 export async function getSdkOutputPath(
   appDir: string,
   platform: AppPlatform,
-  config: AppsConfigureOptions,
+  config: AppsInitOptions,
 ): Promise<string> {
   switch (platform) {
     case AppPlatform.ANDROID:
@@ -759,7 +759,7 @@ export async function deleteAppAndroidSha(
   }
 }
 
-export async function findIntelligentPathForIOS(appDir: string, options: AppsConfigureOptions) {
+export async function findIntelligentPathForIOS(appDir: string, options: AppsInitOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
     const dirent = currentFiles[i];
@@ -789,7 +789,7 @@ export async function findIntelligentPathForIOS(appDir: string, options: AppsCon
   return outputPath;
 }
 
-export async function findIntelligentPathForAndroid(appDir: string, options: AppsConfigureOptions) {
+export async function findIntelligentPathForAndroid(appDir: string, options: AppsInitOptions) {
   /**
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.

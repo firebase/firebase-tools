@@ -137,6 +137,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  appsinit: {
+    shortDescription: 'Enable auto-configuring of Firebase Apps',
+    fullDescription: 'Enable auto-configuring of Firebase App based on currently used platform.',
+    default: false,
+    public: true
+  },
 
   fdcconnectorevolution: {
     shortDescription: "Enable Data Connect connector evolution warnings.",
