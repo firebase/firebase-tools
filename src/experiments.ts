@@ -138,10 +138,10 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
   appsinit: {
-    shortDescription: 'Enable auto-configuring of Firebase Apps',
-    fullDescription: 'Enable auto-configuring of Firebase App based on currently used platform.',
+    shortDescription: "Enable auto-configuring of Firebase Apps",
+    fullDescription: "Enable auto-configuring of Firebase App based on currently used platform.",
     default: false,
-    public: true
+    public: true,
   },
 
   fdcconnectorevolution: {
