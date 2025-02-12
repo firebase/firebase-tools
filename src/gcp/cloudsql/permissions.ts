@@ -327,8 +327,7 @@ export async function getSchemaMetaData(
       tables: [],
     };
   }
-  const schemaOwner = checkSchemaExists[0].rows[0];
-  console.log(`SCHEMA OWNER: ${schemaOwner}`);
+  const schemaOwner = checkSchemaExists[0].rows[0].pg_get_userbyid;
 
   // Get schema tables
   const cmd = `SELECT tablename, tableowner FROM pg_tables WHERE schemaname='${schema}'`;
