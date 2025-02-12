@@ -26,7 +26,6 @@ import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
 import { firebaseApiOrigin } from "../api";
 import { AppsInitOptions } from "../commands/apps-init";
-import { setEnabled } from "../experiments";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -701,11 +700,8 @@ describe("App management", () => {
         expect(platform).to.equal(c.output);
       });
     }
-    beforeEach(() => {
-      setEnabled("appsinit", true);
-    });
+
     afterEach(() => {
-      setEnabled("appsinit", false);
       mockfs.restore();
     });
   });
@@ -770,11 +766,7 @@ describe("App management", () => {
         }
       });
     }
-    beforeEach(() => {
-      setEnabled("appsinit", true);
-    });
     afterEach(() => {
-      setEnabled("appsinit", false);
       mockfs.restore();
     });
   });
