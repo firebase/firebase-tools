@@ -17,7 +17,6 @@ import {
   DEFAULT_SCHEMA,
   getSchemaMetaData,
   SchemaSetupStatus,
-  setupSQLPermissions,
 } from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
@@ -25,6 +24,7 @@ import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import { setupSQLPermissions } from "../commands/dataconnect-sql-setup";
 import * as errors from "./errors";
 
 export async function diffSchema(
@@ -372,7 +372,7 @@ async function handleIncompatibleSchemaError(args: {
 
       if (!isGreenfieldSetup) {
         throw new FirebaseError(
-          `Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect sql:setup'`,
+          `Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
         );
       }
     }

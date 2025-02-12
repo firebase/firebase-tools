@@ -178,8 +178,6 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
 // Steps:
 // 1. Create an IAM user for the current identity
 // 2. Create an IAM user for FDC P4SA
-// 3. Run setupSQLPermissions to setup the SQL database roles and permissions.
-// 4. Connect to the DB as the temporary user and run the necessary grants
 export async function setupIAMUsers(
   instanceId: string,
   databaseId: string,
