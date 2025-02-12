@@ -357,34 +357,25 @@ export async function getSchemaMetaData(
     );
     return result[0].rows[0];
   };
+
+  let setupStatus;
   if (!(await checkRoleExists(firebasewriter(databaseId, schema)))) {
-    return {
-      name: schema,
-      owner: schemaOwner,
-      setupStatus: SchemaSetupStatus.NotSetup,
-      tables: tables,
-    };
-  }
-
-  // If schema owner and all table owners are firebaseowner -> Greenfield
-  const firebaseOwnerRole = firebaseowner(databaseId, schema);
-  if (
-    tables.every((table) => table.owner === firebaseOwnerRole) &&
-    schemaOwner === firebaseOwnerRole
+    setupStatus = SchemaSetupStatus.NotSetup;
+  } else if (
+    tables.every((table) => table.owner === firebaseowner(databaseId, schema)) &&
+    schemaOwner === firebaseowner(databaseId, schema)
   ) {
-    return {
-      name: schema,
-      owner: schemaOwner,
-      setupStatus: SchemaSetupStatus.GreenField,
-      tables: tables,
-    };
+    // If schema owner and all table owners are firebaseowner -> Greenfield
+    setupStatus = SchemaSetupStatus.GreenField;
+  } else {
+    // We have determined firebase writer exists but schema/table owner isn't firebaseowner -> Brownfield
+    setupStatus = SchemaSetupStatus.BrownField;
   }
 
-  // We have determined firebase writer exists but schema/table owner isn't firebaseowner -> Brownfield
   return {
     name: schema,
     owner: schemaOwner,
-    setupStatus: SchemaSetupStatus.BrownField,
+    setupStatus,
     tables: tables,
   };
 }
