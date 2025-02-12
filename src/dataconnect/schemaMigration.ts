@@ -240,7 +240,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
   let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
-    logger.info(`Detected schema "${schema}" is setup in greenfield mode. Skipping Setup.`);
+    logger.info(`Detected schema "${DEFAULT_SCHEMA}" is setup in greenfield mode. Skipping Setup.`);
   } else if (
     schemaInfo.setupStatus === SchemaSetupStatus.NotFound ||
     schemaInfo.setupStatus === SchemaSetupStatus.NotSetup
