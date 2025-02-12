@@ -138,8 +138,9 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
   appsinit: {
-    shortDescription: "Enable auto-configuring of Firebase Apps",
-    fullDescription: "Enable auto-configuring of Firebase App based on currently used platform.",
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
     default: false,
     public: true,
   },

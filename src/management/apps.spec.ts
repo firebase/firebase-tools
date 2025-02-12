@@ -3,7 +3,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
 import * as nock from "nock";
-import FileSystem from "mock-fs/lib/filesystem";
 
 import * as api from "../api";
 import {
@@ -669,7 +668,7 @@ describe("App management", () => {
     const cases: {
       desc: string;
       folderName: string;
-      folderItems: FileSystem.DirectoryItems;
+      folderItems: Record<string, any>;
       output: string;
     }[] = [
       {
@@ -709,7 +708,7 @@ describe("App management", () => {
     const cases: {
       desc: string;
       folderName: string;
-      folderItems: FileSystem.DirectoryItems;
+      folderItems: Record<string, any>;
       output: string;
       throwError?: boolean;
     }[] = [
