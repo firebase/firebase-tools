@@ -6,3 +6,8 @@
 - Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
 - Added Angular 19 as supported version. (#8145)
 - Fixed `appdistribution:testers:list` raising an error when a tester is not part of any group. (#8191)
+- Updated the Firebase Data Connect local toolkit to v1.8.0, which includes several changes: (#8210)
+  - Adds support for the `v1` Data Connect API in the emulator
+  - Adds support for generated React SDKs
+  - Fixes `@check` to also be evaluated for admin auth
+  - Fixes CEL expressions to be able to access `@redact` fields
