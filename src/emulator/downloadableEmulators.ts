@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin"
       ? {
-          version: "1.7.7",
-          expectedSize: 25359104,
-          expectedChecksum: "c5481addc04e14d10538add7aabda183",
+          version: "1.8.0",
+          expectedSize: 25469696,
+          expectedChecksum: "d20a4240b4290a262caff3d0d3a85a4f",
         }
       : process.platform === "win32"
         ? {
-            version: "1.7.7",
-            expectedSize: 25788416,
-            expectedChecksum: "9f7e5b9bcbca47de509fbc26cc1e0fa8",
+            version: "1.8.0",
+            expectedSize: 25903616,
+            expectedChecksum: "dda0350259449493ecc5cc24187ce752",
           }
         : {
-            version: "1.7.7",
-            expectedSize: 25268376,
-            expectedChecksum: "fb239ecf5dcbf87b762d12a3e9dee012",
+            version: "1.8.0",
+            expectedSize: 25383064,
+            expectedChecksum: "54a19e336f4118854c4c2d4eeeccb506",
           },
 };
 
