@@ -1,6 +1,7 @@
 - Switched Data Connect from `v1beta` API to `v1` API.
 - Added code generation of React hooks for Data Connect
 - Genkit init improvements around gcloud login and flow input values.
+- Added new command `apps:init` under experimental flag (`appsinit`) that automatically detects what SDK to download and places the file in the corresponding place.
 - Removed dependencies on some packages and methods that caused deprecation warnings on Node 22.
 - Fixes symbol generation when uploading Unity 6 symbols to Crashlytics. (#7867)
 - Fixed SSR issues in Angular 19 by adding support for default and reqHandler exports. (#8145)
