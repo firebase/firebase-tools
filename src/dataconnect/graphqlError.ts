@@ -21,21 +21,23 @@ function splitIssueMessage(err: GraphqlError): string[] {
   return ["", err.message];
 }
 
-export function prettifyWithWorkaround(errs: GraphqlError[]): string {
+export function prettifyTable(errs: GraphqlError[]): string {
   const table = new Table({
     head: ["Type", "Issue", "Workaround", "Reason"],
     style: { head: ["yellow"] },
     colWidths: [20, 50, 50, 50],
     wordWrap: true,
   });
+  // We want to present BREAKING before INSECURE changes. Ordering of other issues matters less, but we want to keep categories grouped together.
+  errs.sort((a, b) => a.message.localeCompare(b.message));
   for (const e of errs) {
+    const msg = splitIssueMessage(e);
+    e.message = msg[1];
     if (!e.extensions?.workarounds?.length) {
-      table.push([prettify(e), "", ""]);
+      table.push([msg[0], prettify(e), "", ""]);
     } else {
       const workarounds = e.extensions.workarounds;
       for (let i = 0; i < workarounds.length; i++) {
-        const msg = splitIssueMessage(e);
-        e.message = msg[1];
         if (i === 0) {
           table.push([msg[0], prettify(e), workarounds[i].description, workarounds[i].reason]);
         } else {

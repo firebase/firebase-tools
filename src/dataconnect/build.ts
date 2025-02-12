@@ -4,7 +4,7 @@ import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
-import { prettify, prettifyWithWorkaround } from "./graphqlError";
+import { prettify, prettifyTable } from "./graphqlError";
 import { DeploymentMetadata, GraphqlError } from "./types";
 
 export async function build(
@@ -48,7 +48,7 @@ export async function handleBuildErrors(
     utils.logLabeledError(
       "dataconnect",
       `There are changes in your schema or connectors that will result in broken behavior:\n` +
-        prettifyWithWorkaround(requiredForces),
+        prettifyTable(requiredForces),
     );
     throw new FirebaseError("Rerun this command with --force to deploy these changes.");
   }
@@ -60,11 +60,11 @@ export async function handleBuildErrors(
     { name: "Reject changes and abort", value: "abort" },
   ];
   if (requiredAcks.length) {
-    // This category contains BREAKING, POTENTIALLY_BREAKING, and some INSECURE issues.
+    // This category contains BREAKING and INSECURE issues.
     utils.logLabeledWarning(
       "dataconnect",
       `There are changes in your schema or connectors that may break your existing applications or introduce operations that are insecure. These changes require explicit acknowledgement to proceed. You may either reject the changes and update your sources with the suggested workaround(s), if any, or acknowledge these changes and proceed with the deployment:\n` +
-        prettifyWithWorkaround(requiredAcks),
+        prettifyTable(requiredAcks),
     );
     if (nonInteractive && !force) {
       throw new FirebaseError(
@@ -83,11 +83,11 @@ export async function handleBuildErrors(
     }
   }
   if (interactiveAcks.length) {
-    // This category contains WARNING and some INSECURE issues.
+    // This category contains WARNING and EXISTING_INSECURE issues.
     utils.logLabeledWarning(
       "dataconnect",
       `There are existing insecure operations or changes in your schema or connectors that may cause unexpected behavior in your existing applications:\n` +
-        prettifyWithWorkaround(interactiveAcks),
+        prettifyTable(interactiveAcks),
     );
     if (!nonInteractive && !force && !dryRun) {
       const result = await promptOnce({
