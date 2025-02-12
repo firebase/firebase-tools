@@ -63,7 +63,7 @@ export async function handleBuildErrors(
     // This category contains BREAKING, POTENTIALLY_BREAKING, and some INSECURE issues.
     utils.logLabeledWarning(
       "dataconnect",
-      `There are changes in your schema or connectors that may break your existing applications or introduce security vulnerabilities. These changes require explicit acknowledgement to proceed. You may either reject the changes and update your sources with the suggested workaround(s), if any, or acknowledge these changes and proceed with the deployment:\n` +
+      `There are changes in your schema or connectors that may break your existing applications or introduce operations that are insecure. These changes require explicit acknowledgement to proceed. You may either reject the changes and update your sources with the suggested workaround(s), if any, or acknowledge these changes and proceed with the deployment:\n` +
         prettifyWithWorkaround(requiredAcks),
     );
     if (nonInteractive && !force) {
