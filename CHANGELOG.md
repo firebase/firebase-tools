@@ -1,3 +1,3 @@
-- Fixed issue where react-based web apps were crashing when users initialize Data Connect.
-- Updated the Firebase Dat Connect local toolkit to v.1.8.0, which:
+- Fixed issue where `firebase init dataconnect` would crash on React-based web apps.
+- Updated the Firebase Data Connect local toolkit to v.1.8.1, which:
   - Fixed issue where users who are using a version lower than 11.3.0 of `firebase` get a "missing import" error.

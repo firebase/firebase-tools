@@ -136,10 +136,8 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
           },
         ],
       );
-      if (additionalFrameworks.fdcFrameworks) {
-        for (const framework of additionalFrameworks.fdcFrameworks) {
-          newConnectorYaml!.generate!.javascriptSdk![framework] = true;
-        }
+      for (const framework of additionalFrameworks.fdcFrameworks) {
+        newConnectorYaml!.generate!.javascriptSdk![framework] = true;
       }
     }
   }
