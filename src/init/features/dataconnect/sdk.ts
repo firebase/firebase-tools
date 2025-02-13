@@ -116,24 +116,30 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   );
   if (targetPlatform === Platform.WEB) {
     const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
-      (framework) => newConnectorYaml!.generate?.javascriptSdk![framework],
+      (framework) => !newConnectorYaml!.generate?.javascriptSdk![framework],
     );
     if (unusedFrameworks.length > 0) {
-      const additionalFrameworks: { features: (keyof SupportedFrameworks)[] } = await prompt(
+      const additionalFrameworks: { fdcFrameworks: (keyof SupportedFrameworks)[] } = await prompt(
         setup,
         [
           {
             type: "checkbox",
-            name: "features",
+            name: "fdcFrameworks",
             message:
               "Which framework would you like to generate SDKs for? " +
               "Press Space to select features, then Enter to confirm your choices.",
-            choices: unusedFrameworks,
+            choices: unusedFrameworks.map((frameworkStr) => ({
+              value: frameworkStr,
+              name: frameworkStr,
+              checked: false,
+            })),
           },
         ],
       );
-      for (const framework of additionalFrameworks.features) {
-        newConnectorYaml!.generate!.javascriptSdk![framework] = true;
+      if (additionalFrameworks.fdcFrameworks) {
+        for (const framework of additionalFrameworks.fdcFrameworks) {
+          newConnectorYaml!.generate!.javascriptSdk![framework] = true;
+        }
       }
     }
   }
