@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "13.30.0",
+  "version": "13.31.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -28,6 +28,7 @@
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
+    "test:management": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/management/*.spec.{ts,js}'",
     "test:dataconnect-deploy": "bash ./scripts/dataconnect-test/run.sh",
     "test:dataconnect-emulator": "bash ./scripts/dataconnect-emulator-tests/run.sh",
     "test:all-emulators": "npm run test:emulator && npm run test:extensions-emulator && npm run test:import-export && npm run test:storage-emulator-integration",
