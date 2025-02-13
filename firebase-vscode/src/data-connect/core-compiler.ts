@@ -48,7 +48,7 @@ function convertGQLErrorToDiagnostic(
   const perFileDiagnostics: Record<string, Diagnostic[]> = {};
   const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
-    if (error.warningLevel)  {
+    if (error.extensions["warningLevel"])  {
       // Don't surface connector evolution or insecure operation issues for now; we need to be able to compare with a deployed source for these to have meaning.
       continue;
     }
