@@ -1,2 +1,3 @@
-- Data Connect: Fixed issue where react-based web apps were crashing when users initialize Data Connect.
-- Data Connect: Fixed issue where users who are using a version lower than 11.3.0 of `firebase` get a "missing import" error.
+- Fixed issue where react-based web apps were crashing when users initialize Data Connect.
+- Updated the Firebase Dat Connect local toolkit to v.1.8.0, which:
+    - Fixed issue where users who are using a version lower than 11.3.0 of `firebase` get a "missing import" error.
