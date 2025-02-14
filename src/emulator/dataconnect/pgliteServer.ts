@@ -89,7 +89,7 @@ export class PostgresServer {
 
   async getDb(): Promise<PGlite> {
     if (!this.db) {
-      // Fisrt, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
       if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
         fs.mkdirSync(this.dataDirectory, { recursive: true });
       }
