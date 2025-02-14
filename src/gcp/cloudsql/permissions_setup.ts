@@ -116,17 +116,9 @@ export async function setupSQLPermissions(
   await setupIAMUsers(instanceId, databaseId, options);
 
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
-    const rerunSetup = await confirm({
-      message: clc.yellow(
-        "Seems like the database is already setup. Would you like to rerun the setup process?",
-      ),
-      default: false,
-    });
-    if (rerunSetup) {
-      await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
-      logger.info(clc.green("Database setup complete."));
-      return true;
-    }
+    logger.info(`Seems like the database is already setup. Reruning the setup process.`);
+    await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
+    return true;
   } else {
     logger.info(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}.`);
   }
