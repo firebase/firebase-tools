@@ -16,14 +16,37 @@ import {
   selectedExecutionId,
   updateExecution,
 } from "./execution-store";
-import { batch, effect } from "@preact/signals-core";
-import { OperationDefinitionNode, OperationTypeNode, print } from "graphql";
+import { batch, effect, Signal } from "@preact/signals-core";
+import {
+  OperationDefinitionNode,
+  OperationTypeNode,
+  print,
+  buildClientSchema,
+  validate,
+  DocumentNode,
+  Kind,
+  TypeNode,
+} from "graphql";
 import { DataConnectService } from "../service";
 import { DataConnectError, toSerializedError } from "../../../common/error";
 import { OperationLocation } from "../types";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
+import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { EmulatorsController } from "../../core/emulators";
+
+interface TypedInput {
+  varName: string;
+  type: string | null;
+}
+
+interface ExecutionInput {
+  ast: OperationDefinitionNode;
+  location: OperationLocation;
+  instance: InstanceType;
+}
+
+export const lastExecutionInputSignal = new Signal<ExecutionInput | null>(null);
 
 export function registerExecution(
   context: ExtensionContext,
@@ -76,11 +99,36 @@ export function registerExecution(
     }
   });
 
+  // re run called from execution panel;
+  const rerunExecutionBroker = broker.on("rerunExecution", () => {
+    if (!lastExecutionInputSignal.value) {
+      return;
+    }
+    executeOperation(
+      lastExecutionInputSignal.value?.ast,
+      lastExecutionInputSignal.value?.location,
+      lastExecutionInputSignal.value?.instance,
+    );
+  });
+
   async function executeOperation(
     ast: OperationDefinitionNode,
     { document, documentPath, position }: OperationLocation,
     instance: InstanceType,
   ) {
+    // hold last execution in memory, and send operation name to webview
+    lastExecutionInputSignal.value = {
+      ast,
+      location: { document, documentPath, position },
+      instance,
+    };
+    broker.send("notifyLastOperation", ast.name?.value ?? "anonymous");
+
+    // focus on execution panel immediately
+    vscode.commands.executeCommand(
+      "data-connect-execution-configuration.focus",
+    );
+
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
 
     const alwaysExecuteMutationsInProduction =
@@ -132,9 +180,55 @@ export function registerExecution(
       }
     }
 
-    // Args verification
-    await verifyArgs(ast, executionArgsJSON.value);
-    return;
+    // build schema and verify operation
+    const introspect = await dataConnectService.introspect();
+    if (!introspect.data) {
+      executionError("Please check your compilation errors");
+      return undefined;
+    }
+    const schema = buildClientSchema(introspect.data);
+    const validationErrors = validate(
+      schema,
+      operationDefinitionToDocument(ast),
+    );
+
+    if (validationErrors.length > 0) {
+      executionError(
+        "Schema validation errors: ",
+        JSON.stringify(validationErrors),
+      );
+      return undefined;
+    }
+
+    // Check for missing arguments
+    const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
+
+    // prompt user to continue execution or modify arguments
+    if (missingArgs.length > 0) {
+      // open a modal with option to run anyway or edit args
+      const continueExecution = { title: "Continue Execution" };
+      const editArgs = { title: "Edit variables" };
+      const result = await vscode.window.showInformationMessage(
+        `Missing required variables. Would you like to modify them?`,
+        { modal: true },
+        continueExecution,
+        editArgs,
+      );
+
+      if (result === editArgs) {
+        const missingArgsJSON = getDefaultArgs(missingArgs);
+
+        // combine w/ existing args, and send to webview
+        const newArgsJsonString = JSON.stringify({
+          ...JSON.parse(executionArgsJSON.value),
+          ...missingArgsJSON,
+        });
+
+        broker.send("notifyDataConnectArgs", newArgsJsonString);
+        return;
+      }
+    }
+
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
@@ -198,6 +292,7 @@ export function registerExecution(
     { dispose: sub2 },
     { dispose: sub3 },
     { dispose: sub4 },
+    { dispose: rerunExecutionBroker },
     registerWebview({
       name: "data-connect-execution-configuration",
       context,
@@ -235,19 +330,82 @@ export function registerExecution(
   );
 }
 
+function executionError(message: string, error?: string) {
+  vscode.window.showErrorMessage(`Failed to execute operation. ${message}`);
+  throw new Error(error);
+}
 
-async function verifyArgs(ast: OperationDefinitionNode, jsonArgs: string) {
-  const args = JSON.parse(jsonArgs);
-  let modifiedArgs = args;
-  ast.variableDefinitions?.forEach(async (variable) => {
+function getArgsWithTypeFromOperation(
+  ast: OperationDefinitionNode,
+): TypedInput[] {
+  if (!ast.variableDefinitions) {
+    return [];
+  }
+  return ast.variableDefinitions.map((variable) => {
     const varName = variable.variable.name.value;
-    const varType = variable.type.name.value;
-    console.log(variable.variable.name.value, varType, variable);
-    if (!Object.keys(args).includes(varName)) {
-      // open a prompt for variables
-      const newArg = await vscode.window.showInputBox({ prompt: `Missing arg: ${varName}` });
-      modifiedArgs[varName] = newArg;
+
+    const typeNode = variable.type;
+
+    function getType(typeNode: TypeNode): string | null {
+      // Same as previous example
+      switch (typeNode.kind) {
+        case "NamedType":
+          return typeNode.name.value;
+        case "ListType":
+          const innerTypeName = getType(typeNode.type);
+          return `[${innerTypeName}]`;
+        case "NonNullType":
+          const nonNullTypeName = getType(typeNode.type);
+          return `${nonNullTypeName}!`;
+        default:
+          return null;
+      }
     }
+
+    const type = getType(typeNode);
+
+    return { varName, type };
   });
-  console.log("harold new json args: ", modifiedArgs);
+}
+
+// checks if required arguments are present in payload
+async function verifyMissingArgs(
+  ast: OperationDefinitionNode,
+  jsonArgs: string,
+): Promise<TypedInput[]> {
+  let userArgs: { [key: string]: any };
+  try {
+    userArgs = JSON.parse(jsonArgs);
+  } catch (e: any) {
+    executionError("Invalid JSON: ", e);
+    return [];
+  }
+
+  const argsWithType = getArgsWithTypeFromOperation(ast);
+  if (!argsWithType) {
+    return [];
+  }
+  return argsWithType
+    .filter((arg) => arg.type?.includes("!"))
+    .filter((arg) => !userArgs[arg.varName]);
+}
+
+function getDefaultArgs(args: TypedInput[]) {
+  return args.reduce((acc: { [key: string]: any }, arg) => {
+    const defaultValue = getDefaultScalarValue(arg.type as string);
+
+    acc[arg.varName] = defaultValue;
+    return acc;
+  }, {});
+}
+
+// converts AST OperationDefinitionNode to a DocumentNode for schema validation
+function operationDefinitionToDocument(
+  operationDefinition: OperationDefinitionNode,
+): DocumentNode {
+  return {
+    kind: Kind.DOCUMENT,
+    definitions: [operationDefinition],
+    loc: operationDefinition.loc,
+  };
 }
