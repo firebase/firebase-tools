@@ -7,7 +7,7 @@ import * as frameworks from "../../frameworks";
 import * as config from "../../hosting/config";
 import { HostingOptions } from "../../hosting/options";
 import { Options } from "../../options";
-import { prepareFrameworksIfNeeded } from "../index";
+import { matchesHostingTarget, prepareFrameworksIfNeeded } from "../index";
 
 describe("hosting prepare", () => {
   let frameworksStub: sinon.SinonStubbedInstance<typeof frameworks>;
@@ -64,6 +64,24 @@ describe("hosting prepare", () => {
 
   afterEach(() => {
     sinon.verifyAndRestore();
+  });
+
+  describe("matchesHostingTarget", () => {
+    it("should correctly identify if a hosting target should be included in deployment", () => {
+      const cases = [
+        { only: "hosting:site1", target: "site1", expected: true },
+        { only: "hosting:site12", target: "site1", expected: false },
+        { only: "hosting:", target: "", expected: true },
+        { only: "functions:fn1", target: "site1", expected: true },
+        { only: "hosting:site1,hosting:site2", target: "site1", expected: true },
+        { only: undefined, target: "site1", expected: true },
+        { only: "hosting:site1,functions:fn1", target: "site1", expected: true },
+      ];
+
+      cases.forEach(({ only, target, expected }) => {
+        expect(matchesHostingTarget(only, target)).to.equal(expected);
+      });
+    });
   });
 
   it("deploys classic site without webframeworks disabled", async () => {

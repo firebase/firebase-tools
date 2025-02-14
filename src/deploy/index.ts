@@ -48,6 +48,13 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
+export const matchesHostingTarget = (only: string | undefined, target?: string): boolean => {
+  if (!only) return true;
+  if (!only.includes("hosting:")) return true;
+  const targetStr = `hosting:${target ?? ""}`;
+  return only.split(",").some((t) => t === targetStr);
+};
+
 export const prepareFrameworksIfNeeded = async function (
   targetNames: (keyof typeof TARGETS)[],
   options: DeployOptions,
@@ -56,12 +63,7 @@ export const prepareFrameworksIfNeeded = async function (
   const config = options.config.get("hosting") as HostingConfig;
   if (
     Array.isArray(config)
-      ? config.some(
-          (it) =>
-            it.source &&
-            (!options.only.includes("hosting:") ||
-              new RegExp(`\\bhosting:${it.target ?? ""}\\b`).exec(options.only)),
-        )
+      ? config.some((it) => it.source && matchesHostingTarget(options.only, it.target))
       : config.source
   ) {
     experiments.assertEnabled("webframeworks", "deploy a web framework from source");
