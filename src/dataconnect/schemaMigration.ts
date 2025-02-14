@@ -245,14 +245,15 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
     schemaInfo.setupStatus === SchemaSetupStatus.NotFound ||
     schemaInfo.setupStatus === SchemaSetupStatus.NotSetup
   ) {
-    isGreenfieldSetup = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
+    const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
+    isGreenfieldSetup = newSetupStatus === SchemaSetupStatus.GreenField;
   }
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
   if (!isGreenfieldSetup && fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)) {
-    isGreenfieldSetup = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
+    const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
 
-    if (!isGreenfieldSetup) {
+    if (newSetupStatus !== SchemaSetupStatus.GreenField) {
       throw new FirebaseError(
         `Can't grant owner rule for brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
       );

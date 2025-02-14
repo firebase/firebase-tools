@@ -103,7 +103,7 @@ export async function setupSQLPermissions(
   schemaInfo: SchemaMetaData,
   options: Options,
   silent: boolean = false,
-): Promise<boolean> {
+): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
   const schema = schemaInfo.name;
   // Step 0: Check current user can run setup and upsert IAM / P4SA users
   logger.info(`Attempting to Setup SQL schema "${schema}".`);
@@ -118,7 +118,7 @@ export async function setupSQLPermissions(
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
     logger.info(`Seems like the database is already setup. Reruning the setup process.`);
     await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
-    return true;
+    return SchemaSetupStatus.GreenField;
   } else {
     logger.info(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}.`);
   }
@@ -128,7 +128,7 @@ export async function setupSQLPermissions(
     logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`);
     await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
     logger.info(clc.green("Database setup complete."));
-    return true;
+    return SchemaSetupStatus.GreenField;
   }
 
   if (options.nonInteractive || options.force) {
@@ -152,7 +152,7 @@ export async function setupSQLPermissions(
 
   if (shouldSetupGreenfield) {
     await setupBrownfieldAsGreenfield(instanceId, databaseId, schemaInfo, options, silent);
-    return true;
+    return SchemaSetupStatus.GreenField;
   } else {
     logger.info(
       clc.yellow(
@@ -162,9 +162,8 @@ export async function setupSQLPermissions(
     );
     await brownfieldSqlSetup(instanceId, databaseId, schemaInfo, options, silent);
     logger.info(clc.green("Brownfield database setup complete."));
+    return SchemaSetupStatus.BrownField;
   }
-
-  return false;
 }
 
 export async function greenFieldSchemaSetup(
