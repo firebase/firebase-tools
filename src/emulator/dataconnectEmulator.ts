@@ -123,7 +123,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           dataDirectory = this.args.config.path(dataDirectory);
         }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
+          ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,

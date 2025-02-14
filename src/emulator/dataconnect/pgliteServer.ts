@@ -88,7 +88,12 @@ export class PostgresServer {
   }
 
   async getDb(): Promise<PGlite> {
+
     if (!this.db) {
+      // Fisrt, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+      if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
+        fs.mkdirSync(this.dataDirectory, {recursive: true})
+      }
       // Not all schemas will need vector installed, but we don't have an good way
       // to swap extensions after starting PGLite, so we always include it.
       const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
