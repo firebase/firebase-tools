@@ -1,1 +1,1 @@
-- Fixed an issue where `--import` path was incorrectly resolved for the Data Connecgt emulator. (#8219)
+- Fixed an issue where `--import` path was incorrectly resolved for the Data Connect emulator. (#8219)

@@ -72,7 +72,8 @@ export class DataConnectEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     let resolvedConfigDir;
     try {
-      const info = await DataConnectEmulator.build({ configDir: this.args.configDir });
+      resolvedConfigDir = this.args.config.path(this.args.configDir);
+      const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
