@@ -9,6 +9,7 @@ import {
   executeSqlCmdsAsSuperUser,
   toDatabaseUser,
 } from "../gcp/cloudsql/connect";
+import { needProjectId } from "../projectUtils";
 import {
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
@@ -24,6 +25,7 @@ import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 
 import * as errors from "./errors";
 
@@ -225,7 +227,8 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const email = options.email as string;
 
   const { instanceId, databaseId } = getIdentifiers(schema);
-  const { user } = toDatabaseUser(email);
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
@@ -262,6 +265,9 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
       );
     }
   }
+
+  // Upsert new user account into the database.
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // Grant the role to the user.
   await executeSqlCmdsAsSuperUser(
