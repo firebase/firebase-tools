@@ -10,21 +10,21 @@ import {
   toDatabaseUser,
 } from "../gcp/cloudsql/connect";
 import {
-  firebaseowner,
-  iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
-  DEFAULT_SCHEMA,
+  setupSQLPermissions,
   getSchemaMetaData,
   SchemaSetupStatus,
-} from "../gcp/cloudsql/permissions";
+} from "../gcp/cloudsql/permissions_setup";
+import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
-import { setupSQLPermissions } from "../commands/dataconnect-sql-setup";
+import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
+
 import * as errors from "./errors";
 
 export async function diffSchema(
