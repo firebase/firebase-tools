@@ -190,7 +190,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await this.dataConnectToolkit.getFDCToolkitURL()) +
-          `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
