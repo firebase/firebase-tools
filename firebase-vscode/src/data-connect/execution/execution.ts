@@ -161,7 +161,7 @@ export function registerExecution(
       const yes = "Yes";
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
-        { modal: true },
+        { modal: !process.env.VSCODE_TEST_MODE },
         yes,
         always,
       );
@@ -210,7 +210,7 @@ export function registerExecution(
       const editArgs = { title: "Edit variables" };
       const result = await vscode.window.showInformationMessage(
         `Missing required variables. Would you like to modify them?`,
-        { modal: true },
+        { modal: !process.env.VSCODE_TEST_MODE },
         continueExecution,
         editArgs,
       );

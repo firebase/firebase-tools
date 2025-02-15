@@ -14,11 +14,23 @@ export class ExecutionPanel {
     );
   }
 
+  async getVariables(): Promise<string> {
+    return this.runInConfigurationContext(async (configs) => {
+      return configs.variablesTextarea.getValue();
+    });
+  }
+
   async setVariables(variables: string): Promise<void> {
     // TODO revert to the original value after test
 
     await this.runInConfigurationContext(async (configs) => {
       await configs.variablesTextarea.setValue(variables);
+    });
+  }
+
+  async clickRerun(): Promise<void> {
+    return this.runInConfigurationContext(async (configs) => {
+      await configs.rerunButton.click();
     });
   }
 
@@ -42,6 +54,10 @@ export class ConfigurationView {
 
   get variablesTextarea() {
     return this.variablesView.$("textarea");
+  }
+
+  get rerunButton() {
+    return this.variablesView.$("vscode-button");
   }
 }
 

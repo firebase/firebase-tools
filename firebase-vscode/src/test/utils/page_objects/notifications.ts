@@ -28,4 +28,12 @@ export class Notifications {
       await installButton.click();
     }
   }
+
+  async getEditVariablesNotification() {
+    const notifications = await this.workbench.getNotifications();
+    return notifications.find(async (n) => {
+      const message = await n.getMessage();
+      return message.includes("Missing required variables");
+    });
+  }
 }
