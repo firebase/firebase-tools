@@ -30,7 +30,9 @@ export class ExecutionPanel {
 
   async clickRerun(): Promise<void> {
     return this.runInConfigurationContext(async (configs) => {
-      await configs.rerunButton.click();
+      const rerunButton = await configs.rerunButton;
+      await rerunButton.waitForClickable();
+      await rerunButton.doubleClick(); // double click first transitions focus to window instead of notifs
     });
   }
 

@@ -206,13 +206,13 @@ export function registerExecution(
     // prompt user to continue execution or modify arguments
     if (missingArgs.length > 0) {
       // open a modal with option to run anyway or edit args
-      const continueExecution = { title: "Continue Execution" };
       const editArgs = { title: "Edit variables" };
+      const continueExecution = { title: "Continue Execution" };
       const result = await vscode.window.showInformationMessage(
         `Missing required variables. Would you like to modify them?`,
         { modal: !process.env.VSCODE_TEST_MODE },
-        continueExecution,
         editArgs,
+        continueExecution,
       );
 
       if (result === editArgs) {
