@@ -40,7 +40,6 @@ interface ConnectionNameParts {
 
 // Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
-const APPHOSTING_OAUTH_CONN_NAME = "firebase-app-hosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
@@ -112,7 +111,7 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 /**
  * Prompts the user to create a GitHub connection.
  */
-export async function getOrCreateGithubConnectionWithSentinel(
+export async function getOrCreateFullyInstalledConnection(
   projectId: string,
   location: string,
   createConnectionId?: string,
@@ -189,7 +188,7 @@ export async function linkGitHubRepository(
   location: string,
   createConnectionId?: string,
 ): Promise<devConnect.GitRepositoryLink> {
-  const connection = await getOrCreateGithubConnectionWithSentinel(
+  const connection = await getOrCreateFullyInstalledConnection(
     projectId,
     location,
     createConnectionId,
@@ -378,18 +377,14 @@ export async function getOrCreateOauthConnection(
   location: string,
 ): Promise<devConnect.Connection> {
   let conn: devConnect.Connection;
-  try {
-    conn = await devConnect.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-  } catch (err: unknown) {
-    if ((err as any).status === 404) {
-      // Cloud build P4SA requires the secret manager admin role.
-      // This is required when creating an initial connection which is the Oauth connection in our case.
-      await ensureSecretManagerAdminGrant(projectId);
-      conn = await createConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-    } else {
-      throw err;
-    }
+  const completedConnections = await listAppHostingConnections(projectId, location);
+  if (completedConnections.length > 0) {
+    return completedConnections[0];
   }
+
+  const connectionId = generateConnectionId();
+  await ensureSecretManagerAdminGrant(projectId);
+  conn = await createConnection(projectId, location, connectionId);
 
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("Please authorize the Firebase GitHub app by visiting this url:");
