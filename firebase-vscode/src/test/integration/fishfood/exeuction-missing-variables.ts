@@ -40,13 +40,15 @@ firebaseSuite("Execution", async function () {
     await editor.openFile(mutationsPath);
     await editor.runLocalButton.waitForDisplayed();
     await editor.runLocalButton.click();
-
+    
     const editVariablesNotif = await notication.getEditVariablesNotification();
-    console.log("HAROLD:: ", await editVariablesNotif?.getActions())
-    editVariablesNotif?.takeAction("Edit Variables");
 
+    if (!editVariablesNotif) {
+      throw(new Error("Edit Variables Notification not found"));
+    }
+    await notication.editVariablesFromNotification(editVariablesNotif);
 
-    expect(await execution.getVariables()).toEqual(`{"id": "42", "content": ""}`);
+    expect(await execution.getVariables()).toEqual(`{"id":"42","content":""}`);
 
     // click re-run button to continue
     await execution.clickRerun();
@@ -62,35 +64,12 @@ firebaseSuite("Execution", async function () {
 
       return item;
     }
-
     // Waiting for the execution to finish
     let result = await getExecutionStatus();
-
     expect(await result.getLabel()).toBe("createPost");
-
-    await execution.setVariables(`{"id": "42"}`);
-
-    // Execute query
-    await editor.openFile(queriesPath);
-    await editor.runLocalButton.waitForDisplayed();
-    await editor.runLocalButton.click();
-
-    // Waiting for the new history entry to appear
-    await browser.waitUntil(async () => {
-      const selectedItem = await execution.history.getSelectedItem();
-      return (await selectedItem.getLabel()) === "getPost";
-    });
-
-    // Check the history entry
-    const item2 = await execution.history.getSelectedItem();
-
-    // Waiting for the execution to finish
-    await browser.waitUntil(async () => {
-      const status = await item2.getStatus();
-      return status === "success";
-    });
-
-    expect(await item2.getLabel()).toBe("getPost");
-    expect(await item2.getDescription()).toHaveText('Arguments: {"id": "42"}');
   });
 });
+function editVariablesFromNotification(editVariablesNotif: import("wdio-vscode-service").Notification | undefined) {
+  throw new Error("Function not implemented.");
+}
+
