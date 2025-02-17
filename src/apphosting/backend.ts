@@ -430,6 +430,52 @@ export async function getBackendForLocation(
 }
 
 /**
+ * Fetches
+ *
+ *
+ */
+export async function chooseBackend(
+  projectId: string,
+  backendId: string,
+  chooseBackendPrompt: string,
+  force?: boolean,
+): Promise<apphosting.Backend> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `The following locations are currently unreachable: ${unreachable}.\n` +
+	"If your backend is in one of these regions, please try again later.",
+    );
+  }
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length === 0) {
+    throw new FirebaseError(`No backend named "${backendId}" found.`);
+  }
+  if (backends.length === 1) {
+    return backends[0];
+  }
+  if (force) {
+    throw new FirebaseError(
+      `Force cannot be used because multiple backends were found with ID ${backendId}.`
+    );
+  }
+
+  const backendsByName = new Map<string, apphosting.Backend>();
+  backends.forEach((backend) =>
+    backendsByName.set(`${apphosting.parseBackendName(backend.name).id}(${apphosting.parseBackendName(backend.name).location})`, backend),
+  );
+  const chosenBackend = await promptOnce({
+    name: "backend",
+    type: "list",
+    message: chooseBackendPrompt,
+    choices: [...backendsByName.keys()],
+  });
+  return backendsByName.get(chosenBackend)!;
+}
+
+/**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
  * prompts the user to disambiguate. If the force option is specified and multiple backends have the same name,
  * it throws an error.
