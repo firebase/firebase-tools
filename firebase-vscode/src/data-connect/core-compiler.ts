@@ -48,6 +48,10 @@ function convertGQLErrorToDiagnostic(
   const perFileDiagnostics: Record<string, Diagnostic[]> = {};
   const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
+    if (error.message.includes("INSECURE")) {
+      // Don't surface insecure operation issues for now; we need to be able to compare with a deployed source for these to be accurately presented.
+      continue;
+    }
     const absFilePath = `${dcPath}/${error.extensions["file"]}`;
     const perFileDiagnostic = perFileDiagnostics[absFilePath] || [];
     perFileDiagnostic.push({
