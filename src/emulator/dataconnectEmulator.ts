@@ -73,7 +73,6 @@ export class DataConnectEmulator implements EmulatorInstance {
     let resolvedConfigDir;
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
-
       const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
@@ -125,7 +124,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           dataDirectory = this.args.config.path(dataDirectory);
         }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
+          ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,
