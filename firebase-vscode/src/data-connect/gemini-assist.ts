@@ -11,12 +11,14 @@ import { Result } from "../result";
 import { AnalyticsLogger } from "../analytics";
 import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
+import { DataConnectService } from "./service";
 
 export class GeminiAssistController {
   constructor(
     private readonly analyticsLogger: AnalyticsLogger,
     private readonly broker: ExtensionBrokerImpl,
     private readonly context: vscode.ExtensionContext,
+    private readonly fdcService: DataConnectService,
     private configs: Signal<
       Result<ResolvedDataConnectConfigs | undefined> | undefined
     >,
@@ -121,13 +123,15 @@ export class GeminiAssistController {
     }
   }
 
-  async callGeminiApi(
+  async callGenerateApi(
     documentContent: string | undefined,
     documentContext: string[],
+    documentPath: string,
     prompt: string,
   ): Promise<string> {
     // TODO: Call Gemini API with the document content, schema content, and prompt
     try {
+      this.fdcService.generateOperation(documentPath, prompt);
       const response = `
         query getPost($id: String!) @auth(level: PUBLIC) {
           post(id: $id) {
@@ -289,9 +293,10 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
         switch (message.command) {
           case "generateCode": {
             const prompt = message.input;
-            const generatedCode = await this.controller.callGeminiApi(
+            const generatedCode = await this.controller.callGenerateApi(
               documentContent,
               documentContext,
+              documentPath,
               prompt,
             );
 

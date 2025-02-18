@@ -267,7 +267,6 @@ export function registerFdc(
       configureSdkCodeLensProvider,
     ),
     geminiAssist,
-    refreshCommand,
     {
       dispose: () => {
         client.stop();

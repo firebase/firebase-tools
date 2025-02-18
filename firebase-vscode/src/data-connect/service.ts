@@ -38,6 +38,7 @@ import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
+import { getAnalyticsContext } from "../analytics";
 
 /**
  * DataConnect Emulator service
