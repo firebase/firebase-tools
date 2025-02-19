@@ -2,13 +2,29 @@ import { GraphqlError } from "./types";
 import * as Table from "cli-table3";
 
 export function prettify(err: GraphqlError): string {
-  const message = err.message;
+  let message = err.message;
   let header = err.extensions?.file ?? "";
   if (err.locations && err.locations.length) {
     const line = err.locations[0]?.line ?? "";
     if (line) {
       header += `:${line}`;
     }
+  }
+
+  if (err.path && err.path.length) {
+    let pathStr = "On ";
+    for (let i = 0; i < err.path.length; i++) {
+      if (typeof err.path[i] === "string") {
+        if (i === 0) {
+          pathStr += err.path[i];
+        } else {
+          pathStr = `${pathStr}.${err.path[i]}`;
+        }
+      } else {
+        pathStr = `${pathStr}[${err.path[i]}]`;
+      }
+    }
+    message = `${pathStr}: ${message}`;
   }
   return header.length ? `${header}: ${message}` : message;
 }

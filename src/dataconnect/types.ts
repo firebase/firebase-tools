@@ -81,6 +81,7 @@ export interface Workaround {
 
 export interface GraphqlError {
   message: string;
+  path?: (string | number)[];
   locations?: {
     line: number;
     column: number;

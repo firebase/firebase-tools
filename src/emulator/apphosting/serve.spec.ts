@@ -8,6 +8,8 @@ import * as utils from "./developmentServer";
 import * as configsImport from "./config";
 import * as projectPathImport from "../../projectPath";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
+import * as emulatorRegistry from "../registry";
+import * as emulatorEnvs from "../env";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
@@ -16,6 +18,8 @@ describe("serve", () => {
   let detectStartCommandStub: sinon.SinonStub;
   let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
   let resolveProjectPathStub: sinon.SinonStub;
+  let listRunningWithInfoStub: sinon.SinonStub;
+  let setEnvVarsForEmulatorsStub: sinon.SinonStub;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
@@ -24,6 +28,9 @@ describe("serve", () => {
     detectStartCommandStub = sinon.stub(utils, "detectStartCommand");
     configsStub = sinon.stub(configsImport);
     resolveProjectPathStub = sinon.stub(projectPathImport, "resolveProjectPath");
+
+    listRunningWithInfoStub = sinon.stub(emulatorRegistry.EmulatorRegistry, "listRunningWithInfo");
+    setEnvVarsForEmulatorsStub = sinon.stub(emulatorEnvs, "setEnvVarsForEmulators");
 
     resolveProjectPathStub.returns("");
     detectStartCommandStub.returns("npm run dev");
@@ -37,6 +44,10 @@ describe("serve", () => {
   });
 
   describe("start", () => {
+    beforeEach(() => {
+      listRunningWithInfoStub.returns([]);
+    });
+
     it("should use user-provided port if one is defined", async () => {
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.returns(
@@ -69,6 +80,15 @@ describe("serve", () => {
 
       expect(spawnWithCommandStringStub).to.be.called;
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+    });
+  });
+
+  describe("getEmulatorEnvs", () => {
+    it("should omit apphosting emulator", () => {
+      listRunningWithInfoStub.returns([{ name: "apphosting" }, { name: "functions" }]);
+      serve.getEmulatorEnvs();
+
+      expect(setEnvVarsForEmulatorsStub).to.be.calledWith({}, [{ name: "functions" }]);
     });
   });
 });
