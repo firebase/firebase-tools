@@ -195,4 +195,12 @@ describe("developer connect", () => {
       });
     });
   });
+
+  describe("extractRepoSlugFromUri", () => {
+    it("extracts repo from URI", () => {
+      const cloneUri = "https://github.com/user/repo.git";
+      const repoSlug = devconnect.extractRepoSlugFromUri(cloneUri);
+      expect(repoSlug).to.equal("user/repo");
+    });
+  });
 });
