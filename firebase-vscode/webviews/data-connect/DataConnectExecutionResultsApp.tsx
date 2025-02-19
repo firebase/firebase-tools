@@ -127,9 +127,9 @@ function GraphQLErrorView({ errors }: { errors: readonly GraphQLError[] }) {
 
   return (
     <>
-      {errorsWithPathDisplay.map((error) => {
+      {errorsWithPathDisplay.map((error, index) => {
         return (
-          <p style={{ whiteSpace: "pre-wrap" }}>
+          <p style={{ whiteSpace: "pre-wrap" }}  key={index}>
             {pathDisplay}
             {error.message}
             {error.stack && <StackView stack={error.stack} />}
