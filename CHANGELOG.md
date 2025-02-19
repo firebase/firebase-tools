@@ -1,1 +1,2 @@
+- Fixed an issue where `--import` path was incorrectly resolved for the Data Connect emulator. (#8219)
 - Enforce webframeworks enablement only on webframeworks sites (#8168)
