@@ -90,9 +90,8 @@ function availablePort(host: string, port: number): Promise<boolean> {
  */
 export function getEmulatorEnvs(): Record<string, string> {
   const envs: Record<string, string> = {};
-  // No need to set envs for the apphosting emulator itself.
   const emulatorInfos = EmulatorRegistry.listRunningWithInfo().filter(
-    (emulator) => emulator.name !== "apphosting",
+    (emulator) => emulator.name !== Emulators.APPHOSTING, // No need to set envs for the apphosting emulator itself.
   );
   setEnvVarsForEmulators(envs, emulatorInfos);
 
