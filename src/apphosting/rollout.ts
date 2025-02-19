@@ -7,7 +7,7 @@ import {
   getGitHubCommit,
   GitHubCommitInfo,
   promptGitHubBranch,
-} from "../apphosting/githubConnections";
+} from "./developer-connect/githubConnections";
 import * as poller from "../operation-poller";
 
 import { logBullet, sleep } from "../utils";
