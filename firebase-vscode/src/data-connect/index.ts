@@ -163,6 +163,7 @@ export function registerFdc(
     analyticsLogger,
     broker,
     context,
+    fdcService,
     dataConnectConfigs,
   );
 

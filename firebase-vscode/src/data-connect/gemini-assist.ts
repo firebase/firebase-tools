@@ -12,6 +12,8 @@ import { AnalyticsLogger } from "../analytics";
 import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DataConnectService } from "./service";
+import { CloudAICompanionResponse, CloudAICompanionResponseError } from "../dataconnect/types";
+import { logger } from "../logger";
 
 export class GeminiAssistController {
   constructor(
@@ -123,6 +125,17 @@ export class GeminiAssistController {
     }
   }
 
+  handleResponse(response: CloudAICompanionResponse | CloudAICompanionResponseError): string {
+    if (response.errors.length > 0) {
+      logger.error(response.errors[0].message);
+      throw new Error(response.errors[0].message)
+    } 
+
+    const responseAsCloudAICompanionResponse = response as CloudAICompanionResponse;
+
+    return responseAsCloudAICompanionResponse.data;
+  }
+
   async callGenerateApi(
     documentContent: string | undefined,
     documentContext: string[],
@@ -131,36 +144,12 @@ export class GeminiAssistController {
   ): Promise<string> {
     // TODO: Call Gemini API with the document content, schema content, and prompt
     try {
-      this.fdcService.generateOperation(documentPath, prompt);
-      const response = `
-        query getPost($id: String!) @auth(level: PUBLIC) {
-          post(id: $id) {
-            content
-            comments: comments_on_post {
-              id
-              content
-            }
-          }
-        }
-
-        query listPostsForUser($userId: String!) @auth(level: PUBLIC) {
-          posts(where: { id: { eq: $userId } }) {
-            id
-            content
-          }
-        }
-
-        query listPostsOnlyId @auth(level: PUBLIC) {
-          posts {
-            id
-          }
-        }
-      `;
-
-      // Sleep for 1 second to simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      return this.formatCodeWithVSCode(response);
+      const response = await this.fdcService.generateOperation(documentPath, prompt);
+      if (!response) {
+        throw ("No response from Cloud AI API");
+      }
+      const formattedResponse = this.handleResponse(response);
+      return this.formatCodeWithVSCode(formattedResponse);
     } catch (error) {
       throw new Error(`Failed to call Gemini API: ${error}`);
     }
