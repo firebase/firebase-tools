@@ -83,8 +83,8 @@ describe("serve", () => {
     });
   });
 
-  describe("getEmulatorEnvs", async () => {
-    it("should omit apphosting emulator", async () => {
+  describe("getEmulatorEnvs", () => {
+    it("should omit apphosting emulator", () => {
       listRunningWithInfoStub.returns([{ name: "apphosting" }, { name: "functions" }]);
       serve.getEmulatorEnvs();
 
