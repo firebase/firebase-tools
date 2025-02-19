@@ -39,8 +39,8 @@ export class AppHostingEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     return {
       name: Emulators.APPHOSTING,
-      host: this.args.options.host ?? this.args.host,
-      port: this.args.options.port ?? this.args.port,
+      host: this.args.options.host,
+      port: this.args.options.port,
     };
   }
 
