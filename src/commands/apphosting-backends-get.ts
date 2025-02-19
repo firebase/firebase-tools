@@ -8,7 +8,6 @@ import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:get <backend>")
   .description("print info about a Firebase App Hosting backend")
-  .option("-l, --location <location>", "backend location", "-")
   .before(apphosting.ensureApiEnabled)
   .action(async (backend: string, options: Options) => {
     const projectId = needProjectId(options);
@@ -16,14 +15,9 @@ export const command = new Command("apphosting:backends:get <backend>")
 
     let backendsList: apphosting.Backend[] = [];
     try {
-      if (location !== "-") {
-        const backendInRegion = await apphosting.getBackend(projectId, location, backend);
-        backendsList.push(backendInRegion);
-      } else {
-        const resp = await apphosting.listBackends(projectId, "-");
-        const allBackends = resp.backends || [];
-        backendsList = allBackends.filter((bkd) => bkd.name.split("/").pop() === backend);
-      }
+      const resp = await apphosting.listBackends(projectId, "-");
+      const allBackends = resp.backends || [];
+      backendsList = allBackends.filter((bkd) => bkd.name.split("/").pop() === backend);
     } catch (err: unknown) {
       throw new FirebaseError(
         `Failed to get backend: ${backend}. Please check the parameters you have provided.`,
@@ -34,6 +28,13 @@ export const command = new Command("apphosting:backends:get <backend>")
       logWarning(`Backend "${backend}" not found`);
       return;
     }
-    printBackendsTable(backendsList);
+    if (backendsList.length > 1 || true) {
+      logWarning(
+	`Detected multiple backends with the same ${backend} ID. This is no longer supported.\n` +
+          `Please delete and recreate any backends that share an ID with another backend. ` +
+	  `Use apphosting:backends:list ${backend} to see all such backends.`
+      );
+    }
+    printBackendsTable(backendsList.slice(0,1));
     return backendsList[0];
   });
