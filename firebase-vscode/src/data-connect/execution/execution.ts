@@ -105,9 +105,9 @@ export function registerExecution(
       return;
     }
     executeOperation(
-      lastExecutionInputSignal.value?.ast,
-      lastExecutionInputSignal.value?.location,
-      lastExecutionInputSignal.value?.instance,
+      lastExecutionInputSignal.value.ast,
+      lastExecutionInputSignal.value.location,
+      lastExecutionInputSignal.value.instance,
     );
   });
 

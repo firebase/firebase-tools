@@ -135,8 +135,6 @@ export type ValueOrError<T> =
   | { error: string; value: undefined };
 
 export interface ExtensionToWebviewParamsMap {
-  notifyDataConnectResults: DataConnectResults;
-
   /** Triggered when the emulator UI/state changes */
   notifyEmulatorStateChanged: {
     status: EmulatorsStatus;
@@ -183,6 +181,8 @@ export interface ExtensionToWebviewParamsMap {
 
   // data connect specific
   notifyDataConnectArgs: string;
+
+  notifyDataConnectResults: DataConnectResults;
 
   notifyLastOperation: string;
 
