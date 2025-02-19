@@ -106,6 +106,11 @@ export function setupLanguageClient(
     const yamlJson = JSON.stringify({
       schema: schemaPaths,
       document: documentPaths,
+      extensions: {
+        languageService: {
+          enableValidation: false,
+        },
+      },
     });
     // create folder if needed
     if (!vscode.workspace.getWorkspaceFolder(folderUri)) {
