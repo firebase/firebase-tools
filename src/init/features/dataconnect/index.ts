@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet } from "../../../utils";
+import { logBullet, envOverride } from '../../../utils';
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -29,6 +29,10 @@ const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yam
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+
+// SERVICE_ID_ENV_VAR is used by Firebase Console to specify which service to import.
+// It must be an existing service - if set to anything else, we'll ignore it.
+const SERVICE_ID_ENV_VAR = () => envOverride("FDC_SERVICE_ID", "");
 
 export interface RequiredInfo {
   serviceId: string;
@@ -282,21 +286,31 @@ async function promptForExistingServices(
     }),
   );
   if (existingServicesAndSchemas.length) {
-    const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
-      existingServicesAndSchemas.map((s) => {
-        const serviceName = parseServiceName(s.service.name);
-        return {
-          name: `${serviceName.location}/${serviceName.serviceId}`,
-          value: s,
-        };
-      });
-    choices.push({ name: "Create a new service", value: undefined });
-    const choice: { service: Service; schema?: Schema } | undefined = await promptOnce({
-      message:
-        "Your project already has existing services. Which would you like to set up local files for?",
-      type: "list",
-      choices,
+    let choice: { service: Service; schema?: Schema } | undefined;
+    const serviceIdFromEnvVar = SERVICE_ID_ENV_VAR()
+    const serviceFromEnvVar = existingServicesAndSchemas.find(s => {
+      const serviceName = parseServiceName(s.service.name);
+      return serviceName.serviceId === serviceIdFromEnvVar;
     });
+    if (serviceFromEnvVar) {
+      choice = serviceFromEnvVar;
+    } else {
+      const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
+        existingServicesAndSchemas.map((s) => {
+          const serviceName = parseServiceName(s.service.name);
+          return {
+            name: `${serviceName.location}/${serviceName.serviceId}`,
+            value: s,
+          };
+        });
+      choices.push({ name: "Create a new service", value: undefined });
+      choice = await promptOnce({
+        message:
+          "Your project already has existing services. Which would you like to set up local files for?",
+        type: "list",
+        choices,
+      });
+    }
     if (choice) {
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
