@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride } from '../../../utils';
+import { logBullet, envOverride } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
