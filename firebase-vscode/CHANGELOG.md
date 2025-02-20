@@ -1,5 +1,10 @@
 ## NEXT
 
+## 0.13.1
+
+- Updated internal `firebase-tools` dependency to 13.31.2
+- [Fixed] Insecure operations no longer surfaced as errors.
+
 ## 0.13.0
 
 - Updated internal `firebase-tools` dependency to 13.30.0
