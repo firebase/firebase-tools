@@ -87,10 +87,13 @@ export async function detectFromPort(
   while (true) {
     try {
       res = await Promise.race([fetch(`http://127.0.0.1:${port}/__/functions.yaml`), timedOut]);
-      break;
+      // Retry on HTTP timed out errors
+      if (res.status !== 408) {
+        break;
+      }
     } catch (err: any) {
       // Allow us to wait until the server is listening.
-      if (err?.code === "ECONNREFUSED") {
+      if (["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(err?.code)) {
         continue;
       }
       throw err;
