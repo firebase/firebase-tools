@@ -2,11 +2,19 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types";
+import {
+  ConnectorYaml,
+  DataConnectYaml,
+  File,
+  Platform,
+  ServiceInfo,
+  SupportedFrameworks,
+} from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
+import { PackageJSON } from "../frameworks/compose/discover/runtime/node";
 
 export function readFirebaseJson(config?: Config): DataConnectMultiple {
   if (!config?.has("dataconnect")) {
@@ -112,7 +120,8 @@ export async function pickService(
 
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
-const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
+const IOS_INDICATORS = ["info.plist", "podfile", "package.swift", ".xcodeproj"];
+// Note: build.gradle can be nested inside android/ and android/app.
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
 const DART_INDICATORS = ["pubspec.yaml", "pubspec.lock"];
 
@@ -151,4 +160,33 @@ export async function getPlatformFromFolder(dirPath: string) {
   // At this point, its not clear which platform the app directory is
   // because we found indicators for multiple platforms.
   return Platform.MULTIPLE;
+}
+
+export async function resolvePackageJson(
+  packageJsonPath: string,
+): Promise<PackageJSON | undefined> {
+  let validPackageJsonPath = packageJsonPath;
+  if (!packageJsonPath.endsWith("package.json")) {
+    validPackageJsonPath = path.join(packageJsonPath, "package.json");
+  }
+  validPackageJsonPath = path.resolve(validPackageJsonPath);
+  try {
+    return JSON.parse((await fs.readFile(validPackageJsonPath)).toString());
+  } catch {
+    return undefined;
+  }
+}
+
+export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react"];
+export function getFrameworksFromPackageJson(
+  packageJson: PackageJSON,
+): (keyof SupportedFrameworks)[] {
+  const devDependencies = Object.keys(packageJson.devDependencies ?? {});
+  const dependencies = Object.keys(packageJson.dependencies ?? {});
+  const matched = new Set(
+    [...devDependencies, ...dependencies].filter((dep) =>
+      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks),
+    ),
+  );
+  return Array.from(matched) as (keyof SupportedFrameworks)[];
 }

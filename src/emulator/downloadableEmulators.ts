@@ -57,22 +57,22 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
   dataconnect:
-    process.platform === "darwin"
+    process.platform === "darwin" // macos
       ? {
-          version: "1.7.7",
-          expectedSize: 25359104,
-          expectedChecksum: "c5481addc04e14d10538add7aabda183",
+          version: "1.8.2",
+          expectedSize: 25506560,
+          expectedChecksum: "2db676cb9d30b289897ffb7e5aa1ef63",
         }
-      : process.platform === "win32"
+      : process.platform === "win32" // windows
         ? {
-            version: "1.7.7",
-            expectedSize: 25788416,
-            expectedChecksum: "9f7e5b9bcbca47de509fbc26cc1e0fa8",
+            version: "1.8.2",
+            expectedSize: 25936384,
+            expectedChecksum: "08e6ca0ad20893b565fb57effd687eb8",
           }
         : {
-            version: "1.7.7",
-            expectedSize: 25268376,
-            expectedChecksum: "fb239ecf5dcbf87b762d12a3e9dee012",
+            version: "1.8.2", // linux
+            expectedSize: 25415832,
+            expectedChecksum: "24e0eb78acb619ed91f6d268dd18df05",
           },
 };
 

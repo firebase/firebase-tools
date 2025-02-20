@@ -4,8 +4,14 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { promptForDirectory, promptOnce } from "../../../prompt";
-import { readFirebaseJson, getPlatformFromFolder } from "../../../dataconnect/fileUtils";
+import { promptForDirectory, promptOnce, prompt } from "../../../prompt";
+import {
+  readFirebaseJson,
+  getPlatformFromFolder,
+  getFrameworksFromPackageJson,
+  resolvePackageJson,
+  SUPPORTED_FRAMEWORKS,
+} from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { load } from "../../../dataconnect/load";
@@ -16,6 +22,7 @@ import {
   JavascriptSDK,
   KotlinSDK,
   Platform,
+  SupportedFrameworks,
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
@@ -101,12 +108,39 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   });
 
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
-  const newConnectorYaml = generateSdkYaml(
+  const newConnectorYaml = await generateSdkYaml(
     targetPlatform,
     connectorYaml,
     connectorInfo.directory,
     appDir,
   );
+  if (targetPlatform === Platform.WEB) {
+    const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
+      (framework) => !newConnectorYaml!.generate?.javascriptSdk![framework],
+    );
+    if (unusedFrameworks.length > 0) {
+      const additionalFrameworks: { fdcFrameworks: (keyof SupportedFrameworks)[] } = await prompt(
+        setup,
+        [
+          {
+            type: "checkbox",
+            name: "fdcFrameworks",
+            message:
+              "Which framework would you like to generate SDKs for? " +
+              "Press Space to select features, then Enter to confirm your choices.",
+            choices: unusedFrameworks.map((frameworkStr) => ({
+              value: frameworkStr,
+              name: frameworkStr,
+              checked: false,
+            })),
+          },
+        ],
+      );
+      for (const framework of additionalFrameworks.fdcFrameworks) {
+        newConnectorYaml!.generate!.javascriptSdk![framework] = true;
+      }
+    }
+  }
 
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(newConnectorYaml);
@@ -115,12 +149,12 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   return { connectorYamlContents, connectorInfo, displayIOSWarning };
 }
 
-export function generateSdkYaml(
+export async function generateSdkYaml(
   targetPlatform: Platform,
   connectorYaml: ConnectorYaml,
   connectorDir: string,
   appDir: string,
-): ConnectorYaml {
+): Promise<ConnectorYaml> {
   if (!connectorYaml.generate) {
     connectorYaml.generate = {};
   }
@@ -135,14 +169,23 @@ export function generateSdkYaml(
 
   if (targetPlatform === Platform.WEB) {
     const pkg = `${connectorYaml.connectorId}-connector`;
+    const packageJsonDir = path.relative(connectorDir, appDir);
     const javascriptSdk: JavascriptSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
       package: `@firebasegen/${pkg}`,
       // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       // TODO: Explore other platforms that can be automatically installed. Dart? Android?
-      packageJsonDir: path.relative(connectorDir, appDir),
+      packageJsonDir,
     };
+    const packageJson = await resolvePackageJson(appDir);
+    if (packageJson) {
+      const frameworksUsed = getFrameworksFromPackageJson(packageJson);
+      for (const framework of frameworksUsed) {
+        javascriptSdk[framework] = true;
+      }
+    }
+
     connectorYaml.generate.javascriptSdk = javascriptSdk;
   }
 

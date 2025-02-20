@@ -124,6 +124,17 @@ export interface GenkitSetup extends Setup {
   [key: string]: unknown;
 }
 
+function showStartMessage(config: Config, command: string) {
+  logger.info("\nLogin to Google Cloud using:");
+  logger.info(
+    clc.bold(
+      clc.green(`    gcloud auth application-default login --project ${config.options.project}\n`),
+    ),
+  );
+  logger.info("Then start the Genkit developer experience by running:");
+  logger.info(clc.bold(clc.green(`    ${command}`)));
+}
+
 /**
  * doSetup is the entry point for setting up the genkit suite.
  */
@@ -186,8 +197,7 @@ export async function doSetup(setup: GenkitSetup, config: Config, options: Optio
           projectDir,
         );
         await genkitSetup(options, genkitInfo, projectDir);
-        logger.info("Start the Genkit developer experience by running:");
-        logger.info(`    cd ${setup.functions.source} && npm run genkit:start`);
+        showStartMessage(config, `cd ${setup.functions.source} && npm run genkit:start`);
       }
     } else {
       if (genkitInfo.useInit) {
@@ -197,8 +207,7 @@ export async function doSetup(setup: GenkitSetup, config: Config, options: Optio
           projectDir,
         );
         await wrapSpawn("npx", ["genkit", "init", "-p", "firebase"], projectDir);
-        logger.info("Start the Genkit developer experience by running:");
-        logger.info(`    cd ${setup.functions.source} && npx genkit start`);
+        showStartMessage(config, `cd ${setup.functions.source} && npx genkit start`);
       } else {
         await wrapSpawn(
           "npm",
@@ -206,11 +215,7 @@ export async function doSetup(setup: GenkitSetup, config: Config, options: Optio
           projectDir,
         );
         await genkitSetup(options, genkitInfo, projectDir);
-        logger.info("Start the Genkit developer experience by running:");
-        logger.info();
-        logger.info(
-          clc.bold(clc.green(`    cd ${setup.functions.source} && npm run genkit:start`)),
-        );
+        showStartMessage(config, `cd ${setup.functions.source} && npm run genkit:start`);
       }
     }
   } catch (err) {

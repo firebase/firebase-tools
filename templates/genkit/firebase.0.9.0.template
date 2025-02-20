@@ -19,7 +19,7 @@ export const menuSuggestionFlow = onFlow(
   ai,
   {
     name: "menuSuggestionFlow",
-    inputSchema: z.string(),
+    inputSchema: z.string().describe("A restaurant theme").default("seafood"),
     outputSchema: z.string(),
     authPolicy: firebaseAuth((user) => {
       // By default, the firebaseAuth policy requires that all requests have an
