@@ -30,9 +30,10 @@ const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
-// SERVICE_ID_ENV_VAR is used by Firebase Console to specify which service to import.
+// SERVICE_ENV_VAR is used by Firebase Console to specify which service to import.
+// It should be in the form <location>/<serviceId>
 // It must be an existing service - if set to anything else, we'll ignore it.
-const SERVICE_ID_ENV_VAR = () => envOverride("FDC_SERVICE_ID", "");
+const SERVICE_ENV_VAR = () => envOverride("FDC_SERVICE", "");
 
 export interface RequiredInfo {
   serviceId: string;
@@ -287,10 +288,10 @@ async function promptForExistingServices(
   );
   if (existingServicesAndSchemas.length) {
     let choice: { service: Service; schema?: Schema } | undefined;
-    const serviceIdFromEnvVar = SERVICE_ID_ENV_VAR()
+    const [ serviceLocationFromEnvVar, serviceIdFromEnvVar ] = SERVICE_ENV_VAR().split("/");
     const serviceFromEnvVar = existingServicesAndSchemas.find(s => {
       const serviceName = parseServiceName(s.service.name);
-      return serviceName.serviceId === serviceIdFromEnvVar;
+      return serviceName.serviceId === serviceIdFromEnvVar && serviceName.location === serviceLocationFromEnvVar;
     });
     if (serviceFromEnvVar) {
       choice = serviceFromEnvVar;
