@@ -1,2 +1,1 @@
-- Fixed an issue where `--import` path was incorrectly resolved for the Data Connect emulator. (#8219)
-- Updated the Firebase Data Connect local toolkit to v1.8.2 which fixes an issue with a missing `FirebaseError` import. (#8232)
+- Enforce webframeworks enablement only on webframeworks sites (#8168)
