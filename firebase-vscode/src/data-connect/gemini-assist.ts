@@ -13,7 +13,7 @@ import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DataConnectService } from "./service";
 import { CloudAICompanionResponse, CloudAICompanionResponseError } from "../dataconnect/types";
-import { logger } from "../logger";
+import { pluginLogger as logger } from "../logger-wrapper";
 
 export class GeminiAssistController {
   constructor(
@@ -145,6 +145,7 @@ export class GeminiAssistController {
     // TODO: Call Gemini API with the document content, schema content, and prompt
     try {
       const response = await this.fdcService.generateOperation(documentPath, prompt);
+      console.log("HAROLD RESPONSE: ", response);
       if (!response) {
         throw ("No response from Cloud AI API");
       }
