@@ -1,0 +1,1 @@
+- Enforce webframeworks enablement only on webframeworks sites (#8168)
