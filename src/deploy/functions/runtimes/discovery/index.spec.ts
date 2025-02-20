@@ -101,7 +101,15 @@ describe("detectFromPort", () => {
       code: "ECONNREFUSED",
     });
 
-    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080")
+      .get("/__/functions.yaml")
+      .once()
+      .reply(408, "Request Timeout")
+
+    nock("http://127.0.0.1:8080")
+      .get("/__/functions.yaml")
+      .once()
+      .reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
     expect(parsed).to.deep.equal(BUILD);
