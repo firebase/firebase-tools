@@ -12,7 +12,6 @@ import { AnalyticsLogger } from "../analytics";
 import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DataConnectService } from "./service";
-import { CloudAICompanionResponse, CloudAICompanionResponseError } from "../dataconnect/types";
 import { pluginLogger as logger } from "../logger-wrapper";
 
 export class GeminiAssistController {
@@ -88,6 +87,10 @@ export class GeminiAssistController {
   }
 
   private async formatCodeWithVSCode(content: string): Promise<string> {
+
+    content = content.replaceAll("```", "");
+    content = content.replaceAll("graphql", "");
+    console.log("HAROLD: ", content)
     const tempFilePath = path.join(os.tmpdir(), `temp.graphql`);
     fs.writeFileSync(tempFilePath, content);
 
@@ -125,32 +128,20 @@ export class GeminiAssistController {
     }
   }
 
-  handleResponse(response: CloudAICompanionResponse | CloudAICompanionResponseError): string {
-    if (response.errors.length > 0) {
-      logger.error(response.errors[0].message);
-      throw new Error(response.errors[0].message)
-    } 
-
-    const responseAsCloudAICompanionResponse = response as CloudAICompanionResponse;
-
-    return responseAsCloudAICompanionResponse.data;
-  }
-
   async callGenerateApi(
     documentContent: string | undefined,
     documentContext: string[],
     documentPath: string,
     prompt: string,
   ): Promise<string> {
-    // TODO: Call Gemini API with the document content, schema content, and prompt
+    // TODO: Call Gemini API with the document content and context
     try {
       const response = await this.fdcService.generateOperation(documentPath, prompt);
       console.log("HAROLD RESPONSE: ", response);
       if (!response) {
         throw ("No response from Cloud AI API");
       }
-      const formattedResponse = this.handleResponse(response);
-      return this.formatCodeWithVSCode(formattedResponse);
+      return this.formatCodeWithVSCode(response.output.messages[0].content);
     } catch (error) {
       throw new Error(`Failed to call Gemini API: ${error}`);
     }
