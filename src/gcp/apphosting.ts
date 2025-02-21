@@ -358,6 +358,20 @@ export async function deleteBackend(
 }
 
 /**
+ * Parse a Build name
+ */
+export function parseBuildName(buildName: string): {
+  projectName: string;
+  location: string;
+  backendId: string;
+  buildId: string;
+} {
+  // sample value: "projects/<project-name>/locations/us-central1/backends/<backend-id>/builds/<build-id>"
+  const [, projectName, , location, , backendId, , buildId] = buildName.split("/");
+  return { projectName, location, backendId, buildId };
+}
+
+/**
  * Get a Build by Id
  */
 export async function getBuild(
