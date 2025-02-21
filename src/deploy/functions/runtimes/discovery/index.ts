@@ -111,7 +111,7 @@ export async function detectFromPort(
     logger.debug(`Got response code ${res.status}; body ${text}`);
     throw new FirebaseError(
       "Functions codebase could not be analyzed successfully. " +
-      "It may have a syntax or runtime error",
+        "It may have a syntax or runtime error",
     );
   }
   const text = await res.text();
