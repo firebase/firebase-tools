@@ -24,7 +24,7 @@ function expected(
     schemaUpdateTime,
     connectors: [
       {
-        connectorId: "connectorId",
+        connectorId: "1",
         connectorLastUpdated,
       },
     ],
@@ -145,7 +145,7 @@ describe("firebase deploy", () => {
   });
 
   afterEach(async function (this) {
-    this.timeout(10000);
+    this.timeout(100000); // Need to wait a long time for cleanup.
     fs.rmSync(fdcTest, { recursive: true, force: true });
     await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   });
