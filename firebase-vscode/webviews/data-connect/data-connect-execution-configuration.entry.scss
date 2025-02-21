@@ -38,9 +38,14 @@ vscode-panel-view {
 }
 
 .variable {
-  display: grid;
+  display: flex;
   align-items: stretch;
+  flex-direction: column;
   justify-content: stretch;
+}
+
+.variableInput {
+  flex: 1;
 }
 
 .authentication {
@@ -56,4 +61,9 @@ vscode-panel-view {
 // even if we override the display type for type purposes.
 vscode-panel-view[hidden] {
   display: none;
+}
+
+vscode-button {
+  flex:0;
+  justify-self: flex-end;
 }

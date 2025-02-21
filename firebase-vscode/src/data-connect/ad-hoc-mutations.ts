@@ -13,35 +13,17 @@ import {
   isInputObjectType,
   print,
 } from "graphql";
-import { checkIfFileExists, upsertFile } from "./file-utils";
+import { upsertFile } from "./file-utils";
 import { DataConnectService } from "./service";
 import { DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { dataConnectConfigs } from "./config";
 import { firstWhereDefined } from "../utils/signal";
-import {AnalyticsLogger} from "../analytics";
+import { AnalyticsLogger } from "../analytics";
 
 export function registerAdHoc(
   dataConnectService: DataConnectService,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
-  const defaultScalarValues = {
-    Any: "{}",
-    AuthUID: '""',
-    Boolean: "false",
-    Date: `"${new Date().toISOString().substring(0, 10)}"`,
-    Float: "0",
-    ID: '""',
-    Int: "0",
-    Int64: "0",
-    String: '""',
-    Timestamp: `"${new Date().toISOString()}"`,
-    Vector: "[]",
-  };
-
-  function isDataConnectScalarType(fieldType: string): boolean {
-    return fieldType in defaultScalarValues;
-  }
-
   /**
    * Creates a playground file with an ad-hoc mutation
    * File will be created (unsaved) in operations/ folder, with an auto-generated named based on the schema type
@@ -173,8 +155,8 @@ query {
     );
 
     await upsertFile(filePath, () => {
-    const preamble =
-      "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
+      const preamble =
+        "# This is a file for you to write an un-named mutation. \n# Only one un-named mutation is allowed per file.";
       const adhocMutation = print(
         makeAdHocMutation(Object.values(dataType.getFields()), ast.name.value),
       );
@@ -190,7 +172,7 @@ query {
 
     for (const field of fields) {
       const type = getNamedType(field.type);
-      const defaultValue = getDefaultScalarValue(type.name);
+      const defaultValue = getDefaultScalarValueNode(type.name);
       if (!defaultValue) {
         continue;
       }
@@ -229,8 +211,7 @@ query {
       },
     };
   }
-
-  function getDefaultScalarValue(type: string): ValueNode | undefined {
+  function getDefaultScalarValueNode(type: string): ValueNode | undefined {
     switch (type) {
       case "Any":
         return { kind: Kind.OBJECT, fields: [] };
@@ -275,4 +256,30 @@ query {
       },
     ),
   );
+}
+
+
+export function getDefaultScalarValue(type: string): string {
+  switch (type) {
+    case "Boolean":
+      return "false";
+    case "Date":
+      return new Date().toISOString().substring(0, 10);
+    case "Float":
+      return "0";
+    case "Int":
+      return "0";
+    case "Int64":
+      return "0";
+    case "String":
+      return "";
+    case "Timestamp":
+      return new Date().toISOString();
+    case "UUID":
+      return "11111111222233334444555555555555";
+    case "Vector":
+      return "[]";
+    default:
+      return "";
+  }
 }
