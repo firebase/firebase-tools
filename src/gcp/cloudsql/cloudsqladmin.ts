@@ -2,6 +2,10 @@ import { Client, ClientResponse } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
+import { needProjectId } from "../../projectUtils";
+import { Options } from "../../options";
+import { logger } from "../../logger";
+import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
 const API_VERSION = "v1";
 
@@ -14,6 +18,24 @@ const client = new Client({
 interface Operation {
   status: "RUNNING" | "DONE";
   name: string;
+}
+
+export async function iamUserIsCSQLAdmin(options: Options): Promise<boolean> {
+  const projectId = needProjectId(options);
+  const requiredPermissions = [
+    "cloudsql.instances.connect",
+    "cloudsql.instances.get",
+    "cloudsql.users.create",
+    "cloudsql.users.update",
+  ];
+
+  try {
+    const iamResult = await testIamPermissions(projectId, requiredPermissions);
+    return iamResult.passed;
+  } catch (err: any) {
+    logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
+    return false;
+  }
 }
 
 export async function listInstances(projectId: string): Promise<Instance[]> {
