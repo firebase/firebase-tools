@@ -394,7 +394,7 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
       // 1. Read original file content, append the generated content, and show diff view
       fs.writeFileSync(
         tempUri.fsPath,
-        Buffer.concat([originalContent, Buffer.from(content)]),
+        Buffer.concat([originalContent, Buffer.from("\n" +content)]),
       );
 
       await vscode.commands.executeCommand<vscode.TextDocument>(
