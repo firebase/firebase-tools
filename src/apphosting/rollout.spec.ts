@@ -2,7 +2,7 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 import { createRollout, orchestrateRollout } from "./rollout";
 import * as devConnect from "../gcp/devConnect";
-import * as githubConnections from "../apphosting/githubConnections";
+import * as githubConnections from "./developer-connect/githubConnections";
 import * as apphosting from "../gcp/apphosting";
 import * as backend from "./backend";
 import { FirebaseError } from "../error";
