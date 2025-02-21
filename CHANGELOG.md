@@ -1,2 +1,2 @@
-- Improve robustness of function discovery for python (#8239)
+- Add initial delay when loading python functions (#8239)
 - Enforce webframeworks enablement only on webframeworks sites (#8168)
