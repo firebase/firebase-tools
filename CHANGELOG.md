@@ -1,0 +1,1 @@
+- Improve robustness of function discovery for python (#8239)
