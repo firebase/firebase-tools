@@ -10,28 +10,25 @@ import {
   deleteBackendAndPoll,
   getBackendForAmbiguousLocation,
   getBackendForLocation,
+  chooseBackend,
 } from "../apphosting/backend";
 import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
-  .option("-l, --location <location>", "specify the location of the backend", "-")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
     let location = options.location as string;
     let backend: apphosting.Backend;
-    if (location === "-" || location === "") {
-      backend = await getBackendForAmbiguousLocation(
-        projectId,
-        backendId,
-        "Please select the location of the backend you'd like to delete:",
-      );
-      location = apphosting.parseBackendName(backend.name).location;
-    } else {
-      backend = await getBackendForLocation(projectId, location, backendId);
-    }
+
+    backend = await chooseBackend(
+      projectId,
+      backendId,
+      "Please select the backend you'd like to delete:",
+      options.force,
+    );
 
     utils.logWarning("You are about to permanently delete this backend:");
     printBackendsTable([backend]);
