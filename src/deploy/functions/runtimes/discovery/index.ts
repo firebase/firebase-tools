@@ -76,8 +76,7 @@ export async function detectFromPort(
   project: string,
   runtime: Runtime,
   initialDelay = 0,
-  reqTimeout = 5_000 /* 5s per request timeout */,
-  timeout = 16_000 /* 16s global timeout */,
+  timeout = 15_000 /* 15s global timeout */,
 ): Promise<build.Build> {
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
@@ -94,7 +93,7 @@ export async function detectFromPort(
   const url = `http://127.0.0.1:${port}/__/functions.yaml`;
   while (true) {
     try {
-      res = await Promise.race([fetch(url, { timeout: reqTimeout }), timedOut]);
+      res = await Promise.race([fetch(url), timedOut]);
       break;
     } catch (err: any) {
       if (
@@ -112,7 +111,7 @@ export async function detectFromPort(
     logger.debug(`Got response code ${res.status}; body ${text}`);
     throw new FirebaseError(
       "Functions codebase could not be analyzed successfully. " +
-        "It may have a syntax or runtime error",
+      "It may have a syntax or runtime error",
     );
   }
   const text = await res.text();
