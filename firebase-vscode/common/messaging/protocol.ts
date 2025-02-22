@@ -105,8 +105,8 @@ export interface WebviewToExtensionParamsMap {
 
   /** Opens settings page searching for Data Connect emualtor settings */
   "fdc.open-emulator-settings": void;
-  
-    /** Clears data from a running data connect emulator */
+
+  /** Clears data from a running data connect emulator */
   "fdc.clear-emulator-data": void;
 
   // Initialize "result" tab.
@@ -116,6 +116,11 @@ export interface WebviewToExtensionParamsMap {
   executeLogin: void;
 
   getDocsLink: void;
+
+  openJSONFile: string;
+
+  // called from execution panel
+  rerunExecution: void;
 }
 
 export interface DataConnectResults {
@@ -130,6 +135,8 @@ export type ValueOrError<T> =
   | { error: string; value: undefined };
 
 export interface ExtensionToWebviewParamsMap {
+  notifyDataConnectResults: DataConnectResults;
+
   /** Triggered when the emulator UI/state changes */
   notifyEmulatorStateChanged: {
     status: EmulatorsStatus;
@@ -175,8 +182,9 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   // data connect specific
-  notifyDataConnectResults: DataConnectResults;
-  notifyDataConnectRequiredArgs: { args: string[] };
+  notifyDataConnectArgs: string;
+
+  notifyLastOperation: string;
 
   notifyIsLoadingUser: boolean;
 
