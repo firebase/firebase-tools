@@ -45,8 +45,10 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
-// import { prepareDynamicExtensions } from "../extensions/prepare";
-// import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
+import { prepareDynamicExtensions } from "../extensions/prepare";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
+import { DeployOptions } from "..";
+import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -55,7 +57,7 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
  */
 export async function prepare(
   context: args.Context,
-  options: Options,
+  options: DeployOptions,
   payload: args.Payload,
 ): Promise<void> {
   const projectId = needProjectId(options);
@@ -101,13 +103,13 @@ export async function prepare(
   );
 
   // == Phase 1.5 Prepare extensions found in codebases if any
-  // if (Object.values(wantBuilds).some((b) => b.extensions)) {
-  //   const extContext: ExtContext = {};
-  //   const extPayload: ExtPayload = {};
-  //   await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
-  //   context.extensions = extContext;
-  //   payload.extensions = extPayload;
-  // }
+  if (Object.values(wantBuilds).some((b) => b.extensions)) {
+    const extContext: ExtContext = {};
+    const extPayload: ExtPayload = {};
+    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
+    context.extensions = extContext;
+    payload.extensions = extPayload;
+  }
 
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];
@@ -239,6 +241,8 @@ export async function prepare(
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
+  await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
+
   // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
   // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
   // explicit dependencies.
@@ -276,10 +280,15 @@ export async function prepare(
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend);
-
+  await ensureServiceAgentRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
+  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
@@ -488,4 +497,39 @@ export async function loadCodebases(
     wantBuilds[codebase].runtime = codebaseConfig.runtime;
   }
   return wantBuilds;
+}
+
+// Genkit almost always requires an API key, so warn if the customer is about to deploy
+// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+// deploy of the function.
+export async function warnIfNewGenkitFunctionIsMissingSecrets(
+  have: backend.Backend,
+  want: backend.Backend,
+  options: DeployOptions,
+) {
+  if (options.force) {
+    return;
+  }
+
+  const newAndMissingSecrets = backend.allEndpoints(
+    backend.matchingBackend(want, (e) => {
+      if (!backend.isCallableTriggered(e) || !e.callableTrigger.genkitAction) {
+        return false;
+      }
+      if (e.secretEnvironmentVariables?.length) {
+        return false;
+      }
+      return !backend.hasEndpoint(have)(e);
+    }),
+  );
+
+  if (newAndMissingSecrets.length) {
+    const message =
+      `The function(s) ${newAndMissingSecrets.map((e) => e.id).join(", ")} use Genkit but do not have access to a secret. ` +
+      "This may cause the function to fail if it depends on an API key. To learn more about granting a function access to " +
+      "secrets, see https://firebase.google.com/docs/functions/config-env?gen=2nd#secret_parameters. Continue?";
+    if (!(await prompt.confirm({ message, nonInteractive: options.nonInteractive }))) {
+      throw new FirebaseError("Aborted");
+    }
+  }
 }

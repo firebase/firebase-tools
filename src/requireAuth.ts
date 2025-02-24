@@ -7,8 +7,8 @@ import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
-import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
+import { Tokens, TokensWithExpiration, User } from "./types/auth";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -16,7 +16,7 @@ const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bo
 )}`;
 
 let authClient: GoogleAuth | undefined;
-
+let lastOptions: Options;
 /**
  * Returns the auth client.
  * @param config options for the auth client.
@@ -40,6 +40,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
+  logger.debug(`Running auto auth`);
 
   let clientEmail;
   try {
@@ -51,11 +52,15 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   }
   if (process.env.MONOSPACE_ENV && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, {
+    const activeAccount = {
       user: { email: clientEmail },
-      tokens: { access_token: token },
-    });
-    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
+      tokens: {
+        access_token: token,
+        expires_at: client.cachedCredential?.credentials.expiry_date,
+      } as TokensWithExpiration,
+    };
+    setActiveAccount(options, activeAccount);
+    setGlobalDefaultAccount(activeAccount);
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
@@ -63,11 +68,20 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
   return clientEmail;
 }
 
+export async function refreshAuth(): Promise<Tokens> {
+  if (!lastOptions) {
+    throw new FirebaseError("Unable to refresh auth: not yet authenticated.");
+  }
+  await requireAuth(lastOptions);
+  return lastOptions.tokens as Tokens;
+}
+
 /**
  * Ensures that there is an authenticated user.
  * @param options CLI options.
  */
 export async function requireAuth(options: any): Promise<string | void> {
+  lastOptions = options;
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
 
@@ -86,7 +100,7 @@ export async function requireAuth(options: any): Promise<string | void> {
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
         "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
-  } else if (user) {
+  } else if (user && (!isExpired(tokens) || tokens?.refresh_token)) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
   } else {
     try {

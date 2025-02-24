@@ -2,23 +2,79 @@
  * Start the App Hosting server.
  * @param options the Firebase CLI options.
  */
+
 import { isIPv4 } from "net";
 import { checkListenable } from "../portUtils";
-import { wrapSpawn } from "../../init/spawn";
+import { detectStartCommand } from "./developmentServer";
+import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
+import { spawnWithCommandString } from "../../init/spawn";
+import { logger } from "./developmentServer";
+import { Emulators } from "../types";
+import { getLocalAppHostingConfiguration } from "./config";
+import { resolveProjectPath } from "../../projectPath";
+import { EmulatorRegistry } from "../registry";
+import { setEnvVarsForEmulators } from "../env";
+
+interface StartOptions {
+  port?: number;
+  startCommand?: string;
+  rootDirectory?: string;
+}
 
 /**
  * Spins up a project locally by running the project's dev command.
+ *
+ * Assumptions:
+ *  - Dev server runs on "localhost" when the package manager's dev command is
+ *    run
+ *  - Dev server will respect the PORT environment variable
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function start(options: any): Promise<{ port: number }> {
-  let port = options.port;
-  while (!(await availablePort(options.host, port))) {
+export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
+  const hostname = DEFAULT_HOST;
+  let port = options?.port ?? DEFAULT_PORTS.apphosting;
+  while (!(await availablePort(hostname, port))) {
     port += 1;
   }
 
-  serve(options, port);
+  serve(port, options?.startCommand, options?.rootDirectory);
 
-  return { port };
+  return { hostname, port };
+}
+
+async function serve(
+  port: number,
+  startCommand?: string,
+  backendRelativeDir?: string,
+): Promise<void> {
+  backendRelativeDir = backendRelativeDir ?? "./";
+
+  const backendRoot = resolveProjectPath({}, backendRelativeDir);
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
+  const environmentVariablesAsRecord: Record<string, string> = {};
+
+  for (const env of apphostingLocalConfig.environmentVariables) {
+    environmentVariablesAsRecord[env.variable] = env.value!;
+  }
+
+  const environmentVariablesToInject = {
+    ...getEmulatorEnvs(),
+    ...environmentVariablesAsRecord,
+    PORT: port.toString(),
+  };
+
+  if (startCommand) {
+    logger.logLabeled(
+      "BULLET",
+      Emulators.APPHOSTING,
+      `running custom start command: '${startCommand}'`,
+    );
+    await spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
+    return;
+  }
+
+  const detectedStartCommand = await detectStartCommand(backendRoot);
+  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
+  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
@@ -30,9 +86,14 @@ function availablePort(host: string, port: number): Promise<boolean> {
 }
 
 /**
- * Exported for unit testing
+ * Exported for unit tests
  */
-export async function serve(options: any, port: string) {
-  // TODO: update to support other package managers and frameworks other than NextJS
-  await wrapSpawn("npm", ["run", "dev", "--", "-H", options.host, "-p", port], process.cwd());
+export function getEmulatorEnvs(): Record<string, string> {
+  const envs: Record<string, string> = {};
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo().filter(
+    (emulator) => emulator.name !== Emulators.APPHOSTING, // No need to set envs for the apphosting emulator itself.
+  );
+  setEnvVarsForEmulators(envs, emulatorInfos);
+
+  return envs;
 }

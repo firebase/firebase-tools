@@ -2,14 +2,22 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
-import { ConnectorYaml, DataConnectYaml, File, Platform, ServiceInfo } from "./types";
+import {
+  ConnectorYaml,
+  DataConnectYaml,
+  File,
+  Platform,
+  ServiceInfo,
+  SupportedFrameworks,
+} from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import { load } from "./load";
+import { PackageJSON } from "../frameworks/compose/discover/runtime/node";
 
-export function readFirebaseJson(config: Config): DataConnectMultiple {
-  if (!config.has("dataconnect")) {
+export function readFirebaseJson(config?: Config): DataConnectMultiple {
+  if (!config?.has("dataconnect")) {
     return [];
   }
   const validator = (cfg: any) => {
@@ -58,6 +66,9 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
 }
 
 export async function readGQLFiles(sourceDir: string): Promise<File[]> {
+  if (!fs.existsSync(sourceDir)) {
+    return [];
+  }
   const files = await fs.readdir(sourceDir);
   // TODO: Handle files in subdirectories such as `foo/a.gql` and `bar/baz/b.gql`.
   return files
@@ -109,8 +120,10 @@ export async function pickService(
 
 // case insensitive exact match indicators for supported app platforms
 const WEB_INDICATORS = ["package.json", "package-lock.json", "node_modules"];
-const IOS_INDICATORS = ["info.plist", "podfile", "package.swift"];
+const IOS_INDICATORS = ["info.plist", "podfile", "package.swift", ".xcodeproj"];
+// Note: build.gradle can be nested inside android/ and android/app.
 const ANDROID_INDICATORS = ["androidmanifest.xml", "build.gradle", "build.gradle.kts"];
+const DART_INDICATORS = ["pubspec.yaml", "pubspec.lock"];
 
 // endswith match
 const IOS_POSTFIX_INDICATORS = [".xcworkspace", ".xcodeproj"];
@@ -123,6 +136,7 @@ export async function getPlatformFromFolder(dirPath: string) {
   let hasWeb = false;
   let hasAndroid = false;
   let hasIOS = false;
+  let hasDart = false;
   for (const fileName of fileNames) {
     const cleanedFileName = fileName.toLowerCase();
     hasWeb ||= WEB_INDICATORS.some((indicator) => indicator === cleanedFileName);
@@ -130,54 +144,49 @@ export async function getPlatformFromFolder(dirPath: string) {
     hasIOS ||=
       IOS_INDICATORS.some((indicator) => indicator === cleanedFileName) ||
       IOS_POSTFIX_INDICATORS.some((indicator) => cleanedFileName.endsWith(indicator));
+    hasDart ||= DART_INDICATORS.some((indicator) => indicator === cleanedFileName);
   }
-  if (hasWeb && !hasAndroid && !hasIOS) {
+  if (!hasWeb && !hasAndroid && !hasIOS && !hasDart) {
+    return Platform.NONE;
+  } else if (hasWeb && !hasAndroid && !hasIOS && !hasDart) {
     return Platform.WEB;
-  } else if (hasAndroid && !hasWeb && !hasIOS) {
+  } else if (hasAndroid && !hasWeb && !hasIOS && !hasDart) {
     return Platform.ANDROID;
-  } else if (hasIOS && !hasWeb && !hasAndroid) {
+  } else if (hasIOS && !hasWeb && !hasAndroid && !hasDart) {
     return Platform.IOS;
+  } else if (hasDart && !hasWeb && !hasIOS && !hasAndroid) {
+    return Platform.FLUTTER;
   }
   // At this point, its not clear which platform the app directory is
-  // (either because we found no indicators, or indicators for multiple platforms)
-  return Platform.UNDETERMINED;
+  // because we found indicators for multiple platforms.
+  return Platform.MULTIPLE;
 }
 
-export async function directoryHasPackageJson(dirPath: string) {
-  const fileNames = await fs.readdir(dirPath);
-  return fileNames.some((f) => f.toLowerCase() === "package.json");
+export async function resolvePackageJson(
+  packageJsonPath: string,
+): Promise<PackageJSON | undefined> {
+  let validPackageJsonPath = packageJsonPath;
+  if (!packageJsonPath.endsWith("package.json")) {
+    validPackageJsonPath = path.join(packageJsonPath, "package.json");
+  }
+  validPackageJsonPath = path.resolve(validPackageJsonPath);
+  try {
+    return JSON.parse((await fs.readFile(validPackageJsonPath)).toString());
+  } catch {
+    return undefined;
+  }
 }
 
-// Generates sdk yaml based on platform, and returns a modified connectorYaml
-export function generateSdkYaml(
-  platform: Platform,
-  connectorYaml: ConnectorYaml,
-  connectorYamlFolder: string, // path.relative expects folder as first arg
-  appFolder: string,
-): ConnectorYaml {
-  const relPath = path.relative(connectorYamlFolder, appFolder);
-  const outputDir = path.join(relPath, "dataconnect-generated");
-  if (!connectorYaml.generate) {
-    connectorYaml.generate = {};
-  }
-  if (platform === Platform.WEB) {
-    connectorYaml.generate.javascriptSdk = {
-      outputDir,
-      package: `@firebasegen/${connectorYaml.connectorId}`,
-      packageJsonDir: appFolder,
-    };
-  }
-  if (platform === Platform.IOS) {
-    connectorYaml.generate.swiftSdk = {
-      outputDir,
-      package: connectorYaml.connectorId,
-    };
-  }
-  if (platform === Platform.ANDROID) {
-    connectorYaml.generate.kotlinSdk = {
-      outputDir,
-      package: `connectors.${connectorYaml.connectorId}`,
-    };
-  }
-  return connectorYaml;
+export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react"];
+export function getFrameworksFromPackageJson(
+  packageJson: PackageJSON,
+): (keyof SupportedFrameworks)[] {
+  const devDependencies = Object.keys(packageJson.devDependencies ?? {});
+  const dependencies = Object.keys(packageJson.dependencies ?? {});
+  const matched = new Set(
+    [...devDependencies, ...dependencies].filter((dep) =>
+      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks),
+    ),
+  );
+  return Array.from(matched) as (keyof SupportedFrameworks)[];
 }

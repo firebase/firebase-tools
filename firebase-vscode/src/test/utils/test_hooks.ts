@@ -28,34 +28,35 @@ let setups: Array<() => void | Promise<void>> = [];
  *
  * The callback is bound to the suite, and when that suite ends, the callback is unregistered.
  */
-export function setup(cb: () => void | Promise<void>) {
+export function addSetup(cb: () => void | Promise<void>) {
   setups.push(cb);
 }
 
 /** A custom "test" to work around "afterEach" not working with the current configs */
 export function firebaseTest(
   description: string,
-  cb: (this: Mocha.Context) => void | Promise<void>
+  cb: () => void | Promise<void>,
 ) {
   // Since tests may execute in any order, we dereference the list of setup callbacks
   // to unsure that other suites' setups don't affect this test.
   const testSetups = [...setups];
   const testTearDowns = [...tearDowns];
+  // Tests may call addTearDown to register a callback to run after the test ends.
+  // We make sure those callbacks are applied only to this test.
+  const previousTearDowns = tearDowns;
+  tearDowns = testTearDowns;
+
+  setup(async function () {
+    await runGuarded(testSetups);
+  });
+
+  teardown(async function () {
+    await runGuarded(testTearDowns.reverse());
+    tearDowns = previousTearDowns;
+  });
 
   test(description, async function () {
-    // Tests may call addTearDown to register a callback to run after the test ends.
-    // We make sure those callbacks are applied only to this test.
-    const previousTearDowns = tearDowns;
-    tearDowns = testTearDowns;
-
-    await runGuarded(testSetups);
-
-    try {
-      await cb.call(this);
-    } finally {
-      await runGuarded(testTearDowns.reverse());
-      tearDowns = previousTearDowns;
-    }
+    await cb();
   });
 }
 
@@ -89,7 +90,7 @@ async function runGuarded(callbacks: Array<() => void | Promise<void>>) {
     try {
       await cb();
     } catch (e) {
-      firstError ??= e;
+      firstError ??= e as Error;
     }
   }
 

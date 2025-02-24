@@ -7,10 +7,30 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { promptOnce } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
-import { apphostingGitHubAppInstallationURL, developerConnectOrigin } from "../api";
+import {
+  apphostingGitHubAppInstallationURL,
+  developerConnectOrigin,
+  githubApiOrigin,
+} from "../api";
 
 import * as fuzzy from "fuzzy";
 import * as inquirer from "inquirer";
+import { Client } from "../apiv2";
+
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
+
+export interface GitHubBranchInfo {
+  commit: GitHubCommitInfo;
+}
+
+export interface GitHubCommitInfo {
+  sha: string;
+  commit: GitHubCommit;
+}
+
+interface GitHubCommit {
+  message: string;
+}
 
 interface ConnectionNameParts {
   projectId: string;
@@ -90,13 +110,29 @@ const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
 const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 
 /**
- * Prompts the user to link their backend to a GitHub repository.
+ * Prompts the user to create a GitHub connection.
  */
-export async function linkGitHubRepository(
+export async function getOrCreateGithubConnectionWithSentinel(
   projectId: string,
   location: string,
-): Promise<devConnect.GitRepositoryLink> {
+  createConnectionId?: string,
+): Promise<devConnect.Connection> {
   utils.logBullet(clc.bold(`${clc.yellow("===")} Import a GitHub repository`));
+
+  if (createConnectionId) {
+    // Check if the connection already exists.
+    try {
+      const connection = await devConnect.getConnection(projectId, location, createConnectionId);
+      utils.logBullet(`Reusing existing connection ${createConnectionId}`);
+      return connection;
+    } catch (err: unknown) {
+      // A 404 is expected if the connection doesn't exist. Otherwise, continue to throw the err.
+      if ((err as any).status !== 404) {
+        throw err;
+      }
+    }
+  }
+
   // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   let installationId = await promptGitHubInstallation(projectId, location, oauthConn);
@@ -117,36 +153,62 @@ export async function linkGitHubRepository(
     installationId = await promptGitHubInstallation(projectId, location, oauthConn);
   }
 
-  let connectionMatchingInstallation = await getConnectionForInstallation(
+  const connectionMatchingInstallation = await getConnectionForInstallation(
     projectId,
     location,
     installationId,
   );
+  if (connectionMatchingInstallation) {
+    const { id: matchingConnectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
 
-  if (!connectionMatchingInstallation) {
-    connectionMatchingInstallation = await createFullyInstalledConnection(
-      projectId,
-      location,
-      generateConnectionId(),
-      oauthConn,
-      installationId,
-    );
+    if (!createConnectionId) {
+      utils.logBullet(`Reusing matching connection ${matchingConnectionId}`);
+      return connectionMatchingInstallation;
+    }
   }
+  if (!createConnectionId) {
+    createConnectionId = generateConnectionId();
+  }
+
+  const connection = await createFullyInstalledConnection(
+    projectId,
+    location,
+    createConnectionId,
+    oauthConn,
+    installationId,
+  );
+
+  return connection;
+}
+
+/**
+ * Prompts the user to link their backend to a GitHub repository.
+ */
+export async function linkGitHubRepository(
+  projectId: string,
+  location: string,
+  createConnectionId?: string,
+): Promise<devConnect.GitRepositoryLink> {
+  const connection = await getOrCreateGithubConnectionWithSentinel(
+    projectId,
+    location,
+    createConnectionId,
+  );
 
   let repoCloneUri: string | undefined;
 
   do {
     if (repoCloneUri === MANAGE_INSTALLATION_CHOICE) {
-      await manageInstallation(connectionMatchingInstallation);
+      await manageInstallation(connection);
     }
 
-    repoCloneUri = await promptCloneUri(projectId, connectionMatchingInstallation);
+    repoCloneUri = await promptCloneUri(projectId, connection);
   } while (repoCloneUri === MANAGE_INSTALLATION_CHOICE);
 
-  const { id: connectionId } = parseConnectionName(connectionMatchingInstallation.name)!;
+  const { id: connectionId } = parseConnectionName(connection.name)!;
   await getOrCreateConnection(projectId, location, connectionId, {
-    authorizerCredential: connectionMatchingInstallation.githubConfig?.authorizerCredential,
-    appInstallationId: connectionMatchingInstallation.githubConfig?.appInstallationId,
+    authorizerCredential: connection.githubConfig?.authorizerCredential,
+    appInstallationId: connection.githubConfig?.appInstallationId,
   });
 
   const repo = await getOrCreateRepository(projectId, location, connectionId, repoCloneUri);
@@ -212,6 +274,9 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
   });
 }
 
+/**
+ * Gets the oldest matching Dev Connect connection resource for a GitHub app installation.
+ */
 export async function getConnectionForInstallation(
   projectId: string,
   location: string,
@@ -240,6 +305,9 @@ export async function getConnectionForInstallation(
   return connectionsMatchingInstallation[0];
 }
 
+/**
+ * Prompts the user to select which GitHub account to install the GitHub app.
+ */
 export async function promptGitHubInstallation(
   projectId: string,
   location: string,
@@ -383,24 +451,30 @@ async function promptCloneUri(
  * Prompts the user for a GitHub branch and validates that the given branch
  * actually exists. User is re-prompted until they enter a valid branch.
  */
-export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink) {
+export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink): Promise<string> {
   const branches = await devConnect.listAllBranches(repoLink.name);
-  while (true) {
-    const branch = await promptOnce({
-      name: "branch",
-      type: "input",
-      default: "main",
-      message: "Pick a branch for continuous deployment",
-    });
+  const branch = await promptOnce({
+    type: "autocomplete",
+    name: "branch",
+    message: "Pick a branch for continuous deployment",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy.filter(input, Array.from(branches)).map((result) => {
+            return {
+              name: result.original,
+              value: result.original,
+            };
+          }),
+        ]),
+      );
+    },
+  });
 
-    if (branches.has(branch)) {
-      return branch;
-    }
-
-    utils.logWarning(
-      `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri)}". Please enter a valid branch for this repo.`,
-    );
-  }
+  utils.logWarning(
+    `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri) ?? ""}". Please enter a valid branch for this repo.`,
+  );
+  return branch;
 }
 
 /**
@@ -487,6 +561,7 @@ export async function createConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect Connection resource. Will typically need some initialization
  * Exported for unit testing.
  */
 export async function getOrCreateConnection(
@@ -510,6 +585,7 @@ export async function getOrCreateConnection(
 }
 
 /**
+ * Gets or creates a new Developer Connect GitRepositoryLink resource on a Developer Connect connection.
  * Exported for unit testing.
  */
 export async function getOrCreateRepository(
@@ -547,10 +623,10 @@ export async function getOrCreateRepository(
 }
 
 /**
- * Exported for unit testing.
- *
  * Lists all App Hosting Developer Connect Connections
  * not including the OAuth Connection
+ *
+ * Exported for unit testing.
  */
 export async function listAppHostingConnections(
   projectId: string,
@@ -567,6 +643,8 @@ export async function listAppHostingConnections(
 }
 
 /**
+ * Fetch the git clone url using a Developer Connect GitRepositoryLink.
+ *
  * Exported for unit testing.
  */
 export async function fetchRepositoryCloneUris(
@@ -578,4 +656,42 @@ export async function fetchRepositoryCloneUris(
   const cloneUris = connectionRepos.map((conn) => conn.cloneUri);
 
   return cloneUris;
+}
+
+/**
+ * Gets the details of a GitHub branch from the GitHub REST API.
+ */
+export async function getGitHubBranch(
+  owner: string,
+  repo: string,
+  branch: string,
+  readToken: string,
+): Promise<GitHubBranchInfo> {
+  const headers = { Authorization: `Bearer ${readToken}`, "User-Agent": "Firebase CLI" };
+  const { body } = await githubApiClient.get<GitHubBranchInfo>(
+    `/repos/${owner}/${repo}/branches/${branch}`,
+    {
+      headers,
+    },
+  );
+  return body;
+}
+
+/**
+ * Gets the details of a GitHub commit from the GitHub REST API.
+ */
+export async function getGitHubCommit(
+  owner: string,
+  repo: string,
+  ref: string,
+  readToken: string,
+): Promise<GitHubCommitInfo> {
+  const headers = { Authorization: `Bearer ${readToken}`, "User-Agent": "Firebase CLI" };
+  const { body } = await githubApiClient.get<GitHubCommitInfo>(
+    `/repos/${owner}/${repo}/commits/${ref}`,
+    {
+      headers,
+    },
+  );
+  return body;
 }

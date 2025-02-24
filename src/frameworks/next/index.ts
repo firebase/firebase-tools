@@ -49,7 +49,7 @@ import {
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
-  getHeadersFromMetaFiles,
+  getAppMetadataFromMetaFiles,
   cleanI18n,
   getNextVersion,
   hasStaticAppNotFoundComponent,
@@ -87,7 +87,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 14.0";
+export const supportedRange = "12 - 15.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -252,13 +252,17 @@ export async function build(
   ]);
 
   if (appPathRoutesManifest) {
-    const headersFromMetaFiles = await getHeadersFromMetaFiles(
+    const { headers: headersFromMetaFiles, pprRoutes } = await getAppMetadataFromMetaFiles(
       dir,
       distDir,
       baseUrl,
       appPathRoutesManifest,
     );
     headers.push(...headersFromMetaFiles);
+
+    for (const route of pprRoutes) {
+      reasonsForBackend.add(`route with PPR ${route}`);
+    }
 
     if (appPathsManifest) {
       const unrenderedServerComponents = getNonStaticServerComponents(
@@ -487,6 +491,13 @@ export async function ɵcodegenPublicDirectory(
     ...pagesManifestLikePrerender,
   };
 
+  const { pprRoutes } = await getAppMetadataFromMetaFiles(
+    sourceDir,
+    distDir,
+    basePath,
+    appPathRoutesManifest,
+  );
+
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
       if (route.initialRevalidateSeconds) {
@@ -504,7 +515,6 @@ export async function ɵcodegenPublicDirectory(
         logger.debug(`skipping ${path} due to server action`);
         return;
       }
-
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
@@ -536,6 +546,12 @@ export async function ɵcodegenPublicDirectory(
       let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
+
+        if (pprRoutes.includes(path)) {
+          logger.debug(`skipping ${path} due to ppr`);
+          return;
+        }
+
         if (localizedDestPath) localizedDestPath += ".html";
         if (defaultDestPath) defaultDestPath += ".html";
       } else if (

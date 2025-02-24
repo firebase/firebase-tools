@@ -1,5 +1,103 @@
 ## NEXT
 
+## 0.13.0
+
+- Updated internal `firebase-tools` dependency to 13.30.0
+- [Added] Added `extraEnv` setting to help extension development.
+- [Added] Make Run Local button always present
+
+## 0.12.2
+
+- Updated internal `firebase-tools` dependency to 13.29.3
+- [Fixed] Fixed a bug where results panel would break on API error
+
+## 0.12.1
+
+- Updated internal `firebase-tools` dependency to 13.29.2
+- [Added] Added support for emulator import/export.
+- [Added] Added `debug` setting to run commands with `--debug`
+- [Fixed] Fixed a bug where emulator issues weren't being surfaced
+
+## 0.12.0
+
+- Updated internal firebase-tools dependency to 13.29.1
+- [Fixed] Fixed firebase binary detection for analytics
+
+## 0.11.1
+
+- [Fixed] Fixed IDX analytics issue
+
+## 0.11.0
+
+- Updated internal firebase-tools dependency to 13.28.0
+- [Fixed] Fixed an issue where generating an ad-hoc file would break codelenses
+
+## 0.10.8
+
+- Updated internal firebase-tools dependency to 13.25.0
+- [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+- [Fixed] Fixed a visual bug when selecting a Firebase project in an empty folder
+
+## 0.10.7
+
+- Updated internal firebase-tools dependency to 13.24.2
+- [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
+- [Fixed] Fixed an issue where firebase version check produced false positives on Windows (#7910)
+
+## 0.10.6
+
+- Updated internal firebase-tools dependency to 13.23.1
+- [Added] Persist FIREBASE_BINARY env variable to settings.
+- [Fixed] Fixed an issue where .firebaserc was being overwritten by the extension (#7861)
+
+## 0.10.5
+
+- [Fixed] Fixed an issue where multiple instances of the extension would break the toolkit.
+
+## 0.10.4
+
+- [Fixed] Fixed an issue where log files would be written to non-Firebase directories.
+
+## 0.10.3
+
+- Updated internal firebase-tools dependency to 13.21.0
+- Updated default debug-log output to .firebase/logs directory
+- [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for SDK configuration button
+
+## 0.10.2
+
+- Updated internal firebase-tools dependency to 13.20.2
+
+## 0.10.1
+
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
+- [Fixed] Fixed an issue where Add Data wouldn't generate UUID types
+- Updated README with feature descriptions
+
+## 0.10.0
+
+- [Added] UI overhaul.
+- [Added] Added View Docs button to see generated documentation for your schema and connectors.
+- [Fixed] Improved detection for emulator start up and shut down.
+- [Fixed] Improved error handling for variables pane.
+- [Added] Added Firebase path setting, to control which Firebase dbinary is used when executing commands.
+
+## 0.9.1
+
+- Updated internal firebase-tools dependency to 13.19.0
+
+## 0.9.0
+
+- Updated internal firebase-tools dependency to 13.18.0
+
+## 0.8.0
+
+- Updated internal firebase-tools dependency to 13.17.0
+
+- [Fixed] Extension properly picks up firebase.json changes during Firebase Init flow
+
 ## 0.7.0
 
 - Updated internal firebase-tools dependency to 13.16.0

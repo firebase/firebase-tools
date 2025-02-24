@@ -17,6 +17,11 @@
             "instanceId": {
               "type": "string",
               "description": "The ID of the CloudSQL instance for this database"
+            },
+            "schemaValidation": {
+              "type": "string",
+              "enum": ["COMPATIBLE", "STRICT"],
+              "description": "Schema validation mode for schema migrations"
             }
           }
         }

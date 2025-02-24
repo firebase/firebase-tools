@@ -10,7 +10,8 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
-import * as rimraf from "rimraf";
+import { DataConnectEmulator } from "./dataconnectEmulator";
+import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
 
 export interface FirestoreExportMetadata {
@@ -34,12 +35,18 @@ export interface StorageExportMetadata {
   path: string;
 }
 
+export interface DataConnectExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
   auth?: AuthExportMetadata;
   storage?: StorageExportMetadata;
+  dataconnect?: DataConnectExportMetadata;
 }
 
 export interface ExportOptions {
@@ -66,8 +73,14 @@ export class HubExport {
     if (!fs.existsSync(metadataPath)) {
       return undefined;
     }
-
-    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
+    let mdString: string = "";
+    try {
+      mdString = fs.readFileSync(metadataPath, "utf8").toString();
+      return JSON.parse(mdString) as ExportMetadata;
+    } catch (err: any) {
+      // JSON parse errors are unreadable. Throw the original.
+      throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString}`);
+    }
   }
 
   public async exportAll(): Promise<void> {
@@ -116,6 +129,14 @@ export class HubExport {
       await this.exportStorage(metadata);
     }
 
+    if (shouldExport(Emulators.DATACONNECT)) {
+      metadata.dataconnect = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "dataconnect_export",
+      };
+      await this.exportDataConnect(metadata);
+    }
+
     // Make sure the export directory exists
     if (!fs.existsSync(this.exportPath)) {
       fs.mkdirSync(this.exportPath);
@@ -133,7 +154,7 @@ export class HubExport {
     // Remove any existing data in the directory and then swap it with the
     // temp directory.
     logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
-    rimraf.sync(this.exportPath);
+    rmSync(this.exportPath, { recursive: true });
     fse.moveSync(this.tmpDir, this.exportPath);
   }
 
@@ -282,6 +303,28 @@ export class HubExport {
     if (res.status >= 400) {
       throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
     }
+  }
+
+  private async exportDataConnect(metadata: ExportMetadata): Promise<void> {
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.DATACONNECT,
+    });
+
+    const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+    if (!instance) {
+      throw new FirebaseError(
+        "Unable to export Data Connect emulator data: the Data Connect emulator is not running.",
+      );
+    }
+
+    const dataconnectExportPath = path.join(this.tmpDir, metadata.dataconnect!.path);
+    if (fs.existsSync(dataconnectExportPath)) {
+      fse.removeSync(dataconnectExportPath);
+    }
+    fs.mkdirSync(dataconnectExportPath);
+
+    await instance.exportData(dataconnectExportPath);
   }
 }
 

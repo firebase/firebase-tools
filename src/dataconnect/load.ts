@@ -11,6 +11,7 @@ export async function load(
   config: Config,
   sourceDirectory: string,
 ): Promise<ServiceInfo> {
+  // TODO: better error handling when config read fails
   const resolvedDir = config.path(sourceDirectory);
   const dataConnectYaml = await fileUtils.readDataConnectYaml(resolvedDir);
   const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
@@ -39,11 +40,9 @@ export async function load(
     sourceDirectory: resolvedDir,
     schema: {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
-      primaryDatasource: toDatasource(
-        projectId,
-        dataConnectYaml.location,
-        dataConnectYaml.schema.datasource,
-      ),
+      datasources: [
+        toDatasource(projectId, dataConnectYaml.location, dataConnectYaml.schema.datasource),
+      ],
       source: {
         files: schemaGQLs,
       },

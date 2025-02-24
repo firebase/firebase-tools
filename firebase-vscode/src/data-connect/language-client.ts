@@ -10,7 +10,7 @@ import * as path from "node:path";
 import { ResolvedDataConnectConfigs } from "./config";
 
 export function setupLanguageClient(
-  context,
+  context: vscode.ExtensionContext,
   configs: ResolvedDataConnectConfigs,
   outputChannel: vscode.OutputChannel,
 ) {

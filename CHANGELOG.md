@@ -1,5 +1,3 @@
-- Re-add a dialog to let users know TLS is being provisioned in App Hosting (#7595)
-- Improve Firebase Data Connect postgres security by granting fine grained SQL privileges to the users the need it. (#7578)
-- Remove `dataconnect:sql:migrate` command hard dependency on 'roles/cloudsql.admin'. (#7578)
-- Add support for setting the encryption configuration of restored firestore databases (#7483)
-- Support 3rd party builders for Angular.
+- Add initial delay when loading python functions (#8239)
+- Enforce webframeworks enablement only on webframeworks sites (#8168)
+- Support 3rd party builders for Angular. (#7557)

@@ -16,7 +16,7 @@ export interface Service extends BaseResource {
 export interface Schema extends BaseResource {
   name: string;
 
-  primaryDatasource: Datasource;
+  datasources: Datasource[];
   source: Source;
 }
 
@@ -29,10 +29,12 @@ export interface Datasource {
   postgresql?: PostgreSql;
 }
 
+export type SchemaValidation = "STRICT" | "COMPATIBLE";
+
 export interface PostgreSql {
   database: string;
   cloudSql: CloudSqlInstance;
-  schemaValidation?: "STRICT" | "COMPATIBLE" | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
 }
 
 export interface CloudSqlInstance {
@@ -69,14 +71,25 @@ export interface Diff {
   destructive: boolean;
 }
 
+export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
+
+export interface Workaround {
+  description: string;
+  reason: string;
+  replaceWith: string;
+}
+
 export interface GraphqlError {
   message: string;
+  path?: (string | number)[];
   locations?: {
     line: number;
     column: number;
   }[];
   extensions?: {
     file?: string;
+    warningLevel?: WarningLevel;
+    workarounds?: Workaround[];
     [key: string]: any;
   };
 }
@@ -117,12 +130,12 @@ export interface DatasourceYaml {
     cloudSql: {
       instanceId: string;
     };
+    schemaValidation?: SchemaValidation;
   };
 }
 
 export interface ConnectorYaml {
   connectorId: string;
-  authMode?: "ADMIN" | "PUBLIC";
   generate?: Generate;
 }
 
@@ -130,9 +143,14 @@ export interface Generate {
   javascriptSdk?: JavascriptSDK;
   swiftSdk?: SwiftSDK;
   kotlinSdk?: KotlinSDK;
+  dartSdk?: DartSDK;
 }
 
-export interface JavascriptSDK {
+export interface SupportedFrameworks {
+  react?: boolean;
+}
+
+export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
@@ -146,12 +164,18 @@ export interface KotlinSDK {
   outputDir: string;
   package: string;
 }
+export interface DartSDK {
+  outputDir: string;
+  package: string;
+}
 
 export enum Platform {
+  NONE = "NONE",
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
-  UNDETERMINED = "UNDETERMINED",
+  FLUTTER = "FLUTTER",
+  MULTIPLE = "MULTIPLE",
 }
 
 // Helper types && converters
@@ -175,13 +199,14 @@ export function toDatasource(
   locationId: string,
   ds: DatasourceYaml,
 ): Datasource {
-  if (ds.postgresql) {
+  if (ds?.postgresql) {
     return {
       postgresql: {
         database: ds.postgresql.database,
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },
+        schemaValidation: ds.postgresql.schemaValidation,
       },
     };
   }

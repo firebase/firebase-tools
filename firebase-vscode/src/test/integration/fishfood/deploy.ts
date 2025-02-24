@@ -1,41 +1,35 @@
-import { browser } from "@wdio/globals";
+import { browser, expect } from "@wdio/globals";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
-import { firebaseTest } from "../../utils/test_hooks";
-import { QuickPick } from "../../utils/page_objects/quick_picks";
+import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { e2eSpy, getE2eSpyCalls } from "../mock";
+import { mockUser } from "../../utils/user";
+import { FirebaseCommands } from "../../utils/page_objects/commands";
+import { mockProject } from "../../utils/projects";
 
-firebaseTest("Can deploy services", async function () {
-  const workbench = await browser.getWorkbench();
-  const sidebar = new FirebaseSidebar(workbench);
-  const quickPicks = new QuickPick(workbench);
+firebaseSuite("Deployment", async function () {
+  firebaseTest("Can deploy services", async function () {
+    const workbench = await browser.getWorkbench();
 
-  await sidebar.open();
-  await sidebar.fdcDeployElement.click();
+    const sidebar = new FirebaseSidebar(workbench);
+    const commands = new FirebaseCommands();
 
-  const servicePicks = await quickPicks
-    .findQuickPicks()
-    .then((picks) => picks.map((p) => p.getText()));
+    await sidebar.openExtensionSidebar();
+    await commands.waitForUser();
 
-  expect(servicePicks).toEqual(["us-east"]);
+    await mockUser({ email: "test@gmail.com" });
+    await mockProject("test-project");
 
-  e2eSpy("deploy");
+    await e2eSpy("deploy");
 
-  await quickPicks.okElement.click();
+    await sidebar.startDeploy();
 
-  const connectorPicks = await quickPicks
-    .findQuickPicks()
-    .then((picks) => picks.map((p) => p.getText()));
+    const args = await getE2eSpyCalls("deploy");
 
-  expect(connectorPicks).toEqual(["a"]);
+    const fbBinary =
+      process.env.FIREBASE_BINARY || "npx -y firebase-tools@latest";
 
-  await quickPicks.okElement.click();
-
-  const args = await getE2eSpyCalls("deploy");
-
-  expect(args.length).toBe(1);
-
-  expect(args[0].length).toBe(3);
-  expect(args[0][0]).toEqual(["dataconnect"]);
-  expect(args[0][1].project).toEqual("dart-firebase-admin");
-  expect(args[0][2]).toEqual({ context: "us-east" });
+    expect(args.length).toBe(1);
+    expect(args[0].length).toBe(1);
+    expect(args[0][0]).toEqual(`${fbBinary} deploy --only dataconnect`);
+  });
 });

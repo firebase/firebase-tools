@@ -4,8 +4,7 @@ import fetch from "node-fetch";
 import { GraphQLError } from "graphql";
 import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
-import { ResolvedDataConnectConfigs, dataConnectConfigs } from "./config";
-import { DataConnectConfig } from "../firebaseConfig";
+import { ResolvedDataConnectConfigs } from "./config";
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphQLError[] } };
@@ -46,23 +45,27 @@ function convertGQLErrorToDiagnostic(
   configs: ResolvedDataConnectConfigs,
   gqlErrors: GraphQLError[],
 ): DiagnosticTuple[] {
-  const perFileDiagnostics = {};
+  const perFileDiagnostics: Record<string, Diagnostic[]> = {};
   const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
+    if (error.message.includes("INSECURE")) {
+      // Don't surface insecure operation issues for now; we need to be able to compare with a deployed source for these to be accurately presented.
+      continue;
+    }
     const absFilePath = `${dcPath}/${error.extensions["file"]}`;
     const perFileDiagnostic = perFileDiagnostics[absFilePath] || [];
     perFileDiagnostic.push({
       source: "Firebase Data Connect: Compiler",
       message: error.message,
       severity: DiagnosticSeverity.Error,
-      range: locationToRange(error.locations[0]),
-    } as Diagnostic);
+      range: locationToRange(error.locations?.[0] || { line: 0, column: 0 }),
+    });
     perFileDiagnostics[absFilePath] = perFileDiagnostic;
   }
   return Object.keys(perFileDiagnostics).map((key) => {
     return [
       Uri.file(key),
-      perFileDiagnostics[key] as Diagnostic[],
+      perFileDiagnostics[key],
     ] as DiagnosticTuple;
   });
 }
@@ -107,7 +110,7 @@ export async function getCompilerStream(
       stream.pause();
 
       return new Observable((observer) => {
-        function dataHandler(data: any) {
+        function dataHandler(data: string) {
           observer.next(JSON.parse(data));
         }
 

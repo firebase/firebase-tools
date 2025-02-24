@@ -1,7 +1,6 @@
 import { bold, italic } from "colorette";
 import * as leven from "leven";
 import { basename } from "path";
-
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { isRunningInGithubAction } from "./init/features/hosting/github";
@@ -138,10 +137,18 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  appsinit: {
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
+    default: false,
+    public: true,
+  },
 
-  fdccompatiblemode: {
-    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
+  fdcconnectorevolution: {
+    shortDescription: "Enable Data Connect connector evolution warnings.",
+    fullDescription: "Enable Data Connect connector evolution warnings.",
+    default: false,
     public: false,
   },
 });

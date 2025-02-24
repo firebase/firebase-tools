@@ -22,6 +22,9 @@ export const command = new Command("dataconnect:sql:diff [serviceId]")
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
-    const diffs = await diffSchema(serviceInfo.schema);
+    const diffs = await diffSchema(
+      serviceInfo.schema,
+      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+    );
     return { projectId, serviceId, diffs };
   });

@@ -36,7 +36,7 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
-export const supportedRange = "14 - 17";
+export const supportedRange = "16 - 19";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -242,11 +242,28 @@ exports.handle = function(req,res) {
   });
 };\n`;
   } else if (serverOutputPath) {
-    bootstrapScript = `const app = ${
-      serverEntry?.endsWith(".mjs")
-        ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
-        : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
-    }.then(server => server.app());
+    bootstrapScript = `
+    const app = new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const port = process.env.PORT;
+        const socket = 'express.sock';
+        process.env.PORT = socket;
+
+        ${
+          serverEntry?.endsWith(".mjs")
+            ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
+            : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
+        }.then(({ default: defHandler, reqHandler, app }) => {
+          const handler = app?.() ?? reqHandler ?? defHandler;
+          if (!handler) {
+            reject(\`The file at "./${serverOutputPath}/${serverEntry}" did not export a valid request handler. Expected exports: 'app', 'default', or 'reqHandler'.\`);
+          } else {
+            process.env.PORT = port;
+            resolve(handler);
+          }
+        });
+      }, 0);
+    });
 exports.handle = (req,res) => app.then(it => it(req,res));\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;

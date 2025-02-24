@@ -166,6 +166,7 @@ export type OutputCloudFunction = CloudFunctionBase & {
   state: FunctionState;
   updateTime: Date;
   serviceConfig?: RequireKeys<ServiceConfig, "service" | "uri">;
+  url: string;
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
@@ -608,6 +609,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+    if (endpoint.callableTrigger.genkitAction) {
+      gcfFunction.labels["genkit-action"] = "true";
+    }
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -781,6 +785,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       endpoint.runServiceId = utils.last(serviceName.split("/"));
     }
   }
+  proto.renameIfPresent(endpoint, gcfFunction, "uri", "url");
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];

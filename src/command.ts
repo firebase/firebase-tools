@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { CommanderStatic } from "commander";
-import { first, last, get, size, head, keys, values } from "lodash";
+import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
@@ -10,8 +10,9 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
+import { Options } from "./options";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -36,6 +37,7 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
+  private aliases: string[] = [];
   private actionFn: ActionFunction = (): void => {
     // noop by default, unless overwritten by `.action(fn)`.
   };
@@ -58,6 +60,16 @@ export class Command {
    */
   description(t: string): Command {
     this.descriptionText = t;
+    return this;
+  }
+
+  /**
+   * Sets an alias for a command.
+   * @param aliases an alternativre name for the command. Users will be able to call the command via this name.
+   * @return the command, for chaining.
+   */
+  alias(alias: string): Command {
+    this.aliases.push(alias);
     return this;
   }
 
@@ -136,6 +148,9 @@ export class Command {
     const cmd = program.command(this.cmd);
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
+    }
+    if (this.aliases) {
+      cmd.aliases(this.aliases);
     }
     this.options.forEach((args) => {
       const flags = args.shift();
@@ -334,25 +349,33 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: any): void {
+  private applyRC(options: Options): void {
     const rc = loadRC(options);
     options.rc = rc;
-
-    options.project =
-      options.project || (configstore.get("activeProjects") || {})[options.projectRoot];
+    const activeProject = options.projectRoot
+      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
+      : undefined;
+    options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
       options.project = options.config.defaults.project;
     }
 
     const aliases = rc.projects;
-    const rcProject = get(aliases, options.project);
+    const rcProject = options.project ? aliases[options.project] : undefined;
     if (rcProject) {
+      // Look up aliases
       options.projectAlias = options.project;
       options.project = rcProject;
     } else if (!options.project && size(aliases) === 1) {
+      // If there's only a single alias, use that.
+      // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
       options.projectAlias = head(keys(aliases));
       options.project = head(values(aliases));
+    } else if (!options.project && aliases["default"]) {
+      // If there's an alias named 'default', default to that.
+      options.projectAlias = "default";
+      options.project = aliases["default"];
     }
   }
 
@@ -363,7 +386,7 @@ export class Command {
   }): Promise<void> {
     if (options.project?.match(/^\d+$/)) {
       await requireAuth(options);
-      const { projectId, projectNumber } = await getFirebaseProject(options.project);
+      const { projectId, projectNumber } = await getProject(options.project);
       options.projectId = projectId;
       options.projectNumber = projectNumber;
     } else {

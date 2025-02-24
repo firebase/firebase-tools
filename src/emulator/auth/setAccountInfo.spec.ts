@@ -361,6 +361,79 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       });
   });
 
+  it("should update email when OOB flow of VERIFY_AND_CHANGE_EMAIL is initiated", async () => {
+    const oldEmail = "alice@example.com";
+    const password = "notasecret";
+    const newEmail = "bob@example.com";
+    const { idToken } = await registerUser(authApi(), { email: oldEmail, password });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, newEmail, requestType: "VERIFY_AND_CHANGE_EMAIL" })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].email).to.equal(oldEmail);
+    expect(oobs[0].newEmail).to.equal(newEmail);
+    expect(oobs[0].requestType).to.equal("VERIFY_AND_CHANGE_EMAIL");
+
+    // The returned oobCode can be redeemed to verify and change the email.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      // OOB code is enough, no idToken needed.
+      .send({ oobCode: oobs[0].oobCode })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(newEmail);
+        expect(res.body.newEmail).to.equal(newEmail);
+        // Email is verified since this flow can only be initiated through a link sent to the user's email.
+        expect(res.body.emailVerified).to.equal(true);
+      });
+
+    // oobCode is removed after redeemed.
+    const oobs2 = await inspectOobs(authApi());
+    expect(oobs2).to.have.length(0);
+  });
+
+  it("should disallow changing an email if another user exists with the same email", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const anotherUser = { email: "bob@example.com", password: "notasecreteither" };
+
+    const { idToken } = await registerUser(authApi(), user);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, newEmail: anotherUser.email, requestType: "VERIFY_AND_CHANGE_EMAIL" })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(1);
+    expect(oobs[0].requestType).to.equal("VERIFY_AND_CHANGE_EMAIL");
+
+    await registerUser(authApi(), anotherUser);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .send({ oobCode: oobs[0].oobCode })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
+      });
+
+    // oobCode is removed after redeemed.
+    const oobs2 = await inspectOobs(authApi());
+    expect(oobs2).to.have.length(0);
+  });
+
   it("should update phoneNumber if specified", async () => {
     const phoneNumber = TEST_PHONE_NUMBER;
     const { localId, idToken } = await signInWithPhoneNumber(authApi(), phoneNumber);
@@ -1180,5 +1253,101 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     expect(oobs[0].email).to.equal(oldEmail);
     expect(oobs[0].requestType).to.equal("RECOVER_EMAIL");
     expect(oobs[0].oobLink).to.include(tenant.tenantId);
+  });
+
+  it("should link provider account with existing user account", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "test@example.com",
+      password: "password",
+    });
+
+    const providerId = "google.com";
+    const rawId = "google_user_id";
+    const providerUserInfo = {
+      providerId,
+      rawId,
+      email: "linked@example.com",
+      displayName: "Linked User",
+      photoUrl: "https://example.com/photo.jpg",
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, linkProviderUserInfo: providerUserInfo })
+      .then((res) => {
+        expectStatusCode(200, res);
+        const providers = res.body.providerUserInfo;
+        expect(providers).to.have.length(2); // Original email/password + linked provider
+
+        const linkedProvider = providers.find((p: ProviderUserInfo) => p.providerId === providerId);
+        expect(linkedProvider).to.deep.equal(providerUserInfo);
+      });
+
+    const accountInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(accountInfo.providerUserInfo).to.have.length(2);
+    const linkedProviderInfo = accountInfo.providerUserInfo?.find(
+      (p: ProviderUserInfo) => p.providerId === providerId,
+    );
+    expect(linkedProviderInfo).to.deep.equal(providerUserInfo);
+  });
+
+  it("should error if linkProviderUserInfo is missing required fields", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "test@example.com",
+      password: "password",
+    });
+
+    const incompleteProviderUserInfo1 = {
+      providerId: "google.com",
+      email: "linked@example.com",
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, linkProviderUserInfo: incompleteProviderUserInfo1 })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_RAW_ID");
+      });
+
+    const incompleteProviderUserInfo2 = {
+      rawId: "google_user_id",
+      email: "linked@example.com",
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, linkProviderUserInfo: incompleteProviderUserInfo2 })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_PROVIDER_ID");
+      });
+  });
+
+  it("should error if user is disabled when linking a provider", async () => {
+    const { localId, idToken } = await registerUser(authApi(), {
+      email: "test@example.com",
+      password: "password",
+    });
+
+    await updateAccountByLocalId(authApi(), localId, { disableUser: true });
+
+    const providerUserInfo = {
+      providerId: "google.com",
+      rawId: "google_user_id",
+      email: "linked@example.com",
+    };
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, linkProviderUserInfo: providerUserInfo })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("USER_DISABLED");
+      });
   });
 });

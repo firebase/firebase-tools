@@ -6,7 +6,6 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
-import { DataConnectEmulatorController } from "./emulator";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -41,6 +40,10 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
     return signal.peek();
   }
 
+  refresh() {
+    this._onChangeCodeLensesEmitter.fire();
+  }
+
   dispose() {
     for (const disposable of this.subscriptions.values()) {
       disposable.dispose();
@@ -58,7 +61,7 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
  * CodeLensProvider provides codelens for actions in graphql files.
  */
 export class OperationCodeLensProvider extends ComputedCodeLensProvider {
-  constructor(readonly emulatorsController: DataConnectEmulatorController) {
+  constructor(readonly emulatorsController: EmulatorsController) {
     super();
   }
 
@@ -95,16 +98,14 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         );
 
         if (service) {
-          if (this.watch(this.emulatorsController.isPostgresEnabled)) {
-            codeLenses.push(
-              new vscode.CodeLens(range, {
-                title: `$(play) Run (local)`,
-                command: "firebase.dataConnect.executeOperation",
-                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-                arguments: [x, operationLocation, InstanceType.LOCAL],
-              }),
-            );
-          }
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `$(play) Run (local)`,
+              command: "firebase.dataConnect.executeOperation",
+              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+              arguments: [x, operationLocation, InstanceType.LOCAL],
+            }),
+          );
 
           codeLenses.push(
             new vscode.CodeLens(range, {
@@ -134,10 +135,6 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     document: vscode.TextDocument,
     token: vscode.CancellationToken,
   ): vscode.CodeLens[] {
-    if (!this.watch(this.emulatorsController.areEmulatorsRunning)) {
-      return [];
-    }
-
     const codeLenses: vscode.CodeLens[] = [];
 
     // TODO: replace w/ online-parser to work with malformed documents
@@ -147,18 +144,14 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
       if (x.kind === Kind.OBJECT_TYPE_DEFINITION && x.loc) {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
-        const position = new vscode.Position(line, 0);
-        const schemaLocation = {
-          documentPath: document.fileName,
-          position: position,
-        };
+        const documentPath = document.fileName;
 
         codeLenses.push(
           new vscode.CodeLens(range, {
             title: `$(database) Add data`,
             command: "firebase.dataConnect.schemaAddData",
             tooltip: "Generate a mutation to add data of this type",
-            arguments: [x, schemaLocation],
+            arguments: [x, documentPath],
           }),
         );
 
@@ -167,7 +160,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
             title: `$(database) Read data`,
             command: "firebase.dataConnect.schemaReadData",
             tooltip: "Generate a query to read data of this type",
-            arguments: [documentNode, x],
+            arguments: [documentNode, x, documentPath],
           }),
         );
       }
@@ -196,7 +189,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
     const serviceConfig = fdcConfigs.findEnclosingServiceForPath(
       document.fileName,
     );
-    const connectorConfig = serviceConfig.findEnclosingConnectorForPath(
+    const connectorConfig = serviceConfig!.findEnclosingConnectorForPath(
       document.fileName,
     );
     if (serviceConfig) {
@@ -205,7 +198,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
           title: `$(tools) Configure Generated SDK`,
           command: "fdc.connector.configure-sdk",
           tooltip: "Configure a generated SDK for this connector",
-          arguments: [connectorConfig.tryReadValue],
+          arguments: [connectorConfig],
         }),
       );
     }

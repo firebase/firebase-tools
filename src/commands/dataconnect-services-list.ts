@@ -6,7 +6,7 @@ import * as client from "../dataconnect/client";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 export const command = new Command("dataconnect:services:list")
   .description("list all deployed services in your Firebase project")
@@ -34,14 +34,15 @@ export const command = new Command("dataconnect:services:list")
     for (const service of services) {
       const schema = (await client.getSchema(service.name)) ?? {
         name: "",
-        primaryDatasource: {},
+        datasources: [{}],
         source: { files: [] },
       };
       const connectors = await client.listConnectors(service.name);
       const serviceName = names.parseServiceName(service.name);
-      const instanceName = schema?.primaryDatasource.postgresql?.cloudSql.instance ?? "";
+      const postgresDatasource = schema?.datasources.find((d) => d.postgresql);
+      const instanceName = postgresDatasource?.postgresql?.cloudSql.instance ?? "";
       const instanceId = instanceName.split("/").pop();
-      const dbId = schema?.primaryDatasource.postgresql?.database ?? "";
+      const dbId = postgresDatasource?.postgresql?.database ?? "";
       const dbName = `CloudSQL Instance: ${instanceId}\nDatabase: ${dbId}`;
       table.push([
         serviceName.serviceId,

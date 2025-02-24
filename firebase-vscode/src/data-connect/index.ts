@@ -28,9 +28,11 @@ import { Result } from "../result";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
 import { registerWebview } from "../webview";
-
-import { DataConnectEmulatorController } from "./emulator";
+import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
+import { registerDiagnostics } from "./diagnostics";
+import { AnalyticsLogger } from "../analytics";
+import { emulators } from "../init/features";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -108,13 +110,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       return;
     }
 
-    for (const connectorResult of enclosingService.resolvedConnectors) {
-      const connector = connectorResult.tryReadValue;
-      if (!connector) {
-        // Parsing error in the connector, skip
-        continue;
-      }
-
+    for (const connector of enclosingService.resolvedConnectors) {
       results.push({
         title: `Move to "${connector.value.connectorId}"`,
         kind: vscode.CodeActionKind.Refactor,
@@ -138,12 +134,10 @@ export function registerFdc(
   broker: ExtensionBrokerImpl,
   authService: AuthService,
   emulatorController: EmulatorsController,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
-  const fdcEmulatorsController = new DataConnectEmulatorController(
-    emulatorController,
-    broker,
-  );
+  registerDiagnostics(context, dataConnectConfigs);
+  const dataConnectToolkit = new DataConnectToolkit(broker);
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
@@ -156,13 +150,20 @@ export function registerFdc(
     },
   );
 
-  const fdcService = new FdcService(authService, emulatorController);
+  const fdcService = new FdcService(
+    authService,
+    dataConnectToolkit,
+    emulatorController,
+  );
+
+  // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
-    fdcEmulatorsController,
+    emulatorController,
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
 
+  // activate FDC toolkit
   // activate language client/serer
   let client: LanguageClient;
   const lsOutputChannel: vscode.OutputChannel =
@@ -199,8 +200,10 @@ export function registerFdc(
     );
   });
 
+  registerDataConnectConfigs(context, broker);
+
   return Disposable.from(
-    fdcEmulatorsController,
+    dataConnectToolkit,
     codeActions,
     selectedProjectStatus,
     { dispose: sub1 },
@@ -212,21 +215,20 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerDataConnectConfigs(broker),
     registerExecution(
       context,
       broker,
       fdcService,
+      analyticsLogger,
       emulatorController,
-      telemetryLogger,
     ),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
-    registerAdHoc(fdcService, telemetryLogger),
-    registerConnectors(context, broker, fdcService, telemetryLogger),
-    registerFdcDeploy(broker, telemetryLogger),
-    registerFdcSdkGeneration(broker, telemetryLogger),
-    registerTerminalTasks(broker, telemetryLogger),
+    registerAdHoc(fdcService, analyticsLogger),
+    registerConnectors(context, broker, fdcService, analyticsLogger),
+    registerFdcDeploy(broker, analyticsLogger),
+    registerFdcSdkGeneration(broker, analyticsLogger),
+    registerTerminalTasks(broker, analyticsLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
@@ -250,9 +252,7 @@ export function registerFdc(
       schemaCodeLensProvider,
     ),
     vscode.languages.registerCodeLensProvider(
-      [
-        { scheme: "file", language: "yaml", pattern: "**/connector.yaml" },
-      ],
+      [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
     {
