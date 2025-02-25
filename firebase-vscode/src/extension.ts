@@ -93,7 +93,7 @@ async function checkCLIInstallation(): Promise<void> {
     const latestVersion = (await latestVersionRes.json())?.["dist-tags"]?.[
       "latest"
     ];
-    const env = { ...process.env, VSCODE_CWD: "" };
+    const env = { ...process.env, VSCODE_CWD: "", IS_FIREBASE_VSCE: "" };
     const versionRes = spawnSync("firebase", ["--version"], {
       env,
       shell: process.platform === "win32",

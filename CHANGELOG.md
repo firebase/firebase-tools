@@ -1,2 +1,3 @@
-- Add initial delay when loading python functions (#8239)
-- Enforce webframeworks enablement only on webframeworks sites (#8168)
+- Added initial delay when loading python functions. (#8239)
+- Enforced `webframeworks` enablement only on `webframeworks` sites. (#8168)
+- Replace `VSCODE_CWD` check to address issues running in VSCode environments. (#7471)
