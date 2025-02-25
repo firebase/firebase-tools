@@ -101,9 +101,22 @@ describe("detectFromPort", () => {
       code: "ECONNREFUSED",
     });
 
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").times(3).replyWithError({
+      message: "Almost there",
+      code: "ETIMEDOUT",
+    });
+
     nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
+    expect(parsed).to.deep.equal(BUILD);
+  });
+
+  it("retries when request times out", async () => {
+    nock("http://127.0.0.1:8081").get("/__/functions.yaml").delay(1_000).reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+
+    const parsed = await discovery.detectFromPort(8080, "project", "nodejs16", 0, 500);
     expect(parsed).to.deep.equal(BUILD);
   });
 });
