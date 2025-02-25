@@ -207,7 +207,7 @@ const extensionConfig = {
         // },
       ],
     }),
-    new webpack.DefinePlugin({'process.env.IS_FIREBASE_VSCE': true}),
+    new webpack.DefinePlugin({'process.env.IS_FIREBASE_VSCE': '"true"'}),
   ],
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
