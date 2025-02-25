@@ -15,12 +15,15 @@ import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
-  .option("-l, --location <location>", "specify the location of the backend", "-")
+  .option("-l, --location <location>", "specify the location of the backend")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
-    let location = options.location as string;
+    if (options.location !== undefined) {
+      utils.logWarning("--location is being removed in the next major release.");
+    }
+    let location = (options.location as string) ?? "-";
     let backend: apphosting.Backend;
     if (location === "-" || location === "") {
       backend = await getBackendForAmbiguousLocation(
