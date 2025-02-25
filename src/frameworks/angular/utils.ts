@@ -90,10 +90,6 @@ function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): string[] {
   ];
 }
 
-function getValidThirdPartyBuilders(): string[] {
-  return [ThirdPartyBuilder.CUSTOM_WEBPACK_BROWSER, ThirdPartyBuilder.NGX_ENV_APPLICATION];
-}
-
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilderTypes = getValidBuilderTypes(purpose);
   const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
