@@ -207,7 +207,6 @@ const extensionConfig = {
         // },
       ],
     }),
-    new webpack.DefinePlugin({'globalThis.WEBPACK_IS_VSCE': '"true"'}),
   ],
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
