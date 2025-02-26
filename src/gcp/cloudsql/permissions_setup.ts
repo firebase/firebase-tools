@@ -116,7 +116,7 @@ export async function setupSQLPermissions(
   await setupIAMUsers(instanceId, databaseId, options);
 
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
-    logger.info(`Seems like the database is already setup. Reruning the setup process.`);
+    logger.info(`Database ${databaseId} has already been setup. Rerunning setup to repair any missing permissions.`);
     await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
     return SchemaSetupStatus.GreenField;
   } else {
