@@ -1,3 +1,4 @@
-- Added initial delay when loading python functions. (#8239)
-- Enforced `webframeworks` enablement only on `webframeworks` sites. (#8168)
-- Replace `VSCODE_CWD` check to address issues running in VSCode environments. (#7471)
+- Replaced `VSCODE_CWD` check to address issues running in VSCode environments. (#7471)
+- Added initial delay when loading python functions (#8239)
+- Enforced webframeworks enablement only on webframeworks sites (#8168)
+- Fixed issue where `apps:init` throws an error upon app creation.
