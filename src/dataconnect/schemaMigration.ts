@@ -14,7 +14,7 @@ import {
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
   setupSQLPermissions,
-  getSchemaMetaData,
+  getSchemaMetadata,
   SchemaSetupStatus,
 } from "../gcp/cloudsql/permissions_setup";
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
@@ -240,7 +240,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   }
 
   // Make sure we have the right setup for the requested role grant.
-  const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
   let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
   switch (schemaInfo.setupStatus) {
     case SchemaSetupStatus.NotSetup:
@@ -378,7 +378,7 @@ async function handleIncompatibleSchemaError(args: {
         ${commandsToExecuteBySuperUser.join("\n")}`);
     }
 
-    const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
     if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField) {
       const isGreenfieldSetup = await setupSQLPermissions(
         instanceId,

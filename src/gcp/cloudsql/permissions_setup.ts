@@ -20,7 +20,7 @@ import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 
-export type TableMetaData = {
+export type TableMetadata = {
   name: string;
   owner: string;
 };
@@ -32,10 +32,10 @@ export enum SchemaSetupStatus {
   NotFound = "not-found", // Schema not found
 }
 
-export type SchemaMetaData = {
+export type SchemaMetadata = {
   name: string;
   owner: string | null;
-  tables: TableMetaData[];
+  tables: TableMetadata[];
   setupStatus: SchemaSetupStatus;
 };
 
@@ -100,7 +100,7 @@ export async function checkSQLRoleIsGranted(
 export async function setupSQLPermissions(
   instanceId: string,
   databaseId: string,
-  schemaInfo: SchemaMetaData,
+  schemaInfo: SchemaMetadata,
   options: Options,
   silent: boolean = false,
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
@@ -221,12 +221,12 @@ export async function greenFieldSchemaSetup(
   await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
 }
 
-export async function getSchemaMetaData(
+export async function getSchemaMetadata(
   instanceId: string,
   databaseId: string,
   schema: string,
   options: Options,
-): Promise<SchemaMetaData> {
+): Promise<SchemaMetadata> {
   // Check if schema exists
   const checkSchemaExists = await executeSqlCmdsAsIamUser(
     options,
@@ -303,7 +303,7 @@ export async function getSchemaMetaData(
 export async function setupBrownfieldAsGreenfield(
   instanceId: string,
   databaseId: string,
-  schemaInfo: SchemaMetaData,
+  schemaInfo: SchemaMetadata,
   options: Options,
   silent: boolean = false,
 ) {
@@ -339,7 +339,7 @@ export async function setupBrownfieldAsGreenfield(
 export async function brownfieldSqlSetup(
   instanceId: string,
   databaseId: string,
-  schemaInfo: SchemaMetaData,
+  schemaInfo: SchemaMetadata,
   options: Options,
   silent: boolean = false,
 ) {

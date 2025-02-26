@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-import { setupSQLPermissions, getSchemaMetaData } from "../gcp/cloudsql/permissions_setup";
+import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissions_setup";
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 
@@ -33,6 +33,6 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
 
     const { databaseId } = getIdentifiers(serviceInfo.schema);
 
-    const schemaInfo = await getSchemaMetaData(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
     await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
   });
