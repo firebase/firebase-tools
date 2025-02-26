@@ -133,7 +133,7 @@ export async function setupSQLPermissions(
 
   if (options.nonInteractive || options.force) {
     throw new FirebaseError(
-      `Schema "${schema}" isn't setup and can only be setup in interactive mode.`,
+      `Schema "${schema}" isn't set up and can only be set up in interactive mode.`,
     );
   }
   const currentTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
