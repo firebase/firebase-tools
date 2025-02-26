@@ -1,2 +1,3 @@
 - Add initial delay when loading python functions (#8239)
 - Enforce webframeworks enablement only on webframeworks sites (#8168)
+- Fix issue where `apps:init` throws an error upon app creation
