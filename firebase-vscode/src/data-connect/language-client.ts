@@ -95,28 +95,24 @@ export function setupLanguageClient(
     // TODO: Expand to multiple services
     const config = configs.values[0];
     const generatedPath = ".dataconnect";
-
+    path.join(config.relativeSchemaPath, "**", "*.gql");
     let schemaPaths = [
-      `../${config.relativeSchemaPath}/**/*.gql`,
-      `../${config.relativePath}/${generatedPath}/**/*.gql`,
+      path.join(config.relativeSchemaPath, "**", "*.gql"),
+      path.join(config.relativePath, generatedPath, "**", "*.gql"),
     ];
-    let documentPaths = config.relativeConnectorPaths.map(
-      (connectorPath) => `../${connectorPath}/**/*.gql`,
+    let documentPaths = config.relativeConnectorPaths.map((connectorPath) =>
+      path.join(connectorPath, "**", "*.gql"),
     );
 
-    if (process.platform === "win32") {
-      // TODO: figure out why relative paths are absolute on windows
-      schemaPaths = [
-        `${config.relativeSchemaPath}/**/*.gql`,
-        `${config.relativePath}/${generatedPath}/**/*.gql`,
-      ];
-      documentPaths = config.relativeConnectorPaths.map(
-        (connectorPath) => `${connectorPath}/**/*.gql`,
+    // make non windows paths relative
+    // TODO: figure out why relative paths are absolute on windows
+    if (process.platform !== "win32") {
+      schemaPaths = schemaPaths.map((schemaPath) =>
+        path.join("..", schemaPath),
       );
-
-      // clean up windows \\ url scheme 
-      schemaPaths = schemaPaths.map((path) => path.replace(/\\/g, "/"));
-      documentPaths = documentPaths.map((path) => path.replace(/\\/g, "/"));
+      documentPaths = documentPaths.map((documentPath) =>
+        path.join("..", documentPath),
+      );
     }
 
     const yamlJson = JSON.stringify({
