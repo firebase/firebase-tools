@@ -6,16 +6,20 @@ import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
 import * as Table from "cli-table3";
+import { logWarning } from "../utils";
 
 const TABLE_HEAD = ["Backend", "Repository", "URL", "Primary Region", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")
-  .option("-l, --location <location>", "list backends in the specified location", "-")
+  .option("-l, --location <location>", "list backends in the specified location")
   .before(apphosting.ensureApiEnabled)
   .action(async (options: Options) => {
+    if (options.location !== undefined) {
+      logWarning("--location is being removed in the next major release.");
+    }
     const projectId = needProjectId(options);
-    const location = options.location as string;
+    const location = (options.location as string) ?? "-";
     let backendRes: apphosting.ListBackendsResponse;
     try {
       backendRes = await apphosting.listBackends(projectId, location);
