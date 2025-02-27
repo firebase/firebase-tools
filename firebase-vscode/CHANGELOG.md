@@ -1,7 +1,8 @@
 ## NEXT
 
-## 0.13.2
+## 0.14.0
 
+- Updated internal `firebase-tools` dependency to 13.32.0
 - [Fixed] Graphql Language Server support for Windows
 
 ## 0.13.1
