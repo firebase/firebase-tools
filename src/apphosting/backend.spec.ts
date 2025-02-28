@@ -13,6 +13,7 @@ import {
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
   getBackendForAmbiguousLocation,
+  getBackend,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -325,6 +326,58 @@ describe("apphosting setup functions", () => {
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });
+    });
+  });
+
+  describe("getBackend", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/us-central1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendCow];
+
+    it("throws if more than one backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "chicken")).to.be.rejectedWith(
+        "You have multiple backends with the same chicken ID. " +
+          "This is not allowed until we can support more locations. " +
+          "Please delete and recreate any backends that share an ID with another backend.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "farmer")).to.be.rejectedWith(
+        "No backend named farmer found.",
+      );
+    });
+
+    it("returns backend", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "cow")).to.eventually.equal(backendCow);
     });
   });
 });

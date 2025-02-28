@@ -443,7 +443,7 @@ export async function getBackendForAmbiguousLocation(
   let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
   if (unreachable && unreachable.length !== 0) {
     logWarning(
-      `The following locations are currently unreachable: ${unreachable}.\n` +
+      `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
         "If your backend is in one of these regions, please try again later.",
     );
   }
@@ -473,4 +473,34 @@ export async function getBackendForAmbiguousLocation(
     choices: [...backendsByLocation.keys()],
   });
   return backendsByLocation.get(location)!;
+}
+
+/**
+ * Fetches a backend from the server. If there are multiple backends with the name, it will throw an error
+ * telling the user that there are other backends with the same name that need to be deleted.
+ */
+export async function getBackend(
+  projectId: string,
+  backendId: string,
+): Promise<apphosting.Backend> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length > 1) {
+    throw new FirebaseError(
+      `You have multiple backends with the same ${backendId} ID. This is not allowed until we can support more locations. ` +
+        "Please delete and recreate any backends that share an ID with another backend.",
+    );
+  }
+  if (backends.length === 1) {
+    return backends[0];
+  }
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  throw new FirebaseError(`No backend named ${backendId} found.`);
 }
