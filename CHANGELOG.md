@@ -1,0 +1,1 @@
+- Fixed issue where `apps:init` fails to detect the output directory when it was run in a directory where `app` was the only module.
