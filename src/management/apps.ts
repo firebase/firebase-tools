@@ -812,6 +812,7 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
       }
     }
     let module = path.join(appDir, "app");
+    // If app and gradle are the only two directories, then put google-services.json in app/
     if (dirs.length === 1 && dirs[0] === "app") {
       return module;
     }
