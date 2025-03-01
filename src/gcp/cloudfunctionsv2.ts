@@ -509,6 +509,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "ingressSettings",
     "timeoutSeconds",
   );
+  
+  // Add LOG_EXECUTION_ID=true by default for better debugging, unless user has explicitly set it
+  gcfFunction.serviceConfig.environmentVariables = {
+    LOG_EXECUTION_ID: "true",
+    ...gcfFunction.serviceConfig.environmentVariables,
+  };
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
