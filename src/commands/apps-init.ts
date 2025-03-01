@@ -92,7 +92,7 @@ export const command = new Command("apps:init [platform] [appId]")
       } catch (e) {
         if ((e as Error).message.includes("associated with this Firebase project")) {
           const projectId = needProjectId(options);
-          await sdkInit(platform, { ...options, project: projectId });
+          await sdkInit(detectedPlatform, { ...options, project: projectId });
         } else {
           throw e;
         }

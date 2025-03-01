@@ -25,6 +25,7 @@ import {
 import { env } from "./core/env";
 
 import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
+import { setIsVSCodeExtension } from "../../src/vsCodeUtils";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
@@ -93,6 +94,7 @@ async function checkCLIInstallation(): Promise<void> {
     const latestVersion = (await latestVersionRes.json())?.["dist-tags"]?.[
       "latest"
     ];
+    setIsVSCodeExtension(true);
     const env = { ...process.env, VSCODE_CWD: "" };
     const versionRes = spawnSync("firebase", ["--version"], {
       env,

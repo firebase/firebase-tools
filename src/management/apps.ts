@@ -803,13 +803,17 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
     const dirs: string[] = [];
     for (const fileOrDir of currentFiles) {
       if (fileOrDir.isDirectory()) {
+        if (fileOrDir.name !== "gradle") {
+          dirs.push(fileOrDir.name);
+        }
         if (fileOrDir.name === "src") {
           return appDir;
         }
       }
     }
     let module = path.join(appDir, "app");
-    if (dirs.length === 1) {
+    // If app is the only module available, then put google-services.json in app/
+    if (dirs.length === 1 && dirs[0] === "app") {
       return module;
     }
     if (!options.nonInteractive) {

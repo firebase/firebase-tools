@@ -32,9 +32,7 @@ function expected(
 }
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
-  await client.deleteServiceAndChildResources(
-    `projects/${projectId}/locations/us-central1/services/${serviceId}`,
-  );
+  await client.deleteService(`projects/${projectId}/locations/us-central1/services/${serviceId}`);
   await deleteDatabase(projectId, "dataconnect-test", databaseId);
 }
 

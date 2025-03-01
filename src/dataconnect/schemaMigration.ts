@@ -487,7 +487,7 @@ async function promptForInvalidConnectorError(
     !options.nonInteractive &&
     (await confirm({
       ...options,
-      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime.`)}.`,
+      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime`)}.`,
     }))
   ) {
     return true;

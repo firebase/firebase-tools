@@ -8,8 +8,6 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types";
 import { readTemplateSync } from "../templates";
 
-const INIT_TEMPLATE = readTemplateSync("hosting/init.js");
-
 export interface TemplateServerResponse {
   // __init.js content with only initializeApp()
   js: string;
@@ -77,14 +75,13 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   }
   const emulatorsJson = JSON.stringify(emulators, null, 2);
 
-  const js = INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`).replace(
-    "/*--EMULATORS--*/",
-    "var firebaseEmulators = undefined;",
-  );
-  const emulatorsJs = INIT_TEMPLATE.replace(
-    "/*--CONFIG--*/",
-    `var firebaseConfig = ${configJson};`,
-  ).replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
+  const initTemplate = readTemplateSync("hosting/init.js");
+  const js = initTemplate
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", "var firebaseEmulators = undefined;");
+  const emulatorsJs = initTemplate
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
   return {
     js,
     emulatorsJs,
