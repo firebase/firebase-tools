@@ -1,2 +1,2 @@
 - Fixed issue where `apps:init` fails to detect the output directory when it was run in a directory where `app` was the only module.
-- Set `LOG_EXECUTION_ID=true` by default for Cloud Functions (2nd gen) to improve debugging by displaying execution IDs in logs.
+- Set `LOG_EXECUTION_ID=true` by default for Cloud Functions (2nd gen) to improve debugging by displaying execution IDs in logs. (#8276)
