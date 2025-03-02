@@ -7,11 +7,18 @@ import { backoff } from "../throttler/throttler";
 import { logger } from "../logger";
 
 const API_VERSION = "v1";
+const API_VERSION_V2 = "v2";
 
 const client = new Client({
   urlPrefix: runOrigin(),
   auth: true,
   apiVersion: API_VERSION,
+});
+
+const clientV2 = new Client({
+  urlPrefix: runOrigin(),
+  auth: true,
+  apiVersion: API_VERSION_V2,
 });
 
 export const LOCATION_LABEL = "cloud.googleapis.com/location";
@@ -343,4 +350,77 @@ export async function setInvokerUpdate(
     version: 3,
   };
   await setIamPolicy(serviceName, policy, httpClient);
+}
+
+// Cloud Run Build Control Plane API Types
+
+export interface StorageSource {
+  bucket: string;
+  object: string;
+  generation?: number; 
+}
+
+export interface BuildpacksBuild {
+  runtime?: string;
+  function_target?: string;
+  cache_image_uri?: string;
+  base_image?: string;
+  environment_variables?: Record<string, string>;
+  enable_automatic_updates?: boolean;
+  project_descriptor?: string;
+}
+
+export interface DockerBuild {}
+
+export interface SubmitBuildRequest {
+  parent: string;
+  storage_source: StorageSource;
+  image_uri: string;
+  buildpack_build?: BuildpacksBuild;
+  docker_build?: DockerBuild;
+  service_account?: string;
+  worker_pool?: string;
+  tags?: string[];
+}
+
+export interface SubmitBuildResponse {
+  build_operation: any; // Using 'any' for now as google.longrunning.Operation is not defined
+  base_image_uri?: string;
+  base_image_warning?: string;
+}
+
+/**
+ * Submits a build in a given project using Cloud Run Build Control Plane API.
+ * @param projectId The Google Cloud project ID.
+ * @param locationId The location to build in (e.g., 'us-central1' or 'global').
+ * @param request The SubmitBuildRequest parameters.
+ * @param httpClient Optional client for testing purposes.
+ * @returns A SubmitBuildResponse object.
+ */
+export async function submitBuild(
+  projectId: string,
+  locationId: string,
+  request: Omit<SubmitBuildRequest, "parent">,
+  httpClient: Client = clientV2,
+): Promise<SubmitBuildResponse> {
+  const parent = `projects/${projectId}/locations/${locationId}`;
+  
+  try {
+    const submitRequest: SubmitBuildRequest = {
+      parent,
+      ...request,
+    };
+    
+    const response = await httpClient.post<SubmitBuildRequest, SubmitBuildResponse>(
+      `${parent}/builds:submit`,
+      submitRequest
+    );
+    
+    return response.body;
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to submit build in project ${projectId}, location ${locationId}`, {
+      original: err,
+      status: err?.context?.response?.statusCode,
+    });
+  }
 }

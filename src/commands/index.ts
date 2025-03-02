@@ -165,6 +165,8 @@ export function load(client: any): any {
     client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+    client.internaltesting.run = {};
+    client.internaltesting.run.submitbuild = loadCommand("internaltesting-run-submitbuild");
   }
   if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};

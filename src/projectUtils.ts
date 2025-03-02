@@ -6,6 +6,8 @@ import { marked } from "marked";
 
 const { FirebaseError } = require("./error");
 
+// Removed BUILD_RESOURCE_TYPE constant - moved to internaltesting command
+
 /**
  * Retrieves the projectId from a command's options context.
  *
