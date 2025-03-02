@@ -333,6 +333,8 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -439,6 +441,8 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -510,11 +514,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "timeoutSeconds",
   );
 
-  // Add LOG_EXECUTION_ID=true by default for better debugging, unless user has explicitly set it
-  gcfFunction.serviceConfig.environmentVariables = {
-    LOG_EXECUTION_ID: "true",
-    ...gcfFunction.serviceConfig.environmentVariables,
-  };
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
