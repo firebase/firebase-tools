@@ -20,7 +20,7 @@
     "lint": "npm run lint:ts && npm run lint:other",
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
-    "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
+    "lint:quiet": "npm run lint:ts -- --diagnostic-level=error && npm run lint:other",
     "lint:ts": "npx @biomejs/biome check .",
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
     "mocha": "nyc mocha 'src/**/*.spec.{ts,js}'",
