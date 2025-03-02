@@ -169,7 +169,8 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
-export interface TextInput<T> { // eslint-disable-line
+export interface TextInput<T> {
+  // eslint-disable-line
   text: {
     example?: string;
 

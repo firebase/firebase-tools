@@ -364,7 +364,9 @@ async function handleIncompatibleSchemaError(args: {
         instanceId,
         databaseId,
         firebaseowner(databaseId),
-        (await getIAMUser(options)).user,
+        (
+          await getIAMUser(options)
+        ).user,
       ))
     ) {
       throw new FirebaseError(

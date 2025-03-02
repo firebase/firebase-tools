@@ -41,23 +41,23 @@ const RESERVED_KEYS = [
 // Regex to capture key, value pair in a dotenv file.
 // Inspired by:
 //   https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
-// prettier-ignore
+// biome-ignore format: Keep comments aligned
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
-  "(?:export)?" +                       // Optional 'export' in a non-capture group
+  "(?:export)?" +            // Optional 'export' in a non-capture group
   "\\s*" +                   //   more whitespaces
-  "([\\w./]+)" +                 //   key
-  "\\s*=[\\f\\t\\v]*" +              //   separator (=)
+  "([\\w./]+)" +             //   key
+  "\\s*=[\\f\\t\\v]*" +      //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]*" +           //     unquoted
+  "[^#\\r\\n]*" +            //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment
   "$",                       // end line
-  "gms"                      // flags: global, multiline, dotall
+  "gms"               // flags: global, multiline, dotall
 );
 
 const ESCAPE_SEQUENCES_TO_CHARACTERS: Record<string, string> = {

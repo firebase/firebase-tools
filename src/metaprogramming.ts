@@ -106,8 +106,11 @@ type DeepPickUnsafe<T, Keys extends string> = T extends (infer Elem)[]
 export type RequireKeys<T extends object, Keys extends keyof T> = T & Required<Pick<T, Keys>>;
 
 /** In the array LeafElems<[[["a"], "b"], ["c"]]> is "a" | "b" | "c" */
-export type LeafElems<T> =
-  T extends Array<infer Elem> ? (Elem extends unknown[] ? LeafElems<Elem> : Elem) : T;
+export type LeafElems<T> = T extends Array<infer Elem>
+  ? Elem extends unknown[]
+    ? LeafElems<Elem>
+    : Elem
+  : T;
 
 /**
  * In the object {a: number, b: { c: string } },

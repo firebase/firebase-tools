@@ -325,7 +325,7 @@ export function relativeRequire(
 export function relativeRequire(
   dir: string,
   mod: "next",
-): Promise<typeof import("next") | (typeof import("next"))["default"]>;
+): Promise<typeof import("next") | typeof import("next")["default"]>;
 export function relativeRequire(dir: string, mod: "vite"): Promise<typeof import("vite")>;
 export function relativeRequire(
   dir: string,
