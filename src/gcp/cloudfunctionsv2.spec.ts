@@ -825,14 +825,23 @@ describe("cloudfunctionsv2", () => {
         buildConfig: {
           ...CLOUD_FUNCTION_V2.buildConfig,
           environmentVariables: {},
-        }
+        },
       };
 
       const scope = nock(functionsV2Origin())
         .post("/v2/projects/project/locations/region/functions", (body) => {
-          expect(body.serviceConfig.environmentVariables).to.have.property("LOG_EXECUTION_ID", "true");
-          expect(body.serviceConfig.environmentVariables).to.have.property("FUNCTION_TARGET", "function");
-          expect(body.buildConfig.environmentVariables).to.have.property("GOOGLE_NODE_RUN_SCRIPTS", "");
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
           return true;
         })
         .query({ functionId: "id" })
@@ -847,9 +856,18 @@ describe("cloudfunctionsv2", () => {
     it("should set default environment variables", async () => {
       const scope = nock(functionsV2Origin())
         .patch("/v2/projects/project/locations/region/functions/id", (body) => {
-          expect(body.serviceConfig.environmentVariables).to.have.property("LOG_EXECUTION_ID", "true");
-          expect(body.serviceConfig.environmentVariables).to.have.property("FUNCTION_TARGET", "function");
-          expect(body.buildConfig.environmentVariables).to.have.property("GOOGLE_NODE_RUN_SCRIPTS", "");
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
           return true;
         })
         .query(true) // Accept any query parameters
