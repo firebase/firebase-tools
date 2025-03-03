@@ -12,15 +12,6 @@ const executionOptions: vscode.ShellExecutionOptions = {
 };
 
 export function setTerminalEnvVars(env: Record<string, string>) {
-  const previewVar = "DATA_CONNECT_PREVIEW";
-  const previewFlags = new Set("conn_evolution");
-  if (env[previewVar]) {
-    env[previewVar].split(',').forEach(f => previewFlags.add(f));
-  }
-  if (process.env[previewVar]) {
-    process.env[previewVar].split(',').forEach(f => previewFlags.add(f));
-  }
-  env[previewVar] = Array.from(previewFlags).join(',');
   environmentVariables = {...environmentVariables, ...env};
 }
 
