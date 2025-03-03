@@ -88,9 +88,6 @@ export async function doSetup(
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
   await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
 
-  // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
-  // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
-  // the variables and API methods we're calling under the hood when fetching "primary region".
   const location = await promptLocation(
     projectId,
     "Select a primary region to host your backend:\n",
@@ -425,64 +422,6 @@ export async function getBackendForLocation(
 }
 
 /**
- * Fetches backends of the given backendId and lets the user choose if more than one is found.
- */
-export async function chooseBackends(
-  projectId: string,
-  backendId: string,
-  chooseBackendPrompt: string,
-  force?: boolean,
-): Promise<apphosting.Backend[]> {
-  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
-  if (unreachable && unreachable.length !== 0) {
-    logWarning(
-      `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
-    );
-  }
-  backends = backends.filter(
-    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
-  );
-  if (backends.length === 0) {
-    throw new FirebaseError(`No backend named "${backendId}" found.`);
-  }
-  if (backends.length === 1) {
-    return backends;
-  }
-
-  if (force) {
-    throw new FirebaseError(
-      `Force cannot be used because multiple backends were found with ID ${backendId}.`,
-    );
-  }
-  const backendsByDisplay = new Map<string, apphosting.Backend>();
-  backends.forEach((backend) => {
-    const { location, id } = apphosting.parseBackendName(backend.name);
-    backendsByDisplay.set(`${id}(${location})`, backend);
-  });
-  const chosenBackendDisplays = await promptOnce({
-    name: "backend",
-    type: "checkbox",
-    message: chooseBackendPrompt,
-    choices: Array.from(backendsByDisplay.keys(), (name) => {
-      return {
-        checked: false,
-        name: name,
-        value: name,
-      };
-    }),
-  });
-  const chosenBackends: apphosting.Backend[] = [];
-  chosenBackendDisplays.forEach((backendDisplay) => {
-    const backend = backendsByDisplay.get(backendDisplay);
-    if (backend !== undefined) {
-      chosenBackends.push(backend);
-    }
-  });
-  return chosenBackends;
-}
-
-/**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
  * prompts the user to disambiguate. If the force option is specified and multiple backends have the same name,
  * it throws an error.
@@ -496,7 +435,7 @@ export async function getBackendForAmbiguousLocation(
   let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
   if (unreachable && unreachable.length !== 0) {
     logWarning(
-      `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
+      `The following locations are currently unreachable: ${unreachable}.\n` +
         "If your backend is in one of these regions, please try again later.",
     );
   }
@@ -526,34 +465,4 @@ export async function getBackendForAmbiguousLocation(
     choices: [...backendsByLocation.keys()],
   });
   return backendsByLocation.get(location)!;
-}
-
-/**
- * Fetches a backend from the server. If there are multiple backends with the name, it will throw an error
- * telling the user that there are other backends with the same name that need to be deleted.
- */
-export async function getBackend(
-  projectId: string,
-  backendId: string,
-): Promise<apphosting.Backend> {
-  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
-  backends = backends.filter(
-    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
-  );
-  if (backends.length > 1) {
-    throw new FirebaseError(
-      `You have multiple backends with the same ${backendId} ID. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
-    );
-  }
-  if (backends.length === 1) {
-    return backends[0];
-  }
-  if (unreachable && unreachable.length !== 0) {
-    logWarning(
-      `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
-    );
-  }
-  throw new FirebaseError(`No backend named ${backendId} found.`);
 }
