@@ -430,6 +430,64 @@ export async function getBackendForLocation(
 }
 
 /**
+ * Fetches backends of the given backendId and lets the user choose if more than one is found.
+ */
+export async function chooseBackends(
+  projectId: string,
+  backendId: string,
+  chooseBackendPrompt: string,
+  force?: boolean,
+): Promise<apphosting.Backend[]> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length === 0) {
+    throw new FirebaseError(`No backend named "${backendId}" found.`);
+  }
+  if (backends.length === 1) {
+    return backends;
+  }
+
+  if (force) {
+    throw new FirebaseError(
+      `Force cannot be used because multiple backends were found with ID ${backendId}.`,
+    );
+  }
+  const backendsByDisplay = new Map<string, apphosting.Backend>();
+  backends.forEach((backend) => {
+    const { location, id } = apphosting.parseBackendName(backend.name);
+    backendsByDisplay.set(`${id}(${location})`, backend);
+  });
+  const chosenBackendDisplays = await promptOnce({
+    name: "backend",
+    type: "checkbox",
+    message: chooseBackendPrompt,
+    choices: Array.from(backendsByDisplay.keys(), (name) => {
+      return {
+        checked: false,
+        name: name,
+        value: name,
+      };
+    }),
+  });
+  const chosenBackends: apphosting.Backend[] = [];
+  chosenBackendDisplays.forEach((backendDisplay) => {
+    const backend = backendsByDisplay.get(backendDisplay);
+    if (backend !== undefined) {
+      chosenBackends.push(backend);
+    }
+  });
+  return chosenBackends;
+}
+
+/**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
  * prompts the user to disambiguate. If the force option is specified and multiple backends have the same name,
  * it throws an error.

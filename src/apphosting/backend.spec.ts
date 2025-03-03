@@ -12,6 +12,7 @@ import {
   promptLocation,
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
+  chooseBackends,
   getBackendForAmbiguousLocation,
   getBackend,
 } from "./backend";
@@ -264,6 +265,85 @@ describe("apphosting setup functions", () => {
       );
 
       expect(promptOnceStub).to.not.be.called;
+    });
+  });
+
+  describe("chooseBackends", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenUS = {
+      name: `projects/${projectId}/locations/us-central1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/asia-east1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendChickenUS, backendCow];
+
+    it("returns backend if only one is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "cow", /* prompt= */ "")).to.eventually.deep.equal([
+        backendCow,
+      ]);
+    });
+
+    it("throws if --force is used when multiple backends are found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(
+        chooseBackends(projectId, "chicken", /* prompt= */ "", /* force= */ true),
+      ).to.be.rejectedWith(
+        "Force cannot be used because multiple backends were found with ID chicken.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "farmer", /* prompt= */ "")).to.be.rejectedWith(
+        'No backend named "farmer" found.',
+      );
+    });
+
+    it("lets user choose backends when more than one share a name", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+      promptOnceStub.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
+
+      await expect(chooseBackends(projectId, "chicken", /* prompt= */ "")).to.eventually.deep.equal(
+        [backendChickenAsia, backendChickenEurope],
+      );
     });
   });
 
