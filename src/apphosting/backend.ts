@@ -541,8 +541,9 @@ export async function getBackend(
     (backend) => apphosting.parseBackendName(backend.name).id === backendId,
   );
   if (backends.length > 1) {
+    const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
-      `You have multiple backends with the same ${backendId} ID. This is not allowed until we can support more locations. ` +
+      `You have multiple backends with the same ${backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
         "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
