@@ -66,7 +66,7 @@ async function localesForTarget(
   return { locales, defaultLocale };
 }
 
-const enum BuilderType {
+export enum BuilderType {
   DEPLOY = "deploy",
   DEV_SERVER = "dev-server",
   SSR_DEV_SERVER = "ssr-dev-server",
@@ -77,9 +77,9 @@ const enum BuilderType {
   PRERENDER = "prerender",
 }
 
-const DEV_SERVER_TARGETS: string[] = [BuilderType.DEV_SERVER, BuilderType.SSR_DEV_SERVER];
+const DEV_SERVER_TARGETS: BuilderType[] = [BuilderType.DEV_SERVER, BuilderType.SSR_DEV_SERVER];
 
-function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): string[] {
+function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): BuilderType[] {
   return [
     BuilderType.APPLICATION,
     BuilderType.BROWSER_ESBUILD,
@@ -90,6 +90,9 @@ function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): string[] {
   ];
 }
 
+/**
+ *
+ */
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilderTypes = getValidBuilderTypes(purpose);
   const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
@@ -104,7 +107,8 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
   workspace.projects.forEach((projectDefinition, project) => {
     if (projectDefinition.extensions.projectType !== "application") return;
     projectDefinition.targets.forEach((targetDefinition, target) => {
-      if (!validBuilderTypes.includes(getBuilderType(targetDefinition.builder))) {
+      const builderType = getBuilderType(targetDefinition.builder);
+      if (builderType && !validBuilderTypes.includes(builderType)) {
         return;
       }
       const configurations = Object.keys(targetDefinition.configurations || {});
@@ -119,6 +123,9 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
 }
 
 // TODO(jamesdaniels) memoize, dry up
+/**
+ *
+ */
 export async function getContext(dir: string, targetOrConfiguration?: string) {
   const [
     { NodeJsAsyncHost },
@@ -207,8 +214,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   } else if (workspaceProject.targets.has("deploy")) {
     const { builder, defaultConfiguration = "production" } =
       workspaceProject.targets.get("deploy")!;
-    const builderType = getBuilderType(builder);
-    if (builderType === BuilderType.DEPLOY) {
+    if (getBuilderType(builder) === BuilderType.DEPLOY) {
       deployTarget = {
         project,
         target: "deploy",
@@ -398,6 +404,9 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   };
 }
 
+/**
+ *
+ */
 export async function getBrowserConfig(sourceDir: string, configuration: string) {
   const { architectHost, browserTarget, buildTarget, baseHref, workspaceProject } =
     await getContext(sourceDir, configuration);
@@ -412,15 +421,17 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   ]);
 
   assertIsString(targetOptions?.outputPath);
-  const builderType = getBuilderType(builderName);
 
   const outputPath = join(
     targetOptions.outputPath,
-    buildTarget && builderType === BuilderType.APPLICATION ? "browser" : "",
+    buildTarget && getBuilderType(builderName) === BuilderType.APPLICATION ? "browser" : "",
   );
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
+/**
+ *
+ */
 export async function getServerConfig(sourceDir: string, configuration: string) {
   const {
     architectHost,
@@ -502,6 +513,9 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   };
 }
 
+/**
+ *
+ */
 export async function getBuildConfig(sourceDir: string, configuration: string) {
   const { targetStringFromTarget } = await relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
@@ -577,7 +591,13 @@ function throwCannotDetermineTarget(error?: Error): never {
  * @example
  * getBuilderType("@angular-devkit/build-angular:browser") // returns "browser"
  */
-function getBuilderType(builder: string): string {
+export function getBuilderType(builder: string): BuilderType | null {
   const colonIndex = builder.lastIndexOf(":");
-  return colonIndex >= 0 ? builder.slice(colonIndex + 1) : builder;
+  const builderType = colonIndex >= 0 ? builder.slice(colonIndex + 1) : undefined;
+
+  if (!builderType || !(builderType in BuilderType)) {
+    return null;
+  }
+
+  return builderType as BuilderType;
 }
