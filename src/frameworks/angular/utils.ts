@@ -90,9 +90,6 @@ function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): BuilderType[] {
   ];
 }
 
-/**
- *
- */
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validBuilderTypes = getValidBuilderTypes(purpose);
   const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
@@ -123,9 +120,6 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
 }
 
 // TODO(jamesdaniels) memoize, dry up
-/**
- *
- */
 export async function getContext(dir: string, targetOrConfiguration?: string) {
   const [
     { NodeJsAsyncHost },
@@ -404,9 +398,6 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   };
 }
 
-/**
- *
- */
 export async function getBrowserConfig(sourceDir: string, configuration: string) {
   const { architectHost, browserTarget, buildTarget, baseHref, workspaceProject } =
     await getContext(sourceDir, configuration);
@@ -429,9 +420,6 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
-/**
- *
- */
 export async function getServerConfig(sourceDir: string, configuration: string) {
   const {
     architectHost,
@@ -513,9 +501,6 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   };
 }
 
-/**
- *
- */
 export async function getBuildConfig(sourceDir: string, configuration: string) {
   const { targetStringFromTarget } = await relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
