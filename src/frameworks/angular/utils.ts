@@ -579,10 +579,9 @@ function throwCannotDetermineTarget(error?: Error): never {
 export function getBuilderType(builder: string): BuilderType | null {
   const colonIndex = builder.lastIndexOf(":");
   const builderType = colonIndex >= 0 ? builder.slice(colonIndex + 1) : undefined;
-
-  if (!builderType || !(builderType in BuilderType)) {
+  if (!builderType || !Object.values(BuilderType).includes(builderType as BuilderType)) {
     return null;
   }
-
+  console.log(builderType);
   return builderType as BuilderType;
 }
