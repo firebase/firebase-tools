@@ -192,5 +192,5 @@ export function getFrameworksFromPackageJson(
       SUPPORTED_FRAMEWORKS.find((framework) => frameworksMap[framework]!.includes(dep)),
     ),
   );
-  return Array.from(matched) as (keyof SupportedFrameworks)[];
+  return Array.from(matched).filter(el => el !== undefined) as (keyof SupportedFrameworks)[];
 }

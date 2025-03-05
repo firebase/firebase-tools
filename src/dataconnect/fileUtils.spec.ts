@@ -205,7 +205,7 @@ describe("generateSdkYaml", () => {
     }
   });
   for (const f of SUPPORTED_FRAMEWORKS) {
-    describe.only(`Check support for ${f} framework`, () => {
+    describe(`Check support for ${f} framework`, () => {
       const cases = [
         {
           desc: `can detect a ${f}`,
