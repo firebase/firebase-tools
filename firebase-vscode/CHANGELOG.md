@@ -1,5 +1,7 @@
 ## NEXT
 
+- Allow unused variables in GraphQL queries and mutations.
+
 ## 0.14.0
 
 - Updated internal `firebase-tools` dependency to 13.32.0
