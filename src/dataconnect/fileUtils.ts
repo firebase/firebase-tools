@@ -177,15 +177,19 @@ export async function resolvePackageJson(
   }
 }
 
-export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react"];
+export const SUPPORTED_FRAMEWORKS: (keyof SupportedFrameworks)[] = ["react", "angular"];
+export const frameworksMap: { [key in keyof SupportedFrameworks]: string[] } = {
+  react: ["react", "next"],
+  angular: ["@angular/core"],
+};
 export function getFrameworksFromPackageJson(
   packageJson: PackageJSON,
 ): (keyof SupportedFrameworks)[] {
   const devDependencies = Object.keys(packageJson.devDependencies ?? {});
   const dependencies = Object.keys(packageJson.dependencies ?? {});
   const matched = new Set(
-    [...devDependencies, ...dependencies].filter((dep) =>
-      SUPPORTED_FRAMEWORKS.includes(dep as keyof SupportedFrameworks),
+    [...devDependencies, ...dependencies].map((dep) =>
+      SUPPORTED_FRAMEWORKS.find((framework) => frameworksMap[framework]!.includes(dep)),
     ),
   );
   return Array.from(matched) as (keyof SupportedFrameworks)[];
