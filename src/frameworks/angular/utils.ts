@@ -582,6 +582,5 @@ export function getBuilderType(builder: string): BuilderType | null {
   if (!builderType || !Object.values(BuilderType).includes(builderType as BuilderType)) {
     return null;
   }
-  console.log(builderType);
   return builderType as BuilderType;
 }
