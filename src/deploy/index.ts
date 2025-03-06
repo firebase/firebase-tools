@@ -46,6 +46,19 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
+export const isDeployingWebFramework = (options: DeployOptions) => {
+  const config = options.config.get("hosting");
+
+  const webFrameworkInConfig = (Array.isArray(config) ? config : [config]).find((it) => it.source);
+
+  if (!webFrameworkInConfig) return false;
+
+  return (
+    !options.only ||
+    options.only.split(",").some((it) => it.split(":")[1] === webFrameworkInConfig.site)
+  );
+};
+
 /**
  * The `deploy()` function runs through a three step deploy process for a listed
  * number of deploy targets. This allows deploys to be done all together or
@@ -67,12 +80,9 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (targetNames.includes("hosting")) {
-    const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      experiments.assertEnabled("webframeworks", "deploy a web framework from source");
-      await prepareFrameworks("deploy", targetNames, context, options);
-    }
+  if (targetNames.includes("hosting") && isDeployingWebFramework(options)) {
+    experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+    await prepareFrameworks("deploy", targetNames, context, options);
   }
 
   if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
