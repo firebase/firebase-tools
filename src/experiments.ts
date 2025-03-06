@@ -137,6 +137,13 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  appsinit: {
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
+    default: false,
+    public: true,
+  },
 
   fdcconnectorevolution: {
     shortDescription: "Enable Data Connect connector evolution warnings.",

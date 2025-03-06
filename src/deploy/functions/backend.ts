@@ -341,6 +341,8 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
+export type EndpointState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -381,6 +383,9 @@ export type Endpoint = TargetIds &
     // This may eventually be different than id because GCF is going to start
     // doing name translations
     runServiceId?: string;
+
+    // State of the endpoint.
+    state?: EndpointState;
   };
 
 export interface RequiredAPI {

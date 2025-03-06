@@ -75,6 +75,7 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: Runtime,
+  initialDelay = 0,
   timeout = 10_000 /* 10s to boot up */,
 ): Promise<build.Build> {
   let res: Response;
@@ -84,13 +85,21 @@ export async function detectFromPort(
     }, getFunctionDiscoveryTimeout() || timeout);
   });
 
+  // Initial delay to wait for admin server to boot.
+  if (initialDelay > 0) {
+    await new Promise((resolve) => setTimeout(resolve, initialDelay));
+  }
+
+  const url = `http://127.0.0.1:${port}/__/functions.yaml`;
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://127.0.0.1:${port}/__/functions.yaml`), timedOut]);
+      res = await Promise.race([fetch(url), timedOut]);
       break;
     } catch (err: any) {
-      // Allow us to wait until the server is listening.
-      if (err?.code === "ECONNREFUSED") {
+      if (
+        err?.name === "FetchError" ||
+        ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(err?.code)
+      ) {
         continue;
       }
       throw err;

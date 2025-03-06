@@ -4,10 +4,11 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import { createRollout } from "../apphosting/rollout";
+import { logWarning } from "../utils";
 
 export const command = new Command("apphosting:rollouts:create <backendId>")
   .description("create a rollout using a build for an App Hosting backend")
-  .option("-l, --location <location>", "specify the region of the backend", "-")
+  .option("-l, --location <location>", "specify the region of the backend")
   .option(
     "-b, --git-branch <gitBranch>",
     "repository branch to deploy (mutually exclusive with -g)",
@@ -17,7 +18,10 @@ export const command = new Command("apphosting:rollouts:create <backendId>")
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
-    const location = options.location as string;
+    if (options.location !== undefined) {
+      logWarning("--location is being removed in the next major release.");
+    }
+    const location = (options.location as string) ?? "-";
 
     const branch = options.gitBranch as string | undefined;
     const commit = options.gitCommit as string | undefined;

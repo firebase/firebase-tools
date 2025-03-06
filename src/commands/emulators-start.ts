@@ -125,12 +125,13 @@ function printEmulatorOverview(options: any): void {
     ) as ExtensionsEmulator;
     extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
+  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
   logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
 ${
-  EmulatorRegistry.isRunning(Emulators.HUB)
-    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.url(Emulators.HUB).host
+  hubInfo
+    ? clc.blackBright(`  Emulator Hub host: ${hubInfo.host} port: ${hubInfo.port}`)
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
