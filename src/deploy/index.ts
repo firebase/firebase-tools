@@ -53,10 +53,16 @@ export const isDeployingWebFramework = (options: DeployOptions) => {
 
   if (!webFrameworkInConfig) return false;
 
-  return (
-    !options.only ||
-    options.only.split(",").some((it) => it.split(":")[1] === webFrameworkInConfig.site)
-  );
+  if (!options.only) return true;
+
+  return options.only.split(",").some((it) => {
+    const [target, site] = it.split(":");
+
+    return (
+      target === "hosting" &&
+      [webFrameworkInConfig.site, webFrameworkInConfig.target].includes(site)
+    );
+  });
 };
 
 /**

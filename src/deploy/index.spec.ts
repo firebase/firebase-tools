@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import { isDeployingWebFramework } from "./index";
 
-describe("deploy", () => {
+describe("Frameworks", () => {
   describe("isDeployingWebFramework", () => {
     let options: any;
 
@@ -16,38 +16,81 @@ describe("deploy", () => {
       };
     });
 
-    it("should return true if no 'only' option is set and a webframework is in config", () => {
-      options.config.get.withArgs("hosting").returns([{ source: ".", site: "webframework" }]);
-      expect(isDeployingWebFramework(options)).to.be.true;
+    describe("with site in config", () => {
+      beforeEach(() => {
+        options.config.get.withArgs("hosting").returns([{ source: "src", site: "webframework" }]);
+      });
+
+      describe("without 'only' option", () => {
+        it("should return true if a web framework is in config", () => {
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+      });
+
+      describe("with 'only' option", () => {
+        it("should return false if 'only' option does not match the site", () => {
+          options.only = "hosting:othersite";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+
+        it("should return true if 'only' option matches the site", () => {
+          options.only = "hosting:webframework";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return false if 'only' option matches a function, not a web framework", () => {
+          options.only = "functions:webframework";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
     });
 
-    it("should return false if 'only' option is set and does not match the webframework site", () => {
-      options.config.get.withArgs("hosting").returns([{ source: ".", site: "webframework" }]);
-      options.only = "hosting:othersite";
-      expect(isDeployingWebFramework(options)).to.be.false;
+    describe("with target in config", () => {
+      beforeEach(() => {
+        options.config.get.withArgs("hosting").returns([{ source: "src", target: "webframework" }]);
+      });
+
+      describe("without 'only' option", () => {
+        it("should return true if a web framework is in config", () => {
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+      });
+
+      describe("with 'only' option", () => {
+        it("should return false if 'only' option does not match the target", () => {
+          options.only = "hosting:othertarget";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+
+        it("should return true if 'only' option matches the target", () => {
+          options.only = "hosting:webframework";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return false if 'only' option matches a function, not a web framework", () => {
+          options.only = "functions:webframework";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
     });
 
-    it("should return true if 'only' option matches the webframework site", () => {
-      options.config.get.withArgs("hosting").returns([{ source: ".", site: "webframework" }]);
-      options.only = "hosting:webframework";
-      expect(isDeployingWebFramework(options)).to.be.true;
-    });
+    describe("with no web framework in config", () => {
+      beforeEach(() => {
+        options.config.get.withArgs("hosting").returns([{ site: "classic" }]);
+      });
 
-    it("should return false if no webframework is in config", () => {
-      options.config.get.withArgs("hosting").returns([{ site: "nowf", public: "public" }]);
-      expect(isDeployingWebFramework(options)).to.be.false;
-    });
+      describe("without 'only' option", () => {
+        it("should return false if no web framework is in config", () => {
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
 
-    it("should return true with multiple options and one is a webframework", () => {
-      options.config.get.withArgs("hosting").returns([{ source: ".", site: "webframework" }]);
-      options.only = "hosting:webframework,hosting:othersite";
-      expect(isDeployingWebFramework(options)).to.be.true;
-    });
-
-    it("should return false with multiple options and none are a webframework", () => {
-      options.config.get.withArgs("hosting").returns([{ site: "nowf", public: "public" }]);
-      options.only = "hosting:othersite,functions";
-      expect(isDeployingWebFramework(options)).to.be.false;
+      describe("with 'only' option", () => {
+        it("should return false regardless of 'only' option", () => {
+          options.only = "hosting:webframework";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
     });
   });
 });
