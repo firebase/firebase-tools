@@ -87,7 +87,7 @@
           "default": "./exportedData",
           "markdownDescription": "%ext.config.emulators.exportPath%"
         },
-        "firebase.emulators.exportOnExit":{
+        "firebase.emulators.exportOnExit": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "%ext.config.emulators.exportOnExit%"
