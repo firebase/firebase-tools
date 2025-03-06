@@ -1,5 +1,6 @@
 - Fixed issue where `apps:init` fails to detect the output directory when it was run in a directory where `app` was the only module.
 - Set `LOG_EXECUTION_ID=true` by default for Cloud Functions (2nd gen) to improve debugging by displaying execution IDs in logs. (#8276)
+- Fix bug where function deployment no-oped for functions in bad state. (#8289)
 - Updated the Firebase Data Connect local toolkit to v1.8.4 which includes the following changes: (#8290)
   - React hooks for mutations without args no longer require `undefined` to be passed when calling `mutate`.
   - Fixed import resolution when `moduleResolution` is set to `bundler`.

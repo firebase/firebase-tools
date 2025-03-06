@@ -795,5 +795,6 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
+  proto.copyIfPresent(endpoint, gcfFunction, "state");
   return endpoint;
 }
