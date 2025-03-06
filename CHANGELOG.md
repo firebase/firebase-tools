@@ -7,3 +7,4 @@
   - React code generation will now generate a README explaining how to use generated query and mutation hook functions.
   - Fixed an issue where React developers have to pass in an empty object even when all fields are optional.
   - Fixed an issue where `FirebaseError` wasn't being passed into `UseMutationOptions`.
+- Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
