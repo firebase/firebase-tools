@@ -216,7 +216,7 @@ describe("planner", () => {
       const funcHave = func("func", "region");
       funcWant.hash = "same-hash";
       funcHave.hash = "same-hash";
-      funcHave.state = 'FAILED';
+      funcHave.state = "FAILED";
 
       const want = { func: funcWant };
       const have = { func: funcHave };
