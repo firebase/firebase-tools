@@ -48,9 +48,10 @@ describe("Frameworks", () => {
 
       describe("with both a web framework and a non-web framework", () => {
         beforeEach(() => {
-          options.config.get
-            .withArgs("hosting")
-            .returns([{ source: "src", site: "webframework" }, { site: "classic" }]);
+          options.config.get.withArgs("hosting").returns([
+            { source: "src", site: "webframework" },
+            { site: "public", public: "public" },
+          ]);
         });
 
         describe("without 'only' option", () => {
@@ -71,7 +72,7 @@ describe("Frameworks", () => {
           });
 
           it("should return false if 'only' option matches a non-web framework site", () => {
-            options.only = "hosting:classic";
+            options.only = "hosting:public";
             expect(isDeployingWebFramework(options)).to.be.false;
           });
 
@@ -117,9 +118,10 @@ describe("Frameworks", () => {
 
       describe("with both a web framework and a non-web framework", () => {
         beforeEach(() => {
-          options.config.get
-            .withArgs("hosting")
-            .returns([{ source: "src", target: "webframework" }, { target: "classic" }]);
+          options.config.get.withArgs("hosting").returns([
+            { source: "src", target: "webframework" },
+            { target: "public", public: "public" },
+          ]);
         });
 
         describe("without 'only' option", () => {
@@ -140,7 +142,7 @@ describe("Frameworks", () => {
           });
 
           it("should return false if 'only' option matches a non-web framework target", () => {
-            options.only = "hosting:classic";
+            options.only = "hosting:public";
             expect(isDeployingWebFramework(options)).to.be.false;
           });
 
@@ -154,7 +156,7 @@ describe("Frameworks", () => {
 
     describe("with no web framework in config", () => {
       beforeEach(() => {
-        options.config.get.withArgs("hosting").returns([{ site: "classic" }]);
+        options.config.get.withArgs("hosting").returns([{ site: "public", public: "public" }]);
       });
 
       describe("without 'only' option", () => {
