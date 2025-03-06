@@ -576,6 +576,18 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
+  proto.convertIfPresent(endpoint, gcfFunction, "state", "status", (status) => {
+    if (status === "ACTIVE") {
+      return "ACTIVE";
+    } else if (status === "OFFLINE") {
+      return "FAILED";
+    } else if (status === "DEPLOY_IN_PROGRESS") {
+      return "DEPLOYING";
+    } else if (status === "DELETE_IN_PROGRESS") {
+      return "DELETING";
+    }
+    return "UNKONWN";
+  });
   return endpoint;
 }
 
