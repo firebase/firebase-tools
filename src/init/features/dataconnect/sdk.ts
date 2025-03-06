@@ -182,6 +182,7 @@ export async function generateSdkYaml(
     if (packageJson) {
       const frameworksUsed = getFrameworksFromPackageJson(packageJson);
       for (const framework of frameworksUsed) {
+        logBullet(`Detected ${framework} app. Enabling generated ${framework} SDK.`);
         javascriptSdk[framework] = true;
       }
     }

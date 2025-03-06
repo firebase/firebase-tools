@@ -148,6 +148,7 @@ export interface Generate {
 
 export interface SupportedFrameworks {
   react?: boolean;
+  angular?: boolean;
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
