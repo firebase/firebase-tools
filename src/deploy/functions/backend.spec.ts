@@ -172,7 +172,6 @@ describe("Backend", () => {
         const secondBackend = await backend.existingBackend(context);
         await backend.checkAvailability(context, backend.empty());
 
-
         expect(firstBackend).to.deep.equal(secondBackend);
         expect(listAllFunctions).to.be.calledOnce;
         expect(listAllFunctionsV2).to.be.calledOnce;
