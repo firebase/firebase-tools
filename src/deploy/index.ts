@@ -46,7 +46,7 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
-export const isDeployingWebFramework = (options: DeployOptions) => {
+export const isDeployingWebFramework = (options: DeployOptions): boolean => {
   const config = options.config.get("hosting");
 
   const webFrameworkInConfig = (Array.isArray(config) ? config : [config]).find((it) => it.source);
