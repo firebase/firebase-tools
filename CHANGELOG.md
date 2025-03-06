@@ -1,3 +1,9 @@
 - Fixed issue where `apps:init` fails to detect the output directory when it was run in a directory where `app` was the only module.
 - Set `LOG_EXECUTION_ID=true` by default for Cloud Functions (2nd gen) to improve debugging by displaying execution IDs in logs. (#8276)
+- Updated the Firebase Data Connect local toolkit to v1.8.4 which includes the following changes: (#8290)
+  - React hooks for mutations without args no longer require `undefined` to be passed when calling `mutate`.
+  - Fixed import resolution when `moduleResolution` is set to `bundler`.
+  - React code generation will now generate a README explaining how to use generated query and mutation hook functions.
+  - Fixed an issue where React developers have to pass in an empty object even when all fields are optional.
+  - Fixed an issue where `FirebaseError` wasn't being passed into `UseMutationOptions`.
 - Support 3rd party builders for Angular. (#7557)
