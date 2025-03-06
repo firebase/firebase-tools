@@ -1,5 +1,6 @@
 ## NEXT
 
+- Updated introspection endpoint to V1
 - Allow unused variables in GraphQL queries and mutations.
 
 ## 0.14.0
