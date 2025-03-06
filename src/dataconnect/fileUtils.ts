@@ -187,10 +187,11 @@ export function getFrameworksFromPackageJson(
 ): (keyof SupportedFrameworks)[] {
   const devDependencies = Object.keys(packageJson.devDependencies ?? {});
   const dependencies = Object.keys(packageJson.dependencies ?? {});
-  const matched = new Set(
-    [...devDependencies, ...dependencies].map((dep) =>
-      SUPPORTED_FRAMEWORKS.find((framework) => frameworksMap[framework]!.includes(dep)),
-    ),
+  const allDeps = Array.from(new Set([...devDependencies, ...dependencies]));
+  console.log(allDeps);
+  const ret = SUPPORTED_FRAMEWORKS.filter((framework) =>
+    frameworksMap[framework]!.find((dep) => allDeps.includes(dep)),
   );
-  return Array.from(matched).filter(el => el !== undefined) as (keyof SupportedFrameworks)[];
+  console.log(ret);
+  return ret;
 }

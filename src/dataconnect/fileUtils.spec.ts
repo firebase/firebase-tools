@@ -137,10 +137,12 @@ describe("getPlatformFromFolder", () => {
 
 describe("generateSdkYaml", () => {
   // Test Data
-  const sampleConnectorYaml: ConnectorYaml = {
-    connectorId: "default",
-    generate: {},
-  };
+  function getSampleConnectorYaml(): ConnectorYaml {
+    return {
+      connectorId: "default",
+      generate: {},
+    };
+  }
   const connectorYamlFolder = "/my/app/folder/connector";
 
   const appFolderBase = "/my/app/folder";
@@ -196,7 +198,7 @@ describe("generateSdkYaml", () => {
         mockfs({ [appFolderDetectable]: { ["package.json"]: "{}" } });
         const modifiedYaml = await generateSdkYaml(
           Platform.WEB,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -225,10 +227,11 @@ describe("generateSdkYaml", () => {
         });
         const modifiedYaml = await generateSdkYaml(
           Platform.WEB,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           appFolderDetectable,
         );
+        console.log(`{"dependencies": {"${dep}": "1"}}`);
         expect(modifiedYaml.generate?.javascriptSdk?.[f]).to.equal(shouldDetect);
       }
       for (const c of cases) {
@@ -280,7 +283,7 @@ describe("generateSdkYaml", () => {
       it(c.desc, async () => {
         const modifiedYaml = await generateSdkYaml(
           Platform.IOS,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -357,7 +360,7 @@ describe("generateSdkYaml", () => {
         });
         const modifiedYaml = await generateSdkYaml(
           Platform.ANDROID,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -401,7 +404,7 @@ describe("generateSdkYaml", () => {
       it(c.desc, async () => {
         const modifiedYaml = await generateSdkYaml(
           Platform.FLUTTER,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -425,11 +428,11 @@ describe("generateSdkYaml", () => {
     const unknownPlatform = "unknown" as Platform; // Type assertion for test
     const modifiedYaml = await generateSdkYaml(
       unknownPlatform,
-      sampleConnectorYaml,
+      getSampleConnectorYaml(),
       connectorYamlFolder,
       appFolderBase,
     );
-    expect(modifiedYaml).to.deep.equal(sampleConnectorYaml); // No changes
+    expect(modifiedYaml).to.deep.equal(getSampleConnectorYaml()); // No changes
   });
 
   afterEach(() => {
