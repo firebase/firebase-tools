@@ -188,10 +188,7 @@ export function getFrameworksFromPackageJson(
   const devDependencies = Object.keys(packageJson.devDependencies ?? {});
   const dependencies = Object.keys(packageJson.dependencies ?? {});
   const allDeps = Array.from(new Set([...devDependencies, ...dependencies]));
-  console.log(allDeps);
-  const ret = SUPPORTED_FRAMEWORKS.filter((framework) =>
+  return SUPPORTED_FRAMEWORKS.filter((framework) =>
     frameworksMap[framework]!.find((dep) => allDeps.includes(dep)),
   );
-  console.log(ret);
-  return ret;
 }
