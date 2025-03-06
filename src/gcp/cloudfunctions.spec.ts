@@ -24,6 +24,7 @@ describe("cloudfunctions", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
@@ -173,15 +174,15 @@ describe("cloudfunctions", () => {
         taskQueueTrigger: {},
       };
       const taskQueueFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
-        {
-          ...CLOUD_FUNCTION,
-          sourceUploadUrl: UPLOAD_URL,
-          httpsTrigger: {},
-          labels: {
-            ...CLOUD_FUNCTION.labels,
-            "deployment-taskqueue": "true",
-          },
-        };
+      {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: {
+          ...CLOUD_FUNCTION.labels,
+          "deployment-taskqueue": "true",
+        },
+      };
 
       expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
         taskQueueFunction,
@@ -196,15 +197,15 @@ describe("cloudfunctions", () => {
         },
       };
       const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
-        {
-          ...CLOUD_FUNCTION,
-          sourceUploadUrl: UPLOAD_URL,
-          httpsTrigger: {},
-          labels: {
-            ...CLOUD_FUNCTION.labels,
-            [BLOCKING_LABEL]: "before-create",
-          },
-        };
+      {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: {
+          ...CLOUD_FUNCTION.labels,
+          [BLOCKING_LABEL]: "before-create",
+        },
+      };
 
       expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
         blockingFunction,
@@ -219,15 +220,15 @@ describe("cloudfunctions", () => {
         },
       };
       const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
-        {
-          ...CLOUD_FUNCTION,
-          sourceUploadUrl: UPLOAD_URL,
-          httpsTrigger: {},
-          labels: {
-            ...CLOUD_FUNCTION.labels,
-            [BLOCKING_LABEL]: "before-sign-in",
-          },
-        };
+      {
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: {
+          ...CLOUD_FUNCTION.labels,
+          [BLOCKING_LABEL]: "before-sign-in",
+        },
+      };
 
       expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
         blockingFunction,

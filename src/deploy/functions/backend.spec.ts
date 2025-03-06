@@ -22,6 +22,7 @@ describe("Backend", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
@@ -170,6 +171,7 @@ describe("Backend", () => {
 
         const secondBackend = await backend.existingBackend(context);
         await backend.checkAvailability(context, backend.empty());
+
 
         expect(firstBackend).to.deep.equal(secondBackend);
         expect(listAllFunctions).to.be.calledOnce;
