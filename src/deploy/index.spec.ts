@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import { isDeployingWebFramework } from "./index";
 
-describe("Frameworks", () => {
+describe("Deploy", () => {
   describe("isDeployingWebFramework", () => {
     let options: any;
 
