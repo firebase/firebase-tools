@@ -1,0 +1,1 @@
+- Fixed a regression where HTTPS Callable functions could not be executed from the Firebase Functions Shell according to the public documentation. (#6783)
