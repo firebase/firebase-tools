@@ -1,0 +1,1 @@
+- Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
