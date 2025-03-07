@@ -18,7 +18,7 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import { prepareFrameworks } from "../frameworks";
-import { Context, HostingDeploy } from "./hosting/context";
+import { Context } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
@@ -164,7 +164,7 @@ export const deploy = async function (
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
   if (deployedHosting) {
-    each(context.hosting?.deploys as HostingDeploy[], (deploy) => {
+    each(context.hosting?.deploys, (deploy) => {
       logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
     });
     const versionNames = context.hosting?.deploys.map((deploy: any) => deploy.version);
