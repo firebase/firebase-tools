@@ -1,1 +1,2 @@
 - Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
+- Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
