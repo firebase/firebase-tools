@@ -333,6 +333,8 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -439,6 +441,8 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -509,6 +513,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "ingressSettings",
     "timeoutSeconds",
   );
+
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
@@ -790,5 +795,6 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
+  proto.copyIfPresent(endpoint, gcfFunction, "state");
   return endpoint;
 }

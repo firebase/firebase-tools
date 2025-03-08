@@ -1,3 +1,4 @@
+import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
@@ -17,10 +18,13 @@ import {
   IosAppMetadata,
   listFirebaseApps,
   WebAppMetadata,
+  findIntelligentPathForAndroid,
+  findIntelligentPathForIOS,
 } from "./apps";
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
 import { firebaseApiOrigin } from "../api";
+import { AppsInitOptions } from "../commands/apps-init";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -67,12 +71,11 @@ function generateWebAppList(counts: number): WebAppMetadata[] {
 describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
   let pollOperationStub: sinon.SinonStub;
-  let readFileSyncStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
-    readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
+    sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
     nock.disableNetConnect();
   });
 
@@ -583,17 +586,15 @@ describe("App management", () => {
       nock(firebaseApiOrigin())
         .get(`/v1beta1/projects/-/webApps/${APP_ID}/config`)
         .reply(200, mockWebConfig);
-      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
       const fileData = getAppConfigFile(configData, AppPlatform.WEB);
 
       expect(fileData).to.deep.equal({
-        fileName: "google-config.js",
+        fileName: "firebase-js-config.json",
         fileContents: JSON.stringify(mockWebConfig, null, 2),
       });
       expect(nock.isDone()).to.be.true;
-      expect(readFileSyncStub).to.be.calledOnce;
     });
   });
 
@@ -661,6 +662,111 @@ describe("App management", () => {
       );
       expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
       expect(nock.isDone()).to.be.true;
+    });
+  });
+  describe("getAndroidPlatform", () => {
+    const cases: {
+      desc: string;
+      folderName: string;
+      folderItems: Record<string, any>;
+      output: string;
+    }[] = [
+      {
+        desc: "Root of Android project",
+        folderName: "android/",
+        folderItems: { app: {} },
+        output: "android/app",
+      },
+      {
+        desc: "Inside app folder",
+        folderName: "android/app",
+        folderItems: { src: {} },
+        output: "android/app",
+      },
+      {
+        desc: "Folder with many modules",
+        folderName: "android/",
+        folderItems: { module1: {}, module2: {}, module3: {} },
+        output: "android/app",
+      },
+    ];
+    for (const c of cases) {
+      it(c.desc, async () => {
+        mockfs({ [c.folderName]: c.folderItems });
+        const platform = await findIntelligentPathForAndroid(c.folderName, {
+          nonInteractive: true,
+        } as AppsInitOptions);
+        expect(platform).to.equal(c.output);
+      });
+    }
+
+    afterEach(() => {
+      mockfs.restore();
+    });
+  });
+  describe("getIosPlatform", () => {
+    const cases: {
+      desc: string;
+      folderName: string;
+      folderItems: Record<string, any>;
+      output: string;
+      throwError?: boolean;
+    }[] = [
+      {
+        desc: "Root of ios project with xcodeproj files",
+        folderName: "ios/",
+        folderItems: { "abc.xcodeproj": "Contents", abc: {} },
+        output: "ios/abc",
+      },
+      {
+        desc: "Folder with Info.plist",
+        folderName: "ios",
+        folderItems: { "Info.plist": "" },
+        output: "ios",
+      },
+      {
+        desc: "Folder with Assets.xcassets",
+        folderName: "ios",
+        folderItems: { "Assets.xcassets": "" },
+        output: "ios",
+      },
+      {
+        desc: "Folder with Preview Content folder",
+        folderName: "ios",
+        folderItems: { "Preview Content": {} },
+        output: "ios",
+      },
+      {
+        desc: "Folder with Preview Content file",
+        folderName: "ios/",
+        folderItems: { "Preview Content": "" },
+        output: "ios",
+        throwError: true,
+      },
+    ];
+
+    for (const c of cases) {
+      it(c.desc, async () => {
+        mockfs({ [c.folderName]: c.folderItems });
+        if (c.throwError) {
+          await expect(
+            findIntelligentPathForIOS(c.folderName, {
+              nonInteractive: true,
+            } as AppsInitOptions),
+          ).to.be.rejectedWith(
+            Error,
+            "We weren't able to automatically determine the output directory.",
+          );
+        } else {
+          const platform = await findIntelligentPathForIOS(c.folderName, {
+            nonInteractive: true,
+          } as AppsInitOptions);
+          expect(platform).to.equal(c.output);
+        }
+      });
+    }
+    afterEach(() => {
+      mockfs.restore();
     });
   });
 });

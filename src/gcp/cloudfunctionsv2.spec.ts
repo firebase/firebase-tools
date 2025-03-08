@@ -31,6 +31,7 @@ describe("cloudfunctionsv2", () => {
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
     source: { storageSource: CLOUD_FUNCTION_V2_SOURCE },
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {
@@ -810,6 +811,71 @@ describe("cloudfunctionsv2", () => {
 
       expect(errCaught, "should have caught an error").to.be.true;
       expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createFunction", () => {
+    it("should set default environment variables", async () => {
+      const testFunction = {
+        ...CLOUD_FUNCTION_V2,
+        name: "projects/project/locations/region/functions/id",
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: {},
+        },
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          environmentVariables: {},
+        },
+      };
+
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
+          return true;
+        })
+        .query({ functionId: "id" })
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.createFunction(testFunction);
+      expect(scope.isDone()).to.be.true;
+    });
+  });
+
+  describe("updateFunction", () => {
+    it("should set default environment variables", async () => {
+      const scope = nock(functionsV2Origin())
+        .patch("/v2/projects/project/locations/region/functions/id", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
+          return true;
+        })
+        .query(true) // Accept any query parameters
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      expect(scope.isDone()).to.be.true;
     });
   });
 });

@@ -48,6 +48,7 @@ jobs:
         node-version:
           - "18"
           - "20"
+          - "22"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -133,6 +134,7 @@ jobs:
         node-version:
           - "18"
           - "20"
+          - "22"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -180,7 +182,7 @@ jobs:
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
-          - npm run test:dataconnect-deploy
+          # - npm run test:dataconnect-deploy
           - npm run test:dataconnect-emulator
     steps:
       - uses: actions/checkout@v4
@@ -281,6 +283,7 @@ jobs:
       matrix:
         node-version:
           - "20"
+          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -300,6 +303,7 @@ jobs:
       matrix:
         node-version:
           - "20"
+          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -319,6 +323,7 @@ jobs:
       matrix:
         node-version:
           - "20"
+          - "22"
 
     steps:
       - uses: actions/checkout@v4

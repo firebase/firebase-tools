@@ -71,17 +71,17 @@ export interface Diff {
   destructive: boolean;
 }
 
-export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK";
+export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
 
 export interface Workaround {
-  // TODO: Make these lower-case after fixing the emulator, to match the style convention.
-  Description: string;
-  Reason: string;
-  ReplaceWith: string;
+  description: string;
+  reason: string;
+  replaceWith: string;
 }
 
 export interface GraphqlError {
   message: string;
+  path?: (string | number)[];
   locations?: {
     line: number;
     column: number;

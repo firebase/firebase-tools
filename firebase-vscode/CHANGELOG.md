@@ -1,5 +1,20 @@
 ## NEXT
 
+## 0.14.1
+
+- Updated internal `firebase-tools` dependency to 13.33.0
+- Updated introspection endpoint to V1
+- Allow unused variables in GraphQL queries and mutations.
+
+## 0.14.0
+
+- Updated internal `firebase-tools` dependency to 13.32.0
+- [Fixed] Graphql Language Server support for Windows
+
+## 0.13.1
+
+- Updated internal `firebase-tools` dependency to 13.31.2
+
 ## 0.13.0
 
 - Updated internal `firebase-tools` dependency to 13.30.0
