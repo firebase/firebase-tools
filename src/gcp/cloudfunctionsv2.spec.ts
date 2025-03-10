@@ -31,6 +31,7 @@ describe("cloudfunctionsv2", () => {
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
     source: { storageSource: CLOUD_FUNCTION_V2_SOURCE },
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {

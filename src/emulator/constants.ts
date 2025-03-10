@@ -76,6 +76,9 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
 
+  // Environment variable to discover the Data Connect emulator.
+  static FIREBASE_DATACONNECT_EMULATOR_HOST = "FIREBASE_DATACONNECT_EMULATOR_HOST";
+
   // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
 

@@ -24,6 +24,7 @@ describe("cloudfunctions", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {

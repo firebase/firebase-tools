@@ -17,15 +17,13 @@ import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
-import { HostingConfig } from "../firebaseConfig";
 import { prepareFrameworks } from "../frameworks";
-import { FrameworkContext } from "../frameworks/interfaces";
+import { Context } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { Context } from "./hosting/context";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -48,27 +46,23 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
-export const matchesHostingTarget = (only: string | undefined, target?: string): boolean => {
-  if (!only) return true;
-  if (!only.includes("hosting:")) return true;
-  const targetStr = `hosting:${target ?? ""}`;
-  return only.split(",").some((t) => t === targetStr);
-};
+export const isDeployingWebFramework = (options: DeployOptions): boolean => {
+  const config = options.config.get("hosting");
 
-export const prepareFrameworksIfNeeded = async function (
-  targetNames: (keyof typeof TARGETS)[],
-  options: DeployOptions,
-  context: FrameworkContext,
-): Promise<void> {
-  const config = options.config.get("hosting") as HostingConfig;
-  if (
-    Array.isArray(config)
-      ? config.some((it) => it.source && matchesHostingTarget(options.only, it.target))
-      : config.source
-  ) {
-    experiments.assertEnabled("webframeworks", "deploy a web framework from source");
-    await prepareFrameworks("deploy", targetNames, context, options);
-  }
+  const webFrameworkInConfig = (Array.isArray(config) ? config : [config]).find((it) => it.source);
+
+  if (!webFrameworkInConfig) return false;
+
+  if (!options.only) return true;
+
+  return options.only.split(",").some((it) => {
+    const [target, site] = it.split(":");
+
+    return (
+      target === "hosting" &&
+      [webFrameworkInConfig.site, webFrameworkInConfig.target].includes(site)
+    );
+  });
 };
 
 /**
@@ -92,8 +86,9 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (targetNames.includes("hosting")) {
-    await prepareFrameworksIfNeeded(targetNames, options, context);
+  if (targetNames.includes("hosting") && isDeployingWebFramework(options)) {
+    experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+    await prepareFrameworks("deploy", targetNames, context, options);
   }
 
   if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {

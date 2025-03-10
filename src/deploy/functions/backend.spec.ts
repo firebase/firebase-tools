@@ -22,6 +22,7 @@ describe("Backend", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {

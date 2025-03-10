@@ -58,6 +58,7 @@ export function calculateChangesets(
   const toSkipPredicate = (id: string): boolean =>
     !!(
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
