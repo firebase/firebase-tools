@@ -96,7 +96,6 @@ export async function checkSQLRoleIsGranted(
 
 // Sets up all FDC roles (owner, writer, and reader).
 // Granting roles to users is done by the caller.
-// Returns true if schema is setup as greenfield
 export async function setupSQLPermissions(
   instanceId: string,
   databaseId: string,
@@ -267,7 +266,7 @@ export async function getSchemaMetadata(
 
   // If firebase writer role doesn't exist -> Schema not setup
   const checkRoleExists = async (role: string): Promise<boolean> => {
-    const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL;`];
+    const cmd = [`SELECT to_regrole('"${role}"') IS NOT NULL AS exists;`];
     const result = await executeSqlCmdsAsIamUser(
       options,
       instanceId,
@@ -275,7 +274,7 @@ export async function getSchemaMetadata(
       cmd,
       /** silent=*/ true,
     );
-    return result[0].rows[0];
+    return result[0].rows[0].exists;
   };
 
   let setupStatus;

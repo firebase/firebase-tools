@@ -380,7 +380,7 @@ async function handleIncompatibleSchemaError(args: {
 
     const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
     if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField) {
-      const isGreenfieldSetup = await setupSQLPermissions(
+      const newSetupStatus = await setupSQLPermissions(
         instanceId,
         databaseId,
         schemaInfo,
@@ -388,7 +388,7 @@ async function handleIncompatibleSchemaError(args: {
         /* silent=*/ true,
       );
 
-      if (!isGreenfieldSetup) {
+      if (newSetupStatus !== SchemaSetupStatus.GreenField) {
         throw new FirebaseError(
           `Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
         );
