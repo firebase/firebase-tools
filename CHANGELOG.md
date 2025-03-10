@@ -1,3 +1,2 @@
-- Add initial delay when loading python functions (#8239)
-- Enforce webframeworks enablement only on webframeworks sites (#8168)
-- Fix issue where `apps:init` throws an error upon app creation
+- Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
+- Add support for brownfield project onboard `dataconnect:sql:setup` (#8150)
