@@ -17,7 +17,6 @@ import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
 import { FirebaseError } from "../../error";
 import * as secrets from "../../gcp/secretManager";
-import { latest } from "../../deploy/functions/runtimes/supported";
 
 interface StartOptions {
   projectId?: string;
@@ -46,7 +45,8 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   return { hostname, port };
 }
 
-const secretResourceRegex = /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
+const secretResourceRegex =
+  /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
 const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
 async function loadSecret(project: string | undefined, name: string): Promise<string> {
   let projectId: string;
