@@ -1,2 +1,5 @@
 - Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
-- Add support for brownfield project onboard `dataconnect:sql:setup` (#8150)
+- Add support for brownfield project onboard `dataconnect:sql:setup`. (#8150)
+- Update the Firebase Data Connect local toolkit to v1.8.5, which includes the following changes: (#8310)
+  - Fix the `Int` and `Int64` scalars to correctly validate the `int32` and `int64` ranges, respectively.
+  - Fix the generated web SDK so that `pnpm` properly uses the `link` functionality.
