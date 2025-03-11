@@ -1,1 +1,2 @@
 - Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
+- Add support for brownfield project onboard `dataconnect:sql:setup` (#8150)

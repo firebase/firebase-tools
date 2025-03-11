@@ -221,6 +221,7 @@ export function load(client: any): any {
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};
   client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+  client.dataconnect.sql.setup = loadCommand("dataconnect-sql-setup");
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
