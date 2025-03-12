@@ -70,7 +70,7 @@ export const isDeployingWebFramework = (options: DeployOptions): boolean => {
     // If no site specified but we're deploying to Firebase Hosting, a webframework is being deployed
     if (!site) return true;
 
-    // Find the specific config being deployed
+    // If a site is specified, check if it's a web framework
     return webFrameworksInConfig.some((c) => [c.site, c.target].includes(site));
   });
 };
