@@ -41,6 +41,8 @@ export function setEnvVarsForEmulators(
       case Emulators.TASKS:
         env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
         break;
+      case Emulators.DATACONNECT:
+        env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = host;
     }
   }
 }

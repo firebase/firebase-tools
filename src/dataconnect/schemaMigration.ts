@@ -4,26 +4,29 @@ import { format } from "sql-formatter";
 import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
-  setupIAMUsers,
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
   toDatabaseUser,
 } from "../gcp/cloudsql/connect";
+import { needProjectId } from "../projectUtils";
 import {
-  firebaseowner,
-  iamUserIsCSQLAdmin,
   checkSQLRoleIsGranted,
   fdcSqlRoleMap,
-} from "../gcp/cloudsql/permissions";
-import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { needProjectId } from "../projectUtils";
+  setupSQLPermissions,
+  getSchemaMetadata,
+  SchemaSetupStatus,
+} from "../gcp/cloudsql/permissions_setup";
+import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { promptOnce, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
+import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+
 import * as errors from "./errors";
 
 export async function diffSchema(
@@ -236,10 +239,34 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
     );
   }
 
-  // Run the database roles setup. This should be idempotent.
-  await setupIAMUsers(instanceId, databaseId, options);
+  // Make sure we have the right setup for the requested role grant.
+  const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
+  switch (schemaInfo.setupStatus) {
+    case SchemaSetupStatus.NotSetup:
+    case SchemaSetupStatus.NotFound:
+      const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
+      isGreenfieldSetup = newSetupStatus === SchemaSetupStatus.GreenField;
+      break;
+    default:
+      logger.info(
+        `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
+      );
+      break;
+  }
 
-  // Upsert user account into the database.
+  // Edge case: we can't grant firebase owner unless database is greenfield.
+  if (!isGreenfieldSetup && fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)) {
+    const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
+
+    if (newSetupStatus !== SchemaSetupStatus.GreenField) {
+      throw new FirebaseError(
+        `Can't grant owner rule for brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
+      );
+    }
+  }
+
+  // Upsert new user account into the database.
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   // Grant the role to the user.
@@ -351,10 +378,21 @@ async function handleIncompatibleSchemaError(args: {
         ${commandsToExecuteBySuperUser.join("\n")}`);
     }
 
-    // TODO (tammam-g): at some point we would want to only run this after notifying the admin but
-    // until we confirm stability it's ok to run it on every migration by admin user.
-    if (userIsCSQLAdmin) {
-      await setupIAMUsers(instanceId, databaseId, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField) {
+      const newSetupStatus = await setupSQLPermissions(
+        instanceId,
+        databaseId,
+        schemaInfo,
+        options,
+        /* silent=*/ true,
+      );
+
+      if (newSetupStatus !== SchemaSetupStatus.GreenField) {
+        throw new FirebaseError(
+          `Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
+        );
+      }
     }
 
     // Test if iam user has access to the roles required for this migration
@@ -487,7 +525,7 @@ async function promptForInvalidConnectorError(
     !options.nonInteractive &&
     (await confirm({
       ...options,
-      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime.`)}.`,
+      message: `Would you like to delete and recreate these connectors? This will cause ${clc.red(`downtime`)}.`,
     }))
   ) {
     return true;

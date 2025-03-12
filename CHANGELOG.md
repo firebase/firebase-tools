@@ -1,9 +1,1 @@
-- Replaced `VSCODE_CWD` check to address issues running in VSCode environments. (#7471)
-- Added initial delay when loading python functions (#8239)
-- Enforced webframeworks enablement only on webframeworks sites (#8168)
-- Fixed issue where `apps:init` throws an error upon app creation.
-- Update Firebase Data Connect local toolkit to v1.8.3, which includes the following changes: (#8263)
-  - Adds a `_metadata.distance` field to vector similarity search results
-  - Fixes `auth` and `request.auth` when the request is unauthenticated
-  - Fixes an issue with hanging commas in import statements in the generated Web SDK
-  - Fixes an issue where the additional union type `{ __angular?: true }` breaks type inference in the generated Web SDK
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
