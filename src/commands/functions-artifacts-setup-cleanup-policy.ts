@@ -16,12 +16,12 @@ import * as artifacts from "../functions/artifacts";
 export const command = new Command("functions:artifacts:setup-cleanup-policy")
   .description(
     "Set up a cleanup policy for Cloud Run functions container images in Artifact Registry. " +
-    "This policy will automatically delete old container images created during functions deployment.",
+      "This policy will automatically delete old container images created during functions deployment.",
   )
   .option(
     "--location <location>",
     "Specify location to set up the cleanup policy. " +
-    "If omitted, uses the default functions location.",
+      "If omitted, uses the default functions location.",
     "us-central1",
   )
   .option(
@@ -53,7 +53,7 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
         logBullet(`Repository '${repoPath}' does not exist in Artifact Registry.`);
         logBullet(
           `Please deploy your functions first using: ` +
-          `${clc.bold(`firebase deploy --only functions`)}`,
+            `${clc.bold(`firebase deploy --only functions`)}`,
         );
         return;
       }
