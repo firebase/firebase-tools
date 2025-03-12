@@ -24,6 +24,7 @@ import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
+import { HostingConfig } from "../firebaseConfig";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -47,22 +48,32 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
 };
 
 export const isDeployingWebFramework = (options: DeployOptions): boolean => {
-  const config = options.config.get("hosting");
+  const config = options.config.get("hosting") as HostingConfig;
+  if (!config) return false;
 
-  const webFrameworkInConfig = (Array.isArray(config) ? config : [config]).find((it) => it.source);
+  const normalizedConfig = Array.isArray(config) ? config : [config];
 
-  if (!webFrameworkInConfig) return false;
+  // If we're deploying a specific site/target
+  if (options.only) {
+    return options.only.split(",").some((it) => {
+      const [target, site] = it.split(":");
+      if (target !== "hosting") return false;
 
-  if (!options.only) return true;
+      // If no site specified, check if any config has source
+      if (!site) {
+        return normalizedConfig.some((c) => c?.source);
+      }
 
-  return options.only.split(",").some((it) => {
-    const [target, site] = it.split(":");
+      // Find the specific config being deployed
+      const targetConfig = normalizedConfig.find((c) => [c.site, c.target].includes(site));
 
-    return (
-      target === "hosting" &&
-      [webFrameworkInConfig.site, webFrameworkInConfig.target].includes(site)
-    );
-  });
+      // Only return true if this specific config has source
+      return Boolean(targetConfig?.source);
+    });
+  }
+
+  // If no --only flag, check if any config has source
+  return normalizedConfig.some((c) => c?.source);
 };
 
 /**
