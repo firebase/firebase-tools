@@ -52,28 +52,27 @@ export const isDeployingWebFramework = (options: DeployOptions): boolean => {
   if (!config) return false;
 
   const normalizedConfig = Array.isArray(config) ? config : [config];
+  const webFrameworksInConfig = normalizedConfig.filter((c) => c?.source);
+
+  // If no webframeworks are in config, skip
+  if (webFrameworksInConfig.length === 0) return false;
+
+  // If a web framework is present in config and no --only flag is present, a web framework is being deployed
+  if (!options.only) return true;
 
   // If we're deploying a specific site/target
-  if (options.only) {
-    return options.only.split(",").some((it) => {
-      const [target, site] = it.split(":");
-      if (target !== "hosting") return false;
+  return options.only.split(",").some((it) => {
+    const [target, site] = it.split(":");
 
-      // If no site specified, check if any config has source
-      if (!site) {
-        return normalizedConfig.some((c) => c?.source);
-      }
+    // If not deploying to Firebase Hosting, skip
+    if (target !== "hosting") return false;
 
-      // Find the specific config being deployed
-      const targetConfig = normalizedConfig.find((c) => [c.site, c.target].includes(site));
+    // If no site specified but we're deploying to Firebase Hosting, a webframework is being deployed
+    if (!site) return true;
 
-      // Only return true if this specific config has source
-      return Boolean(targetConfig?.source);
-    });
-  }
-
-  // If no --only flag, check if any config has source
-  return normalizedConfig.some((c) => c?.source);
+    // Find the specific config being deployed
+    return webFrameworksInConfig.some((c) => [c.site, c.target].includes(site));
+  });
 };
 
 /**

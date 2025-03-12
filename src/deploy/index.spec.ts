@@ -16,45 +16,8 @@ describe("Deploy", () => {
       };
     });
 
-    describe("with no hosting config", () => {
-      beforeEach(() => {
-        options.config.get.withArgs("hosting").returns(null);
-      });
-
-      it("should return false when config is null", () => {
-        expect(isDeployingWebFramework(options)).to.be.false;
-      });
-    });
-
-    describe("with only hosting specified", () => {
-      describe("with mixed configs", () => {
-        beforeEach(() => {
-          options.config.get.withArgs("hosting").returns([
-            { source: "src", target: "prod" },
-            { source: "src", target: "staging" },
-            { target: "static", public: "public" },
-          ]);
-        });
-
-        it("should return true when only 'hosting' is specified", () => {
-          options.only = "hosting";
-          expect(isDeployingWebFramework(options)).to.be.true;
-        });
-
-        it("should return true when targeting a web framework site", () => {
-          options.only = "hosting:prod";
-          expect(isDeployingWebFramework(options)).to.be.true;
-        });
-
-        it("should return false when targeting a static site", () => {
-          options.only = "hosting:static";
-          expect(isDeployingWebFramework(options)).to.be.false;
-        });
-      });
-    });
-
     describe("with site in config", () => {
-      describe("single web framework", () => {
+      describe("with a single web framework", () => {
         beforeEach(() => {
           options.config.get.withArgs("hosting").returns([{ source: "src", site: "webframework" }]);
         });
@@ -119,10 +82,39 @@ describe("Deploy", () => {
           });
         });
       });
+
+      describe("with more than one web framework in config", () => {
+        beforeEach(() => {
+          options.config.get.withArgs("hosting").returns([
+            { source: "src", target: "prod" },
+            { source: "src", target: "staging" },
+            { public: "public", target: "static" },
+          ]);
+        });
+
+        it("should return true when only 'hosting' is specified", () => {
+          options.only = "hosting";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return true when targeting a web framework site", () => {
+          options.only = "hosting:prod";
+          expect(isDeployingWebFramework(options)).to.be.true;
+
+          // verify if it also works for the other site
+          options.only = "hosting:staging";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return false when targeting a non-web framework site", () => {
+          options.only = "hosting:static";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
     });
 
     describe("with target in config", () => {
-      describe("single web framework", () => {
+      describe("with a single web framework", () => {
         beforeEach(() => {
           options.config.get
             .withArgs("hosting")
@@ -189,6 +181,35 @@ describe("Deploy", () => {
           });
         });
       });
+
+      describe("with more than one web framework in config", () => {
+        beforeEach(() => {
+          options.config.get.withArgs("hosting").returns([
+            { source: "src", target: "prod" },
+            { source: "src", target: "staging" },
+            { public: "public", target: "static" },
+          ]);
+        });
+
+        it("should return true when only 'hosting' is specified", () => {
+          options.only = "hosting";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return true when targeting a web framework site", () => {
+          options.only = "hosting:prod";
+          expect(isDeployingWebFramework(options)).to.be.true;
+
+          // verify if it also works for the other site
+          options.only = "hosting:staging";
+          expect(isDeployingWebFramework(options)).to.be.true;
+        });
+
+        it("should return false when targeting a non-web framework site", () => {
+          options.only = "hosting:static";
+          expect(isDeployingWebFramework(options)).to.be.false;
+        });
+      });
     });
 
     describe("with no web framework in config", () => {
@@ -207,6 +228,11 @@ describe("Deploy", () => {
           options.only = "hosting:webframework";
           expect(isDeployingWebFramework(options)).to.be.false;
         });
+      });
+
+      it("should return false when config is null", () => {
+        options.config.get.withArgs("hosting").returns(null);
+        expect(isDeployingWebFramework(options)).to.be.false;
       });
     });
   });
