@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireAuth } from "../requireAuth";
 import { logBullet, logSuccess } from "../utils";
@@ -33,6 +33,7 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
     "--none",
     "Opt-out from cleanup policy. This will prevent suggestions to set up a cleanup policy during initialization and deployment.",
   )
+  .withForce("Automatically create or modify cleanup policy")
   .before(requireAuth)
   .before(artifactregistry.ensureApiEnabled)
   .before(requirePermissions, [
@@ -77,15 +78,11 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
         logBullet(`Note: This will remove the existing cleanup policy from the repository.`);
       }
 
-      const confirmOptOut = await promptOnce(
-        {
-          type: "confirm",
-          name: "confirm",
-          default: true,
-          message: "Do you want to continue?",
-        },
-        options,
-      );
+      const confirmOptOut = await confirm({
+        ...options,
+        default: true,
+        message: "Do you want to continue?",
+      });
 
       if (!confirmOptOut) {
         throw new FirebaseError("Command aborted.", { exit: 1 });
@@ -156,15 +153,11 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
       );
     }
 
-    const confirmSetup = await promptOnce(
-      {
-        type: "confirm",
-        name: "confirm",
-        default: true,
-        message: "Do you want to continue?",
-      },
-      options,
-    );
+    const confirmSetup = await confirm({
+      ...options,
+      default: true,
+      message: "Do you want to continue?",
+    });
 
     if (!confirmSetup) {
       throw new FirebaseError("Command aborted.", { exit: 1 });
