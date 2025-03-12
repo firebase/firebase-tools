@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { artifactRegistryDomain } from "../api";
 import { needProjectId } from "../projectUtils";
 import * as api from "../ensureApiEnabled";
+import * as proto from "./proto";
 
 export const API_VERSION = "v1";
 
@@ -22,7 +23,8 @@ export interface Repository {
   description: string;
   createTime: string;
   updateTime: string;
-  cleanupPolicies?: Record<string, CleanupPolicy>;
+  cleanupPolicies?: Record<string, CleanupPolicy | undefined>;
+  labels?: Record<string, string>;
 }
 
 export interface Operation {
@@ -37,7 +39,6 @@ export interface Operation {
   };
 }
 
-// Interfaces for Artifact Registry cleanup policies
 export interface CleanupPolicyCondition {
   tagState: string;
   olderThan: string;
@@ -59,11 +60,6 @@ export interface CleanupPolicy {
   mostRecentVersions?: CleanupPolicyMostRecentVersions;
 }
 
-export interface RepositoryPatch {
-  cleanupPolicies: Record<string, CleanupPolicy>;
-  cleanupPolicyDryRun?: boolean;
-}
-
 /** Delete a package. */
 export async function deletePackage(name: string): Promise<Operation> {
   const res = await client.delete<Operation>(name);
@@ -72,8 +68,6 @@ export async function deletePackage(name: string): Promise<Operation> {
 
 /**
  * Get a repository from Artifact Registry.
- * @param repoPath The full path to the repository
- * @returns The repository details
  */
 export async function getRepository(repoPath: string): Promise<Repository> {
   const res = await client.get<Repository>(repoPath);
@@ -81,25 +75,25 @@ export async function getRepository(repoPath: string): Promise<Repository> {
 }
 
 /**
- * Apply a patch to an Artifact Registry repository.
- * @param repoPath The full path to the repository
- * @param patchRequest The patch to apply
- * @param updateMask The update mask specifying which fields to update
+ * Update an Artifact Registry repository.
  */
-export async function patchRepository(
-  repoPath: string,
-  patchRequest: RepositoryPatch,
-  updateMask: string,
-): Promise<void> {
-  await client.patch<unknown, RepositoryPatch>(repoPath, patchRequest, {
-    queryParams: { updateMask },
+export async function updateRepository(repo: Partial<Repository>): Promise<Repository> {
+  const updateMask = proto.fieldMasks(repo, "cleanupPolicies", "labels");
+  if (updateMask.length === 0) {
+    const res = await client.get<Repository>(repo.name!);
+    return res.body;
+  }
+  const res = await client.patch<Partial<Repository>, Repository>(`/${repo.name}`, repo, {
+    queryParams: { updateMask: updateMask.join(",") },
   });
+  return res.body;
 }
 
 export type Permissions = { permissions: string[] };
 
 /**
  * Test IAM permissions for an Artifact Registry resource.
+ *
  * @param resource The full resource path to check permissions on
  * @param permissions Array of permissions to check
  * @returns Object containing the permissions that the caller has

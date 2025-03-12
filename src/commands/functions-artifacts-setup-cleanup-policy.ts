@@ -26,8 +26,12 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
   )
   .option(
     "--days <days>",
-    "Number of days to keep container images before deletion. Default is 5 days.",
-    "5",
+    "Number of days to keep container images before deletion. Default is 3 days.",
+    "3",
+  )
+  .option(
+    "--none",
+    "Opt-out from cleanup policy. This will prevent suggestions to set up a cleanup policy during initialization and deployment.",
   )
   .before(requireAuth)
   .before(artifactregistry.ensureApiEnabled)
@@ -40,13 +44,7 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
     const location = options.location || "us-central1";
     const daysToKeep = parseInt(options.days || "5", 10);
 
-    if (isNaN(daysToKeep) || daysToKeep <= 0) {
-      throw new FirebaseError("Days must be a positive number");
-    }
-
     const repoPath = artifacts.makeRepoPath(projectId, location);
-
-    // Check repository existence early before asking for confirmation
     let repository: artifactregistry.Repository;
     try {
       repository = await artifactregistry.getRepository(repoPath);
@@ -62,40 +60,102 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
       throw err;
     }
 
-    // Check if the repository already has the same policy
-    if (artifacts.hasSameCleanupPolicy(repository, artifacts.CLEANUP_POLICY_ID, daysToKeep)) {
+    if (options.none) {
+      if (artifacts.hasCleanupOptOut(repository)) {
+        logBullet(`Repository '${repoPath}' is already opted out from cleanup policies.`);
+        logBullet(`No changes needed.`);
+        return;
+      }
+
+      logBullet(`You are about to opt-out from cleanup policy for repository '${repoPath}'.`);
       logBullet(
-        `A cleanup policy already exists that deletes images older than ${daysToKeep} days.`,
+        `This will prevent suggestions to set up cleanup policy during initialization and deployment.`,
+      );
+
+      const existingPolicy = repository.cleanupPolicies?.[artifacts.CLEANUP_POLICY_ID];
+      if (existingPolicy) {
+        logBullet(`Note: This will remove the existing cleanup policy from the repository.`);
+      }
+
+      const confirmOptOut = await promptOnce(
+        {
+          type: "confirm",
+          name: "confirm",
+          default: true,
+          message: "Do you want to continue?",
+        },
+        options,
+      );
+
+      if (!confirmOptOut) {
+        throw new FirebaseError("Command aborted.", { exit: 1 });
+      }
+
+      try {
+        // Remove existing cleanup policy and add opt-out label
+        const policies: artifactregistry.Repository["cleanupPolicies"] = {
+          ...repository.cleanupPolicies,
+        };
+        if (artifacts.CLEANUP_POLICY_ID in policies) {
+          delete policies[artifacts.CLEANUP_POLICY_ID];
+        }
+        const update: Partial<artifactregistry.Repository> = {
+          name: repoPath,
+          labels: { ...repository.labels, [artifacts.OPT_OUT_LABEL_KEY]: "true" },
+          cleanupPolicies: policies,
+        };
+        await artifacts.updateRepository(update);
+        logSuccess(`Successfully opted out from cleanup policy for ${clc.bold(repoPath)}`);
+        return;
+      } catch (err: unknown) {
+        throw new FirebaseError("Failed to opt-out from artifact registry cleanup policy", {
+          original: err as Error,
+        });
+      }
+    }
+
+    if (isNaN(daysToKeep) || daysToKeep <= 0) {
+      throw new FirebaseError("Days must be a positive number");
+    }
+
+    if (artifacts.hasSameCleanupPolicy(repository, daysToKeep)) {
+      logBullet(
+        `A cleanup policy already exists that deletes images older than ${clc.bold(daysToKeep)} days.`,
       );
       logBullet(`No changes needed.`);
       return;
     }
 
-    // Show information about what will be done
     logBullet(
       `You are about to set up a cleanup policy for Cloud Functions container images in location ${clc.bold(location)}`,
     );
     logBullet(
-      `This policy will automatically delete container images that are older than ${clc.bold(daysToKeep.toString())} days`,
+      `This policy will automatically delete container images that are older than ${clc.bold(daysToKeep)} days`,
     );
     logBullet(
       "This helps reduce storage costs by removing old container images that are no longer needed",
     );
 
-    // Show update information if we're updating an existing policy
-    const existingPolicy = artifacts.findExistingPolicy(repository, artifacts.CLEANUP_POLICY_ID);
+    const existingPolicy = artifacts.findExistingPolicy(repository);
+
     let isUpdate = false;
     if (existingPolicy && existingPolicy.condition?.olderThan) {
       const existingDays = artifacts.parseDaysFromPolicy(existingPolicy.condition.olderThan);
-      if (existingDays !== undefined) {
+      if (existingDays) {
         isUpdate = true;
         logBullet(
-          `Note: This will update an existing policy that currently deletes images older than ${existingDays} days`,
+          `Note: This will update an existing policy that currently deletes images older than ${clc.bold(existingDays)} days`,
         );
       }
     }
 
-    // Confirm the action with the user
+    const optedOut = artifacts.hasCleanupOptOut(repository);
+    if (optedOut) {
+      logBullet(
+        `Note: This repository was previously opted out from cleanup policy. This action will remove the opt-out status.`,
+      );
+    }
+
     const confirmSetup = await promptOnce(
       {
         type: "confirm",
@@ -110,13 +170,21 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
       throw new FirebaseError("Command aborted.", { exit: 1 });
     }
 
+    const labels = { ...repository.labels };
+    delete labels[artifacts.OPT_OUT_LABEL_KEY];
+    const update: Partial<artifactregistry.Repository> = {
+      name: repoPath,
+      cleanupPolicies: {
+        ...repository.cleanupPolicies,
+        ...artifacts.generateCleanupPolicy(daysToKeep),
+      },
+      labels,
+    };
     try {
-      await artifacts.applyCleanupPolicy(repoPath, daysToKeep);
-
+      await artifacts.updateRepository(update);
       const successMessage = isUpdate
-        ? `Successfully updated cleanup policy to delete images older than ${daysToKeep} days`
-        : `Successfully set up cleanup policy that deletes images older than ${daysToKeep} days`;
-
+        ? `Successfully updated cleanup policy to delete images older than ${clc.bold(daysToKeep)} days`
+        : `Successfully set up cleanup policy that deletes images older than ${clc.bold(daysToKeep)} days`;
       logSuccess(successMessage);
       logBullet(`Cleanup policy has been set for ${clc.bold(repoPath)}`);
     } catch (err: unknown) {

@@ -2,16 +2,15 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as artifactregistry from "../gcp/artifactregistry";
-import { FirebaseError } from "../error";
 import * as artifacts from "./artifacts";
 
-describe("functions/artifacts", () => {
+describe("functions artifacts", () => {
   let sandbox: sinon.SinonSandbox;
-  let patchRepositoryStub: sinon.SinonStub;
+  let updateRepositoryStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    patchRepositoryStub = sandbox.stub(artifactregistry, "patchRepository").resolves();
+    updateRepositoryStub = sandbox.stub(artifactregistry, "updateRepository").resolves();
   });
 
   afterEach(() => {
@@ -35,7 +34,7 @@ describe("functions/artifacts", () => {
         updateTime: "",
       };
 
-      const policy = artifacts.findExistingPolicy(repo, "policy-id");
+      const policy = artifacts.findExistingPolicy(repo);
       expect(policy).to.be.undefined;
     });
 
@@ -58,7 +57,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      const policy = artifacts.findExistingPolicy(repo, "policy-id");
+      const policy = artifacts.findExistingPolicy(repo);
       expect(policy).to.be.undefined;
     });
 
@@ -83,7 +82,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      const policy = artifacts.findExistingPolicy(repo, "policy-id");
+      const policy = artifacts.findExistingPolicy(repo);
       expect(policy).to.deep.equal(expectedPolicy);
     });
   });
@@ -96,107 +95,17 @@ describe("functions/artifacts", () => {
     });
   });
 
-  describe("parseSecondsFromPolicy", () => {
+  describe("parseDaysFromPolicy", () => {
     it("should correctly parse seconds into days", () => {
-      expect(artifacts.parseSecondsFromPolicy("86400s")).to.equal(86400);
-      expect(artifacts.parseSecondsFromPolicy("432000s")).to.equal(43200);
-      expect(artifacts.parseSecondsFromPolicy("2592000s")).to.equal(2592000);
+      expect(artifacts.parseDaysFromPolicy("86400s")).to.equal(1);
+      expect(artifacts.parseDaysFromPolicy("432000s")).to.equal(5);
+      expect(artifacts.parseDaysFromPolicy("2592000s")).to.equal(30);
     });
 
     it("should return undefined for invalid formats", () => {
-      expect(artifacts.parseSecondsFromPolicy("5d")).to.be.undefined;
-      expect(artifacts.parseSecondsFromPolicy("invalid")).to.be.undefined;
-      expect(artifacts.parseSecondsFromPolicy("")).to.be.undefined;
-    });
-  });
-
-  describe("createCleanupPolicyPatch", () => {
-    it("should create a valid patch request", () => {
-      const patch = artifacts.createCleanupPolicyPatch("test-policy", 7);
-
-      expect(patch).to.deep.equal({
-        cleanupPolicies: {
-          "test-policy": {
-            id: "test-policy",
-            action: "DELETE",
-            condition: {
-              tagState: "ANY",
-              olderThan: "604800s", // 7 days in seconds
-            },
-          },
-        },
-      });
-    });
-  });
-
-  describe("applyCleanupPolicy", () => {
-    const REPO_PATH = "projects/my-project/locations/us-central1/repositories/gcf-artifacts";
-
-    it("should throw an error if days is not a positive number", async () => {
-      try {
-        await artifacts.applyCleanupPolicy(REPO_PATH, -1);
-        expect.fail("should have thrown");
-      } catch (err: unknown) {
-        const error = err as FirebaseError;
-        expect(error).to.be.instanceOf(FirebaseError);
-        expect(error.message).to.contain("Days must be a positive number");
-      }
-
-      try {
-        await artifacts.applyCleanupPolicy(REPO_PATH, NaN);
-        expect.fail("should have thrown");
-      } catch (err: unknown) {
-        const error = err as FirebaseError;
-        expect(error).to.be.instanceOf(FirebaseError);
-        expect(error.message).to.contain("Days must be a positive number");
-      }
-    });
-
-    it("should call patchRepository with correct parameters", async () => {
-      await artifacts.applyCleanupPolicy(REPO_PATH, 10);
-
-      expect(patchRepositoryStub).to.have.been.calledWith(
-        REPO_PATH,
-        {
-          cleanupPolicies: {
-            [artifacts.CLEANUP_POLICY_ID]: {
-              id: artifacts.CLEANUP_POLICY_ID,
-              action: "DELETE",
-              condition: {
-                tagState: "ANY",
-                olderThan: "864000s", // 10 days in seconds
-              },
-            },
-          },
-        },
-        "cleanupPolicies",
-      );
-    });
-
-    it("should handle permission errors", async () => {
-      patchRepositoryStub.rejects({ status: 403 } as any);
-
-      try {
-        await artifacts.applyCleanupPolicy(REPO_PATH, 5);
-        expect.fail("should have thrown");
-      } catch (err: unknown) {
-        const error = err as FirebaseError;
-        expect(error).to.be.instanceOf(FirebaseError);
-        expect(error.message).to.contain("You don't have permission");
-      }
-    });
-
-    it("should handle other errors", async () => {
-      patchRepositoryStub.rejects(new Error("Some API error"));
-
-      try {
-        await artifacts.applyCleanupPolicy(REPO_PATH, 5);
-        expect.fail("should have thrown");
-      } catch (err: unknown) {
-        const error = err as FirebaseError;
-        expect(error).to.be.instanceOf(FirebaseError);
-        expect(error.message).to.contain("Failed to set up artifact registry cleanup policy");
-      }
+      expect(artifacts.parseDaysFromPolicy("5d")).to.be.undefined;
+      expect(artifacts.parseDaysFromPolicy("invalid")).to.be.undefined;
+      expect(artifacts.parseDaysFromPolicy("")).to.be.undefined;
     });
   });
 
@@ -220,7 +129,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      expect(artifacts.hasSameCleanupPolicy(repo, "test-policy", 5)).to.be.true;
+      expect(artifacts.hasSameCleanupPolicy(repo, 5)).to.be.true;
     });
 
     it("should return false if policy doesn't exist", () => {
@@ -232,7 +141,7 @@ describe("functions/artifacts", () => {
         updateTime: "",
       };
 
-      expect(artifacts.hasSameCleanupPolicy(repo, "test-policy", 5)).to.be.false;
+      expect(artifacts.hasSameCleanupPolicy(repo, 5)).to.be.false;
     });
 
     it("should return false if policy exists with different days", () => {
@@ -254,7 +163,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      expect(artifacts.hasSameCleanupPolicy(repo, "test-policy", 5)).to.be.false;
+      expect(artifacts.hasSameCleanupPolicy(repo, 5)).to.be.false;
     });
 
     it("should return false if policy exists with different tag state", () => {
@@ -276,7 +185,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      expect(artifacts.hasSameCleanupPolicy(repo, "test-policy", 5)).to.be.false;
+      expect(artifacts.hasSameCleanupPolicy(repo, 5)).to.be.false;
     });
 
     it("should return false if policy exists without olderThan condition", () => {
@@ -298,7 +207,7 @@ describe("functions/artifacts", () => {
         },
       };
 
-      expect(artifacts.hasSameCleanupPolicy(repo, "test-policy", 5)).to.be.false;
+      expect(artifacts.hasSameCleanupPolicy(repo, 5)).to.be.false;
     });
   });
 });
