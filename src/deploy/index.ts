@@ -54,13 +54,13 @@ export const isDeployingWebFramework = (options: DeployOptions): boolean => {
   const normalizedConfig = Array.isArray(config) ? config : [config];
   const webFrameworksInConfig = normalizedConfig.filter((c) => c?.source);
 
-  // If no webframeworks are in config, skip
+  // If no webframeworks are in config, a web framework is not being deployed
   if (webFrameworksInConfig.length === 0) return false;
 
   // If a web framework is present in config and no --only flag is present, a web framework is being deployed
   if (!options.only) return true;
 
-  // If we're deploying a specific site/target when a web framework is present in config
+  // If we're deploying a specific site/target when a web framework is present in config, check if the target is a web framework
   return options.only.split(",").some((it) => {
     const [target, site] = it.split(":");
 
