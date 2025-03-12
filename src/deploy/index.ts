@@ -60,7 +60,7 @@ export const isDeployingWebFramework = (options: DeployOptions): boolean => {
   // If a web framework is present in config and no --only flag is present, a web framework is being deployed
   if (!options.only) return true;
 
-  // If we're deploying a specific site/target
+  // If we're deploying a specific site/target when a web framework is present in config
   return options.only.split(",").some((it) => {
     const [target, site] = it.split(":");
 
