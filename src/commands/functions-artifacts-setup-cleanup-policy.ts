@@ -11,17 +11,17 @@ import * as artifactregistry from "../gcp/artifactregistry";
 import * as artifacts from "../functions/artifacts";
 
 /**
- * Command to set up a cleanup policy for Cloud Functions container images in Artifact Registry
+ * Command to set up a cleanup policy for Cloud Run functions container images in Artifact Registry
  */
 export const command = new Command("functions:artifacts:setup-cleanup-policy")
   .description(
-    "Set up a cleanup policy for Cloud Functions container images in Artifact Registry. " +
-      "This policy will automatically delete old container images created during functions deployment.",
+    "Set up a cleanup policy for Cloud Run functions container images in Artifact Registry. " +
+    "This policy will automatically delete old container images created during functions deployment.",
   )
   .option(
     "--location <location>",
     "Specify location to set up the cleanup policy. " +
-      "If omitted, uses the default functions location.",
+    "If omitted, uses the default functions location.",
     "us-central1",
   )
   .option(
@@ -53,7 +53,7 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
         logBullet(`Repository '${repoPath}' does not exist in Artifact Registry.`);
         logBullet(
           `Please deploy your functions first using: ` +
-            `${clc.bold(`firebase deploy --only functions`)}`,
+          `${clc.bold(`firebase deploy --only functions`)}`,
         );
         return;
       }
@@ -127,7 +127,7 @@ export const command = new Command("functions:artifacts:setup-cleanup-policy")
     }
 
     logBullet(
-      `You are about to set up a cleanup policy for Cloud Functions container images in location ${clc.bold(location)}`,
+      `You are about to set up a cleanup policy for Cloud Run functions container images in location ${clc.bold(location)}`,
     );
     logBullet(
       `This policy will automatically delete container images that are older than ${clc.bold(daysToKeep)} days`,
