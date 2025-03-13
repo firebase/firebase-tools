@@ -101,8 +101,10 @@ export async function cleanupBuildImages(
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
   static packagePath(func: backend.TargetIds): string {
-    // GCF V2 artifact names follow a specific encoding scheme:
-    // Each part (project, region, functionId) is encoded separately with these rules:
+    // GCF V2 artifact names follow this schema:
+    // {encoded_project}__{encoded_region}__{encoded_function}
+    //
+    // Each part is encoded separately with these rules:
     // * Underscores are doubled ("_" -> "__")
     // * Dashes are doubled ("-" -> "--")
     // * A leading capital letter is replaced with <lower><dash><lower>
