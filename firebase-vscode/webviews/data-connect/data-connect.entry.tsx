@@ -52,7 +52,7 @@ function DataConnect() {
           Configure a generated SDK.
           <br></br>
           See also:{" "}
-          <a href="https://firebase.google.com/docs/data-connect/gp/web-sdk">
+          <a href="https://firebase.google.com/docs/data-connect/web-sdk">
             Working with generated SDKs
           </a>
         </p>

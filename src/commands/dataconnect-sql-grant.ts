@@ -7,7 +7,7 @@ import { pickService } from "../dataconnect/fileUtils";
 import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
-import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions";
+import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions_setup";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 

@@ -147,7 +147,7 @@ function DataConnect() {
       <Spacer size="xsmall" />
       <Label level={3}>
         See also:{" "}
-        <a href="https://firebase.google.com/docs/data-connect/gp/web-sdk">
+        <a href="https://firebase.google.com/docs/data-connect/web-sdk">
           Working with generated SDKs
         </a>
       </Label>

@@ -1,1 +1,1 @@
-- Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
