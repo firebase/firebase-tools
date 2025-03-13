@@ -108,6 +108,11 @@ export class ArtifactRegistryCleaner {
     // * A leading capital letter is replaced with <lower><dash><lower>
     // * Other capital letters are replaced with <underscore><lower>
     // Then the parts are joined with double underscores
+    // Example:
+    // - project "my-cool-project" -> "my--cool--project"
+    // - region "us-central1" -> "us--central1"
+    // - functionId "myFunction" -> "my_function"
+    // Final result: "my--cool--project__us--central1__my_function"
     const encodePart = (part: string): string => {
       return part
         .replace(/_/g, "__")
