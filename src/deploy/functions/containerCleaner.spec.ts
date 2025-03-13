@@ -190,6 +190,56 @@ describe("ArtifactRegistryCleaner", () => {
     sinon.verifyAndRestore();
   });
 
+  describe("packagePath", () => {
+    it("encodes project IDs with dashes", () => {
+      const func = {
+        id: "function",
+        region: "region",
+        project: "my-cool-project",
+      };
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-cool-project/locations/region/repositories/gcf-artifacts/packages/my--cool--project__region__function",
+      );
+    });
+
+    it("encodes project IDs with underscores", () => {
+      const func = {
+        id: "function",
+        region: "region",
+        project: "my_cool_project",
+      };
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my_cool_project/locations/region/repositories/gcf-artifacts/packages/my__cool__project__region__function",
+      );
+    });
+
+    it("encodes regions with dashes", () => {
+      const func = {
+        id: "function",
+        region: "us-central1",
+        project: "project",
+      };
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/project/locations/us-central1/repositories/gcf-artifacts/packages/project__us--central1__function",
+      );
+    });
+
+    it("encodes function IDs with capital letters", () => {
+      const func = {
+        id: "Strange-Casing_cases",
+        region: "region",
+        project: "project",
+      };
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__s-strange--_casing__cases",
+      );
+    });
+  });
+
   it("deletes artifacts", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
     const func = {
@@ -202,7 +252,7 @@ describe("ArtifactRegistryCleaner", () => {
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__function",
     );
     expect(poll.pollOperation).to.have.been.called;
   });
@@ -219,24 +269,7 @@ describe("ArtifactRegistryCleaner", () => {
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
-    );
-    expect(poll.pollOperation).to.not.have.been.called;
-  });
-
-  it("encodeds to avoid upper-case letters", async () => {
-    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
-      id: "Strange-Casing_cases",
-      region: "region",
-      project: "project",
-    };
-
-    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
-
-    await cleaner.cleanupFunction(func);
-    expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases",
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__function",
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });
