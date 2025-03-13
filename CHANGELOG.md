@@ -1,1 +1,2 @@
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
 - Support 3rd party builders for Angular. (#7557)
