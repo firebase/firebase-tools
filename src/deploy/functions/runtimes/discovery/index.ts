@@ -81,8 +81,8 @@ export async function detectFromPort(
   let res: Response;
   const timedOut = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
-      const originalError = 'User code failed to load. Cannot determine backend specification.'
-      const error = `${originalError} Timeout after ${timeout}. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'`
+      const originalError = "User code failed to load. Cannot determine backend specification.";
+      const error = `${originalError} Timeout after ${timeout}. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'`;
       reject(new FirebaseError(error));
     }, getFunctionDiscoveryTimeout() || timeout);
   });
