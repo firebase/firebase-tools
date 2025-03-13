@@ -101,17 +101,32 @@ export async function cleanupBuildImages(
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
   static packagePath(func: backend.TargetIds): string {
-    // GCFv1 names can include upper-case letters, but docker images cannot.
-    // to fix this, the artifact registry path for these images uses a custom encoding scheme.
-    // * Underscores are doubled
-    // * Dashes are doubled
+    // GCF V2 artifact names follow this schema:
+    // {encoded_project}__{encoded_region}__{encoded_function}
+    //
+    // Each part is encoded separately with these rules:
+    // * Underscores are doubled ("_" -> "__")
+    // * Dashes are doubled ("-" -> "--")
     // * A leading capital letter is replaced with <lower><dash><lower>
     // * Other capital letters are replaced with <underscore><lower>
-    const encodedId = func.id
-      .replace(/_/g, "__")
-      .replace(/-/g, "--")
-      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
-      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+    // Then the parts are joined with double underscores
+    // Example:
+    // - project "my-cool-project" -> "my--cool--project"
+    // - region "us-central1" -> "us--central1"
+    // - functionId "myFunction" -> "my_function"
+    // Final result: "my--cool--project__us--central1__my_function"
+    const encodePart = (part: string): string => {
+      return part
+        .replace(/_/g, "__")
+        .replace(/-/g, "--")
+        .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
+        .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+    };
+
+    const encodedId = [encodePart(func.project), encodePart(func.region), encodePart(func.id)].join(
+      "__",
+    );
+
     return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${encodedId}`;
   }
 
