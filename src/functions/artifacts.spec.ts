@@ -39,7 +39,7 @@ describe("functions artifacts", () => {
             action: "DELETE",
             condition: {
               tagState: "ANY",
-              olderThan: "432000s",
+              olderThan: `${5 * 60 * 60 * 24}s`,
             },
           },
         },
@@ -55,7 +55,7 @@ describe("functions artifacts", () => {
         action: "DELETE",
         condition: {
           tagState: "ANY",
-          olderThan: "432000s",
+          olderThan: `${5 * 60 * 60 * 24}s`,
         },
       };
 
@@ -105,7 +105,7 @@ describe("functions artifacts", () => {
       expect(policy[artifacts.CLEANUP_POLICY_ID].action).to.equal("DELETE");
       expect(policy[artifacts.CLEANUP_POLICY_ID].condition).to.deep.include({
         tagState: "ANY",
-        olderThan: "604800s", // 7 days in seconds
+        olderThan: `${7 * 60 * 60 * 24}s`,
       });
     });
   });
@@ -124,7 +124,7 @@ describe("functions artifacts", () => {
     });
 
     it("should call artifactregistry.updateRepository with the correct parameters", async () => {
-      const repoUpdate: Partial<artifactregistry.Repository> = {
+      const repoUpdate: artifactregistry.RepositoryInput = {
         name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
         labels: { key: "value" },
       };
@@ -138,7 +138,7 @@ describe("functions artifacts", () => {
       Object.assign(error, { status: 403 });
       updateRepositoryStub.rejects(error);
 
-      const repoUpdate: Partial<artifactregistry.Repository> = {
+      const repoUpdate: artifactregistry.RepositoryInput = {
         name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
       };
 
@@ -150,6 +150,160 @@ describe("functions artifacts", () => {
         expect(err.message).to.include("Artifact Registry Administrator");
         expect(err.exit).to.equal(1);
       }
+    });
+  });
+
+  describe("optOutRepository", () => {
+    let sandbox: sinon.SinonSandbox;
+    let updateRepositoryStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      updateRepositoryStub = sandbox.stub(artifacts, "updateRepository").resolves();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should delete an existing cleanup policy and add the opt-out label", async () => {
+      const repository: artifactregistry.Repository = {
+        name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
+        format: "DOCKER",
+        description: "Cloud Functions container artifacts",
+        createTime: "",
+        updateTime: "",
+        cleanupPolicies: {
+          [artifacts.CLEANUP_POLICY_ID]: {
+            id: artifacts.CLEANUP_POLICY_ID,
+            action: "DELETE",
+            condition: {
+              tagState: "ANY",
+              olderThan: `${3 * 60 * 60 * 24}s`,
+            },
+          },
+        },
+        labels: { existingLabel: "value" },
+      };
+
+      await artifacts.optOutRepository(repository);
+
+      expect(updateRepositoryStub).to.have.been.calledOnce;
+      const updateArg = updateRepositoryStub.firstCall.args[0];
+      expect(updateArg.name).to.equal(repository.name);
+      expect(updateArg.labels).to.deep.include({
+        existingLabel: "value",
+        [artifacts.OPT_OUT_LABEL_KEY]: "true",
+      });
+      expect(updateArg.cleanupPolicies).to.not.have.property(artifacts.CLEANUP_POLICY_ID);
+    });
+
+    it("should add the opt-out label even when no policy exists", async () => {
+      const repository: artifactregistry.Repository = {
+        name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
+        format: "DOCKER",
+        description: "Cloud Functions container artifacts",
+        createTime: "",
+        updateTime: "",
+        labels: { existingLabel: "value" },
+      };
+
+      await artifacts.optOutRepository(repository);
+
+      expect(updateRepositoryStub).to.have.been.calledOnce;
+      const updateArg = updateRepositoryStub.firstCall.args[0];
+      expect(updateArg.name).to.equal(repository.name);
+      expect(updateArg.labels).to.deep.include({
+        existingLabel: "value",
+        [artifacts.OPT_OUT_LABEL_KEY]: "true",
+      });
+    });
+  });
+
+  describe("setCleanupPolicy", () => {
+    let sandbox: sinon.SinonSandbox;
+    let updateRepositoryStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      updateRepositoryStub = sandbox.stub(artifacts, "updateRepository").resolves();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should set a cleanup policy with the specified days", async () => {
+      const repository: artifactregistry.Repository = {
+        name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
+        format: "DOCKER",
+        description: "Cloud Functions container artifacts",
+        createTime: "",
+        updateTime: "",
+        labels: { existingLabel: "value" },
+      };
+
+      const daysToKeep = 7;
+      await artifacts.setCleanupPolicy(repository, daysToKeep);
+
+      expect(updateRepositoryStub).to.have.been.calledOnce;
+      const updateArg = updateRepositoryStub.firstCall.args[0];
+      expect(updateArg.name).to.equal(repository.name);
+      expect(updateArg.cleanupPolicies).to.have.property(artifacts.CLEANUP_POLICY_ID);
+      expect(updateArg.cleanupPolicies[artifacts.CLEANUP_POLICY_ID].condition.olderThan).to.equal(
+        `${60 * 60 * 24 * 7}s`,
+      );
+    });
+
+    it("should preserve existing cleanup policies", async () => {
+      const repository: artifactregistry.Repository = {
+        name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
+        format: "DOCKER",
+        description: "Cloud Functions container artifacts",
+        createTime: "",
+        updateTime: "",
+        cleanupPolicies: {
+          "other-policy": {
+            id: "other-policy",
+            action: "DELETE",
+            condition: {
+              tagState: "ANY",
+              olderThan: `${5 * 60 * 60 * 24}s`,
+            },
+          },
+        },
+        labels: { existingLabel: "value" },
+      };
+
+      const daysToKeep = 7;
+      await artifacts.setCleanupPolicy(repository, daysToKeep);
+
+      expect(updateRepositoryStub).to.have.been.calledOnce;
+      const updateArg = updateRepositoryStub.firstCall.args[0];
+      expect(updateArg.cleanupPolicies).to.have.property("other-policy");
+      expect(updateArg.cleanupPolicies).to.have.property(artifacts.CLEANUP_POLICY_ID);
+    });
+
+    it("should remove the opt-out label if it exists", async () => {
+      const repository: artifactregistry.Repository = {
+        name: "projects/my-project/locations/us-central1/repositories/gcf-artifacts",
+        format: "DOCKER",
+        description: "Cloud Functions container artifacts",
+        createTime: "",
+        updateTime: "",
+        labels: {
+          existingLabel: "value",
+          [artifacts.OPT_OUT_LABEL_KEY]: "true",
+        },
+      };
+
+      const daysToKeep = 7;
+      await artifacts.setCleanupPolicy(repository, daysToKeep);
+
+      expect(updateRepositoryStub).to.have.been.calledOnce;
+      const updateArg = updateRepositoryStub.firstCall.args[0];
+      expect(updateArg.labels).to.have.property("existingLabel");
+      expect(updateArg.labels).to.not.have.property(artifacts.OPT_OUT_LABEL_KEY);
     });
   });
 
@@ -167,7 +321,7 @@ describe("functions artifacts", () => {
             action: "DELETE",
             condition: {
               tagState: "ANY",
-              olderThan: "432000s", // 5 days
+              olderThan: `${5 * 60 * 60 * 24}s`,
             },
           },
         },
@@ -201,7 +355,7 @@ describe("functions artifacts", () => {
             action: "DELETE",
             condition: {
               tagState: "ANY",
-              olderThan: "259200s", // 3 days
+              olderThan: `${3 * 60 * 60 * 24}s`,
             },
           },
         },
@@ -223,7 +377,7 @@ describe("functions artifacts", () => {
             action: "DELETE",
             condition: {
               tagState: "TAGGED",
-              olderThan: "432000s", // 5 days
+              olderThan: `${5 * 60 * 60 * 24}s`,
             },
           },
         },

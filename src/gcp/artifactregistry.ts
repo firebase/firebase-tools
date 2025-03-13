@@ -1,6 +1,6 @@
 import { Client } from "../apiv2";
 import { artifactRegistryDomain } from "../api";
-import { needProjectId } from "../projectUtils";
+import { assertImplements, DeepOmit, RecursiveKeyOf } from "../metaprogramming";
 import * as api from "../ensureApiEnabled";
 import * as proto from "./proto";
 
@@ -12,8 +12,7 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-export function ensureApiEnabled(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+export function ensureApiEnabled(projectId: string): Promise<void> {
   return api.ensure(projectId, artifactRegistryDomain(), "artifactregistry", true);
 }
 
@@ -26,6 +25,13 @@ export interface Repository {
   cleanupPolicies?: Record<string, CleanupPolicy | undefined>;
   labels?: Record<string, string>;
 }
+
+export type RepositoryOutputOnlyFields = "format" | "description" | "createTime" | "updateTime";
+// This line caues a compile-time error if RepositoryOutputOnlyFields has a field that is
+// missing in Repository or incompatible with the type in Repository.
+assertImplements<RepositoryOutputOnlyFields, RecursiveKeyOf<Repository>>();
+
+export type RepositoryInput = DeepOmit<Repository, RepositoryOutputOnlyFields>;
 
 export interface Operation {
   name: string;
@@ -77,33 +83,14 @@ export async function getRepository(repoPath: string): Promise<Repository> {
 /**
  * Update an Artifact Registry repository.
  */
-export async function updateRepository(repo: Partial<Repository>): Promise<Repository> {
+export async function updateRepository(repo: RepositoryInput): Promise<Repository> {
   const updateMask = proto.fieldMasks(repo, "cleanupPolicies", "labels");
   if (updateMask.length === 0) {
     const res = await client.get<Repository>(repo.name!);
     return res.body;
   }
-  const res = await client.patch<Partial<Repository>, Repository>(`/${repo.name}`, repo, {
+  const res = await client.patch<RepositoryInput, Repository>(`/${repo.name}`, repo, {
     queryParams: { updateMask: updateMask.join(",") },
-  });
-  return res.body;
-}
-
-export type Permissions = { permissions: string[] };
-
-/**
- * Test IAM permissions for an Artifact Registry resource.
- *
- * @param resource The full resource path to check permissions on
- * @param permissions Array of permissions to check
- * @returns Object containing the permissions that the caller has
- */
-export async function testIamPermissions(
-  resource: string,
-  permissions: string[],
-): Promise<Permissions> {
-  const res = await client.post<Permissions, Permissions>(`${resource}:testIamPermissions`, {
-    permissions,
   });
   return res.body;
 }

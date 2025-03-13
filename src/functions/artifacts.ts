@@ -2,10 +2,10 @@ import * as artifactregistry from "../gcp/artifactregistry";
 import { FirebaseError } from "../error";
 
 /**
- * Repository name used by Cloud Run functions for storing artifacts.
+ * Repository id used by Cloud Run functions for storing artifacts.
  * See https://cloud.google.com/functions/docs/building#image_registry
  */
-export const REPO_NAME = "gcf-artifacts";
+export const GCF_REPO_ID = "gcf-artifacts";
 
 /** ID used for cleanup policies created by Firebase CLI */
 export const CLEANUP_POLICY_ID = "firebase-functions-cleanup";
@@ -24,8 +24,12 @@ const SECONDS_IN_DAY = 24 * 60 * 60;
  *
  * @returns The full path to the repository
  */
-export function makeRepoPath(projectId: string, location: string): string {
-  return `projects/${projectId}/locations/${location}/repositories/${REPO_NAME}`;
+export function makeRepoPath(
+  projectId: string,
+  location: string,
+  repoName: string = GCF_REPO_ID,
+): string {
+  return `projects/${projectId}/locations/${location}/repositories/${repoName}`;
 }
 
 /**
@@ -90,7 +94,7 @@ export function generateCleanupPolicy(
 /**
  * Helper function to handle common error handling for repository operations
  */
-export async function updateRepository(repo: Partial<artifactregistry.Repository>): Promise<void> {
+export async function updateRepository(repo: artifactregistry.RepositoryInput): Promise<void> {
   try {
     await artifactregistry.updateRepository(repo);
   } catch (err: any) {
@@ -107,6 +111,44 @@ export async function updateRepository(repo: Partial<artifactregistry.Repository
       });
     }
   }
+}
+
+/**
+ * Opt out a repository from cleanup policies and delete any existing policy
+ */
+export async function optOutRepository(repository: artifactregistry.Repository): Promise<void> {
+  const policies: artifactregistry.Repository["cleanupPolicies"] = {
+    ...repository.cleanupPolicies,
+  };
+  if (CLEANUP_POLICY_ID in policies) {
+    delete policies[CLEANUP_POLICY_ID];
+  }
+  const update: artifactregistry.RepositoryInput = {
+    name: repository.name,
+    labels: { ...repository.labels, [OPT_OUT_LABEL_KEY]: "true" },
+    cleanupPolicies: policies,
+  };
+  await exports.updateRepository(update);
+}
+
+/**
+ * Set cleanup policy on a repository
+ */
+export async function setCleanupPolicy(
+  repository: artifactregistry.Repository,
+  daysToKeep: number,
+): Promise<void> {
+  const labels = { ...repository.labels };
+  delete labels[OPT_OUT_LABEL_KEY];
+  const update: artifactregistry.RepositoryInput = {
+    name: repository.name,
+    cleanupPolicies: {
+      ...repository.cleanupPolicies,
+      ...generateCleanupPolicy(daysToKeep),
+    },
+    labels,
+  };
+  await exports.updateRepository(update);
 }
 
 /**
