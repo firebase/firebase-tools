@@ -1,0 +1,1 @@
+- - Fix GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format (#8318)
