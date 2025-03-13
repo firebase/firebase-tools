@@ -1,1 +1,2 @@
-- - Fix GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format (#8318)
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
+- Fix GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format (#8318)
