@@ -90,6 +90,7 @@ export class AppHostingYamlConfig {
   }
 }
 
-function parseEnv(envs: Env[]) {
+// TODO: generalize into a utility function and remove the key from the array type.
+function parseEnv(envs: Env[]): Record<string, Env> {
   return Object.fromEntries(envs.map((env) => [env.variable, env]));
 }
