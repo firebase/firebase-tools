@@ -9,18 +9,31 @@ import * as docker from "../../gcp/docker";
 import * as poller from "../../operation-poller";
 import * as utils from "../../utils";
 
+function createTestEndpoint(overrides: Partial<backend.Endpoint> = {}): backend.Endpoint {
+  return {
+    id: "function",
+    region: "us-central1",
+    project: "project",
+    platform: "gcfv2",
+    entryPoint: "function",
+    runtime: "nodejs16",
+    httpsTrigger: {},
+    ...overrides,
+  };
+}
+
 describe("CleanupBuildImages", () => {
-  let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
+  let gcr: containerCleaner.ContainerRegistryCleaner;
   let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
   let logLabeledWarning: sinon.SinonStub;
-  const TARGET: backend.TargetIds = {
-    project: "project",
-    region: "us-central1",
-    id: "id",
-  };
+  let dockerHelper: sinon.SinonStubbedInstance<containerCleaner.DockerHelper>;
+  const TARGET = createTestEndpoint();
 
   beforeEach(() => {
-    gcr = sinon.createStubInstance(containerCleaner.ContainerRegistryCleaner);
+    dockerHelper = sinon.createStubInstance(containerCleaner.DockerHelper);
+    gcr = new containerCleaner.ContainerRegistryCleaner();
+    // Inject the stubbed DockerHelper
+    (gcr as any).helpers = { us: dockerHelper };
     ar = sinon.createStubInstance(containerCleaner.ArtifactRegistryCleaner);
     logLabeledWarning = sinon.stub(utils, "logLabeledWarning");
   });
@@ -30,13 +43,24 @@ describe("CleanupBuildImages", () => {
   });
 
   it("uses GCR and AR", async () => {
-    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar } as any);
-    expect(gcr.cleanupFunction).to.have.been.called;
+    dockerHelper.ls.withArgs("project/gcf/us-central1").resolves({
+      children: ["uuid"],
+      digests: [],
+      tags: [],
+    });
+    dockerHelper.ls.withArgs("project/gcf/us-central1/uuid").resolves({
+      children: [],
+      digests: ["sha256:func-hash"],
+      tags: ["function_version-1"],
+    });
+
+    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar });
+    expect(dockerHelper.rm).to.have.been.calledWith("project/gcf/us-central1/uuid");
   });
 
   it("reports failed domains from AR", async () => {
     ar.cleanupFunction.rejects(new Error("uh oh"));
-    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar });
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
       new RegExp(
@@ -46,8 +70,8 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from GCR", async () => {
-    gcr.cleanupFunction.rejects(new Error("uh oh"));
-    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
+    dockerHelper.ls.withArgs("project/gcf/us-central1").rejects(new Error("uh oh"));
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar });
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
       new RegExp("https://console.cloud.google.com/gcr/images/project/us/gcf"),
@@ -191,48 +215,78 @@ describe("ArtifactRegistryCleaner", () => {
   });
 
   describe("packagePath", () => {
-    it("encodes project IDs with dashes", () => {
-      const func = {
+    it("uses V1 encoding for gcfv1 functions", () => {
+      const func = createTestEndpoint({
+        id: "helloWorldV1",
+        region: "us-central1",
+        project: "my-project",
+        platform: "gcfv1",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-project/locations/us-central1/repositories/gcf-artifacts/packages/hello_world_v1",
+      );
+    });
+
+    it("uses V2 encoding for gcfv2 functions", () => {
+      const func = createTestEndpoint({
+        id: "helloWorldV2",
+        region: "us-central1",
+        project: "my-project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-project/locations/us-central1/repositories/gcf-artifacts/packages/my--project__us--central1__hello_world_v2",
+      );
+    });
+
+    it("encodes V2 project IDs with dashes", () => {
+      const func = createTestEndpoint({
         id: "function",
         region: "region",
         project: "my-cool-project",
-      };
+        platform: "gcfv2",
+      });
 
       expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
         "projects/my-cool-project/locations/region/repositories/gcf-artifacts/packages/my--cool--project__region__function",
       );
     });
 
-    it("encodes project IDs with underscores", () => {
-      const func = {
+    it("encodes V2 project IDs with underscores", () => {
+      const func = createTestEndpoint({
         id: "function",
         region: "region",
         project: "my_cool_project",
-      };
+        platform: "gcfv2",
+      });
 
       expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
         "projects/my_cool_project/locations/region/repositories/gcf-artifacts/packages/my__cool__project__region__function",
       );
     });
 
-    it("encodes regions with dashes", () => {
-      const func = {
+    it("encodes V2 regions with dashes", () => {
+      const func = createTestEndpoint({
         id: "function",
         region: "us-central1",
         project: "project",
-      };
+        platform: "gcfv2",
+      });
 
       expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
         "projects/project/locations/us-central1/repositories/gcf-artifacts/packages/project__us--central1__function",
       );
     });
 
-    it("encodes function IDs with capital letters", () => {
-      const func = {
+    it("encodes V2 function IDs with capital letters", () => {
+      const func = createTestEndpoint({
         id: "Strange-Casing_cases",
         region: "region",
         project: "project",
-      };
+        platform: "gcfv2",
+      });
 
       expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
         "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__s-strange--_casing__cases",
@@ -242,11 +296,12 @@ describe("ArtifactRegistryCleaner", () => {
 
   it("deletes artifacts", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func = createTestEndpoint({
       id: "function",
       region: "region",
       project: "project",
-    };
+      platform: "gcfv2",
+    });
 
     ar.deletePackage.returns(Promise.resolve({ name: "op" } as any));
 
@@ -259,11 +314,12 @@ describe("ArtifactRegistryCleaner", () => {
 
   it("bypasses poller if the operation is completed", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func = createTestEndpoint({
       id: "function",
       region: "region",
       project: "project",
-    };
+      platform: "gcfv2",
+    });
 
     ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
 
