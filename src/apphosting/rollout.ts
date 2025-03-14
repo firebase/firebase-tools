@@ -13,7 +13,7 @@ import * as poller from "../operation-poller";
 import { logBullet, sleep } from "../utils";
 import { apphostingOrigin, consoleOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import { getBackendForAmbiguousLocation, getBackendForLocation } from "./backend";
+import { getBackendForAmbiguousLocation, getBackendForLocation, getBackend } from "./backend";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
@@ -38,10 +38,9 @@ export async function createRollout(
 ): Promise<void> {
   let backend: apphosting.Backend;
   if (location === "-" || location === "") {
-    backend = await getBackendForAmbiguousLocation(
+    backend = await getBackend(
       projectId,
       backendId,
-      "Please select the location of the backend you'd like to roll out:",
       force,
     );
     location = apphosting.parseBackendName(backend.name).location;
