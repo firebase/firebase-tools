@@ -40,10 +40,7 @@ export function makeRepoPath(
 export function findExistingPolicy(
   repository: artifactregistry.Repository,
 ): artifactregistry.CleanupPolicy | undefined {
-  if (!repository.cleanupPolicies) {
-    return;
-  }
-  return repository.cleanupPolicies[CLEANUP_POLICY_ID];
+  return repository?.cleanupPolicies?.[CLEANUP_POLICY_ID];
 }
 
 /**
