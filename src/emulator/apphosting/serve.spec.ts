@@ -82,9 +82,9 @@ describe("serve", () => {
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
     });
 
-    it("Should pass plaintext environment varialbes", async () => {
+    it("Should pass plaintext environment variables", async () => {
       const yaml = AppHostingYamlConfig.empty();
-      yaml.addEnvironmentVariable({ variable: "FOO", value: "BAR" });
+      yaml.env["FOO"] = { value: "BAR" };
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(yaml);
 
@@ -98,7 +98,7 @@ describe("serve", () => {
     describe("secret env vars", () => {
       it("Should resolve full secrets without projectId", async () => {
         const yaml = AppHostingYamlConfig.empty();
-        yaml.addSecret({ variable: "FOO", secret: "projects/p/secrets/s" });
+        yaml.env["FOO"] = { secret: "projects/p/secrets/s" };
         checkListenableStub.onFirstCall().returns(true);
         configsStub.getLocalAppHostingConfiguration.resolves(yaml);
         accessSecretVersionStub.withArgs("p", "s", "latest").resolves("BAR");
@@ -112,7 +112,7 @@ describe("serve", () => {
 
       it("Should resolve full secrets versions without projectId", async () => {
         const yaml = AppHostingYamlConfig.empty();
-        yaml.addSecret({ variable: "FOO", secret: "projects/p/secrets/s/versions/1" });
+        yaml.env["FOO"] = { secret: "projects/p/secrets/s/versions/1" };
         checkListenableStub.onFirstCall().returns(true);
         configsStub.getLocalAppHostingConfiguration.resolves(yaml);
         accessSecretVersionStub.withArgs("p", "s", "1").resolves("BAR");
@@ -126,7 +126,7 @@ describe("serve", () => {
 
       it("Should handle secret IDs if project is provided", async () => {
         const yaml = AppHostingYamlConfig.empty();
-        yaml.addSecret({ variable: "FOO", secret: "s" });
+        yaml.env["FOO"] = { secret: "s" };
         checkListenableStub.onFirstCall().returns(true);
         configsStub.getLocalAppHostingConfiguration.resolves(yaml);
         accessSecretVersionStub.withArgs("p", "s", "latest").resolves("BAR");
@@ -140,7 +140,7 @@ describe("serve", () => {
 
       it("Should allow explicit versions", async () => {
         const yaml = AppHostingYamlConfig.empty();
-        yaml.addSecret({ variable: "FOO", secret: "s@1" });
+        yaml.env["FOO"] = { secret: "s@1" };
         checkListenableStub.onFirstCall().returns(true);
         configsStub.getLocalAppHostingConfiguration.resolves(yaml);
         accessSecretVersionStub.withArgs("p", "s", "1").resolves("BAR");
@@ -154,7 +154,7 @@ describe("serve", () => {
 
       it("Should have a clear error if project ID is required but not present", async () => {
         const yaml = AppHostingYamlConfig.empty();
-        yaml.addSecret({ variable: "FOO", secret: "s" });
+        yaml.env["FOO"] = { secret: "s" };
         checkListenableStub.onFirstCall().returns(true);
         configsStub.getLocalAppHostingConfiguration.resolves(yaml);
 

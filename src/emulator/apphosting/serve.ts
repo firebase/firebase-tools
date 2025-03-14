@@ -45,9 +45,19 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   return { hostname, port };
 }
 
+// Matches a fully qualified secret or version name, e.g.
+// projects/my-project/secrets/my-secret/versions/1
+// projects/my-project/secrets/my-secret/versions/latest
+// projects/my-project/secrets/my-secret
 const secretResourceRegex =
   /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
+
+// Matches a shorthand for a project-relative secret, with optional version, e.g.
+// my-secret
+// my-secret@1
+// my-secret@latest
 const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
+
 async function loadSecret(project: string | undefined, name: string): Promise<string> {
   let projectId: string;
   let secretId: string;
@@ -85,20 +95,14 @@ async function serve(
 
   const backendRoot = resolveProjectPath({}, backendRelativeDir);
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
-  const environmentVariablesAsRecord: Record<string, string> = {};
-
-  for (const env of apphostingLocalConfig.environmentVariables) {
-    environmentVariablesAsRecord[env.variable] = env.value!;
-  }
-  await Promise.all(
-    apphostingLocalConfig.secrets?.map(async (secret) => {
-      environmentVariablesAsRecord[secret.variable] = await loadSecret(projectId, secret.secret!);
-    }) || [],
-  );
+  const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
+    key,
+    value.value ? value.value : await loadSecret(projectId, value.secret!),
+  ]);
 
   const environmentVariablesToInject = {
     ...getEmulatorEnvs(),
-    ...environmentVariablesAsRecord,
+    ...Object.fromEntries(await Promise.all(resolveEnv)),
     PORT: port.toString(),
   };
   if (startCommand) {
