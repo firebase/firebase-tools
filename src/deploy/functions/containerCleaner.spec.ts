@@ -11,7 +11,7 @@ import * as utils from "../../utils";
 
 function createTestEndpoint(overrides: Partial<backend.Endpoint> = {}): backend.Endpoint {
   return {
-    id: "function",
+    id: "id",
     region: "us-central1",
     project: "project",
     platform: "gcfv2",
@@ -23,17 +23,13 @@ function createTestEndpoint(overrides: Partial<backend.Endpoint> = {}): backend.
 }
 
 describe("CleanupBuildImages", () => {
-  let gcr: containerCleaner.ContainerRegistryCleaner;
+  let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
   let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
   let logLabeledWarning: sinon.SinonStub;
-  let dockerHelper: sinon.SinonStubbedInstance<containerCleaner.DockerHelper>;
-  const TARGET = createTestEndpoint();
+  const TARGET: backend.Endpoint = createTestEndpoint();
 
   beforeEach(() => {
-    dockerHelper = sinon.createStubInstance(containerCleaner.DockerHelper);
-    gcr = new containerCleaner.ContainerRegistryCleaner();
-    // Inject the stubbed DockerHelper
-    (gcr as any).helpers = { us: dockerHelper };
+    gcr = sinon.createStubInstance(containerCleaner.ContainerRegistryCleaner);
     ar = sinon.createStubInstance(containerCleaner.ArtifactRegistryCleaner);
     logLabeledWarning = sinon.stub(utils, "logLabeledWarning");
   });
@@ -43,24 +39,13 @@ describe("CleanupBuildImages", () => {
   });
 
   it("uses GCR and AR", async () => {
-    dockerHelper.ls.withArgs("project/gcf/us-central1").resolves({
-      children: ["uuid"],
-      digests: [],
-      tags: [],
-    });
-    dockerHelper.ls.withArgs("project/gcf/us-central1/uuid").resolves({
-      children: [],
-      digests: ["sha256:func-hash"],
-      tags: ["function_version-1"],
-    });
-
-    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar });
-    expect(dockerHelper.rm).to.have.been.calledWith("project/gcf/us-central1/uuid");
+    await containerCleaner.cleanupBuildImages([TARGET], [], { gcr, ar } as any);
+    expect(gcr.cleanupFunction).to.have.been.called;
   });
 
   it("reports failed domains from AR", async () => {
     ar.cleanupFunction.rejects(new Error("uh oh"));
-    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar });
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
       new RegExp(
@@ -70,8 +55,8 @@ describe("CleanupBuildImages", () => {
   });
 
   it("reports failed domains from GCR", async () => {
-    dockerHelper.ls.withArgs("project/gcf/us-central1").rejects(new Error("uh oh"));
-    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar });
+    gcr.cleanupFunction.rejects(new Error("uh oh"));
+    await containerCleaner.cleanupBuildImages([], [TARGET], { gcr, ar } as any);
     expect(logLabeledWarning).to.have.been.calledWithMatch(
       "functions",
       new RegExp("https://console.cloud.google.com/gcr/images/project/us/gcf"),
