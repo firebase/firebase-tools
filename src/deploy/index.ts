@@ -24,6 +24,7 @@ import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
+import { HostingConfig } from "../firebaseConfig";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -47,21 +48,30 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
 };
 
 export const isDeployingWebFramework = (options: DeployOptions): boolean => {
-  const config = options.config.get("hosting");
+  const config = options.config.get("hosting") as HostingConfig;
+  if (!config) return false;
 
-  const webFrameworkInConfig = (Array.isArray(config) ? config : [config]).find((it) => it.source);
+  const normalizedConfig = Array.isArray(config) ? config : [config];
+  const webFrameworksInConfig = normalizedConfig.filter((c) => c?.source);
 
-  if (!webFrameworkInConfig) return false;
+  // If no webframeworks are in config, a web framework is not being deployed
+  if (webFrameworksInConfig.length === 0) return false;
 
+  // If a web framework is present in config and no --only flag is present, a web framework is being deployed
   if (!options.only) return true;
 
+  // If we're deploying a specific site/target when a web framework is present in config, check if the target is a web framework
   return options.only.split(",").some((it) => {
     const [target, site] = it.split(":");
 
-    return (
-      target === "hosting" &&
-      [webFrameworkInConfig.site, webFrameworkInConfig.target].includes(site)
-    );
+    // If not deploying to Firebase Hosting, skip
+    if (target !== "hosting") return false;
+
+    // If no site specified but we're deploying to Firebase Hosting, a webframework is being deployed
+    if (!site) return true;
+
+    // If a site is specified, check if it's a web framework
+    return webFrameworksInConfig.some((c) => [c.site, c.target].includes(site));
   });
 };
 

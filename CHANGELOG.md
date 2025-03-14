@@ -1,2 +1,3 @@
-- Fix webframeworks deployments when using `site` in `firebase.json`. (#8295)
 - App Hosting emulator can now load secret env vars. (#8305)
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
+- Support 3rd party builders for Angular. (#7557)
