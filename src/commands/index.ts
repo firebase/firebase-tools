@@ -143,6 +143,8 @@ export function load(client: any): any {
   client.functions.secrets.describe = loadCommand("functions-secrets-describe");
   client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
+  client.functions.artifacts = {};
+  client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
@@ -221,6 +223,7 @@ export function load(client: any): any {
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};
   client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+  client.dataconnect.sql.setup = loadCommand("dataconnect-sql-setup");
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
