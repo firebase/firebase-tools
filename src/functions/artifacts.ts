@@ -17,6 +17,11 @@ export const CLEANUP_POLICY_ID = "firebase-functions-cleanup";
  */
 export const OPT_OUT_LABEL_KEY = "firebase-functions-cleanup-opted-out";
 
+/**
+ * Default number of days to keep container images for cleanup policies
+ */
+export const DEFAULT_CLEANUP_DAYS = 1;
+
 const SECONDS_IN_DAY = 24 * 60 * 60;
 
 /**
