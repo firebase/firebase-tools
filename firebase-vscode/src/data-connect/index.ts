@@ -1,7 +1,7 @@
 import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { registerExecution } from "./execution";
+import { registerExecution } from "./execution/execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { DataConnectService as FdcService } from "./service";

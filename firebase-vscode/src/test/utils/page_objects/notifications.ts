@@ -21,11 +21,21 @@ export class Notifications {
     });
   }
 
-  async startEmulatorFromNotification(notification: Notification) {
-    // wdio doesn't properly find actions: await askToStartEmulatorNotif?.takeAction("Yes");
-    const installButton = await notification?.elem.$("a.monaco-button=Yes");
-    if (installButton) {
-      await installButton.click();
+  // Edit Variables Notification
+  async getEditVariablesNotification() {
+    await browser.pause(250);
+    const notifications = await this.workbench.getNotifications();
+    return notifications.find(async (n) => {
+      const message = await n.getMessage();
+      return message.includes("Missing required variables");
+    });
+  }
+
+  async editVariablesFromNotification(notification: Notification) {
+    // takeAction doesn't work in wdio vscode
+    const editButton = await notification.elem.$(".monaco-button=Edit variables");
+    if (editButton) {
+      await editButton.click();
     }
   }
 }

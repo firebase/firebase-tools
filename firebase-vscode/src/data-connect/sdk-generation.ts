@@ -124,7 +124,7 @@ export function registerFdcSdkGeneration(
     if (!configs.get(skipToAppFolderSelect)) {
       const result = await vscode.window.showInformationMessage(
         "Please select your app folder to generate an SDK for.",
-        { modal: true },
+        { modal: !process.env.VSCODE_TEST_MODE },
         "Yes",
         "Don't show again",
       );
