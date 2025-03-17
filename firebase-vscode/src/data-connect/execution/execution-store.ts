@@ -1,7 +1,7 @@
 import { computed } from "@preact/signals-core";
 import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
-import { globalSignal } from "../utils/globals";
+import { globalSignal } from "../../utils/globals";
 
 export enum ExecutionState {
   INIT,
