@@ -69,7 +69,3 @@ firebaseSuite("Execution", async function () {
     expect(await result.getLabel()).toBe("createPost");
   });
 });
-function editVariablesFromNotification(editVariablesNotif: import("wdio-vscode-service").Notification | undefined) {
-  throw new Error("Function not implemented.");
-}
-

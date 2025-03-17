@@ -200,6 +200,11 @@ export function registerExecution(
       return undefined;
     }
 
+    // if execution args is empty, reset to {}
+    if (!executionArgsJSON.value) {
+      executionArgsJSON.value = "{}";
+    }
+
     // Check for missing arguments
     const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
 
