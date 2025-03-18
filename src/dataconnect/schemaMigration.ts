@@ -125,7 +125,7 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
-  await setupIAMUsers(instanceId, databaseId, options)
+  await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
@@ -234,7 +234,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
-  await setupIAMUsers(instanceId, databaseId, options)
+  await setupIAMUsers(instanceId, databaseId, options);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
