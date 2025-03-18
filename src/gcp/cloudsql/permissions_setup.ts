@@ -11,12 +11,11 @@ import {
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
 import { setupIAMUsers } from "./connect";
-import * as cloudSqlAdminClient from "./cloudsqladmin";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 import * as clc from "colorette";
 import { FirebaseError } from "../../error";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
+import { needProjectNumber } from "../../projectUtils";
 import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
@@ -229,11 +228,6 @@ export async function getSchemaMetadata(
   schema: string,
   options: Options,
 ): Promise<SchemaMetadata> {
-  // Upsert user in case it doesn't exist
-  const { user, mode } = await getIAMUser(options);
-  const projectId = needProjectId(options);
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
-
   // Check if schema exists
   const checkSchemaExists = await executeSqlCmdsAsIamUser(
     options,
