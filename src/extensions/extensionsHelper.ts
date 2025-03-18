@@ -1215,10 +1215,10 @@ export function isUrlPath(extInstallPath: string): boolean {
 export function isLocalPath(extInstallPath: string): boolean {
   const trimmedPath = extInstallPath.trim();
   return (
-    trimmedPath.startsWith("~/") ||
-    trimmedPath.startsWith("./") ||
-    trimmedPath.startsWith("../") ||
-    trimmedPath.startsWith("/") ||
+    trimmedPath.startsWith(`~${path.sep}`) ||
+    trimmedPath.startsWith(`.${path.sep}`) ||
+    trimmedPath.startsWith(`..${path.sep}`) ||
+    trimmedPath.startsWith(`${path.sep}`) ||
     [".", ".."].includes(trimmedPath)
   );
 }
