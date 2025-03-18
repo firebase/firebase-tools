@@ -17,6 +17,7 @@ import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
 import { FirebaseError } from "../../error";
 import * as secrets from "../../gcp/secretManager";
+import { logLabeledError } from "../../utils";
 
 interface StartOptions {
   projectId?: string;
@@ -82,7 +83,18 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
     secretId = match[1];
     version = match[2] || "latest";
   }
-  return await secrets.accessSecretVersion(projectId, secretId, version);
+  try {
+    return await secrets.accessSecretVersion(projectId, secretId, version);
+  } catch (err: any) {
+    if (err?.original?.code === 403 || err?.original?.context?.response?.statusCode === 403) {
+      logLabeledError(
+        Emulators.APPHOSTING,
+        `Permission denied to access secret ${secretId}. Use ` +
+          `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+      );
+    }
+    throw err;
+  }
 }
 
 async function serve(

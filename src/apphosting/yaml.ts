@@ -25,7 +25,7 @@ export class AppHostingYamlConfig {
    */
   static async loadFromFile(filePath: string): Promise<AppHostingYamlConfig> {
     if (!fileExistsSync(filePath)) {
-      throw new FirebaseError("Cannot load App Hosting yaml from given path, it doesn't exist");
+      throw new FirebaseError(`Cannot load ${filePath} from given path, it doesn't exist`);
     }
     const config = new AppHostingYamlConfig();
 
