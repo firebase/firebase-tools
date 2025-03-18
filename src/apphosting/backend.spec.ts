@@ -440,7 +440,8 @@ describe("apphosting setup functions", () => {
       listBackendsStub.resolves({ backends: allBackends });
 
       await expect(getBackend(projectId, "chicken")).to.be.rejectedWith(
-        "You have multiple backends with the same chicken ID. " +
+        "You have multiple backends with the same chicken ID in regions: " +
+          "asia-east1, europe-west4. " +
           "This is not allowed until we can support more locations. " +
           "Please delete and recreate any backends that share an ID with another backend.",
       );

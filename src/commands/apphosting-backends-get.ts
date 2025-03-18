@@ -28,8 +28,9 @@ export const command = new Command("apphosting:backends:get <backend>")
       return;
     }
     if (backendsList.length > 1) {
+      const regions = backendsList.map((b) => apphosting.parseBackendName(b.name).location);
       logWarning(
-        `Detected multiple backends with the same ${backend} ID. This is not allowed until we can support more locations.\n` +
+        `Detected multiple backends with the same ${backend} ID in regions: ${regions.join(", ")}}. This is not allowed until we can support more locations.\n` +
           `Please delete and recreate any backends that share an ID with another backend. ` +
           `Use apphosting:backends:list to see all backends.\n Returning the following backend:`,
       );
