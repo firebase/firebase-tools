@@ -68,6 +68,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   if (options.dryRun) {
     for (const si of serviceInfos) {
       await diffSchema(
+        options,
         si.schema,
         si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
       );
