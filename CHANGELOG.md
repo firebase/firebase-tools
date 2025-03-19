@@ -3,3 +3,4 @@
 - Add a new command to setup a cleanup policy for functions artifacts. (#8268)
 - Support 3rd party builders for Angular. (#7557)
 - Fix GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format (#8318)
+- Fix dataconnect setup issues for fresh databases due to IAM user not being created (#8335)
