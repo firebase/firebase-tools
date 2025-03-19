@@ -132,6 +132,7 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
+  await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
 
   // Make sure database is setup.
