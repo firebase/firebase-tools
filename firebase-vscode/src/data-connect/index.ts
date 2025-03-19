@@ -34,6 +34,7 @@ import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
 import { GeminiAssistController } from "./gemini-assist";
 import { emulators } from "../init/features";
+import { GeminiToolController } from "./gemini-tool";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -166,6 +167,8 @@ export function registerFdc(
     fdcService,
     dataConnectConfigs,
   );
+
+  const geminiTool = new GeminiToolController(geminiAssist);
 
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(

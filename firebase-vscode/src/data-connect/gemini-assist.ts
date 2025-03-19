@@ -13,6 +13,8 @@ import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DataConnectService } from "./service";
 import { pluginLogger as logger } from "../logger-wrapper";
+import { CloudAICompanionResponse } from "../dataconnect/types";
+import { ChatContext } from "./gemini-tool-types";
 
 export class GeminiAssistController {
   constructor(
@@ -87,10 +89,9 @@ export class GeminiAssistController {
   }
 
   private async formatCodeWithVSCode(content: string): Promise<string> {
-
     content = content.replaceAll("```", "");
     content = content.replaceAll("graphql", "");
-    console.log("HAROLD: ", content)
+    console.log("HAROLD: ", content);
     const tempFilePath = path.join(os.tmpdir(), `temp.graphql`);
     fs.writeFileSync(tempFilePath, content);
 
@@ -129,17 +130,38 @@ export class GeminiAssistController {
   }
 
   async callGenerateApi(
-    documentContent: string | undefined,
-    documentContext: string[],
+    documentPath: string,
+    prompt: string,
+  ): Promise<CloudAICompanionResponse> {
+    // TODO: Call Gemini API with the document content and context
+    try {
+      const response = await this.fdcService.generateOperation(
+        documentPath,
+        prompt,
+      );
+      console.log("HAROLD RESPONSE: ", response);
+      if (!response) {
+        throw new Error("No response from Cloud AI API");
+      }
+      return response;
+    } catch (error) {
+      throw new Error(`Failed to call Gemini API: ${error}`);
+    }
+  }
+
+  async callGenerateApiOld(
     documentPath: string,
     prompt: string,
   ): Promise<string> {
     // TODO: Call Gemini API with the document content and context
     try {
-      const response = await this.fdcService.generateOperation(documentPath, prompt);
+      const response = await this.fdcService.generateOperation(
+        documentPath,
+        prompt,
+      );
       console.log("HAROLD RESPONSE: ", response);
       if (!response) {
-        throw ("No response from Cloud AI API");
+        throw new Error("No response from Cloud AI API");
       }
       return this.formatCodeWithVSCode(response.output.messages[0].content);
     } catch (error) {
@@ -274,9 +296,7 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
         switch (message.command) {
           case "generateCode": {
             const prompt = message.input;
-            const generatedCode = await this.controller.callGenerateApi(
-              documentContent,
-              documentContext,
+            const generatedCode = await this.controller.callGenerateApiOld(
               documentPath,
               prompt,
             );

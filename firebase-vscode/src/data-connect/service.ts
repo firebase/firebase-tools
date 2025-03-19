@@ -39,6 +39,7 @@ import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
 import { getAnalyticsContext } from "../analytics";
+import { ChatContext } from "./gemini-tool-types";
 
 /**
  * DataConnect Emulator service
