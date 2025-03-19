@@ -8,6 +8,7 @@ import {
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
   toDatabaseUser,
+  setupIAMUsers,
 } from "../gcp/cloudsql/connect";
 import { needProjectId } from "../projectUtils";
 import {
@@ -124,6 +125,7 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
+  await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
@@ -232,6 +234,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
+  await setupIAMUsers(instanceId, databaseId, options);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
@@ -556,7 +559,7 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
 // (ie when users create a service in console),
 // the backend will not have the necessary permissions to check cSQL for differences.
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
-async function ensureServiceIsConnectedToCloudSql(
+export async function ensureServiceIsConnectedToCloudSql(
   serviceName: string,
   instanceId: string,
   databaseId: string,
