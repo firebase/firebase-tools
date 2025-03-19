@@ -11,6 +11,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
+import { log } from "console";
 
 export async function execute(
   sqlStatements: string[],
@@ -21,6 +22,7 @@ export async function execute(
     username: string;
     password?: string;
     silent?: boolean;
+    transaction?: boolean;
   },
 ): Promise<pg.QueryResult[]> {
   const logFn = opts.silent ? logger.debug : logger.info;
@@ -90,21 +92,32 @@ export async function execute(
     }
   }
 
+  const cleanUpFn = async () => {
+    conn.release();
+    await pool.end();
+    connector.close();
+}
+
   const conn = await pool.connect();
   const results: pg.QueryResult[] = [];
   logFn(`Logged in as ${opts.username}`);
+  if (opts.transaction) {
+    sqlStatements.unshift("BEGIN;");
+    sqlStatements.push("COMMIT;");
+  }
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
       results.push(await conn.query(s));
     } catch (err) {
+      logFn('Rolling back transaction')
+      await conn.query("ROLLBACK;");
+      await cleanUpFn();
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
-  conn.release();
-  await pool.end();
-  connector.close();
+  await cleanUpFn();
   return results;
 }
 
@@ -114,6 +127,7 @@ export async function executeSqlCmdsAsIamUser(
   databaseId: string,
   cmds: string[],
   silent = false,
+  transaction = false,
 ): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   const { user: iamUser } = await getIAMUser(options);
@@ -124,6 +138,7 @@ export async function executeSqlCmdsAsIamUser(
     databaseId,
     username: iamUser,
     silent: silent,
+    transaction: transaction,
   });
 }
 
@@ -136,6 +151,7 @@ export async function executeSqlCmdsAsSuperUser(
   databaseId: string,
   cmds: string[],
   silent = false,
+  transaction = false,
 ): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
@@ -156,6 +172,7 @@ export async function executeSqlCmdsAsSuperUser(
     username: superuser,
     password: temporaryPassword,
     silent: silent,
+    transaction: transaction,
   });
 }
 
