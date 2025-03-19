@@ -96,7 +96,7 @@ export async function execute(
     conn.release();
     await pool.end();
     connector.close();
-}
+  };
 
   const conn = await pool.connect();
   const results: pg.QueryResult[] = [];
@@ -110,7 +110,7 @@ export async function execute(
     try {
       results.push(await conn.query(s));
     } catch (err) {
-      logFn('Rolling back transaction')
+      logFn("Rolling back transaction");
       await conn.query("ROLLBACK;");
       await cleanUpFn();
       throw new FirebaseError(`Error executing ${err}`);

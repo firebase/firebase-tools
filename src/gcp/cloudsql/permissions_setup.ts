@@ -105,7 +105,9 @@ export async function setupSQLPermissions(
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
   const schema = schemaInfo.name;
   // Step 0: Check current user can run setup and upsert IAM / P4SA users
-  logger.info(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`);
+  logger.info(
+    `Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`,
+  );
 
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
@@ -114,7 +116,7 @@ export async function setupSQLPermissions(
     );
   }
   await setupIAMUsers(instanceId, databaseId, options);
-  
+
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
     runGreenfieldSetup = true;
@@ -130,8 +132,20 @@ export async function setupSQLPermissions(
 
   // We need to setup the database
   if (runGreenfieldSetup) {
-    const greenfieldSetupCmds = await greenFieldSchemaSetup(instanceId, databaseId, schema, options);
-    await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, greenfieldSetupCmds, silent, /** transaction=*/ true);
+    const greenfieldSetupCmds = await greenFieldSchemaSetup(
+      instanceId,
+      databaseId,
+      schema,
+      options,
+    );
+    await executeSqlCmdsAsSuperUser(
+      options,
+      instanceId,
+      databaseId,
+      greenfieldSetupCmds,
+      silent,
+      /** transaction=*/ true,
+    );
 
     logger.info(clc.green("Database setup complete."));
     return SchemaSetupStatus.GreenField;
@@ -159,7 +173,11 @@ export async function setupSQLPermissions(
   if (shouldSetupGreenfield) {
     await setupBrownfieldAsGreenfield(instanceId, databaseId, schemaInfo, options, silent);
     logger.info(clc.green("Database setup complete."));
-    logger.info(clc.yellow("IMPORTANT: please uncomment 'schemaValidation: \"COMPATIBLE\"' in your dataconnect.yaml file to avoid dropping any existing tables by mistake."))
+    logger.info(
+      clc.yellow(
+        "IMPORTANT: please uncomment 'schemaValidation: \"COMPATIBLE\"' in your dataconnect.yaml file to avoid dropping any existing tables by mistake.",
+      ),
+    );
     return SchemaSetupStatus.GreenField;
   } else {
     logger.info(
@@ -225,7 +243,7 @@ export async function greenFieldSchemaSetup(
     defaultPermissions(databaseId, schema, firebaseowner(databaseId, schema)),
   );
 
-  return sqlRoleSetupCmds
+  return sqlRoleSetupCmds;
 }
 
 export async function getSchemaMetadata(
@@ -348,7 +366,7 @@ export async function setupBrownfieldAsGreenfield(
     ...grantCmds,
     ...alterTableCmds,
     ...revokeOwnersFromSuperuserCmds,
-  ]
+  ];
 
   // Run sql commands
   await executeSqlCmdsAsSuperUser(
@@ -357,7 +375,7 @@ export async function setupBrownfieldAsGreenfield(
     databaseId,
     setupCmds,
     silent,
-    /**transaction */ true,
+    /** transaction */ true,
   );
 }
 
@@ -406,10 +424,17 @@ export async function brownfieldSqlSetup(
 
     // Insures firebase roles have access to future tables
     ...firebaseDefaultPermissions,
-    
+
     // Execute revokes to avoid builtin user becoming IAM role
     ...revokeOwnersFromFirebasesuperuser,
   ];
 
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, brownfieldSetupCmds, silent, /** transaction=*/ true);
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    brownfieldSetupCmds,
+    silent,
+    /** transaction=*/ true,
+  );
 }
