@@ -251,7 +251,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
-  await setupIAMUsers(instanceId, databaseId, options)
+  await setupIAMUsers(instanceId, databaseId, options);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
