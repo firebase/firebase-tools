@@ -1,10 +1,6 @@
 - Added support for generated Angular SDKs for Data Connect
-- Fixed issue where `apps:init` fails to detect the output directory when it was run in a directory where `app` was the only module.
-- Set `LOG_EXECUTION_ID=true` by default for Cloud Functions (2nd gen) to improve debugging by displaying execution IDs in logs. (#8276)
-- Fix bug where function deployment no-oped for functions in bad state. (#8289)
-- Updated the Firebase Data Connect local toolkit to v1.8.4 which includes the following changes: (#8290)
-  - React hooks for mutations without args no longer require `undefined` to be passed when calling `mutate`.
-  - Fixed import resolution when `moduleResolution` is set to `bundler`.
-  - React code generation will now generate a README explaining how to use generated query and mutation hook functions.
-  - Fixed an issue where React developers have to pass in an empty object even when all fields are optional.
-  - Fixed an issue where `FirebaseError` wasn't being passed into `UseMutationOptions`.
+- App Hosting emulator can now load secret env vars. (#8305)
+- Fix webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
+- Add a new command to setup a cleanup policy for functions artifacts. (#8268)
+- Support 3rd party builders for Angular. (#7557)
+- Fix GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format (#8318)
