@@ -244,47 +244,28 @@ env:
     let loadFromFileStub: sinon.SinonStub;
     let baseAppHostingYaml: AppHostingYamlConfig;
     let stagingAppHostingYaml: AppHostingYamlConfig;
+    let baseEnv: Record<string, Omit<config.Env, "variable">>;
+    let stagingEnv: Record<string, Omit<config.Env, "variable">>;
 
     beforeEach(() => {
+      baseEnv = {
+        ENV_1: { value: "base_env_1" },
+        ENV_3: { value: "base_env_3" },
+        SECRET_1: { secret: "base_secret_1" },
+        SECRET_2: { secret: "base_secret_2" },
+        SECRET_3: { secret: "base_secret_3" },
+      };
       baseAppHostingYaml = AppHostingYamlConfig.empty();
-      baseAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_1",
-        value: "base_env_1",
-      });
-      baseAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_3",
-        value: "base_env_3",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_1",
-        secret: "base_secret_1",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_2",
-        secret: "base_secret_2",
-      });
-      baseAppHostingYaml.addSecret({
-        variable: "SECRET_3",
-        secret: "base_secret_3",
-      });
+      baseAppHostingYaml.env = { ...baseEnv };
 
+      stagingEnv = {
+        ENV_1: { value: "staging_env_1" },
+        ENV_2: { value: "staging_env_2" },
+        SECRET_1: { secret: "staging_secret_1" },
+        SECRET_2: { secret: "staging_secret_2" },
+      };
       stagingAppHostingYaml = AppHostingYamlConfig.empty();
-      stagingAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_1",
-        value: "staging_env_1",
-      });
-      stagingAppHostingYaml.addEnvironmentVariable({
-        variable: "ENV_2",
-        value: "staging_env_2",
-      });
-      stagingAppHostingYaml.addSecret({
-        variable: "SECRET_1",
-        secret: "staging_secret_1",
-      });
-      stagingAppHostingYaml.addSecret({
-        variable: "SECRET_2",
-        secret: "staging_secret_2",
-      });
+      stagingAppHostingYaml.env = { ...stagingEnv };
 
       loadFromFileStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
       loadFromFileStub.callsFake(async (filePath) => {
@@ -304,39 +285,15 @@ env:
         "/parent/cwd/apphosting.staging.yaml",
         "/parent/cwd/apphosting.yaml",
       );
-      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
-        JSON.stringify([
-          { variable: "ENV_1", value: "staging_env_1" },
-          { variable: "ENV_3", value: "base_env_3" },
-          { variable: "ENV_2", value: "staging_env_2" },
-        ]),
-      );
-
-      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
-        JSON.stringify([
-          { variable: "SECRET_1", secret: "staging_secret_1" },
-          { variable: "SECRET_2", secret: "staging_secret_2" },
-          { variable: "SECRET_3", secret: "base_secret_3" },
-        ]),
-      );
+      expect(resultingConfig.env).to.deep.equal({
+        ...baseEnv,
+        ...stagingEnv,
+      });
     });
 
     it("returns appropriate config if only base file was selected", async () => {
       const resultingConfig = await config.loadConfigForEnvironment("/parent/cwd/apphosting.yaml");
-      expect(JSON.stringify(resultingConfig.environmentVariables)).to.equal(
-        JSON.stringify([
-          { variable: "ENV_1", value: "base_env_1" },
-          { variable: "ENV_3", value: "base_env_3" },
-        ]),
-      );
-
-      expect(JSON.stringify(resultingConfig.secrets)).to.equal(
-        JSON.stringify([
-          { variable: "SECRET_1", secret: "base_secret_1" },
-          { variable: "SECRET_2", secret: "base_secret_2" },
-          { variable: "SECRET_3", secret: "base_secret_3" },
-        ]),
-      );
+      expect(resultingConfig.env).to.deep.equal(baseEnv);
     });
   });
 });

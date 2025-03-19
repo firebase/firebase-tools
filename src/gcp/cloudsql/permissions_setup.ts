@@ -349,7 +349,7 @@ export async function brownfieldSqlSetup(
   // Step 1: Grant firebasesuperuser access to the original owner
   const uniqueTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
   const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map(
-    (owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`,
+    (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
   );
 
   // Step 2: Using firebasesuperuser, setup reader and writer permissions on existing tables and setup default permissions for future tables.
