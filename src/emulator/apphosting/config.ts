@@ -8,8 +8,11 @@ import {
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 /**
- * Loads in apphosting.yaml & apphosting.local.yaml, giving
- * apphosting.local.yaml precedence if present.
+ * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
+ * overriding union. In order to keep apphosting.emulator.yaml safe to commit,
+ * users cannot change a secret environment variable to plaintext.
+ * apphosting.local.yaml can, however, for reverse compatibility, though its existence
+ * will be downplayed and tooling will not assist in creating or managing it.
  */
 export async function getLocalAppHostingConfiguration(
   backendDir: string,
@@ -27,7 +30,7 @@ export async function getLocalAppHostingConfiguration(
   const localFilePath = fileNameToPathMap[APPHOSTING_LOCAL_YAML_FILE];
 
   if (baseFilePath) {
-    // N.B. merging from into helps tests stay hermetic. I previously ran into a test bug where
+    // N.B. merging from empty helps tests stay hermetic. I previously ran into a test bug where
     // using the returned value as the base caused the test stub to be modified and tests would succeed
     // independently but would fail as part of a suite.
     const baseFile = await AppHostingYamlConfig.loadFromFile(baseFilePath);
