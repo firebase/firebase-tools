@@ -1,3 +1,4 @@
+- Added support for generated Angular SDKs for Data Connect
 - App Hosting emulator can now load secret env vars. (#8305)
 - Fixed webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
 - Added a new command to setup a cleanup policy for functions artifacts. (#8268)
