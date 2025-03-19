@@ -5,3 +5,4 @@
 - Fixed GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format. (#8318)
 - Increase emulator UI body parser limit to match Storage emulator maximum. (#8329)
 - Fixed Data Connect setup issues for fresh databases due to IAM user not being created. (#8335)
+- Fixed an issue where `ext:install` used POSIX file seperators on Windows machines. (#8326)
