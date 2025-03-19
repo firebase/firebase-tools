@@ -6,4 +6,4 @@
 - Increase emulator UI body parser limit to match Storage emulator maximum. (#8329)
 - Fixed Data Connect setup issues for fresh databases due to IAM user not being created. (#8335)
 - Fixed an issue where `ext:install` used POSIX file seperators on Windows machines. (#8326)
-- Updated the Firebase Data Connect local toolkit to v1.9.0, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practice. (#8338)
+- Updated the Firebase Data Connect local toolkit to v1.9.0, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practices. (#8338)
