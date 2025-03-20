@@ -11,3 +11,4 @@
 - Fixed an issue where credentials from `firebase login` would not be correctly provided to the Data Connect emulator.
 - Fixed misleading comments in `firebase init dataconnect` `connector.yaml` template.
 - Improved Data Connect SQL permissions to better handle tables owned by IAM roles. (#8339)
+- Fixed an issue where the Data Connect emulator would crash after some SQL errors.
