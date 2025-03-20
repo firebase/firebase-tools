@@ -11,7 +11,6 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { log } from "console";
 
 export async function execute(
   sqlStatements: string[],
@@ -110,7 +109,7 @@ export async function execute(
     try {
       results.push(await conn.query(s));
     } catch (err) {
-      logFn("Rolling back transaction");
+      logFn(`Rolling back transaction due to error ${err}}`);
       await conn.query("ROLLBACK;");
       await cleanUpFn();
       throw new FirebaseError(`Error executing ${err}`);

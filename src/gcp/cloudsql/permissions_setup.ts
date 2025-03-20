@@ -121,7 +121,7 @@ export async function setupSQLPermissions(
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
     runGreenfieldSetup = true;
     logger.info(
-      `Database ${databaseId} has already been setup as Greenfield project. Rerunning setup to repair any missing permissions.`,
+      `Database ${databaseId} has already been setup as greenfield project. Rerunning setup to repair any missing permissions.`,
     );
   }
 
