@@ -8,7 +8,7 @@ connectorId: __connectorId__
 #     packageJsonDir: < Optional. Path to your Javascript app's package.json>
 #   swiftSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
-#     package: "firebasegen/default"
+#     package: DefaultConnector
 #   kotlinSdk:
 #     outputDir: <Path where you want the generated SDK to be written to, relative to this file>
 #     package: connectors.default

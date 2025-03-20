@@ -119,6 +119,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
       (framework) => !newConnectorYaml!.generate?.javascriptSdk![framework],
     );
+    const hasFrameworkEnabled = unusedFrameworks.length < SUPPORTED_FRAMEWORKS.length;
     if (unusedFrameworks.length > 0) {
       const additionalFrameworks: { fdcFrameworks: (keyof SupportedFrameworks)[] } = await prompt(
         setup,
@@ -127,7 +128,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
             type: "checkbox",
             name: "fdcFrameworks",
             message:
-              "Which framework would you like to generate SDKs for? " +
+              `Which ${hasFrameworkEnabled && "additional "}frameworks would you like to generate SDKs for? ` +
               "Press Space to select features, then Enter to confirm your choices.",
             choices: unusedFrameworks.map((frameworkStr) => ({
               value: frameworkStr,
@@ -183,6 +184,7 @@ export async function generateSdkYaml(
     if (packageJson) {
       const frameworksUsed = getFrameworksFromPackageJson(packageJson);
       for (const framework of frameworksUsed) {
+        logBullet(`Detected ${framework} app. Enabling ${framework} generated SDKs.`);
         javascriptSdk[framework] = true;
       }
     }
@@ -238,6 +240,26 @@ export async function actuate(sdkInfo: SDKInfo) {
       clc.bold(
         "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/ios-sdk#set-client",
       ),
+    );
+  }
+  if (sdkInfo.connectorInfo.connectorYaml.generate?.javascriptSdk) {
+    for (const framework of SUPPORTED_FRAMEWORKS) {
+      if (sdkInfo.connectorInfo.connectorYaml!.generate!.javascriptSdk![framework]) {
+        logInfoForFramework(framework);
+      }
+    }
+  }
+}
+
+function logInfoForFramework(framework: keyof SupportedFrameworks) {
+  if (framework === "react") {
+    logBullet(
+      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
+    );
+  } else if (framework === "angular") {
+    // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
+    logBullet(
+      "Run `npm i --save @angular/fire @tanstack-query-firebase/angular @tanstack/angular-query-experimental` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
     );
   }
 }

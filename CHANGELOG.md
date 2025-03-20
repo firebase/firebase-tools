@@ -1,3 +1,4 @@
+- Added support for generated Angular SDKs for Data Connect
 - App Hosting emulator can now load secret env vars. (#8305)
 - Fixed webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
 - Added a new command to setup a cleanup policy for functions artifacts. (#8268)
@@ -6,5 +7,7 @@
 - Increase emulator UI body parser limit to match Storage emulator maximum. (#8329)
 - Fixed Data Connect setup issues for fresh databases due to IAM user not being created. (#8335)
 - Fixed an issue where `ext:install` used POSIX file seperators on Windows machines. (#8326)
-- Updated the Firebase Data Connect local toolkit to v1.9.0, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practices. (#8338)
 - Fixed an issue where credentials from `firebase login` would not be correctly provided to the Data Connect emulator.
+- Updated the Firebase Data Connect local toolkit to v1.9.1, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practices. (#8340)
+- Fixed misleading comments in `firebase init dataconnect` `connector.yaml` template.
+- Improved Data Connect SQL permissions to better handle tables owned by IAM roles. (#8339)
