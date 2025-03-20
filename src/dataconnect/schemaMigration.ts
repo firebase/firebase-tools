@@ -8,6 +8,7 @@ import {
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
   toDatabaseUser,
+  setupIAMUsers,
 } from "../gcp/cloudsql/connect";
 import { needProjectId } from "../projectUtils";
 import {
@@ -29,11 +30,39 @@ import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 
 import * as errors from "./errors";
 
+async function setupSchemaIfNecessary(
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+): Promise<SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField> {
+  await setupIAMUsers(instanceId, databaseId, options);
+  const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+  if (
+    schemaInfo.setupStatus !== SchemaSetupStatus.BrownField &&
+    schemaInfo.setupStatus !== SchemaSetupStatus.GreenField
+  ) {
+    return await setupSQLPermissions(
+      instanceId,
+      databaseId,
+      schemaInfo,
+      options,
+      /* silent=*/ true,
+    );
+  } else {
+    logger.info(
+      `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
+    );
+  }
+
+  return schemaInfo.setupStatus;
+}
+
 export async function diffSchema(
+  options: Options,
   schema: Schema,
   schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
-  const { serviceName, instanceName, databaseId } = getIdentifiers(schema);
+  const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
@@ -41,6 +70,9 @@ export async function diffSchema(
     /* linkIfNotConnected=*/ false,
   );
   let diffs: Diff[] = [];
+
+  // Make sure database is setup.
+  await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
@@ -124,7 +156,11 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
+  await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
+
+  // Make sure database is setup.
+  await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
@@ -232,6 +268,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
+  await setupIAMUsers(instanceId, databaseId, options);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
@@ -240,30 +277,16 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   }
 
   // Make sure we have the right setup for the requested role grant.
-  const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
-  let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
-  switch (schemaInfo.setupStatus) {
-    case SchemaSetupStatus.NotSetup:
-    case SchemaSetupStatus.NotFound:
-      const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
-      isGreenfieldSetup = newSetupStatus === SchemaSetupStatus.GreenField;
-      break;
-    default:
-      logger.info(
-        `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
-      );
-      break;
-  }
+  const schemaSetupStatus = await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
-  if (!isGreenfieldSetup && fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)) {
-    const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
-
-    if (newSetupStatus !== SchemaSetupStatus.GreenField) {
-      throw new FirebaseError(
-        `Can't grant owner rule for brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
-      );
-    }
+  if (
+    schemaSetupStatus !== SchemaSetupStatus.GreenField &&
+    fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)
+  ) {
+    throw new FirebaseError(
+      `Owner rule isn't available in brownfield databases. If you would like Data Connect to manage and own your database schema, run 'firebase dataconnect:sql:setup'`,
+    );
   }
 
   // Upsert new user account into the database.
@@ -380,19 +403,11 @@ async function handleIncompatibleSchemaError(args: {
 
     const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
     if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField) {
-      const newSetupStatus = await setupSQLPermissions(
-        instanceId,
-        databaseId,
-        schemaInfo,
-        options,
-        /* silent=*/ true,
+      throw new FirebaseError(
+        `Brownfield database are protected from SQL changes by Data Connect.\n` +
+          `You can use the SQL diff generated by 'firebase dataconnect:sql:diff' to assist you in applying the required changes to your CloudSQL database. Connector deployment will succeed when there is no required diff changes.\n` +
+          `If you would like Data Connect to manage your database schema, run 'firebase dataconnect:sql:setup'`,
       );
-
-      if (newSetupStatus !== SchemaSetupStatus.GreenField) {
-        throw new FirebaseError(
-          `Can't migrate brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
-        );
-      }
     }
 
     // Test if iam user has access to the roles required for this migration
@@ -556,7 +571,7 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
 // (ie when users create a service in console),
 // the backend will not have the necessary permissions to check cSQL for differences.
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
-async function ensureServiceIsConnectedToCloudSql(
+export async function ensureServiceIsConnectedToCloudSql(
   serviceName: string,
   instanceId: string,
   databaseId: string,

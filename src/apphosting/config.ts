@@ -227,7 +227,11 @@ export async function exportConfig(
   }
 
   const configToExport = await loadConfigToExportSecrets(cwd, userGivenConfigFile);
-  const secretsToExport = configToExport.secrets;
+  const secretsToExport = Object.entries(configToExport.env)
+    .filter(([, env]) => env.secret)
+    .map(([variable, env]) => {
+      return { variable, ...env };
+    });
   if (!secretsToExport) {
     logger.info("No secrets found to export in the chosen App Hosting config files");
     return;
@@ -235,15 +239,13 @@ export async function exportConfig(
 
   const secretMaterial = await fetchSecrets(projectId, secretsToExport);
   for (const [key, value] of secretMaterial) {
-    localAppHostingConfig.addEnvironmentVariable({
-      variable: key,
-      value: value,
+    localAppHostingConfig.env[key] = {
+      value,
       availability: ["RUNTIME"],
-    });
+    };
   }
 
   // remove secrets to avoid confusion as they are not read anyways.
-  localAppHostingConfig.clearSecrets();
   localAppHostingConfig.upsertFile(localAppHostingConfigPath);
   logger.info(`Wrote secrets as environment variables to ${APPHOSTING_LOCAL_YAML_FILE}.`);
 

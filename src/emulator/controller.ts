@@ -982,6 +982,7 @@ export async function startAll(
       );
     }
     const apphostingEmulator = new AppHostingEmulator({
+      projectId: options.project,
       host: apphostingAddr.host,
       port: apphostingAddr.port,
       startCommand: apphostingConfig?.startCommand || apphostingConfig?.startCommandOverride,
