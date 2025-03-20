@@ -45,7 +45,6 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
@@ -60,7 +59,7 @@ import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
-import { setEnvVarsForEmulators } from "./env";
+import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { ExtensionsEmulator } from "./extensionsEmulator";
@@ -271,7 +270,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.dynamicBackends =
         this.args.extensionsEmulator.filterUnemulatedTriggers(unfilteredBackends);
       const mode = this.debugMode ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
-      const credentialEnv = await this.getCredentialsEnvironment();
+      const credentialEnv = await getCredentialsEnvironment(
+        this.args.account,
+        this.logger,
+        "functions",
+      );
       for (const backend of this.dynamicBackends) {
         backend.env = { ...credentialEnv, ...backend.env };
         if (this.workerPools[backend.codebase]) {
@@ -291,34 +294,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         await this.loadTriggers(backend, /* force */ true);
       }
     }
-  }
-
-  private async getCredentialsEnvironment(): Promise<Record<string, string>> {
-    // Provide default application credentials when appropriate
-    const credentialEnv: Record<string, string> = {};
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      this.logger.logLabeled(
-        "WARN",
-        "functions",
-        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`,
-      );
-    } else if (this.args.account) {
-      const defaultCredPath = await getCredentialPathAsync(this.args.account);
-      if (defaultCredPath) {
-        this.logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
-        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
-      }
-    } else {
-      // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
-      //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
-      this.logger.logLabeled(
-        "WARN",
-        "functions",
-        "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services.",
-      );
-    }
-
-    return credentialEnv;
   }
 
   createHubServer(): express.Application {
@@ -458,7 +433,11 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    const credentialEnv = await this.getCredentialsEnvironment();
+    const credentialEnv = await getCredentialsEnvironment(
+      this.args.account,
+      this.logger,
+      "functions",
+    );
     for (const e of this.staticBackends) {
       e.env = { ...credentialEnv, ...e.env };
     }
