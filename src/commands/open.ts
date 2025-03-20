@@ -20,13 +20,16 @@ interface Link {
 
 const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
+  { name: "App Hosting", arg: "apphosting", consolePath: "/apphosting" },
   { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
   { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
   { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
+  { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Extensions", arg: "extensions", consolePath: "/extensions" },
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
   { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
   { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
