@@ -30,15 +30,31 @@ import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 
 import * as errors from "./errors";
 
-async function setupSchemaIfNecessary(instanceId: string, databaseId: string, options: Options) {
+async function setupSchemaIfNecessary(
+  instanceId: string,
+  databaseId: string,
+  options: Options,
+): Promise<SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField> {
   await setupIAMUsers(instanceId, databaseId, options);
   const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
   if (
     schemaInfo.setupStatus !== SchemaSetupStatus.BrownField &&
     schemaInfo.setupStatus !== SchemaSetupStatus.GreenField
   ) {
-    await setupSQLPermissions(instanceId, databaseId, schemaInfo, options, /* silent=*/ true);
+    return await setupSQLPermissions(
+      instanceId,
+      databaseId,
+      schemaInfo,
+      options,
+      /* silent=*/ true,
+    );
+  } else {
+    logger.info(
+      `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
+    );
   }
+
+  return schemaInfo.setupStatus;
 }
 
 export async function diffSchema(
@@ -261,30 +277,16 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   }
 
   // Make sure we have the right setup for the requested role grant.
-  const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
-  let isGreenfieldSetup = schemaInfo.setupStatus === SchemaSetupStatus.GreenField;
-  switch (schemaInfo.setupStatus) {
-    case SchemaSetupStatus.NotSetup:
-    case SchemaSetupStatus.NotFound:
-      const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
-      isGreenfieldSetup = newSetupStatus === SchemaSetupStatus.GreenField;
-      break;
-    default:
-      logger.info(
-        `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
-      );
-      break;
-  }
+  const schemaSetupStatus = await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
-  if (!isGreenfieldSetup && fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)) {
-    const newSetupStatus = await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
-
-    if (newSetupStatus !== SchemaSetupStatus.GreenField) {
-      throw new FirebaseError(
-        `Can't grant owner rule for brownfield databases. Consider fully migrating your database to FDC using 'firebase dataconnect:sql:setup'`,
-      );
-    }
+  if (
+    schemaSetupStatus !== SchemaSetupStatus.GreenField &&
+    fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)
+  ) {
+    throw new FirebaseError(
+      `Owner rule isn't available in brownfield databases. If you would like Data Connect to manage and own your database schema, run 'firebase dataconnect:sql:setup'`,
+    );
   }
 
   // Upsert new user account into the database.
