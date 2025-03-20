@@ -190,10 +190,11 @@ export class PGliteExtendedQueryPatch {
     }
 
     // A PGlite response can contain multiple messages
+    let shouldEndExtendedQuery = false;
     for await (const message of getMessages(response)) {
       // If a prepared statement leads to an error message, we need to end the pipeline.
       if (message[0] === BackendMessageCode.ErrorMessage) {
-        this.isExtendedQuery = false;
+        shouldEndExtendedQuery = false;
       }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
@@ -202,5 +203,6 @@ export class PGliteExtendedQueryPatch {
       }
       yield message;
     }
+    this.isExtendedQuery = !shouldEndExtendedQuery;
   }
 }
