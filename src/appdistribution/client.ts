@@ -152,7 +152,7 @@ export class AppDistributionClient {
         throw new FirebaseError(`Client request failed to list testers ${err}`);
       }
 
-      for (const t of apiResponse.body.testers) {
+      for (const t of apiResponse.body.testers || []) {
         listTestersResponse.testers.push({
           name: t.name,
           displayName: t.displayName,
