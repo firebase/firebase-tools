@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet } from "../../../utils";
+import { logBullet, envOverride } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -29,6 +29,11 @@ const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yam
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+
+// serviceEnvVar is used by Firebase Console to specify which service to import.
+// It should be in the form <location>/<serviceId>
+// It must be an existing service - if set to anything else, we'll ignore it.
+const serviceEnvVar = () => envOverride("FDC_SERVICE", "");
 
 export interface RequiredInfo {
   serviceId: string;
@@ -88,7 +93,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
-      `If you'd like to add the generated SDK to your app your, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `If you'd like to add the generated SDK to your app later, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
   if (setup.projectId && !isBillingEnabled) {
@@ -282,21 +287,34 @@ async function promptForExistingServices(
     }),
   );
   if (existingServicesAndSchemas.length) {
-    const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
-      existingServicesAndSchemas.map((s) => {
-        const serviceName = parseServiceName(s.service.name);
-        return {
-          name: `${serviceName.location}/${serviceName.serviceId}`,
-          value: s,
-        };
-      });
-    choices.push({ name: "Create a new service", value: undefined });
-    const choice: { service: Service; schema?: Schema } | undefined = await promptOnce({
-      message:
-        "Your project already has existing services. Which would you like to set up local files for?",
-      type: "list",
-      choices,
+    let choice: { service: Service; schema?: Schema } | undefined;
+    const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar().split("/");
+    const serviceFromEnvVar = existingServicesAndSchemas.find((s) => {
+      const serviceName = parseServiceName(s.service.name);
+      return (
+        serviceName.serviceId === serviceIdFromEnvVar &&
+        serviceName.location === serviceLocationFromEnvVar
+      );
     });
+    if (serviceFromEnvVar) {
+      choice = serviceFromEnvVar;
+    } else {
+      const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
+        existingServicesAndSchemas.map((s) => {
+          const serviceName = parseServiceName(s.service.name);
+          return {
+            name: `${serviceName.location}/${serviceName.serviceId}`,
+            value: s,
+          };
+        });
+      choices.push({ name: "Create a new service", value: undefined });
+      choice = await promptOnce({
+        message:
+          "Your project already has existing services. Which would you like to set up local files for?",
+        type: "list",
+        choices,
+      });
+    }
     if (choice) {
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
