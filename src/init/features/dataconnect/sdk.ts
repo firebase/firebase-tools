@@ -28,6 +28,7 @@ import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet } from "../../../utils";
+import { getGlobalDefaultAccount } from "../../../auth";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
@@ -225,9 +226,11 @@ export async function actuate(sdkInfo: SDKInfo) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
   logBullet(`Wrote new config to ${connectorYamlPath}`);
+  const account = getGlobalDefaultAccount();
   await DataConnectEmulator.generate({
     configDir: sdkInfo.connectorInfo.directory,
     connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
+    account,
   });
   logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {

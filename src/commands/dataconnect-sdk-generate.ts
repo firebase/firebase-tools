@@ -7,6 +7,7 @@ import { needProjectId } from "../projectUtils";
 import { load } from "../dataconnect/load";
 import { readFirebaseJson } from "../dataconnect/fileUtils";
 import { logger } from "../logger";
+import { getProjectDefaultAccount } from "../auth";
 
 type GenerateOptions = Options & { watch?: boolean };
 
@@ -42,10 +43,12 @@ export const command = new Command("dataconnect:sdk:generate")
         return;
       }
       for (const conn of serviceInfo.connectorInfo) {
+        const account = getProjectDefaultAccount(options.projectRoot);
         const output = await DataConnectEmulator.generate({
           configDir,
           connectorId: conn.connectorYaml.connectorId,
           watch: options.watch,
+          account,
         });
         logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);
