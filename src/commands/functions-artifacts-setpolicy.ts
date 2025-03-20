@@ -26,8 +26,8 @@ export const command = new Command("functions:artifacts:setpolicy")
   )
   .option(
     "--days <days>",
-    "Number of days to keep container images before deletion. Default is 3 days.",
-    "3",
+    `Number of days to keep container images before deletion. Default is ${artifacts.DEFAULT_CLEANUP_DAYS} day.`,
+    `${artifacts.DEFAULT_CLEANUP_DAYS}`,
   )
   .option(
     "--none",
@@ -51,7 +51,7 @@ export const command = new Command("functions:artifacts:setpolicy")
   .action(async (options: any) => {
     const projectId = needProjectId(options);
     const location = options.location || "us-central1";
-    let daysToKeep = parseInt(options.days || "3", 10);
+    let daysToKeep = parseInt(options.days, 10);
 
     const repoPath = artifacts.makeRepoPath(projectId, location);
     let repository: artifactregistry.Repository;
