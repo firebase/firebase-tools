@@ -1,4 +1,4 @@
-import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
+import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
@@ -6,13 +6,15 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
 import { DeploymentMetadata, GraphqlError } from "./types";
+import { getProjectDefaultAccount } from "../auth";
 
 export async function build(
   options: Options,
   configDir: string,
   dryRun?: boolean,
 ): Promise<DeploymentMetadata> {
-  const args: { configDir: string; projectId?: string } = { configDir };
+  const account = getProjectDefaultAccount(options.projectRoot);
+  const args: DataConnectBuildArgs = { configDir, account };
   if (experiments.isEnabled("fdcconnectorevolution") && options.projectId) {
     const flags = process.env["DATA_CONNECT_PREVIEW"];
     if (flags) {

@@ -1,6 +1,9 @@
 import { Constants } from "./constants";
 import { EmulatorInfo, Emulators } from "./types";
 import { formatHost } from "./functionsEmulatorShared";
+import { Account } from "../types/auth/index";
+import { EmulatorLogger } from "./emulatorLogger";
+import { getCredentialPathAsync, hasDefaultCredentials } from "../defaultCredentials";
 
 /**
  * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
@@ -45,4 +48,30 @@ export function setEnvVarsForEmulators(
         env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = host;
     }
   }
+}
+
+/**
+ * getCredentialsEnvironment returns any extra env vars beyond process.env that should be provided to emulators to ensure they have credentials.
+ */
+export async function getCredentialsEnvironment(
+  account: Account | undefined,
+  logger: EmulatorLogger,
+  logLabel: string,
+): Promise<Record<string, string>> {
+  // Provide default application credentials when appropriate
+  const credentialEnv: Record<string, string> = {};
+  if (await hasDefaultCredentials()) {
+    logger.logLabeled(
+      "WARN",
+      logLabel,
+      `Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful!`,
+    );
+  } else if (account) {
+    const defaultCredPath = await getCredentialPathAsync(account);
+    if (defaultCredPath) {
+      logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+      credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+    }
+  }
+  return credentialEnv;
 }
