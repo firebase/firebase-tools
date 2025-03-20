@@ -164,6 +164,7 @@ export class PostgresServer {
 // TODO: Remove this code once https://github.com/electric-sql/pglite/pull/294 is released in PGLite
 export class PGliteExtendedQueryPatch {
   isExtendedQuery = false;
+  eqpErrored = false;
 
   constructor(public connection: PostgresConnection) {}
 
@@ -184,17 +185,21 @@ export class PGliteExtendedQueryPatch {
     // 'Sync' indicates the end of an extended query
     if (message[0] === FrontendMessageCode.Sync) {
       this.isExtendedQuery = false;
+      this.eqpErrored = false;
 
       // Manually inject 'ReadyForQuery' message at the end
       return this.connection.createReadyForQuery();
     }
 
     // A PGlite response can contain multiple messages
-    let shouldEndExtendedQuery = false;
     for await (const message of getMessages(response)) {
-      // If a prepared statement leads to an error message, we need to end the pipeline.
-      if (message[0] === BackendMessageCode.ErrorMessage) {
-        shouldEndExtendedQuery = false;
+      // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
+      // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
+      if (this.eqpErrored) {
+        continue;
+      }
+      if (this.isExtendedQuery && message[0] === BackendMessageCode.ErrorMessage) {
+        this.eqpErrored = true;
       }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
@@ -203,6 +208,5 @@ export class PGliteExtendedQueryPatch {
       }
       yield message;
     }
-    this.isExtendedQuery = !shouldEndExtendedQuery;
   }
 }

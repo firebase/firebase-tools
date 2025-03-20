@@ -9,3 +9,4 @@
 - Fixed an issue where `ext:install` used POSIX file seperators on Windows machines. (#8326)
 - Updated the Firebase Data Connect local toolkit to v1.9.1, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practices. (#8340)
 - Fixed an issue where credentials from `firebase login` would not be correctly provided to the Data Connect emulator.
+- Fixed an issue where the Data Connect emulator would crash after some SQL errors.
