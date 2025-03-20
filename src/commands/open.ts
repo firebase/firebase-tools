@@ -29,6 +29,7 @@ const LINKS: Link[] = [
   { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Extensions", arg: "extensions", consolePath: "/extensions" },
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
   { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
   { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
