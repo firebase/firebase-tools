@@ -1,1 +1,2 @@
 - Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
+- Fixed an issue where the Storage emulator applied too low of a limit for files uploaded with Content-Type: application/json. (#8355)
