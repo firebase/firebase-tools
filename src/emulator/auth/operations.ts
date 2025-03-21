@@ -300,7 +300,8 @@ function lookup(
       tryAddUser(state.getUserByLocalId(localId));
     }
     for (const email of reqBody.email ?? []) {
-      tryAddUser(state.getUserByEmail(email));
+      const canonicalizedEmail = canonicalizeEmailAddress(email);
+      tryAddUser(state.getUserByEmail(canonicalizedEmail));
     }
     for (const phoneNumber of reqBody.phoneNumber ?? []) {
       tryAddUser(state.getUserByPhoneNumber(phoneNumber));
