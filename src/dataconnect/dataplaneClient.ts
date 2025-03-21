@@ -1,5 +1,5 @@
 import { dataconnectOrigin } from "../api";
-export { dataconnectOrigin } from "../api"
+export { dataconnectOrigin } from "../api";
 import { Client, ClientResponse } from "../apiv2";
 import * as types from "./types";
 
