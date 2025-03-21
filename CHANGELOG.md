@@ -1,2 +1,1 @@
-- Fix bug where functions:artifacts:setpolicy command's --none option didn't work as expected (#8330)
 - Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
