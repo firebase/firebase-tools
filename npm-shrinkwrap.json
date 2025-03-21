@@ -170,7 +170,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": ">=18.0.0 || >=20.0.0 || >=22.0.0"
+        "node": ">=20.0.0 || >=22.0.0"
       }
     },
     "node_modules/@aashutoshrathi/word-wrap": {
