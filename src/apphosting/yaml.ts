@@ -59,7 +59,7 @@ export class AppHostingYamlConfig {
         .map(([key]) => key);
       if (wereSecrets.some((key) => other.env[key]?.value)) {
         throw new FirebaseError(
-          `Cannot convert secret to plaintext in ${other.filename ? other.filename : "apphosting yaml"}`,
+          `Cannot convert secret to plaintext in ${other.filename ?? "apphosting yaml"}`,
         );
       }
     }

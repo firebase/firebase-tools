@@ -14,8 +14,19 @@ import { logger } from "../logger";
 import { updateOrCreateGitignore } from "../utils";
 import { getOrPromptProject } from "../management/projects";
 
+// Common config across all environments
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
+
+// Modern version of local configuration that is intended to be safe to commit.
+// In order to ensure safety, values that are secret environment variables in
+// apphosting.yaml cannot be made plaintext in apphosting.emulators.yaml
+export const APPHOSTING_EMULATORS_YAML_FILE = "apphosting.emulator.yaml";
+
+// Legacy/undocumented version of local configuration that is allowed to store
+// values that are secrets in preceeding files as plaintext. It is not safe
+// to commit to SCM
 export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
+
 export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-z0-9_]+)?\.yaml$/;
 
 export interface RunConfig {

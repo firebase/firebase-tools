@@ -1,15 +1,11 @@
-import * as path from "path";
-import * as utils from "./developmentServer";
-
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { getLocalAppHostingConfiguration } from "./config";
 import * as configImport from "../../apphosting/config";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
+import { FirebaseError } from "../../error";
 
 describe("environments", () => {
-  let joinStub: sinon.SinonStub;
-  let loggerStub: sinon.SinonStub;
   let loadAppHostingYamlStub: sinon.SinonStub;
   let listAppHostingFilesInPathStub: sinon.SinonStub;
   const apphostingYamlEnvOne = {
@@ -26,6 +22,12 @@ describe("environments", () => {
     randomSecretOne: { secret: "SECRET_ONE_FROM_CONFIG_TWO" },
     randomSecretFour: { secret: "SECRET_FOUR_FROM_CONFIG_TWO" },
   };
+  const apphostingYamlSecretToPlaintext = {
+    randomSecretOne: { value: "RANDOM_SECRET_ONE_PLAINTEXT" },
+    randomSecretTwo: { value: "RANDOM_SECRET_TWO_PLAINTEXT" },
+    randomSecretThree: { value: "RANDOM_SECRET_THREE_PLAINTEXT" },
+    randomSecretFour: { value: "RANDOM_SECRET_FOUR_PLAINTEXT" },
+  };
 
   // Configs used for stubs
   const apphostingYamlConfigOne = AppHostingYamlConfig.empty();
@@ -34,16 +36,15 @@ describe("environments", () => {
   const apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
   apphostingYamlConfigTwo.env = { ...apphostingYamlEnvTwo };
 
+  const apphostingYamlConfigSecretsToPlaintext = AppHostingYamlConfig.empty();
+  apphostingYamlConfigSecretsToPlaintext.env = { ...apphostingYamlSecretToPlaintext };
+
   beforeEach(() => {
     loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
-    joinStub = sinon.stub(path, "join");
-    loggerStub = sinon.stub(utils, "logger");
     listAppHostingFilesInPathStub = sinon.stub(configImport, "listAppHostingFilesInPath");
   });
 
   afterEach(() => {
-    joinStub.restore();
-    loggerStub.restore();
     sinon.verifyAndRestore();
   });
 
@@ -85,14 +86,58 @@ describe("environments", () => {
         .returns(apphostingYamlConfigOne);
       loadAppHostingYamlStub
         .withArgs("/parent/apphosting.local.yaml")
+        .returns(apphostingYamlConfigSecretsToPlaintext);
+
+      const apphostingConfig = await getLocalAppHostingConfiguration("./");
+
+      expect(apphostingConfig.env).to.deep.equal({
+        ...apphostingYamlEnvOne,
+        ...apphostingYamlSecretToPlaintext,
+      });
+    });
+
+    it("should allow merging all three file types", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
+
+      // Second config takes precedence
+      loadAppHostingYamlStub
+        .withArgs("/parent/cwd/apphosting.yaml")
+        .returns(apphostingYamlConfigOne);
+      loadAppHostingYamlStub
+        .withArgs("/parent/cwd/apphosting.emulator.yaml")
         .returns(apphostingYamlConfigTwo);
+      loadAppHostingYamlStub
+        .withArgs("/parent/apphosting.local.yaml")
+        .returns(apphostingYamlConfigSecretsToPlaintext);
 
       const apphostingConfig = await getLocalAppHostingConfiguration("./");
 
       expect(apphostingConfig.env).to.deep.equal({
         ...apphostingYamlEnvOne,
         ...apphostingYamlEnvTwo,
+        ...apphostingYamlSecretToPlaintext,
       });
+    });
+
+    it("Should not allow apphosting.emulator.yaml to convert secrets to plaintext", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+      ]);
+
+      // Second config takes precedence
+      loadAppHostingYamlStub
+        .withArgs("/parent/cwd/apphosting.yaml")
+        .returns(apphostingYamlConfigOne);
+      loadAppHostingYamlStub
+        .withArgs("/parent/cwd/apphosting.emulator.yaml")
+        .returns(apphostingYamlConfigSecretsToPlaintext);
+
+      await expect(getLocalAppHostingConfiguration("./")).to.be.rejectedWith(FirebaseError);
     });
   });
 });
