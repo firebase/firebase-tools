@@ -25,7 +25,7 @@ const mem = (endpoint: backend.Endpoint): backend.MemoryOptions =>
 const cpu = (endpoint: backend.Endpoint): number => {
   return endpoint.cpu === "gcf_gen1"
     ? backend.memoryToGen1Cpu(mem(endpoint))
-    : endpoint.cpu ?? backend.memoryToGen2Cpu(mem(endpoint));
+    : (endpoint.cpu ?? backend.memoryToGen2Cpu(mem(endpoint)));
 };
 
 /** Validate that the configuration for endpoints are valid. */
