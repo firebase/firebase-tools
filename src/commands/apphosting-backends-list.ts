@@ -8,7 +8,7 @@ import * as apphosting from "../gcp/apphosting";
 import * as Table from "cli-table3";
 import { logWarning } from "../utils";
 
-const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
+const TABLE_HEAD = ["Backend", "Repository", "URL", "Primary Region", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")
