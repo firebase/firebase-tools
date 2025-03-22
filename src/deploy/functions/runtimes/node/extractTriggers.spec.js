@@ -1,5 +1,5 @@
 "use strict";
-
+/* eslint-disable @typescript-eslint/no-require-imports */
 const chai = require("chai");
 const expect = chai.expect;
 
