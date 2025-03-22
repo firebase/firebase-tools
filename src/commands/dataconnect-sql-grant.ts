@@ -17,12 +17,18 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
   .option(
     "-E, --email <email>",
     "The email of the user or service account we would like to grant the role to.",
+  ).option(
+    "-D, --revoke",
+    "Revokes the granted permission",
+    false
   )
   .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)
   .action(async (serviceId: string, options: Options) => {
     const role = options.role as string;
     const email = options.email as string;
+    const revokeRole = options.revoke as boolean
+
     if (!role) {
       throw new FirebaseError(
         "-R, --role <role> is required. Run the command with -h for more info.",
@@ -42,6 +48,6 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
-    await grantRoleToUserInSchema(options, serviceInfo.schema);
+    await grantRoleToUserInSchema(options, serviceInfo.schema, revokeRole);
     return { projectId, serviceId };
   });
