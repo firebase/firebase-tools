@@ -151,9 +151,12 @@ export async function grantEmailsSecretAccess(
         break;
       } catch (err: any) {
         if (!(err instanceof FirebaseError)) {
-          throw new FirebaseError(`Unexpected error updating IAM bindings on secret: ${secretName}`, {
-            original: getError(err),
-          });
+          throw new FirebaseError(
+            `Unexpected error updating IAM bindings on secret: ${secretName}`,
+            {
+              original: getError(err),
+            },
+          );
         }
         const match = /Principal (.*) is of type "([^"]+)"/.exec(err.message);
         if (!match) {

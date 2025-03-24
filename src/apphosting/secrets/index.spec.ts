@@ -268,7 +268,7 @@ describe("secrets", () => {
     const secret2 = {
       projectId: "projectId",
       name: "secret2",
-    }
+    };
     const existingPolicy: iam.Policy = {
       version: 1,
       etag: "tag",
@@ -291,10 +291,11 @@ describe("secrets", () => {
         );
       gcsm.setIamPolicy.onSecondCall().resolves();
 
-      await secrets.grantEmailsSecretAccess(secret.projectId, [secret.name], [
-        "user@mydomain.com",
-        "mygroup@mydomain.com",
-      ]);
+      await secrets.grantEmailsSecretAccess(
+        secret.projectId,
+        [secret.name],
+        ["user@mydomain.com", "mygroup@mydomain.com"],
+      );
 
       expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
       expect(gcsm.setIamPolicy.firstCall).to.be.calledWithMatch(secret, [
@@ -331,10 +332,11 @@ describe("secrets", () => {
       gcsm.setIamPolicy.onSecondCall().resolves();
       gcsm.setIamPolicy.onThirdCall().resolves();
 
-      await secrets.grantEmailsSecretAccess(secret.projectId, [secret.name, secret2.name], [
-        "user@mydomain.com",
-        "mygroup@mydomain.com",
-      ]);
+      await secrets.grantEmailsSecretAccess(
+        secret.projectId,
+        [secret.name, secret2.name],
+        ["user@mydomain.com", "mygroup@mydomain.com"],
+      );
 
       expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
       expect(gcsm.setIamPolicy).to.be.calledThrice;
