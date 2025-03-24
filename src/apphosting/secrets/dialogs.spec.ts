@@ -469,7 +469,9 @@ describe("dialogs", () => {
     it("can trim test prefixes", async () => {
       prompt.promptOnce.resolves("SECRET");
 
-      await expect(dialogs.envVarForSecret("test-secret")).to.eventually.equal("SECRET");
+      await expect(
+        dialogs.envVarForSecret("test-secret", /* trimTestPrefix=*/ true),
+      ).to.eventually.equal("SECRET");
       expect(prompt.promptOnce).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET",

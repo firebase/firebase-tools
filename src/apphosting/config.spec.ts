@@ -22,36 +22,36 @@ describe("config", () => {
     });
 
     it("finds apphosting.yaml at cwd", () => {
-      fs.fileExistsSync.withArgs("/cwd/apphosting.yaml").returns(true);
-      expect(config.discoverBackendRoot("/cwd")).equals("/cwd");
+      fs.listFiles.withArgs("/parent/cwd").returns(["apphosting.yaml"]);
+      expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent/cwd");
     });
 
     it("finds apphosting.yaml in a parent directory", () => {
-      fs.fileExistsSync.withArgs("/parent/cwd/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/parent/cwd/firebase.json").returns(false);
-      fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(true);
+      fs.listFiles.withArgs("/parent/cwd").returns(["random_file.txt"]);
+      fs.listFiles.withArgs("/parent").returns(["apphosting.yaml"]);
 
       expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent");
     });
 
     it("returns null if it finds firebase.json without finding apphosting.yaml", () => {
-      fs.fileExistsSync.withArgs("/parent/cwd/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/parent/cwd/firebase.json").returns(false);
-      fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/parent/firebase.json").returns(true);
+      fs.listFiles.withArgs("/parent/cwd").returns([]);
+      fs.listFiles.withArgs("/parent").returns(["firebase.json"]);
 
       expect(config.discoverBackendRoot("/parent/cwd")).equals(null);
     });
 
     it("returns if it reaches the fs root", () => {
-      fs.fileExistsSync.withArgs("/parent/cwd/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/parent/cwd/firebase.json").returns(false);
-      fs.fileExistsSync.withArgs("/parent/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/parent/firebase.json").returns(false);
-      fs.fileExistsSync.withArgs("/apphosting.yaml").returns(false);
-      fs.fileExistsSync.withArgs("/firebase.json").returns(false);
+      fs.listFiles.withArgs("/parent/cwd").returns([]);
+      fs.listFiles.withArgs("/parent").returns(["random_file.txt"]);
+      fs.listFiles.withArgs("/").returns([]);
 
       expect(config.discoverBackendRoot("/parent/cwd")).equals(null);
+    });
+
+    it("discovers backend root from any apphosting yaml file", () => {
+      fs.listFiles.withArgs("/parent/cwd").returns(["apphosting.staging.yaml"]);
+
+      expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent/cwd");
     });
   });
 

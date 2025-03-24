@@ -57,17 +57,6 @@ export interface Config {
 const SECRET_CONFIG = "Secret";
 const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 
-function foundProjectFile(dir: string): boolean {
-  return fs
-    .listFiles(dir)
-    .some((file) =>
-      [
-        APPHOSTING_BASE_YAML_FILE,
-        APPHOSTING_EMULATORS_YAML_FILE,
-        APPHOSTING_LOCAL_YAML_FILE,
-      ].includes(file),
-    );
-}
 /**
  * Returns the absolute path for an app hosting backend root.
  *
@@ -77,9 +66,14 @@ function foundProjectFile(dir: string): boolean {
 export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!foundProjectFile(dir)) {
+  while (true) {
+    const files = fs.listFiles(dir);
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+      return dir;
+    }
+
     // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+    if (files.includes("firebase.json")) {
       return null;
     }
 
@@ -90,8 +84,6 @@ export function discoverBackendRoot(cwd: string): string | null {
     }
     dir = parent;
   }
-
-  return dir;
 }
 
 /**
