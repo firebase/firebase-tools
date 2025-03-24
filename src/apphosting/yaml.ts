@@ -82,9 +82,7 @@ export class AppHostingYamlConfig {
       yamlConfigToWrite = await wrappedSafeLoad(file.source);
     }
 
-    yamlConfigToWrite.env = Object.entries(this.env).map(([variable, env]) => {
-      return { variable, ...env };
-    });
+    yamlConfigToWrite.env = Object.values(this.env);
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }

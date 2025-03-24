@@ -216,7 +216,7 @@ export async function maybeAddSecretToYaml(
  * Returns the resolved env that an emulator would see so that future code can
  * grant access. 
  */
-export async function maybeGenerateEmulatorYaml(repoRoot: string): Promise<Env[]| null> {
+export async function maybeGenerateEmulatorYaml(projectId: string, repoRoot: string): Promise<Env[]| null> {
   // Even if the app is in /project/app, the user might have their apphosting.yaml file in /project/apphosting.yaml.
   // Walk up the tree to see if we find other local files so that we can put apphosting.emulator.yaml in the right place.
   const basePath = dynamicDispatch.discoverBackendRoot(repoRoot) || repoRoot;
@@ -241,36 +241,37 @@ export async function maybeGenerateEmulatorYaml(repoRoot: string): Promise<Env[]
     return Object.values(baseConfig.env);
   }
 
-  const newEnv = await dynamicDispatch.overrideChosenEnv(Object.values(baseConfig.env || {}));
+  const newEnv = await dynamicDispatch.overrideChosenEnv(projectId, baseConfig.env || {});
   const newYaml = new yaml.Document();
-  for (const env of newEnv) {
+  for (const env of Object.values(newEnv)) {
     dynamicDispatch.upsertEnv(newYaml, env);
   }
   dynamicDispatch.store(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), newYaml);
-  return newEnv;
+  return Object.values({...baseConfig.env, ...newEnv});
 }
 
-export async function overrideChosenEnv(projectId: string, env: Env[]): Promise<Env[]> {
-  if (!env.length) {
-    return [];
+export async function overrideChosenEnv(projectId: string, env: Record<string, Env>): Promise<Record<string, Env>> {
+  const names = Object.keys(env);
+  if (!names.length) {
+    return {};
   }
   const toOverwrite = await prompt.promptOnce({
     type: "checkbox",
     message: "Which environment variables would you like to override? Press Space to select and Enter to confirm your choices",
-    choices: env.map((e) => e.variable),
+    choices: names,
   });
 
-  const newEnv: Env[] = [];
+  const newEnv: Record<string, Env> = {};
   for (const name of toOverwrite) {
-    if("value" in env.find((e) => e.variable === name)!) {
+    if ("value" in env[name]) {
        const newValue = await prompt.promptOnce({
         type: "input",
         message: `What new value would you like for plaintext ${name}?`,
        });
-       newEnv.push({
+       newEnv[name] = {
          variable: name,
          value: newValue,
-       });
+       };
        continue;
     }
 
@@ -296,13 +297,20 @@ export async function overrideChosenEnv(projectId: string, env: Env[]): Promise<
         action = "create";
       }
     }
+    newEnv[name] = {
+      variable: name,
+      secret: secretRef!,
+    };
     if (action === "reuse") {
-      newEnv.push({
-        variable: name,
-        secret: secretRef!,
-      });
       continue;
     }
+    const secretValue = await prompt.promptOnce({
+      type: "password",
+      message: `What new value would you like for secret ${name} [input is hidden]?`,
+    });
+    // TODO: Do we need to support overriding locations? Inferring them from the original?
+    await csm.createSecret(projectId, secretRef!, {[csm.FIREBASE_MANAGED]: "apphosting"});
+    await csm.addVersion(projectId, secretRef!, secretValue);
   }
   return newEnv;
 }
