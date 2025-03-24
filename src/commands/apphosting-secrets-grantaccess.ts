@@ -9,8 +9,8 @@ import * as apphosting from "../gcp/apphosting";
 import * as secrets from "../apphosting/secrets";
 import { getBackendForAmbiguousLocation } from "../apphosting/backend";
 
-export const command = new Command("apphosting:secrets:grantaccess <secretName>")
-  .description("grant service accounts permissions to the provided secret")
+export const command = new Command("apphosting:secrets:grantaccess <secretNames>")
+  .description("grant service accounts permissions to the provided secret(s). Can pass one or more secrets, separated by a comma")
   .option("-l, --location <location>", "backend location", "-")
   .option("-b, --backend <backend>", "backend name")
   .option("-u, --emails <emails>", "comma delmited list user or group emails")
@@ -25,7 +25,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     "secretmanager.secrets.getIamPolicy",
     "secretmanager.secrets.setIamPolicy",
   ])
-  .action(async (secretName: string, options: Options) => {
+  .action(async (secretNames: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
@@ -40,15 +40,18 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
       );
     }
 
-    const exists = await secretManager.secretExists(projectId, secretName);
-    if (!exists) {
-      throw new FirebaseError(`Cannot find secret ${secretName}`);
+    const secretList = secretNames.split(",");
+    for (const secretName of secretList) {
+      const exists = await secretManager.secretExists(projectId, secretName);
+      if (!exists) {
+        throw new FirebaseError(`Cannot find secret ${secretName}`);
+      }
     }
 
     if (options.emails) {
       return await secrets.grantEmailsSecretAccess(
         projectId,
-        secretName,
+        secretList,
         String(options.emails).split(","),
       );
     }
@@ -68,5 +71,5 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
 
     const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
 
-    await secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts);
+    await Promise.all(secretList.map((secretName) => secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts)));
   });

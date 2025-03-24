@@ -265,6 +265,10 @@ describe("secrets", () => {
       projectId: "projectId",
       name: "secret",
     };
+    const secret2 = {
+      projectId: "projectId",
+      name: "secret2",
+    }
     const existingPolicy: iam.Policy = {
       version: 1,
       etag: "tag",
@@ -287,7 +291,7 @@ describe("secrets", () => {
         );
       gcsm.setIamPolicy.onSecondCall().resolves();
 
-      await secrets.grantEmailsSecretAccess(secret.projectId, secret.name, [
+      await secrets.grantEmailsSecretAccess(secret.projectId, [secret.name], [
         "user@mydomain.com",
         "mygroup@mydomain.com",
       ]);
@@ -315,12 +319,63 @@ describe("secrets", () => {
       ]);
     });
 
+    it("Should remember what it learns while brute forcing across multiple secrets", async () => {
+      gcsm.getIamPolicy.resolves(existingPolicy);
+      gcsm.setIamPolicy
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            'Principal mygroup@mydomain.com is of type "group". The principal should appear as "group:mygroup@mydomain.com"',
+          ),
+        );
+      gcsm.setIamPolicy.onSecondCall().resolves();
+      gcsm.setIamPolicy.onThirdCall().resolves();
+
+      await secrets.grantEmailsSecretAccess(secret.projectId, [secret.name, secret2.name], [
+        "user@mydomain.com",
+        "mygroup@mydomain.com",
+      ]);
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.be.calledThrice;
+      expect(gcsm.setIamPolicy.firstCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "user:mygroup@mydomain.com"],
+        },
+      ]);
+      expect(gcsm.setIamPolicy.secondCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "group:mygroup@mydomain.com"],
+        },
+      ]);
+      expect(gcsm.setIamPolicy.thirdCall).to.be.calledWithMatch(secret2, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "group:mygroup@mydomain.com"],
+        },
+      ]);
+    });
+
     it("Should fail if the error is not specifically a principal type error", async () => {
       gcsm.getIamPolicy.resolves(existingPolicy);
       gcsm.setIamPolicy.rejects(new FirebaseError("Some other error"));
 
       await expect(
-        secrets.grantEmailsSecretAccess(secret.projectId, secret.name, ["user@mydomain.com"]),
+        secrets.grantEmailsSecretAccess(secret.projectId, [secret.name], ["user@mydomain.com"]),
       ).to.eventually.be.rejectedWith(/Failed to set IAM bindings/);
     });
   });
