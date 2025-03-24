@@ -105,7 +105,10 @@ export async function setupSQLPermissions(
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
   const schema = schemaInfo.name;
   // Step 0: Check current user can run setup and upsert IAM / P4SA users
-  logger.info(`Attempting to Setup SQL schema "${schema}".`);
+  logger.info(
+    `Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`,
+  );
+
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
@@ -114,20 +117,36 @@ export async function setupSQLPermissions(
   }
   await setupIAMUsers(instanceId, databaseId, options);
 
+  let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
+    runGreenfieldSetup = true;
     logger.info(
-      `Database ${databaseId} has already been setup. Rerunning setup to repair any missing permissions.`,
+      `Database ${databaseId} has already been setup as greenfield project. Rerunning setup to repair any missing permissions.`,
     );
-    await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
-    return SchemaSetupStatus.GreenField;
-  } else {
-    logger.info(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}.`);
+  }
+
+  if (schemaInfo.tables.length === 0) {
+    runGreenfieldSetup = true;
+    logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`);
   }
 
   // We need to setup the database
-  if (schemaInfo.tables.length === 0) {
-    logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`);
-    await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
+  if (runGreenfieldSetup) {
+    const greenfieldSetupCmds = await greenFieldSchemaSetup(
+      instanceId,
+      databaseId,
+      schema,
+      options,
+    );
+    await executeSqlCmdsAsSuperUser(
+      options,
+      instanceId,
+      databaseId,
+      greenfieldSetupCmds,
+      silent,
+      /** transaction=*/ true,
+    );
+
     logger.info(clc.green("Database setup complete."));
     return SchemaSetupStatus.GreenField;
   }
@@ -153,6 +172,12 @@ export async function setupSQLPermissions(
 
   if (shouldSetupGreenfield) {
     await setupBrownfieldAsGreenfield(instanceId, databaseId, schemaInfo, options, silent);
+    logger.info(clc.green("Database setup complete."));
+    logger.info(
+      clc.yellow(
+        "IMPORTANT: please uncomment 'schemaValidation: \"COMPATIBLE\"' in your dataconnect.yaml file to avoid dropping any existing tables by mistake.",
+      ),
+    );
     return SchemaSetupStatus.GreenField;
   } else {
     logger.info(
@@ -172,7 +197,6 @@ export async function greenFieldSchemaSetup(
   databaseId: string,
   schema: string,
   options: Options,
-  silent: boolean = false,
 ) {
   // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
   const revokes = [];
@@ -219,7 +243,7 @@ export async function greenFieldSchemaSetup(
     defaultPermissions(databaseId, schema, firebaseowner(databaseId, schema)),
   );
 
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, sqlRoleSetupCmds, silent);
+  return sqlRoleSetupCmds;
 }
 
 export async function getSchemaMetadata(
@@ -310,14 +334,23 @@ export async function setupBrownfieldAsGreenfield(
 ) {
   const schema = schemaInfo.name;
 
-  // Step 1: Run our usual setup which creates necessary roles, transfers schema ownership, and gives nessary grants.
-  await greenFieldSchemaSetup(instanceId, databaseId, schema, options, silent);
-
-  // Step 2: Grant non firebase owners the writer role before changing the table owners.
   const firebaseOwnerRole = firebaseowner(databaseId, schema);
   const nonFirebasetablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))].filter(
     (owner) => owner !== firebaseOwnerRole,
   );
+
+  // Grant roles to firebase superuser to avoid missing permissions on tables
+  const grantOwnersToSuperuserCmds = nonFirebasetablesOwners.map(
+    (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
+  );
+  const revokeOwnersFromSuperuserCmds = nonFirebasetablesOwners.map(
+    (owner) => `REVOKE "${owner}" FROM "${FIREBASE_SUPER_USER}"`,
+  );
+
+  // Step 1: Our usual setup which creates necessary roles, transfers schema ownership, and gives nessary grants.
+  const greenfieldSetupCmds = await greenFieldSchemaSetup(instanceId, databaseId, schema, options);
+
+  // Step 2: Grant non firebase owners the writer role before changing the table owners.
   const grantCmds = nonFirebasetablesOwners.map(
     (owner) => `GRANT "${firebasewriter(databaseId, schema)}" TO "${owner}"`,
   );
@@ -327,13 +360,22 @@ export async function setupBrownfieldAsGreenfield(
     (table) => `ALTER TABLE "${schema}"."${table.name}" OWNER TO "${firebaseOwnerRole}";`,
   );
 
+  const setupCmds = [
+    ...grantOwnersToSuperuserCmds,
+    ...greenfieldSetupCmds,
+    ...grantCmds,
+    ...alterTableCmds,
+    ...revokeOwnersFromSuperuserCmds,
+  ];
+
   // Run sql commands
   await executeSqlCmdsAsSuperUser(
     options,
     instanceId,
     databaseId,
-    [...grantCmds, ...alterTableCmds],
+    setupCmds,
     silent,
+    /** transaction */ true,
   );
 }
 
@@ -349,7 +391,10 @@ export async function brownfieldSqlSetup(
   // Step 1: Grant firebasesuperuser access to the original owner
   const uniqueTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
   const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map(
-    (owner) => `GRANT ${owner} TO ${FIREBASE_SUPER_USER}`,
+    (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
+  );
+  const revokeOwnersFromFirebasesuperuser = uniqueTablesOwners.map(
+    (owner) => `REVOKE "${owner}" FROM "${FIREBASE_SUPER_USER}"`,
   );
 
   // Step 2: Using firebasesuperuser, setup reader and writer permissions on existing tables and setup default permissions for future tables.
@@ -379,7 +424,17 @@ export async function brownfieldSqlSetup(
 
     // Insures firebase roles have access to future tables
     ...firebaseDefaultPermissions,
+
+    // Execute revokes to avoid builtin user becoming IAM role
+    ...revokeOwnersFromFirebasesuperuser,
   ];
 
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, brownfieldSetupCmds, silent);
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    brownfieldSetupCmds,
+    silent,
+    /** transaction=*/ true,
+  );
 }
