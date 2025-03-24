@@ -76,7 +76,8 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       const emailList = await prompt.promptOnce({
         type: "input",
         name: "emails",
-        message: "Please enter a comma separated list of user or groups who should have access to this secret:",
+        message:
+          "Please enter a comma separated list of user or groups who should have access to this secret:",
       });
       await secrets.grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
       await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
@@ -99,8 +100,8 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE);
     utils.logBullet(
       "To grant additional users access to this secret run " +
-      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) + 
-      ".\nTo grant additional backends access to this secret run " +
-      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --backend [backend ID]`)
+        clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) +
+        ".\nTo grant additional backends access to this secret run " +
+        clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --backend [backend ID]`),
     );
   });

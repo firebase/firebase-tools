@@ -58,7 +58,9 @@ const SECRET_CONFIG = "Secret";
 const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 
 function foundProjectFile(dir: string): boolean {
-  return fs.listFiles(dir).some((file) => [APPHOSTING_BASE_YAML_FILE, APPHOSTING_EMULATORS_YAML_FILE].includes(file));
+  return fs
+    .listFiles(dir)
+    .some((file) => [APPHOSTING_BASE_YAML_FILE, APPHOSTING_EMULATORS_YAML_FILE].includes(file));
 }
 /**
  * Returns the absolute path for an app hosting backend root.
@@ -158,7 +160,10 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
-export async function maybeAddSecretToYaml(secretName: string, fileName: string = APPHOSTING_BASE_YAML_FILE): Promise<void> {
+export async function maybeAddSecretToYaml(
+  secretName: string,
+  fileName: string = APPHOSTING_BASE_YAML_FILE,
+): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
     discoverBackendRoot: typeof discoverBackendRoot;
@@ -190,13 +195,15 @@ export async function maybeAddSecretToYaml(secretName: string, fileName: string 
   }
   if (!path) {
     path = await prompt.promptOnce({
-      message:
-        `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
+      message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
     path = join(path, fileName);
   }
-  const envName = await dialogs.envVarForSecret(secretName, /* removeTestPrefix */ fileName === APPHOSTING_EMULATORS_YAML_FILE);
+  const envName = await dialogs.envVarForSecret(
+    secretName,
+    /* removeTestPrefix */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
+  );
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
     secret: secretName,

@@ -207,7 +207,10 @@ function toUpperSnakeCase(key: string): string {
     .toUpperCase();
 }
 
-export async function envVarForSecret(secret: string, trimTestPrefix: boolean = false): Promise<string> {
+export async function envVarForSecret(
+  secret: string,
+  trimTestPrefix: boolean = false,
+): Promise<string> {
   let upper = toUpperSnakeCase(secret);
   if (trimTestPrefix) {
     // Remove TEST_ or TEST
