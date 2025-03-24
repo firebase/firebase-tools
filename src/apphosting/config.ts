@@ -60,7 +60,13 @@ const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 function foundProjectFile(dir: string): boolean {
   return fs
     .listFiles(dir)
-    .some((file) => [APPHOSTING_BASE_YAML_FILE, APPHOSTING_EMULATORS_YAML_FILE].includes(file));
+    .some((file) =>
+      [
+        APPHOSTING_BASE_YAML_FILE,
+        APPHOSTING_EMULATORS_YAML_FILE,
+        APPHOSTING_LOCAL_YAML_FILE,
+      ].includes(file),
+    );
 }
 /**
  * Returns the absolute path for an app hosting backend root.
