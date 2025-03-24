@@ -67,9 +67,14 @@ const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
+  while (true) {
+    const files = fs.listFiles(dir);
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+      return dir;
+    }
+
     // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+    if (files.includes("firebase.json")) {
       return null;
     }
 
@@ -80,8 +85,6 @@ export function discoverBackendRoot(cwd: string): string | null {
     }
     dir = parent;
   }
-
-  return dir;
 }
 
 /**
@@ -94,9 +97,18 @@ export function listAppHostingFilesInPath(path: string): string[] {
     .map((file) => join(path, file));
 }
 
-/** Load apphosting.yaml */
+/**
+ * Load an apphosting yaml file if it exists.
+ * Throws if the file exists but is malformed.
+ * Returns an empty document if the file does not exist.
+ */
 export function load(yamlPath: string): yaml.Document {
-  const raw = fs.readFile(yamlPath);
+  let raw: string;
+  try {
+    raw = fs.readFile(yamlPath);
+  } catch (err) {
+    return new yaml.Document();
+  }
   return yaml.parseDocument(raw);
 }
 
@@ -156,13 +168,16 @@ const dynamicDispatch = exports as {
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
-export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
+export async function maybeAddSecretToYaml(
+  secretName: string,
+  fileName: string = APPHOSTING_BASE_YAML_FILE,
+): Promise<void> {
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
   const backendRoot = dynamicDispatch.discoverBackendRoot(process.cwd());
   let path: string | undefined;
   let projectYaml: yaml.Document;
   if (backendRoot) {
-    path = join(backendRoot, APPHOSTING_BASE_YAML_FILE);
+    path = join(backendRoot, fileName);
     projectYaml = dynamicDispatch.load(path);
   } else {
     projectYaml = new yaml.Document();
@@ -172,7 +187,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     return;
   }
   const addToYaml = await prompt.confirm({
-    message: "Would you like to add this secret to apphosting.yaml?",
+    message: `Would you like to add this secret to ${fileName}?`,
     default: true,
   });
   if (!addToYaml) {
@@ -180,13 +195,15 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   }
   if (!path) {
     path = await prompt.promptOnce({
-      message:
-        "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+      message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
-    path = join(path, APPHOSTING_BASE_YAML_FILE);
+    path = join(path, fileName);
   }
-  const envName = await dialogs.envVarForSecret(secretName);
+  const envName = await dialogs.envVarForSecret(
+    secretName,
+    /* removeTestPrefix */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
+  );
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
     secret: secretName,
