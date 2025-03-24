@@ -135,7 +135,7 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
-export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
+export async function maybeAddSecretToYaml(secretName: string, fileName: string = APPHOSTING_BASE_YAML_FILE): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
     discoverBackendRoot: typeof discoverBackendRoot;
@@ -149,7 +149,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   let path: string | undefined;
   let projectYaml: yaml.Document;
   if (backendRoot) {
-    path = join(backendRoot, APPHOSTING_BASE_YAML_FILE);
+    path = join(backendRoot, fileName);
     projectYaml = dynamicDispatch.load(path);
   } else {
     projectYaml = new yaml.Document();
@@ -159,7 +159,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     return;
   }
   const addToYaml = await prompt.confirm({
-    message: "Would you like to add this secret to apphosting.yaml?",
+    message: `Would you like to add this secret to ${fileName}?`,
     default: true,
   });
   if (!addToYaml) {
@@ -168,10 +168,10 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   if (!path) {
     path = await prompt.promptOnce({
       message:
-        "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+        `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
-    path = join(path, APPHOSTING_BASE_YAML_FILE);
+    path = join(path, fileName);
   }
   const envName = await dialogs.envVarForSecret(secretName);
   dynamicDispatch.upsertEnv(projectYaml, {

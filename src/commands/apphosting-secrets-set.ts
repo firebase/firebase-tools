@@ -11,6 +11,7 @@ import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
 import * as utils from "../utils";
+import * as prompt from "../prompt";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")
@@ -58,6 +59,27 @@ export const command = new Command("apphosting:secrets:set <secretName>")
 
     // If the secret already exists, we want to exit once the new version is added
     if (!created) {
+      return;
+    }
+
+    const type = await prompt.promptOnce({
+      type: "list",
+      name: "type",
+      message: "Is this secret for production or only local testing?",
+      choices: [
+        { name: "Production", value: "production" },
+        { name: "Local testing only", value: "local" },
+      ],
+    });
+
+    if (type === "local") {
+      const emailList = await prompt.promptOnce({
+        type: "input",
+        name: "emails",
+        message: "Please enter a comma separated list of user or groups who should ahve access to this secret:",
+      });
+      await secrets.grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+      await config.maybeAddSecretToYaml(secretName, "apphosting.emulator.yaml");
       return;
     }
 
