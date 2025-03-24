@@ -1,1 +1,2 @@
 - Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
+- firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
