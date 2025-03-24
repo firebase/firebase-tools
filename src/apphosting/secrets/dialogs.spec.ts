@@ -465,5 +465,15 @@ describe("dialogs", () => {
         /Key X_GOOGLE_SECRET starts with a reserved prefix/,
       );
     });
+
+    it("can trim test prefixes", async () => {
+      prompt.promptOnce.resolves("SECRET");
+
+      await expect(dialogs.envVarForSecret("test-secret")).to.eventually.equal("SECRET");
+      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET",
+      });
+    });
   });
 });

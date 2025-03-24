@@ -57,6 +57,9 @@ export interface Config {
 const SECRET_CONFIG = "Secret";
 const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 
+function foundProjectFile(dir: string): boolean {
+  return fs.listFiles(dir).some((file) => [APPHOSTING_BASE_YAML_FILE, APPHOSTING_EMULATORS_YAML_FILE].includes(file));
+}
 /**
  * Returns the absolute path for an app hosting backend root.
  *
@@ -66,7 +69,7 @@ const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
+  while (!foundProjectFile(dir)) {
     // We've hit project root
     if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
       return null;
@@ -93,9 +96,18 @@ export function listAppHostingFilesInPath(path: string): string[] {
     .map((file) => join(path, file));
 }
 
-/** Load apphosting.yaml */
+/**
+ * Load an apphosting yaml file if it exists.
+ * Throws if the file exists but is malformed.
+ * Returns an empty document if the file does not exist.
+ */
 export function load(yamlPath: string): yaml.Document {
-  const raw = fs.readFile(yamlPath);
+  let raw: string;
+  try {
+    raw = fs.readFile(yamlPath);
+  } catch (err) {
+    return new yaml.Document();
+  }
   return yaml.parseDocument(raw);
 }
 
@@ -184,7 +196,7 @@ export async function maybeAddSecretToYaml(secretName: string, fileName: string 
     });
     path = join(path, fileName);
   }
-  const envName = await dialogs.envVarForSecret(secretName);
+  const envName = await dialogs.envVarForSecret(secretName, /* removeTestPrefix */ fileName === APPHOSTING_EMULATORS_YAML_FILE);
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
     secret: secretName,
