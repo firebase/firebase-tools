@@ -1,5 +1,13 @@
 ## NEXT
 
+- [Added] Added rerun execution button in variables context
+- [Added] Provide default required variables during execution
+- [Fixed] Fixed an issue where nvironment variables provided in `extraEnv` were not respected in some cases
+
+## 0.14.2
+
+- Updated internal `firebase-tools` dependency to 13.34.0
+
 ## 0.14.1
 
 - Updated internal `firebase-tools` dependency to 13.33.0

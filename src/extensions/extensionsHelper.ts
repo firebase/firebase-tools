@@ -1215,10 +1215,16 @@ export function isUrlPath(extInstallPath: string): boolean {
 export function isLocalPath(extInstallPath: string): boolean {
   const trimmedPath = extInstallPath.trim();
   return (
-    trimmedPath.startsWith("~/") ||
-    trimmedPath.startsWith("./") ||
-    trimmedPath.startsWith("../") ||
-    trimmedPath.startsWith("/") ||
+    trimmedPath.startsWith(`~${path.sep}`) ||
+    trimmedPath.startsWith(`.${path.sep}`) ||
+    trimmedPath.startsWith(`..${path.sep}`) ||
+    trimmedPath.startsWith(`${path.sep}`) ||
+    // Windows generally supports both forward and back slashes (even though the path.sep is \, so always check)
+    // https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#canonicalize-separators
+    trimmedPath.startsWith(`~/`) ||
+    trimmedPath.startsWith(`./`) ||
+    trimmedPath.startsWith(`../`) ||
+    trimmedPath.startsWith(`/`) ||
     [".", ".."].includes(trimmedPath)
   );
 }
