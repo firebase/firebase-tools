@@ -165,8 +165,13 @@ async function setupArtifactCleanupPolicies(
     return;
   }
 
-  const { locationsToSetup, locationsWithErrors: locationsWithCheckErrors } =
-    await artifacts.checkCleanupPolicy(projectId, locations);
+  const checkResults = await artifacts.checkCleanupPolicy(projectId, locations);
+  const locationsToSetup = Object.entries(checkResults)
+    .filter(([_, status]) => status === "noPolicy")
+    .map(([location]) => location);
+  const locationsWithCheckErrors = Object.entries(checkResults)
+    .filter(([_, status]) => status === "errored")
+    .map(([location]) => location);
 
   if (locationsToSetup.length === 0) {
     return;
@@ -176,31 +181,47 @@ async function setupArtifactCleanupPolicies(
 
   utils.logLabeledBullet(
     "functions",
-    `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
+    `Configuring cleanup policy for ${prompts.formatMany(locationsToSetup, "location")}. ` +
       `Images older than ${daysToKeep} days will be automatically deleted.`,
   );
 
-  const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
-    await artifacts.setCleanupPolicies(projectId, locationsToSetup, daysToKeep);
+  const setPolicyResults = await artifacts.setCleanupPolicies(
+    projectId,
+    locationsToSetup,
+    daysToKeep,
+  );
+
+  const locationsConfiguredSuccessfully = Object.entries(setPolicyResults)
+    .filter(([_, result]) => result.status === "success")
+    .map(([location, _]) => location);
+
+  const locationsWithSetupErrors = Object.entries(setPolicyResults)
+    .filter(([_, result]) => result.status === "errored")
+    .map(([location, _]) => location);
 
   utils.logLabeledBullet(
     "functions",
-    `Configured cleanup policy for ${locationsWithPolicy.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}.`,
+    `Configured cleanup policy for ${prompts.formatMany(locationsConfiguredSuccessfully, "location")}.`,
   );
 
   const locationsWithErrors = [...locationsWithCheckErrors, ...locationsWithSetupErrors];
   if (locationsWithErrors.length > 0) {
+    const errs = Object.entries(setPolicyResults)
+      .filter(([_, result]) => result.status === "errored")
+      .map(([_, result]) => result.error)
+      .filter((err) => !!err);
+
     utils.logLabeledWarning(
       "functions",
-      `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
-        `${locationsWithErrors.join(", ")}.` +
+      `Failed to set up cleanup policy for repositories in ${prompts.formatMany(locationsWithErrors, "location")} ` +
         "This could result in a small monthly bill as container images accumulate over time.",
     );
     throw new FirebaseError(
       `Functions successfully deployed but could not set up cleanup policy in ` +
-        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}.` +
+        `${prompts.formatMany(locationsWithErrors, "location")}. ` +
         `Pass the --force option to automatically set up a cleanup policy or` +
         "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+      { children: errs },
     );
   }
 }

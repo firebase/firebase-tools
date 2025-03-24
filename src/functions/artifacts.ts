@@ -208,56 +208,66 @@ export function hasCleanupOptOut(repo: artifactregistry.Repository): boolean {
   return !!(repo.labels && repo.labels[OPT_OUT_LABEL_KEY] === "true");
 }
 
+export type CheckPolicyResult = "noPolicy" | "foundPolicy" | "optedOut" | "notFound" | "errored";
+
 /**
  * Checks whether a clean up policy is required for Artifact Registry in given locations.
+ *
+ * @returns An object mapping each location to its cleanup policy status:
+ * - "noPolicy": Repository exists but has no cleanup policy and needs one
+ * - "foundPolicy": Repository exists and has a policy (has our policy or other policies)
+ * - "optedOut": Repository exists but has opted out
+ * - "notFound": Repository doesn't exist
+ * - "errored": Failed to check this location due to other errors
  */
 export async function checkCleanupPolicy(
   projectId: string,
   locations: string[],
-): Promise<{ locationsToSetup: string[]; locationsWithErrors: string[] }> {
+): Promise<Record<string, CheckPolicyResult>> {
   if (locations.length === 0) {
-    return { locationsToSetup: [], locationsWithErrors: [] };
+    return {};
   }
-
-  const checkRepos = await Promise.allSettled(
+  const checkResults = await Promise.allSettled(
     locations.map(async (location) => {
       try {
         const repository = await exports.getRepo(projectId, location);
-        const hasPolicy = !!findExistingPolicy(repository);
-        const hasOptOut = hasCleanupOptOut(repository);
-        const hasOtherPolicies =
+        if (hasCleanupOptOut(repository)) {
+          return "optedOut";
+        } else if (
           repository.cleanupPolicies &&
-          Object.keys(repository.cleanupPolicies).some((key) => key !== CLEANUP_POLICY_ID);
-
-        return {
-          location,
-          repository,
-          hasPolicy,
-          hasOptOut,
-          hasOtherPolicies,
-        };
-      } catch (err) {
-        logger.debug(`Failed to check artifact cleanup policy for region ${location}:`, err);
+          Object.keys(repository.cleanupPolicies).length > 0
+        ) {
+          return "foundPolicy";
+        } else {
+          return "noPolicy";
+        }
+      } catch (err: any) {
+        if (err.status === 404) {
+          return "notFound";
+        }
         throw err;
       }
     }),
   );
 
-  const locationsToSetup = [];
-  const locationsWithErrors = [];
-
-  for (let i = 0; i < checkRepos.length; i++) {
-    const result = checkRepos[i];
+  const results: Record<string, CheckPolicyResult> = {};
+  for (let i = 0; i < locations.length; i++) {
+    const result = checkResults[i];
+    const location = locations[i];
     if (result.status === "fulfilled") {
-      if (!(result.value.hasPolicy || result.value.hasOptOut || result.value.hasOtherPolicies)) {
-        locationsToSetup.push(result.value.location);
-      }
+      results[location] = result.value as CheckPolicyResult;
     } else {
-      locationsWithErrors.push(locations[i]);
+      logger.debug(`Failed to check policy for repository in ${location}: ${result.reason}`);
+      results[location] = "errored";
     }
   }
-  return { locationsToSetup, locationsWithErrors };
+  return results;
 }
+
+export type SetPolicyResult = {
+  status: "success" | "errored";
+  error?: Error;
+};
 
 /**
  * Sets Artifact Registry cleanup policies for given locations.
@@ -266,11 +276,10 @@ export async function setCleanupPolicies(
   projectId: string,
   locations: string[],
   daysToKeep: number,
-): Promise<{ locationsWithPolicy: string[]; locationsWithErrors: string[] }> {
-  if (locations.length === 0) return { locationsWithPolicy: [], locationsWithErrors: [] };
+): Promise<Record<string, SetPolicyResult>> {
+  if (locations.length === 0) return {};
 
-  const locationsWithPolicy: string[] = [];
-  const locationsWithErrors: string[] = [];
+  const results: Record<string, SetPolicyResult> = {};
 
   const setupRepos = await Promise.allSettled(
     locations.map(async (location) => {
@@ -292,17 +301,57 @@ export async function setCleanupPolicies(
     const result = setupRepos[i];
     if (result.status === "rejected") {
       logger.debug(
-        `Failed to set up artifact cleanup policy for region ${location}:`,
+        `Failed to set up artifact cleanup policy for location ${location}:`,
         result.reason,
       );
-      locationsWithErrors.push(location);
+      results[location] = { status: "errored", error: result.reason };
     } else {
-      locationsWithPolicy.push(location);
+      results[location] = { status: "success" };
     }
   }
 
-  return {
-    locationsWithPolicy,
-    locationsWithErrors,
-  };
+  return results;
+}
+
+export type OptOutResult = {
+  status: "success" | "errored";
+  error?: Error;
+};
+
+/*
+ * Opt out repositories in given locations from cleanup policies and delete any firebase-created cleanup policy
+ */
+export async function optOutRepositories(
+  projectId: string,
+  locations: string[],
+): Promise<Record<string, OptOutResult>> {
+  if (locations.length === 0) return {};
+  const results: Record<string, OptOutResult> = {};
+
+  const optOutPromises = await Promise.allSettled(
+    locations.map(async (location) => {
+      try {
+        logger.debug(`Opting out artifact cleanup policy for repository in ${location}`);
+        const repo = await exports.getRepo(projectId, location);
+        await exports.optOutRepository(repo);
+        return location;
+      } catch (err: unknown) {
+        throw new FirebaseError("Failed to opt out artifact cleanup policy", {
+          original: err as Error,
+        });
+      }
+    }),
+  );
+
+  for (let i = 0; i < locations.length; i++) {
+    const location = locations[i];
+    const result = optOutPromises[i];
+    if (result.status === "rejected") {
+      logger.debug(`Failed to opt out cleanup policy for location ${location}:`, result.reason);
+      results[location] = { status: "errored", error: result.reason };
+    } else {
+      results[location] = { status: "success" };
+    }
+  }
+  return results;
 }
