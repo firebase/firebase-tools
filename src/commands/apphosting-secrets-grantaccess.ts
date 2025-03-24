@@ -11,11 +11,11 @@ import { getBackendForAmbiguousLocation } from "../apphosting/backend";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretNames>")
   .description(
-    "grant service accounts permissions to the provided secret(s). Can pass one or more secrets, separated by a comma",
+    "grant service accounts, users, or groups permissions to the provided secret(s). Can pass one or more secrets, separated by a comma",
   )
   .option("-l, --location <location>", "backend location", "-")
   .option("-b, --backend <backend>", "backend name")
-  .option("-u, --emails <emails>", "comma delmited list user or group emails")
+  .option("-e, --emails <emails>", "comma delimited list of user or group emails")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
@@ -73,7 +73,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretNames>
 
     const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
 
-    await Promise.all(
+    await Promise.allSettled(
       secretList.map((secretName) =>
         secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts),
       ),
