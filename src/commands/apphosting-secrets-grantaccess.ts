@@ -13,6 +13,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
   .description("grant service accounts permissions to the provided secret")
   .option("-l, --location <location>", "backend location", "-")
   .option("-b, --backend <backend>", "backend name")
+  .option("-u, --emails <emails>", "comma delmited list user or group emails")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
@@ -28,15 +29,28 @@ export const command = new Command("apphosting:secrets:grantaccess <secretName>"
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
-    if (!options.backend) {
+    if (!options.backend && !options.emails) {
       throw new FirebaseError(
-        "Missing required flag --backend. See firebase apphosting:secrets:grantaccess --help for more info",
+        "Missing required flag --backend or --emails. See firebase apphosting:secrets:grantaccess --help for more info",
+      );
+    }
+    if (options.backend && options.emails) {
+      throw new FirebaseError(
+        "Cannot specify both --backend and --emails. See firebase apphosting:secrets:grantaccess --help for more info",
       );
     }
 
     const exists = await secretManager.secretExists(projectId, secretName);
     if (!exists) {
       throw new FirebaseError(`Cannot find secret ${secretName}`);
+    }
+
+    if (options.emails) {
+      return await secrets.grantEmailsSecretAccess(
+        projectId,
+        secretName,
+        String(options.emails).split(","),
+      );
     }
 
     const backendId = options.backend as string;
