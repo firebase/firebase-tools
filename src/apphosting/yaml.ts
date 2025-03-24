@@ -16,7 +16,7 @@ export type Secret = Omit<Env, "value">;
 export class AppHostingYamlConfig {
   // Holds the basename of the file (e.g. apphosting.yaml vs apphosting.staging.yaml)
   public filename: string | undefined;
-  public env: Record<string, Omit<Env, "variable">> = {};
+  public env: Record<string, Env> = {};
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and

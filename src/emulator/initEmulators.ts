@@ -39,6 +39,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     }
 
     try {
+      const yaml = await maybeGenerateEmulatorYaml(backendRoot);
       const projectRoot = detectProjectRoot({}) ?? backendRoot;
       await exportConfig(cwd, projectRoot, backendRoot);
     } catch (e) {
