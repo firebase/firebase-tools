@@ -8,6 +8,7 @@ import {
   readerRolePermissions,
   defaultPermissions,
   FIREBASE_SUPER_USER,
+  CLOUDSQL_SUPER_USER,
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
 import { setupIAMUsers } from "./connect";
@@ -325,6 +326,13 @@ export async function getSchemaMetadata(
   };
 }
 
+function filterTableOwners(schemaInfo: SchemaMetadata, databaseId: string) {
+  return [...new Set(schemaInfo.tables.map((t) => t.owner))].filter(
+    (owner) =>
+      owner !== CLOUDSQL_SUPER_USER && owner !== firebaseowner(databaseId, schemaInfo.name),
+  );
+}
+
 export async function setupBrownfieldAsGreenfield(
   instanceId: string,
   databaseId: string,
@@ -335,15 +343,13 @@ export async function setupBrownfieldAsGreenfield(
   const schema = schemaInfo.name;
 
   const firebaseOwnerRole = firebaseowner(databaseId, schema);
-  const nonFirebasetablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))].filter(
-    (owner) => owner !== firebaseOwnerRole,
-  );
+  const uniqueTablesOwners = filterTableOwners(schemaInfo, databaseId);
 
   // Grant roles to firebase superuser to avoid missing permissions on tables
-  const grantOwnersToSuperuserCmds = nonFirebasetablesOwners.map(
+  const grantOwnersToSuperuserCmds = uniqueTablesOwners.map(
     (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
   );
-  const revokeOwnersFromSuperuserCmds = nonFirebasetablesOwners.map(
+  const revokeOwnersFromSuperuserCmds = uniqueTablesOwners.map(
     (owner) => `REVOKE "${owner}" FROM "${FIREBASE_SUPER_USER}"`,
   );
 
@@ -351,7 +357,7 @@ export async function setupBrownfieldAsGreenfield(
   const greenfieldSetupCmds = await greenFieldSchemaSetup(instanceId, databaseId, schema, options);
 
   // Step 2: Grant non firebase owners the writer role before changing the table owners.
-  const grantCmds = nonFirebasetablesOwners.map(
+  const grantCmds = uniqueTablesOwners.map(
     (owner) => `GRANT "${firebasewriter(databaseId, schema)}" TO "${owner}"`,
   );
 
@@ -388,8 +394,8 @@ export async function brownfieldSqlSetup(
 ) {
   const schema = schemaInfo.name;
 
-  // Step 1: Grant firebasesuperuser access to the original owner
-  const uniqueTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
+  // Step 1: Grant firebasesuperuser access to the original owner.
+  const uniqueTablesOwners = filterTableOwners(schemaInfo, databaseId);
   const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map(
     (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
   );

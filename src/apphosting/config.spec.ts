@@ -282,7 +282,7 @@ env:
     });
 
     // This allows us to prompt to give devs access to prod keys
-    it("Returns existing config even if the user does not create apphosting.emulator.yaml", async () => {
+    it("returns existing config even if the user does not create apphosting.emulator.yaml", async () => {
       discoverBackendRoot.withArgs("/project").returns("/project");
       fs.fileExistsSync
         .withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`)
@@ -296,7 +296,7 @@ env:
       ).to.eventually.deep.equal(toEnvList(existingYaml.env));
     });
 
-    it("Returns overwritten config", async () => {
+    it("returns overwritten config", async () => {
       discoverBackendRoot.withArgs("/project").returns("/project");
       fs.fileExistsSync
         .withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`)

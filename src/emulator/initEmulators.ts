@@ -56,7 +56,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
         logger.log(
           "WARN",
           "Cannot grant developers access to secrets for local development without knowing what project the secret is in. " +
-            `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --user [userList]`)}`,
+            `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --emails [email list]`)}`,
         );
       } else {
         const users = await promptOnce({
@@ -74,7 +74,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
           logger.log(
             "INFO",
             "Skipping granting developers access to secrets for local development. To grant access in the future, run " +
-              `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --user [userList]`)}`,
+              `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --emails [email list]`)}`,
           );
         }
       }
