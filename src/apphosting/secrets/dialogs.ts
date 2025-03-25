@@ -212,13 +212,8 @@ export async function envVarForSecret(
   trimTestPrefix: boolean = false,
 ): Promise<string> {
   let upper = toUpperSnakeCase(secret);
-  if (trimTestPrefix) {
-    // Remove TEST_ or TEST
-    if (upper.startsWith("TEST_")) {
-      upper = upper.substring("TEST_".length);
-    } else if (upper.startsWith("TEST")) {
-      upper = upper.substring("TEST".length);
-    }
+  if (trimTestPrefix && upper.startsWith("TEST_")) {
+    upper = upper.substring("TEST_".length);
   }
   if (upper === secret) {
     try {

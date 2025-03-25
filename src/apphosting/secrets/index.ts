@@ -135,7 +135,7 @@ export async function grantEmailsSecretAccess(
     } catch (err: unknown) {
       throw new FirebaseError(
         `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
-        "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+          "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
         { original: getError(err) },
       );
     }

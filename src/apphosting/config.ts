@@ -7,7 +7,7 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { promptForAppHostingYaml } from "./utils";
 import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
@@ -105,7 +105,12 @@ export function load(yamlPath: string): yaml.Document {
   let raw: string;
   try {
     raw = fs.readFile(yamlPath);
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code !== "ENOENT") {
+      throw new FirebaseError(`Unexpected error trying to load ${yamlPath}`, {
+        original: getError(err),
+      });
+    }
     return new yaml.Document();
   }
   return yaml.parseDocument(raw);
@@ -152,9 +157,9 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 }
 
 /**
- * Given a secret name, guides the user whether they want to add that secret to apphosting.yaml.
- * If an apphosting.yaml exists and includes the secret already is used as a variable name, exist early.
- * If apphosting.yaml does not exist, offers to create it.
+ * Given a secret name, guides the user whether they want to add that secret to the specified apphosting yaml file.
+ * If an the file exists and includes the secret already is used as a variable name, exist early.
+ * If the file does not exist, offers to create it.
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
@@ -200,7 +205,7 @@ export async function maybeAddSecretToYaml(
   }
   const envName = await dialogs.envVarForSecret(
     secretName,
-    /* removeTestPrefix */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
+    /* trimTestPrefix= */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
   );
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
