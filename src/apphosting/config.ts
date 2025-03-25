@@ -7,7 +7,7 @@ import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig } from "./yaml";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { promptForAppHostingYaml } from "./utils";
 import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
@@ -66,9 +66,14 @@ const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, APPHOSTING_BASE_YAML_FILE))) {
+  while (true) {
+    const files = fs.listFiles(dir);
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+      return dir;
+    }
+
     // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+    if (files.includes("firebase.json")) {
       return null;
     }
 
@@ -79,8 +84,6 @@ export function discoverBackendRoot(cwd: string): string | null {
     }
     dir = parent;
   }
-
-  return dir;
 }
 
 /**
@@ -93,9 +96,23 @@ export function listAppHostingFilesInPath(path: string): string[] {
     .map((file) => join(path, file));
 }
 
-/** Load apphosting.yaml */
+/**
+ * Load an apphosting yaml file if it exists.
+ * Throws if the file exists but is malformed.
+ * Returns an empty document if the file does not exist.
+ */
 export function load(yamlPath: string): yaml.Document {
-  const raw = fs.readFile(yamlPath);
+  let raw: string;
+  try {
+    raw = fs.readFile(yamlPath);
+  } catch (err: any) {
+    if (err.code !== "ENOENT") {
+      throw new FirebaseError(`Unexpected error trying to load ${yamlPath}`, {
+        original: getError(err),
+      });
+    }
+    return new yaml.Document();
+  }
   return yaml.parseDocument(raw);
 }
 
@@ -140,13 +157,16 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 }
 
 /**
- * Given a secret name, guides the user whether they want to add that secret to apphosting.yaml.
- * If an apphosting.yaml exists and includes the secret already is used as a variable name, exist early.
- * If apphosting.yaml does not exist, offers to create it.
+ * Given a secret name, guides the user whether they want to add that secret to the specified apphosting yaml file.
+ * If an the file exists and includes the secret already is used as a variable name, exist early.
+ * If the file does not exist, offers to create it.
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
-export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
+export async function maybeAddSecretToYaml(
+  secretName: string,
+  fileName: string = APPHOSTING_BASE_YAML_FILE,
+): Promise<void> {
   // We must go through the exports object for stubbing to work in tests.
   const dynamicDispatch = exports as {
     discoverBackendRoot: typeof discoverBackendRoot;
@@ -160,7 +180,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   let path: string | undefined;
   let projectYaml: yaml.Document;
   if (backendRoot) {
-    path = join(backendRoot, APPHOSTING_BASE_YAML_FILE);
+    path = join(backendRoot, fileName);
     projectYaml = dynamicDispatch.load(path);
   } else {
     projectYaml = new yaml.Document();
@@ -170,7 +190,7 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     return;
   }
   const addToYaml = await prompt.confirm({
-    message: "Would you like to add this secret to apphosting.yaml?",
+    message: `Would you like to add this secret to ${fileName}?`,
     default: true,
   });
   if (!addToYaml) {
@@ -178,13 +198,15 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
   }
   if (!path) {
     path = await prompt.promptOnce({
-      message:
-        "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+      message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
-    path = join(path, APPHOSTING_BASE_YAML_FILE);
+    path = join(path, fileName);
   }
-  const envName = await dialogs.envVarForSecret(secretName);
+  const envName = await dialogs.envVarForSecret(
+    secretName,
+    /* trimTestPrefix= */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
+  );
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
     secret: secretName,
