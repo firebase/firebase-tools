@@ -1,5 +1,6 @@
 export const DEFAULT_SCHEMA = "public";
 export const FIREBASE_SUPER_USER = "firebasesuperuser";
+export const CLOUDSQL_SUPER_USER = "cloudsqlsuperuser";
 
 export function firebaseowner(databaseId: string, schema: string = DEFAULT_SCHEMA) {
   return `firebaseowner_${databaseId}_${schema}`;
