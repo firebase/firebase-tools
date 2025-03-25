@@ -6,38 +6,25 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
-import {
-  deleteBackendAndPoll,
-  getBackendForAmbiguousLocation,
-  getBackendForLocation,
-} from "../apphosting/backend";
+import { deleteBackendAndPoll, chooseBackends } from "../apphosting/backend";
 import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
-  .option("-l, --location <location>", "specify the location of the backend")
   .withForce()
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
-    if (options.location !== undefined) {
-      utils.logWarning("--location is being removed in the next major release.");
-    }
-    let location = (options.location as string) ?? "-";
-    let backend: apphosting.Backend;
-    if (location === "-" || location === "") {
-      backend = await getBackendForAmbiguousLocation(
-        projectId,
-        backendId,
-        "Please select the location of the backend you'd like to delete:",
-      );
-      location = apphosting.parseBackendName(backend.name).location;
-    } else {
-      backend = await getBackendForLocation(projectId, location, backendId);
-    }
 
-    utils.logWarning("You are about to permanently delete this backend:");
-    printBackendsTable([backend]);
+    const backends = await chooseBackends(
+      projectId,
+      backendId,
+      "Please select the backends you'd like to delete:",
+      options.force,
+    );
+
+    utils.logWarning("You are about to permanently delete these backend(s):");
+    printBackendsTable(backends);
 
     const confirmDeletion = await promptOnce(
       {
@@ -52,14 +39,17 @@ export const command = new Command("apphosting:backends:delete <backend>")
       return;
     }
 
-    const spinner = ora("Deleting backend...").start();
-    try {
-      await deleteBackendAndPoll(projectId, location, backendId);
-      spinner.succeed(`Successfully deleted the backend: ${backendId}`);
-    } catch (err: unknown) {
-      spinner.stop();
-      throw new FirebaseError(`Failed to delete backend: ${backendId}.`, {
-        original: getError(err),
-      });
+    for (const b of backends) {
+      const { location, id } = apphosting.parseBackendName(b.name);
+      const spinner = ora(`Deleting backend ${id}(${location})...`).start();
+      try {
+        await deleteBackendAndPoll(projectId, location, id);
+        spinner.succeed(`Successfully deleted the backend: ${id}(${location})`);
+      } catch (err: unknown) {
+        spinner.stop();
+        throw new FirebaseError(`Failed to delete backend: ${id}(${location}). Please retry.`, {
+          original: getError(err),
+        });
+      }
     }
   });
