@@ -6,7 +6,7 @@
   "description": "Firebase Data Connect for VSCode",
   "version": "0.14.2",
   "engines": {
-    "vscode": "^1.69.0"
+    "vscode": "^1.90.0"
   },
   "repository": "https://github.com/firebase/firebase-tools",
   "sideEffects": false,
