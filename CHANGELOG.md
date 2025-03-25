@@ -2,3 +2,4 @@
 - firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
 - firebase apphosting:secrets:set now has flows to help with test secrets (#8359)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
+- Removed the `experimental:functions:shell` command. Use `functions:shell` instead.

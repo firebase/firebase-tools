@@ -53,7 +53,7 @@ interface AppsCreateOptions extends Options {
 
 export const command = new Command("apps:create [platform] [displayName]")
   .description(
-    "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive).",
+    "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)",
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")

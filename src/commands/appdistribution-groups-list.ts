@@ -11,7 +11,7 @@ import * as utils from "../utils";
 import * as Table from "cli-table3";
 
 export const command = new Command("appdistribution:groups:list")
-  .description("list groups in project")
+  .description("list App Distribution groups")
   .alias("appdistribution:group:list")
   .before(requireAuth)
   .action(async (options?: Options): Promise<ListGroupsResponse> => {

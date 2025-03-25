@@ -22,8 +22,8 @@ import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
 export const command = new Command("functions:secrets:set <KEY>")
-  .description("Create or update a secret for use in Cloud Functions for Firebase.")
-  .withForce("Automatically updates functions to use the new secret.")
+  .description("create or update a secret for use in Cloud Functions for Firebase")
+  .withForce("automatically updates functions to use the new secret")
   .before(requireAuth)
   .before(ensureApi)
   .before(requirePermissions, [
@@ -34,7 +34,7 @@ export const command = new Command("functions:secrets:set <KEY>")
   ])
   .option(
     "--data-file <dataFile>",
-    'File path from which to read secret data. Set to "-" to read the secret data from stdin.',
+    'file path from which to read secret data. Set to "-" to read the secret data from stdin',
   )
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);

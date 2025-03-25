@@ -14,8 +14,8 @@ import { destroySecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 
 export const command = new Command("functions:secrets:prune")
-  .withForce("Destroys unused secrets without prompt")
-  .description("Destroys unused secrets")
+  .withForce("destroy unused secrets without prompt")
+  .description("destroy unused secrets")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(requirePermissions, [

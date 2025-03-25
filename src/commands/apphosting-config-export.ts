@@ -10,7 +10,7 @@ import { detectProjectRoot } from "../detectProjectRoot";
 
 export const command = new Command("apphosting:config:export")
   .description(
-    "Export App Hosting configurations such as secrets into an apphosting.local.yaml file",
+    "export App Hosting configurations such as secrets into an apphosting.local.yaml file",
   )
   .option(
     "-s, --secrets <apphosting.yaml or apphosting.<environment>.yaml file to export secrets from>",

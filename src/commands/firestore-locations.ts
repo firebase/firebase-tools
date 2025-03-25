@@ -9,7 +9,7 @@ import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:locations")
-  .description("List possible locations for your Cloud Firestore project.")
+  .description("list possible locations for your Cloud Firestore database")
   .before(requirePermissions, ["datastore.locations.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {

@@ -21,7 +21,7 @@ function getConfirmationMessage(paths: string[]): string {
 
 export const command = new Command("functions:deletegcfartifacts")
   .description(
-    "Deletes all artifacts created by Google Cloud Functions on Google Container Registry.",
+    "deletes all artifacts created by Google Cloud Functions on Google Container Registry",
   )
   .option(
     "--regions <regions>",
