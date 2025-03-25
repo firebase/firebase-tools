@@ -12,7 +12,9 @@ import {
   promptLocation,
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
+  chooseBackends,
   getBackendForAmbiguousLocation,
+  getBackend,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -266,6 +268,85 @@ describe("apphosting setup functions", () => {
     });
   });
 
+  describe("chooseBackends", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenUS = {
+      name: `projects/${projectId}/locations/us-central1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/asia-east1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendChickenUS, backendCow];
+
+    it("returns backend if only one is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "cow", /* prompt= */ "")).to.eventually.deep.equal([
+        backendCow,
+      ]);
+    });
+
+    it("throws if --force is used when multiple backends are found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(
+        chooseBackends(projectId, "chicken", /* prompt= */ "", /* force= */ true),
+      ).to.be.rejectedWith(
+        "Force cannot be used because multiple backends were found with ID chicken.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "farmer", /* prompt= */ "")).to.be.rejectedWith(
+        'No backend named "farmer" found.',
+      );
+    });
+
+    it("lets user choose backends when more than one share a name", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+      promptOnceStub.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
+
+      await expect(chooseBackends(projectId, "chicken", /* prompt= */ "")).to.eventually.deep.equal(
+        [backendChickenAsia, backendChickenEurope],
+      );
+    });
+  });
+
   describe("getBackendForAmbiguousLocation", () => {
     const backendFoo = {
       name: `projects/${projectId}/locations/${location}/backends/foo`,
@@ -325,6 +406,59 @@ describe("apphosting setup functions", () => {
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });
+    });
+  });
+
+  describe("getBackend", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/us-central1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendCow];
+
+    it("throws if more than one backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "chicken")).to.be.rejectedWith(
+        "You have multiple backends with the same chicken ID in regions: " +
+          "asia-east1, europe-west4. " +
+          "This is not allowed until we can support more locations. " +
+          "Please delete and recreate any backends that share an ID with another backend.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "farmer")).to.be.rejectedWith(
+        "No backend named farmer found.",
+      );
+    });
+
+    it("returns backend", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "cow")).to.eventually.equal(backendCow);
     });
   });
 });

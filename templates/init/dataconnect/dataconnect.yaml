@@ -1,4 +1,4 @@
-specVersion: "v1beta"
+specVersion: "v1"
 serviceId: __serviceId__
 location: __location__
 schema:

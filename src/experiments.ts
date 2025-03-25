@@ -148,7 +148,7 @@ export const ALL_EXPERIMENTS = experiments({
   fdcconnectorevolution: {
     shortDescription: "Enable Data Connect connector evolution warnings.",
     fullDescription: "Enable Data Connect connector evolution warnings.",
-    default: false,
+    default: true,
     public: false,
   },
 });
