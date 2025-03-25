@@ -93,9 +93,10 @@ export class AppHostingYamlConfig {
 export function toEnvMap(envs: Env[]): EnvMap {
   return Object.fromEntries(
     envs.map((env) => {
+      const variable = env.variable;
       const tmp = { ...env };
       delete (env as any).variable;
-      return [env.variable, tmp];
+      return [variable, tmp];
     }),
   );
 }

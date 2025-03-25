@@ -270,9 +270,10 @@ export async function overrideChosenEnv(
 
   const toOverwrite = await prompt.promptOnce({
     type: "checkbox",
-    message:
-      "Which environment variables would you like to override? Press Space to select and Enter to confirm your choices",
-    choices: names,
+    message: "Which environment variables would you like to override?",
+    choices: names.map((name) => {
+      return { name };
+    }),
   });
 
   if (!projectId && toOverwrite.some((name) => "secret" in env[name])) {

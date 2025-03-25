@@ -79,7 +79,14 @@ export const command = new Command("apphosting:secrets:set <secretName>")
         message:
           "Please enter a comma separated list of user or groups who should have access to this secret:",
       });
-      await secrets.grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+      if (emailList.length) {
+        await secrets.grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+      } else {
+        utils.logBullet(
+          "To grant access in the future run " +
+            clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --emails [email list]`),
+        );
+      }
       await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
       return;
     }

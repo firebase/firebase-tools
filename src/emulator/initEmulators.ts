@@ -64,11 +64,19 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
           message:
             "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development:",
         });
-        grantEmailsSecretAccess(
-          projectId,
-          secretIds,
-          users.split(",").map((u) => u.trim()),
-        );
+        if (users.length) {
+          await grantEmailsSecretAccess(
+            projectId,
+            secretIds,
+            users.split(",").map((u) => u.trim()),
+          );
+        } else {
+          logger.log(
+            "INFO",
+            "Skipping granting developers access to secrets for local development. To grant access in the future, run " +
+              `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --user [userList]`)}`,
+          );
+        }
       }
     }
 
