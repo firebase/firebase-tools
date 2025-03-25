@@ -183,7 +183,6 @@ export function load(client: any): any {
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     client.apphosting.config = {};
-    client.apphosting.config.export = loadCommand("apphosting-config-export");
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");

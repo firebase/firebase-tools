@@ -1,4 +1,5 @@
 - Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
 - firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
 - firebase apphosting:secrets:set now has flows to help with test secrets (#8359)
+- BREAKING(apphosting)! apphosting emulator initialization flow now creates apphosting.emulator.yaml with references to live secrets rather than apphosting.local.yaml with saved plaintext. Export command is removed (#8361)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
