@@ -1,18 +1,15 @@
-import { resolve, join, dirname, basename } from "path";
+import { join, dirname } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
+import * as clc from "colorette";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
-import { AppHostingYamlConfig } from "./yaml";
+import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { FirebaseError } from "../error";
-import { promptForAppHostingYaml } from "./utils";
-import { fetchSecrets } from "./secrets";
 import { logger } from "../logger";
-import { updateOrCreateGitignore } from "../utils";
-import { getOrPromptProject } from "../management/projects";
 import * as csm from "../gcp/secretManager";
 
 // Common config across all environments
@@ -54,9 +51,6 @@ export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
 }
-
-const SECRET_CONFIG = "Secret";
-const EXPORTABLE_CONFIG = [SECRET_CONFIG];
 
 /**
  * Returns the absolute path for an app hosting backend root.
@@ -214,14 +208,19 @@ export async function maybeAddSecretToYaml(
 /**
  * Generates an apphosting.emulator.yaml if the user chooses to do so.
  * Returns the resolved env that an emulator would see so that future code can
- * grant access. 
+ * grant access.
  */
-export async function maybeGenerateEmulatorYaml(projectId: string, repoRoot: string): Promise<Env[]| null> {
+export async function maybeGenerateEmulatorYaml(
+  projectId: string | undefined,
+  repoRoot: string,
+): Promise<Env[] | null> {
   // Even if the app is in /project/app, the user might have their apphosting.yaml file in /project/apphosting.yaml.
   // Walk up the tree to see if we find other local files so that we can put apphosting.emulator.yaml in the right place.
   const basePath = dynamicDispatch.discoverBackendRoot(repoRoot) || repoRoot;
   if (fs.fileExistsSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE))) {
-    logger.debug("apphosting.emulator.yaml already exists, skipping generation and secrets access prompt");
+    logger.debug(
+      "apphosting.emulator.yaml already exists, skipping generation and secrets access prompt",
+    );
     return null;
   }
 
@@ -232,47 +231,61 @@ export async function maybeGenerateEmulatorYaml(projectId: string, repoRoot: str
     baseConfig = AppHostingYamlConfig.empty();
   }
   const createFile = await prompt.confirm({
-    message: "The App Hosting emulator uses a file called apphosting.emulator.yaml to override " +
+    message:
+      "The App Hosting emulator uses a file called apphosting.emulator.yaml to override " +
       "values in apphosting.yaml for local testing. This codebase does not have one, would you like " +
       "to create it?",
     default: true,
   });
   if (!createFile) {
-    return Object.values(baseConfig.env);
+    return toEnvList(baseConfig.env);
   }
 
   const newEnv = await dynamicDispatch.overrideChosenEnv(projectId, baseConfig.env || {});
   const newYaml = new yaml.Document();
-  for (const env of Object.values(newEnv)) {
-    dynamicDispatch.upsertEnv(newYaml, env);
+  for (const [variable, env] of Object.entries(newEnv)) {
+    // N.B. This is a bit weird. We're not defensively assuring that the key of the variable name is used,
+    // but this ensures that the generated YAML shows "variable" before "value" or "secret", which is what
+    // docs canonically show.
+    dynamicDispatch.upsertEnv(newYaml, { variable, ...env });
   }
   dynamicDispatch.store(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), newYaml);
-  return Object.values({...baseConfig.env, ...newEnv});
+  return toEnvList({ ...baseConfig.env, ...newEnv });
 }
 
-export async function overrideChosenEnv(projectId: string, env: Record<string, Env>): Promise<Record<string, Env>> {
+export async function overrideChosenEnv(
+  projectId: string | undefined,
+  env: EnvMap,
+): Promise<EnvMap> {
   const names = Object.keys(env);
   if (!names.length) {
     return {};
   }
   const toOverwrite = await prompt.promptOnce({
     type: "checkbox",
-    message: "Which environment variables would you like to override? Press Space to select and Enter to confirm your choices",
+    message:
+      "Which environment variables would you like to override? Press Space to select and Enter to confirm your choices",
     choices: names,
   });
+
+  if (!projectId && toOverwrite.some((name) => "secret" in env[name])) {
+    throw new FirebaseError(
+      `Need a project ID to overwrite a secret. Either use ${clc.bold("firebase use")} or pass the ${clc.bold("--project")} flag`,
+    );
+  }
 
   const newEnv: Record<string, Env> = {};
   for (const name of toOverwrite) {
     if ("value" in env[name]) {
-       const newValue = await prompt.promptOnce({
+      const newValue = await prompt.promptOnce({
         type: "input",
         message: `What new value would you like for plaintext ${name}?`,
-       });
-       newEnv[name] = {
-         variable: name,
-         value: newValue,
-       };
-       continue;
+      });
+      newEnv[name] = {
+        variable: name,
+        value: newValue,
+      };
+      continue;
     }
 
     let secretRef: string;
@@ -282,15 +295,17 @@ export async function overrideChosenEnv(projectId: string, env: Record<string, E
         type: "input",
         message: `What would you like to name the secret reference for ${name}?`,
         // TODO: kebab case + test
-        default: name,
+        default: suggestedTestKeyName(name),
       });
-      if (await csm.secretExists(projectId, secretRef)) {
+
+      if (await csm.secretExists(projectId!, secretRef)) {
         action = await prompt.promptOnce({
           type: "list",
-          message: "This secret reference already exists, would you like to reuse it or create a new one?",
+          message:
+            "This secret reference already exists, would you like to reuse it or create a new one?",
           choices: [
-            {"name": "Reuse it", value: "reuse"},
-            {"name": "Create a new one", value: "pick-new"},
+            { name: "Reuse it", value: "reuse" },
+            { name: "Create a new one", value: "pick-new" },
           ],
         });
       } else {
@@ -309,8 +324,12 @@ export async function overrideChosenEnv(projectId: string, env: Record<string, E
       message: `What new value would you like for secret ${name} [input is hidden]?`,
     });
     // TODO: Do we need to support overriding locations? Inferring them from the original?
-    await csm.createSecret(projectId, secretRef!, {[csm.FIREBASE_MANAGED]: "apphosting"});
-    await csm.addVersion(projectId, secretRef!, secretValue);
+    await csm.createSecret(projectId!, secretRef!, { [csm.FIREBASE_MANAGED]: "apphosting" });
+    await csm.addVersion(projectId!, secretRef!, secretValue);
   }
   return newEnv;
+}
+
+export function suggestedTestKeyName(variable: string): string {
+  return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }

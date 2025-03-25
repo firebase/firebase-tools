@@ -8,7 +8,8 @@ import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
 import { NodeType } from "yaml/dist/nodes/Node";
-import { AppHostingYamlConfig } from "./yaml";
+import { AppHostingYamlConfig, toEnvList } from "./yaml";
+import { FirebaseError } from "../error";
 
 describe("config", () => {
   describe("discoverBackendRoot", () => {
@@ -252,9 +253,9 @@ env:
 
     const existingYaml = AppHostingYamlConfig.empty();
     existingYaml.env = {
-      "VAR": { variable: "VAR", value: "value" },
-      "API_KEY": { variable: "API_KEY", secret: "api-key" },
-      "API_KEY2": { variable: "API_KEY2", secret: "api-key2" },
+      VAR: { value: "value" },
+      API_KEY: { secret: "api-key" },
+      API_KEY2: { secret: "api-key2" },
     };
 
     beforeEach(() => {
@@ -283,42 +284,48 @@ env:
     // This allows us to prompt to give devs access to prod keys
     it("Returns existing config even if the user does not create apphosting.emulator.yaml", async () => {
       discoverBackendRoot.withArgs("/project").returns("/project");
-      fs.fileExistsSync.withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`).returns(false);
+      fs.fileExistsSync
+        .withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`)
+        .returns(false);
       // Do not create emulator file
       prompt.confirm.resolves(false);
       loadFromFile.resolves(existingYaml);
 
-      expect(config.maybeGenerateEmulatorYaml("projectId", "/project")).to.eventually.deep.equal(Object.values(existingYaml.env));
+      await expect(
+        config.maybeGenerateEmulatorYaml("projectId", "/project"),
+      ).to.eventually.deep.equal(toEnvList(existingYaml.env));
     });
 
     it("Returns overwritten config", async () => {
       discoverBackendRoot.withArgs("/project").returns("/project");
-      fs.fileExistsSync.withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`).returns(false);
+      fs.fileExistsSync
+        .withArgs(`/project/${config.APPHOSTING_EMULATORS_YAML_FILE}`)
+        .returns(false);
       loadFromFile.resolves(existingYaml);
       // Create emulator file
       prompt.confirm.resolves(true);
       overrideChosenEnv.resolves({
-        API_KEY2: { variable: "API_KEY2", secret: "test-api-key2" },
+        API_KEY2: { secret: "test-api-key2" },
       });
       store.resolves();
 
-      await expect(config.maybeGenerateEmulatorYaml("projectId", "/project")).to.eventually.deep.equal([
+      await expect(
+        config.maybeGenerateEmulatorYaml("projectId", "/project"),
+      ).to.eventually.deep.equal([
         { variable: "VAR", value: "value" },
         { variable: "API_KEY", secret: "api-key" },
         { variable: "API_KEY2", secret: "test-api-key2" },
       ]);
 
       expect(overrideChosenEnv.firstCall.args[1]).to.deep.equal({
-        "VAR": { variable: "VAR", value: "value" },
-        "API_KEY": { variable: "API_KEY", secret: "api-key" },
-        "API_KEY2": { variable: "API_KEY2", secret: "api-key2" },
+        VAR: { value: "value" },
+        API_KEY: { secret: "api-key" },
+        API_KEY2: { secret: "api-key2" },
       });
       expect(store).to.have.been.called;
       const emulatorYaml = store.firstCall.args[1] as yaml.Document;
       expect(emulatorYaml.toJSON()).to.deep.equal({
-        env: [
-          { variable: "API_KEY2", secret: "test-api-key2" },
-        ],
+        env: [{ variable: "API_KEY2", secret: "test-api-key2" }],
       });
     });
   });
@@ -326,7 +333,7 @@ env:
   describe("overrideChosenEnv", () => {
     let csm: sinon.SinonStubbedInstance<typeof csmImport>;
     let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
-    
+
     beforeEach(() => {
       csm = sinon.stub(csmImport);
       prompt = sinon.stub(promptImport);
@@ -337,25 +344,25 @@ env:
     });
 
     it("noops with no envs", async () => {
-      await expect(config.overrideChosenEnv("project", {})).to.eventually.deep.equal({});
+      await expect(config.overrideChosenEnv(undefined, {})).to.eventually.deep.equal({});
 
       expect(promptImport.promptOnce).to.not.have.been.called;
       expect(csmImport.getSecret).to.not.have.been.called;
     });
 
     it("noops with no selected envs", async () => {
-      const originalEnv: Record<string, config.Env> = {
-        VARIABLE: { variable: "VARIABLE", value: "value" },
-        API_KEY: { variable: "API_KEY", secret: "api-key" },
+      const originalEnv: Record<string, Omit<config.Env, "variable">> = {
+        VARIABLE: { value: "value" },
+        API_KEY: { secret: "api-key" },
       };
 
       prompt.promptOnce.onFirstCall().resolves([]);
 
-      await expect(config.overrideChosenEnv("project", originalEnv)).to.eventually.deep.equal({});
+      await expect(config.overrideChosenEnv(undefined, originalEnv)).to.eventually.deep.equal({});
 
       expect(prompt.promptOnce).to.have.been.calledOnce;
       expect(csm.secretExists).to.not.have.been.called;
-    })
+    });
 
     it("can override plaintext values", async () => {
       const originalEnv: Record<string, config.Env> = {
@@ -366,12 +373,25 @@ env:
       prompt.promptOnce.onFirstCall().resolves(["VARIABLE2"]);
       prompt.promptOnce.onSecondCall().resolves("new-value2");
 
-      await expect(config.overrideChosenEnv("project", originalEnv)).to.eventually.deep.equal({
+      await expect(config.overrideChosenEnv(undefined, originalEnv)).to.eventually.deep.equal({
         VARIABLE2: { variable: "VARIABLE2", value: "new-value2" },
       });
 
       expect(prompt.promptOnce).to.have.been.calledTwice;
       expect(csmImport.secretExists).to.not.have.been.called;
+    });
+
+    it("throws when trying to overwrite secrets without knowing the project", async () => {
+      const originalEnv: Record<string, config.Env> = {
+        API_KEY: { variable: "API_KEY", secret: "api-key" },
+      };
+
+      prompt.promptOnce.onFirstCall().resolves(["API_KEY"]);
+
+      await expect(config.overrideChosenEnv(undefined, originalEnv)).to.be.rejectedWith(
+        FirebaseError,
+        /Need a project ID to overwrite a secret./,
+      );
     });
 
     it("can create new secrets", async () => {
@@ -436,6 +456,12 @@ env:
       expect(csm.secretExists).to.have.been.calledOnce;
       expect(csm.createSecret).to.not.have.been.called;
       expect(csm.addVersion).to.not.have.been.called;
+    });
+
+    it("suggests test key names", () => {
+      expect(config.suggestedTestKeyName("GOOGLE_GENAI_API_KEY")).to.equal(
+        "test-google-genai-api-key",
+      );
     });
   });
 });

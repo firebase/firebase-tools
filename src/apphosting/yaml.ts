@@ -8,6 +8,7 @@ import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 
 export type Secret = Omit<Env, "value">;
+export type EnvMap = Record<string, Omit<Env, "variable">>;
 
 /**
  * AppHostingYamlConfig is an object representing an apphosting.yaml configuration
@@ -16,7 +17,7 @@ export type Secret = Omit<Env, "value">;
 export class AppHostingYamlConfig {
   // Holds the basename of the file (e.g. apphosting.yaml vs apphosting.staging.yaml)
   public filename: string | undefined;
-  public env: Record<string, Env> = {};
+  public env: EnvMap = {};
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -34,7 +35,7 @@ export class AppHostingYamlConfig {
     const loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
 
     if (loadedAppHostingYaml.env) {
-      config.env = parseEnv(loadedAppHostingYaml.env);
+      config.env = toEnvMap(loadedAppHostingYaml.env);
     }
 
     return config;
@@ -82,13 +83,25 @@ export class AppHostingYamlConfig {
       yamlConfigToWrite = await wrappedSafeLoad(file.source);
     }
 
-    yamlConfigToWrite.env = Object.values(this.env);
+    yamlConfigToWrite.env = toEnvList(this.env);
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
 }
 
 // TODO: generalize into a utility function and remove the key from the array type.
-function parseEnv(envs: Env[]): Record<string, Env> {
-  return Object.fromEntries(envs.map((env) => [env.variable, env]));
+export function toEnvMap(envs: Env[]): EnvMap {
+  return Object.fromEntries(
+    envs.map((env) => {
+      const tmp = { ...env };
+      delete (env as any).variable;
+      return [env.variable, tmp];
+    }),
+  );
+}
+
+export function toEnvList(envs: EnvMap): Env[] {
+  return Object.entries(envs).map(([variable, env]) => {
+    return { ...env, variable };
+  });
 }
