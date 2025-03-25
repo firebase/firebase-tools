@@ -248,14 +248,28 @@ export async function maybeGenerateEmulatorYaml(
   }
 
   const newEnv = await dynamicDispatch.overrideChosenEnv(projectId, baseConfig.env || {});
-  const newYaml = new yaml.Document();
-  for (const [variable, env] of Object.entries(newEnv)) {
-    // N.B. This is a bit weird. We're not defensively assuring that the key of the variable name is used,
-    // but this ensures that the generated YAML shows "variable" before "value" or "secret", which is what
-    // docs canonically show.
-    dynamicDispatch.upsertEnv(newYaml, { variable, ...env });
+  // Ensures we don't write 'null' if there are no overwritten env.
+  const envList = Object.entries(newEnv);
+  if (envList.length) {
+    const newYaml = new yaml.Document();
+    for (const [variable, env] of envList) {
+      // N.B. This is a bit weird. We're not defensively assuring that the key of the variable name is used,
+      // but this ensures that the generated YAML shows "variable" before "value" or "secret", which is what
+      // docs canonically show.
+      dynamicDispatch.upsertEnv(newYaml, { variable, ...env });
+    }
+    dynamicDispatch.store(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), newYaml);
+  } else {
+    // The yaml library _always_ stringifies empty objects and arrays as {} and [] and there is
+    // no setting on toString to change this, so we'll craft the YAML file manually.
+    const sample =
+      "env:\n" +
+      "#- variable: ENV_VAR_NAME\n" +
+      "#  value: plaintext value\n" +
+      "#- variable: SECRET_ENV_VAR_NAME\n" +
+      "#  secret: cloud-secret-manager-id\n";
+    writeFileSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), sample);
   }
-  dynamicDispatch.store(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), newYaml);
   return toEnvList({ ...baseConfig.env, ...newEnv });
 }
 
