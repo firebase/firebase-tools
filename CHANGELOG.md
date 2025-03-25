@@ -1,12 +1,3 @@
-- Added support for generated Angular SDKs for Data Connect
-- App Hosting emulator can now load secret env vars. (#8305)
-- Fixed webframeworks deployments when using multiple hosting sites in `firebase.json`. (#8314)
-- Added a new command to setup a cleanup policy for functions artifacts. (#8268)
-- Added support for 3rd party builders for Angular. (#7557)
-- Fixed GCF V2 artifact cleanup by correctly encoding artifact names to match GCF V2's format. (#8318)
-- Increase emulator UI body parser limit to match Storage emulator maximum. (#8329)
-- Fixed Data Connect setup issues for fresh databases due to IAM user not being created. (#8335)
-- Fixed an issue where `ext:install` used POSIX file seperators on Windows machines. (#8326)
-- Updated the Firebase Data Connect local toolkit to v1.9.1, which adds support for generated Angular SDKs and updates Dart SDK fields to follow best practices. (#8340)
-- Fixed misleading comments in `firebase init dataconnect` `connector.yaml` template.
-- Improved Data Connect SQL permissions to better handle tables owned by IAM roles. (#8339)
+- Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
+- firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
+- firebase apphosting:secrets:set now has flows to help with test secrets (#8359)

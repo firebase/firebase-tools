@@ -11,6 +11,7 @@ import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
 import * as utils from "../utils";
+import * as prompt from "../prompt";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")
@@ -61,6 +62,28 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       return;
     }
 
+    const type = await prompt.promptOnce({
+      type: "list",
+      name: "type",
+      message: "Is this secret for production or only local testing?",
+      choices: [
+        { name: "Production", value: "production" },
+        { name: "Local testing only", value: "local" },
+      ],
+    });
+
+    if (type === "local") {
+      const emailList = await prompt.promptOnce({
+        type: "input",
+        name: "emails",
+        message:
+          "Please enter a comma separated list of user or groups who should have access to this secret:",
+      });
+      await secrets.grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+      await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
+      return;
+    }
+
     const accounts = await dialogs.selectBackendServiceAccounts(projectNumber, projectId, options);
 
     // If we're not granting permissions, there's no point in adding to YAML either.
@@ -74,5 +97,11 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       await secrets.grantSecretAccess(projectId, projectNumber, secretName, accounts);
     }
 
-    await config.maybeAddSecretToYaml(secretName);
+    await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE);
+    utils.logBullet(
+      "To grant additional users access to this secret run " +
+        clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) +
+        ".\nTo grant additional backends access to this secret run " +
+        clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --backend [backend ID]`),
+    );
   });

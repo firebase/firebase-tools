@@ -1,4 +1,5 @@
 import * as artifactregistry from "../gcp/artifactregistry";
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
 /**
@@ -17,6 +18,11 @@ export const CLEANUP_POLICY_ID = "firebase-functions-cleanup";
  */
 export const OPT_OUT_LABEL_KEY = "firebase-functions-cleanup-opted-out";
 
+/**
+ * Default number of days to keep container images for cleanup policies
+ */
+export const DEFAULT_CLEANUP_DAYS = 1;
+
 const SECONDS_IN_DAY = 24 * 60 * 60;
 
 /**
@@ -30,6 +36,30 @@ export function makeRepoPath(
   repoName: string = GCF_REPO_ID,
 ): string {
   return `projects/${projectId}/locations/${location}/repositories/${repoName}`;
+}
+
+/**
+ * For testing purposes
+ * TODO: Consider using cache object stored in deploy context instead of using globals.
+ */
+export const getRepoCache = new Map<string, artifactregistry.Repository>();
+
+/**
+ * Returns AR repository (cached)
+ */
+export async function getRepo(
+  projectId: string,
+  location: string,
+  forceRefresh = false,
+  repoName: string = GCF_REPO_ID,
+): Promise<artifactregistry.Repository> {
+  const repoPath = makeRepoPath(projectId, location, repoName);
+  if (!forceRefresh && getRepoCache.has(repoPath)) {
+    return getRepoCache.get(repoPath)!;
+  }
+  const repo = await artifactregistry.getRepository(repoPath);
+  getRepoCache.set(repoPath, repo);
+  return repo;
 }
 
 /**
@@ -176,4 +206,103 @@ export function hasSameCleanupPolicy(
  */
 export function hasCleanupOptOut(repo: artifactregistry.Repository): boolean {
   return !!(repo.labels && repo.labels[OPT_OUT_LABEL_KEY] === "true");
+}
+
+/**
+ * Checks whether a clean up policy is required for Artifact Registry in given locations.
+ */
+export async function checkCleanupPolicy(
+  projectId: string,
+  locations: string[],
+): Promise<{ locationsToSetup: string[]; locationsWithErrors: string[] }> {
+  if (locations.length === 0) {
+    return { locationsToSetup: [], locationsWithErrors: [] };
+  }
+
+  const checkRepos = await Promise.allSettled(
+    locations.map(async (location) => {
+      try {
+        const repository = await exports.getRepo(projectId, location);
+        const hasPolicy = !!findExistingPolicy(repository);
+        const hasOptOut = hasCleanupOptOut(repository);
+        const hasOtherPolicies =
+          repository.cleanupPolicies &&
+          Object.keys(repository.cleanupPolicies).some((key) => key !== CLEANUP_POLICY_ID);
+
+        return {
+          location,
+          repository,
+          hasPolicy,
+          hasOptOut,
+          hasOtherPolicies,
+        };
+      } catch (err) {
+        logger.debug(`Failed to check artifact cleanup policy for region ${location}:`, err);
+        throw err;
+      }
+    }),
+  );
+
+  const locationsToSetup = [];
+  const locationsWithErrors = [];
+
+  for (let i = 0; i < checkRepos.length; i++) {
+    const result = checkRepos[i];
+    if (result.status === "fulfilled") {
+      if (!(result.value.hasPolicy || result.value.hasOptOut || result.value.hasOtherPolicies)) {
+        locationsToSetup.push(result.value.location);
+      }
+    } else {
+      locationsWithErrors.push(locations[i]);
+    }
+  }
+  return { locationsToSetup, locationsWithErrors };
+}
+
+/**
+ * Sets Artifact Registry cleanup policies for given locations.
+ */
+export async function setCleanupPolicies(
+  projectId: string,
+  locations: string[],
+  daysToKeep: number,
+): Promise<{ locationsWithPolicy: string[]; locationsWithErrors: string[] }> {
+  if (locations.length === 0) return { locationsWithPolicy: [], locationsWithErrors: [] };
+
+  const locationsWithPolicy: string[] = [];
+  const locationsWithErrors: string[] = [];
+
+  const setupRepos = await Promise.allSettled(
+    locations.map(async (location) => {
+      try {
+        logger.debug(`Setting up artifact cleanup policy for region ${location}`);
+        const repo = await exports.getRepo(projectId, location);
+        await exports.setCleanupPolicy(repo, daysToKeep);
+        return location;
+      } catch (err: unknown) {
+        throw new FirebaseError("Failed to set up artifact cleanup policy", {
+          original: err as Error,
+        });
+      }
+    }),
+  );
+
+  for (let i = 0; i < locations.length; i++) {
+    const location = locations[i];
+    const result = setupRepos[i];
+    if (result.status === "rejected") {
+      logger.debug(
+        `Failed to set up artifact cleanup policy for region ${location}:`,
+        result.reason,
+      );
+      locationsWithErrors.push(location);
+    } else {
+      locationsWithPolicy.push(location);
+    }
+  }
+
+  return {
+    locationsWithPolicy,
+    locationsWithErrors,
+  };
 }

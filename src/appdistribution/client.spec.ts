@@ -169,6 +169,15 @@ describe("distribution", () => {
       });
       expect(nock.isDone()).to.be.true;
     });
+
+    it("should gracefully handle no testers", async () => {
+      nock(appDistributionOrigin()).get(`/v1/${projectName}/testers`).reply(200, {});
+
+      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq({
+        testers: [],
+      });
+      expect(nock.isDone()).to.be.true;
+    });
   });
 
   describe("uploadRelease", () => {

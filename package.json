@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "13.34.0",
+  "version": "13.35.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -69,7 +69,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=18.0.0 || >=20.0.0 || >=22.0.0"
+    "node": ">=20.0.0 || >=22.0.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",

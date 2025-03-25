@@ -26,18 +26,12 @@ export const command = new Command("functions:artifacts:setpolicy")
   )
   .option(
     "--days <days>",
-    "Number of days to keep container images before deletion. Default is 3 days.",
-    "3",
+    `Number of days to keep container images before deletion. Default is ${artifacts.DEFAULT_CLEANUP_DAYS} day.`,
   )
   .option(
     "--none",
     "Opt-out from cleanup policy. This will prevent suggestions to set up a cleanup policy during initialization and deployment.",
   )
-  .before((options) => {
-    if (options.days && options.none) {
-      throw new FirebaseError("Cannot specify both --days and --none options.");
-    }
-  })
   .withForce("Automatically create or modify cleanup policy")
   .before(requireAuth)
   .before(async (options) => {
@@ -49,9 +43,12 @@ export const command = new Command("functions:artifacts:setpolicy")
     "artifactregistry.versions.delete",
   ])
   .action(async (options: any) => {
+    if (options.days && options.none) {
+      throw new FirebaseError("Cannot specify both --days and --none options.");
+    }
     const projectId = needProjectId(options);
     const location = options.location || "us-central1";
-    let daysToKeep = parseInt(options.days || "3", 10);
+    let daysToKeep = parseInt(options.days || artifacts.DEFAULT_CLEANUP_DAYS, 10);
 
     const repoPath = artifacts.makeRepoPath(projectId, location);
     let repository: artifactregistry.Repository;

@@ -33,6 +33,9 @@ export function getSettings(): Settings {
     firebaseBinaryKind = "firepit-global";
   }
 
+  const extraEnv = config.get<Record<string,string>>("extraEnv", {})
+  process.env = { ...process.env, ...extraEnv };
+  
   return {
     firebasePath,
     firebaseBinaryKind,
@@ -46,7 +49,7 @@ export function getSettings(): Settings {
     exportPath: config.get<string>("emulators.exportPath", "./exportedData"),
     exportOnExit: config.get<boolean>("emulators.exportOnExit", false),
     debug: config.get<boolean>("debug", false),
-    extraEnv: config.get<Record<string,string>>("extraEnv", {}),
+    extraEnv,
   };
 }
 

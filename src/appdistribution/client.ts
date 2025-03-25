@@ -152,7 +152,7 @@ export class AppDistributionClient {
         throw new FirebaseError(`Client request failed to list testers ${err}`);
       }
 
-      for (const t of apiResponse.body.testers) {
+      for (const t of apiResponse.body.testers ?? []) {
         listTestersResponse.testers.push({
           name: t.name,
           displayName: t.displayName,
@@ -212,7 +212,7 @@ export class AppDistributionClient {
         const apiResponse = await client.get<ListGroupsResponse>(`${projectName}/groups`, {
           queryParams,
         });
-        listGroupsResponse.groups.push(...(apiResponse.body.groups || []));
+        listGroupsResponse.groups.push(...(apiResponse.body.groups ?? []));
         pageToken = apiResponse.body.nextPageToken;
       } catch (err) {
         throw new FirebaseError(`Client failed to list groups ${err}`);

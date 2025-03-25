@@ -1,4 +1,5 @@
 import { dataconnectOrigin } from "../api";
+export { dataconnectOrigin } from "../api";
 import { Client, ClientResponse } from "../apiv2";
 import * as types from "./types";
 
@@ -11,7 +12,6 @@ export function dataconnectDataplaneClient(): Client {
     auth: true,
   });
 }
-
 export async function executeGraphQL(
   client: Client,
   servicePath: string,
