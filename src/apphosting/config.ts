@@ -10,6 +10,7 @@ import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";
 import * as csm from "../gcp/secretManager";
+import { FirebaseError, getError } from "../error";
 
 // Common config across all environments
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
