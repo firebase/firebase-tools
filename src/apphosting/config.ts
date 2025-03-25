@@ -259,6 +259,13 @@ export async function maybeGenerateEmulatorYaml(
   return toEnvList({ ...baseConfig.env, ...newEnv });
 }
 
+/**
+ * Prompts a user which env they'd like to override and then asks them for the new values.
+ * Values cannot change between plaintext and secret while overriding them. Users are warned/asked to confirm
+ * if they choose to reuse an existing secret value. Secret reference IDs are suggested with a test- prefix to suggest
+ * a design pattern.
+ * Returns a map of modified environment variables.
+ */
 export async function overrideChosenEnv(
   projectId: string | undefined,
   env: EnvMap,
@@ -299,7 +306,6 @@ export async function overrideChosenEnv(
       secretRef = await prompt.promptOnce({
         type: "input",
         message: `What would you like to name the secret reference for ${name}?`,
-        // TODO: kebab case + test
         default: suggestedTestKeyName(name),
       });
 
