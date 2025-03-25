@@ -145,6 +145,7 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
       // Note to reviewers: Should we instead set per each field so that we preserve comments?
       envs.set(i, envYaml);
       return;
+    }
   }
 
   envs.add(envYaml);
@@ -159,6 +160,7 @@ const dynamicDispatch = exports as {
   store: typeof store;
   overrideChosenEnv: typeof overrideChosenEnv;
 };
+
 /**
  * Given a secret name, guides the user whether they want to add that secret to the specified apphosting yaml file.
  * If an the file exists and includes the secret already is used as a variable name, exist early.
@@ -265,6 +267,7 @@ export async function overrideChosenEnv(
   if (!names.length) {
     return {};
   }
+
   const toOverwrite = await prompt.promptOnce({
     type: "checkbox",
     message:
@@ -285,10 +288,7 @@ export async function overrideChosenEnv(
         type: "input",
         message: `What new value would you like for plaintext ${name}?`,
       });
-      newEnv[name] = {
-        variable: name,
-        value: newValue,
-      };
+      newEnv[name] = { variable: name, value: newValue };
       continue;
     }
 
@@ -316,13 +316,12 @@ export async function overrideChosenEnv(
         action = "create";
       }
     }
-    newEnv[name] = {
-      variable: name,
-      secret: secretRef!,
-    };
+
+    newEnv[name] = { variable: name, secret: secretRef! };
     if (action === "reuse") {
       continue;
     }
+
     const secretValue = await prompt.promptOnce({
       type: "password",
       message: `What new value would you like for secret ${name} [input is hidden]?`,
@@ -331,6 +330,7 @@ export async function overrideChosenEnv(
     await csm.createSecret(projectId!, secretRef!, { [csm.FIREBASE_MANAGED]: "apphosting" });
     await csm.addVersion(projectId!, secretRef!, secretValue);
   }
+
   return newEnv;
 }
 
