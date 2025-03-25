@@ -469,4 +469,315 @@ describe("functions artifacts", () => {
       expect(artifacts.hasCleanupOptOut(repo)).to.be.false;
     });
   });
+  describe("getRepo", () => {
+    const projectId = "my-project";
+    let sandbox: sinon.SinonSandbox;
+    let getRepositoryStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getRepositoryStub = sandbox.stub(artifactregistry, "getRepository");
+      artifacts.getRepoCache.clear();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should fetch and cache the repository when not cached", async () => {
+      const repoPath = artifacts.makeRepoPath(projectId, "us-central1");
+      const mockRepo: artifactregistry.Repository = {
+        name: repoPath,
+        format: "DOCKER",
+        description: "Test repo",
+        createTime: "",
+        updateTime: "",
+      };
+      getRepositoryStub.resolves(mockRepo);
+
+      const result = await artifacts.getRepo(projectId, "us-central1");
+      expect(result).to.deep.equal(mockRepo);
+      const cachedResult = await artifacts.getRepo(projectId, "us-central1");
+      expect(getRepositoryStub).to.have.been.calledOnce;
+      expect(cachedResult).to.deep.equal(mockRepo);
+    });
+
+    it("should fetch fresh repository when forceRefresh is true", async () => {
+      const repoPath = artifacts.makeRepoPath(projectId, "us-central1");
+      const mockRepo: artifactregistry.Repository = {
+        name: repoPath,
+        format: "DOCKER",
+        description: "Test repo",
+        createTime: "",
+        updateTime: "",
+      };
+      getRepositoryStub.resolves(mockRepo);
+
+      const result = await artifacts.getRepo(projectId, "us-central1");
+      expect(getRepositoryStub).to.have.been.calledOnce;
+      expect(result).to.deep.equal(mockRepo);
+      const cachedResult = await artifacts.getRepo(
+        projectId,
+        "us-central1",
+        true /* forceRefresh */,
+      );
+      expect(getRepositoryStub).to.have.been.calledTwice;
+      expect(cachedResult).to.deep.equal(mockRepo);
+    });
+  });
+
+  describe("checkCleanupPolicy", () => {
+    const projectId = "my-project";
+    let sandbox: sinon.SinonSandbox;
+    let getRepoStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getRepoStub = sandbox.stub(artifacts, "getRepo");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return empty arrays when no locations are provided", async () => {
+      const result = await artifacts.checkCleanupPolicy(projectId, []);
+
+      expect(result).to.deep.equal({ locationsToSetup: [], locationsWithErrors: [] });
+      expect(getRepoStub).not.to.have.been.called;
+    });
+
+    it("should identify locations that need cleanup policies", async () => {
+      const locations = ["us-central1", "us-east1", "europe-west1"];
+
+      const repos: Record<string, artifactregistry.Repository> = {
+        "us-central1": {
+          name: artifacts.makeRepoPath(projectId, "us-central1"),
+          format: "DOCKER",
+          description: "Repo with no policy or opt-out",
+          createTime: "",
+          updateTime: "",
+        },
+        "us-east1": {
+          name: artifacts.makeRepoPath(projectId, "us-east1"),
+          format: "DOCKER",
+          description: "Repo with policy",
+          createTime: "",
+          updateTime: "",
+          cleanupPolicies: {
+            [artifacts.CLEANUP_POLICY_ID]: {
+              id: artifacts.CLEANUP_POLICY_ID,
+              action: "DELETE",
+              condition: {
+                tagState: "ANY",
+                olderThan: "86400s",
+              },
+            },
+          },
+        },
+        "europe-west1": {
+          name: artifacts.makeRepoPath(projectId, "europe-west1"),
+          format: "DOCKER",
+          description: "Repo with other policies",
+          createTime: "",
+          updateTime: "",
+          cleanupPolicies: {
+            "other-policy": {
+              id: "other-policy",
+              action: "DELETE",
+              condition: {
+                tagState: "ANY",
+                olderThan: "86400s",
+              },
+            },
+          },
+        },
+      };
+
+      getRepoStub.callsFake((projectId: string, location: string) => {
+        return repos[location];
+      });
+
+      const result = await artifacts.checkCleanupPolicy(projectId, locations);
+
+      expect(result.locationsToSetup).to.deep.equal(["us-central1"]);
+      expect(result.locationsWithErrors).to.deep.equal([]);
+    });
+
+    it("should identify locations with opt-out", async () => {
+      const locations = ["us-central1"];
+
+      const repo = {
+        name: artifacts.makeRepoPath(projectId, "us-central1"),
+        format: "DOCKER",
+        description: "Repo with opt-out",
+        createTime: "",
+        updateTime: "",
+        labels: { [artifacts.OPT_OUT_LABEL_KEY]: "true" },
+      };
+
+      getRepoStub.resolves(repo);
+
+      const result = await artifacts.checkCleanupPolicy(projectId, locations);
+
+      expect(result.locationsToSetup).to.deep.equal([]);
+      expect(result.locationsWithErrors).to.deep.equal([]);
+    });
+
+    it("should handle locations with errors", async () => {
+      const locations = ["us-central1", "error-location"];
+
+      getRepoStub.callsFake((projectId, location) => {
+        if (location === "error-location") {
+          throw new Error("Test error");
+        }
+        return {
+          name: artifacts.makeRepoPath(projectId, location),
+          format: "DOCKER",
+          description: "Test repo",
+          createTime: "",
+          updateTime: "",
+        };
+      });
+
+      const result = await artifacts.checkCleanupPolicy(projectId, locations);
+
+      expect(result.locationsToSetup).to.deep.equal(["us-central1"]);
+      expect(result.locationsWithErrors).to.deep.equal(["error-location"]);
+    });
+  });
+
+  describe("setCleanupPolicies", () => {
+    const projectId = "my-project";
+    let sandbox: sinon.SinonSandbox;
+    let getRepoStub: sinon.SinonStub;
+    let setCleanupPolicyStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getRepoStub = sandbox.stub(artifacts, "getRepo");
+      setCleanupPolicyStub = sandbox.stub(artifacts, "setCleanupPolicy").resolves();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return empty arrays when no locations are provided", async () => {
+      const result = await artifacts.setCleanupPolicies(projectId, [], 1);
+
+      expect(result).to.deep.equal({ locationsWithPolicy: [], locationsWithErrors: [] });
+      expect(getRepoStub).not.to.have.been.called;
+    });
+
+    it("should set cleanup policies for all provided locations", async () => {
+      const locations = ["us-central1", "us-east1"];
+      const daysToKeep = 7;
+
+      const repos: Record<string, artifactregistry.Repository> = {
+        "us-central1": {
+          name: artifacts.makeRepoPath(projectId, "us-central1"),
+          format: "DOCKER",
+          description: "Test repo 1",
+          createTime: "",
+          updateTime: "",
+        },
+        "us-east1": {
+          name: artifacts.makeRepoPath(projectId, "us-east1"),
+          format: "DOCKER",
+          description: "Test repo 2",
+          createTime: "",
+          updateTime: "",
+        },
+      };
+
+      getRepoStub.callsFake((projectId: string, location: string) => {
+        return repos[location];
+      });
+
+      const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
+
+      expect(result).to.deep.equal({
+        locationsWithPolicy: ["us-central1", "us-east1"],
+        locationsWithErrors: [],
+      });
+
+      expect(setCleanupPolicyStub).to.have.been.calledTwice;
+      expect(setCleanupPolicyStub).to.have.been.calledWith(repos["us-central1"], daysToKeep);
+      expect(setCleanupPolicyStub).to.have.been.calledWith(repos["us-east1"], daysToKeep);
+    });
+
+    it("should handle errors when getting repositories", async () => {
+      const locations = ["us-central1", "error-location"];
+      const daysToKeep = 7;
+
+      const repo: artifactregistry.Repository = {
+        name: artifacts.makeRepoPath(projectId, "us-central1"),
+        format: "DOCKER",
+        description: "Test repo",
+        createTime: "",
+        updateTime: "",
+      };
+
+      getRepoStub.callsFake((projectId: string, location: string) => {
+        if (location === "error-location") {
+          throw new Error("Test error");
+        }
+        return repo;
+      });
+
+      const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
+
+      expect(result).to.deep.equal({
+        locationsWithPolicy: ["us-central1"],
+        locationsWithErrors: ["error-location"],
+      });
+
+      expect(setCleanupPolicyStub).to.have.been.calledOnce;
+      expect(setCleanupPolicyStub).to.have.been.calledWith(repo, daysToKeep);
+    });
+
+    it("should handle errors when applying cleanup policy to repository", async () => {
+      const locations = ["us-central1", "us-east1"];
+      const daysToKeep = 7;
+
+      const repos: Record<string, artifactregistry.Repository> = {
+        "us-central1": {
+          name: artifacts.makeRepoPath(projectId, "us-central1"),
+          format: "DOCKER",
+          description: "Test repo 1",
+          createTime: "",
+          updateTime: "",
+        },
+        "us-east1": {
+          name: artifacts.makeRepoPath(projectId, "us-east1"),
+          format: "DOCKER",
+          description: "Test repo 2",
+          createTime: "",
+          updateTime: "",
+        },
+      };
+
+      getRepoStub.callsFake((projectId: string, location: string) => {
+        return repos[location];
+      });
+
+      // Make setCleanupPolicy fail for us-east1
+      setCleanupPolicyStub.callsFake((repo) => {
+        if (repo.name.includes("us-east1")) {
+          throw new Error("Failed to set policy");
+        }
+      });
+
+      const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
+
+      expect(result).to.deep.equal({
+        locationsWithPolicy: ["us-central1"],
+        locationsWithErrors: ["us-east1"],
+      });
+
+      expect(getRepoStub).to.have.been.calledTwice;
+      expect(setCleanupPolicyStub).to.have.been.calledTwice;
+    });
+  });
 });

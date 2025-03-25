@@ -3,20 +3,20 @@ import * as clc from "colorette";
 import { Options } from "../../../options";
 import { logger } from "../../../logger";
 import { reduceFlat } from "../../../functional";
+import * as utils from "../../../utils";
 import * as args from "../args";
 import * as backend from "../backend";
-import * as containerCleaner from "../containerCleaner";
 import * as planner from "./planner";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as experiments from "../../../experiments";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
+import * as artifacts from "../../../functions/artifacts";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -104,13 +104,11 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend);
 
-  const haveEndpoints = backend.allEndpoints(wantBackend);
-  const deletedEndpoints = Object.values(plan)
-    .map((r) => r.endpointsToDelete)
-    .reduce(reduceFlat, []);
-  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
-    await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
-  }
+  await setupArtifactCleanupPolicies(
+    options,
+    options.projectId!,
+    Object.keys(wantBackend.endpoints),
+  );
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
@@ -142,5 +140,67 @@ export function printTriggerUrls(results: backend.Backend): void {
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
+  }
+}
+
+/**
+ * Sets up artifact cleanup policies for the regions where functions are deployed
+ * and automatically sets up policies where needed.
+ *
+ * The policy is only set up when:
+ *   1. No cleanup policy exists yet
+ *   2. No other cleanup policies exist (beyond our own if we previously set one)
+ *   3. User has not explicitly opted out
+ *
+ * In non-interactive mode:
+ *   - With force flag: applies the default cleanup policy
+ *   - Without force flag: warns and aborts deployment
+ */
+async function setupArtifactCleanupPolicies(
+  options: Options,
+  projectId: string,
+  locations: string[],
+): Promise<void> {
+  if (locations.length === 0) {
+    return;
+  }
+
+  const { locationsToSetup, locationsWithErrors: locationsWithCheckErrors } =
+    await artifacts.checkCleanupPolicy(projectId, locations);
+
+  if (locationsToSetup.length === 0) {
+    return;
+  }
+
+  const daysToKeep = await prompts.promptForCleanupPolicyDays(options, locationsToSetup);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
+      `Images older than ${daysToKeep} days will be automatically deleted.`,
+  );
+
+  const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
+    await artifacts.setCleanupPolicies(projectId, locationsToSetup, daysToKeep);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configured cleanup policy for ${locationsWithPolicy.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}.`,
+  );
+
+  const locationsWithErrors = [...locationsWithCheckErrors, ...locationsWithSetupErrors];
+  if (locationsWithErrors.length > 0) {
+    utils.logLabeledWarning(
+      "functions",
+      `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
+        `${locationsWithErrors.join(", ")}.` +
+        "This could result in a small monthly bill as container images accumulate over time.",
+    );
+    throw new FirebaseError(
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}.` +
+        `Pass the --force option to automatically set up a cleanup policy or` +
+        "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+    );
   }
 }
