@@ -17,7 +17,7 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
-import { hasMessage } from "../../error";
+import { hasMessage, FirebaseError } from "../../error";
 import { StringDecoder } from "node:string_decoder";
 
 export const TRUNCATE_TABLES_SQL = `
@@ -140,7 +140,8 @@ export class PostgresServer {
         const db = await PGlite.create(pgliteArgs);
         return db;
       }
-      throw err;
+      logger.debug(`Error from pglite: ${err}`);
+      throw new FirebaseError("Unexpected error starting up Postgres.");
     }
   }
 
