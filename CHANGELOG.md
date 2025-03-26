@@ -3,6 +3,11 @@
 - BREAKING(apphosting)! Removed `--location` flag from `apphosting` commands. Instead, commands now prompt for primary region as needed.
 - BREAKING(dataconnect)! `deploy dataconnect` will now warn about unsafe connector changes and insecure operations.
 - BREAKING(cloud functions)! `deploy functions` no longer aggressively tries to clean up functions artifacts. Instead, it sets up an Artifact Registry Cleanup Policy to clean these up automatically.
+- Updated the Firebase Data Connect local toolkit to v2.0.0, which contains the following changes: (#8370)
+  - Added support for aggregate functions in queries.
+  - BREAKING: New types for Generated React SDKs.
+  - Improved description of various auto-generated mutation fields.
+  - Fixed an issue where pnpm users' SDKs aren't linked properly.
 - `apphosting:secrets:grantAccess` can now grant access to emails and can grant multiple secrets at once (#8357)
 - `apphosting:secrets:set` now has flows to help with test secrets (#8359)
 - Updated `init dataconnect` templates to `v1`.
