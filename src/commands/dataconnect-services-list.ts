@@ -9,7 +9,7 @@ import { ensureApis } from "../dataconnect/ensureApis";
 import * as Table from "cli-table3";
 
 export const command = new Command("dataconnect:services:list")
-  .description("list all deployed services in your Firebase project")
+  .description("list all deployed Data Connect services")
   .before(requirePermissions, [
     "dataconnect.services.list",
     "dataconnect.schemas.list",

@@ -16,7 +16,7 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export const command = new Command("database:update <path> [infile]")
-  .description("update some of the keys for the defined path in your Firebase")
+  .description("update some of the keys for the defined path in your Realtime Database")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(

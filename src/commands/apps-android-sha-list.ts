@@ -36,7 +36,7 @@ function logCertificatesCount(count: number = 0): void {
 }
 
 export const command = new Command("apps:android:sha:list <appId>")
-  .description("list the SHA certificate hashes for a given app id. ")
+  .description("list the SHA certificate hashes for a given app id")
   .before(requireAuth)
   .action(async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
     const projectId = needProjectId(options);

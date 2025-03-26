@@ -20,7 +20,7 @@ import { PublisherProfile } from "../extensions/types";
  * Register a publisher ID; run this before publishing any extensions.
  */
 export const command = new Command("ext:dev:register")
-  .description("register a publisher ID; run this before publishing your first extension.")
+  .description("register a publisher ID; run this before publishing your first extension")
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsPublisherApiEnabled)

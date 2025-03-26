@@ -13,7 +13,7 @@ import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 
 export const command = new Command("dataconnect:sql:setup [serviceId]")
-  .description("Setup your CloudSQL database")
+  .description("set up your CloudSQL database")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

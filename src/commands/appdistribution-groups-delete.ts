@@ -6,7 +6,7 @@ import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 
 export const command = new Command("appdistribution:groups:delete <alias>")
-  .description("delete group from a project")
+  .description("delete an App Distribution group")
   .alias("appdistribution:group:delete")
   .before(requireAuth)
   .action(async (alias: string, options: any) => {
