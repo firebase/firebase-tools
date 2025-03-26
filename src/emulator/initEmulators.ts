@@ -1,19 +1,22 @@
 // specific initialization steps for an emulator
 
+import * as clc from "colorette";
 import { join } from "path";
 import { promptOnce } from "../prompt";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
-import { exportConfig } from "../apphosting/config";
+import { Env, maybeGenerateEmulatorYaml } from "../apphosting/config";
 import { detectProjectRoot } from "../detectProjectRoot";
 import { Config } from "../config";
+import { getProjectId } from "../projectUtils";
+import { grantEmailsSecretAccess } from "../apphosting/secrets";
 
 type InitFn = (config: Config) => Promise<Record<string, string> | null>;
 type AdditionalInitFnsType = Partial<Record<Emulators, InitFn>>;
 
 export const AdditionalInitFns: AdditionalInitFnsType = {
-  [Emulators.APPHOSTING]: async () => {
+  [Emulators.APPHOSTING]: async (config: Config) => {
     const cwd = process.cwd();
     const additionalConfigs = new Map<string, string>();
     const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
@@ -38,15 +41,48 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       );
     }
 
+    const projectId = getProjectId(config.options);
+    let env: Env[] | null = [];
     try {
-      const projectRoot = detectProjectRoot({}) ?? backendRoot;
-      await exportConfig(cwd, projectRoot, backendRoot);
+      const projectRoot = detectProjectRoot({ cwd: config.options.cwd }) ?? backendRoot;
+      env = await maybeGenerateEmulatorYaml(projectId, projectRoot);
     } catch (e) {
       logger.log("WARN", "failed to export app hosting configs");
     }
 
+    const secretIds = env?.filter((e) => "secret" in e)?.map((e) => e.secret) as string[] | null;
+    if (secretIds?.length) {
+      if (!projectId) {
+        logger.log(
+          "WARN",
+          "Cannot grant developers access to secrets for local development without knowing what project the secret is in. " +
+            `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --emails [email list]`)}`,
+        );
+      } else {
+        const users = await promptOnce({
+          type: "input",
+          message:
+            "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development:",
+        });
+        if (users.length) {
+          await grantEmailsSecretAccess(
+            projectId,
+            secretIds,
+            users.split(",").map((u) => u.trim()),
+          );
+        } else {
+          logger.log(
+            "INFO",
+            "Skipping granting developers access to secrets for local development. To grant access in the future, run " +
+              `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --emails [email list]`)}`,
+          );
+        }
+      }
+    }
+
     return mapToObject(additionalConfigs);
   },
+
   [Emulators.DATACONNECT]: async (config: Config) => {
     const additionalConfig: Record<string, string> = {};
     const defaultDataConnectDir = config.get("dataconnect.source", "dataconnect");
