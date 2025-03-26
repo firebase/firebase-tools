@@ -11,7 +11,7 @@ import { getBackendForAmbiguousLocation } from "../apphosting/backend";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretNames>")
   .description(
-    "grant service accounts, users, or groups permissions to the provided secret(s). Can pass one or more secrets, separated by a comma",
+    "Grant service accounts, users, or groups permissions to the provided secret(s). Can pass one or more secrets, separated by a comma",
   )
   .option("-l, --location <location>", "backend location", "-")
   .option("-b, --backend <backend>", "backend name")
