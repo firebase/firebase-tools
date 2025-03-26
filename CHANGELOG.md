@@ -1,7 +1,17 @@
-- Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
-- firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
-- firebase apphosting:secrets:set now has flows to help with test secrets (#8359)
-- Fix bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
-- BREAKING(apphosting)! apphosting emulator initialization flow now creates apphosting.emulator.yaml with references to live secrets rather than apphosting.local.yaml with saved plaintext. Export command is removed (#8361)
+- BREAKING(general)! Removed support for node 18.
+- BREAKING(apphosting)! `init emulators` App Hosting flow now creates `apphosting.emulator.yaml` with references to live secrets rather than `apphosting.local.yaml` with saved plaintext. `apphosting:config:export` command has been removed (#8361)
+- BREAKING(apphosting)! Removed `--location` flag from `apphosting` commands. Instead, commands now prompt for primary region as needed.
+- BREAKING(dataconnect)! `deploy dataconnect` now warns about unsafe connector changes and insecure operations.
+- BREAKING(cloud functions)! Removed the `experimental:functions:shell` command. Use `functions:shell` instead.
+- Updated the Firebase Data Connect local toolkit to v2.0.0, which contains the following changes: (#8370)
+  - Added support for aggregate functions in queries.
+  - BREAKING: New types for Generated React SDKs.
+  - Improved description of various auto-generated mutation fields.
+  - Fixed an issue where pnpm users' SDKs aren't linked properly.
+- `apphosting:secrets:grantAccess` can now grant access to emails and can grant multiple secrets at once (#8357)
+- `apphosting:secrets:set` now has flows to help with test secrets (#8359)
+- Updated `init dataconnect` templates to `v1`.
+- Fixed a bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
+- Fixed a bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
-- Removed the `experimental:functions:shell` command. Use `functions:shell` instead.
+- Fixed a bug where `appdistribution:testers:list` would error out if there were no testers.
