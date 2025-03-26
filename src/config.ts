@@ -186,6 +186,9 @@ export class Config {
   }
 
   path(pathName: string) {
+    if (path.isAbsolute(pathName)) {
+      return pathName;
+    }
     const outPath = path.normalize(path.join(this.projectDir, pathName));
     if (path.relative(this.projectDir, outPath).includes("..")) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
@@ -229,9 +232,14 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
-  askWriteProjectFile(p: string, content: any, force?: boolean, confirmByDefault?: boolean) {
+  async askWriteProjectFile(
+    p: string,
+    content: any,
+    force?: boolean,
+    confirmByDefault?: boolean,
+  ): Promise<void> {
     const writeTo = this.path(p);
-    let next;
+    let next = true;
     if (typeof content !== "string") {
       content = JSON.stringify(content, null, 2) + "\n";
     }
@@ -240,25 +248,21 @@ export class Config {
       existingContent = fsutils.readFile(writeTo);
     }
     if (existingContent && existingContent !== content && !force) {
-      next = promptOnce({
+      next = await promptOnce({
         type: "confirm",
         message: "File " + clc.underline(p) + " already exists. Overwrite?",
         default: !!confirmByDefault,
       });
-    } else {
-      next = Promise.resolve(true);
     }
 
-    return next.then((result: boolean) => {
-      if (existingContent === content) {
-        utils.logBullet(clc.bold(p) + " is unchanged");
-      } else if (result) {
-        this.writeProjectFile(p, content);
-        utils.logSuccess("Wrote " + clc.bold(p));
-      } else {
-        utils.logBullet("Skipping write of " + clc.bold(p));
-      }
-    });
+    if (existingContent === content) {
+      utils.logBullet(clc.bold(p) + " is unchanged");
+    } else if (next) {
+      this.writeProjectFile(p, content);
+      utils.logSuccess("Wrote " + clc.bold(p));
+    } else {
+      utils.logBullet("Skipping write of " + clc.bold(p));
+    }
   }
 
   public static load(options: any, allowMissing?: boolean): Config | null {

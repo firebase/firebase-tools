@@ -88,6 +88,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   config.set("emulators.dataconnect.dataDir", dataDir);
   await actuate(setup, config, info);
 
+  // This should most likely be a part of actuate.
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
   if (cwdPlatformGuess !== Platform.NONE) {
     await sdk.doSetup(setup, config);

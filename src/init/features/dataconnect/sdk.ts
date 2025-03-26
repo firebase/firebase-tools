@@ -38,7 +38,7 @@ export type SDKInfo = {
 };
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const sdkInfo = await askQuestions(setup, config);
-  await actuate(sdkInfo);
+  await actuate(sdkInfo, config);
   logSuccess(
     `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")} again`,
   );
@@ -224,10 +224,17 @@ export async function generateSdkYaml(
   return connectorYaml;
 }
 
-export async function actuate(sdkInfo: SDKInfo) {
+export async function actuate(sdkInfo: SDKInfo, config?: Config) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
-  fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
-  logBullet(`Wrote new config to ${connectorYamlPath}`);
+  logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
+  if (config) {
+    await config.askWriteProjectFile(
+      path.relative(config.projectDir, connectorYamlPath),
+      sdkInfo.connectorYamlContents,
+    );
+  } else {
+    fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents, "utf8");
+  }
   const account = getGlobalDefaultAccount();
   await DataConnectEmulator.generate({
     configDir: sdkInfo.connectorInfo.directory,
