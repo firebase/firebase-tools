@@ -785,11 +785,11 @@ describe("Fabricator", () => {
         run.setInvokerCreate.resolves();
         const ep = endpoint(
           { scheduleTrigger: { schedule: "every 5 minutes" } },
-          { platform: "gcfv2", serviceAccount: "sa" },
+          { platform: "gcfv2", serviceAccount: "sa@" },
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["sa"]);
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["sa@"]);
       });
     });
 
