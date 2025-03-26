@@ -11,6 +11,7 @@
 - `apphosting:secrets:grantAccess` can now grant access to emails and can grant multiple secrets at once (#8357)
 - `apphosting:secrets:set` now has flows to help with test secrets (#8359)
 - Updated `init dataconnect` templates to `v1`.
+- Fixed a bug where the emulator suite would set `FIREBASE_DATACONNECT_EMUALTOR_HOST` instead of `FIREBASE_DATA_CONNECT_EMUALTOR_HOST`.
 - Fixed a bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
 - Fixed a bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
