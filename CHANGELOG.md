@@ -4,3 +4,9 @@
 - Fix bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
 - BREAKING(apphosting)! apphosting emulator initialization flow now creates apphosting.emulator.yaml with references to live secrets rather than apphosting.local.yaml with saved plaintext. Export command is removed (#8361)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
+- Updated Firebase Data Connect local toolkit to v2.0.0, which contains the following changes: (#8370)
+  - Added support for aggregate functions in queries.
+  - BREAKING: New types for Generated React SDKs.
+  - BREAKING: Support for connector evolution and insecure operations warnings.
+  - Improved description of various auto-generated mutation fields.
+  - Fixed an issue where pnpm users' SDKs aren't linked properly.
