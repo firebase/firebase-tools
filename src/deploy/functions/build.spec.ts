@@ -185,6 +185,45 @@ describe("toBackend", () => {
       });
     }).to.throw(FirebaseError, /Value "INVALID" is an invalid egress setting./);
   });
+
+  it("can resolve a service account param", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        maxInstances: 42,
+        minInstances: 1,
+        serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
+        vpc: {
+          connector: "projects/project/locations/region/connectors/connector",
+          egressSettings: "PRIVATE_RANGES_ONLY",
+        },
+        ingressSettings: "ALLOW_ALL",
+        labels: {
+          test: "testing",
+        },
+        httpsTrigger: {
+          invoker: ["public"],
+        },
+      },
+    });
+    const env = {
+      SERVICE_ACCOUNT: new ParamValue("service-account-1@", false, {
+        string: true,
+        number: false,
+        boolean: false,
+      }),
+    };
+
+    const backend = build.toBackend(desiredBuild, env);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    if (endpointDef) {
+      expect(endpointDef.func.serviceAccount).to.equal("service-account-1@");
+    }
+  });
 });
 
 describe("envWithType", () => {
