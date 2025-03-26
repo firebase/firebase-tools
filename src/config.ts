@@ -233,12 +233,12 @@ export class Config {
   }
 
   async askWriteProjectFile(
-    p: string,
+    path: string,
     content: any,
     force?: boolean,
     confirmByDefault?: boolean,
   ): Promise<void> {
-    const writeTo = this.path(p);
+    const writeTo = this.path(path);
     let next = true;
     if (typeof content !== "string") {
       content = JSON.stringify(content, null, 2) + "\n";
@@ -250,18 +250,18 @@ export class Config {
     if (existingContent && existingContent !== content && !force) {
       next = await promptOnce({
         type: "confirm",
-        message: "File " + clc.underline(p) + " already exists. Overwrite?",
+        message: "File " + clc.underline(path) + " already exists. Overwrite?",
         default: !!confirmByDefault,
       });
     }
 
     if (existingContent === content) {
-      utils.logBullet(clc.bold(p) + " is unchanged");
+      utils.logBullet(clc.bold(path) + " is unchanged");
     } else if (next) {
-      this.writeProjectFile(p, content);
-      utils.logSuccess("Wrote " + clc.bold(p));
+      this.writeProjectFile(path, content);
+      utils.logSuccess("Wrote " + clc.bold(path));
     } else {
-      utils.logBullet("Skipping write of " + clc.bold(p));
+      utils.logBullet("Skipping write of " + clc.bold(path));
     }
   }
 

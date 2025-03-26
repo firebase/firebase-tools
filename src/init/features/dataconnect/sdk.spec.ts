@@ -4,6 +4,8 @@ import { expect } from "chai";
 
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import { Config } from "../../../config";
+import { FIXTURE_DIR } from "../../../test/fixtures/config-imports";
 
 const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 
@@ -42,7 +44,7 @@ describe("init dataconnect:sdk", () => {
       it(c.desc, async () => {
         generateStub.resolves();
         fsStub.returns({});
-        await sdk.actuate(c.sdkInfo);
+        await sdk.actuate(c.sdkInfo, new Config({}, { cwd: FIXTURE_DIR }), true);
         expect(generateStub.called).to.equal(c.shouldGenerate);
         expect(fsStub.args).to.deep.equal([
           [
