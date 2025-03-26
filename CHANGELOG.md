@@ -1,12 +1,17 @@
-- Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
-- firebase apphosting:secrets:grantAccess can now grant access to emails and can grant multiple secrets at once (#8357)
-- firebase apphosting:secrets:set now has flows to help with test secrets (#8359)
-- Fix bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
-- BREAKING(apphosting)! apphosting emulator initialization flow now creates apphosting.emulator.yaml with references to live secrets rather than apphosting.local.yaml with saved plaintext. Export command is removed (#8361)
-- Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
+- BREAKING(general)! Removed support for node 18.
+- BREAKING(apphosting)! `init emulators` App Hosting flow now creates `apphosting.emulator.yaml` with references to live secrets rather than `apphosting.local.yaml` with saved plaintext. `apphosting:config:export` command has been removed (#8361)
+- BREAKING(apphosting)! Removed `--location` flag from `apphosting` commands. Instead, commands now prompt for primary region as needed.
+- BREAKING(dataconnect)! `deploy dataconnect` will now warn about unsafe connector changes and insecure operations.
+- BREAKING(cloud functions)! `deploy functions` no longer aggressively tries to clean up functions artifacts. Instead, it sets up an Artifact Registry Cleanup Policy to clean these up automatically.
 - Updated the Firebase Data Connect local toolkit to v2.0.0, which contains the following changes: (#8370)
   - Added support for aggregate functions in queries.
   - BREAKING: New types for Generated React SDKs.
-  - BREAKING: Support for connector evolution and insecure operations warnings.
   - Improved description of various auto-generated mutation fields.
   - Fixed an issue where pnpm users' SDKs aren't linked properly.
+- `apphosting:secrets:grantAccess` can now grant access to emails and can grant multiple secrets at once (#8357)
+- `apphosting:secrets:set` now has flows to help with test secrets (#8359)
+- Updated `init dataconnect` templates to `v1`.
+- Fix bug in Auth emulator where accounts:lookup is case-sensitive for emails (#8344)
+- Fix bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
+- Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
+- Fixed a bug where `appdistribution:testers:list` would error out if there were no testers.
