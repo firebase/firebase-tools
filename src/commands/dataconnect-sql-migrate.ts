@@ -10,7 +10,7 @@ import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
-  .description("migrate your CloudSQL database's schema to match your local DataConnect schema")
+  .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
