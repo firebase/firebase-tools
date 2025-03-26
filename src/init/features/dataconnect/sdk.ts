@@ -1,6 +1,5 @@
 import * as yaml from "yaml";
 import * as clc from "colorette";
-import * as fs from "fs";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
@@ -224,17 +223,13 @@ export async function generateSdkYaml(
   return connectorYaml;
 }
 
-export async function actuate(sdkInfo: SDKInfo, config: Config, skipCheck?: boolean) {
+export async function actuate(sdkInfo: SDKInfo, config: Config) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
-  if (skipCheck) {
-    fs.writeFileSync(connectorYamlPath, sdkInfo.connectorYamlContents);
-  } else {
-    await config.askWriteProjectFile(
-      path.relative(config.projectDir, connectorYamlPath),
-      sdkInfo.connectorYamlContents,
-    );
-  }
+  await config.askWriteProjectFile(
+    path.relative(config.projectDir, connectorYamlPath),
+    sdkInfo.connectorYamlContents,
+  );
 
   const account = getGlobalDefaultAccount();
   await DataConnectEmulator.generate({
