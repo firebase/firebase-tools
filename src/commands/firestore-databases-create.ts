@@ -12,25 +12,25 @@ import { PrettyPrint } from "../firestore/pretty-print";
 import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:create <database>")
-  .description("Create a database in your Firebase project.")
+  .description("create a database in your Firebase project")
   .option(
     "--location <locationId>",
-    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)",
+    "region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations (required)",
   )
   .option(
     "--delete-protection <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
     "-k, --kms-key-name <kmsKeyName>",
-    "The resource ID of a Cloud KMS key. If set, the database created will be a " +
+    "the resource ID of a Cloud KMS key. If set, the database created will be a " +
       "Customer-managed Encryption Key (CMEK) database encrypted with this key. " +
-      "This feature is allowlist only in initial launch.",
+      "This feature is allowlist only in initial launch",
   )
   .before(requirePermissions, ["datastore.databases.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

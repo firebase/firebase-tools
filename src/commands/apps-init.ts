@@ -72,7 +72,7 @@ function toAppPlatform(str: string) {
 }
 
 export const command = new Command("apps:init [platform] [appId]")
-  .description("Automatically download and create config of a Firebase app. ")
+  .description("automatically download and create config of a Firebase app")
   .before(requireAuth)
   .option("-o, --out [file]", "(optional) write config output to a file")
   .action(async (platform = "", appId = "", options: AppsInitOptions): Promise<AppConfig> => {

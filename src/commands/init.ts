@@ -109,7 +109,7 @@ if (isEnabled("genkit")) {
 
 const featureNames = choices.map((choice) => choice.value);
 
-const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
+const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
 
 This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
@@ -120,7 +120,8 @@ ${[...featureNames]
   .join("")}`;
 
 export const command = new Command("init [feature]")
-  .description(DESCRIPTION)
+  .description("interactively configure the current directory as a Firebase project directory")
+  .help(HELP)
   .before(requireAuth)
   .action(initAction);
 

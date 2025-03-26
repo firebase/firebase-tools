@@ -18,8 +18,8 @@ import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
 export const command = new Command("functions:secrets:destroy <KEY>[@version]")
-  .description("Destroy a secret. Defaults to destroying the latest version.")
-  .withForce("Destroys a secret without confirmation.")
+  .description("destroy a secret. Defaults to destroying the latest version")
+  .withForce("destroy a secret without confirmation")
   .before(requireAuth)
   .before(ensureApi)
   .action(async (key: string, options: Options) => {

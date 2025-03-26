@@ -76,9 +76,6 @@ export function load(client: any): any {
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
-  client.experimental = {};
-  client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
   client.experiments = {};
   client.experiments.list = loadCommand("experiments-list");
   client.experiments.describe = loadCommand("experiments-describe");

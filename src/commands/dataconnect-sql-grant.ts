@@ -12,7 +12,7 @@ import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions_setup";
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
 export const command = new Command("dataconnect:sql:grant [serviceId]")
-  .description("Grants the SQL role <role> to the provided user or service account <email>.")
+  .description("grants the SQL role <role> to the provided user or service account <email>")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
   .option(
     "-E, --email <email>",

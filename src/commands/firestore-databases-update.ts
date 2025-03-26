@@ -13,16 +13,16 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(
-    "Update a database in your Firebase project. Must specify at least one property to update.",
+    "update a database in your Firebase project. Must specify at least one property to update",
   )
-  .option("--json", "Prints raw json response of the create API call if specified")
+  .option("--json", "prints raw json response of the create API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
