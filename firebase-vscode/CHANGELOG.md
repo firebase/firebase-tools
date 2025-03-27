@@ -1,4 +1,7 @@
+## NEXT
+
 ## 1.0.0
+
 - [Breaking] Updated minimum VSCode version requirement to 1.69.0 to ensure node 20 is used
 - Updated internal `firebase-tools` dependency to 14.0.0
 - [Added] Added rerun execution button in variables context
