@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissions_setup";
+import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { getIAMUser } from "../gcp/cloudsql/connect";
