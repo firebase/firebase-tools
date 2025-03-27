@@ -1,8 +1,9 @@
-## NEXT
-
+## 1.0.0
+- [Breaking] Updated minimum VSCode version requirement to 1.69.0 to ensure node 20 is used
+- Updated internal `firebase-tools` dependency to 14.0.0
 - [Added] Added rerun execution button in variables context
 - [Added] Provide default required variables during execution
-- [Fixed] Fixed an issue where nvironment variables provided in `extraEnv` were not respected in some cases
+- [Fixed] Fixed an issue where environment variables provided in `extraEnv` were not respected in some cases
 
 ## 0.14.2
 
