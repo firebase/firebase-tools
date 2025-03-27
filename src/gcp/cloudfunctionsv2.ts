@@ -518,12 +518,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     endpoint,
     "serviceAccountEmail",
     "serviceAccount",
-    (from) => {
-      if (!from) {
-        return null;
-      }
-      return proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */);
-    },
+    (from) =>
+      !from
+        ? null
+        : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
