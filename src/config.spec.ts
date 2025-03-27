@@ -21,6 +21,19 @@ describe("Config", () => {
     });
   });
 
+  describe("#path", () => {
+    it("should skip an absolute path", () => {
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
+      const absPath = "/Users/something";
+      expect(config.path(absPath)).to.eq(absPath);
+    });
+    it("should append a non-absolute path", () => {
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
+      const relativePath = "something";
+      expect(config.path(relativePath)).to.eq(path.join(SIMPLE_CONFIG_DIR, relativePath));
+    });
+  });
+
   describe("#parseFile", () => {
     it("should load a cjson file", () => {
       const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
