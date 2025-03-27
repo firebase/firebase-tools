@@ -16,3 +16,4 @@
 - Fixed a bug where function deploys didn't support shorthand notation and parameterized service account (#8366)
 - Fixed an issue where `sql:setup` would incorrectly remove the `cloudsqlsuperuser` role from `firebasesuperuser` (#8363)
 - Fixed a bug where `appdistribution:testers:list` would error out if there were no testers.
+- Fixed a bug where Vertex AI API would not be automatically enabled when emulating Data Connect services that use it.
