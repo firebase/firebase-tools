@@ -45,7 +45,7 @@ export function setEnvVarsForEmulators(
         env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
         break;
       case Emulators.DATACONNECT:
-        env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = host;
+        env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = `http://${host}`;
         // Originally, there was a typo in this env var name. To avoid breaking folks unecessarily,
         // we'll keep setting this.
         env["FIREBASE_DATACONNECT_EMULATOR_HOST"] = host;
