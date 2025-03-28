@@ -46,6 +46,7 @@ export function setEnvVarsForEmulators(
         break;
       case Emulators.DATACONNECT:
         env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = `http://${host}`;
+        env[Constants.FIREBASE_DATACONNECT_ENV_ALT] = `http://${host}`;
         // Originally, there was a typo in this env var name. To avoid breaking folks unecessarily,
         // we'll keep setting this.
         env["FIREBASE_DATACONNECT_EMULATOR_HOST"] = host;
