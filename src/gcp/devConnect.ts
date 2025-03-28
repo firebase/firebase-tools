@@ -2,7 +2,6 @@ import { Client } from "../apiv2";
 import { developerConnectOrigin, developerConnectP4SADomain } from "../api";
 import { generateServiceIdentityAndPoll } from "./serviceusage";
 import { FirebaseError } from "../error";
-import { extractRepoSlugFromUri } from "../apphosting/githubConnections";
 
 const PAGE_SIZE_MAX = 1000;
 const LOCATION_OVERRIDE = process.env.FIREBASE_DEVELOPERCONNECT_LOCATION_OVERRIDE;
@@ -136,6 +135,20 @@ export interface GitRepositoryLinkDetails {
   owner: string;
   repo: string;
   readToken: GitRepositoryLinkReadToken;
+}
+
+/**
+ * Exported for unit testing.
+ *
+ * Example usage:
+ * extractRepoSlugFromURI("https://github.com/user/repo.git") => "user/repo"
+ */
+export function extractRepoSlugFromUri(cloneUri: string): string | undefined {
+  const match = /github.com\/(.+).git/.exec(cloneUri);
+  if (!match) {
+    return undefined;
+  }
+  return match[1];
 }
 
 /**

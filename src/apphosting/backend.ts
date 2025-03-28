@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import * as poller from "../operation-poller";
 import * as apphosting from "../gcp/apphosting";
-import * as githubConnections from "./githubConnections";
+import * as githubConnections from "./developer-connect/githubConnections";
 import { logBullet, logSuccess, logWarning, sleep } from "../utils";
 import {
   apphostingOrigin,
