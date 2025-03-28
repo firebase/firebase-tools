@@ -1,1 +1,1 @@
-- Fix webframeworks deployments when deploying a SSR project. (#8381)
+- Fix Cloud Functions deployment failure when service account is null. (#8381)
