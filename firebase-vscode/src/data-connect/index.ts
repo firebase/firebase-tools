@@ -168,7 +168,17 @@ export function registerFdc(
     dataConnectConfigs,
   );
 
-  const geminiTool = new GeminiToolController(geminiAssist);
+  const geminiTool = new GeminiToolController(
+    geminiAssist,
+    fdcService,
+    emulatorController,
+    context,
+  );
+  geminiTool.activate();
+  let activated = false;
+  broker.on("firebase.activate.gemini", () => {
+    vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+  });
 
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(

@@ -279,6 +279,7 @@ export class DataConnectService {
     type: "schema" | "operation",
     chatHistory: ChatMessage[],
   ): Promise<CloudAICompanionResponse | undefined> {
+    console.log("Harold creating client");
     const client = cloudAICompationClient();
     const servicePath = await this.servicePath(dataConnectConfigs.value?.tryReadValue?.values[0].path as string);
 

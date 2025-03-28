@@ -43,6 +43,7 @@ export interface GeminiCodeAssist extends Disposable {
     iconPath?: Uri | { dark: Uri; light: Uri } | ThemeIcon,
     command?: string,
   ): GeminiTool;
+
 }
 
 /**

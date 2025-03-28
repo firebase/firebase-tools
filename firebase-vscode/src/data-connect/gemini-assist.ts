@@ -13,8 +13,9 @@ import { ResolvedDataConnectConfigs } from "./config";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { DataConnectService } from "./service";
 import { pluginLogger as logger } from "../logger-wrapper";
-import { CloudAICompanionResponse } from "../dataconnect/types";
+import { CloudAICompanionResponse, ChatMessage } from "../dataconnect/types";
 import { ChatContext } from "./gemini-tool-types";
+import { ObjectTypeDefinitionNode, OperationDefinitionNode } from "graphql";
 
 export class GeminiAssistController {
   constructor(
@@ -55,8 +56,32 @@ export class GeminiAssistController {
       async (documentContent: string, documentPath: string) =>
         this.generationEntrypoint("operation", documentContent, documentPath),
     );
-  }
 
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.refineOperation",
+      async (ast: ObjectTypeDefinitionNode) => {
+        this.highlightActiveType(ast);
+        vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+      },
+    );
+  }
+  private highlightActiveType(ast: ObjectTypeDefinitionNode) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !ast.loc) {
+      // TODO: add a warning, and skip this process
+    } else {
+      // highlight the schema in question
+      const startPostion = new vscode.Position(
+        ast.loc?.startToken.line - 1,
+        ast.loc?.startToken.column - 1,
+      );
+      const endPosition = new vscode.Position(
+        ast.loc?.endToken.line,
+        ast.loc?.endToken.column - 1,
+      );
+      editor.selection = new vscode.Selection(startPostion, endPosition);
+    }
+  }
   private async generationEntrypoint(
     commandType: "operation" | "schema",
     documentContent: string | undefined,
@@ -132,14 +157,17 @@ export class GeminiAssistController {
   async callGenerateApi(
     documentPath: string,
     prompt: string,
+    type: "schema" | "operation",
+    chatHistory: ChatMessage[],
   ): Promise<CloudAICompanionResponse> {
     // TODO: Call Gemini API with the document content and context
     try {
       const response = await this.fdcService.generateOperation(
         documentPath,
         prompt,
+        type,
+        chatHistory,
       );
-      console.log("HAROLD RESPONSE: ", response);
       if (!response) {
         throw new Error("No response from Cloud AI API");
       }
@@ -158,6 +186,8 @@ export class GeminiAssistController {
       const response = await this.fdcService.generateOperation(
         documentPath,
         prompt,
+        "operation",
+        [],
       );
       console.log("HAROLD RESPONSE: ", response);
       if (!response) {
@@ -166,6 +196,32 @@ export class GeminiAssistController {
       return this.formatCodeWithVSCode(response.output.messages[0].content);
     } catch (error) {
       throw new Error(`Failed to call Gemini API: ${error}`);
+    }
+  }
+
+  async collectSchemaText(): Promise<string> {
+    try {
+      const service =
+        this.configs?.value?.tryReadValue?.findEnclosingServiceForPath(
+          vscode.window.activeTextEditor?.document.uri.fsPath || "",
+        );
+
+      if (!service) {
+        // The entrypoint is not a codelens file, so we can't determine the service.
+        return "";
+      }
+
+      const schema: string = "";
+      const schemaPath = path.join(service.path, service.schemaDir);
+      const schemaFiles = await this.findGqlFiles(schemaPath);
+
+      for (const file of schemaFiles) {
+        schema.concat(file);
+      }
+
+      return schema;
+    } catch (error) {
+      throw new Error(`Failed to collect GQL files: ${error}`);
     }
   }
 
@@ -254,7 +310,9 @@ export class GeminiAssistController {
     broker.on("fdc.generate-schema", async (args) => {
       const { type } = args;
       try {
-        this.generationEntrypoint(type, undefined, undefined);
+        vscode.commands.executeCommand("cloudcode.duetAI.sendTransformToChat");
+
+        // this.generationEntrypoint(type, undefined, undefined);
       } catch (error) {
         vscode.window.showErrorMessage(`Failed to generate schema: ${error}`);
       }
@@ -414,7 +472,7 @@ class GeminiEditorProvider implements vscode.CustomTextEditorProvider {
       // 1. Read original file content, append the generated content, and show diff view
       fs.writeFileSync(
         tempUri.fsPath,
-        Buffer.concat([originalContent, Buffer.from("\n" +content)]),
+        Buffer.concat([originalContent, Buffer.from("\n" + content)]),
       );
 
       await vscode.commands.executeCommand<vscode.TextDocument>(

@@ -157,12 +157,10 @@ function DataConnect() {
       <VSCodeButton
         appearance="secondary"
         onClick={() => {
-          broker.send("fdc.generate-schema", {
-            type: "schema",
-          });
+          broker.send("firebase.activate.gemini");
         }}
       >
-        Generate schema
+        Generate Schema with Gemini
       </VSCodeButton>
 
       <Spacer size="xlarge" />
