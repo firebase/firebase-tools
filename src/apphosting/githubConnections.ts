@@ -471,9 +471,6 @@ export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink)
     },
   });
 
-  utils.logWarning(
-    `The branch "${branch}" does not exist on "${extractRepoSlugFromUri(repoLink.cloneUri) ?? ""}". Please enter a valid branch for this repo.`,
-  );
   return branch;
 }
 
