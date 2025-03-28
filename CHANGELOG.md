@@ -1,1 +1,1 @@
-- Fixed a bug where the Admin SDK would not automatically connect to the Data Connect emulator. (#8379)
+- Fixed a bug where the Admin SDK would not automatically connect to the Data Connect emulator when run in the Functions emulator. (#8379)
