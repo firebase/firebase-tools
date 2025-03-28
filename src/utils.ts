@@ -190,7 +190,7 @@ export function logLabeledBullet(
 }
 
 /**
- * Log an info statement with a gray bullet at the start of the line.
+ * Log an warn statement with a gray bullet at the start of the line.
  */
 export function logWarning(
   message: string,
@@ -198,6 +198,17 @@ export function logWarning(
   data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
+}
+
+/**
+ * Log an error statement with a gray bullet at the start of the line.
+ */
+export function logError(
+  message: string,
+  type: LogLevel = "error",
+  data: LogDataOrUndefined = undefined,
+): void {
+  logger[type](clc.red(clc.bold(`${ERROR_CHAR} `)), message, data);
 }
 
 /**

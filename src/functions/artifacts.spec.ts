@@ -543,12 +543,12 @@ describe("functions artifacts", () => {
     it("should return empty arrays when no locations are provided", async () => {
       const result = await artifacts.checkCleanupPolicy(projectId, []);
 
-      expect(result).to.deep.equal({ locationsToSetup: [], locationsWithErrors: [] });
+      expect(result).to.deep.equal({});
       expect(getRepoStub).not.to.have.been.called;
     });
 
     it("should identify locations that need cleanup policies", async () => {
-      const locations = ["us-central1", "us-east1", "europe-west1"];
+      const locations = ["us-central1", "us-east1", "europe-west1", "asia-northeast1"];
 
       const repos: Record<string, artifactregistry.Repository> = {
         "us-central1": {
@@ -561,7 +561,7 @@ describe("functions artifacts", () => {
         "us-east1": {
           name: artifacts.makeRepoPath(projectId, "us-east1"),
           format: "DOCKER",
-          description: "Repo with policy",
+          description: "Repo with clean up policy",
           createTime: "",
           updateTime: "",
           cleanupPolicies: {
@@ -592,6 +592,16 @@ describe("functions artifacts", () => {
             },
           },
         },
+        "asia-northeast1": {
+          name: artifacts.makeRepoPath(projectId, "asia-northeast1"),
+          format: "DOCKER",
+          description: "Repo with opt-out",
+          createTime: "",
+          updateTime: "",
+          labels: {
+            [artifacts.OPT_OUT_LABEL_KEY]: "true",
+          },
+        },
       };
 
       getRepoStub.callsFake((projectId: string, location: string) => {
@@ -600,36 +610,22 @@ describe("functions artifacts", () => {
 
       const result = await artifacts.checkCleanupPolicy(projectId, locations);
 
-      expect(result.locationsToSetup).to.deep.equal(["us-central1"]);
-      expect(result.locationsWithErrors).to.deep.equal([]);
+      expect(result).to.deep.equal({
+        "us-central1": "noPolicy",
+        "us-east1": "foundPolicy",
+        "europe-west1": "foundPolicy",
+        "asia-northeast1": "optedOut",
+      });
     });
 
-    it("should identify locations with opt-out", async () => {
-      const locations = ["us-central1"];
-
-      const repo = {
-        name: artifacts.makeRepoPath(projectId, "us-central1"),
-        format: "DOCKER",
-        description: "Repo with opt-out",
-        createTime: "",
-        updateTime: "",
-        labels: { [artifacts.OPT_OUT_LABEL_KEY]: "true" },
-      };
-
-      getRepoStub.resolves(repo);
-
-      const result = await artifacts.checkCleanupPolicy(projectId, locations);
-
-      expect(result.locationsToSetup).to.deep.equal([]);
-      expect(result.locationsWithErrors).to.deep.equal([]);
-    });
-
-    it("should handle locations with errors", async () => {
-      const locations = ["us-central1", "error-location"];
+    it("should handle repository not found", async () => {
+      const locations = ["us-central1", "non-existent-location"];
 
       getRepoStub.callsFake((projectId, location) => {
-        if (location === "error-location") {
-          throw new Error("Test error");
+        if (location === "non-existent-location") {
+          const error = new Error("Repository not found");
+          (error as any).status = 404;
+          throw error;
         }
         return {
           name: artifacts.makeRepoPath(projectId, location),
@@ -642,8 +638,36 @@ describe("functions artifacts", () => {
 
       const result = await artifacts.checkCleanupPolicy(projectId, locations);
 
-      expect(result.locationsToSetup).to.deep.equal(["us-central1"]);
-      expect(result.locationsWithErrors).to.deep.equal(["error-location"]);
+      expect(result).to.deep.equal({
+        "us-central1": "noPolicy",
+        "non-existent-location": "notFound",
+      });
+    });
+
+    it("should handle locations with errors", async () => {
+      const locations = ["us-central1", "error-location"];
+      const repo = {
+        name: artifacts.makeRepoPath(projectId, "us-central1"),
+        format: "DOCKER",
+        description: "Test repo",
+        createTime: "",
+        updateTime: "",
+      };
+
+      getRepoStub.callsFake((projectId, location) => {
+        if (location === "error-location") {
+          const error = new Error("Test error");
+          throw error;
+        }
+        return repo;
+      });
+
+      const result = await artifacts.checkCleanupPolicy(projectId, locations);
+
+      expect(result).to.deep.equal({
+        "us-central1": "noPolicy",
+        "error-location": "errored",
+      });
     });
   });
 
@@ -666,7 +690,7 @@ describe("functions artifacts", () => {
     it("should return empty arrays when no locations are provided", async () => {
       const result = await artifacts.setCleanupPolicies(projectId, [], 1);
 
-      expect(result).to.deep.equal({ locationsWithPolicy: [], locationsWithErrors: [] });
+      expect(result).to.deep.equal({});
       expect(getRepoStub).not.to.have.been.called;
     });
 
@@ -698,8 +722,8 @@ describe("functions artifacts", () => {
       const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
 
       expect(result).to.deep.equal({
-        locationsWithPolicy: ["us-central1", "us-east1"],
-        locationsWithErrors: [],
+        "us-central1": { status: "success" },
+        "us-east1": { status: "success" },
       });
 
       expect(setCleanupPolicyStub).to.have.been.calledTwice;
@@ -728,10 +752,8 @@ describe("functions artifacts", () => {
 
       const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
 
-      expect(result).to.deep.equal({
-        locationsWithPolicy: ["us-central1"],
-        locationsWithErrors: ["error-location"],
-      });
+      expect(result["us-central1"]).to.deep.equal({ status: "success" });
+      expect(result["error-location"]).to.include({ status: "errored" });
 
       expect(setCleanupPolicyStub).to.have.been.calledOnce;
       expect(setCleanupPolicyStub).to.have.been.calledWith(repo, daysToKeep);
@@ -771,10 +793,8 @@ describe("functions artifacts", () => {
 
       const result = await artifacts.setCleanupPolicies(projectId, locations, daysToKeep);
 
-      expect(result).to.deep.equal({
-        locationsWithPolicy: ["us-central1"],
-        locationsWithErrors: ["us-east1"],
-      });
+      expect(result["us-central1"]).to.deep.equal({ status: "success" });
+      expect(result["us-east1"]).to.include({ status: "errored" });
 
       expect(getRepoStub).to.have.been.calledTwice;
       expect(setCleanupPolicyStub).to.have.been.calledTwice;

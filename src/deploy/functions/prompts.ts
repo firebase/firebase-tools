@@ -313,3 +313,8 @@ export async function promptForCleanupPolicyDays(
   });
   return parseInt(result);
 }
+
+export function formatMany(items: string[], singular: string, plural: string = ""): string {
+  const pluralStr = plural || `${singular}s`;
+  return `${items.length === 1 ? singular : pluralStr} ${items.join(", ")}`;
+}
