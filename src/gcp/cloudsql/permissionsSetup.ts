@@ -105,12 +105,14 @@ export async function setupSQLPermissions(
   options: Options,
   silent: boolean = false,
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
-  const logFn = silent ? logger.debug : (message: string) => {return utils.logLabeledBullet('dataconnect', message)};
+  const logFn = silent
+    ? logger.debug
+    : (message: string) => {
+        return utils.logLabeledBullet("dataconnect", message);
+      };
   const schema = schemaInfo.name;
   // Step 0: Check current user can run setup and upsert IAM / P4SA users
-  logFn(
-    `Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`,
-  );
+  logFn(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`);
 
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
