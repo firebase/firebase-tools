@@ -319,7 +319,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
   if (!usageEnabled() && propertyName !== "vscode") {
     if (validateOnly) {
-      logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
+      logger.debug("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
     return;
   }
@@ -352,7 +352,7 @@ function isDebugMode(): boolean {
   if (account?.user.email.endsWith("@google.com")) {
     try {
       require("../tsconfig.json");
-      logger.info(
+      logger.debug(
         `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
       );
       return true;
