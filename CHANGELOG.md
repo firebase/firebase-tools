@@ -1,1 +1,2 @@
 - Fixed a bug where the Admin SDK would not automatically connect to the Data Connect emulator when run in the Functions emulator. (#8379)
+- Fix Cloud Functions deployment failure when service account is null. (#8381)
