@@ -3,6 +3,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { promptOnce } from "../prompt";
+import { input } from "../promptv2";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
@@ -22,11 +23,9 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
     logger.logLabeled("INFO", "Initializing Emulator");
 
-    const backendRelativeDir = await promptOnce({
-      name: "rootDir",
-      type: "input",
-      default: "./",
+    const backendRelativeDir = await input({
       message: "Specify your app's root directory relative to your repository",
+      default: "./",
     });
     additionalConfigs.set("rootDirectory", backendRelativeDir);
 
@@ -59,8 +58,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
             `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --emails [email list]`)}`,
         );
       } else {
-        const users = await promptOnce({
-          type: "input",
+        const users = await input({
           message:
             "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development:",
         });
