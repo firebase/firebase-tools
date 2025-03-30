@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { confirm } from "../../prompt";
+import { confirm } from "../../promptV2";
 import * as fsutils from "../../fsutils";
 import { logLabeledBullet } from "../../utils";
 import { FirebaseError, getErrMsg } from "../../error";

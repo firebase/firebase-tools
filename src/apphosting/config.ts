@@ -303,9 +303,7 @@ export async function overrideChosenEnv(
   const newEnv: Record<string, Env> = {};
   for (const name of toOverwrite) {
     if ("value" in env[name]) {
-      const newValue = await prompt.input({
-        message: `What new value would you like for plaintext ${name}?`,
-      });
+      const newValue = await prompt.input(`What new value would you like for plaintext ${name}?`);
       newEnv[name] = { variable: name, value: newValue };
       continue;
     }
@@ -337,9 +335,9 @@ export async function overrideChosenEnv(
       continue;
     }
 
-    const secretValue = await prompt.password({
-      message: `What new value would you like for secret ${name} [input is hidden]?`,
-    });
+    const secretValue = await prompt.password(
+      `What new value would you like for secret ${name} [input is hidden]?`,
+    );
     // TODO: Do we need to support overriding locations? Inferring them from the original?
     await csm.createSecret(projectId!, secretRef!, { [csm.FIREBASE_MANAGED]: "apphosting" });
     await csm.addVersion(projectId!, secretRef!, secretValue);

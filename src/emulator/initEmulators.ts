@@ -57,10 +57,9 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
             `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --emails [email list]`)}`,
         );
       } else {
-        const users = await input({
-          message:
-            "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development: ",
-        });
+        const users = await input(
+          "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development: ",
+        );
         if (users.length) {
           await grantEmailsSecretAccess(
             projectId,
@@ -88,12 +87,11 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       `${defaultDataConnectDir}/.dataconnect/pgliteData`,
     );
     if (
-      await confirm({
-        message:
-          "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
+      await confirm(
+        "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
           `Data will be saved to ${defaultDataDir}. ` +
           `You can change this directory by editing 'firebase.json#emulators.dataconnect.dataDir'.`,
-      })
+      )
     ) {
       additionalConfig["dataDir"] = defaultDataDir;
     }

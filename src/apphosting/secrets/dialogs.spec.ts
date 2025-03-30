@@ -6,7 +6,7 @@ import * as secrets from ".";
 import * as dialogs from "./dialogs";
 import * as apphosting from "../../gcp/apphosting";
 import * as utilsImport from "../../utils";
-import * as promptImport from "../../prompt";
+import * as promptImport from "../../promptV2";
 
 describe("dialogs", () => {
   const modernA = {
@@ -336,15 +336,14 @@ describe("dialogs", () => {
         backends: [modernA, modernA2, modernB, legacy, legacy2],
         unreachable: [],
       });
-      prompt.promptOnce.resolves(["a", "b"]);
+      prompt.checkbox.resolves(["a", "b"]);
       const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal({ buildServiceAccounts: ["a", "b"], runServiceAccounts: [] });
 
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        type: "checkbox",
+      expect(prompt.checkbox).to.have.been.calledWith({
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
         choices: [
@@ -365,15 +364,14 @@ describe("dialogs", () => {
         backends: [modernA, modernA2, modernB, legacy, legacy2],
         unreachable: [],
       });
-      prompt.promptOnce.resolves([]);
+      prompt.checkbox.resolves([]);
       const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        type: "checkbox",
+      expect(prompt.checkbox).to.have.been.calledWith({
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
         choices: [
@@ -405,29 +403,29 @@ describe("dialogs", () => {
 
     it("accepts a valid env var", async () => {
       await expect(dialogs.envVarForSecret("VALID_KEY")).to.eventually.equal("VALID_KEY");
-      expect(prompt.promptOnce).to.not.have.been.called;
+      expect(prompt.input).to.not.have.been.called;
     });
 
     it("suggests a valid upper case name", async () => {
-      prompt.promptOnce.resolves("SECRET_VALUE");
+      prompt.input.resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
     });
 
     it("prevents invalid keys", async () => {
-      prompt.promptOnce.onFirstCall().resolves("secret-value");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("secret-value");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
         "Key secret-value must start with an uppercase ASCII letter or underscore, and then consist of uppercase ASCII letters, digits, and underscores.",
@@ -435,15 +433,15 @@ describe("dialogs", () => {
     });
 
     it("prevents reserved keys", async () => {
-      prompt.promptOnce.onFirstCall().resolves("PORT");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("PORT");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
         "Key PORT is reserved for internal use.",
@@ -451,15 +449,15 @@ describe("dialogs", () => {
     });
 
     it("prevents reserved prefixes", async () => {
-      prompt.promptOnce.onFirstCall().resolves("X_GOOGLE_SECRET");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("X_GOOGLE_SECRET");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWithMatch(
         "apphosting",
         /Key X_GOOGLE_SECRET starts with a reserved prefix/,
@@ -467,12 +465,12 @@ describe("dialogs", () => {
     });
 
     it("can trim test prefixes", async () => {
-      prompt.promptOnce.resolves("SECRET");
+      prompt.input.resolves("SECRET");
 
       await expect(
         dialogs.envVarForSecret("test-secret", /* trimTestPrefix=*/ true),
       ).to.eventually.equal("SECRET");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET",
       });

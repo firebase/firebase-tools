@@ -1,11 +1,9 @@
 import * as inquirer from "inquirer";
 import AutocompletePrompt from "inquirer-autocomplete-prompt";
-import * as path from "path";
 
-import { fileExistsSync, dirExistsSync } from "./fsutils";
 import { FirebaseError } from "./error";
-import { Config } from "./config";
-import { logger } from "./logger";
+
+throw new Error("Importing old code!");
 
 declare module "inquirer" {
   interface QuestionMap<T> {
@@ -43,6 +41,7 @@ type Options = Record<string, any> & { nonInteractive?: boolean };
  * @param options The options object passed through by Command.
  * @param questions `Question`s to ask the user.
  * @return The answers, keyed by the `name` of the `Question`.
+ * @deprecated use promptV2 library
  */
 export async function prompt(
   options: Options,
@@ -104,6 +103,7 @@ export async function promptOnce<A extends inquirer.Answers>(
  * Quick and strongly-typed version of `prompt` to ask a single question.
  * @param question The question (of life, the universe, and everything).
  * @return The value as returned by `inquirer` for that quesiton.
+ * @deprecated use promptV2 library
  */
 export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
   // Need to replace any .'s in the question name - otherwise, Inquirer puts the answer
@@ -115,6 +115,7 @@ export async function promptOnce<A>(question: Question, options: Options = {}): 
 
 /**
  * Confirm if the user wants to continue
+ * @deprecated use promptV2 library
  */
 export async function confirm(args: {
   nonInteractive?: boolean;
@@ -134,37 +135,4 @@ export async function confirm(args: {
   } else {
     return true;
   }
-}
-
-/**
- * Prompts for a directory name, and reprompts if that path does not exist
- */
-export async function promptForDirectory(args: {
-  message: string;
-  config: Config;
-  default?: boolean;
-  relativeTo?: string;
-}): Promise<string> {
-  let dir: string = "";
-  while (!dir) {
-    const promptPath = await promptOnce({
-      message: args.message,
-    });
-    let target: string;
-    if (args.relativeTo) {
-      target = path.resolve(args.relativeTo, promptPath);
-    } else {
-      target = args.config.path(promptPath);
-    }
-    if (fileExistsSync(target)) {
-      logger.error(
-        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
-      );
-    } else if (!dirExistsSync(target)) {
-      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
-    } else {
-      dir = target;
-    }
-  }
-  return dir;
 }

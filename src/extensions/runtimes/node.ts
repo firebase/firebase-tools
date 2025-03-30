@@ -5,7 +5,7 @@ import { marked } from "marked";
 import { Options } from "../../options";
 import { isObject } from "../../error";
 import { ExtensionSpec, ParamType } from "../types";
-import { confirm } from "../../prompt";
+import { confirm } from "../../promptV2";
 import * as secretsUtils from "../secretsUtils";
 import { logLabeledBullet } from "../../utils";
 import {

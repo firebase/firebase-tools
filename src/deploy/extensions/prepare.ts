@@ -1,6 +1,6 @@
 import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
-import * as prompt from "../../prompt";
+import * as prompt from "../../promptV2";
 import * as refs from "../../extensions/refs";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";

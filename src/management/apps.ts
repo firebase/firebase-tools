@@ -9,23 +9,21 @@ import { pollOperation } from "../operation-poller";
 import { WebConfig } from "../fetchWebSetup";
 import { Platform } from "../dataconnect/types";
 import { needProjectId } from "../projectUtils";
-import { promptOnce, Question, prompt, promptForDirectory } from "../prompt";
+import * as prompt from "../promptV2";
 import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";
 import { getPlatformFromFolder } from "../dataconnect/fileUtils";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logWarning, promptForDirectory } from "../utils";
 import { AppsInitOptions } from "../commands/apps-init";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
-const DISPLAY_NAME_QUESTION: Question = {
-  type: "input",
-  name: "displayName",
-  default: "",
-  message: "What would you like to call your app?",
-};
+
+async function getDisplayName(): Promise<string> {
+  return await prompt.input("What would you like to call your app?");
+}
 
 interface CreateFirebaseAppOptions {
   project: string;
@@ -70,10 +68,9 @@ export async function getPlatform(appDir: string, config: Config) {
       { name: "Web (JavaScript)", value: Platform.WEB },
       { name: "Android (Kotlin)", value: Platform.ANDROID },
     ];
-    targetPlatform = await promptOnce({
+    targetPlatform = await prompt.select<Platform>({
       message:
         "Which platform do you want to set up an SDK for? Note: We currently do not support automatically setting up C++ or Unity projects.",
-      type: "list",
       choices: platforms,
     });
   } else if (targetPlatform === Platform.FLUTTER) {
@@ -93,21 +90,11 @@ https://firebase.google.com/docs/flutter/setup
 
 async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "bundleId",
-        message: "Please specify your iOS app bundle ID:",
-      },
-      {
-        type: "input",
-        default: "",
-        name: "appStoreId",
-        message: "Please specify your iOS app App Store ID:",
-      },
-    ]);
+    options.displayName = options.displayName || (await getDisplayName());
+    options.bundleId =
+      options.bundleId || (await prompt.input("Please specify your iOS app bundle ID:"));
+    options.appStoreId =
+      options.appStoreId || (await prompt.input("Please specify your iOS app App Store ID:"));
   }
   if (!options.bundleId) {
     throw new FirebaseError("Bundle ID for iOS app cannot be empty");
@@ -132,15 +119,9 @@ async function initiateAndroidAppCreation(
   options: CreateAndroidAppOptions,
 ): Promise<AndroidAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "packageName",
-        message: "Please specify your Android app package name:",
-      },
-    ]);
+    options.displayName = options.displayName || (await getDisplayName());
+    options.packageName =
+      options.packageName || (await prompt.input("Please specify your Android app package name:"));
   }
   if (!options.packageName) {
     throw new FirebaseError("Package name for Android app cannot be empty");
@@ -162,7 +143,7 @@ async function initiateAndroidAppCreation(
 
 async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [DISPLAY_NAME_QUESTION]);
+    options.displayName = options.displayName || (await getDisplayName());
   }
   if (!options.displayName) {
     throw new FirebaseError("Display name for Web app cannot be empty");
@@ -236,8 +217,7 @@ async function selectAppInteractively(
     };
   });
 
-  return await promptOnce({
-    type: "list",
+  return await prompt.select({
     message:
       `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
       "app to get the configuration data:",
@@ -620,11 +600,7 @@ export async function writeConfigToFile(
     if (nonInteractive) {
       throw new FirebaseError(`${filename} already exists`);
     }
-    const overwrite = await promptOnce({
-      type: "confirm",
-      default: false,
-      message: `${filename} already exists. Do you want to overwrite?`,
-    });
+    const overwrite = await prompt.confirm(`${filename} already exists. Do you want to overwrite?`);
 
     if (!overwrite) {
       return false;
