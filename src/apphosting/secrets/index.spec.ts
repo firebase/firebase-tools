@@ -8,7 +8,7 @@ import * as gcb from "../../gcp/cloudbuild";
 import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
-import * as promptImport from "../../prompt";
+import * as promptImport from "../../promptV2";
 
 import { Secret } from "../yaml";
 import { FirebaseError } from "../../error";

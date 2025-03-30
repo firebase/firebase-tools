@@ -6,7 +6,7 @@ import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { confirm, promptOnce } from "../prompt";
+import { confirm, select } from "../promptV2";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -43,8 +43,7 @@ export async function writeToManifest(
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");
     if (allowOverwrite) {
-      const overwrite = await promptOnce({
-        type: "list",
+      const overwrite = await select({
         message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
         choices: [
           { name: "Overwrite", value: true },

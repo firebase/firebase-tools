@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { confirm, promptOnce } from "../../prompt";
+import { confirm, number } from "../../promptV2";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
@@ -58,12 +58,7 @@ export async function promptForFailurePolicies(
       exit: 1,
     });
   }
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
@@ -162,10 +157,7 @@ export async function promptForUnsafeMigration(
   }
 
   for (const eu of unsafeUpdates) {
-    const shouldUpdate = await promptOnce({
-      type: "confirm",
-      name: "confirm",
-      default: false,
+    const shouldUpdate = await confirm({
       message: `[${getFunctionLabel(
         eu.endpoint,
       )}] Would you like to proceed with the unsafe migration?`,
@@ -261,12 +253,7 @@ export async function promptForMinInstances(
 
   utils.logLabeledWarning("functions", warnMessage);
 
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
@@ -298,18 +285,10 @@ export async function promptForCleanupPolicyDays(
     );
   }
 
-  const result = await promptOnce({
-    type: "input",
-    name: "days",
-    default: artifacts.DEFAULT_CLEANUP_DAYS.toString(),
+  return await number({
+    default: artifacts.DEFAULT_CLEANUP_DAYS,
     message: "How many days do you want to keep container images before they're deleted?",
-    validate: (input) => {
-      const days = parseInt(input);
-      if (isNaN(days) || days < 0) {
-        return "Please enter a non-negative number";
-      }
-      return true;
-    },
+    validate: (days) =>
+      !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
   });
-  return parseInt(result);
 }

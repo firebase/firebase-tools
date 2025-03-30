@@ -28,7 +28,7 @@ import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { confirm, promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
@@ -904,8 +904,7 @@ export async function startAll(
         );
         if (
           !options.nonInteractive &&
-          !(await promptOnce({
-            type: "confirm",
+          !(await confirm({
             message: `Do you wish to continue and overwrite data in ${dataDirectory}?`,
             default: false,
           }))

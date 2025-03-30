@@ -11,7 +11,7 @@ import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
 import { listDemoSites, listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
@@ -237,8 +237,7 @@ export async function prepareFrameworks(
   You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`,
             );
             if (!options.nonInteractive) {
-              const continueDeploy = await promptOnce({
-                type: "confirm",
+              const continueDeploy = await confirm({
                 default: true,
                 message: "Would you like to continue with the deploy?",
               });

@@ -20,7 +20,7 @@ import {
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import { validateKey } from "./env";
 import { logger } from "../logger";
 import { assertExhaustive } from "../functional";
@@ -69,16 +69,13 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
     logWarning(`By convention, secret key must be in UPPER_SNAKE_CASE.`);
-    const confirm = await promptOnce(
-      {
-        name: "updateKey",
-        type: "confirm",
-        default: true,
-        message: `Would you like to use ${transformedKey} as key instead?`,
-      },
-      options,
-    );
-    if (!confirm) {
+    const useTransformed = await confirm({
+      default: true,
+      message: `Would you like to use ${transformedKey} as key instead?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+    if (!useTransformed) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
   }
@@ -104,15 +101,11 @@ export async function ensureSecret(
       logWarning(
         "Your secret is managed by Firebase App Hosting. Continuing will disable automatic deletion of old versions.",
       );
-      const stopTracking = await promptOnce(
-        {
-          name: "doNotTrack",
-          type: "confirm",
-          default: false,
-          message: "Do you wish to continue?",
-        },
-        options,
-      );
+      const stopTracking = await confirm({
+        message: "Do you wish to continue?",
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
       if (stopTracking) {
         delete secret.labels[FIREBASE_MANAGED];
         await patchSecret(secret.projectId, secret.name, secret.labels);
@@ -127,16 +120,13 @@ export async function ensureSecret(
           "Your secret is not managed by Cloud Functions for Firebase. " +
             "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
-        const confirm = await promptOnce(
-          {
-            name: "updateLabels",
-            type: "confirm",
-            default: true,
-            message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
-          },
-          options,
-        );
-        if (confirm) {
+        const updateLabels = await confirm({
+          default: true,
+          message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+        });
+        if (updateLabels) {
           return patchSecret(projectId, secret.name, {
             ...secret.labels,
             ...labels(),

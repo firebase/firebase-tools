@@ -7,7 +7,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import * as utils from "../utils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import * as clc from "colorette";
 
 export const command = new Command("database:remove <path>")
@@ -28,16 +28,13 @@ export const command = new Command("database:remove <path>")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
-    const confirm = await promptOnce(
+    const areYouSure = await confirm(
       {
-        type: "confirm",
-        name: "force",
-        default: false,
         message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
-      },
-      options,
+        force: options.force
+      }
     );
-    if (!confirm) {
+    if (!areYouSure) {
       return utils.reject("Command aborted.", { exit: 1 });
     }
 

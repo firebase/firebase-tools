@@ -47,7 +47,21 @@ export type InputConfig = BasicOptions<string> & {
 /**
  * Prompt for a string input.
  */
-export async function input(opts: InputConfig): Promise<string> {
+export async function input(message: string): Promise<string>;
+/**
+ * Prompt for a string input.
+ */
+export async function input(opts: InputConfig): Promise<string>;
+
+export async function input(opts: InputConfig | string): Promise<string> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
+    }
+  }
   return inquirer.input(opts);
 }
 
@@ -63,17 +77,28 @@ export type ConfirmConfig = BasicOptions<boolean> & {
 
 /**
  * Prompt a user to confirm a selection
+ */
+export async function confirm(message: string): Promise<boolean>;
+/**
+ * Prompt a user to confirm a selection
  * Will abort if nonInteractive and not force
  */
-export async function confirm(opts: ConfirmConfig): Promise<boolean> {
-  if (opts.force) {
-    // TODO: Should we print what we've forced?
-    return true;
+export async function confirm(opts: ConfirmConfig): Promise<boolean>;
+
+export async function confirm(opts: string | ConfirmConfig) {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    if (opts.force) {
+      // TODO: Should we print what we've forced?
+      return true;
+    }
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
+    }
   }
-  const { shouldReturn, value } = guard(opts);
-  if (shouldReturn) {
-    return value;
-  }
+
   return inquirer.confirm(opts);
 }
 
@@ -110,6 +135,7 @@ export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
   validate?:
     | ((choices: readonly Choice<Value>[]) => boolean | string | Promise<string | boolean>)
     | undefined;
+  pageSize?: number;
 };
 
 /**
@@ -139,6 +165,7 @@ export type SelectOptions<Value> = BasicOptions<Value> & {
   choices:
     | readonly (MaybeLiteral<Value> | inquirer.Separator)[]
     | readonly (inquirer.Separator | Choice<Value>)[];
+  pageSize?: number;
 };
 
 /**
@@ -172,11 +199,23 @@ export type NumberOptions = BasicOptions<number> & {
 /**
  * Prompt a user for a number.
  */
-export async function number(opts: NumberOptions): Promise<number> {
-  const { shouldReturn, value } = guard(opts);
-  if (shouldReturn) {
-    return value;
+export async function number(message: string): Promise<number>;
+
+/**
+ * Prompt a user for a number.
+ */
+export async function number(opts: NumberOptions): Promise<number>;
+
+export async function number(opts: string | NumberOptions): Promise<number> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
+    }
   }
+
   return (await inquirer.number({ ...opts, required: true }))!;
 }
 
@@ -192,11 +231,23 @@ type PasswordOptions = Omit<BasicOptions<string>, "default"> & {
 };
 
 /**
- *
+ * Prompt for a password; input is hidden.
  */
-export async function password(opts: PasswordOptions): Promise<string> {
-  // Note, without default can basically only throw
-  guard(opts);
+export async function password(message: string): Promise<string>;
+
+/**
+ * Prompt for a password; input is hidden.
+ */
+export async function password(opts: PasswordOptions): Promise<string>;
+
+export async function password(opts: string | PasswordOptions): Promise<string> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    // Note, without default can basically only throw
+    guard(opts);
+  }
+
   return inquirer.password({
     ...opts,
     mask: "",

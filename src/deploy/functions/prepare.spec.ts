@@ -4,7 +4,7 @@ import * as backend from "./backend";
 import * as prepare from "./prepare";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as sinon from "sinon";
-import * as prompt from "../../prompt";
+import * as prompt from "../../promptV2";
 import { FirebaseError } from "../../error";
 
 describe("prepare", () => {

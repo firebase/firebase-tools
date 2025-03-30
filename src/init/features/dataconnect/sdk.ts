@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { promptForDirectory, promptOnce, prompt } from "../../../prompt";
+import { promptOnce, prompt } from "../../../prompt";
 import {
   readFirebaseJson,
   getPlatformFromFolder,
@@ -26,7 +26,7 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet } from "../../../utils";
+import { logSuccess, logBullet, promptForDirectory } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
