@@ -156,6 +156,31 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
 }
 
 /**
+ * Options for the number function.
+ *
+ * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
+export type NumberOptions = BasicOptions<number> & {
+  min?: number;
+  max?: number;
+  step?: number | "any";
+  validate?: (value: number | undefined) => boolean | string | Promise<string | boolean>;
+};
+
+/**
+ * Prompt a user for a number.
+ */
+export async function number(opts: NumberOptions): Promise<number> {
+  const { shouldReturn, value } = guard(opts);
+  if (shouldReturn) {
+    return value;
+  }
+  return (await inquirer.number({ ...opts, required: true }))!;
+}
+
+/**
  * Options for the checkbox function.
  *
  * Epxorted because Inquirer does not export its own input configs anymore. Some unused

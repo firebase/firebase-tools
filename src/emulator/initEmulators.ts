@@ -2,8 +2,7 @@
 
 import * as clc from "colorette";
 import { join } from "path";
-import { promptOnce } from "../prompt";
-import { input } from "../promptv2";
+import { input, confirm } from "../promptV2";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
@@ -60,7 +59,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       } else {
         const users = await input({
           message:
-            "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development:",
+            "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development: ",
         });
         if (users.length) {
           await grantEmailsSecretAccess(
@@ -89,9 +88,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       `${defaultDataConnectDir}/.dataconnect/pgliteData`,
     );
     if (
-      await promptOnce({
-        name: "dataDir",
-        type: "confirm",
+      await confirm({
         message:
           "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
           `Data will be saved to ${defaultDataDir}. ` +
