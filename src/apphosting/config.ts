@@ -5,7 +5,7 @@ import * as clc from "colorette";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
-import * as prompt from "../prompt";
+import * as prompt from "../promptV2";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";
@@ -194,7 +194,7 @@ export async function maybeAddSecretToYaml(
     return;
   }
   if (!path) {
-    path = await prompt.promptOnce({
+    path = await prompt.input({
       message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
@@ -289,12 +289,9 @@ export async function overrideChosenEnv(
     return {};
   }
 
-  const toOverwrite = await prompt.promptOnce({
-    type: "checkbox",
+  const toOverwrite = await prompt.checkbox({
     message: "Which environment variables would you like to override?",
-    choices: names.map((name) => {
-      return { name };
-    }),
+    choices: names,
   });
 
   if (!projectId && toOverwrite.some((name) => "secret" in env[name])) {
@@ -306,8 +303,7 @@ export async function overrideChosenEnv(
   const newEnv: Record<string, Env> = {};
   for (const name of toOverwrite) {
     if ("value" in env[name]) {
-      const newValue = await prompt.promptOnce({
-        type: "input",
+      const newValue = await prompt.input({
         message: `What new value would you like for plaintext ${name}?`,
       });
       newEnv[name] = { variable: name, value: newValue };
@@ -317,15 +313,13 @@ export async function overrideChosenEnv(
     let secretRef: string;
     let action: "reuse" | "create" | "pick-new" = "pick-new";
     while (action === "pick-new") {
-      secretRef = await prompt.promptOnce({
-        type: "input",
+      secretRef = await prompt.input({
         message: `What would you like to name the secret reference for ${name}?`,
         default: suggestedTestKeyName(name),
       });
 
       if (await csm.secretExists(projectId!, secretRef)) {
-        action = await prompt.promptOnce({
-          type: "list",
+        action = await prompt.select<"reuse" | "pick-new">({
           message:
             "This secret reference already exists, would you like to reuse it or create a new one?",
           choices: [
@@ -343,8 +337,7 @@ export async function overrideChosenEnv(
       continue;
     }
 
-    const secretValue = await prompt.promptOnce({
-      type: "password",
+    const secretValue = await prompt.password({
       message: `What new value would you like for secret ${name} [input is hidden]?`,
     });
     // TODO: Do we need to support overriding locations? Inferring them from the original?
