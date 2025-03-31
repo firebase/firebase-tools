@@ -51,6 +51,7 @@ describe("serve", () => {
   describe("start", () => {
     beforeEach(() => {
       listRunningWithInfoStub.returns([]);
+      spawnWithCommandStringStub.resolves();
     });
 
     it("should use user-provided port if one is defined", async () => {
