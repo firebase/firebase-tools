@@ -9,7 +9,7 @@ import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import { join } from "node:path";
-import { confirm } from "../../promptV2";
+import { confirm } from "../../prompt";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.

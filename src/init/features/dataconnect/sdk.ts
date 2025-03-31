@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { checkbox, select } from "../../../promptV2";
+import { checkbox, select } from "../../../prompt";
 import {
   readFirebaseJson,
   getPlatformFromFolder,

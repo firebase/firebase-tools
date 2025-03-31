@@ -14,7 +14,7 @@ import { requirePermissions } from "../requirePermissions";
 import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
 import { PublisherProfile } from "../extensions/types";
-import { input } from "../promptV2";
+import { input } from "../prompt";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.

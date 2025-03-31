@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as promptImport from "../../promptV2";
+import * as promptImport from "../../prompt";
 import { Config } from "../../config";
 import { Setup } from "..";
 import { doSetup } from "./functions";

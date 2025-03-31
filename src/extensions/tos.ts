@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { extensionsTOSOrigin } from "../api";
 import { logger } from "../logger";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";

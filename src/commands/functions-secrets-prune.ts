@@ -9,7 +9,7 @@ import { needProjectId, needProjectNumber } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import { isFirebaseManaged } from "../deploymentTool";
 import { logBullet, logSuccess } from "../utils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { destroySecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 

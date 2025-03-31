@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { Backup, deleteBackup, getBackup } from "../gcp/firestore";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import * as clc from "colorette";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";

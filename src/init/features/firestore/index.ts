@@ -7,7 +7,7 @@ import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
 import * as clc from "colorette";
-import { input } from "../../../promptV2";
+import { input } from "../../../prompt";
 
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(

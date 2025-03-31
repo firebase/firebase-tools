@@ -11,7 +11,7 @@ import * as secrets from "../apphosting/secrets";
 import * as dialogs from "../apphosting/secrets/dialogs";
 import * as config from "../apphosting/config";
 import * as utils from "../utils";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")

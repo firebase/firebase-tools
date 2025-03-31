@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { confirm, input, select } from "../../promptV2";
+import { confirm, input, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as fsutils from "../../fsutils";

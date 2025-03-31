@@ -5,7 +5,7 @@ import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 import { stripVTControlCharacters } from "node:util";
 import { FrameworkType, SupportLevel } from "../interfaces";
-import { select } from "../../promptV2";
+import { select } from "../../prompt";
 import {
   simpleProxy,
   warnIfCustomBuildScript,

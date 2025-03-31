@@ -7,7 +7,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import * as utils from "../utils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import * as clc from "colorette";
 
 export const command = new Command("database:remove <path>")

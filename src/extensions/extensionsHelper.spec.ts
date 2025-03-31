@@ -10,7 +10,7 @@ import * as getProjectNumber from "../getProjectNumber";
 import * as functionsConfig from "../functionsConfig";
 import { storage } from "../gcp";
 import * as archiveDirectory from "../archiveDirectory";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import {
   ExtensionSource,
   ExtensionSpec,

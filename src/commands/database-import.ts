@@ -10,7 +10,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { DatabaseInstance, populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";

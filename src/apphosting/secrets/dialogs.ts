@@ -3,7 +3,7 @@ import * as Table from "cli-table3";
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
 import * as apphosting from "../../gcp/apphosting";
-import * as prompt from "../../promptV2";
+import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import { logger } from "../../logger";
 

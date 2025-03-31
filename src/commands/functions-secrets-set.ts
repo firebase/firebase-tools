@@ -5,7 +5,7 @@ import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {

@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { rollbackTemplate } from "../remoteconfig/rollback";
 import { requirePermissions } from "../requirePermissions";

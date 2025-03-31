@@ -15,7 +15,7 @@ import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("ext:export")

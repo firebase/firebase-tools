@@ -7,7 +7,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { testIamPermissions } from "../gcp/iam";
 import { logger } from "../logger";
-import { input, confirm } from "../promptV2";
+import { input, confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
 import { zip } from "../functional";

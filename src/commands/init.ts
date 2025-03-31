@@ -7,7 +7,7 @@ import { Config } from "../config";
 import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
-import { checkbox, confirm } from "../promptV2";
+import { checkbox, confirm } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";

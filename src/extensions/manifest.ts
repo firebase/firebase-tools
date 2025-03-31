@@ -6,7 +6,7 @@ import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { confirm, select } from "../promptV2";
+import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";

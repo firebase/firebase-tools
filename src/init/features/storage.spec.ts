@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 
 import { Config } from "../../config";
 import { doSetup } from "./storage";
-import * as prompt from "../../promptV2";
+import * as prompt from "../../prompt";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

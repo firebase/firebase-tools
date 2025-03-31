@@ -6,7 +6,7 @@ import {
 } from "./types";
 import { RegistryEntry } from "./resolveSource";
 import { Runtime } from "../deploy/functions/runtimes/supported";
-import { Choice } from "../promptV2";
+import { Choice } from "../prompt";
 
 /**
  * Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.

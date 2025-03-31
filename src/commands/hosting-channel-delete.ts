@@ -4,7 +4,7 @@ import { marked } from "marked";
 import { Command } from "../command";
 import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";

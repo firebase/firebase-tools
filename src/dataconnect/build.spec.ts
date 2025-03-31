@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import { handleBuildErrors } from "./build";
 import { GraphqlError } from "./types";
 

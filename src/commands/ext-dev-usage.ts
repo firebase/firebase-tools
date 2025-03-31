@@ -10,7 +10,7 @@ import { getPublisherProfile, listExtensions } from "../extensions/publisherApi"
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
-import { select } from "../promptV2";
+import { select } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")

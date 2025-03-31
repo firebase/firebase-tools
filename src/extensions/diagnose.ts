@@ -2,7 +2,7 @@ import { logPrefix } from "./extensionsHelper";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import * as resourceManager from "../gcp/resourceManager";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { listInstances } from "./extensionsApi";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";

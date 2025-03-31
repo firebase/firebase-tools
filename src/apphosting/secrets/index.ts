@@ -7,7 +7,7 @@ import * as apphosting from "../../gcp/apphosting";
 import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
-import * as prompt from "../../promptV2";
+import * as prompt from "../../prompt";
 import { Secret } from "../yaml";
 
 /** Interface for holding the service account pair for a given Backend. */

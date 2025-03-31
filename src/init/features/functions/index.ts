@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../../../logger";
-import { input, select } from "../../../promptV2";
+import { input, select } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";

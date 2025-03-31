@@ -13,7 +13,7 @@ import {
   logout,
   setGlobalDefaultAccount,
 } from "../auth";
-import { select } from "../promptV2";
+import { select } from "../prompt";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")

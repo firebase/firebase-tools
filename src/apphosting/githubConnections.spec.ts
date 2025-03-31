@@ -1,6 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as poller from "../operation-poller";
 import * as devconnect from "../gcp/devConnect";
 import * as repo from "./githubConnections";

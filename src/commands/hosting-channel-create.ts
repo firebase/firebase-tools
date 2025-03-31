@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-import { input } from "../promptV2";
+import { input } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";

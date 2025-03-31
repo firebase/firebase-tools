@@ -12,7 +12,7 @@ import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { input } from "../promptV2";
+import { input } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";

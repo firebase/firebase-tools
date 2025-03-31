@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../../logger";
-import { input } from "../../promptV2";
+import { input } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");

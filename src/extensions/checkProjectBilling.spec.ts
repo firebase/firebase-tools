@@ -3,7 +3,7 @@ chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";
 
 import * as checkProjectBilling from "./checkProjectBilling";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as cloudbilling from "../gcp/cloudbilling";
 
 const expect = chai.expect;

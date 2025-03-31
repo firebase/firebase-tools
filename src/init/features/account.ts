@@ -9,7 +9,7 @@ import {
 } from "../../auth";
 import { Account } from "../../types/auth";
 import { FirebaseError } from "../../error";
-import { select } from "../../promptV2";
+import { select } from "../../prompt";
 
 async function promptForAccount() {
   logger.info();

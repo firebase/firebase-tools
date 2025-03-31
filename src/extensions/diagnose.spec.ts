@@ -4,7 +4,7 @@ import * as resourceManager from "../gcp/resourceManager";
 import * as pn from "../getProjectNumber";
 import * as diagnose from "./diagnose";
 import * as extensionsApi from "./extensionsApi";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 
 const GOOD_BINDING = {
   role: "roles/firebasemods.serviceAgent",

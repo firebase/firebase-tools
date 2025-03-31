@@ -4,7 +4,7 @@ import * as ora from "ora";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrStatus } from "../error";
 import { pollOperation } from "../operation-poller";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as api from "../api";
 import { logger } from "../logger";
 import * as utils from "../utils";

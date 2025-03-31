@@ -10,7 +10,7 @@ import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";
-import { select } from "../promptV2";
+import { select } from "../prompt";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")

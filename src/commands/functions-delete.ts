@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";

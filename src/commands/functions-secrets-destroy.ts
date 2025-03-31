@@ -10,7 +10,7 @@ import {
   ensureApi,
   isFunctionsManaged,
 } from "../gcp/secretManager";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { logBullet, logWarning } from "../utils";
 import { requireAuth } from "../requireAuth";
 import * as secrets from "../functions/secrets";

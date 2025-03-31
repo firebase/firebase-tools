@@ -22,7 +22,7 @@ import { configstore } from "./configstore";
 import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { input, password } from "./promptV2";
+import { input, password } from "./prompt";
 import { readTemplateSync } from "./templates";
 import { isVSCodeExtension } from "./vsCodeUtils";
 import { Config } from "./config";

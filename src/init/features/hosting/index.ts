@@ -4,7 +4,7 @@ import { join } from "path";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
-import { confirm, input, select } from "../../../promptV2";
+import { confirm, input, select } from "../../../prompt";
 import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
 import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";

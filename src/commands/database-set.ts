@@ -7,7 +7,7 @@ import { Emulators } from "../emulator/types";
 import { FirebaseError, getErrMsg } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { URL } from "url";

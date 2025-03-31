@@ -9,7 +9,7 @@ import { pollOperation } from "../operation-poller";
 import { WebConfig } from "../fetchWebSetup";
 import { Platform } from "../dataconnect/types";
 import { needProjectId } from "../projectUtils";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";

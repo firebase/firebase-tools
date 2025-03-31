@@ -7,7 +7,7 @@ import { logger } from "./logger";
 import { FirebaseError, getErrStatus } from "./error";
 import * as utils from "./utils";
 
-import { confirm } from "./promptV2";
+import { confirm } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 import { getProjectNumber } from "./getProjectNumber";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";

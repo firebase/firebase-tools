@@ -8,7 +8,7 @@ import * as types from "./api-types";
 import * as Spec from "./api-spec";
 import * as sort from "./api-sort";
 import * as util from "./util";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";

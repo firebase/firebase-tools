@@ -11,7 +11,7 @@ import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
 import { listDemoSites, listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";

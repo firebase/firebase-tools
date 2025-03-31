@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";

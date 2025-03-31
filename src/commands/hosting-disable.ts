@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { hostingApiOrigin } from "../api";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";

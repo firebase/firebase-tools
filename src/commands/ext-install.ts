@@ -26,7 +26,7 @@ import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { trackGA4 } from "../track";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 import { displayDeveloperTOSWarning } from "../extensions/tos";

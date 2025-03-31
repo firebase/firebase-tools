@@ -1,4 +1,4 @@
-import { input, confirm } from "../../promptV2";
+import { input, confirm } from "../../prompt";
 import * as fsutils from "../../fsutils";
 import * as clc from "colorette";
 import { Config } from "../../config";

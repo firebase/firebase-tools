@@ -5,7 +5,7 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { Config } from "../config";
 import { FirebaseError, getErrMsg, getError } from "../error";
-import { confirm, select } from "../promptV2";
+import { confirm, select } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 import { readTemplateSync } from "../templates";

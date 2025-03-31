@@ -5,7 +5,7 @@ import {
   deleteGcfArtifacts,
   DockerHelper,
 } from "../deploy/functions/containerCleaner";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";

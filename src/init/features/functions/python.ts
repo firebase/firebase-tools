@@ -3,7 +3,7 @@ import * as spawn from "cross-spawn";
 import { Config } from "../../../config";
 import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
 import { runWithVirtualEnv } from "../../../functions/python";
-import { confirm } from "../../../promptV2";
+import { confirm } from "../../../prompt";
 import { latest } from "../../../deploy/functions/runtimes/supported";
 import { readTemplateSync } from "../../../templates";
 

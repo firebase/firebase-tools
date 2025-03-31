@@ -6,7 +6,7 @@ import * as paramHelper from "./paramHelper";
 import * as refs from "./refs";
 
 import { Config } from "../config";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import { FirebaseError } from "../error";
 import { ParamType } from "./types";
 

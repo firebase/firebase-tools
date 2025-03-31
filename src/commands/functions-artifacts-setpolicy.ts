@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireAuth } from "../requireAuth";
 import { logBullet, logSuccess } from "../utils";
