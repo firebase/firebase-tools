@@ -5,7 +5,7 @@ import * as secretManager from "../gcp/secretManager";
 import * as gcf from "../gcp/cloudfunctions";
 import * as secrets from "./secrets";
 import * as utils from "../utils";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as backend from "../deploy/functions/backend";
 import * as poller from "../operation-poller";
 import { Options } from "../options";

@@ -1,5 +1,5 @@
 import { logger } from "../../../logger";
-import { confirm } from "../../../promptV2";
+import { confirm } from "../../../prompt";
 import { wrapSpawn } from "../../spawn";
 
 export async function askInstallDependencies(setup: any, config: any): Promise<void> {

@@ -31,7 +31,7 @@ import {
   getExtensionVersion,
   listExtensionVersions,
 } from "./publisherApi";
-import { Choice, confirm, input, select } from "../promptV2";
+import { Choice, confirm, input, select } from "../prompt";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";

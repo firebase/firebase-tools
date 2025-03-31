@@ -2,7 +2,7 @@ import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconne
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
-import { select } from "../promptV2";
+import { select } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
 import { DeploymentMetadata, GraphqlError } from "./types";

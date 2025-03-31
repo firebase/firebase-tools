@@ -19,7 +19,7 @@ import {
   SchemaSetupStatus,
 } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
-import { select, confirm } from "../promptV2";
+import { select, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";

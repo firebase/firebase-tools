@@ -5,7 +5,7 @@ import * as nock from "nock";
 import * as api from "../api";
 import * as projectManager from "./projects";
 import * as pollUtils from "../operation-poller";
-import * as promptImport from "../promptV2";
+import * as promptImport from "../prompt";
 import { FirebaseError } from "../error";
 import { CloudProjectInfo, FirebaseProjectMetadata } from "../types/project";
 

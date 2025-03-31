@@ -11,7 +11,7 @@ const cjson = require("cjson");
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
 import * as fsutils from "./fsutils";
-import { confirm } from "./promptV2";
+import { confirm } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";

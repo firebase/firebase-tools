@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
 import { logger } from "../logger";
 import { Options } from "../options";
-import { input, select } from "../promptV2";
+import { input, select } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
 import * as utils from "../utils";

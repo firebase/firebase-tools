@@ -11,7 +11,7 @@ import { configstore } from "./configstore";
 import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { input } from "./promptV2";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";

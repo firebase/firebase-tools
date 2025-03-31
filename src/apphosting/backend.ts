@@ -17,7 +17,7 @@ import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
-import { input, confirm, select, checkbox } from "../promptV2";
+import { input, confirm, select, checkbox } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";

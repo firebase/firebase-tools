@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { confirm, number } from "../../promptV2";
+import { confirm, number } from "../../prompt";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";

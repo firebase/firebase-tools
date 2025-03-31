@@ -2,7 +2,7 @@ import { bold, underline } from "colorette";
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
 import { getSite, deleteSite } from "../hosting/api";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";

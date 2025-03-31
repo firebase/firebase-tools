@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import * as utils from "./utils";
-import * as promptImport from "../promptV2";
+import * as promptImport from "../prompt";
 import * as sinon from "sinon";
 
 describe("utils", () => {

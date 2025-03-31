@@ -21,7 +21,7 @@ import * as clc from "colorette";
 
 import { doSetup as functionsSetup } from "../functions";
 import { Config } from "../../../config";
-import { confirm, select } from "../../../promptV2";
+import { confirm, select } from "../../../prompt";
 import { wrapSpawn, spawnWithOutput } from "../../spawn";
 import { Options } from "../../../options";
 import { getProjectId } from "../../../projectUtils";

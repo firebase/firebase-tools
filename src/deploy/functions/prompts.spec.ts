@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as backend from "./backend";
 import * as functionPrompts from "./prompts";
-import * as prompt from "../../promptV2";
+import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 import { RC } from "../../rc";

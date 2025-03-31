@@ -4,7 +4,7 @@ import * as yaml from "yaml";
 import * as path from "path";
 import * as fsImport from "../fsutils";
 import * as csmImport from "../gcp/secretManager";
-import * as promptImport from "../promptV2";
+import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
 import { NodeType } from "yaml/dist/nodes/Node";

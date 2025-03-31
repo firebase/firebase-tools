@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { ExtensionSpec, Param, ParamType } from "./types";
 import * as extensionsHelper from "./extensionsHelper";
 import * as paramHelper from "./paramHelper";
-import * as promptImport from "../promptV2";
+import * as promptImport from "../prompt";
 import { cloneDeep } from "../utils";
 
 const PROJECT_ID = "test-proj";

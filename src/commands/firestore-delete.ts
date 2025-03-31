@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { FirestoreDelete } from "../firestore/delete";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { FirestoreOptions } from "../firestore/options";

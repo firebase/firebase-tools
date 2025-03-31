@@ -16,7 +16,7 @@ import {
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
-import { select } from "../promptV2";
+import { select } from "../prompt";
 
 function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,

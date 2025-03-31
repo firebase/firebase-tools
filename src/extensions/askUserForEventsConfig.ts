@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import * as clc from "colorette";
 import { logger } from "../logger";
 import { marked } from "marked";
-import { checkbox, select, confirm } from "../promptV2";
+import { checkbox, select, confirm } from "../prompt";
 
 export interface InstanceEventsConfig {
   channel: string;

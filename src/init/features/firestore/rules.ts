@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import * as gcp from "../../../gcp";
 import * as fsutils from "../../../fsutils";
-import { confirm, input } from "../../../promptV2";
+import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
 import * as utils from "../../../utils";
 import { readTemplateSync } from "../../../templates";

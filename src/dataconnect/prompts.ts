@@ -1,4 +1,4 @@
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import * as utils from "../utils";
 import { deleteConnector } from "./client";
 

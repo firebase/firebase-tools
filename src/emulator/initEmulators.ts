@@ -2,7 +2,7 @@
 
 import * as clc from "colorette";
 import { join } from "path";
-import { input, confirm } from "../promptV2";
+import { input, confirm } from "../prompt";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";

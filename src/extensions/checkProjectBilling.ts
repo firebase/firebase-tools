@@ -5,7 +5,7 @@ import * as cloudbilling from "../gcp/cloudbilling";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { logPrefix } from "./extensionsHelper";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as utils from "../utils";
 
 const ADD_BILLING_ACCOUNT = "Add new billing account";

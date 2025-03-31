@@ -1,6 +1,6 @@
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
-import { checkbox, input, password, select } from "../../promptV2";
+import { checkbox, input, password, select } from "../../prompt";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";

@@ -16,7 +16,7 @@ import {
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
 import { logger } from "../../../logger";
-import { input, confirm } from "../../../promptV2";
+import { input, confirm } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";

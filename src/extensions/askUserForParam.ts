@@ -8,7 +8,7 @@ import * as secretsUtils from "./secretsUtils";
 import { logPrefix, substituteParams } from "./extensionsHelper";
 import { convertExtensionOptionToLabeledList, getRandomString } from "./utils";
 import { logger } from "../logger";
-import { input, password, confirm, select, checkbox } from "../promptV2";
+import { input, password, confirm, select, checkbox } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
 import { needProjectId } from "../projectUtils";

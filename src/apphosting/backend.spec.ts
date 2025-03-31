@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as promptImport from "../promptV2";
+import * as promptImport from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as iam from "../gcp/iam";
 import * as resourceManager from "../gcp/resourceManager";

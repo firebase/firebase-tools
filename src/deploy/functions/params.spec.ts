@@ -1,7 +1,7 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
 
-import * as prompt from "../../promptV2";
+import * as prompt from "../../prompt";
 import * as params from "./params";
 
 const expect = chai.expect;

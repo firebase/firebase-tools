@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as utils from "../../utils";
-import { confirm, checkbox, number } from "../../promptV2";
+import { confirm, checkbox, number } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";

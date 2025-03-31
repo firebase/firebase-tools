@@ -18,7 +18,7 @@ import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
-import { select, confirm } from "../promptV2";
+import { select, confirm } from "../prompt";
 
 function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {

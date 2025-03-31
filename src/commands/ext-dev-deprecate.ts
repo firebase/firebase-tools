@@ -4,7 +4,7 @@ import * as semver from "semver";
 import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";

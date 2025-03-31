@@ -1,5 +1,5 @@
 import { askInstallDependencies } from "./npm-dependencies";
-import { confirm } from "../../../promptV2";
+import { confirm } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
 import { readTemplateSync } from "../../../templates";
 

@@ -6,7 +6,7 @@ import * as poller from "../operation-poller";
 import * as utils from "../utils";
 import { cloudbuildOrigin } from "../api";
 import { FirebaseError } from "../error";
-import { Choice, input, search, Separator, confirm } from "../promptV2";
+import { Choice, input, search, Separator, confirm } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
 
 import * as fuzzy from "fuzzy";

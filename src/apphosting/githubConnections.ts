@@ -5,7 +5,7 @@ import * as rm from "../gcp/resourceManager";
 import * as poller from "../operation-poller";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-import { Choice, input, search, confirm, Separator } from "../promptV2";
+import { Choice, input, search, confirm, Separator } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
 import {
   apphostingGitHubAppInstallationURL,

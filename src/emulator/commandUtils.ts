@@ -13,7 +13,7 @@ import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;

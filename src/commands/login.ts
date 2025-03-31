@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import { configstore } from "../configstore";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";

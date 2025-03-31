@@ -5,7 +5,7 @@ import * as clc from "colorette";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";

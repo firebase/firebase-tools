@@ -17,7 +17,7 @@ import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
 
-import { select } from "../../promptV2";
+import { select } from "../../prompt";
 import { FirebaseError } from "../../error";
 import type { EmulatorInfo } from "../../emulator/types";
 import {

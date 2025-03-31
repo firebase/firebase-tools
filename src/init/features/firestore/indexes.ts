@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../../error";
 import * as api from "../../../firestore/api";
 import * as fsutils from "../../../fsutils";
-import { confirm, input } from "../../../promptV2";
+import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 

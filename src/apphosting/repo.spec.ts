@@ -3,7 +3,7 @@ import { expect } from "chai";
 
 import * as gcb from "../gcp/cloudbuild";
 import * as rm from "../gcp/resourceManager";
-import * as prompt from "../promptV2";
+import * as prompt from "../prompt";
 import * as poller from "../operation-poller";
 import * as repo from "./repo";
 import * as utils from "../utils";

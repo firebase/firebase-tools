@@ -6,7 +6,7 @@ import * as secrets from ".";
 import * as dialogs from "./dialogs";
 import * as apphosting from "../../gcp/apphosting";
 import * as utilsImport from "../../utils";
-import * as promptImport from "../../promptV2";
+import * as promptImport from "../../prompt";
 
 describe("dialogs", () => {
   const modernA = {

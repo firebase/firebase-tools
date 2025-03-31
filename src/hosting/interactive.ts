@@ -2,7 +2,7 @@ import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { Site, createSite } from "./api";
-import { input } from "../promptV2";
+import { input } from "../prompt";
 
 const nameSuggestion = new RegExp("try something like `(.+)`");
 // const prompt = "Please provide an unique, URL-friendly id for the site (<id>.web.app):";

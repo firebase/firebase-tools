@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "./error";
-import * as prompt from "./promptV2";
+import * as prompt from "./prompt";
 import * as resourceManager from "./gcp/resourceManager";
 import * as projectNumber from "./getProjectNumber";
 import { readFileSync } from "fs-extra";

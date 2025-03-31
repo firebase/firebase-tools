@@ -13,7 +13,7 @@ import { FirebaseError } from "../error";
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as refs from "../extensions/refs";
 import { logger } from "../logger";
-import { confirm } from "../promptV2";
+import { confirm } from "../prompt";
 import * as utils from "../utils";
 
 /**
