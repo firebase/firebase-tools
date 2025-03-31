@@ -41,8 +41,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     port += 1;
   }
 
-  // Note: Do not block by using await here. Development server should not block rest of the emulator.
-  serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
+  await serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
 
   return { hostname, port };
 }
@@ -127,13 +126,17 @@ async function serve(
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
-    await spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
+
+    // Note: Do not block by using await here. Development server should not block rest of the emulator.
+    spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
     return;
   }
 
   const detectedStartCommand = await detectStartCommand(backendRoot);
   logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
-  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
+
+  // Note: Do not block by using await here. Development server should not block rest of the emulator.
+  spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
