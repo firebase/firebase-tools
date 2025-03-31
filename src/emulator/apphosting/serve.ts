@@ -127,7 +127,7 @@ async function serve(
       `running custom start command: '${startCommand}'`,
     );
 
-    // Note: Development server should not block rest of the emulator.
+    // NOTE: Development server should not block main emulator process.
     spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject)
       .catch((err) => {
         logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
@@ -139,7 +139,7 @@ async function serve(
   const detectedStartCommand = await detectStartCommand(backendRoot);
   logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
 
-  // Note: Development server should not block rest of the emulator.
+  // NOTE: Development server should not block main emulator process.
   spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject)
     .catch((err) => {
       logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
