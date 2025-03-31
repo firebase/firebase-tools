@@ -41,7 +41,8 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     port += 1;
   }
 
-  await serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
+  // Note: Do not block by using await here. Development server should not block rest of the emulator.
+  serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
 
   return { hostname, port };
 }
@@ -97,6 +98,9 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
   }
 }
 
+/**
+ * Runs the development server in a child process.
+ */
 async function serve(
   projectId: string | undefined,
   port: number,
