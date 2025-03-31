@@ -102,6 +102,8 @@ export class Constants {
   // Environment variable to discover the tasks emulator.
   static CLOUD_TASKS_EMULATOR_HOST = "CLOUD_TASKS_EMULATOR_HOST";
 
+  static NEXT_PUBLIC_PREFIX = "NEXT_PUBLIC_";
+
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
   static FIREBASE_GA_SESSION = "FIREBASE_GA_SESSION";

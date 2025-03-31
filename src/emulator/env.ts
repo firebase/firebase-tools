@@ -20,33 +20,45 @@ export function setEnvVarsForEmulators(
       case Emulators.FIRESTORE:
         env[Constants.FIRESTORE_EMULATOR_HOST] = host;
         env[Constants.FIRESTORE_EMULATOR_ENV_ALT] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIRESTORE_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIRESTORE_EMULATOR_ENV_ALT] = host;
         break;
       case Emulators.DATABASE:
         env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_DATABASE_EMULATOR_HOST] = host;
         break;
       case Emulators.STORAGE:
         env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_STORAGE_EMULATOR_HOST] = host;
         // The protocol is required for the Google Cloud Storage Node.js Client SDK.
         env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${host}`;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${host}`;
         break;
       case Emulators.AUTH:
         env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_AUTH_EMULATOR_HOST] = host;
         break;
       case Emulators.HUB:
         env[Constants.FIREBASE_EMULATOR_HUB] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_EMULATOR_HUB] = host;
         break;
       case Emulators.PUBSUB:
         env[Constants.PUBSUB_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.PUBSUB_EMULATOR_HOST] = host;
         break;
       case Emulators.EVENTARC:
         env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${host}`;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${host}`;
         break;
       case Emulators.TASKS:
         env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
         break;
       case Emulators.DATACONNECT:
         env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = `http://${host}`;
         env[Constants.FIREBASE_DATACONNECT_ENV_ALT] = `http://${host}`;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = `http://${host}`;
+        env[Constants.NEXT_PUBLIC_PREFIX + Constants.FIREBASE_DATACONNECT_ENV_ALT] = `http://${host}`;
         // Originally, there was a typo in this env var name. To avoid breaking folks unecessarily,
         // we'll keep setting this.
         env["FIREBASE_DATACONNECT_EMULATOR_HOST"] = host;
