@@ -2,7 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
@@ -26,15 +26,12 @@ export const command = new Command("apphosting:backends:delete <backend>")
     utils.logWarning("You are about to permanently delete these backend(s):");
     printBackendsTable(backends);
 
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: "Are you sure?",
-      },
-      options,
-    );
+    const confirmDeletion = await confirm({
+      message: "Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmDeletion) {
       return;
     }

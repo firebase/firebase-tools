@@ -1,4 +1,4 @@
-import { promptOnce } from "../../prompt";
+import { input, confirm } from "../../promptV2";
 import * as fsutils from "../../fsutils";
 import * as clc from "colorette";
 import { Config } from "../../config";
@@ -21,9 +21,7 @@ interface RemoteConfigSetup {
  */
 export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise<void> {
   setup.config.remoteconfig = {};
-  const jsonFilePath = await promptOnce({
-    type: "input",
-    name: "template",
+  const jsonFilePath = await input({
     message: "What file should be used for your Remote Config template?",
     default: "remoteconfig.template.json",
   });
@@ -33,11 +31,7 @@ export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise
       clc.bold(jsonFilePath) +
       " already exists." +
       " Do you want to overwrite the existing Remote Config template?";
-    const overwrite = await promptOnce({
-      type: "confirm",
-      message: msg,
-      default: false,
-    });
+    const overwrite = await confirm(msg);
     if (!overwrite) {
       return;
     }

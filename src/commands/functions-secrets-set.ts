@@ -5,7 +5,7 @@ import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
@@ -81,28 +81,19 @@ export const command = new Command("functions:secrets:set <KEY>")
         endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t"),
     );
 
-    if (!options.force) {
-      let confirm = false;
-      // The promptOnce function will throw an error if non interactive mode is set,
-      // so we can safely skip the prompt and end early below in the !confirm check.
-      if (!options.nonInteractive) {
-        confirm = await promptOnce(
-          {
-            name: "redeploy",
-            type: "confirm",
-            default: true,
-            message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
-          },
-          options,
-        );
-      }
-      if (!confirm) {
-        logBullet(
-          "Please deploy your functions for the change to take effect by running:\n\t" +
-            clc.bold("firebase deploy --only functions"),
-        );
-        return;
-      }
+    const redeploy = options.nonInteractive
+      ? false
+      : await confirm({
+          message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
+          default: true,
+          force: options.force,
+        });
+    if (!redeploy) {
+      logBullet(
+        "Please deploy your functions for the change to take effect by running:\n\t" +
+          clc.bold("firebase deploy --only functions"),
+      );
+      return;
     }
 
     const updateOps = endpointsToUpdate.map(async (e) => {

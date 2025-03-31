@@ -1,6 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import * as prompt from "../prompt";
+import * as prompt from "../promptV2";
 import * as poller from "../operation-poller";
 import * as devconnect from "../gcp/devConnect";
 import * as repo from "./githubConnections";
@@ -82,7 +82,7 @@ describe("githubConnections", () => {
   describe("connect GitHub repo", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStubbedInstance<typeof prompt>;
     let pollOperationStub: sinon.SinonStub;
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
@@ -96,7 +96,10 @@ describe("githubConnections", () => {
     let fetchGitHubInstallationsStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      promptStub = sandbox.stub(prompt);
+      promptStub.input.throws("Unexpected input call");
+      promptStub.search.throws("Unexpected search call");
+      promptStub.confirm.throws("Unexpected confirm call");
       pollOperationStub = sandbox
         .stub(poller, "pollOperation")
         .throws("Unexpected pollOperation call");
@@ -207,7 +210,7 @@ describe("githubConnections", () => {
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.onFirstCall().resolves("any key");
+      promptStub.input.onFirstCall().resolves("any key");
 
       await repo.getOrCreateConnection(projectId, location, connectionId);
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
@@ -218,7 +221,7 @@ describe("githubConnections", () => {
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.resolves("any key");
+      promptStub.input.resolves("any key");
       getProjectNumberStub.onFirstCall().resolves(projectId);
       openInBrowserPopupStub.resolves({ url: "", cleanup: sandbox.stub() });
 
@@ -234,7 +237,7 @@ describe("githubConnections", () => {
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
       createRepositoryStub.resolves({ name: "op" });
       pollOperationStub.resolves(repos.repositories[0]);
@@ -273,19 +276,19 @@ describe("githubConnections", () => {
         },
       ]);
 
-      promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
       listConnectionsStub.resolves([oauthConn]); // getConnectionForInstallation() returns sentinel connection.
 
       // -- createFullyInstalledConnection
       createConnectionStub.onSecondCall().resolves({ name: "op" }); // Poll on createsConnection().
       pollOperationStub.onSecondCall().resolves(pendingConn); // Polling returns the connection created.
-      promptOnceStub.onSecondCall().resolves("enter"); // Enter to signal setup finished.
+      promptStub.input.onFirstCall().resolves("enter"); // Enter to signal setup finished.
       getConnectionStub.onSecondCall().resolves(completeConn); // getConnection() returns a completed connection.
 
       // linkGitHubRepository()
       // -promptCloneUri()
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
-      promptOnceStub.onThirdCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
 
       // linkGitHubRepository()
       getConnectionStub.onThirdCall().resolves(completeConn); // getOrCreateConnection() returns a completed connection.
@@ -326,7 +329,7 @@ describe("githubConnections", () => {
         },
       ]);
 
-      promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
       listConnectionsStub.resolves([oauthConn]); // getConnectionForInstallation() returns sentinel connection.
       createConnectionStub.onFirstCall().resolves({ name: "op" }); // Poll on createsConnection().
       pollOperationStub.onFirstCall().resolves(completeConn); // Polling returns the oauth stub connection created.
@@ -334,7 +337,7 @@ describe("githubConnections", () => {
       // linkGitHubRepository()
       // -promptCloneUri()
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
-      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
 
       // linkGitHubRepository()
       getConnectionStub.onSecondCall().resolves(completeConn); // getOrCreateConnection() returns a completed connection.
@@ -389,7 +392,7 @@ describe("githubConnections", () => {
           type: "user",
         },
       ]);
-      promptOnceStub.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
       listConnectionsStub.resolves([oauthConn]); // Installation has sentinel connection but not the named one.
 
       // --createFullyInstalledConnection
@@ -399,7 +402,7 @@ describe("githubConnections", () => {
       // linkGitHubRepository()
       // -promptCloneUri()
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
-      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
 
       // linkGitHubRepository()
       getConnectionStub.onThirdCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
@@ -442,7 +445,7 @@ describe("githubConnections", () => {
 
       // -promptCloneUri()
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri); // Selects the repo's clone uri.
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri); // Selects the repo's clone uri.
 
       // linkGitHubRepository()
       getConnectionStub.onSecondCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
@@ -464,7 +467,7 @@ describe("githubConnections", () => {
     it("re-uses existing repository it already exists", async () => {
       getConnectionStub.resolves(completeConn);
       listAllLinkableGitRepositoriesStub.resolves(repos.repositories);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.resolves(repos.repositories[0]);
 
       const r = await repo.getOrCreateRepository(
@@ -689,13 +692,13 @@ describe("githubConnections", () => {
   describe("ensureSecretManagerAdminGrant", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
     let serviceAccountHasRolesStub: sinon.SinonStub;
     let addServiceAccountToRolesStub: sinon.SinonStub;
     let generateP4SAStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      confirmStub = sandbox.stub(prompt, "confirm").throws("Unexpected confirm call");
       serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles");
       sandbox.stub(srcUtils, "getProjectNumber").resolves(projectId);
       addServiceAccountToRolesStub = sandbox.stub(rm, "addServiceAccountToRoles");
@@ -715,12 +718,12 @@ describe("githubConnections", () => {
         `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
       );
-      expect(promptOnceStub).to.not.be.called;
+      expect(confirmStub).to.not.be.called;
     });
 
     it("prompts user if the developer connect P4SA does not have secretmanager.admin permissions", async () => {
       serviceAccountHasRolesStub.resolves(false);
-      promptOnceStub.resolves(true);
+      confirmStub.resolves(true);
       addServiceAccountToRolesStub.resolves();
 
       await repo.ensureSecretManagerAdminGrant(projectId);
@@ -731,12 +734,12 @@ describe("githubConnections", () => {
         ["roles/secretmanager.admin"],
       );
 
-      expect(promptOnceStub).to.be.called;
+      expect(confirmStub).to.be.called;
     });
 
     it("tries to generate developer connect P4SA if adding role throws an error", async () => {
       serviceAccountHasRolesStub.resolves(false);
-      promptOnceStub.resolves(true);
+      confirmStub.resolves(true);
       generateP4SAStub.resolves();
       addServiceAccountToRolesStub.onFirstCall().throws({ code: 400, status: 400 });
       addServiceAccountToRolesStub.onSecondCall().resolves();
@@ -749,17 +752,17 @@ describe("githubConnections", () => {
         ["roles/secretmanager.admin"],
       ).calledOnce;
       expect(generateP4SAStub).calledOnce;
-      expect(promptOnceStub).to.be.called;
+      expect(confirmStub).to.be.called;
     });
   });
   describe("promptGitHubBranch", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let searchStub: sinon.SinonStub;
     let listAllBranchesStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      searchStub = sandbox.stub(prompt, "search").throws("Unexpected search call");
       listAllBranchesStub = sandbox
         .stub(devconnect, "listAllBranches")
         .throws("Unexpected listAllBranches call");
@@ -772,7 +775,7 @@ describe("githubConnections", () => {
     it("prompts user for branch", async () => {
       listAllBranchesStub.returns(new Set(["main", "test1"]));
 
-      promptOnceStub.onFirstCall().returns("main");
+      searchStub.onFirstCall().returns("main");
       const testRepoLink = {
         name: "test",
         cloneUri: "/test",

@@ -1,6 +1,6 @@
 import { FirebaseError } from "../error";
 import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
-import * as prompt from "../prompt";
+import * as prompt from "../promptV2";
 
 /**
  * Returns <environment> given an apphosting.<environment>.yaml file
@@ -33,7 +33,7 @@ export async function promptForAppHostingYaml(
     if (fileName === APPHOSTING_BASE_YAML_FILE) {
       return {
         name: `base (${APPHOSTING_BASE_YAML_FILE})`,
-        value: baseFilePath,
+        value: baseFilePath!,
       };
     }
 
@@ -46,9 +46,7 @@ export async function promptForAppHostingYaml(
     };
   });
 
-  const fileToExportPath = await prompt.promptOnce({
-    name: "apphosting-yaml",
-    type: "list",
+  const fileToExportPath = await prompt.select<string>({
     message: promptMessage,
     choices: listOptions,
   });

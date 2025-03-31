@@ -26,7 +26,7 @@ import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { trackGA4 } from "../track";
-import { confirm } from "../prompt";
+import { confirm } from "../promptV2";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 import { displayDeveloperTOSWarning } from "../extensions/tos";
@@ -111,6 +111,7 @@ export const command = new Command("ext:install [extensionRefOrLocalPath]")
     }
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,

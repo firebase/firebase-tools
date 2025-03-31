@@ -7,13 +7,14 @@ import { Config } from "../config";
 import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
-import { prompt, promptOnce } from "../prompt";
+import { checkbox, confirm } from "../promptV2";
 import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
+import { FirebaseError } from "../error";
 
 const homeDir = os.homedir();
 
@@ -130,7 +131,7 @@ export const command = new Command("init [feature]")
  * @param feature Feature to init (e.g., hosting, functions)
  * @param options Command options
  */
-export function initAction(feature: string, options: Options): Promise<void> {
+export async function initAction(feature: string, options: Options): Promise<void> {
   if (feature && !featureNames.includes(feature)) {
     return utils.reject(
       clc.bold(feature) +
@@ -183,77 +184,60 @@ export function initAction(feature: string, options: Options): Promise<void> {
     }),
   };
 
-  let next;
   // HACK: Windows Node has issues with selectables as the first prompt, so we
   // add an extra confirmation prompt that fixes the problem
+  // TODO: see if this issue still persists in the new prompt library.
   if (process.platform === "win32") {
-    next = promptOnce({
-      type: "confirm",
-      message: "Are you ready to proceed?",
-    });
-  } else {
-    next = Promise.resolve(true);
+    if (!(await confirm("Are you ready to proceed?"))) {
+      throw new FirebaseError("Aborted by user.", { exit: 1 });
+    }
   }
 
-  return next
-    .then((proceed) => {
-      if (!proceed) {
-        return utils.reject("Aborted by user.", { exit: 1 });
-      }
-
-      if (feature) {
-        setup.featureArg = true;
-        setup.features = [feature];
-        return undefined;
-      }
-      return prompt(setup, [
-        {
-          type: "checkbox",
-          name: "features",
-          message:
-            "Which Firebase features do you want to set up for this directory? " +
-            "Press Space to select features, then Enter to confirm your choices.",
-          choices: choices.filter((c) => !c.hidden),
-        },
-      ]);
-    })
-    .then(() => {
-      if (!setup.features || setup.features?.length === 0) {
-        return utils.reject(
-          "Must select at least one feature. Use " +
-            clc.bold(clc.underline("SPACEBAR")) +
-            " to select features, or specify a feature by running " +
-            clc.bold("firebase init [feature_name]"),
-        );
-      }
-
-      // Always set up project
-      setup.features.unshift("project");
-
-      // If there is more than one account, add an account choice phase
-      const allAccounts = getAllAccounts();
-      if (allAccounts.length > 1) {
-        setup.features.unshift("account");
-      }
-
-      // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
-      if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
-        setup.features = setup.features.filter((f) => f !== "hosting:github");
-      }
-
-      return init(setup, config, options);
-    })
-    .then(() => {
-      logger.info();
-      utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
-      config.writeProjectFile("firebase.json", setup.config);
-      utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
-      config.writeProjectFile(".firebaserc", setup.rcfile);
-      if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
-        utils.logBullet("Writing gitignore file to " + clc.bold(".gitignore") + "...");
-        config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
-      }
-      logger.info();
-      utils.logSuccess("Firebase initialization complete!");
+  if (feature) {
+    setup.featureArg = true;
+    setup.features = [feature];
+  } else {
+    setup.features = await checkbox<string>({
+      message:
+        "Which Firebase features do you want to set up for this directory? " +
+        "Press Space to select features, then Enter to confirm your choices.",
+      choices: choices.filter((c) => !c.hidden),
     });
+  }
+  if (!setup.features || setup.features?.length === 0) {
+    throw new FirebaseError(
+      "Must select at least one feature. Use " +
+        clc.bold(clc.underline("SPACEBAR")) +
+        " to select features, or specify a feature by running " +
+        clc.bold("firebase init [feature_name]"),
+    );
+  }
+
+  // Always set up project
+  setup.features.unshift("project");
+
+  // If there is more than one account, add an account choice phase
+  const allAccounts = getAllAccounts();
+  if (allAccounts.length > 1) {
+    setup.features.unshift("account");
+  }
+
+  // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
+  if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
+    setup.features = setup.features.filter((f) => f !== "hosting:github");
+  }
+
+  await init(setup, config, options);
+
+  logger.info();
+  utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
+  config.writeProjectFile("firebase.json", setup.config);
+  utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
+  config.writeProjectFile(".firebaserc", setup.rcfile);
+  if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
+    utils.logBullet("Writing gitignore file to " + clc.bold(".gitignore") + "...");
+    config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
+  }
+  logger.info();
+  utils.logSuccess("Firebase initialization complete!");
 }

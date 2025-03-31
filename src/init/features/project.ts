@@ -13,7 +13,7 @@ import {
 import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
-import { select } from "../../promptV2";
+import * as prompt from "../../promptV2";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -47,6 +47,8 @@ async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
       `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
   const { projectId, displayName } = await promptProjectCreation();
+  // N.B. This shouldn't be possible because of the validator on the input field, but it
+  // is being left around in case there's something I don't know.
   if (!projectId) {
     throw new FirebaseError("Project ID cannot be empty");
   }
@@ -57,6 +59,8 @@ async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
 async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMetadata> {
   const projectId = await promptAvailableProjectId();
   if (!projectId) {
+    // N.B. This shouldn't be possible because of the validator on the input field, but it
+    // is being left around in case there's something I don't know.
     throw new FirebaseError("Project ID cannot be empty");
   }
   return await addFirebaseToCloudProjectAndLog(projectId);
@@ -69,7 +73,7 @@ async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMeta
  */
 async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadata | undefined> {
   const choices = [OPTION_USE_PROJECT, OPTION_NEW_PROJECT, OPTION_ADD_FIREBASE, OPTION_NO_PROJECT];
-  const projectSetupOption: string = await select<(typeof choices)[number]>({
+  const projectSetupOption: string = await prompt.select<(typeof choices)[number]>({
     message: "Please select an option:",
     choices,
   });

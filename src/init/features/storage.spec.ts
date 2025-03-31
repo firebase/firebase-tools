@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 
 import { Config } from "../../config";
 import { doSetup } from "./storage";
-import * as prompt from "../../prompt";
+import * as prompt from "../../promptV2";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -13,7 +13,7 @@ describe("storage", () => {
 
   beforeEach(() => {
     askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
-    promptStub = sandbox.stub(prompt, "promptOnce");
+    promptStub = sandbox.stub(prompt, "input");
   });
 
   afterEach(() => {

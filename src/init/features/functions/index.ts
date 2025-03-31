@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../../../logger";
-import { promptOnce } from "../../../prompt";
+import { input, select } from "../../../promptV2";
 import { requirePermissions } from "../../../requirePermissions";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
@@ -48,8 +48,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       value: "overwrite",
     },
   ];
-  const initOpt = await promptOnce({
-    type: "list",
+  const initOpt = await select({
     message: "Would you like to initialize a new codebase, or overwrite an existing one?",
     default: "new",
     choices,
@@ -84,10 +83,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
           "Exceeded max number of attempts to input valid codebase name. Please restart.",
         );
       }
-      codebase = await promptOnce({
-        type: "input",
-        message: "What should be the name of this codebase?",
-      });
+      codebase = await input("What should be the name of this codebase?");
       try {
         validateCodebase(codebase);
         assertUnique(setup.config.functions, "codebase", codebase);
@@ -105,8 +101,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
         );
       }
       attempts++;
-      source = await promptOnce({
-        type: "input",
+      source = await input({
         message: `In what sub-directory would you like to initialize your functions for codebase ${clc.bold(
           codebase,
         )}?`,
@@ -137,8 +132,7 @@ async function overwriteCodebase(setup: any, config: Config): Promise<any> {
       name: cfg["codebase"],
       value: cfg["codebase"],
     }));
-    codebase = await promptOnce({
-      type: "list",
+    codebase = await select({
       message: "Which codebase would you like to overwrite?",
       choices,
     });
@@ -172,13 +166,12 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       name: "TypeScript",
       value: "typescript",
     },
+    {
+      name: "Python",
+      value: "python",
+    },
   ];
-  choices.push({
-    name: "Python",
-    value: "python",
-  });
-  const language = await promptOnce({
-    type: "list",
+  const language = await select({
     message: "What language would you like to use to write Cloud Functions?",
     default: "javascript",
     choices,

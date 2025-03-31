@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { BackupSchedule, deleteBackupSchedule, getBackupSchedule } from "../gcp/firestore";
-import { promptOnce } from "../prompt";
+import { confirm } from "../promptV2";
 import * as clc from "colorette";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
@@ -19,8 +19,7 @@ export const command = new Command("firestore:backups:schedules:delete <backupSc
 
     if (!options.force) {
       const confirmMessage = `You are about to delete ${backupScheduleName}. Do you wish to continue?`;
-      const consent = await promptOnce({
-        type: "confirm",
+      const consent = await confirm({
         message: confirmMessage,
         default: false,
       });

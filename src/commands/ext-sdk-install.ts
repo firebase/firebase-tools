@@ -13,7 +13,7 @@ import { FirebaseError } from "../error";
 import { displayExtensionVersionInfo } from "../extensions/displayExtensionInfo";
 import * as refs from "../extensions/refs";
 import { logger } from "../logger";
-import { confirm } from "../prompt";
+import { confirm } from "../promptV2";
 import * as utils from "../utils";
 
 /**
@@ -95,6 +95,7 @@ export const command = new Command("ext:sdk:install <extensionName>")
     // if they want to continue
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,

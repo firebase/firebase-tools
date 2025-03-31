@@ -7,7 +7,7 @@ import { doSetup } from "./project";
 import * as projectManager from "../../management/projects";
 import { Config } from "../../config";
 import { FirebaseProjectMetadata } from "../../types/project";
-import * as promptImport from "../../promptv2";
+import * as promptImport from "../../promptV2";
 
 const TEST_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "my-project-123",
@@ -39,7 +39,10 @@ describe("project", () => {
     getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
     addFirebaseProjectStub = sandbox.stub(projectManager, "addFirebaseToCloudProjectAndLog");
     promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
-    prompt = sinon.stub(promptImport);
+    prompt = sandbox.stub(promptImport);
+    prompt.select.rejects("Unexpected select call");
+    prompt.input.rejects("Unexpected inptu call");
+    prompt.confirm.rejects("Unexpected confirm call");
     configstoreSetStub = sandbox.stub(configstore, "set").throws("Unexpected configstore set");
     emptyConfig = new Config("{}", {});
   });
@@ -108,7 +111,7 @@ describe("project", () => {
 
         expect(err.message).to.equal("Project ID cannot be empty");
         expect(prompt.select).to.be.calledOnce;
-        expect(prompt.input).to.be.calledOnce;
+        expect(prompt.input).to.be.calledTwice;
         expect(createFirebaseProjectStub).to.be.not.called;
       });
     });

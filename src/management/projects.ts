@@ -4,7 +4,7 @@ import * as ora from "ora";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrStatus } from "../error";
 import { pollOperation } from "../operation-poller";
-import { input, select } from "../promptV2";
+import * as prompt from "../promptV2";
 import * as api from "../api";
 import { logger } from "../logger";
 import * as utils from "../utils";
@@ -26,7 +26,7 @@ export interface ProjectParentResource {
 }
 
 export async function promptProjectCreation(): Promise<{ projectId: string; displayName: string }> {
-  const projectId = await input({
+  const projectId = await prompt.input({
     message:
       "Please specify a unique project id " +
       `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
@@ -41,7 +41,7 @@ export async function promptProjectCreation(): Promise<{ projectId: string; disp
     },
   });
 
-  const displayName = await input({
+  const displayName = await prompt.input({
     default: projectId,
     message: "What would you like to call your project? (defaults to your project ID)",
     validate: (displayName: string) => {
@@ -150,7 +150,7 @@ async function selectProjectInteractively(
 }
 
 async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
-  const projectId = await input("Please input the project ID you would like to use:");
+  const projectId = await prompt.input("Please input the project ID you would like to use:");
 
   return await getFirebaseProject(projectId);
 }
@@ -179,7 +179,7 @@ async function selectProjectFromList(
         )}.\n`,
     );
   }
-  const projectId: string = await select<string>({
+  const projectId: string = await prompt.select<string>({
     message: "Select a default Firebase project for this directory:",
     choices,
   });
@@ -214,7 +214,7 @@ export async function promptAvailableProjectId(): Promise<string> {
 
   if (nextPageToken) {
     // Prompt for project ID if we can't list all projects in 1 page
-    return await input(
+    return await prompt.input(
       "Please input the ID of the Google Cloud Project you would like to add Firebase:",
     );
   } else {
@@ -228,7 +228,7 @@ export async function promptAvailableProjectId(): Promise<string> {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    return await select<string>({
+    return await prompt.select<string>({
       message: "Select the Google Cloud Platform project you would like to add Firebase:",
       choices,
     });

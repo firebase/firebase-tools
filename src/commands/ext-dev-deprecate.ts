@@ -4,7 +4,7 @@ import * as semver from "semver";
 import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
-import { confirm } from "../prompt";
+import { confirm } from "../promptV2";
 import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
@@ -78,6 +78,7 @@ async function deprecate(
     });
   if (filteredExtensionVersions.length > 0) {
     const consent = await confirm({
+      message: "Continue?",
       default: false,
       force: options.force,
       nonInteractive: options.nonInteractive,

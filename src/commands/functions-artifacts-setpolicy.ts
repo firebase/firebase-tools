@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
+import { confirm } from "../promptV2";
 import { requirePermissions } from "../requirePermissions";
 import { requireAuth } from "../requireAuth";
 import { logBullet, logSuccess } from "../utils";
@@ -85,9 +85,10 @@ export const command = new Command("functions:artifacts:setpolicy")
       }
 
       const confirmOptOut = await confirm({
-        ...options,
-        default: true,
         message: "Do you want to continue?",
+        default: true,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
       });
 
       if (!confirmOptOut) {
@@ -151,9 +152,10 @@ export const command = new Command("functions:artifacts:setpolicy")
     }
 
     const confirmSetup = await confirm({
-      ...options,
-      default: true,
       message: "Do you want to continue?",
+      default: true,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
     });
 
     if (!confirmSetup) {
