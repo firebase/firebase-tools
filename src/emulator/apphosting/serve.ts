@@ -127,16 +127,24 @@ async function serve(
       `running custom start command: '${startCommand}'`,
     );
 
-    // Note: Do not block using "await" here. Development server should not block rest of the emulator.
-    spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
+    // Note: Development server should not block rest of the emulator.
+    spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject)
+      .catch((err) => {
+        logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
+      })
+      .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
     return;
   }
 
   const detectedStartCommand = await detectStartCommand(backendRoot);
   logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
 
-  // Note: Do not block using "await" here. Development server should not block rest of the emulator.
-  spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
+  // Note: Development server should not block rest of the emulator.
+  spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject)
+    .catch((err) => {
+      logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
+    })
+    .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
