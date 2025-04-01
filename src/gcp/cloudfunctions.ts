@@ -681,7 +681,7 @@ export function functionFromEndpoint(
   );
 
   proto.convertIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount", (from) =>
-    proto.formatServiceAccount(from!, endpoint.project, true /* removeTypePrefix */),
+    !from ? null : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
   );
   proto.convertIfPresent(
     gcfFunction,
