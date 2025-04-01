@@ -1,0 +1,1 @@
+- Fixed an issue where the Extensions emulator did not provide fall back values for v2 Firestore event triggers. (#8390)

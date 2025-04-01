@@ -1098,11 +1098,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     logger.debug("Found a v2 firestore trigger.");
     const database = eventTrigger.eventFilters?.database;
     if (!database) {
-      throw new FirebaseError("A database must be supplied.");
+      throw new FirebaseError(`A database must be supplied for event trigger ${key}`);
     }
     const namespace = eventTrigger.eventFilters?.namespace;
     if (!namespace) {
-      throw new FirebaseError("A namespace must be supplied.");
+      throw new FirebaseError(`A namespace must be supplied for event trigger ${key}`);
     }
     let doc;
     let match;
@@ -1140,7 +1140,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
     }
-
+    console.log(eventTrigger);
     const { bundle, path } =
       signature === "cloudevent"
         ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
