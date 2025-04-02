@@ -1,3 +1,4 @@
+- Fixed an issue where the Extensions emulator did not provide fall back values for v2 Firestore event triggers. (#8390)
 - Fixed issue with prompt when Data Connect prompts user for framework generation.
 - Fixed a bug where the Admin SDK fails with ENOTFOUND when automatically connecting to the Data Connect emulator when run in the Functions emulator. (#8379)
 - Updated the Firebase Data Connect local toolkit to v2.1.0 which includes the following changes: (#8400)
