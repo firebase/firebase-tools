@@ -1,5 +1,8 @@
 ## NEXT
 
+## 1.1.0
+
+- Updated internal `firebase-tools` dependency to 14.1.0
 - [Fixed] User auth will now load without requiring extension sidebar to open
 
 ## 1.0.0
