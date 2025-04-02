@@ -17,7 +17,7 @@ import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
 
-import { promptOnce } from "../../prompt";
+import { select } from "../../prompt";
 import { FirebaseError } from "../../error";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
@@ -377,16 +377,17 @@ export async function build(
  * Utility method used during project initialization.
  */
 export async function init(setup: any, config: any) {
-  const language = await promptOnce({
-    type: "list",
+  const language = await select<string>({
     default: "TypeScript",
     message: "What language would you like to use?",
-    choices: ["JavaScript", "TypeScript"],
+    choices: [
+      { name: "JavaScript", value: "js" },
+      { name: "TypeScript", value: "ts" },
+    ],
   });
   execSync(
-    `npx --yes create-next-app@"${supportedRange}" -e hello-world ${
-      setup.hosting.source
-    } --use-npm ${language === "TypeScript" ? "--ts" : "--js"}`,
+    `npx --yes create-next-app@"${supportedRange}" -e hello-world ` +
+      `${setup.hosting.source} --use-npm --${language}`,
     { stdio: "inherit", cwd: config.projectDir },
   );
 }

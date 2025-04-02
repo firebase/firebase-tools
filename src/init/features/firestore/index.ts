@@ -7,7 +7,7 @@ import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
 import * as clc from "colorette";
-import { promptOnce } from "../../../prompt";
+import { input } from "../../../prompt";
 
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(
@@ -63,12 +63,8 @@ async function getDatabaseType(setup: any): Promise<string | undefined> {
   }
 }
 
-async function selectDatabaseByPrompting(): Promise<string> {
-  const database = await promptOnce({
-    type: "input",
-    message: "Please input the name of the Native Firestore database you would like to use:",
-  });
-  return database;
+function selectDatabaseByPrompting(): Promise<string> {
+  return input("Please input the name of the Native Firestore database you would like to use:");
 }
 
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {

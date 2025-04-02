@@ -111,6 +111,7 @@ export const command = new Command("ext:install [extensionRefOrLocalPath]")
     }
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,

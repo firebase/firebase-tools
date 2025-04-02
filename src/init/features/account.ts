@@ -8,8 +8,8 @@ import {
   setProjectAccount,
 } from "../../auth";
 import { Account } from "../../types/auth";
-import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
+import { select } from "../../prompt";
 
 async function promptForAccount() {
   logger.info();
@@ -31,9 +31,7 @@ async function promptForAccount() {
     value: "__add__",
   });
 
-  const emailChoice: string = await promptOnce({
-    type: "list",
-    name: "email",
+  const emailChoice: string = await select<string>({
     message: "Please select an option:",
     choices,
   });

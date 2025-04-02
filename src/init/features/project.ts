@@ -7,13 +7,13 @@ import {
   createFirebaseProjectAndLog,
   getFirebaseProject,
   getOrPromptProject,
-  PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
+  promptProjectCreation,
 } from "../../management/projects";
 import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
-import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
+import * as prompt from "../../prompt";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -46,20 +46,21 @@ async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
     "If you want to create a project in a Google Cloud organization or folder, please use " +
       `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
-  const promptAnswer: { projectId?: string; displayName?: string } = {};
-  await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
-  if (!promptAnswer.projectId) {
+  const { projectId, displayName } = await promptProjectCreation();
+  // N.B. This shouldn't be possible because of the validator on the input field, but it
+  // is being left around in case there's something I don't know.
+  if (!projectId) {
     throw new FirebaseError("Project ID cannot be empty");
   }
 
-  return await createFirebaseProjectAndLog(promptAnswer.projectId, {
-    displayName: promptAnswer.displayName,
-  });
+  return await createFirebaseProjectAndLog(projectId, { displayName });
 }
 
 async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMetadata> {
   const projectId = await promptAvailableProjectId();
   if (!projectId) {
+    // N.B. This shouldn't be possible because of the validator on the input field, but it
+    // is being left around in case there's something I don't know.
     throw new FirebaseError("Project ID cannot be empty");
   }
   return await addFirebaseToCloudProjectAndLog(projectId);
@@ -71,15 +72,8 @@ async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMeta
  * @return the project metadata, or undefined if no project was selected.
  */
 async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadata | undefined> {
-  const choices = [
-    { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
-    { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
-    { name: OPTION_ADD_FIREBASE, value: OPTION_ADD_FIREBASE },
-    { name: OPTION_NO_PROJECT, value: OPTION_NO_PROJECT },
-  ];
-  const projectSetupOption: string = await promptOnce({
-    type: "list",
-    name: "id",
+  const choices = [OPTION_USE_PROJECT, OPTION_NEW_PROJECT, OPTION_ADD_FIREBASE, OPTION_NO_PROJECT];
+  const projectSetupOption: string = await prompt.select<(typeof choices)[number]>({
     message: "Please select an option:",
     choices,
   });

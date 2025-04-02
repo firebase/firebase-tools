@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { prompt, promptOnce } from "../../prompt";
+import { confirm, input, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as fsutils from "../../fsutils";
@@ -72,8 +72,7 @@ function writeDBRules(
 }
 
 async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
-  const selectedLocation = await promptOnce({
-    type: "list",
+  const selectedLocation = await select({
     message: "Please choose the location for your default Realtime Database instance:",
     choices: [
       { name: "us-central1", value: DatabaseLocation.US_CENTRAL1 },
@@ -137,14 +136,12 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
     if (setup.instance !== "") {
       instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
     } else {
-      const confirm = await promptOnce({
-        type: "confirm",
-        name: "confirm",
-        default: true,
+      const createDefault = await confirm({
         message:
           "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
+        default: true,
       });
-      if (confirm) {
+      if (createDefault) {
         instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
       }
     }
@@ -160,14 +157,12 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
-  await prompt(setup.config.database, [
-    {
-      type: "input",
-      name: "rules",
+  setup.config.database.rules =
+    setup.config.database.rules ||
+    (await input({
       message: "What file should be used for Realtime Database Security Rules?",
       default: "database.rules.json",
-    },
-  ]);
+    }));
 
   const filename = setup.config.database.rules;
   if (!filename) {
@@ -185,11 +180,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       filename,
     )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
 
-    writeRules = await promptOnce({
-      type: "confirm",
-      message: msg,
-      default: false,
-    });
+    writeRules = await confirm(msg);
   }
   if (writeRules) {
     if (instanceDetails) {

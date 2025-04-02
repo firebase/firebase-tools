@@ -85,9 +85,10 @@ export const command = new Command("functions:artifacts:setpolicy")
       }
 
       const confirmOptOut = await confirm({
-        ...options,
-        default: true,
         message: "Do you want to continue?",
+        default: true,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
       });
 
       if (!confirmOptOut) {
@@ -151,9 +152,10 @@ export const command = new Command("functions:artifacts:setpolicy")
     }
 
     const confirmSetup = await confirm({
-      ...options,
-      default: true,
       message: "Do you want to continue?",
+      default: true,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
     });
 
     if (!confirmSetup) {

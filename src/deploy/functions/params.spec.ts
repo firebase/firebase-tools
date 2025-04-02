@@ -75,14 +75,14 @@ describe("CEL resolution", () => {
 });
 
 describe("resolveParams", () => {
-  let promptOnce: sinon.SinonStub;
+  let input: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnce = sinon.stub(prompt, "promptOnce");
+    input = sinon.stub(prompt, "input");
   });
 
   afterEach(() => {
-    promptOnce.restore();
+    input.restore();
   });
 
   it("always contains the precanned internal param values", async () => {
@@ -186,7 +186,7 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("bar");
+    input.resolves("bar");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
       Object.assign(
         {
@@ -212,9 +212,9 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(1).args[0].default).to.eq("baz");
+    expect(input.getCall(1).args[0].default).to.eq("baz");
   });
 
   it("can resolve a CEL expression containing only identities", async () => {
@@ -232,9 +232,9 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(1).args[0].default).to.eq("baz/quox");
+    expect(input.getCall(1).args[0].default).to.eq("baz/quox");
   });
 
   it("can resolve a CEL expression depending on the internal params", async () => {
@@ -258,11 +258,11 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
-    expect(promptOnce.getCall(1).args[0].default).to.eq("projectID: foo");
-    expect(promptOnce.getCall(2).args[0].default).to.eq(
+    expect(input.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
+    expect(input.getCall(1).args[0].default).to.eq("projectID: foo");
+    expect(input.getCall(2).args[0].default).to.eq(
       "http://foo.appspot.com.storage.googleapis.com/",
     );
   });
@@ -276,7 +276,7 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("");
+    input.resolves("");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
   });
 
@@ -295,7 +295,7 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("22");
+    input.resolves("22");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
   });
 });

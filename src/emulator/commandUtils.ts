@@ -13,7 +13,7 @@ import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
@@ -109,10 +109,10 @@ export function printNoticeIfEmulated(
  * that always talks to production. This warns customers if they've specified
  * an emulator port that the command actually talks to production.
  */
-export function warnEmulatorNotSupported(
+export async function warnEmulatorNotSupported(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE,
-): void | Promise<void> {
+): Promise<void> {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
   }
@@ -131,18 +131,9 @@ export function warnEmulatorNotSupported(
       )}, however this command does not support running against the ${emuName} so this action will affect production.`,
     );
 
-    const opts = {
-      confirm: undefined,
-    };
-    return promptOnce({
-      type: "confirm",
-      default: false,
-      message: "Do you want to continue?",
-    }).then(() => {
-      if (!opts.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
-      }
-    });
+    if (!(await confirm("Do you want to continue?"))) {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
+    }
   }
 }
 

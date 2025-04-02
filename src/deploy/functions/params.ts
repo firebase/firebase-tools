@@ -1,6 +1,6 @@
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
-import { promptOnce } from "../../prompt";
+import { checkbox, input, password, select } from "../../prompt";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
@@ -455,9 +455,7 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 async function handleSecret(secretParam: SecretParam, projectId: string) {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
-    const secretValue = await promptOnce({
-      name: secretParam.name,
-      type: "password",
+    const secretValue = await password({
       message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
         secretParam.name
       }. Enter a value for ${secretParam.label || secretParam.name}:`,
@@ -744,23 +742,22 @@ function shouldRetry(obj: any): obj is retryInput {
 
 async function promptText<T extends RawParamValue>(
   prompt: string,
-  input: TextInput<T>,
+  textInput: TextInput<T>,
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
-  const res = await promptOnce({
-    type: "input",
-    default: resolvedDefault,
+  const res = await input({
+    default: resolvedDefault as string,
     message: prompt,
   });
-  if (input.text.validationRegex) {
-    const userRe = new RegExp(input.text.validationRegex);
+  if (textInput.text.validationRegex) {
+    const userRe = new RegExp(textInput.text.validationRegex);
     if (!userRe.test(res)) {
       logger.error(
-        input.text.validationErrorMessage ||
+        textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, input, resolvedDefault, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, converter);
     }
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
@@ -769,7 +766,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, input, resolvedDefault, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, converter);
   }
   return converted;
 }
@@ -780,10 +777,8 @@ async function promptSelect<T extends RawParamValue>(
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
-  const response = await promptOnce({
-    name: "input",
-    type: "list",
-    default: resolvedDefault,
+  const response = await select<string>({
+    default: resolvedDefault as string,
     message: prompt,
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
@@ -807,9 +802,7 @@ async function promptSelectMultiple<T extends string>(
   resolvedDefault: T[] | undefined,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
-  const response = await promptOnce({
-    name: "input",
-    type: "checkbox",
+  const response = await checkbox({
     default: resolvedDefault,
     message: prompt,
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {

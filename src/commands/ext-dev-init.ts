@@ -5,7 +5,7 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { Config } from "../config";
 import { FirebaseError, getErrMsg, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { confirm, select } from "../prompt";
 import { logger } from "../logger";
 import * as npmDependencies from "../init/features/functions/npm-dependencies";
 import { readTemplateSync } from "../templates";
@@ -34,9 +34,7 @@ export const command = new Command("ext:dev:init")
 
     try {
       let welcome: string;
-      const lang = await promptOnce({
-        type: "list",
-        name: "language",
+      const lang = await select({
         message: "In which language do you want to write the Cloud Functions for your extension?",
         default: "javascript",
         choices: [
@@ -97,9 +95,7 @@ async function typescriptSelected(config: Config): Promise<void> {
   const mocharcTemplate = readTemplateSync("extensions/typescript/_mocharc");
   const eslintTemplate = readTemplateSync("init/functions/typescript/_eslintrc");
 
-  const lint = await promptOnce({
-    name: "lint",
-    type: "confirm",
+  const lint = await confirm({
     message: "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
@@ -147,12 +143,7 @@ async function javascriptSelected(config: Config): Promise<void> {
   const gitignoreTemplate = readTemplateSync("extensions/javascript/_gitignore");
   const eslintTemplate = readTemplateSync("init/functions/javascript/_eslintrc");
 
-  const lint = await promptOnce({
-    name: "lint",
-    type: "confirm",
-    message: "Do you want to use ESLint to catch probable bugs and enforce style?",
-    default: false,
-  });
+  const lint = await confirm("Do you want to use ESLint to catch probable bugs and enforce style?");
 
   const templates = readCommonTemplates();
   await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate);

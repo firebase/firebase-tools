@@ -371,7 +371,7 @@ describe("RulesDeploy", () => {
       it("should update permissions if prompted", async () => {
         sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
         sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
-        sinon.stub(prompt, "promptOnce").onFirstCall().resolves(true);
+        sinon.stub(prompt, "confirm").onFirstCall().resolves(true);
 
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
@@ -390,7 +390,7 @@ describe("RulesDeploy", () => {
       it("should not update permissions if declined", async () => {
         sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
         sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
-        sinon.stub(prompt, "promptOnce").onFirstCall().resolves(false);
+        sinon.stub(prompt, "confirm").onFirstCall().resolves(false);
 
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
@@ -404,7 +404,7 @@ describe("RulesDeploy", () => {
       it("should not prompt if role already granted", async () => {
         sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
         sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
-        const promptSpy = sinon.spy(prompt, "promptOnce");
+        const promptSpy = sinon.spy(prompt, "confirm");
 
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
@@ -451,7 +451,7 @@ describe("RulesDeploy", () => {
 
       describe("and a prompt is made", () => {
         beforeEach(() => {
-          sinon.stub(prompt, "promptOnce").rejects(new Error("behavior unspecified"));
+          sinon.stub(prompt, "confirm").rejects(new Error("behavior unspecified"));
           sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
           sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
           sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
@@ -464,13 +464,13 @@ describe("RulesDeploy", () => {
         it("should prompt for a choice (no)", async () => {
           (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1001));
-          (prompt.promptOnce as sinon.SinonStub).onFirstCall().resolves(false);
+          (prompt.confirm as sinon.SinonStub).onFirstCall().resolves(false);
           rd.addFile("firestore.rules");
 
           const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
           await expect(result).to.eventually.deep.equal([]);
           expect(gcp.rules.createRuleset).to.be.calledOnce;
-          expect(prompt.promptOnce).to.be.calledOnce;
+          expect(prompt.confirm).to.be.calledOnce;
         });
 
         it("should prompt for a choice (yes) and delete and retry creation", async () => {
@@ -478,7 +478,7 @@ describe("RulesDeploy", () => {
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(
             new Array(1001).fill(0).map(() => ({ name: "foo" })),
           );
-          (prompt.promptOnce as sinon.SinonStub).onFirstCall().resolves(true);
+          (prompt.confirm as sinon.SinonStub).onFirstCall().resolves(true);
           (gcp.rules.listAllReleases as sinon.SinonStub).resolves([
             { rulesetName: "name", name: "bar" },
           ]);

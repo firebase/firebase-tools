@@ -10,7 +10,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { DatabaseInstance, populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
@@ -75,16 +75,11 @@ export const command = new Command("database:import <path> [infile]")
       dbUrl.searchParams.set("disableTriggers", "true");
     }
 
-    const confirm = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
-      },
-      options,
-    );
-    if (!confirm) {
+    const areYouSure = await confirm({
+      message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
+      force: options.force,
+    });
+    if (!areYouSure) {
       throw new FirebaseError("Command aborted.");
     }
 

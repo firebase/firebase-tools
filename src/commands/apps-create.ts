@@ -13,10 +13,10 @@ import {
   SdkInitOptions,
   WebAppMetadata,
 } from "../management/apps";
-import { promptOnce } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
+import { select } from "../prompt";
 
 function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
@@ -68,8 +68,7 @@ export const command = new Command("apps:create [platform] [displayName]")
       const projectId = needProjectId(options);
 
       if (!options.nonInteractive && !platform) {
-        platform = await promptOnce({
-          type: "list",
+        platform = await select<AppPlatform>({
           message: "Please choose the platform of the app:",
           choices: [
             { name: "iOS", value: AppPlatform.IOS },

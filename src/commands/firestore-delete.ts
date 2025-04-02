@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { FirestoreDelete } from "../firestore/delete";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { FirestoreOptions } from "../firestore/options";
@@ -104,16 +104,13 @@ export const command = new Command("firestore:delete [path]")
       databaseId: options.database,
     });
 
-    const confirm = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: confirmationMessage(deleteOp, options),
-      },
-      options,
-    );
-    if (!confirm) {
+    const confirmed = await confirm({
+      message: confirmationMessage(deleteOp, options),
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
+    if (!confirmed) {
       return utils.reject("Command aborted.", { exit: 1 });
     }
 

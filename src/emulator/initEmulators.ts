@@ -2,7 +2,7 @@
 
 import * as clc from "colorette";
 import { join } from "path";
-import { promptOnce } from "../prompt";
+import { input, confirm } from "../prompt";
 import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
@@ -22,11 +22,9 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
     logger.logLabeled("INFO", "Initializing Emulator");
 
-    const backendRelativeDir = await promptOnce({
-      name: "rootDir",
-      type: "input",
-      default: "./",
+    const backendRelativeDir = await input({
       message: "Specify your app's root directory relative to your repository",
+      default: "./",
     });
     additionalConfigs.set("rootDirectory", backendRelativeDir);
 
@@ -59,11 +57,9 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
             `Run ${clc.bold(`firebase apphosting:secrets:grantaccess ${secretIds.join(",")} --project [project] --emails [email list]`)}`,
         );
       } else {
-        const users = await promptOnce({
-          type: "input",
-          message:
-            "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development:",
-        });
+        const users = await input(
+          "Your config has secret values. Please provide a comma-separated list of users or groups who should have access to secrets for local development: ",
+        );
         if (users.length) {
           await grantEmailsSecretAccess(
             projectId,
@@ -91,14 +87,11 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
       `${defaultDataConnectDir}/.dataconnect/pgliteData`,
     );
     if (
-      await promptOnce({
-        name: "dataDir",
-        type: "confirm",
-        message:
-          "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
+      await confirm(
+        "Do you want to persist Postgres data from the Data Connect emulator between runs? " +
           `Data will be saved to ${defaultDataDir}. ` +
           `You can change this directory by editing 'firebase.json#emulators.dataconnect.dataDir'.`,
-      })
+      )
     ) {
       additionalConfig["dataDir"] = defaultDataDir;
     }

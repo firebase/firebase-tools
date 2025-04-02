@@ -80,8 +80,9 @@ export async function acceptLatestPublisherTOS(
       );
       if (
         await confirm({
-          ...options,
           message: "Do you accept the Firebase Extensions Publisher Terms of Service?",
+          nonInteractive: options.nonInteractive,
+          force: options.force,
         })
       ) {
         return acceptPublisherTOS(projectId, currentAcceptance.latestTosVersion);
@@ -111,8 +112,9 @@ export async function acceptLatestAppDeveloperTOS(
       logger.debug(`User Terms of Service aready accepted on project ${projectId}.`);
     } else if (
       !(await confirm({
-        ...options,
         message: "Do you accept the Firebase Extensions User Terms of Service?",
+        nonInteractive: options.nonInteractive,
+        force: options.force,
       }))
     ) {
       throw new FirebaseError("You must accept the terms of service to continue.");
