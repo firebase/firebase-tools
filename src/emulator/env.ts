@@ -45,10 +45,14 @@ export function setEnvVarsForEmulators(
         env[Constants.CLOUD_TASKS_EMULATOR_HOST] = host;
         break;
       case Emulators.DATACONNECT:
+        // Right now, the JS SDK requires a protocol within the env var.
+        // https://github.com/firebase/firebase-js-sdk/blob/88a8055808bdbd1c75011a94d11062460027d931/packages/data-connect/src/api/DataConnect.ts#L74
         env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST] = `http://${host}`;
-        env[Constants.FIREBASE_DATACONNECT_ENV_ALT] = `http://${host}`;
-        // Originally, there was a typo in this env var name. To avoid breaking folks unecessarily,
-        // we'll keep setting this.
+        // The alternative env var, right now only read by the Node.js Admin SDK, does not work if a protocol is appended.
+        // https://github.com/firebase/firebase-admin-node/blob/a46086b61f58f07426a6ca103e00385ae216691d/src/data-connect/data-connect-api-client-internal.ts#L220
+        env[Constants.FIREBASE_DATACONNECT_ENV_ALT] = host;
+        // A previous CLI release set the following env var as well but it is missing an underscore between `DATA` and `CONNECT`.
+        // We'll keep setting this for customers who depends on this misspelled name. Its value is also kept protocol-less.
         env["FIREBASE_DATACONNECT_EMULATOR_HOST"] = host;
     }
   }
