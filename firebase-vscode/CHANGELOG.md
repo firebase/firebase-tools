@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] User auth will now load without requiring extension sidebar to open
+
 ## 1.0.0
 
 - [Breaking] Updated minimum VSCode version requirement to 1.69.0 to ensure node 20 is used
