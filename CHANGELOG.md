@@ -1,7 +1,0 @@
-- Fixed an issue where the Extensions emulator did not provide fall back values for v2 Firestore event triggers. (#8390)
-- Fixed issue with prompt when Data Connect prompts user for framework generation.
-- Fixed a bug where the Admin SDK fails with ENOTFOUND when automatically connecting to the Data Connect emulator when run in the Functions emulator. (#8379)
-- Updated the Firebase Data Connect local toolkit to v2.1.0 which includes the following changes: (#8400)
-  - Added support for update transforms.
-  - Added support for server value expressions for Int, Int64, Float, String, Date, Timestamp, and UUID data types.
-  - Fixed an issue where CommonJS modules don't reference ref functions properly.
