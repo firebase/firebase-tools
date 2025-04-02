@@ -12,7 +12,7 @@ import { getProjectDefaultAccount } from "../auth";
 type GenerateOptions = Options & { watch?: boolean };
 
 export const command = new Command("dataconnect:sdk:generate")
-  .description("generates typed SDKs for your Data Connect connectors")
+  .description("generate typed SDKs for your Data Connect connectors")
   .option(
     "--watch",
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",

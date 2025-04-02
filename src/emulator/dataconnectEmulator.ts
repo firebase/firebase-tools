@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dataConnectLocalConnString } from "../api";
+import { dataConnectLocalConnString, vertexAIOrigin } from "../api";
 import { Constants } from "./constants";
 import {
   getPID,
@@ -30,6 +30,7 @@ import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
 import { Account } from "../types/auth";
 import { getCredentialsEnvironment } from "./env";
+import { ensure } from "../ensureApiEnabled";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -90,6 +91,7 @@ export class DataConnectEmulator implements EmulatorInstance {
             "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
           );
         } else {
+          await ensure(this.args.projectId, vertexAIOrigin(), "dataconnect", /* silent=*/ true);
           this.logger.logLabeled(
             "WARN",
             "dataconnect",

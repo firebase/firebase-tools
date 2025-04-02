@@ -24,7 +24,7 @@ export const command = new Command("remoteconfig:versions:list")
   )
   .option(
     "--limit <maxResults>",
-    "limit the number of versions being returned. Pass '0' to fetch all versions.",
+    "limit the number of versions being returned. Pass '0' to fetch all versions",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])

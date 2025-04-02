@@ -270,6 +270,42 @@ describe("cloudfunctions", () => {
         labels: { ...CLOUD_FUNCTION.labels, [HASH_LABEL]: "my-hash" },
       });
     });
+
+    it("should expand shorthand service account", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: "robot@",
+          },
+          UPLOAD_URL,
+        ),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        serviceAccountEmail: `robot@${ENDPOINT.project}.iam.gserviceaccount.com`,
+      });
+    });
+
+    it("should handle null service account", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: null,
+          },
+          UPLOAD_URL,
+        ),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        serviceAccountEmail: null,
+      });
+    });
   });
 
   describe("endpointFromFunction", () => {

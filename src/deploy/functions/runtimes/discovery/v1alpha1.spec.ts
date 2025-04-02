@@ -616,6 +616,7 @@ describe("buildFromV1Alpha", () => {
             ...MIN_WIRE_ENDPOINT,
             httpsTrigger: {},
             concurrency: "{{ params.CONCURRENCY }}",
+            serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
             availableMemoryMb: "{{ params.MEMORY }}",
             timeoutSeconds: "{{ params.TIMEOUT }}",
             maxInstances: "{{ params.MAX_INSTANCES }}",
@@ -628,10 +629,34 @@ describe("buildFromV1Alpha", () => {
         id: {
           ...DEFAULTED_ENDPOINT,
           concurrency: "{{ params.CONCURRENCY }}",
+          serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
           availableMemoryMb: "{{ params.MEMORY }}",
           timeoutSeconds: "{{ params.TIMEOUT }}",
           maxInstances: "{{ params.MAX_INSTANCES }}",
           minInstances: "{{ params.MIN_INSTANCES }}",
+          httpsTrigger: {},
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("prefers serviceAccount over serviceAccountEmail", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: "{{ params.SERVICE_ACCOUNT_PREFERRED }}",
+            serviceAccountEmail: "{{ params.SERVICE_ACCOUNT_IGNORED }}",
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          serviceAccount: "{{ params.SERVICE_ACCOUNT_PREFERRED }}",
           httpsTrigger: {},
         },
       });

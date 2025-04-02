@@ -13,7 +13,7 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export const command = new Command("database:settings:set <path> <value>")
-  .description("set the realtime database setting at path.")
+  .description("set the Realtime Database setting at path")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)",

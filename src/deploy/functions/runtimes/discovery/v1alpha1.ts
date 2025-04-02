@@ -59,12 +59,12 @@ export type WireEndpoint = build.Triggered &
       egressSettings?: build.VpcEgressSetting | null;
     } | null;
     ingressSettings?: build.IngressSetting | null;
-    serviceAccount?: string | null;
+    serviceAccount?: build.Field<string>;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
     // We now use "serviceAccount" but maintain backwards compatibility in the
     // wire format for the time being.
-    serviceAccountEmail?: string | null;
+    serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
@@ -149,8 +149,8 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
     concurrency: "Field<number>?",
-    serviceAccount: "string?",
-    serviceAccountEmail: "string?",
+    serviceAccount: "Field<string>?",
+    serviceAccountEmail: "Field<string>?",
     timeoutSeconds: "Field<number>?",
     vpc: "object?",
     labels: "object?",
@@ -205,8 +205,8 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       eventType: "string",
       retry: "Field<boolean>",
       region: "Field<string>",
-      serviceAccount: "string?",
-      serviceAccountEmail: "string?",
+      serviceAccount: "Field<string>?",
+      serviceAccountEmail: "Field<string>?",
       channel: "string",
     });
   } else if (build.isHttpsTriggered(ep)) {

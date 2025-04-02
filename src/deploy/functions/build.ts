@@ -69,7 +69,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -108,7 +108,7 @@ export interface EventTrigger {
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
   // The name of the channel where the function receives events.
   // Must be provided to receive CF3v2 custom events.
@@ -233,7 +233,7 @@ export type Endpoint = Triggered & {
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: Field<string> | ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -496,6 +496,7 @@ export function toBackend(
         "labels",
         "secretEnvironmentVariables",
       );
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {

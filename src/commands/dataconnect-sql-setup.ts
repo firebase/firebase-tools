@@ -6,14 +6,14 @@ import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissions_setup";
+import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 
 export const command = new Command("dataconnect:sql:setup [serviceId]")
-  .description("Setup your CloudSQL database")
+  .description("set up your CloudSQL database")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

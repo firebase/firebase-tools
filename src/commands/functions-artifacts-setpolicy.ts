@@ -15,24 +15,24 @@ import * as artifacts from "../functions/artifacts";
  */
 export const command = new Command("functions:artifacts:setpolicy")
   .description(
-    "Set up a cleanup policy for Cloud Run functions container images in Artifact Registry. " +
-      "This policy will automatically delete old container images created during functions deployment.",
+    "set up a cleanup policy for Cloud Run functions container images in Artifact Registry " +
+      "to automatically delete old function images",
   )
   .option(
     "--location <location>",
-    "Specify location to set up the cleanup policy. " +
-      "If omitted, uses the default functions location.",
+    "specify location to set up the cleanup policy. " +
+      "If omitted, uses the default functions location",
     "us-central1",
   )
   .option(
     "--days <days>",
-    `Number of days to keep container images before deletion. Default is ${artifacts.DEFAULT_CLEANUP_DAYS} day.`,
+    `number of days to keep container images before deletion. Default is ${artifacts.DEFAULT_CLEANUP_DAYS} day`,
   )
   .option(
     "--none",
-    "Opt-out from cleanup policy. This will prevent suggestions to set up a cleanup policy during initialization and deployment.",
+    "opt-out from cleanup policy. This will prevent suggestions to set up a cleanup policy during initialization and deployment",
   )
-  .withForce("Automatically create or modify cleanup policy")
+  .withForce("automatically create or modify cleanup policy")
   .before(requireAuth)
   .before(async (options) => {
     const projectId = needProjectId(options);

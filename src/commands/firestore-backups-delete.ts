@@ -10,8 +10,8 @@ import { FirestoreOptions } from "../firestore/options";
 import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:delete <backup>")
-  .description("Delete a backup under your Cloud Firestore database.")
-  .option("--force", "Attempt to delete backup without prompting for confirmation.")
+  .description("delete a backup under your Cloud Firestore database")
+  .option("--force", "attempt to delete backup without prompting for confirmation")
   .before(requirePermissions, ["datastore.backups.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (backupName: string, options: FirestoreOptions) => {

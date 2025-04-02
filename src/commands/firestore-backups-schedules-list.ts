@@ -8,10 +8,10 @@ import { BackupSchedule, listBackupSchedules } from "../gcp/firestore";
 import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:backups:schedules:list")
-  .description("List backup schedules under your Cloud Firestore database.")
+  .description("list backup schedules under your Cloud Firestore database")
   .option(
     "-d, --database <databaseId>",
-    "Database whose schedules you wish to list. Defaults to the (default) database.",
+    "database whose schedules you wish to list. Defaults to the (default) database",
   )
   .before(requirePermissions, ["datastore.backupSchedules.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

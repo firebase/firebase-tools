@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "13.35.1",
+  "version": "14.0.1",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "13.35.1",
+      "version": "14.0.1",
       "license": "MIT",
       "dependencies": {
         "@electric-sql/pglite": "^0.2.16",
@@ -170,7 +170,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": ">=18.0.0 || >=20.0.0 || >=22.0.0"
+        "node": ">=20.0.0 || >=22.0.0"
       }
     },
     "node_modules/@aashutoshrathi/word-wrap": {

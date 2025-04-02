@@ -352,7 +352,7 @@ describe("cloudfunctionsv2", () => {
           },
           retry: false,
         },
-        serviceAccount: "sa",
+        serviceAccount: "sa@google.com",
       };
 
       const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
@@ -366,14 +366,14 @@ describe("cloudfunctionsv2", () => {
             },
           ],
           retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
-          serviceAccountEmail: "sa",
+          serviceAccountEmail: "sa@google.com",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           environmentVariables: {
             FUNCTION_SIGNATURE_TYPE: "cloudevent",
           },
-          serviceAccountEmail: "sa",
+          serviceAccountEmail: "sa@google.com",
         },
       };
 
@@ -418,6 +418,38 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },
+      });
+    });
+
+    it("should expand shorthand service account to full email", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          serviceAccount: "sa@",
+          httpsTrigger: {},
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: `sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
+        },
+      });
+    });
+
+    it("should handle null service account", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          serviceAccount: null,
+          httpsTrigger: {},
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: null,
+        },
       });
     });
   });

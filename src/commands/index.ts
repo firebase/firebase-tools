@@ -76,9 +76,6 @@ export function load(client: any): any {
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
-  client.experimental = {};
-  client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
   client.experiments = {};
   client.experiments.list = loadCommand("experiments-list");
   client.experiments.describe = loadCommand("experiments-describe");
@@ -183,7 +180,6 @@ export function load(client: any): any {
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     client.apphosting.config = {};
-    client.apphosting.config.export = loadCommand("apphosting-config-export");
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");

@@ -552,6 +552,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "sourceUploadUrl",
   );
+
   proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
   proto.convertIfPresent(
     endpoint,
@@ -678,7 +679,10 @@ export function functionFromEndpoint(
     "environmentVariables",
     "secretEnvironmentVariables",
   );
-  proto.renameIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount");
+
+  proto.convertIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount", (from) =>
+    !from ? null : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
+  );
   proto.convertIfPresent(
     gcfFunction,
     endpoint,

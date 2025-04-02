@@ -513,12 +513,15 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "ingressSettings",
     "timeoutSeconds",
   );
-
-  proto.renameIfPresent(
+  proto.convertIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
     "serviceAccountEmail",
     "serviceAccount",
+    (from) =>
+      !from
+        ? null
+        : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
@@ -556,8 +559,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       eventType: endpoint.eventTrigger.eventType,
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
-    if (endpoint.serviceAccount) {
-      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    if (gcfFunction.serviceConfig.serviceAccountEmail) {
+      gcfFunction.eventTrigger.serviceAccountEmail = gcfFunction.serviceConfig.serviceAccountEmail;
     }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
