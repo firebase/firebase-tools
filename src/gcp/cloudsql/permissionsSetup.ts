@@ -1,3 +1,5 @@
+import * as clc from "colorette";
+
 import { Options } from "../../options";
 import {
   firebaseowner,
@@ -7,19 +9,19 @@ import {
   writerRolePermissions,
   readerRolePermissions,
   defaultPermissions,
-  FIREBASE_SUPER_USER,
   CLOUDSQL_SUPER_USER,
+  FIREBASE_SUPER_USER,
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
 import { setupIAMUsers } from "./connect";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
-import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { needProjectNumber } from "../../projectUtils";
 import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
+import * as utils from "../../utils";
 
 export type TableMetadata = {
   name: string;
@@ -104,11 +106,14 @@ export async function setupSQLPermissions(
   options: Options,
   silent: boolean = false,
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
+  const logFn = silent
+    ? logger.debug
+    : (message: string) => {
+        return utils.logLabeledBullet("dataconnect", message);
+      };
   const schema = schemaInfo.name;
   // Step 0: Check current user can run setup and upsert IAM / P4SA users
-  logger.info(
-    `Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`,
-  );
+  logFn(`Detected schema "${schema}" setup status is ${schemaInfo.setupStatus}. Running setup...`);
 
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
@@ -121,14 +126,14 @@ export async function setupSQLPermissions(
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
     runGreenfieldSetup = true;
-    logger.info(
+    logFn(
       `Database ${databaseId} has already been setup as greenfield project. Rerunning setup to repair any missing permissions.`,
     );
   }
 
   if (schemaInfo.tables.length === 0) {
     runGreenfieldSetup = true;
-    logger.info(`Found no tables in schema "${schema}", assuming greenfield project.`);
+    logFn(`Found no tables in schema "${schema}", assuming greenfield project.`);
   }
 
   // We need to setup the database
@@ -148,7 +153,7 @@ export async function setupSQLPermissions(
       /** transaction=*/ true,
     );
 
-    logger.info(clc.green("Database setup complete."));
+    logFn(clc.green("Database setup complete."));
     return SchemaSetupStatus.GreenField;
   }
 
@@ -158,7 +163,7 @@ export async function setupSQLPermissions(
     );
   }
   const currentTablesOwners = [...new Set(schemaInfo.tables.map((t) => t.owner))];
-  logger.info(
+  logFn(
     `We found some existing object owners [${currentTablesOwners.join(", ")}] in your cloudsql "${schema}" schema.`,
   );
 
@@ -173,22 +178,22 @@ export async function setupSQLPermissions(
 
   if (shouldSetupGreenfield) {
     await setupBrownfieldAsGreenfield(instanceId, databaseId, schemaInfo, options, silent);
-    logger.info(clc.green("Database setup complete."));
-    logger.info(
+    logger.info(clc.green("Database setup complete.")); // If we do set up, always at least show this line.
+    logFn(
       clc.yellow(
         "IMPORTANT: please uncomment 'schemaValidation: \"COMPATIBLE\"' in your dataconnect.yaml file to avoid dropping any existing tables by mistake.",
       ),
     );
     return SchemaSetupStatus.GreenField;
   } else {
-    logger.info(
+    logFn(
       clc.yellow(
         "Setting up database in brownfield mode.\n" +
           `Note: SQL migrations can't be done through ${clc.bold("firebase dataconnect:sql:migrate")} in this mode.`,
       ),
     );
     await brownfieldSqlSetup(instanceId, databaseId, schemaInfo, options, silent);
-    logger.info(clc.green("Brownfield database setup complete."));
+    logFn(clc.green("Brownfield database setup complete."));
     return SchemaSetupStatus.BrownField;
   }
 }
@@ -394,7 +399,7 @@ export async function brownfieldSqlSetup(
 ) {
   const schema = schemaInfo.name;
 
-  // Step 1: Grant firebasesuperuser access to the original owner.
+  // Step 1: Grant firebasesuperuser access to the original owner
   const uniqueTablesOwners = filterTableOwners(schemaInfo, databaseId);
   const grantOwnersToFirebasesuperuser = uniqueTablesOwners.map(
     (owner) => `GRANT "${owner}" TO "${FIREBASE_SUPER_USER}"`,
