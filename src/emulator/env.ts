@@ -70,7 +70,7 @@ export async function getCredentialsEnvironment(
   // Provide default application credentials when appropriate
   const credentialEnv: Record<string, string> = {};
   if (await hasDefaultCredentials()) {
-    !silent ||
+    !silent &&
       logger.logLabeled(
         "WARN",
         logLabel,
