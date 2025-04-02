@@ -127,7 +127,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
             type: "checkbox",
             name: "fdcFrameworks",
             message:
-              `Which ${hasFrameworkEnabled && "additional "}frameworks would you like to generate SDKs for? ` +
+              `Which ${hasFrameworkEnabled ? "additional " : ""}frameworks would you like to generate SDKs for? ` +
               "Press Space to select features, then Enter to confirm your choices.",
             choices: unusedFrameworks.map((frameworkStr) => ({
               value: frameworkStr,
