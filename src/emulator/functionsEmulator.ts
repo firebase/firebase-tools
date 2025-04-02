@@ -1140,7 +1140,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
     }
-    console.log(eventTrigger);
     const { bundle, path } =
       signature === "cloudevent"
         ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
