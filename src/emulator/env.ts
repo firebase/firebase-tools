@@ -65,11 +65,12 @@ export async function getCredentialsEnvironment(
   account: Account | undefined,
   logger: EmulatorLogger,
   logLabel: string,
+  silent: boolean = false,
 ): Promise<Record<string, string>> {
   // Provide default application credentials when appropriate
   const credentialEnv: Record<string, string> = {};
   if (await hasDefaultCredentials()) {
-    logger.logLabeled(
+    !silent || logger.logLabeled(
       "WARN",
       logLabel,
       `Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful!`,
