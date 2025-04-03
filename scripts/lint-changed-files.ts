@@ -9,7 +9,7 @@ import { extname, resolve } from "path";
 const root = resolve(__dirname, "..");
 
 const deletedFileRegex = /^D\s.+$/;
-const extensionsToCheck = [".js", ".ts"];
+const extensionsToCheck = [".js", ".ts", ".jsx", ".tsx"];
 
 /**
  * Returns the last element of an array.
@@ -66,12 +66,12 @@ function main(): void {
   }
 
   try {
-    execSync(`eslint ${otherArgs.join(" ")} ${files.join(" ")}`, {
+    execSync(`npx @biomejs/biome check ${otherArgs.join(" ")} ${files.join(" ")}`, {
       cwd: root,
       stdio: ["pipe", process.stdout, process.stderr],
     });
   } catch (e: any) {
-    console.error("eslint failed, see errors above.");
+    console.error("biome check failed, see errors above.");
     console.error();
     process.exit(e.status);
   }

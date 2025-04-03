@@ -11,6 +11,8 @@ node_modules
 /coverage
 /.coverage
 /.nyc_output
+.eslintcache
+.prettierrc
 firebase-debug.log
 firebase-debug.*.log
 npm-debug.log
