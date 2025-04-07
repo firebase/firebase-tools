@@ -42,6 +42,7 @@ interface TypedInput {
 
 interface ExecutionInput {
   ast: OperationDefinitionNode;
+  documentNode: DocumentNode;
   location: OperationLocation;
   instance: InstanceType;
 }
@@ -106,6 +107,7 @@ export function registerExecution(
     }
     executeOperation(
       lastExecutionInputSignal.value.ast,
+      lastExecutionInputSignal.value.documentNode,
       lastExecutionInputSignal.value.location,
       lastExecutionInputSignal.value.instance,
     );
@@ -113,12 +115,14 @@ export function registerExecution(
 
   async function executeOperation(
     ast: OperationDefinitionNode,
+    documentNode: DocumentNode,
     { document, documentPath, position }: OperationLocation,
     instance: InstanceType,
   ) {
     // hold last execution in memory, and send operation name to webview
     lastExecutionInputSignal.value = {
       ast,
+      documentNode,
       location: { document, documentPath, position },
       instance,
     };
@@ -189,12 +193,12 @@ export function registerExecution(
     const schema = buildClientSchema(introspect.data);
     const validationErrors = validate(
       schema,
-      operationDefinitionToDocument(ast),
+      documentNode,
     );
 
     if (validationErrors.length > 0) {
       executionError(
-        "Schema validation errors: ",
+        `Schema validation errors:`,
         JSON.stringify(validationErrors),
       );
       return undefined;
@@ -311,13 +315,13 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      (ast, location, instanceType: InstanceType) => {
+      (operationAST, fullAST, location, instanceType: InstanceType) => {
         analyticsLogger.logger.logUsage(
           instanceType === InstanceType.LOCAL
             ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
             : DATA_CONNECT_EVENT_NAME.RUN_PROD,
         );
-        executeOperation(ast, location, instanceType);
+        executeOperation(operationAST, fullAST, location, instanceType);
       },
     ),
     vscode.commands.registerCommand(
@@ -336,7 +340,7 @@ export function registerExecution(
 }
 
 function executionError(message: string, error?: string) {
-  vscode.window.showErrorMessage(`Failed to execute operation. ${message}`);
+  vscode.window.showErrorMessage(`Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`);
   throw new Error(error);
 }
 
