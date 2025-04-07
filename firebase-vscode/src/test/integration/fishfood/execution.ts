@@ -5,7 +5,7 @@ import {
 } from "../../utils/page_objects/execution";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { mockProject, mutationsPath, queriesPath } from "../../utils/projects";
+import { mockProject, mutationsPath, queriesPath, queryWithFragmentPath } from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
@@ -35,10 +35,10 @@ firebaseSuite("Execution", async function () {
       await editor.runLocalButton.waitForDisplayed();
       await editor.runLocalButton.click();
 
-
       // get start emulator notification
-      const notificationUtil = new Notifications(workbench);      
-      const startEmulatorsNotif = await notificationUtil.getStartEmulatorNotification();
+      const notificationUtil = new Notifications(workbench);
+      const startEmulatorsNotif =
+        await notificationUtil.getStartEmulatorNotification();
       expect(startEmulatorsNotif).toExist();
 
       console.log(
@@ -103,6 +103,27 @@ firebaseSuite("Execution", async function () {
       expect(await item2.getDescription()).toHaveText(
         'Arguments: {"id": "42"}',
       );
+
+      // Test 3: Execute operation with fragment
+      await editor.openFile(queryWithFragmentPath);
+      await editor.runLocalButton.waitForDisplayed();
+      await editor.runLocalButton.click();
+
+      // Waiting for the new history entry to appear
+      await browser.waitUntil(async () => {
+        const selectedItem = await execution.history.getSelectedItem();
+        return (await selectedItem.getLabel()) === "fragmentTest";
+      });
+
+      // Check the history entry
+      const item3 = await execution.history.getSelectedItem();
+
+      // Waiting for the execution to finish
+      await browser.waitUntil(async () => {
+        const status = await item3.getStatus();
+        return status === "success";
+      });
+      expect(await item3.getLabel()).toBe("fragmentTest");
     },
   );
 });
