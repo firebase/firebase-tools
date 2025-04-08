@@ -218,11 +218,11 @@ export async function maybeAddSecretToYaml(
  */
 export async function maybeGenerateEmulatorYaml(
   projectId: string | undefined,
-  repoRoot: string,
+  backendRoot: string,
 ): Promise<Env[] | null> {
   // Even if the app is in /project/app, the user might have their apphosting.yaml file in /project/apphosting.yaml.
   // Walk up the tree to see if we find other local files so that we can put apphosting.emulator.yaml in the right place.
-  const basePath = dynamicDispatch.discoverBackendRoot(repoRoot) || repoRoot;
+  const basePath = dynamicDispatch.discoverBackendRoot(backendRoot) || backendRoot;
   if (fs.fileExistsSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE))) {
     logger.debug(
       "apphosting.emulator.yaml already exists, skipping generation and secrets access prompt",
