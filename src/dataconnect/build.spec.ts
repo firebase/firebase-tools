@@ -1,15 +1,13 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as prompt from "../prompt";
+import * as prompt from "../promptV2";
 import { handleBuildErrors } from "./build";
 import { GraphqlError } from "./types";
 
 describe("handleBuildErrors", () => {
-  let promptOnceStub: sinon.SinonStub;
+  let selectStub: sinon.SinonStub;
   beforeEach(() => {
-    promptOnceStub = sinon
-      .stub(prompt, "promptOnce")
-      .throws("unexpected call to prompt.promptOnce");
+    selectStub = sinon.stub(prompt, "select").throws("unexpected call to prompt.select");
   });
   afterEach(() => {
     sinon.verifyAndRestore();
@@ -151,7 +149,7 @@ describe("handleBuildErrors", () => {
     it(c.desc, async () => {
       try {
         if (c.promptAnswer) {
-          promptOnceStub.resolves(c.promptAnswer);
+          selectStub.resolves(c.promptAnswer);
         }
         await handleBuildErrors(c.graphqlErr, c.nonInteractive, c.force, c.dryRun);
       } catch (err) {

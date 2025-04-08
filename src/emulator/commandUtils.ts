@@ -131,11 +131,8 @@ export async function warnEmulatorNotSupported(
       )}, however this command does not support running against the ${emuName} so this action will affect production.`,
     );
 
-    const opts = {
-      confirm: undefined,
-    };
-    if (!await confirm("Do you want to continue?")) {
-      return utils.reject("Command aborted.", { exit: 1 });
+    if (!(await confirm("Do you want to continue?"))) {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
     }
   }
 }

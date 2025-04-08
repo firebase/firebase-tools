@@ -1,9 +1,7 @@
 import * as inquirer from "@inquirer/prompts";
 import { FirebaseError } from "./error";
 
-// TOOD: Consider whether the magic of passing a name and an options object which may include
-// options[name] and would otherwise store that value is too magical and instead shoudl be
-// pushed on the call site.
+export { Separator } from "@inquirer/prompts";
 
 export interface BasicOptions<T> {
   message: string;
@@ -252,4 +250,27 @@ export async function password(opts: string | PasswordOptions): Promise<string> 
     ...opts,
     mask: "",
   });
+}
+
+export type SearchOptions<Value> = BasicOptions<Value> & {
+  source: (
+    term: string | undefined,
+    opt: {
+      signal: AbortSignal;
+    },
+  ) =>
+    | readonly (string | inquirer.Separator)[]
+    | readonly (inquirer.Separator | Choice<Value>)[]
+    | Promise<readonly (string | inquirer.Separator)[]>
+    | Promise<readonly (inquirer.Separator | Choice<Value>)[]>;
+  validate?: ((value: Value) => boolean | string | Promise<string | boolean>) | undefined;
+  pageSize?: number | undefined;
+};
+
+export async function search<Value>(opts: SearchOptions<Value>): Promise<Value> {
+  const { shouldReturn, value } = guard(opts);
+  if (shouldReturn) {
+    return value;
+  }
+  return inquirer.search(opts);
 }

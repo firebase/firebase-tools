@@ -28,12 +28,10 @@ export const command = new Command("database:remove <path>")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
-    const areYouSure = await confirm(
-      {
-        message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
-        force: options.force
-      }
-    );
+    const areYouSure = await confirm({
+      message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
+      force: options.force,
+    });
     if (!areYouSure) {
       return utils.reject("Command aborted.", { exit: 1 });
     }

@@ -15,7 +15,7 @@ import {
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
 import { setupIAMUsers } from "./connect";
 import { logger } from "../../logger";
-import { confirm } from "../../prompt";
+import { confirm } from "../../promptV2";
 import { FirebaseError } from "../../error";
 import { needProjectNumber } from "../../projectUtils";
 import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";

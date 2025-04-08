@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as prompt from "../prompt";
+import * as promptImport from "../promptV2";
 import * as apphosting from "../gcp/apphosting";
 import * as iam from "../gcp/iam";
 import * as resourceManager from "../gcp/resourceManager";
@@ -24,7 +24,7 @@ describe("apphosting setup functions", () => {
   const location = "us-central1";
   const backendId = "backendId";
 
-  let promptOnceStub: sinon.SinonStub;
+  let promptStub: sinon.SinonStubbedInstance<typeof promptImport>;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
@@ -36,7 +36,11 @@ describe("apphosting setup functions", () => {
   let testResourceIamPermissionsStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    promptStub = sinon.stub(promptImport);
+    promptStub.input.throws("Unexpected input call");
+    promptStub.confirm.throws("Unexpected confirm call");
+    promptStub.select.throws("Unexpected select call");
+    promptStub.checkbox.throws("Unepxected checkbox call");
     pollOperationStub = sinon.stub(poller, "pollOperation").throws("Unexpected pollOperation call");
     createBackendStub = sinon
       .stub(apphosting, "createBackend")
@@ -225,7 +229,7 @@ describe("apphosting setup functions", () => {
 
     beforeEach(() => {
       listLocationsStub.returns(supportedLocations);
-      promptOnceStub.returns(supportedLocations[0].locationId);
+      promptStub.select.resolves(supportedLocations[0].locationId);
     });
 
     it("returns a location selection", async () => {
@@ -236,23 +240,9 @@ describe("apphosting setup functions", () => {
     it("uses a default location prompt if none is provided", async () => {
       await promptLocation(projectId);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
+      expect(promptStub.select).to.be.calledWith({
         default: "us-central1",
         message: "Please select a location:",
-        choices: ["us-central1", "us-west1"],
-      });
-    });
-
-    it("uses a custom location prompt if provided", async () => {
-      await promptLocation(projectId, "Custom location prompt:");
-
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
-        default: "us-central1",
-        message: "Custom location prompt:",
         choices: ["us-central1", "us-west1"],
       });
     });
@@ -264,7 +254,7 @@ describe("apphosting setup functions", () => {
         supportedLocations[0].locationId,
       );
 
-      expect(promptOnceStub).to.not.be.called;
+      expect(promptStub.select).to.not.be.called;
     });
   });
 
@@ -339,7 +329,7 @@ describe("apphosting setup functions", () => {
       listBackendsStub.resolves({
         backends: allBackends,
       });
-      promptOnceStub.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
+      promptStub.checkbox.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
 
       await expect(chooseBackends(projectId, "chicken", /* prompt= */ "")).to.eventually.deep.equal(
         [backendChickenAsia, backendChickenEurope],
@@ -390,7 +380,7 @@ describe("apphosting setup functions", () => {
 
     it("prompts for location if backend is ambiguous", async () => {
       listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
-      promptOnceStub.resolves(location);
+      promptStub.select.resolves(location);
 
       await expect(
         getBackendForAmbiguousLocation(
@@ -400,9 +390,7 @@ describe("apphosting setup functions", () => {
         ),
       ).to.eventually.equal(backendFoo);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
+      expect(promptStub.select).to.be.calledWith({
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });

@@ -19,7 +19,7 @@ import * as refs from "../extensions/refs";
 import { getProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import { confirm } from "../prompt";
+import { confirm } from "../promptV2";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
@@ -88,6 +88,7 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
 
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: false,

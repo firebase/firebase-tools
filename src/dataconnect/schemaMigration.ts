@@ -19,7 +19,7 @@ import {
   SchemaSetupStatus,
 } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
-import { promptOnce, confirm } from "../prompt";
+import { select, confirm } from "../promptV2";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
@@ -488,14 +488,9 @@ async function promptForSchemaMigration(
     const choices = [
       { name: executeChangePrompt, value: "all" },
       { name: "Abort changes", value: "none" },
-    ];
+    ] as const;
     const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
-    return await promptOnce({
-      message: message,
-      type: "list",
-      choices,
-      default: defaultValue,
-    });
+    return await select({ message, choices, default: defaultValue });
   }
   if (!validateOnly) {
     // `firebase deploy --nonInteractive` performs no migrations

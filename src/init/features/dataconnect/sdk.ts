@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { dirExistsSync } from "../../../fsutils";
-import { promptOnce, prompt } from "../../../prompt";
+import { checkbox, select } from "../../../promptV2";
 import {
   readFirebaseJson,
   getPlatformFromFolder,
@@ -92,18 +92,16 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       { name: "Android (Kotlin)", value: Platform.ANDROID },
       { name: "Flutter (Dart)", value: Platform.FLUTTER },
     ];
-    targetPlatform = await promptOnce({
+    targetPlatform = await select<Platform>({
       message: "Which platform do you want to set up a generated SDK for?",
-      type: "list",
       choices: platforms,
     });
   } else {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
-  const connectorInfo: ConnectorInfo = await promptOnce({
+  const connectorInfo = await select<ConnectorInfo>({
     message: "Which connector do you want set up a generated SDK for?",
-    type: "list",
     choices: connectorChoices,
   });
 
@@ -120,24 +118,13 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     );
     const hasFrameworkEnabled = unusedFrameworks.length < SUPPORTED_FRAMEWORKS.length;
     if (unusedFrameworks.length > 0) {
-      const additionalFrameworks: { fdcFrameworks: (keyof SupportedFrameworks)[] } = await prompt(
-        setup,
-        [
-          {
-            type: "checkbox",
-            name: "fdcFrameworks",
-            message:
-              `Which ${hasFrameworkEnabled ? "additional " : ""}frameworks would you like to generate SDKs for? ` +
-              "Press Space to select features, then Enter to confirm your choices.",
-            choices: unusedFrameworks.map((frameworkStr) => ({
-              value: frameworkStr,
-              name: frameworkStr,
-              checked: false,
-            })),
-          },
-        ],
-      );
-      for (const framework of additionalFrameworks.fdcFrameworks) {
+      const additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
+        message:
+          `Which ${hasFrameworkEnabled && "additional "}frameworks would you like to generate SDKs for? ` +
+          "Press Space to select features, then Enter to confirm your choices.",
+        choices: unusedFrameworks,
+      });
+      for (const framework of additionalFrameworks) {
         newConnectorYaml!.generate!.javascriptSdk![framework] = true;
       }
     }

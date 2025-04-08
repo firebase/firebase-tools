@@ -2,7 +2,7 @@ import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconne
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
-import { promptOnce } from "../prompt";
+import { select } from "../promptV2";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
 import { DeploymentMetadata, GraphqlError } from "./types";
@@ -73,9 +73,8 @@ export async function handleBuildErrors(
         "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to deploy these changes.",
       );
     } else if (!nonInteractive && !force && !dryRun) {
-      const result = await promptOnce({
+      const result = await select({
         message: "Would you like to proceed with these changes?",
-        type: "list",
         choices,
         default: "abort",
       });
@@ -92,9 +91,8 @@ export async function handleBuildErrors(
         prettifyTable(interactiveAcks),
     );
     if (!nonInteractive && !force && !dryRun) {
-      const result = await promptOnce({
+      const result = await select({
         message: "Would you like to proceed with these changes?",
-        type: "list",
         choices,
         default: "proceed",
       });

@@ -6,7 +6,7 @@ import * as paramHelper from "./paramHelper";
 import * as refs from "./refs";
 
 import { Config } from "../config";
-import * as prompt from "../prompt";
+import * as prompt from "../promptV2";
 import { FirebaseError } from "../error";
 import { ParamType } from "./types";
 
@@ -436,7 +436,8 @@ describe("manifest", () => {
 
     it("should overwrite when user chooses to", async () => {
       // Chooses to overwrite instead of merge.
-      sandbox.stub(prompt, "promptOnce").resolves(true);
+      sandbox.stub(prompt, "select").resolves("overwrite");
+      sandbox.stub(prompt, "confirm").resolves(true);
 
       await manifest.writeToManifest(
         [
@@ -524,7 +525,8 @@ describe("manifest", () => {
 
     it("should not write empty values", async () => {
       // Chooses to overwrite instead of merge.
-      sandbox.stub(prompt, "promptOnce").resolves(true);
+      sandbox.stub(prompt, "select").resolves("overwrite");
+      sandbox.stub(prompt, "confirm").resolves(true);
 
       await manifest.writeToManifest(
         [

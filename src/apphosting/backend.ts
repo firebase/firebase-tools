@@ -17,7 +17,7 @@ import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { input, confirm, select, checkbox } from "../promptV2";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
@@ -101,9 +101,7 @@ export async function doSetup(
     location,
   );
 
-  const rootDir = await promptOnce({
-    name: "rootDir",
-    type: "input",
+  const rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your repository",
   });
@@ -115,12 +113,7 @@ export async function doSetup(
   logSuccess(`Repo linked successfully!\n`);
 
   logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Provide a name for your backend [1-30 characters]",
-  });
+  const backendId = await promptNewBackendId(projectId, location);
   logSuccess(`Name set to ${backendId}\n`);
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
@@ -142,9 +135,7 @@ export async function doSetup(
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
-  const confirmRollout = await promptOnce({
-    type: "confirm",
-    name: "rollout",
+  const confirmRollout = await confirm({
     default: true,
     message: "Do you want to deploy now?",
   });
@@ -255,13 +246,13 @@ export async function ensureAppHostingComputeServiceAccount(
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNewBackendId(
-  projectId: string,
-  location: string,
-  prompt: any,
-): Promise<string> {
+async function promptNewBackendId(projectId: string, location: string): Promise<string> {
   while (true) {
-    const backendId = await promptOnce(prompt);
+    const backendId = await input({
+      default: "my-web-app",
+      message: "Provide a name for your backend [1-30 characters]",
+      validate: (s) => s.length >= 1 && s.length <= 30,
+    });
     try {
       await apphosting.getBackend(projectId, location, backendId);
     } catch (err: unknown) {
@@ -394,9 +385,7 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  const location = (await promptOnce({
-    name: "location",
-    type: "list",
+  const location = (await select<string>({
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
@@ -460,9 +449,7 @@ export async function chooseBackends(
     const { location, id } = apphosting.parseBackendName(backend.name);
     backendsByDisplay.set(`${id}(${location})`, backend);
   });
-  const chosenBackendDisplays = await promptOnce({
-    name: "backend",
-    type: "checkbox",
+  const chosenBackendDisplays = await checkbox<string>({
     message: chooseBackendPrompt,
     choices: Array.from(backendsByDisplay.keys(), (name) => {
       return {
@@ -519,9 +506,7 @@ export async function getBackendForAmbiguousLocation(
   backends.forEach((backend) =>
     backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
   );
-  const location = await promptOnce({
-    name: "location",
-    type: "list",
+  const location = await select<string>({
     message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],
   });

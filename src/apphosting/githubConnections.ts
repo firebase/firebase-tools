@@ -5,7 +5,7 @@ import * as rm from "../gcp/resourceManager";
 import * as poller from "../operation-poller";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { Choice, input, search, confirm, Separator } from "../promptV2";
 import { getProjectNumber } from "../getProjectNumber";
 import {
   apphostingGitHubAppInstallationURL,
@@ -14,7 +14,6 @@ import {
 } from "../api";
 
 import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
 import { Client } from "../apiv2";
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
@@ -145,11 +144,9 @@ export async function getOrCreateGithubConnectionWithSentinel(
     const apphostingGitHubInstallationURL = apphostingGitHubAppInstallationURL();
     utils.logBullet(apphostingGitHubInstallationURL);
     await utils.openInBrowser(apphostingGitHubInstallationURL);
-    await promptOnce({
-      type: "input",
-      message:
-        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
-    });
+    await input(
+      "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+    );
     installationId = await promptGitHubInstallation(projectId, location, oauthConn);
   }
 
@@ -245,11 +242,9 @@ async function createFullyInstalledConnection(
     const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
-    await promptOnce({
-      type: "input",
-      message:
-        "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
-    });
+    await input(
+      "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+    );
     conn = await devConnect.getConnection(projectId, location, connectionId);
   }
 
@@ -267,11 +262,9 @@ async function manageInstallation(connection: devConnect.Connection): Promise<vo
 
   utils.logBullet(targetUri);
   await utils.openInBrowser(targetUri);
-  await promptOnce({
-    type: "input",
-    message:
-      "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
-  });
+  await input(
+    "Press Enter once you have installed or configured the Firebase App Hosting GitHub app to access your GitHub repo.",
+  );
 }
 
 /**
@@ -315,32 +308,26 @@ export async function promptGitHubInstallation(
 ): Promise<string> {
   const installations = await listValidInstallations(projectId, location, connection);
 
-  const installationName = await promptOnce({
-    type: "autocomplete",
-    name: "installation",
+  const installationName = await search({
     message: "Which GitHub account do you want to use?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          new inquirer.Separator(),
-          {
-            name: "Missing an account? Select this option to add a GitHub account",
-            value: ADD_ACCOUNT_CHOICE,
-          },
-          new inquirer.Separator(),
-          ...fuzzy
-            .filter(input, installations, {
-              extract: (installation) => installation.name || "",
-            })
-            .map((result) => {
-              return {
-                name: result.original.name || "",
-                value: result.original.id,
-              };
-            }),
-        ]),
-      );
-    },
+    source: (input: string | undefined = ""): Array<Separator | Choice<string>> => [
+      new Separator(),
+      {
+        name: "Missing an account? Select this option to add a GitHub account",
+        value: ADD_ACCOUNT_CHOICE,
+      },
+      new Separator(),
+      ...fuzzy
+        .filter(input, installations, {
+          extract: (installation) => installation.name || "",
+        })
+        .map((result) => {
+          return {
+            name: result.original.name || "",
+            value: result.original.id,
+          };
+        }),
+    ],
   });
 
   return installationName;
@@ -398,10 +385,7 @@ export async function getOrCreateOauthConnection(
       "Authorize the GitHub app",
     );
     utils.logBullet(`\t${url}`);
-    await promptOnce({
-      type: "input",
-      message: "Press Enter once you have authorized the GitHub App.",
-    });
+    await input("Press Enter once you have authorized the GitHub App.");
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await devConnect.getConnection(projectId, location, id);
@@ -416,32 +400,26 @@ async function promptCloneUri(
   connection: devConnect.Connection,
 ): Promise<string> {
   const cloneUris = await fetchRepositoryCloneUris(projectId, connection);
-  const cloneUri = await promptOnce({
-    type: "autocomplete",
-    name: "cloneUri",
+  const cloneUri = await search({
     message: "Which GitHub repo do you want to deploy?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          new inquirer.Separator(),
-          {
-            name: "Missing a repo? Select this option to configure your GitHub connection settings",
-            value: MANAGE_INSTALLATION_CHOICE,
-          },
-          new inquirer.Separator(),
-          ...fuzzy
-            .filter(input, cloneUris, {
-              extract: (uri) => extractRepoSlugFromUri(uri) || "",
-            })
-            .map((result) => {
-              return {
-                name: extractRepoSlugFromUri(result.original) || "",
-                value: result.original,
-              };
-            }),
-        ]),
-      );
-    },
+    source: (input = ""): Array<Choice<string> | Separator> => [
+      new Separator(),
+      {
+        name: "Missing a repo? Select this option to configure your GitHub connection settings",
+        value: MANAGE_INSTALLATION_CHOICE,
+      },
+      new Separator(),
+      ...fuzzy
+        .filter(input, cloneUris, {
+          extract: (uri) => extractRepoSlugFromUri(uri) || "",
+        })
+        .map((result) => {
+          return {
+            name: extractRepoSlugFromUri(result.original) || "",
+            value: result.original,
+          };
+        }),
+    ],
   });
 
   return cloneUri;
@@ -453,22 +431,16 @@ async function promptCloneUri(
  */
 export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink): Promise<string> {
   const branches = await devConnect.listAllBranches(repoLink.name);
-  const branch = await promptOnce({
-    type: "autocomplete",
-    name: "branch",
+  const branch = await search({
     message: "Pick a branch for continuous deployment",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          ...fuzzy.filter(input, Array.from(branches)).map((result) => {
-            return {
-              name: result.original,
-              value: result.original,
-            };
-          }),
-        ]),
-      );
-    },
+    source: (input = ""): Array<Choice<string> | Separator> => [
+      ...fuzzy.filter(input, Array.from(branches)).map((result) => {
+        return {
+          name: result.original,
+          value: result.original,
+        };
+      }),
+    ],
   });
 
   return branch;
@@ -496,10 +468,7 @@ export async function ensureSecretManagerAdminGrant(projectId: string): Promise<
   utils.logBullet(
     "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Developer Connect Service Agent.",
   );
-  const grant = await promptOnce({
-    type: "confirm",
-    message: "Grant the required role to the Developer Connect Service Agent?",
-  });
+  const grant = await confirm("Grant the required role to the Developer Connect Service Agent?");
   if (!grant) {
     utils.logBullet(
       "You, or your project administrator, should run the following command to grant the required role:\n\n" +

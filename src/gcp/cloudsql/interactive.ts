@@ -2,7 +2,7 @@ import * as pg from "pg";
 import * as ora from "ora";
 import * as clc from "colorette";
 import { logger } from "../../logger";
-import { confirm } from "../../prompt";
+import { confirm } from "../../promptV2";
 import * as Table from "cli-table3";
 
 // Not comprehensive list, used for best offer prompting.
