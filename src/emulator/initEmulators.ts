@@ -42,8 +42,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
     const projectId = getProjectId(config.options);
     let env: Env[] | null = [];
     try {
-      const projectRoot = detectProjectRoot({ cwd: config.options.cwd }) ?? backendRoot;
-      env = await maybeGenerateEmulatorYaml(projectId, projectRoot);
+      env = await maybeGenerateEmulatorYaml(projectId, backendRoot);
     } catch (e) {
       logger.log("WARN", "failed to export app hosting configs");
     }
