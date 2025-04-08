@@ -153,10 +153,9 @@ async function createFullyInstalledConnection(
     const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
-    await input({
-      message:
-        "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
-    });
+    await input(
+      "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
+    );
     conn = await gcb.getConnection(projectId, location, connectionId);
   }
 
