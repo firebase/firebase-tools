@@ -7,7 +7,6 @@ import { detectStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { Env, maybeGenerateEmulatorYaml } from "../apphosting/config";
-import { detectProjectRoot } from "../detectProjectRoot";
 import { Config } from "../config";
 import { getProjectId } from "../projectUtils";
 import { grantEmailsSecretAccess } from "../apphosting/secrets";
