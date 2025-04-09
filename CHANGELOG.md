@@ -1,0 +1,1 @@
+- Fixed an issue in the extensions emulator where parameter default values would not be substitued into resource definitions.
