@@ -97,6 +97,9 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
   }
 }
 
+/**
+ * Runs the development server in a child process.
+ */
 async function serve(
   projectId: string | undefined,
   port: number,
@@ -123,13 +126,25 @@ async function serve(
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
-    await spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject);
+
+    // NOTE: Development server should not block main emulator process.
+    spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject)
+      .catch((err) => {
+        logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
+      })
+      .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
     return;
   }
 
   const detectedStartCommand = await detectStartCommand(backendRoot);
   logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
-  await spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject);
+
+  // NOTE: Development server should not block main emulator process.
+  spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject)
+    .catch((err) => {
+      logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
+    })
+    .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
