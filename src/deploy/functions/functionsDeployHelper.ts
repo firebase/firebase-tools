@@ -109,7 +109,7 @@ export function parseFunctionSelector(selector: string, strict: boolean): Endpoi
  */
 export function getEndpointFilters(
   options: { only?: string },
-  strict = true,
+  strict = false,
 ): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;
