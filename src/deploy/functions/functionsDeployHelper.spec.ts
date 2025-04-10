@@ -163,6 +163,7 @@ describe("functionsDeployHelper", () => {
     interface Testcase {
       desc: string;
       selector: string;
+      strict?: boolean;
       expected: EndpointFilter[];
     }
 
@@ -172,11 +173,11 @@ describe("functionsDeployHelper", () => {
         selector: "func",
         expected: [
           {
-            codebase: DEFAULT_CODEBASE,
-            idChunks: ["func"],
+            codebase: "func",
           },
           {
-            codebase: "func",
+            codebase: DEFAULT_CODEBASE,
+            idChunks: ["func"],
           },
         ],
       },
@@ -185,11 +186,11 @@ describe("functionsDeployHelper", () => {
         selector: "g1.func",
         expected: [
           {
-            codebase: DEFAULT_CODEBASE,
-            idChunks: ["g1", "func"],
+            codebase: "g1.func",
           },
           {
-            codebase: "g1.func",
+            codebase: DEFAULT_CODEBASE,
+            idChunks: ["g1", "func"],
           },
         ],
       },
@@ -198,11 +199,11 @@ describe("functionsDeployHelper", () => {
         selector: "g1-func",
         expected: [
           {
-            codebase: DEFAULT_CODEBASE,
-            idChunks: ["g1", "func"],
+            codebase: "g1-func",
           },
           {
-            codebase: "g1-func",
+            codebase: DEFAULT_CODEBASE,
+            idChunks: ["g1", "func"],
           },
         ],
       },
@@ -216,14 +217,54 @@ describe("functionsDeployHelper", () => {
           },
         ],
       },
+      {
+        desc: "parses selector without codebase (strict)",
+        selector: "func",
+        strict: true,
+        expected: [
+          {
+            codebase: "func",
+          },
+        ],
+      },
+      {
+        desc: "parses group selector (with '.') without codebase (strict)",
+        selector: "g1.func",
+        strict: true,
+        expected: [
+          {
+            codebase: "g1.func",
+          },
+        ],
+      },
+      {
+        desc: "parses group selector (with '-') without codebase (strict)",
+        selector: "g1-func",
+        strict: true,
+        expected: [
+          {
+            codebase: "g1-func",
+          },
+        ],
+      },
+      {
+        desc: "parses group selector (with '-') with codebase (strict)",
+        selector: "node:g1-func",
+        strict: true,
+        expected: [
+          {
+            codebase: "node",
+            idChunks: ["g1", "func"],
+          },
+        ],
+      },
     ];
 
     for (const tc of testcases) {
       it(tc.desc, () => {
-        const actual = parseFunctionSelector(tc.selector);
-
-        expect(actual.length).to.equal(tc.expected.length);
-        expect(actual).to.deep.include.members(tc.expected);
+        const actual = parseFunctionSelector(tc.selector, tc.strict ?? false);
+        expect(actual).to.have.length(tc.expected.length);
+        expect(actual).to.have.deep.members(tc.expected);
       });
     }
   });
@@ -232,27 +273,38 @@ describe("functionsDeployHelper", () => {
     interface Testcase {
       desc: string;
       only: string;
-      expected: EndpointFilter[];
+      strict?: boolean;
+      expected: EndpointFilter[] | undefined;
     }
 
     const testcases: Testcase[] = [
+      {
+        desc: "should return undefined given no only option",
+        only: "",
+        expected: undefined,
+      },
+      {
+        desc: "should return undefined given no functions selector",
+        only: "hosting:siteA,storage:bucketB",
+        expected: undefined,
+      },
       {
         desc: "should parse multiple selectors",
         only: "functions:myFunc,functions:myOtherFunc",
         expected: [
           {
-            codebase: DEFAULT_CODEBASE,
-            idChunks: ["myFunc"],
-          },
-          {
             codebase: "myFunc",
           },
           {
             codebase: DEFAULT_CODEBASE,
-            idChunks: ["myOtherFunc"],
+            idChunks: ["myFunc"],
           },
           {
             codebase: "myOtherFunc",
+          },
+          {
+            codebase: DEFAULT_CODEBASE,
+            idChunks: ["myOtherFunc"],
           },
         ],
       },
@@ -261,11 +313,11 @@ describe("functionsDeployHelper", () => {
         only: "functions:groupA.myFunc",
         expected: [
           {
-            codebase: DEFAULT_CODEBASE,
-            idChunks: ["groupA", "myFunc"],
+            codebase: "groupA.myFunc",
           },
           {
-            codebase: "groupA.myFunc",
+            codebase: DEFAULT_CODEBASE,
+            idChunks: ["groupA", "myFunc"],
           },
         ],
       },
@@ -293,18 +345,86 @@ describe("functionsDeployHelper", () => {
           },
         ],
       },
+      {
+        desc: "should parse multiple selectors (strict)",
+        only: "functions:myFunc,functions:myOtherFunc",
+        strict: true,
+        expected: [
+          {
+            codebase: "myFunc",
+          },
+          {
+            codebase: "myOtherFunc",
+          },
+        ],
+      },
+      {
+        desc: "should parse nested selector (strict)",
+        only: "functions:groupA.myFunc",
+        strict: true,
+        expected: [
+          {
+            codebase: "groupA.myFunc",
+          },
+        ],
+      },
+      {
+        desc: "should parse selector with codebase (strict)",
+        only: "functions:my-codebase:myFunc,functions:another-codebase:anotherFunc",
+        strict: true,
+        expected: [
+          {
+            codebase: "my-codebase",
+            idChunks: ["myFunc"],
+          },
+          {
+            codebase: "another-codebase",
+            idChunks: ["anotherFunc"],
+          },
+        ],
+      },
+      {
+        desc: "should parse nested selector with codebase (strict)",
+        only: "functions:my-codebase:groupA.myFunc",
+        strict: true,
+        expected: [
+          {
+            codebase: "my-codebase",
+            idChunks: ["groupA", "myFunc"],
+          },
+        ],
+      },
+      {
+        desc: "should parse mixed selectors (strict)",
+        only: "functions:myFunc,functions:another:anotherFunc",
+        strict: true,
+        expected: [
+          {
+            codebase: "myFunc",
+          },
+          {
+            codebase: "another",
+            idChunks: ["anotherFunc"],
+          },
+        ],
+      },
     ];
 
     for (const tc of testcases) {
-      it(tc.desc, () => {
+      it(`${tc.desc}${tc.strict ? " (strict)" : ""}`, () => {
         const options = {
           only: tc.only,
         } as Options;
 
-        const actual = helper.getEndpointFilters(options);
+        const actual = helper.getEndpointFilters(options, tc.strict ?? false);
 
-        expect(actual?.length).to.equal(tc.expected.length);
-        expect(actual).to.deep.include.members(tc.expected);
+        if (tc.expected === undefined) {
+          expect(actual).to.be.undefined;
+        } else {
+          expect(actual).to.not.be.undefined;
+          expect(actual).to.have.length(tc.expected.length);
+          expect(actual).to.have.deep.members(tc.expected);
+        }
       });
     }
 
