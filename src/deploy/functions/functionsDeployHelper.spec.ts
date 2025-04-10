@@ -416,7 +416,7 @@ describe("functionsDeployHelper", () => {
           only: tc.only,
         } as Options;
 
-        const actual = helper.getEndpointFilters(options, tc.strict ?? false);
+        const actual = helper.getEndpointFilters(options, !!tc.strict);
 
         if (tc.expected === undefined) {
           expect(actual).to.be.undefined;
