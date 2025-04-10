@@ -411,7 +411,7 @@ describe("functionsDeployHelper", () => {
     ];
 
     for (const tc of testcases) {
-      it(`${tc.desc}${tc.strict ? " (strict)" : ""}`, () => {
+      it(tc.desc, () => {
         const options = {
           only: tc.only,
         } as Options;
