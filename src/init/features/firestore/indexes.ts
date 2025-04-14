@@ -1,18 +1,15 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 
 import { FirebaseError } from "../../../error";
 import * as api from "../../../firestore/api";
 import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
+import { readTemplateSync } from "../../../templates";
 
 const indexes = new api.FirestoreApi();
 
-const INDEXES_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../../templates/init/firestore/firestore.indexes.json",
-  "utf8"
-);
+const INDEXES_TEMPLATE = readTemplateSync("init/firestore/firestore.indexes.json");
 
 export function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
@@ -55,15 +52,15 @@ export function initIndexes(setup: any, config: any): Promise<any> {
         return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
       }
 
-      return getIndexesFromConsole(setup.projectId).then((contents: any) => {
+      return getIndexesFromConsole(setup.projectId, setup.databaseId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });
     });
 }
 
-function getIndexesFromConsole(projectId: any): Promise<any> {
-  const indexesPromise = indexes.listIndexes(projectId);
-  const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
+function getIndexesFromConsole(projectId: any, databaseId: any): Promise<any> {
+  const indexesPromise = indexes.listIndexes(projectId, databaseId);
+  const fieldOverridesPromise = indexes.listFieldOverrides(projectId, databaseId);
 
   return Promise.all([indexesPromise, fieldOverridesPromise])
     .then((res) => {

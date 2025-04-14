@@ -12,7 +12,7 @@ import {
 } from "../extensions/extensionsHelper";
 import { acceptLatestPublisherTOS } from "../extensions/tos";
 import { requirePermissions } from "../requirePermissions";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
 import { PublisherProfile } from "../extensions/types";
 
@@ -20,7 +20,7 @@ import { PublisherProfile } from "../extensions/types";
  * Register a publisher ID; run this before publishing any extensions.
  */
 export const command = new Command("ext:dev:register")
-  .description("register a publisher ID; run this before publishing your first extension.")
+  .description("register a publisher ID; run this before publishing your first extension")
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsPublisherApiEnabled)
@@ -42,31 +42,31 @@ export const command = new Command("ext:dev:register")
     let profile: PublisherProfile;
     try {
       profile = await registerPublisherProfile(projectId, publisherId);
-    } catch (err: any) {
-      if (err.status === 409) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 409) {
         const error =
           `Couldn't register the publisher ID '${clc.bold(publisherId)}' to the project '${clc.bold(
-            projectId
+            projectId,
           )}'.` +
           " This can happen for either of two reasons:\n\n" +
           ` - Publisher ID '${clc.bold(publisherId)}' is registered to another project\n` +
           ` - Project '${clc.bold(projectId)}' already has a publisher ID\n\n` +
           ` Try again with a unique publisher ID or a new project. If your business’s name has been registered to another project, contact Firebase support ${marked(
-            "(https://firebase.google.com/support/troubleshooter/contact)."
+            "(https://firebase.google.com/support/troubleshooter/contact).",
           )}`;
         throw new FirebaseError(error, { exit: 1 });
       }
       throw new FirebaseError(
         `Failed to register publisher ID ${clc.bold(publisherId)} for project ${clc.bold(
-          projectId
-        )}: ${err.message}`
+          projectId,
+        )}: ${getErrMsg(err)}`,
       );
     }
     utils.logLabeledSuccess(
       logPrefix,
       `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
-        projectId
-      )}. View and edit your profile at ${utils.consoleUrl(projectId, `/publisher`)}`
+        projectId,
+      )}. View and edit your profile at ${utils.consoleUrl(projectId, `/publisher`)}`,
     );
     return profile;
   });

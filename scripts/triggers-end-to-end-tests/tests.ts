@@ -80,7 +80,7 @@ describe("function triggers", () => {
       },
       (err: Error) => {
         expect.fail(err, `Error reading ${FIRESTORE_COMPLETION_MARKER} from database emulator.`);
-      }
+      },
     );
 
     database.ref(DATABASE_COMPLETION_MARKER).on(
@@ -90,7 +90,7 @@ describe("function triggers", () => {
       },
       (err: Error) => {
         expect.fail(err, `Error reading ${DATABASE_COMPLETION_MARKER} from database emulator.`);
-      }
+      },
     );
 
     let unsub = firestore.doc(FIRESTORE_COMPLETION_MARKER).onSnapshot(
@@ -99,7 +99,7 @@ describe("function triggers", () => {
       },
       (err: Error) => {
         expect.fail(err, `Error reading ${FIRESTORE_COMPLETION_MARKER} from firestore emulator.`);
-      }
+      },
     );
     firestoreUnsub.push(unsub);
 
@@ -109,7 +109,7 @@ describe("function triggers", () => {
       },
       (err: Error) => {
         expect.fail(err, `Error reading ${DATABASE_COMPLETION_MARKER} from firestore emulator.`);
-      }
+      },
     );
     firestoreUnsub.push(unsub);
   });

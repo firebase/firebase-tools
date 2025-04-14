@@ -1,8 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { getFirebaseProject, listFirebaseProjects } from "../management/projects";
-import { FirebaseProjectMetadata } from "../types/project";
+import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { prompt } from "../prompt";
@@ -52,17 +51,17 @@ export const command = new Command("use [alias_or_project_id]")
         clc.bold("firebase use") +
           " must be run from a Firebase project directory.\n\nRun " +
           clc.bold("firebase init") +
-          " to start a project directory in the current folder."
+          " to start a project directory in the current folder.",
       );
     }
 
     if (newActive) {
       // firebase use [alias_or_project]
-      let project: FirebaseProjectMetadata | undefined;
+      let project: ProjectInfo | undefined;
       const hasAlias = options.rc.hasProjectAlias(newActive);
       const resolvedProject = options.rc.resolveAlias(newActive);
       validateProjectId(resolvedProject);
-      return getFirebaseProject(resolvedProject)
+      return getProject(resolvedProject)
         .then((foundProject) => {
           project = foundProject;
         })
@@ -74,7 +73,7 @@ export const command = new Command("use [alias_or_project_id]")
             // firebase use [project] --alias [alias]
             if (!project) {
               return utils.reject(
-                "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive)
+                "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive),
               );
             }
             options.rc.addProjectAlias(aliasOpt, newActive);
@@ -86,7 +85,10 @@ export const command = new Command("use [alias_or_project_id]")
             if (!project) {
               // found alias, but not in project list
               return utils.reject(
-                "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(resolvedProject)
+                "Unable to use alias " +
+                  clc.bold(newActive) +
+                  ", " +
+                  verifyMessage(resolvedProject),
               );
             }
 
@@ -117,7 +119,7 @@ export const command = new Command("use [alias_or_project_id]")
             clc.bold("firebase use --add") +
             " in non-interactive mode. Use " +
             clc.bold("firebase use <project_id> --alias <alias>") +
-            " instead."
+            " instead.",
         );
       }
       return listFirebaseProjects().then((projects) => {
@@ -144,7 +146,7 @@ export const command = new Command("use [alias_or_project_id]")
           logger.info("Created alias", clc.bold(results.alias || ""), "for", results.project + ".");
           logger.info(
             "Now using alias",
-            clc.bold(results.alias || "") + " (" + results.project + ")"
+            clc.bold(results.alias || "") + " (" + results.project + ")",
           );
         });
       });
@@ -169,7 +171,7 @@ export const command = new Command("use [alias_or_project_id]")
       if (options.projectAlias) {
         logger.info(
           "Active Project:",
-          clc.bold(clc.cyan(options.projectAlias + " (" + options.project + ")"))
+          clc.bold(clc.cyan(options.projectAlias + " (" + options.project + ")")),
         );
       } else if (options.project) {
         logger.info("Active Project:", clc.bold(clc.cyan(options.project)));

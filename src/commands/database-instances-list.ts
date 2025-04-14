@@ -1,5 +1,4 @@
-const Table = require("cli-table");
-
+import * as Table from "cli-table3";
 import { Command } from "../command";
 import * as clc from "colorette";
 import * as ora from "ora";
@@ -22,21 +21,21 @@ export const command = new Command("database:instances:list")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .option(
     "-l, --location <location>",
-    "(optional) location for the database instance, defaults to all regions"
+    "(optional) location for the database instance, defaults to all regions",
   )
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
-        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
+        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`,
     ).start();
 
     const projectId = needProjectId(options);
     let instances: DatabaseInstance[] = [];
     try {
       instances = await listDatabaseInstances(projectId, location);
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.fail();
       throw err;
     }

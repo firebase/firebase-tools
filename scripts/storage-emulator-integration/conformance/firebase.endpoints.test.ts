@@ -508,7 +508,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
               })
               .on("close", resolve)
               .on("error", reject);
-          }
+          },
         );
       });
     });
@@ -543,7 +543,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
               })
               .on("close", resolve)
               .on("error", reject);
-          }
+          },
         );
       });
     });

@@ -49,7 +49,7 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
       });
     }
     if (!this.options.noBodyParser) {
-      app.use(bodyParser.json()); // used in most emulators
+      app.use(bodyParser.json({ limit: "130mb" })); // used in most emulators
     }
     app.set("json spaces", 2);
 
@@ -69,7 +69,7 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
           server.once("listening", resolve);
           server.once("error", reject);
           this.destroyers.add(utils.createDestroyer(server));
-        })
+        }),
       );
     }
   }

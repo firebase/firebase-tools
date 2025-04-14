@@ -26,7 +26,7 @@ export const command = new Command("functions:config:set [values...]")
   .action(async (args, options) => {
     if (!args.length) {
       throw new FirebaseError(
-        `Must supply at least one key/value pair, e.g. ${clc.bold('app.name="My App"')}`
+        `Must supply at least one key/value pair, e.g. ${clc.bold('app.name="My App"')}`,
       );
     }
     const projectId = needProjectId(options);
@@ -38,7 +38,7 @@ export const command = new Command("functions:config:set [values...]")
         throw new FirebaseError(`Unexpected undefined value for varId "${item.varId}`, { exit: 2 });
       }
       promises.push(
-        functionsConfig.setVariablesRecursive(projectId, item.configId, item.varId, item.val)
+        functionsConfig.setVariablesRecursive(projectId, item.configId, item.varId, item.val),
       );
     }
 
@@ -46,7 +46,7 @@ export const command = new Command("functions:config:set [values...]")
     utils.logSuccess("Functions config updated.");
     logger.info(
       `\nPlease deploy your functions for the change to take effect by running ${clc.bold(
-        "firebase deploy --only functions"
-      )}\n`
+        "firebase deploy --only functions",
+      )}\n`,
     );
   });

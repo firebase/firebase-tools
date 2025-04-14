@@ -23,15 +23,15 @@ export const command = new Command("ext:dev:undeprecate <extensionRef> <versionP
     if (version) {
       throw new FirebaseError(
         `The input extension reference must be of the format ${clc.bold(
-          "<publisherId>/<extensionId>"
-        )}. Version should be supplied in the version predicate argument.`
+          "<publisherId>/<extensionId>",
+        )}. Version should be supplied in the version predicate argument.`,
       );
     }
     if (!publisherId || !extensionId) {
       throw new FirebaseError(
         `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
-          extensionRef
-        )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
+          extensionRef,
+        )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`,
       );
     }
     const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
@@ -63,7 +63,7 @@ export const command = new Command("ext:dev:undeprecate <extensionRef> <versionP
     await utils.allSettled(
       extensionVersions.map(async (extensionVersion) => {
         await undeprecateExtensionVersion(extensionVersion.ref);
-      })
+      }),
     );
     utils.logLabeledSuccess(logPrefix, "successfully undeprecated extension version(s).");
   });

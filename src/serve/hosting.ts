@@ -32,7 +32,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   morganStream._write = (
     chunk: any,
     encoding: string,
-    callback: (error?: Error | null) => void
+    callback: (error?: Error | null) => void,
   ) => {
     if (chunk instanceof Buffer) {
       logger.logLabeled("BULLET", "hosting", chunk.toString().trim());
@@ -79,7 +79,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     logger.logLabeled(
       "SUCCESS",
       label,
-      "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port))
+      "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port)),
     );
   });
 
@@ -88,7 +88,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   server.on("error", (err: Error) => {
     logger.log("DEBUG", `Error from superstatic server: ${err.stack || ""}`);
     throw new FirebaseError(
-      `An error occurred while starting the hosting development server:\n\n${err.message}`
+      `An error occurred while starting the hosting development server:\n\n${err.message}`,
     );
   });
 }

@@ -4,18 +4,20 @@ import { logLabeledSuccess } from "../utils";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { secretManagerOrigin } from "../api";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import { needProjectId } from "../projectUtils";
 
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(
   "projects\\/" +
     "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/" +
     "secrets\\/" +
-    "(?<secret>[A-Za-z\\d\\-_]+)"
+    "(?<secret>[A-Za-z\\d\\-_]+)",
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
 const SECRET_VERSION_NAME_REGEX = new RegExp(
-  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)"
+  SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)",
 );
 
 export const secretManagerConsoleUri = (projectId: string) =>
@@ -25,10 +27,29 @@ export interface Secret {
   name: string;
   // This is either projectID or number
   projectId: string;
-  labels?: Record<string, string>;
+  labels: Record<string, string>;
+  replication: Replication;
+}
+
+export interface WireSecret {
+  name: string;
+  labels: Record<string, string>;
+  replication: Replication;
 }
 
 type SecretVersionState = "STATE_UNSPECIFIED" | "ENABLED" | "DISABLED" | "DESTROYED";
+
+export interface Replication {
+  automatic?: {};
+  userManaged?: {
+    replicas: Array<{
+      location: string;
+      customerManagedEncryption?: {
+        kmsKeyName: string;
+      };
+    }>;
+  };
+}
 
 export interface SecretVersion {
   secret: Secret;
@@ -36,11 +57,12 @@ export interface SecretVersion {
 
   // Output-only fields
   readonly state?: SecretVersionState;
+  readonly createTime?: string;
 }
 
 interface CreateSecretRequest {
   name: string;
-  replication: { automatic: {} };
+  replication: Replication;
   labels: Record<string, string>;
 }
 
@@ -51,6 +73,7 @@ interface AddVersionRequest {
 interface SecretVersionResponse {
   name: string;
   state: SecretVersionState;
+  createTime: string;
 }
 
 interface AccessSecretVersionResponse {
@@ -62,15 +85,16 @@ interface AccessSecretVersionResponse {
 
 const API_VERSION = "v1";
 
-const client = new Client({ urlPrefix: secretManagerOrigin, apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: secretManagerOrigin(), apiVersion: API_VERSION });
 
 /**
  * Returns secret resource of given name in the project.
  */
 export async function getSecret(projectId: string, name: string): Promise<Secret> {
-  const getRes = await client.get<Secret>(`projects/${projectId}/secrets/${name}`);
+  const getRes = await client.get<WireSecret>(`projects/${projectId}/secrets/${name}`);
   const secret = parseSecretResourceName(getRes.body.name);
   secret.labels = getRes.body.labels ?? {};
+  secret.replication = getRes.body.replication ?? {};
   return secret;
 }
 
@@ -78,7 +102,7 @@ export async function getSecret(projectId: string, name: string): Promise<Secret
  * Lists all secret resources associated with a project.
  */
 export async function listSecrets(projectId: string, filter?: string): Promise<Secret[]> {
-  type Response = { secrets: Secret[]; nextPageToken?: string };
+  type Response = { secrets: WireSecret[]; nextPageToken?: string };
   const secrets: Secret[] = [];
   const path = `projects/${projectId}/secrets`;
   const baseOpts = filter ? { queryParams: { filter } } : {};
@@ -95,6 +119,7 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
       secrets.push({
         ...parseSecretResourceName(s.name),
         labels: s.labels ?? {},
+        replication: s.replication ?? {},
       });
     }
 
@@ -112,7 +137,7 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
 export async function getSecretMetadata(
   projectId: string,
   secretName: string,
-  version: string
+  version: string,
 ): Promise<{
   secret?: Secret;
   secretVersion?: SecretVersion;
@@ -120,7 +145,7 @@ export async function getSecretMetadata(
   const secretInfo: any = {};
   try {
     secretInfo.secret = await getSecret(projectId, secretName);
-    secretInfo.secretVersion = getSecretVersion(projectId, secretName, version);
+    secretInfo.secretVersion = await getSecretVersion(projectId, secretName, version);
   } catch (err: any) {
     // Throw anything other than the expected 404 errors.
     if (err.status !== 404) {
@@ -136,7 +161,7 @@ export async function getSecretMetadata(
 export async function listSecretVersions(
   projectId: string,
   name: string,
-  filter?: string
+  filter?: string,
 ): Promise<Required<SecretVersion[]>> {
   type Response = { versions: SecretVersionResponse[]; nextPageToken?: string };
   const secrets: Required<SecretVersion[]> = [];
@@ -155,6 +180,7 @@ export async function listSecretVersions(
       secrets.push({
         ...parseSecretVersionResourceName(s.name),
         state: s.state,
+        createTime: s.createTime,
       });
     }
 
@@ -172,14 +198,15 @@ export async function listSecretVersions(
 export async function getSecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<Required<SecretVersion>> {
   const getRes = await client.get<SecretVersionResponse>(
-    `projects/${projectId}/secrets/${name}/versions/${version}`
+    `projects/${projectId}/secrets/${name}/versions/${version}`,
   );
   return {
     ...parseSecretVersionResourceName(getRes.body.name),
     state: getRes.body.state,
+    createTime: getRes.body.createTime,
   };
 }
 
@@ -189,10 +216,10 @@ export async function getSecretVersion(
 export async function accessSecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<string> {
   const res = await client.get<AccessSecretVersionResponse>(
-    `projects/${projectId}/secrets/${name}/versions/${version}:access`
+    `projects/${projectId}/secrets/${name}/versions/${version}:access`,
   );
   return Buffer.from(res.body.payload.data, "base64").toString();
 }
@@ -203,7 +230,7 @@ export async function accessSecretVersion(
 export async function destroySecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version: string,
 ): Promise<void> {
   if (version === "latest") {
     const sv = await getSecretVersion(projectId, name, "latest");
@@ -238,6 +265,8 @@ export function parseSecretResourceName(resourceName: string): Secret {
   return {
     projectId: match.groups.project,
     name: match.groups.secret,
+    labels: {},
+    replication: {},
   };
 }
 
@@ -253,8 +282,11 @@ export function parseSecretVersionResourceName(resourceName: string): SecretVers
     secret: {
       projectId: match.groups.project,
       name: match.groups.secret,
+      labels: {},
+      replication: {},
     },
     versionId: match.groups.version,
+    createTime: "",
   };
 }
 
@@ -271,22 +303,37 @@ export function toSecretVersionResourceName(secretVersion: SecretVersion): strin
 export async function createSecret(
   projectId: string,
   name: string,
-  labels: Record<string, string>
+  labels: Record<string, string>,
+  location?: string,
 ): Promise<Secret> {
+  let replication: CreateSecretRequest["replication"];
+  if (location) {
+    replication = {
+      userManaged: {
+        replicas: [
+          {
+            location,
+          },
+        ],
+      },
+    };
+  } else {
+    replication = { automatic: {} };
+  }
+
   const createRes = await client.post<CreateSecretRequest, Secret>(
     `projects/${projectId}/secrets`,
     {
       name,
-      replication: {
-        automatic: {},
-      },
+      replication,
       labels,
     },
-    { queryParams: { secretId: name } }
+    { queryParams: { secretId: name } },
   );
   return {
     ...parseSecretResourceName(createRes.body.name),
     labels,
+    replication,
   };
 }
 
@@ -296,15 +343,19 @@ export async function createSecret(
 export async function patchSecret(
   projectId: string,
   name: string,
-  labels: Record<string, string>
+  labels: Record<string, string>,
 ): Promise<Secret> {
   const fullName = `projects/${projectId}/secrets/${name}`;
-  const res = await client.patch<Omit<Secret, "projectId">, Secret>(
+  const res = await client.patch<Omit<WireSecret, "replication">, WireSecret>(
     fullName,
     { name: fullName, labels },
-    { queryParams: { updateMask: "labels" } } // Only allow patching labels for now.
+    { queryParams: { updateMask: "labels" } }, // Only allow patching labels for now.
   );
-  return parseSecretResourceName(res.body.name);
+  return {
+    ...parseSecretResourceName(res.body.name),
+    labels: res.body.labels,
+    replication: res.body.replication,
+  };
 }
 
 /**
@@ -321,7 +372,7 @@ export async function deleteSecret(projectId: string, name: string): Promise<voi
 export async function addVersion(
   projectId: string,
   name: string,
-  payloadData: string
+  payloadData: string,
 ): Promise<Required<SecretVersion>> {
   const res = await client.post<AddVersionRequest, { name: string; state: SecretVersionState }>(
     `projects/${projectId}/secrets/${name}:addVersion`,
@@ -329,20 +380,23 @@ export async function addVersion(
       payload: {
         data: Buffer.from(payloadData).toString("base64"),
       },
-    }
+    },
   );
   return {
     ...parseSecretVersionResourceName(res.body.name),
     state: res.body.state,
+    createTime: "",
   };
 }
 
 /**
  * Returns IAM policy of a secret resource.
  */
-export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
+export async function getIamPolicy(
+  secret: Pick<Secret, "projectId" | "name">,
+): Promise<iam.Policy> {
   const res = await client.get<iam.Policy>(
-    `projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`
+    `projects/${secret.projectId}/secrets/${secret.name}:getIamPolicy`,
   );
   return res.body;
 }
@@ -350,7 +404,10 @@ export async function getIamPolicy(secret: Secret): Promise<iam.Policy> {
 /**
  * Sets IAM policy on a secret resource.
  */
-export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Promise<void> {
+export async function setIamPolicy(
+  secret: Pick<Secret, "projectId" | "name">,
+  bindings: iam.Binding[],
+): Promise<void> {
   await client.post<{ policy: Partial<iam.Policy>; updateMask: string }, iam.Policy>(
     `projects/${secret.projectId}/secrets/${secret.name}:setIamPolicy`,
     {
@@ -358,7 +415,7 @@ export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Pro
         bindings,
       },
       updateMask: "bindings",
-    }
+    },
   );
 }
 
@@ -366,10 +423,30 @@ export async function setIamPolicy(secret: Secret, bindings: iam.Binding[]): Pro
  * Ensure that given service agents have the given IAM role on the secret resource.
  */
 export async function ensureServiceAgentRole(
-  secret: Secret,
+  secret: Pick<Secret, "projectId" | "name">,
   serviceAccountEmails: string[],
-  role: string
+  role: string,
 ): Promise<void> {
+  const bindings = await checkServiceAgentRole(secret, serviceAccountEmails, role);
+  if (bindings.length) {
+    await module.exports.setIamPolicy(secret, bindings);
+  }
+
+  // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
+  // As a safeguard against forgetting to do so, we log it here.
+  logLabeledSuccess(
+    "secretmanager",
+    `Granted ${role} on projects/${secret.projectId}/secrets/${
+      secret.name
+    } to ${serviceAccountEmails.join(", ")}`,
+  );
+}
+
+export async function checkServiceAgentRole(
+  secret: Pick<Secret, "projectId" | "name">,
+  serviceAccountEmails: string[],
+  role: string,
+): Promise<iam.Binding[]> {
   const policy = await module.exports.getIamPolicy(secret);
   const bindings: iam.Binding[] = policy.bindings || [];
   let binding = bindings.find((b) => b.role === role);
@@ -386,16 +463,43 @@ export async function ensureServiceAgentRole(
     }
   }
 
-  if (shouldShortCircuit) return;
+  if (shouldShortCircuit) return [];
+  return bindings;
+}
 
-  await module.exports.setIamPolicy(secret, bindings);
+export const FIREBASE_MANAGED = "firebase-managed";
 
-  // SecretManager would like us to _always_ inform users when we grant access to one of their secrets.
-  // As a safeguard against forgetting to do so, we log it here.
-  logLabeledSuccess(
-    "secretmanager",
-    `Granted ${role} on projects/${secret.projectId}/secrets/${
-      secret.name
-    } to ${serviceAccountEmails.join(", ")}`
+/**
+ * Returns true if secret is managed by Cloud Functions for Firebase.
+ * This used to be firebase-managed: true, but was later changed to firebase-managed: functions to
+ * improve readability.
+ */
+export function isFunctionsManaged(secret: Secret): boolean {
+  return (
+    secret.labels[FIREBASE_MANAGED] === "true" || secret.labels[FIREBASE_MANAGED] === "functions"
   );
+}
+
+/**
+ * Returns true if secret is managed by Firebase App Hosting.
+ */
+export function isAppHostingManaged(secret: Secret): boolean {
+  return secret.labels[FIREBASE_MANAGED] === "apphosting";
+}
+
+/**
+ * Utility used in the "before" command annotation to enable the API.
+ */
+
+export function ensureApi(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return ensureApiEnabled.ensure(projectId, secretManagerOrigin(), "secretmanager", true);
+}
+/**
+ * Return labels to mark secret as managed by Firebase.
+ * @internal
+ */
+
+export function labels(product: "functions" | "apphosting" = "functions"): Record<string, string> {
+  return { [FIREBASE_MANAGED]: product };
 }

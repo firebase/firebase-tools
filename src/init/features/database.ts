@@ -17,6 +17,7 @@ import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";
 import { Client } from "../../apiv2";
+import { rtdbManagementOrigin } from "../../api";
 
 interface DatabaseSetup {
   projectId?: string;
@@ -34,7 +35,7 @@ interface DatabaseSetupConfig {
 const DEFAULT_RULES = JSON.stringify(
   { rules: { ".read": "auth != null", ".write": "auth != null" } },
   null,
-  2
+  2,
 );
 
 async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
@@ -58,14 +59,14 @@ function writeDBRules(
   rules: string,
   logMessagePrefix: string,
   filename: string,
-  config: Config
+  config: Config,
 ): void {
   config.writeProjectFile(filename, rules);
   utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
   logger.info(
     `Future modifications to ${clc.bold(
-      filename
-    )} will update Realtime Database Security Rules when you run`
+      filename,
+    )} will update Realtime Database Security Rules when you run`,
   );
   logger.info(clc.bold("firebase deploy") + ".");
 }
@@ -86,21 +87,21 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
     project,
     instanceName,
     DatabaseInstanceType.DEFAULT_DATABASE,
-    selectedLocation
+    selectedLocation,
   );
   // if the conventional instance name is not available, pick the first suggestion.
   if (!checkOutput.available) {
     if (!checkOutput.suggestedIds || checkOutput.suggestedIds.length === 0) {
       logger.debug(
-        `No instance names were suggested instead of conventional instance name: ${instanceName}`
+        `No instance names were suggested instead of conventional instance name: ${instanceName}`,
       );
       throw new FirebaseError("Failed to create default RTDB instance");
     }
     instanceName = checkOutput.suggestedIds[0];
     logger.info(
       `${clc.yellow(
-        "WARNING:"
-      )} your project ID has the legacy name format, so your default Realtime Database instance will be named differently: ${instanceName}`
+        "WARNING:",
+      )} your project ID has the legacy name format, so your default Realtime Database instance will be named differently: ${instanceName}`,
     );
   }
   const spinner = ora(`Creating your default Realtime Database instance: ${instanceName}`).start();
@@ -109,7 +110,7 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
       project,
       instanceName,
       selectedLocation,
-      DatabaseInstanceType.DEFAULT_DATABASE
+      DatabaseInstanceType.DEFAULT_DATABASE,
     );
     spinner.succeed();
     return createdInstance;
@@ -129,7 +130,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
 
   let instanceDetails;
   if (setup.projectId) {
-    await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
+    await ensure(setup.projectId, rtdbManagementOrigin(), "database", false);
     logger.info();
     setup.instance =
       setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
@@ -154,7 +155,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
 
   logger.info();
   logger.info(
-    "Firebase Realtime Database Security Rules allow you to define how your data should be"
+    "Firebase Realtime Database Security Rules allow you to define how your data should be",
   );
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
@@ -177,11 +178,11 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   if (fsutils.fileExistsSync(filename)) {
     const rulesDescription = instanceDetails
       ? `the Realtime Database Security Rules for ${clc.bold(
-          instanceDetails.name
+          instanceDetails.name,
         )} from the Firebase console`
       : "default rules";
     const msg = `File ${clc.bold(
-      filename
+      filename,
     )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
 
     writeRules = await promptOnce({
@@ -196,7 +197,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
         await getDBRules(instanceDetails),
         `Database Rules for ${instanceDetails.name}`,
         filename,
-        config
+        config,
       );
       return;
     }
@@ -206,8 +207,8 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   logger.info("Skipping overwrite of Realtime Database Security Rules.");
   logger.info(
     `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
-      "firebase deploy"
-    )}.`
+      "firebase deploy",
+    )}.`,
   );
   return;
 }

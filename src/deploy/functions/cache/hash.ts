@@ -45,7 +45,7 @@ export function getSecretsHash(endpoint: Endpoint): string {
 export function getEndpointHash(
   sourceHash?: string,
   envHash?: string,
-  secretsHash?: string
+  secretsHash?: string,
 ): string {
   const combined = [sourceHash, envHash, secretsHash].filter((hash) => !!hash).join("");
   return createHash(combined);

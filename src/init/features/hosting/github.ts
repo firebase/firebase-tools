@@ -1,7 +1,6 @@
 import { bold, underline } from "colorette";
 import * as fs from "fs";
-import * as yaml from "js-yaml";
-import { safeLoad } from "js-yaml";
+import * as yaml from "yaml";
 import * as ora from "ora";
 import * as path from "path";
 import * as libsodium from "libsodium-wrappers";
@@ -32,12 +31,12 @@ let YML_FULL_PATH_MERGE: string;
 const YML_PULL_REQUEST_FILENAME = "firebase-hosting-pull-request.yml";
 const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
-const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
+const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v4";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
 const SERVICE_ACCOUNT_MAX_KEY_NUMBER = 10;
 
-const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin(), auth: false });
 
 /**
  * Assists in setting up a GitHub workflow by doing the following:
@@ -60,7 +59,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   if (!setup.config.hosting) {
     return reject(
-      `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`
+      `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`,
     );
   }
 
@@ -76,7 +75,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   // GitHub Oauth
   logBullet(
-    "Authorizing with GitHub to upload your service account to a GitHub repository's secrets store."
+    "Authorizing with GitHub to upload your service account to a GitHub repository's secrets store.",
   );
 
   const ghAccessToken = await signInWithGitHub();
@@ -105,12 +104,12 @@ export async function initGitHub(setup: Setup): Promise<void> {
   const serviceAccountJSON = await createServiceAccountAndKeyWithRetry(
     setup,
     repo,
-    serviceAccountName
+    serviceAccountName,
   );
 
   logger.info();
   logSuccess(
-    `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`
+    `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`,
   );
 
   const spinnerSecrets = ora(`Uploading service account secrets to repository: ${repo}`);
@@ -123,7 +122,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     ghAccessToken,
     await encryptedServiceAccountJSON,
     keyId,
-    githubSecretName
+    githubSecretName,
   );
   spinnerSecrets.stop();
 
@@ -137,7 +136,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     logBullet(`You have a predeploy script configured in firebase.json.`);
   }
 
-  const { script } = await promptForBuildScript();
+  const { script } = await promptForBuildScript(setup?.hosting?.useWebFrameworks);
 
   const ymlDeployDoc = loadYMLDeploy();
 
@@ -158,7 +157,9 @@ export async function initGitHub(setup: Setup): Promise<void> {
       YML_FULL_PATH_PULL_REQUEST,
       githubSecretName,
       setup.projectId,
-      script
+      script,
+      setup?.hosting?.useWebFrameworks,
+      setup?.hosting?.source,
     );
 
     logger.info();
@@ -192,7 +193,9 @@ export async function initGitHub(setup: Setup): Promise<void> {
         branch,
         githubSecretName,
         setup.projectId,
-        script
+        script,
+        setup?.hosting?.useWebFrameworks,
+        setup?.hosting?.source,
       );
 
       logger.info();
@@ -203,10 +206,10 @@ export async function initGitHub(setup: Setup): Promise<void> {
   logger.info();
   logLabeledBullet(
     "Action required",
-    `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
+    `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`,
   );
   logger.info(
-    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`))
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId()}`)),
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -264,7 +267,7 @@ function loadYMLDeploy(): { exists: boolean; branch?: string } {
 }
 
 function loadYML(ymlPath: string) {
-  return safeLoad(fs.readFileSync(ymlPath, "utf8"));
+  return yaml.parse(fs.readFileSync(ymlPath, "utf8"));
 }
 
 function mkdirNotExists(dir: string): void {
@@ -277,6 +280,7 @@ function mkdirNotExists(dir: string): void {
 type GitHubWorkflowConfig = {
   name: string;
   on: string | { [key: string]: { [key: string]: string[] } };
+  permissions?: string | { [key: string]: string };
   jobs: {
     [key: string]: {
       if?: string;
@@ -287,6 +291,9 @@ type GitHubWorkflowConfig = {
         with?: { [key: string]: string };
         env?: { [key: string]: string };
       }[];
+      defaults?: {
+        run?: Record<string, string>;
+      };
     };
   };
 };
@@ -295,11 +302,18 @@ function writeChannelActionYMLFile(
   ymlPath: string,
   secretName: string,
   projectId: string,
-  script?: string
+  script: string | undefined,
+  useWebFrameworks: boolean | undefined,
+  hostingSource: string | undefined,
 ): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on PR",
     on: "pull_request",
+    permissions: {
+      checks: "write",
+      contents: "read",
+      "pull-requests": "write",
+    },
     jobs: {
       ["build_and_preview"]: {
         if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}", // secrets aren't accessible on PRs from forks
@@ -309,25 +323,44 @@ function writeChannelActionYMLFile(
     },
   };
 
-  if (script) {
-    workflowConfig.jobs.build_and_preview.steps.push({
-      run: script,
-    });
-  }
-
-  workflowConfig.jobs.build_and_preview.steps.push({
+  const buildAndPreviewParams: Record<string, any> = {
     uses: HOSTING_GITHUB_ACTION_NAME,
     with: {
       repoToken: "${{ secrets.GITHUB_TOKEN }}",
       firebaseServiceAccount: `\${{ secrets.${secretName} }}`,
       projectId: projectId,
     },
-  });
+  };
+
+  if (useWebFrameworks) {
+    // install is required for web frameworks
+    workflowConfig.jobs.build_and_preview.steps.push({ run: "npm ci" });
+
+    buildAndPreviewParams.env = {
+      FIREBASE_CLI_EXPERIMENTS: "webframeworks",
+    };
+
+    // if source is not root, set the working directory in the GitHub Action so that
+    // the npm script does not fail
+    if (hostingSource && hostingSource !== ".") {
+      workflowConfig.jobs.build_and_preview.defaults = {
+        run: { "working-directory": hostingSource },
+      };
+    }
+  }
+
+  if (script) {
+    workflowConfig.jobs.build_and_preview.steps.push({
+      run: script,
+    });
+  }
+
+  workflowConfig.jobs.build_and_preview.steps.push(buildAndPreviewParams);
 
   const ymlContents = `# This file was auto-generated by the Firebase CLI
 # https://github.com/firebase/firebase-tools
 
-${yaml.safeDump(workflowConfig)}`;
+${yaml.stringify(workflowConfig)}`;
 
   mkdirNotExists(GITHUB_DIR);
   mkdirNotExists(WORKFLOW_DIR);
@@ -339,7 +372,9 @@ function writeDeployToProdActionYMLFile(
   branch: string | undefined,
   secretName: string,
   projectId: string,
-  script?: string
+  script: string | undefined,
+  useWebFrameworks: boolean | undefined,
+  hostingSource: string | undefined,
 ): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on merge",
@@ -352,13 +387,7 @@ function writeDeployToProdActionYMLFile(
     },
   };
 
-  if (script) {
-    workflowConfig.jobs.build_and_deploy.steps.push({
-      run: script,
-    });
-  }
-
-  workflowConfig.jobs.build_and_deploy.steps.push({
+  const buildAndDeployParams: Record<string, any> = {
     uses: HOSTING_GITHUB_ACTION_NAME,
     with: {
       repoToken: "${{ secrets.GITHUB_TOKEN }}",
@@ -366,12 +395,35 @@ function writeDeployToProdActionYMLFile(
       channelId: "live",
       projectId: projectId,
     },
-  });
+  };
+
+  if (useWebFrameworks) {
+    // install is required for web frameworks
+    workflowConfig.jobs.build_and_deploy.steps.push({ run: "npm ci" });
+
+    buildAndDeployParams.env = {
+      FIREBASE_CLI_EXPERIMENTS: "webframeworks",
+    };
+
+    // if source is not root, set the working directory in the GitHub Action so that
+    // the npm script does not fail
+    if (hostingSource && hostingSource !== ".") {
+      workflowConfig.jobs.build_and_deploy.defaults = {
+        run: { "working-directory": hostingSource },
+      };
+    }
+  }
+
+  if (script) {
+    workflowConfig.jobs.build_and_deploy.steps.push({ run: script });
+  }
+
+  workflowConfig.jobs.build_and_deploy.steps.push(buildAndDeployParams);
 
   const ymlContents = `# This file was auto-generated by the Firebase CLI
 # https://github.com/firebase/firebase-tools
 
-${yaml.safeDump(workflowConfig)}`;
+${yaml.stringify(workflowConfig)}`;
 
   mkdirNotExists(GITHUB_DIR);
   mkdirNotExists(WORKFLOW_DIR);
@@ -383,7 +435,7 @@ async function uploadSecretToGitHub(
   ghAccessToken: string,
   encryptedServiceAccountJSON: string,
   keyId: string,
-  secretName: string
+  secretName: string,
 ): Promise<{ status: any }> {
   const data = {
     ["encrypted_value"]: encryptedServiceAccountJSON,
@@ -393,13 +445,13 @@ async function uploadSecretToGitHub(
   return await githubApiClient.put<any, { status: any }>(
     `/repos/${repo}/actions/secrets/${secretName}`,
     data,
-    { headers }
+    { headers },
   );
 }
 
 async function promptForRepo(
   options: any,
-  ghAccessToken: string
+  ghAccessToken: string,
 ): Promise<{ repo: string; key: string; keyId: string }> {
   let key = "";
   let keyId = "";
@@ -417,7 +469,7 @@ async function promptForRepo(
             {
               headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
               queryParams: { type: "owner" },
-            }
+            },
           );
           key = body.key;
           keyId = body.key_id;
@@ -427,17 +479,19 @@ async function promptForRepo(
             logger.info();
             logWarning(
               "The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?",
-              "error"
+              "error",
             );
             logger.info();
             logLabeledBullet(
               "Action required",
-              `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`
+              `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`,
             );
             logger.info(
               bold(
-                underline(`https://github.com/settings/connections/applications/${githubClientId}`)
-              )
+                underline(
+                  `https://github.com/settings/connections/applications/${githubClientId()}`,
+                ),
+              ),
             );
             logger.info();
           }
@@ -450,7 +504,9 @@ async function promptForRepo(
   return { repo, key, keyId };
 }
 
-async function promptForBuildScript(): Promise<{ script?: string }> {
+async function promptForBuildScript(
+  useWebFrameworks: boolean | undefined,
+): Promise<{ script?: string }> {
   const { shouldSetupScript } = await prompt({}, [
     {
       type: "confirm",
@@ -468,7 +524,12 @@ async function promptForBuildScript(): Promise<{ script?: string }> {
     {
       type: "input",
       name: "script",
-      default: "npm ci && npm run build",
+      /**
+       * Do not suggest a default script if the user is using web frameworks:
+       * - build script is handled by frameworks code
+       * - install is required for frameworks, the npm ci will be added by default
+       */
+      default: useWebFrameworks ? undefined : "npm ci && npm run build",
       message: "What script should be run before every deploy?",
     },
   ]);
@@ -477,7 +538,7 @@ async function promptForBuildScript(): Promise<{ script?: string }> {
 }
 
 async function promptToSetupDeploys(
-  defaultBranch: string
+  defaultBranch: string,
 ): Promise<{ setupDeploys: boolean; branch?: string }> {
   const { setupDeploys } = await prompt({}, [
     {
@@ -527,7 +588,7 @@ async function getRepoDetails(repo: string, ghAccessToken: string) {
     `/repos/${repo}`,
     {
       headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-    }
+    },
   );
   return body;
 }
@@ -539,7 +600,7 @@ async function signInWithGitHub() {
 async function createServiceAccountAndKeyWithRetry(
   options: any,
   repo: string,
-  accountId: string
+  accountId: string,
 ): Promise<string> {
   const spinnerServiceAccount = ora("Retrieving a service account.");
   spinnerServiceAccount.start();
@@ -555,12 +616,12 @@ async function createServiceAccountAndKeyWithRetry(
       if (serviceAccountKeys.length >= SERVICE_ACCOUNT_MAX_KEY_NUMBER) {
         throw new FirebaseError(
           `You cannot add another key because the service account ${bold(
-            accountId
+            accountId,
           )} already contains the max number of keys: ${SERVICE_ACCOUNT_MAX_KEY_NUMBER}.`,
           {
             original: e,
             exit: 1,
-          }
+          },
         );
       }
       throw e;
@@ -570,7 +631,7 @@ async function createServiceAccountAndKeyWithRetry(
     spinnerServiceAccount.start();
     await deleteServiceAccount(
       options.projectId,
-      `${accountId}@${options.projectId}.iam.gserviceaccount.com`
+      `${accountId}@${options.projectId}.iam.gserviceaccount.com`,
     );
     const serviceAccountJSON = await createServiceAccountAndKey(options, repo, accountId);
     spinnerServiceAccount.stop();
@@ -581,14 +642,14 @@ async function createServiceAccountAndKeyWithRetry(
 async function createServiceAccountAndKey(
   options: any,
   repo: string,
-  accountId: string
+  accountId: string,
 ): Promise<string> {
   try {
     await createServiceAccount(
       options.projectId,
       accountId,
       `A service account with permission to deploy to Firebase Hosting and Cloud Functions for the GitHub repository ${repo}`,
-      `GitHub Actions (${repo})`
+      `GitHub Actions (${repo})`,
     );
   } catch (e: any) {
     // No need to throw if there is an existing service account
@@ -602,6 +663,10 @@ async function createServiceAccountAndKey(
     // Required to add preview URLs to Auth authorized domains
     // https://github.com/firebase/firebase-tools/issues/2732
     firebaseRoles.authAdmin,
+
+    // Required to add preview URLs to Auth authorized domains
+    // https://github.com/firebase/firebase-tools/issues/6828
+    firebaseRoles.serviceUsageConsumer,
 
     // Required for CLI deploys
     firebaseRoles.apiKeysViewer,

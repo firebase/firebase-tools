@@ -30,7 +30,7 @@
     top: var(--divider-vert-margin);
     width: 1px;
     height: calc(100% - var(--divider-vert-margin) * 2);
-    content: '';
+    content: "";
     background-color: var(--vscode-button-foreground);
     opacity: 0.2;
     pointer-events: none;

@@ -1,6 +1,7 @@
 import * as API from "./api-types";
 import * as Spec from "./api-spec";
 import * as util from "./util";
+import { Backup, BackupSchedule } from "../gcp/firestore";
 
 const QUERY_SCOPE_SEQUENCE = [
   API.QueryScope.COLLECTION_GROUP,
@@ -82,6 +83,42 @@ export function compareLocation(a: API.Location, b: API.Location): number {
 }
 
 /**
+ * Compare two Backup API entries for sorting.
+ * Ordered by: location, snapshotTime (descending), then name
+ */
+export function compareApiBackup(a: Backup, b: Backup): number {
+  // the location is embedded in the name (projects/myproject/locations/mylocation/backups/mybackup)
+  const aLocation = a.name!.split("/")[3];
+  const bLocation = b.name!.split("/")[3];
+  if (aLocation && bLocation && aLocation !== bLocation) {
+    return aLocation > bLocation ? 1 : -1;
+  }
+
+  if (a.snapshotTime && b.snapshotTime && a.snapshotTime !== b.snapshotTime) {
+    return a.snapshotTime > b.snapshotTime ? -1 : 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
+}
+
+/**
+ * Compare two BackupSchedule API entries for sorting.
+ *
+ * Daily schedules should precede weekly ones. Break ties by name.
+ */
+export function compareApiBackupSchedule(a: BackupSchedule, b: BackupSchedule): number {
+  if (a.dailyRecurrence && !b.dailyRecurrence) {
+    return -1;
+  } else if (a.weeklyRecurrence && b.dailyRecurrence) {
+    return 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
+}
+
+/**
  * Compare two Field api entries for sorting.
  *
  * Comparisons:
@@ -104,7 +141,7 @@ export function compareApiField(a: API.Field, b: API.Field): number {
   return compareArraysSorted(
     a.indexConfig.indexes || [],
     b.indexConfig.indexes || [],
-    compareApiIndex
+    compareApiIndex,
   );
 }
 
@@ -143,6 +180,7 @@ export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverrid
  *   1) Field path.
  *   2) Sort order (if it exists).
  *   3) Array config (if it exists).
+ *   4) Vector config (if it exists).
  */
 function compareIndexField(a: API.IndexField, b: API.IndexField): number {
   if (a.fieldPath !== b.fieldPath) {
@@ -155,6 +193,10 @@ function compareIndexField(a: API.IndexField, b: API.IndexField): number {
 
   if (a.arrayConfig !== b.arrayConfig) {
     return compareArrayConfig(a.arrayConfig, b.arrayConfig);
+  }
+
+  if (a.vectorConfig !== b.vectorConfig) {
+    return compareVectorConfig(a.vectorConfig, b.vectorConfig);
   }
 
   return 0;
@@ -186,6 +228,19 @@ function compareOrder(a?: API.Order, b?: API.Order): number {
 
 function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {
   return ARRAY_CONFIG_SEQUENCE.indexOf(a) - ARRAY_CONFIG_SEQUENCE.indexOf(b);
+}
+
+function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number {
+  if (!a) {
+    if (!b) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if (!b) {
+    return -1;
+  }
+  return a.dimension - b.dimension;
 }
 
 /**

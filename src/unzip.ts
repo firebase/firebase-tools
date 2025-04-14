@@ -40,7 +40,7 @@ const findNextDataDescriptor = (data: Buffer, offset: number): [number, number] 
     position++;
   }
   throw new FirebaseError(
-    "Unable to find compressed and uncompressed size of file in ZIP archive."
+    "Unable to find compressed and uncompressed size of file in ZIP archive.",
   );
 };
 
@@ -76,10 +76,10 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
     }
     entry.compressedData = data.slice(
       position + entry.headerSize,
-      position + entry.headerSize + entry.compressedSize
+      position + entry.headerSize + entry.compressedSize,
     );
     logger.debug(
-      `[unzip] Entry: ${entry.fileName} (compressed_size=${entry.compressedSize} bytes, uncompressed_size=${entry.uncompressedSize} bytes)`
+      `[unzip] Entry: ${entry.fileName} (compressed_size=${entry.compressedSize} bytes, uncompressed_size=${entry.uncompressedSize} bytes)`,
     );
 
     entry.fileName = entry.fileName.replace(/\//g, path.sep);
@@ -106,7 +106,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
         await pipelineAsync(
           Readable.from(entry.compressedData),
           zlib.createInflateRaw(),
-          fs.createWriteStream(outputFilePath)
+          fs.createWriteStream(outputFilePath),
         );
       } else {
         throw new FirebaseError(`Unsupported compression method: ${compressionMethod}`);

@@ -11,7 +11,7 @@ export async function updateRules(
   projectId: string,
   instance: string,
   src: any,
-  options: { dryRun?: boolean } = {}
+  options: { dryRun?: boolean } = {},
 ): Promise<void> {
   const queryParams: { dryRun?: string } = {};
   if (options.dryRun) {
@@ -29,7 +29,7 @@ export async function updateRules(
   const origin = utils.getDatabaseUrl(
     realtimeOriginOrCustomUrl(downstreamOptions.instanceDetails.databaseUrl),
     instance,
-    ""
+    "",
   );
   const client = new Client({ urlPrefix: origin });
   const response = await client.request<any, any>({

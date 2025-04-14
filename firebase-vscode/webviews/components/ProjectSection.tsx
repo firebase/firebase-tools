@@ -7,14 +7,26 @@ import React from "react";
 import styles from "./AccountSection.scss";
 import { ExternalLink } from "./ui/ExternalLink";
 import { TEXT } from "../globals/ux-text";
+import { User } from "../types/auth";
+import { ServiceAccountUser } from "../types";
 
+interface UserWithType extends User {
+  type?: string;
+}
 export function ProjectSection({
-  userEmail,
+  user,
   projectId,
+  isMonospace,
 }: {
-  userEmail: string | null;
+  user: UserWithType | ServiceAccountUser | null;
   projectId: string | null | undefined;
+  isMonospace: boolean;
 }) {
+  const userEmail = user?.email;
+
+  if (!userEmail || (isMonospace && user?.type === "service_account")) {
+    return;
+  }
   return (
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>
@@ -49,7 +61,7 @@ export function initProjectSelection(userEmail: string | null) {
     broker.send("showMessage", {
       msg: "Not logged in",
       options: {
-        modal: true,
+        modal: !process.env.VSCODE_TEST_MODE,
         detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
       },
     });
@@ -73,8 +85,9 @@ export function ProjectInfo({ projectId }: { projectId: string }) {
       {projectId}
       <ExternalLink
         href={`https://console.firebase.google.com/project/${projectId}/overview`}
-        text={TEXT.CONSOLE_LINK_DESCRIPTION}
-      />
+      >
+        {TEXT.CONSOLE_LINK_DESCRIPTION}
+      </ExternalLink>
     </>
   );
 }

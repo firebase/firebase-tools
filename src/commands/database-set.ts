@@ -4,7 +4,7 @@ import * as fs from "fs";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { promptOnce } from "../prompt";
@@ -21,7 +21,7 @@ export const command = new Command("database:set <path> [infile]")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -46,7 +46,7 @@ export const command = new Command("database:set <path> [infile]")
         default: false,
         message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
       },
-      options
+      options,
     );
     if (!confirm) {
       throw new FirebaseError("Command aborted.");
@@ -67,15 +67,17 @@ export const command = new Command("database:set <path> [infile]")
         body: inStream,
         queryParams: dbJsonURL.searchParams,
       });
-    } catch (err: any) {
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
+    } catch (err: unknown) {
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while setting data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     utils.logSuccess("Data persisted successfully");
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path),
     );
   });

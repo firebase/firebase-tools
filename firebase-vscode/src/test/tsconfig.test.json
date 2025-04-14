@@ -1,11 +1,30 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2020",
-		"lib": ["es2020"],
-		"outDir": "../../dist/test",
-		"sourceMap": true,
-		"rootDir": "./",
-		"strict": true,
-	}
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020",
+    "lib": ["es2020"],
+    "strict": false /* enable all strict type-checking options */,
+    "allowJs": true,
+    "checkJs": false,
+    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+
+    //"moduleResolution": "node",
+    "outDir": "../../dist/test",
+    "rootDirs": ["../", "../../common/", "../../../src/"],
+    "jsx": "react",
+    "types": [
+      "node",
+      "@wdio/mocha-framework",
+      "@wdio/globals/types",
+      "@types/mocha",
+      "wdio-vscode-service"
+    ]
+  },
+  // "ts-node": {
+  //   "esm": true
+  // },
+  "exclude": ["**/*.test.ts"],
+  "include": ["../**/*", "../../common/**/*", "../../../src/types/**/*"]
 }

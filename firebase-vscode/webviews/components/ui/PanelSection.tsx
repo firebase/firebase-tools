@@ -10,20 +10,23 @@ export function PanelSection({
   title,
   children,
   isLast,
-}: {
+  style,
+}: React.PropsWithChildren<{
   title?: ReactNode;
-  children: ReactNode;
   isLast?: boolean;
-}) {
+
+  style?: React.CSSProperties;
+}>) {
   let [isExpanded, setExpanded] = useState(true);
 
   return (
-    <>
+    <div className={styles.panel}>
       {title && (
         <button
           aria-label={(isExpanded ? "Hide" : "Toggle") + " " + title}
           className={cn(styles.panelExpando, isExpanded && styles.isExpanded)}
           onClick={() => setExpanded(!isExpanded)}
+          style={style}
         >
           <Icon className={styles.panelExpandoIcon} icon="chevron-down" />
           <Heading level={5}>{title}</Heading>
@@ -31,12 +34,12 @@ export function PanelSection({
       )}
       {isExpanded && (
         <>
-          {title && <Spacer size="medium" />}
+          {title ? <Spacer size="medium" /> : <Spacer size="large" />}
           {children}
           <Spacer size="xlarge" />
-          {!isLast && <VSCodeDivider style={{ width: "100vw" }} />}
+          {!isLast && <VSCodeDivider />}
         </>
       )}
-    </>
+    </div>
   );
 }

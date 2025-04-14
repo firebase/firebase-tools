@@ -29,7 +29,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
           this.emu.getProjectId(),
           trigger.name,
           trigger.region,
-          this.emu.getInfo() // EmulatorRegistry is not available in shell
+          this.emu.getInfo(), // EmulatorRegistry is not available in shell
         );
       }
     }
@@ -38,7 +38,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   private createLegacyEvent(
     eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"],
     data: unknown,
-    opts: EventOptions
+    opts: EventOptions,
   ): LegacyEvent {
     // Resource could either be 'string' or '{ name: string, service: string }'
     let resource = opts.resource;
@@ -59,7 +59,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   private createCloudEvent(
     eventTrigger: Required<EmulatedTriggerDefinition>["eventTrigger"],
     data: unknown,
-    opts: EventOptions
+    opts: EventOptions,
   ): CloudEvent<unknown> {
     const ce: CloudEvent<unknown> = {
       specversion: "1.0",
@@ -92,7 +92,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   call(trigger: EmulatedTriggerDefinition, data: any, opts: EventOptions): void {
     logger.debug(`shell:${trigger.name}: trigger=${JSON.stringify(trigger)}`);
     logger.debug(
-      `shell:${trigger.name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`
+      `shell:${trigger.name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`,
     );
 
     const eventTrigger = trigger.eventTrigger;

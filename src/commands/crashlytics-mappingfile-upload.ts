@@ -22,14 +22,14 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
   .option("--app <appID>", "the app id of your Firebase app")
   .option(
     "--resource-file <resourceFile>",
-    "path to the Android resource XML file that includes the mapping file id"
+    "path to the Android resource XML file that includes the mapping file id",
   )
   .action(async (mappingFile: string, options: CommandOptions) => {
     const app = getGoogleAppID(options);
     const debug = !!options.debug;
     if (!mappingFile) {
       throw new FirebaseError(
-        "set `--mapping-file <mappingFile>` to a valid mapping file path, e.g. app/build/outputs/mapping.txt"
+        "set `--mapping-file <mappingFile>` to a valid mapping file path, e.g. app/build/outputs/mapping.txt",
       );
     }
     const mappingFilePath = mappingFile;
@@ -37,7 +37,7 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
     const resourceFilePath = options.resourceFile;
     if (!resourceFilePath) {
       throw new FirebaseError(
-        "set --resource-file <resourceFile> to a valid Android resource file path, e.g. app/main/res/values/strings.xml"
+        "set --resource-file <resourceFile> to a valid Android resource file path, e.g. app/main/res/values/strings.xml",
       );
     }
 
@@ -53,7 +53,7 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
 function getGoogleAppID(options: CommandOptions): string {
   if (!options.app) {
     throw new FirebaseError(
-      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000"
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
     );
   }
   return options.app;

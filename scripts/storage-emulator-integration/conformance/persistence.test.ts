@@ -86,7 +86,7 @@ describe("Storage persistence conformance tests", () => {
       TEST_ENV.appConfig,
       TEST_ENV.useProductionServers,
       TEST_ENV.authEmulatorHost,
-      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, ""),
     );
   });
 
@@ -134,7 +134,7 @@ describe("Storage persistence conformance tests", () => {
         await firebase.storage().ref(testFileName).putString(fileContent);
       },
       TEST_FILE_NAME,
-      fileContent
+      fileContent,
     );
 
     const [downloadedFileContent] = await testBucket.file(TEST_FILE_NAME).download();

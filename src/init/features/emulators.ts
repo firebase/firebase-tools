@@ -1,17 +1,19 @@
 import * as clc from "colorette";
-import * as _ from "lodash";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import { Setup } from "../index";
+import { AdditionalInitFns } from "../../emulator/initEmulators";
+import { Config } from "../../config";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
   download?: boolean;
 }
 
-export async function doSetup(setup: any, config: any) {
+export async function doSetup(setup: Setup, config: Config) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
@@ -53,6 +55,17 @@ export async function doSetup(setup: any, config: any) {
         },
       ]);
     }
+
+    const additionalInitFn = AdditionalInitFns[selected];
+    if (additionalInitFn) {
+      const additionalOptions = await additionalInitFn(config);
+      if (additionalOptions) {
+        setup.config.emulators[selected] = {
+          ...setup.config.emulators[selected],
+          ...additionalOptions,
+        };
+      }
+    }
   }
 
   if (selections.emulators.length) {
@@ -79,7 +92,7 @@ export async function doSetup(setup: any, config: any) {
             type: "input",
             name: "port",
             message: `Which port do you want to use for the ${clc.underline(
-              uiDesc
+              uiDesc,
             )} (leave empty to use any available port)?`,
           },
         ]);
@@ -112,7 +125,7 @@ export async function doSetup(setup: any, config: any) {
       }
     }
 
-    if (_.get(setup, "config.emulators.ui.enabled")) {
+    if (setup?.config?.emulators?.ui?.enabled) {
       downloadIfNecessary(Emulators.UI);
     }
   }

@@ -44,7 +44,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "WARN_ONCE",
             "database",
-            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled."
+            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled.",
           );
           continue;
         }
@@ -59,7 +59,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "BULLET",
             "database",
-            `Change detected, updating rules for ${c.instance}...`
+            `Change detected, updating rules for ${c.instance}...`,
           );
 
           try {
@@ -91,7 +91,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled("WARN", "database", rulesError);
           this.logger.logLabeled("WARN", "database", "Failed to update rules");
           throw new FirebaseError(
-            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`,
           );
         }
       }
@@ -152,7 +152,7 @@ export class DatabaseEmulator implements EmulatorInstance {
               })
               .on("end", reject);
           }
-        }
+        },
       );
 
       req.on("error", reject);

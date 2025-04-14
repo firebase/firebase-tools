@@ -12,7 +12,7 @@ export const command = new Command("functions:log")
   .description("read logs from deployed functions")
   .option(
     "--only <function_names>",
-    'only show logs of specified, comma-seperated functions (e.g. "funcA,funcB")'
+    'only show logs of specified, comma-seperated functions (e.g. "funcA,funcB")',
   )
   .option("-n, --lines <num_lines>", "specify number of log lines to fetch")
   .option("--open", "open logs page in web browser")
@@ -23,7 +23,7 @@ export const command = new Command("functions:log")
       const apiFilter = functionsLog.getApiFilter(options.only);
       if (options.open) {
         const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${qs.escape(
-          apiFilter
+          apiFilter,
         )}&project=${projectId}`;
         opn(url);
         return;
@@ -32,7 +32,7 @@ export const command = new Command("functions:log")
         projectId,
         apiFilter,
         options.lines || 35,
-        "desc"
+        "desc",
       );
       functionsLog.logEntries(entries);
       return entries;

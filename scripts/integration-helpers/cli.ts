@@ -4,13 +4,16 @@ import * as spawn from "cross-spawn";
 export class CLIProcess {
   process?: ChildProcess;
 
-  constructor(private readonly name: string, private readonly workdir: string) {}
+  constructor(
+    private readonly name: string,
+    private readonly workdir: string,
+  ) {}
 
   start(
     cmd: string,
     project: string,
     additionalArgs: string[],
-    logDoneFn?: (d: unknown) => unknown
+    logDoneFn?: (d: unknown) => unknown,
   ): Promise<void> {
     const args = [cmd, "--project", project];
 

@@ -215,7 +215,7 @@ export abstract class Throttler<T, R> {
   private addHelper(
     task: T,
     timeoutMillis?: number,
-    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
+    wait?: { resolve: (result: R) => void; reject: (err: Error) => void },
   ): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");

@@ -31,7 +31,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false
+  allowOverwrite: boolean = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -64,7 +64,7 @@ export async function writeToManifest(
 
 export async function writeEmptyManifest(
   config: Config,
-  options: { nonInteractive: boolean; force: boolean }
+  options: { nonInteractive: boolean; force: boolean },
 ): Promise<void> {
   if (!fs.existsSync(config.path("extensions"))) {
     fs.mkdirSync(config.path("extensions"));
@@ -95,7 +95,7 @@ export async function writeEmptyManifest(
 export async function writeLocalSecrets(
   specs: ManifestInstanceSpec[],
   config: Config,
-  force?: boolean
+  force?: boolean,
 ): Promise<void> {
   for (const spec of specs) {
     const extensionSpec = await getExtensionSpec(spec);
@@ -105,7 +105,7 @@ export async function writeLocalSecrets(
 
     const writeBuffer: Record<string, string> = {};
     const locallyOverridenSecretParams = extensionSpec.params.filter(
-      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local
+      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local,
     );
     for (const paramSpec of locallyOverridenSecretParams) {
       const key = paramSpec.param;
@@ -123,7 +123,7 @@ export async function writeLocalSecrets(
       await config.askWriteProjectFile(
         `extensions/${spec.instanceId}.secret.local`,
         content,
-        force
+        force,
       );
     }
   }
@@ -148,13 +148,13 @@ export function removeFromManifest(instanceId: string, config: Config) {
   if (config.projectFileExists(`extensions/${instanceId}.env.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.env.local`);
     logger.info(
-      `Removed extension instance local environment config extensions/${instanceId}.env.local`
+      `Removed extension instance local environment config extensions/${instanceId}.env.local`,
     );
   }
   if (config.projectFileExists(`extensions/${instanceId}.secret.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.secret.local`);
     logger.info(
-      `Removed extension instance local secret config extensions/${instanceId}.secret.local`
+      `Removed extension instance local secret config extensions/${instanceId}.secret.local`,
     );
   }
   // TODO(lihes): Remove all project specific env files.
@@ -164,7 +164,7 @@ export function loadConfig(options: any): Config {
   const existingConfig = Config.load(options, true);
   if (!existingConfig) {
     throw new FirebaseError(
-      "Not currently in a Firebase directory. Run `firebase init` to create a Firebase directory."
+      "Not currently in a Firebase directory. Run `firebase init` to create a Firebase directory.",
     );
   }
   return existingConfig;
@@ -194,7 +194,7 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   const source = getInstanceTarget(instanceId, config);
   if (isLocalPath(source)) {
     throw new FirebaseError(
-      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`
+      `Extension instance ${instanceId} doesn't have a ref because it is from a local source`,
     );
   }
   return refs.parse(source);
@@ -210,7 +210,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
       target = s.localPath;
     } else {
       throw new FirebaseError(
-        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`
+        `Unable to resolve ManifestInstanceSpec, make sure you provide either extension ref or a local path to extension source code`,
       );
     }
 
@@ -224,7 +224,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
 async function writeEnvFiles(
   specs: ManifestInstanceSpec[],
   config: Config,
-  force?: boolean
+  force?: boolean,
 ): Promise<void> {
   for (const spec of specs) {
     const content = Object.entries(spec.params)

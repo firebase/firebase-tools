@@ -32,7 +32,7 @@ export class StorageCloudFunctions {
 
   public async dispatch(
     action: StorageCloudFunctionAction,
-    object: CloudStorageObjectMetadata
+    object: CloudStorageObjectMetadata,
   ): Promise<void> {
     if (!this.enabled) {
       return;
@@ -54,7 +54,7 @@ export class StorageCloudFunctions {
         cloudEventBody,
         {
           headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
-        }
+        },
       );
       if (cloudEventRes.status !== 200) {
         errStatus.push(cloudEventRes.status);
@@ -67,7 +67,7 @@ export class StorageCloudFunctions {
       this.logger.logLabeled(
         "WARN",
         "functions",
-        `Firebase Storage function was not triggered due to emulation error. Please file a bug.`
+        `Firebase Storage function was not triggered due to emulation error. Please file a bug.`,
       );
     }
   }
@@ -75,7 +75,7 @@ export class StorageCloudFunctions {
   /** Legacy Google Events type */
   private createLegacyEventRequestBody(
     action: StorageCloudFunctionAction,
-    objectMetadataPayload: ObjectMetadataPayload
+    objectMetadataPayload: ObjectMetadataPayload,
   ) {
     const timestamp = new Date();
     return {
@@ -94,7 +94,7 @@ export class StorageCloudFunctions {
   /** Modern CloudEvents type */
   private createCloudEventRequestBody(
     action: StorageCloudFunctionAction,
-    objectMetadataPayload: ObjectMetadataPayload
+    objectMetadataPayload: ObjectMetadataPayload,
   ): CloudEvent<StorageObjectData> {
     const ceAction = STORAGE_V2_ACTION_MAP[action];
     if (!ceAction) {
@@ -229,7 +229,7 @@ export interface ObjectMetadataPayload {
         team?: string;
       };
       etag?: string;
-    }
+    },
   ];
 
   owner?: {

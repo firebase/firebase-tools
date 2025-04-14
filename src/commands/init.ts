@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
@@ -14,21 +13,26 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
+import { readTemplateSync } from "../templates";
 
 const homeDir = os.homedir();
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
-const BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const BANNER_TEXT = readTemplateSync("banner.txt");
+const GITIGNORE_TEMPLATE = readTemplateSync("_gitignore");
 
 function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
 }
 
-const choices = [
+let choices: {
+  value: string;
+  name: string;
+  checked: boolean;
+  hidden?: boolean;
+}[] = [
   {
-    value: "database",
-    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
     checked: false,
   },
   {
@@ -42,13 +46,14 @@ const choices = [
     checked: false,
   },
   {
-    value: "hosting",
-    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    value: "apphosting",
+    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
     checked: false,
+    hidden: false,
   },
   {
-    value: "hosting:github",
-    name: "Hosting: Set up GitHub Action deploys",
+    value: "hosting",
+    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
     checked: false,
   },
   {
@@ -71,21 +76,42 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
+  {
+    value: "database",
+    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    checked: false,
+  },
+  {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+    hidden: true,
+  },
+  {
+    value: "dataconnect:sdk",
+    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  },
 ];
 
-if (isEnabled("frameworks")) {
-  choices.push({
-    value: "frameworks",
-    name: "Frameworks: Get started with Frameworks projects.",
-    checked: false,
-  });
+if (isEnabled("genkit")) {
+  choices = [
+    ...choices.slice(0, 2),
+    {
+      value: "genkit",
+      name: "Genkit: Setup a new Genkit project with Firebase",
+      checked: false,
+    },
+    ...choices.slice(2),
+  ];
 }
 
 const featureNames = choices.map((choice) => choice.value);
 
-const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
+const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
 
-This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory. 
+This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
 To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
 ${[...featureNames]
@@ -94,7 +120,8 @@ ${[...featureNames]
   .join("")}`;
 
 export const command = new Command("init [feature]")
-  .description(DESCRIPTION)
+  .description("interactively configure the current directory as a Firebase project directory")
+  .help(HELP)
   .before(requireAuth)
   .action(initAction);
 
@@ -109,7 +136,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
       clc.bold(feature) +
         " is not a supported feature; must be one of " +
         featureNames.join(", ") +
-        "."
+        ".",
     );
   }
 
@@ -145,7 +172,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
       "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
       clc.bold(config.projectDir) +
       "\n" +
-      warningText
+      warningText,
   );
 
   const setup: Setup = {
@@ -186,7 +213,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
           message:
             "Which Firebase features do you want to set up for this directory? " +
             "Press Space to select features, then Enter to confirm your choices.",
-          choices: choices,
+          choices: choices.filter((c) => !c.hidden),
         },
       ]);
     })
@@ -196,7 +223,7 @@ export function initAction(feature: string, options: Options): Promise<void> {
           "Must select at least one feature. Use " +
             clc.bold(clc.underline("SPACEBAR")) +
             " to select features, or specify a feature by running " +
-            clc.bold("firebase init [feature_name]")
+            clc.bold("firebase init [feature_name]"),
         );
       }
 

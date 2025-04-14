@@ -6,24 +6,22 @@ const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
-    `Firebase CLI v${pkg.version} is incompatible with Node.js ${nodeVersion} Please upgrade Node.js to version ${pkg.engines.node}`
+    `Firebase CLI v${pkg.version} is incompatible with Node.js ${nodeVersion} Please upgrade Node.js to version ${pkg.engines.node}`,
   );
   process.exit(1);
 }
 
 import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
-import * as TerminalRenderer from "marked-terminal";
+import { markedTerminal } from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+marked.use(markedTerminal() as any);
 
-import { Command } from "commander";
+import { CommanderStatic } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
-const stripAnsi = require("strip-ansi");
+import { stripVTControlCharacters } from "node:util";
 import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
@@ -35,8 +33,8 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import * as winston from "winston";
 
-let args = process.argv.slice(2);
-let cmd: Command;
+const args = process.argv.slice(2);
+let cmd: CommanderStatic;
 
 function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
@@ -79,9 +77,9 @@ logger.add(
     filename: logFilename,
     format: winston.format.printf((info) => {
       const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
-      return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+      return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
     }),
-  })
+  }),
 );
 
 logger.debug("-".repeat(70));
@@ -131,13 +129,16 @@ process.on("exit", (code) => {
 
   // Notify about updates right before process exit.
   try {
+    const installMethod = !process.env.FIREPIT_VERSION ? "npm" : "automatic script";
+    const updateCommand = !process.env.FIREPIT_VERSION
+      ? "npm install -g firebase-tools"
+      : "curl -sL https://firebase.tools | upgrade=true bash";
+
     const updateMessage =
       `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-      `To update to the latest version using npm, run\n${clc.cyan(
-        "npm install -g firebase-tools"
-      )}\n` +
+      `To update to the latest version using ${installMethod}, run\n${clc.cyan(updateCommand)}\n` +
       `For other CLI management options, visit the ${marked(
-        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)",
       )}`;
     // `defer: true` would interfere with commands that perform tasks (emulators etc.)
     // before exit since it installs a SIGINT handler that immediately exits. See:
@@ -160,11 +161,10 @@ process.on("uncaughtException", (err) => {
 });
 
 if (!handlePreviewToggles(args)) {
-  cmd = client.cli.parse(process.argv);
-
-  // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => !arg.includes("-"));
+  // determine if there are any arguments. if not, display help
   if (!args.length) {
     client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
   }
 }

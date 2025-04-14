@@ -28,9 +28,9 @@ export function release(context: any): Promise<any> {
             clc.bold(clc.green("database: ")) +
               "rules for database " +
               clc.bold(deploy.instance) +
-              " released successfully"
+              " released successfully",
           );
         });
-    })
+    }),
   );
 }

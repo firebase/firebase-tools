@@ -15,7 +15,7 @@ export const command = new Command("database:remove <path>")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -35,7 +35,7 @@ export const command = new Command("database:remove <path>")
         default: false,
         message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
       },
-      options
+      options,
     );
     if (!confirm) {
       return utils.reject("Command aborted.", { exit: 1 });

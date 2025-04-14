@@ -30,7 +30,7 @@ export async function obtainStorageBindings(projectNumber: string): Promise<Arra
  * @param eventTrigger the endpoints event trigger
  */
 export async function ensureStorageTriggerRegion(
-  endpoint: backend.Endpoint & backend.EventTriggered
+  endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
   const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
@@ -38,15 +38,15 @@ export async function ensureStorageTriggerRegion(
     if (!eventTrigger.eventFilters?.bucket) {
       throw new FirebaseError(
         "Error: storage event trigger is missing bucket filter: " +
-          JSON.stringify(eventTrigger, null, 2)
+          JSON.stringify(eventTrigger, null, 2),
       );
     }
     logger.debug(
-      `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`
+      `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`,
     );
     try {
       const bucket: { location: string } = await storage.getBucket(
-        eventTrigger.eventFilters.bucket
+        eventTrigger.eventFilters.bucket,
       );
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
@@ -61,7 +61,7 @@ export async function ensureStorageTriggerRegion(
     !regionInLocation(endpoint.region, eventTrigger.region)
   ) {
     throw new FirebaseError(
-      `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`
+      `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`,
     );
   }
 }

@@ -31,7 +31,10 @@ class BatchChunks extends stream.Transform {
   private batch: SizedData[] = [];
   private size = 0;
 
-  constructor(private maxSize: number, opts?: stream.TransformOptions) {
+  constructor(
+    private maxSize: number,
+    opts?: stream.TransformOptions,
+  ) {
     super({ ...opts, objectMode: true });
   }
 
@@ -127,7 +130,7 @@ export default class DatabaseImporter {
     private inStream: stream.Readable,
     private dataPath: string,
     private payloadSize: number,
-    concurrency: number
+    concurrency: number,
   ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
     this.limit = pLimit(concurrency);
@@ -153,7 +156,7 @@ export default class DatabaseImporter {
         "Importing is only allowed for an empty location. Delete all data by running " +
           clc.bold(`firebase database:remove ${this.dbUrl.pathname} --disable-triggers`) +
           ", then rerun this command.",
-        { exit: 2 }
+        { exit: 2 },
       );
     }
   }
@@ -209,9 +212,9 @@ export default class DatabaseImporter {
               {
                 original: err,
                 exit: 2,
-              }
-            )
-          )
+              },
+            ),
+          ),
         )
         .pipe(readChunks)
         .pipe(new BatchChunks(payloadSize))

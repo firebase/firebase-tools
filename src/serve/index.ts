@@ -37,12 +37,12 @@ export async function serve(options: any): Promise<void> {
   await Promise.all(
     targetNames.map((targetName: string) => {
       return TARGETS[targetName].start(options);
-    })
+    }),
   );
   await Promise.all(
     targetNames.map((targetName: string) => {
       return TARGETS[targetName].connect();
-    })
+    }),
   );
   void trackEmulator("emulators_started", {
     count: targetNames.length,
@@ -55,7 +55,7 @@ export async function serve(options: any): Promise<void> {
       Promise.all(
         targetNames.map((targetName: string) => {
           return TARGETS[targetName].stop(options);
-        })
+        }),
       )
         .then(resolve)
         .catch(resolve);

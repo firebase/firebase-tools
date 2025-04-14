@@ -1,0 +1,10 @@
+specVersion: v1beta
+name: fixture-ext-with-preinstall
+version: 1.0.0
+license: apache-2.0
+resources:
+  - name: capitalizeMessages
+    type: firebaseextensions.v1beta.function
+params:
+  - param: DO_BACKFILL
+    label: Do a backfill

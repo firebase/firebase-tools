@@ -29,6 +29,12 @@ enum SecretUpdateAction {
   SET_NEW,
 }
 
+/**
+ * Validates the user's response for param value against the param spec
+ * @param response The user's response
+ * @param spec The param spec
+ * @return True if the user's response is valid
+ */
 export function checkResponse(response: string, spec: Param): boolean {
   let valid = true;
   let responses: string[];
@@ -73,8 +79,10 @@ export function checkResponse(response: string, spec: Param): boolean {
 
 /**
  * Prompt users for params based on paramSpecs defined by the extension developer.
- * @param paramSpecs Array of params to ask the user about, parsed from extension.yaml.
- * @param firebaseProjectParams Autopopulated Firebase project-specific params
+ * @param args.projectId The projectId for the params
+ * @param args.instanceId The instanceId for the params
+ * @param args.paramSpecs Array of params to ask the user about, parsed from extension.yaml.
+ * @param args.firebaseProjectParams Autopopulated Firebase project-specific params
  * @return Promisified map of env vars to values.
  */
 export async function ask(args: {
@@ -138,6 +146,14 @@ export async function ask(args: {
   return result;
 }
 
+/**
+ * Asks the user for values for the extension parameter.
+ * @param args.projectId The projectId we are installing into
+ * @param args.instanceId The instanceId we are creating/updating/configuring
+ * @param args.paramSpec The spec for the param we are asking about
+ * @param args.reconfiguring If true we will reconfigure a secret
+ * @return ParamBindingOptions to specify the selected value(s) for the parameter.
+ */
 export async function askForParam(args: {
   projectId?: string;
   instanceId: string;
@@ -153,9 +169,9 @@ export async function askForParam(args: {
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(
-    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
-      description
-    ).trim()}`
+    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${(
+      await marked(description)
+    ).trim()}`,
   );
 
   while (!valid) {
@@ -295,7 +311,7 @@ async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<
 async function promptReconfigureSecret(
   projectId: string,
   instanceId: string,
-  paramSpec: Param
+  paramSpec: Param,
 ): Promise<string> {
   const action = await promptOnce({
     type: "list",
@@ -306,7 +322,7 @@ async function promptReconfigureSecret(
     ],
   });
   switch (action) {
-    case SecretUpdateAction.SET_NEW:
+    case SecretUpdateAction.SET_NEW: {
       let secret;
       let secretName;
       if (paramSpec.default) {
@@ -329,7 +345,7 @@ async function promptReconfigureSecret(
             secret = await secretManagerApi.createSecret(
               projectId,
               secretName,
-              secretsUtils.getSecretLabels(instanceId)
+              secretsUtils.getSecretLabels(instanceId),
             );
           }
           return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
@@ -339,17 +355,26 @@ async function promptReconfigureSecret(
       } else {
         return "";
       }
+    }
     case SecretUpdateAction.LEAVE:
     default:
       return paramSpec.default || "";
   }
 }
 
+/**
+ * Prompts the user to create a secret
+ * @param projectId The projectId to create the secret in
+ * @param instanceId The instanceId for the secret
+ * @param paramSpec The secret param spec
+ * @param secretName (Optional) The name to store the secret as
+ * @return The resource name of a new secret version or empty string if no secret is created.
+ */
 export async function promptCreateSecret(
   projectId: string,
   instanceId: string,
   paramSpec: Param,
-  secretName?: string
+  secretName?: string,
 ): Promise<string> {
   const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
   const secretValue = await promptOnce({
@@ -366,7 +391,7 @@ export async function promptCreateSecret(
       const secret = await secretManagerApi.createSecret(
         projectId,
         name,
-        secretsUtils.getSecretLabels(instanceId)
+        secretsUtils.getSecretLabels(instanceId),
       );
       return addNewSecretVersion(projectId, instanceId, secret, paramSpec, secretValue);
     } else {
@@ -380,7 +405,7 @@ export async function promptCreateSecret(
 async function generateSecretName(
   projectId: string,
   instanceId: string,
-  paramName: string
+  paramName: string,
 ): Promise<string> {
   let secretName = `ext-${instanceId}-${paramName}`;
   while (await secretManagerApi.secretExists(projectId, secretName)) {
@@ -394,13 +419,19 @@ async function addNewSecretVersion(
   instanceId: string,
   secret: secretManagerApi.Secret,
   paramSpec: Param,
-  secretValue: string
-) {
+  secretValue: string,
+): Promise<string> {
   const version = await secretManagerApi.addVersion(projectId, secret.name, secretValue);
   await secretsUtils.grantFirexServiceAgentSecretAdminRole(secret);
   return `projects/${version.secret.projectId}/secrets/${version.secret.name}/versions/${version.versionId}`;
 }
 
+/**
+ * Finds the label or value of a default option if the option is found in options
+ * @param options The param options to search for default
+ * @param def The value of the default to search for
+ * @return The label or value of the default if present or empty string if not.
+ */
 export function getInquirerDefault(options: ParamOption[], def: string): string {
   const defaultOption = options.find((o) => o.value === def);
   return defaultOption ? defaultOption.label || defaultOption.value : "";

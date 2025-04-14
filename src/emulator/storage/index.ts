@@ -67,11 +67,11 @@ export class StorageEmulator implements EmulatorInstance {
         rulesValidator,
         getAdminCredentialValidator(),
         this._persistence,
-        this._cloudFunctions
+        this._cloudFunctions,
       );
     };
     this._storageLayer = createStorageLayer(
-      getFirebaseRulesValidator((resource: string) => this._rulesManager.getRuleset(resource))
+      getFirebaseRulesValidator((resource: string) => this._rulesManager.getRuleset(resource)),
     );
     this._adminStorageLayer = createStorageLayer(getAdminOnlyFirebaseRulesValidator());
   }

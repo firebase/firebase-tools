@@ -1,67 +1,37 @@
-# firebase-vscode README
+# Firebase Data Connect for VSCode
 
-This extension is in the development and exploration stage.
+The Firebase Data Connect extension provides a suite of tools to assist developers in their Data Connect development workflow.
 
-## Running
+![Extension Demo Gif](https://www.gstatic.com/mobilesdk/241004_mobilesdk/fdc_extension_readme.gif)
 
-1. In order to make sure f5 launches the extension properly, first open your
-   VS Code session from the `firebase-vscode` subdirectory (not the `firebase-tools` directory).
-2. npm i (run this in both `firebase-tools` and `firebase-vscode`)
-3. Make sure the extension `amodio.tsl-problem-matcher` is installed - this
-   enables the watcher to work, otherwise the Extension Development Host
-   will not automatically open on F5 when the compilation is done.
-4. f5 to run opens new window
-   f5 -> npm run watch defined in tasks.json
-   My terminal didn't have npm available but yours might
+## Language Features
 
-Workaround if f5 doesnt work:
+The extension runs a Graphql Language Server that checks for syntax and compile time errors in your Data Connect code. Additionally, it provides auto-complete suggestions specific to Data Connect.
 
-1. Execute `npm run watch` from within the vscode directory
-   Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
-   Changing code within extension is hot-reloaded
-   Modifying extensions.js will not hot-reload
-   source file src/extension.ts
-2. Wait for completion
-3. Hit play from the left nav
+The extension will automatically generate GraphQL types based on your schema, viewable in your Explorer panel.
 
-New code changes are automatically rebuilt if you have `watch` running, however the new VSCode Plugin-enabled window will not reflect changes until reloaded.
-Manual reload from new window: "Developer: Reload Window" Default hotkey: cmd + R
+## Query Execution
 
-The communication between UI and extension done via the broker (see webview.postMessage)
-Web view uses react (carry-over from the hackweek project courtesy of Roman and Prakhar)
+Within your GraphQL files, you’ll see in-line Codelenses that can help you create and test operations.
 
-## Structure
+In your schema files, click on `Add Data` or `Read Data` to generate a corresponding operation to populate or read from your DB.
 
-Extention.ts main entry point, calls sidebar.ts and workflow.ts
-sidebar.ts loads the UI from the webviews folder
-workflow.ts is the driving component (logic source)
-cli.ts wraps CLI methods, importing from firebase-tools/src
+To execute an operation, click on `Run Local` or `Run Production`. This will execute your operation against the emulators, or your production Data Connect instance.
 
-When workflow.ts needs to execute some CLI command, it defers to cli.ts
+Note: You’ll need to start the Data Connect emulator in order to execute operations locally.
 
-## State
+## Strongly typed SDK Generation
 
-currentOptions maintains the currentState of the plugin and is passed as a whole object to populate calls to the firebase-tools methods
-`prepare` in the command includes a lot of
+The extension can help you set-up SDK generation with a simple folder selection. Once you’ve selected an app folder of your choice, client code will start generating automatically.
 
-## Logic
+## Local Emulator
 
-Calling firebase-tools in general follows the stuff:
+You can start a local emulator to test your queries on your application.
 
-1. instead of calling `before`, call `requireAuth` instead
-   requireAuth is a prerequisite for the plugin UI, needed
-   Zero-state (before login) directs the user to sign in with google (using firebase-tools CLI)
-2. prepare is an implicit command in the cmd class
-3. action
+## Deploy to Production
 
-requireAuth -> login with service account or check that you're already logged in via firebase-tools
+Once you’ve tested the schema and operations and ran the generated SDK in your app, deploy your schema, operation and data to your Cloud SQL instance in production.
 
-## Open issues
+### Documentation
 
-Login changes in the CLI are not immediately reflected in the Plugin, requires restart
-If logged-out in the middle of a plugin session, handle requireAuth errors gracefully
-Plugin startup is flaky sometimes
-Unit/Integration tests are not developed
-Code cleanliness/structure TODOs
-tsconfig.json's rootDirs includes ["src", "../src", "common"] which causes some issues with import autocomplete
-Three package.jsons - one for monospace and one for the standalone plugin, and then root to copy the correct version
+Please see [Getting started with Firebase Data Connect](https://firebase.google.com/docs/data-connect/quickstart).

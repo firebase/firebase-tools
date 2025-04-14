@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";
@@ -93,7 +93,7 @@ export class ProfileReport {
   constructor(
     tmpFile: string,
     outStream: NodeJS.WritableStream,
-    options: ProfileReportOptions = {}
+    options: ProfileReportOptions = {},
   ) {
     this.tempFile = tmpFile;
     this.output = outStream;
@@ -432,7 +432,7 @@ export class ProfileReport {
         speedData.times,
         formatNumber(speedData.millis / speedData.times) + " ms",
         formatNumber(
-          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
+          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount,
         ) + " ms",
       ];
       if (hasSecurity) {
@@ -597,14 +597,14 @@ export class ProfileReport {
         write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
-    const writeTable = (title: string, table: typeof Table) => {
+    const writeTable = (title: string, table: Table.Table) => {
       writeTitle(title);
       write(table.toString() + "\n");
     };
     writeTitle(
       `Report operations collected from ${new Date(
-        this.state.startTime
-      ).toISOString()} over ${totalTime} ms.`
+        this.state.startTime,
+      ).toISOString()} over ${totalTime} ms.`,
     );
     writeTitle("Speed Report\n");
     write(SPEED_NOTE + "\n\n");

@@ -20,13 +20,16 @@ interface Link {
 
 const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
+  { name: "App Hosting", arg: "apphosting", consolePath: "/apphosting" },
   { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
   { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
   { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
+  { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Extensions", arg: "extensions", consolePath: "/extensions" },
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
   { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
   { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
@@ -70,7 +73,7 @@ export const command = new Command("open [link]")
     let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -84,7 +87,7 @@ export const command = new Command("open [link]")
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n"),
       );
     }
 
@@ -94,7 +97,7 @@ export const command = new Command("open [link]")
     } else if (link.url) {
       url = link.url;
     } else if (link.arg === "hosting:site") {
-      url = utils.addSubdomain(api.hostingOrigin, options.site);
+      url = utils.addSubdomain(api.hostingOrigin(), options.site);
     } else if (link.arg === "functions:log") {
       url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
     } else {
@@ -104,8 +107,8 @@ export const command = new Command("open [link]")
     if (link.arg !== linkName) {
       logger.info(
         `${clc.bold(clc.cyan("Tip:"))} You can also run ${clc.bold(
-          clc.underline(`firebase open ${link.arg}`)
-        )}`
+          clc.underline(`firebase open ${link.arg}`),
+        )}`,
       );
       logger.info();
     }

@@ -2,7 +2,7 @@
 set -e
 
 printusage() {
-  echo "run.sh <version>"
+  echo "run.sh <version> <vscode_version>"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', or 'major'."

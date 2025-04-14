@@ -7,8 +7,8 @@
     "esModuleInterop": true,
     "jsx": "react",
     "sourceMap": true,
-		"rootDirs": ["./", "../../src", "../common"],
-    "strict": false /* enable all strict type-checking options */
+    "rootDirs": ["./", "../../src", "../common"],
+    "strict": true /* enable all strict type-checking options */
   },
   "include": ["../webviews/**/*", "../common/**/*"]
 }

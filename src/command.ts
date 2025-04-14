@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { CommanderStatic } from "commander";
-import { first, last, get, size, head, keys, values } from "lodash";
+import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
@@ -10,8 +10,9 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
+import { Options } from "./options";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -36,6 +37,7 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
+  private aliases: string[] = [];
   private actionFn: ActionFunction = (): void => {
     // noop by default, unless overwritten by `.action(fn)`.
   };
@@ -58,6 +60,16 @@ export class Command {
    */
   description(t: string): Command {
     this.descriptionText = t;
+    return this;
+  }
+
+  /**
+   * Sets an alias for a command.
+   * @param aliases an alternativre name for the command. Users will be able to call the command via this name.
+   * @return the command, for chaining.
+   */
+  alias(alias: string): Command {
+    this.aliases.push(alias);
     return this;
   }
 
@@ -125,7 +137,7 @@ export class Command {
   }
 
   /**
-   * Registers the command with the client. This is used to inisially set up
+   * Registers the command with the client. This is used to initially set up
    * all the commands and wraps their functionality with analytics and error
    * handling.
    * @param client the client object (from src/index.js).
@@ -136,6 +148,9 @@ export class Command {
     const cmd = program.command(this.cmd);
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
+    }
+    if (this.aliases) {
+      cmd.aliases(this.aliases);
     }
     this.options.forEach((args) => {
       const flags = args.shift();
@@ -174,10 +189,10 @@ export class Command {
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
-              "firebase help " + this.name
+              "firebase help " + this.name,
             )} for usage instructions`,
-            { exit: 1 }
-          )
+            { exit: 1 },
+          ),
         );
         return;
       }
@@ -190,16 +205,19 @@ export class Command {
       runner(...args)
         .then(async (result) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "success",
-                  result: result,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "success",
+                    result: result,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4("command_execution", {
@@ -219,23 +237,26 @@ export class Command {
                   command_name: this.name,
                   duration,
                 }),
-              ])
+              ]),
             );
           }
           process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  error: err.message,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "error",
+                    error: err.message,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           await withTimeout(
@@ -248,7 +269,7 @@ export class Command {
                   result: "error",
                   interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
                 },
-                duration
+                duration,
               ),
               isEmulator
                 ? trackEmulator("command_error", {
@@ -257,7 +278,7 @@ export class Command {
                     error_type: err.exit === 1 ? "user" : "unexpected",
                   })
                 : Promise.resolve(),
-            ])
+            ]),
           );
 
           client.errorOut(err);
@@ -328,25 +349,33 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: any): void {
+  private applyRC(options: Options): void {
     const rc = loadRC(options);
     options.rc = rc;
-
-    options.project =
-      options.project || (configstore.get("activeProjects") || {})[options.projectRoot];
+    const activeProject = options.projectRoot
+      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
+      : undefined;
+    options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
       options.project = options.config.defaults.project;
     }
 
     const aliases = rc.projects;
-    const rcProject = get(aliases, options.project);
+    const rcProject = options.project ? aliases[options.project] : undefined;
     if (rcProject) {
+      // Look up aliases
       options.projectAlias = options.project;
       options.project = rcProject;
     } else if (!options.project && size(aliases) === 1) {
+      // If there's only a single alias, use that.
+      // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
       options.projectAlias = head(keys(aliases));
       options.project = head(values(aliases));
+    } else if (!options.project && aliases["default"]) {
+      // If there's an alias named 'default', default to that.
+      options.projectAlias = "default";
+      options.project = aliases["default"];
     }
   }
 
@@ -357,7 +386,7 @@ export class Command {
   }): Promise<void> {
     if (options.project?.match(/^\d+$/)) {
       await requireAuth(options);
-      const { projectId, projectNumber } = await getFirebaseProject(options.project);
+      const { projectId, projectNumber } = await getProject(options.project);
       options.projectId = projectId;
       options.projectNumber = projectNumber;
     } else {
@@ -371,7 +400,7 @@ export class Command {
    * @return an async function that executes the command.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  runner(): (...a: any[]) => Promise<void> {
+  runner(): (...a: any[]) => Promise<any> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none

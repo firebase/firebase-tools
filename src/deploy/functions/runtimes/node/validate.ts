@@ -35,7 +35,7 @@ function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: 
 export function packageJsonIsValid(
   sourceDirName: string,
   sourceDir: string,
-  projectDir: string
+  projectDir: string,
 ): void {
   const packageJsonFile = path.join(sourceDir, "package.json");
   if (!fsutils.fileExistsSync(packageJsonFile)) {

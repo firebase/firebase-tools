@@ -26,7 +26,7 @@ function applyStringOpts(
   dest: { [key: string]: string },
   src: { [key: string]: string },
   keys: string[],
-  jsonKeys: string[]
+  jsonKeys: string[],
 ): void {
   for (const key of keys) {
     if (src[key]) {
@@ -63,7 +63,7 @@ export const command = new Command("database:get <path>")
   .option("--equal-to <val>", "restrict results to <val> (based on specified ordering)")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireDatabaseInstance)
@@ -97,7 +97,7 @@ export const command = new Command("database:get <path>")
       query,
       options,
       ["limitToFirst", "limitToLast"],
-      ["orderBy", "startAt", "endAt", "equalTo"]
+      ["orderBy", "startAt", "endAt", "equalTo"],
     );
 
     const urlObj = new url.URL(dbUrl);

@@ -9,7 +9,7 @@ const supportedRuntimes: Runtime[] = [new NodejsRuntime()];
  */
 export async function discover(
   fs: FileSystem,
-  allFrameworkSpecs: FrameworkSpec[]
+  allFrameworkSpecs: FrameworkSpec[],
 ): Promise<RuntimeSpec> {
   try {
     let discoveredRuntime = undefined;
@@ -19,7 +19,7 @@ export async function discover(
           discoveredRuntime = runtime;
         } else {
           throw new FirebaseError(
-            `Conflit occurred as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered in the application.`
+            `Conflit occurred as multiple runtimes ${discoveredRuntime.getRuntimeName()}, ${runtime.getRuntimeName()} are discovered in the application.`,
           );
         }
       }
@@ -29,7 +29,7 @@ export async function discover(
       throw new FirebaseError(
         `Unable to determine the specific runtime for the application. The supported runtime options include ${supportedRuntimes
           .map((x) => x.getRuntimeName())
-          .join(" , ")}.`
+          .join(" , ")}.`,
       );
     }
     const runtimeSpec = await discoveredRuntime.analyseCodebase(fs, allFrameworkSpecs);
@@ -37,7 +37,7 @@ export async function discover(
     return runtimeSpec;
   } catch (error: any) {
     throw new FirebaseError(
-      `Failed to identify required specifications to execute the application: ${error}`
+      `Failed to identify required specifications to execute the application: ${error}`,
     );
   }
 }

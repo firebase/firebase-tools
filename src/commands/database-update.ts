@@ -16,12 +16,12 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export const command = new Command("database:update <path> [infile]")
-  .description("update some of the keys for the defined path in your Firebase")
+  .description("update some of the keys for the defined path in your Realtime Database")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
@@ -41,7 +41,7 @@ export const command = new Command("database:update <path> [infile]")
         default: false,
         message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
       },
-      options
+      options,
     );
     if (!confirmed) {
       throw new FirebaseError("Command aborted.");
@@ -68,7 +68,7 @@ export const command = new Command("database:update <path> [infile]")
         body: inStream,
         queryParams: jsonUrl.searchParams,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError("Unexpected error while setting data");
     }
 
@@ -76,6 +76,6 @@ export const command = new Command("database:update <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path),
     );
   });

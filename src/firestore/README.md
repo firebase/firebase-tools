@@ -61,8 +61,6 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 
 Note that Cloud Firestore document fields can only be indexed in one [mode](https://firebase.google.com/docs/firestore/query-data/index-overview#index_modes), thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
-For more information about time-to-live (TTL) policies review the [official documentation](https://cloud.google.com/firestore/docs/ttl).
-
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console
   fieldPath: string
@@ -72,3 +70,41 @@ For more information about time-to-live (TTL) policies review the [official docu
     order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
     arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order property
 ```
+
+#### TTL Policy
+
+A TTL policy can be enabled or disabled using the `fieldOverrides` array as it follows:
+
+```javascript
+// Optional, disable index single-field collection group indexes
+fieldOverrides: [
+  {
+    collectionGroup: "posts",
+    fieldPath: "ttlField",
+    ttl: "true", // Explicitly enable TTL on this Field.
+    // Disable indexing so empty the indexes array
+    indexes: [],
+  },
+];
+```
+
+To keep the default indexing in the field and enable a TTL policy:
+
+```javascript
+{
+  "fieldOverrides": [
+    {
+      "collectionGroup": "yourCollectionGroup",
+      "fieldPath": "yourFieldPath",
+      "ttl": true,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
+}
+```
+
+For more information about time-to-live (TTL) policies review the [official documentation](https://cloud.google.com/firestore/docs/ttl).

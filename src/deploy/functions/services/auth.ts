@@ -36,23 +36,27 @@ export class AuthBlockingService implements Service {
       blockingEndpoints.find(
         (ep) =>
           ep.blockingTrigger.eventType === endpoint.blockingTrigger.eventType &&
-          ep.id !== endpoint.id
+          ep.id !== endpoint.id,
       )
     ) {
       throw new FirebaseError(
-        `Can only create at most one Auth Blocking Trigger for ${endpoint.blockingTrigger.eventType} events`
+        `Can only create at most one Auth Blocking Trigger for ${endpoint.blockingTrigger.eventType} events`,
       );
     }
   }
 
   private configChanged(
     newConfig: identityPlatform.BlockingFunctionsConfig,
-    config: identityPlatform.BlockingFunctionsConfig
+    config: identityPlatform.BlockingFunctionsConfig,
   ) {
     if (
       newConfig.triggers?.beforeCreate?.functionUri !==
         config.triggers?.beforeCreate?.functionUri ||
-      newConfig.triggers?.beforeSignIn?.functionUri !== config.triggers?.beforeSignIn?.functionUri
+      newConfig.triggers?.beforeSignIn?.functionUri !==
+        config.triggers?.beforeSignIn?.functionUri ||
+      newConfig.triggers?.beforeSendEmail?.functionUri !==
+        config.triggers?.beforeSendEmail?.functionUri ||
+      newConfig.triggers?.beforeSendSms?.functionUri !== config.triggers?.beforeSendSms?.functionUri
     ) {
       return true;
     }
@@ -70,7 +74,7 @@ export class AuthBlockingService implements Service {
   }
 
   private async registerTriggerLocked(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const newBlockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const oldBlockingConfig = cloneDeep(newBlockingConfig);
@@ -82,13 +86,31 @@ export class AuthBlockingService implements Service {
           functionUri: endpoint.uri!,
         },
       };
-    } else {
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SIGN_IN_EVENT) {
       newBlockingConfig.triggers = {
         ...newBlockingConfig.triggers,
         beforeSignIn: {
           functionUri: endpoint.uri!,
         },
       };
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_EMAIL_EVENT) {
+      newBlockingConfig.triggers = {
+        ...newBlockingConfig.triggers,
+        beforeSendEmail: {
+          functionUri: endpoint.uri!,
+        },
+      };
+    } else if (endpoint.blockingTrigger.eventType === events.v1.BEFORE_SEND_SMS_EVENT) {
+      newBlockingConfig.triggers = {
+        ...newBlockingConfig.triggers,
+        beforeSendSms: {
+          functionUri: endpoint.uri!,
+        },
+      };
+    } else {
+      throw new FirebaseError(
+        `Received invalid blocking trigger event type ${endpoint.blockingTrigger.eventType}`,
+      );
     }
 
     newBlockingConfig.forwardInboundCredentials = {
@@ -116,12 +138,14 @@ export class AuthBlockingService implements Service {
   }
 
   private async unregisterTriggerLocked(
-    endpoint: backend.Endpoint & backend.BlockingTriggered
+    endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     if (
       endpoint.uri !== blockingConfig.triggers?.beforeCreate?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri
+      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri &&
+      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri &&
+      endpoint.uri !== blockingConfig.triggers?.beforeSendSms?.functionUri
     ) {
       return;
     }
@@ -134,6 +158,12 @@ export class AuthBlockingService implements Service {
     }
     if (endpoint.uri === blockingConfig.triggers?.beforeSignIn?.functionUri) {
       delete blockingConfig.triggers?.beforeSignIn;
+    }
+    if (endpoint.uri === blockingConfig.triggers?.beforeSendEmail?.functionUri) {
+      delete blockingConfig.triggers?.beforeSendEmail;
+    }
+    if (endpoint.uri === blockingConfig.triggers?.beforeSendSms?.functionUri) {
+      delete blockingConfig.triggers?.beforeSendSms;
     }
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);

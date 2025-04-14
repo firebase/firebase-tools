@@ -39,9 +39,9 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 }
 
 export async function cleanupBuildImages(
-  haveFunctions: backend.TargetIds[],
-  deletedFunctions: backend.TargetIds[],
-  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
+  haveFunctions: backend.Endpoint[],
+  deletedFunctions: backend.Endpoint[],
+  cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {},
 ): Promise<void> {
   utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
@@ -58,17 +58,17 @@ export async function cleanupBuildImages(
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
-    })
+    }),
   );
   cleanup.push(
     ...deletedFunctions.map(async (func) => {
       try {
-        await Promise.all([arCleaner.cleanupFunction(func), arCleaner.cleanupFunctionCache(func)]);
+        await arCleaner.cleanupFunction(func);
       } catch (err: any) {
         const path = `${func.project}/${func.region}/gcf-artifacts`;
         failedDomains.add(`https://console.cloud.google.com/artifacts/docker/${path}`);
       }
-    })
+    }),
   );
   const gcrCleaner = cleaners.gcr || new ContainerRegistryCleaner();
   cleanup.push(
@@ -79,7 +79,7 @@ export async function cleanupBuildImages(
         const path = `${func.project}/${docker.GCR_SUBDOMAIN_MAPPING[func.region]}/gcf`;
         failedDomains.add(`https://console.cloud.google.com/gcr/images/${path}`);
       }
-    })
+    }),
   );
   await Promise.all(cleanup);
   if (failedDomains.size) {
@@ -100,26 +100,56 @@ export async function cleanupBuildImages(
 // than the raw Docker API. If there are reports of any quota issues we may have to run these
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
-  static packagePath(func: backend.TargetIds): string {
-    // GCFv1 names can include upper-case letters, but docker images cannot.
-    // to fix this, the artifact registry path for these images uses a custom encoding scheme.
-    // * Underscores are doubled
-    // * Dashes are doubled
-    // * A leading capital letter is replaced with <lower><dash><lower>
-    // * Other capital letters are replaced with <underscore><lower>
-    const encodedId = func.id
-      .replace(/_/g, "__")
-      .replace(/-/g, "--")
-      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
-      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+  static packagePath(func: backend.Endpoint): string {
+    const encodedId =
+      func.platform === "gcfv2"
+        ? ArtifactRegistryCleaner.encodePackageNameV2(func)
+        : ArtifactRegistryCleaner.encodePackageNameV1(func);
+
     return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${encodedId}`;
   }
 
   static POLLER_OPTIONS = {
-    apiOrigin: artifactRegistryDomain,
+    apiOrigin: artifactRegistryDomain(),
     apiVersion: artifactregistry.API_VERSION,
     masterTimeout: 5 * 60 * 1_000,
   };
+
+  private static encodePart(part: string): string {
+    return part
+      .replace(/_/g, "__")
+      .replace(/-/g, "--")
+      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
+      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+  }
+
+  // GCF V1: Simple underscore concatenation
+  // Example: "helloWorldV1" -> "hello_world_v1"
+  private static encodePackageNameV1(func: backend.TargetIds): string {
+    return ArtifactRegistryCleaner.encodePart(func.id);
+  }
+
+  // GCF V2 artifact names follow this schema:
+  // {encoded_project}__{encoded_region}__{encoded_function}
+  //
+  // Each part is encoded separately with these rules:
+  // * Underscores are doubled ("_" -> "__")
+  // * Dashes are doubled ("-" -> "--")
+  // * A leading capital letter is replaced with <lower><dash><lower>
+  // * Other capital letters are replaced with <underscore><lower>
+  // Then the parts are joined with double underscores
+  // Example:
+  // - project "my-cool-project" -> "my--cool--project"
+  // - region "us-central1" -> "us--central1"
+  // - functionId "myFunction" -> "my_function"
+  // Final result: "my--cool--project__us--central1__my_function"
+  private static encodePackageNameV2(func: backend.TargetIds): string {
+    return [
+      ArtifactRegistryCleaner.encodePart(func.project),
+      ArtifactRegistryCleaner.encodePart(func.region),
+      ArtifactRegistryCleaner.encodePart(func.id),
+    ].join("__");
+  }
 
   // GCFv1 for AR has the following directory structure
   // Hostname: <region>-docker.pkg.dev
@@ -130,7 +160,7 @@ export class ArtifactRegistryCleaner {
   // We leave the cache directory alone because it only costs
   // a few MB and improves performance. We only delete the cache if
   // the function was deleted in its entirety.
-  async cleanupFunction(func: backend.TargetIds): Promise<void> {
+  async cleanupFunction(func: backend.Endpoint): Promise<void> {
     let op: artifactregistry.Operation;
     try {
       op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));
@@ -151,31 +181,11 @@ export class ArtifactRegistryCleaner {
       operationResourceName: op.name,
     });
   }
-
-  async cleanupFunctionCache(func: backend.TargetIds): Promise<void> {
-    // GCF uses "<id>/cache" as their pacakge name, but AR percent-encodes this to
-    // avoid parsing issues with OP.
-    const op = await artifactregistry.deletePackage(
-      `${ArtifactRegistryCleaner.packagePath(func)}%2Fcache`
-    );
-    if (op.done) {
-      return;
-    }
-    await poller.pollOperation<void>({
-      ...ArtifactRegistryCleaner.POLLER_OPTIONS,
-      pollerName: `cleanup-cache-${func.region}-${func.id}`,
-      operationResourceName: op.name,
-    });
-  }
 }
 
 // Temporary class to turn off AR cleaning if AR isn't enabled yet
 export class NoopArtifactRegistryCleaner extends ArtifactRegistryCleaner {
   cleanupFunction(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  cleanupFunctionCache(): Promise<void> {
     return Promise.resolve();
   }
 }
@@ -186,7 +196,7 @@ export class ContainerRegistryCleaner {
   private helper(location: string): DockerHelper {
     const subdomain = docker.GCR_SUBDOMAIN_MAPPING[location] || "us";
     if (!this.helpers[subdomain]) {
-      const origin = `https://${subdomain}.${containerRegistryDomain}`;
+      const origin = `https://${subdomain}.${containerRegistryDomain()}`;
       this.helpers[subdomain] = new DockerHelper(origin);
     }
     return this.helpers[subdomain];
@@ -219,7 +229,7 @@ export class ContainerRegistryCleaner {
           const path = `${func.project}/gcf/${func.region}/${uuid}`;
           const tags = (await helper.ls(path)).tags;
           uuidTags[path] = tags;
-        })()
+        })(),
       );
     }
     await Promise.all(loadUuidTags);
@@ -239,7 +249,7 @@ export class ContainerRegistryCleaner {
 
 function getHelper(cache: Record<string, DockerHelper>, subdomain: string): DockerHelper {
   if (!cache[subdomain]) {
-    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain}`);
+    cache[subdomain] = new DockerHelper(`https://${subdomain}.${containerRegistryDomain()}`);
   }
   return cache[subdomain];
 }
@@ -255,7 +265,7 @@ function getHelper(cache: Record<string, DockerHelper>, subdomain: string): Dock
 export async function listGcfPaths(
   projectId: string,
   locations?: string[],
-  dockerHelpers: Record<string, DockerHelper> = {}
+  dockerHelpers: Record<string, DockerHelper> = {},
 ): Promise<string[]> {
   if (!locations) {
     locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
@@ -284,7 +294,7 @@ export async function listGcfPaths(
           };
           return Promise.resolve(stat);
         }
-      })()
+      })(),
     );
   }
 
@@ -297,12 +307,12 @@ export async function listGcfPaths(
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(
-      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`,
     );
   }
 
   return gcfDirs.map((loc) => {
-    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain}/${projectId}/gcf/${loc}`;
+    return `${docker.GCR_SUBDOMAIN_MAPPING[loc]}.${containerRegistryDomain()}/${projectId}/gcf/${loc}`;
   });
 }
 
@@ -317,7 +327,7 @@ export async function listGcfPaths(
 export async function deleteGcfArtifacts(
   projectId: string,
   locations?: string[],
-  dockerHelpers: Record<string, DockerHelper> = {}
+  dockerHelpers: Record<string, DockerHelper> = {},
 ): Promise<void> {
   if (!locations) {
     locations = Object.keys(docker.GCR_SUBDOMAIN_MAPPING);
@@ -344,7 +354,7 @@ export async function deleteGcfArtifacts(
     throw new FirebaseError("Failed to search all subdomains.");
   } else if (failedSubdomains.length > 0) {
     throw new FirebaseError(
-      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`
+      `Failed to search the following subdomains: ${failedSubdomains.join(",")}`,
     );
   }
 }

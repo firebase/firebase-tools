@@ -78,7 +78,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     if (!emulator.rulesManager.getRuleset(bucketId)) {
       EmulatorLogger.forEmulator(Emulators.STORAGE).log(
         "WARN",
-        "Permission denied because no Storage ruleset is currently loaded, check your rules for syntax errors."
+        "Permission denied because no Storage ruleset is currently loaded, check your rules for syntax errors.",
       );
       return res.status(403).json({
         error: {
@@ -344,7 +344,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
           contentTypeHeader!,
-          await reqBodyToBuffer(req)
+          await reqBodyToBuffer(req),
         ));
       } catch (err) {
         if (err instanceof Error) {

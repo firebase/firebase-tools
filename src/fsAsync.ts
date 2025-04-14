@@ -46,7 +46,7 @@ async function readdirRecursiveHelper(options: {
  * @return array of files that match.
  */
 export async function readdirRecursive(
-  options: ReaddirRecursiveOpts
+  options: ReaddirRecursiveOpts,
 ): Promise<ReaddirRecursiveFile[]> {
   const mmopts = { matchBase: true, dot: true };
   const rules = (options.ignore || []).map((glob) => {

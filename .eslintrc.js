@@ -20,7 +20,16 @@ module.exports = {
     "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
-
+    "brikke/no-undeclared-imports": [
+      "error",
+      {
+        excludedFilePatterns: ["**/scripts/**/*", `update-notifier-cjs.d.ts`],
+        excludedModules: [
+          /node:/,
+          "express-serve-static-core", // We rely on just the types, and the package breaks our build.
+        ],
+      },
+    ],
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
     "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
@@ -107,7 +116,7 @@ module.exports = {
     sourceType: "module",
     warnOnUnsupportedTypeScriptVersion: false,
   },
-  plugins: ["prettier", "@typescript-eslint", "jsdoc"],
+  plugins: ["prettier", "@typescript-eslint", "jsdoc", "brikke"],
   settings: {
     jsdoc: {
       tagNamePreference: {
@@ -122,6 +131,7 @@ module.exports = {
   // TODO(jamesdaniels): add this to overrides instead
   ignorePatterns: [
     "src/dynamicImport.js",
+    "src/emulator/dataconnect/pg-gateway",
     "scripts/webframeworks-deploy-tests/nextjs/**",
     "scripts/webframeworks-deploy-tests/angular/**",
     "scripts/frameworks-tests/vite-project/**",
@@ -130,5 +140,7 @@ module.exports = {
     "src/emulator/auth/schema.ts",
     // TODO(hsubox76): Set up a job to run eslint separately on vscode dir
     "firebase-vscode/",
+    // If this is leftover from "clean-install.sh", don't lint it
+    "clean/**",
   ],
 };

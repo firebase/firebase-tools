@@ -1,3 +1,4 @@
+const lsofi = require("lsofi");
 import {
   Emulators,
   DownloadableEmulators,
@@ -8,7 +9,7 @@ import {
 } from "./types";
 import { Constants } from "./constants";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, hasMessage } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -20,6 +21,7 @@ import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
+import * as process from "process";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -33,9 +35,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.18.1",
-    expectedSize: 64866257,
-    expectedChecksum: "743211a3e33217fe71dc20aff1fa26a5",
+    version: "1.19.8",
+    expectedSize: 63634791,
+    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
   },
   storage: {
     version: "1.1.3",
@@ -45,22 +47,40 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.7",
-        expectedSize: 3064105,
-        expectedChecksum: "bd2bcc331cbf613a5b3b55a1ce08998b",
+        version: "1.14.0",
+        expectedSize: 3615311,
+        expectedChecksum: "30763ff4a8b81e2c482f05b56799b5c0",
       },
   pubsub: {
-    version: "0.7.1",
-    expectedSize: 65137179,
-    expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
+    version: "0.8.14",
+    expectedSize: 66786933,
+    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
   },
+  dataconnect:
+    process.platform === "darwin" // macos
+      ? {
+          version: "2.1.0",
+          expectedSize: 26440448,
+          expectedChecksum: "92f70b6815e1f9e46facc241728b7255",
+        }
+      : process.platform === "win32" // windows
+        ? {
+            version: "2.1.0",
+            expectedSize: 26884096,
+            expectedChecksum: "14964736145cc67764574a01e193b997",
+          }
+        : {
+            version: "2.1.0", // linux
+            expectedSize: 26357912,
+            expectedChecksum: "0afb18767e56be16331be2b2b6d09ea1",
+          },
 };
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(
       CACHE_DIR,
-      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`
+      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.database.version,
     opts: {
@@ -74,7 +94,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   firestore: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`
+      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.firestore.version,
     opts: {
@@ -88,7 +108,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   storage: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`
+      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
     ),
     version: EMULATOR_UPDATE_DETAILS.storage.version,
     opts: {
@@ -107,7 +127,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       CACHE_DIR,
       `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
       "server",
-      "server.js"
+      "server.mjs",
     ),
     opts: {
       cacheDir: CACHE_DIR,
@@ -122,14 +142,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   pubsub: {
     downloadPath: path.join(
       CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`
+      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
     ),
     version: EMULATOR_UPDATE_DETAILS.pubsub.version,
     unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
     binaryPath: path.join(
       CACHE_DIR,
       `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`,
-      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
+      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
@@ -137,6 +157,31 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       expectedSize: EMULATOR_UPDATE_DETAILS.pubsub.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.pubsub.expectedChecksum,
       namePrefix: "pubsub-emulator",
+    },
+  },
+  dataconnect: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
+    ),
+    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
+    binaryPath: path.join(
+      CACHE_DIR,
+      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
+    ),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        process.platform === "darwin"
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          : process.platform === "win32"
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
+      skipChecksumAndSize: false,
+      namePrefix: "dataconnect-emulator",
+      auth: false,
     },
   },
 };
@@ -167,6 +212,11 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
+  dataconnect: {
+    name: Emulators.DATACONNECT,
+    instance: null,
+    stdout: null,
+  },
 };
 
 const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
@@ -181,6 +231,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "single_project_mode",
     ],
     joinArgs: false,
+    shell: false,
   },
   firestore: {
     binary: "java",
@@ -204,6 +255,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       // "single_project_mode_error",
     ],
     joinArgs: false,
+    shell: false,
   },
   storage: {
     // This is for the Storage Emulator rules runtime, which is started
@@ -219,18 +271,36 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     ],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
   },
   pubsub: {
-    binary: getExecPath(Emulators.PUBSUB)!,
+    binary: `${getExecPath(Emulators.PUBSUB)!}`,
     args: [],
     optionalArgs: ["port", "host"],
     joinArgs: true,
+    shell: true,
   },
   ui: {
-    binary: "node",
-    args: [getExecPath(Emulators.UI)],
+    binary: "",
+    args: [],
     optionalArgs: [],
     joinArgs: false,
+    shell: false,
+  },
+  dataconnect: {
+    binary: `${getExecPath(Emulators.DATACONNECT)}`,
+    args: ["--logtostderr", "-v=2", "dev"],
+    optionalArgs: [
+      "listen",
+      "config_dir",
+      "enable_output_schema_extensions",
+      "enable_output_generated_sdk",
+      // Additional flags that CLI shouldn't pass:
+      // rpc_retry_count,
+      // resolvers_emulator,
+    ],
+    joinArgs: true,
+    shell: false,
   },
 };
 
@@ -253,10 +323,9 @@ export function getLogFileName(name: string): string {
  */
 export function _getCommand(
   emulator: DownloadableEmulators,
-  args: { [s: string]: any }
+  args: { [s: string]: any },
 ): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
-
   const defaultPort = Constants.getDefaultPort(emulator);
   if (!args.port) {
     args.port = defaultPort;
@@ -306,6 +375,8 @@ export function _getCommand(
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
+    shell: baseCmd.shell,
+    port: args.port,
   };
 }
 
@@ -318,7 +389,7 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
     logger.logLabeled(
       "WARN",
       emulator,
-      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`
+      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`,
     );
     await EmulatorRegistry.stopAll();
   } finally {
@@ -329,12 +400,24 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
 /**
  * Handle errors in an emulator process.
  */
-export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
+export async function handleEmulatorProcessError(
+  emulator: Emulators,
+  err: any,
+  port?: number,
+): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
     await _fatal(
       emulator,
-      `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
+      `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
+    );
+  } else if (err.code === "EADDRINUSE") {
+    const ps = port ? await lsofi(port) : false;
+    await _fatal(
+      emulator,
+      `${description} has exited because its configured port is already in use${
+        ps ? ` by process number ${ps}` : ""
+      }. Are you running another copy of the emulator suite?`,
     );
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);
@@ -354,13 +437,13 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: Partial<NodeJS.ProcessEnv>
+  extraEnv: Partial<NodeJS.ProcessEnv>,
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
-      emulator.instance = childProcess.spawn(command.binary, command.args, {
+      const opts: childProcess.SpawnOptions = {
         env: { ...process.env, ...extraEnv },
         // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
         // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
@@ -368,7 +451,14 @@ async function _runBinary(
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
         stdio: ["inherit", "pipe", "pipe"],
-      });
+      };
+      if (command.shell && utils.IS_WINDOWS) {
+        opts.shell = true;
+        if (command.binary.includes(" ")) {
+          command.binary = `"${command.binary}"`;
+        }
+      }
+      emulator.instance = childProcess.spawn(command.binary, command.args, opts);
     } catch (e: any) {
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
@@ -376,7 +466,15 @@ async function _runBinary(
         logger.logLabeled(
           "WARN",
           emulator.name,
-          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
+          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`,
+        );
+      } else if (isIncomaptibleArchError(e)) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          `Unknown system error when starting emulator binary. ` +
+            `You may be able to fix this by installing Rosetta: ` +
+            `softwareupdate --install-rosetta`,
         );
       }
       _fatal(emulator.name, e);
@@ -392,7 +490,7 @@ async function _runBinary(
     logger.logLabeled(
       "BULLET",
       emulator.name,
-      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`,
     );
 
     emulator.instance.stdout?.on("data", (data) => {
@@ -407,13 +505,18 @@ async function _runBinary(
         logger.logLabeled(
           "WARN",
           emulator.name,
-          "Unsupported java version, make sure java --version reports 1.8 or higher."
+          "Unsupported java version, make sure java --version reports 1.8 or higher.",
         );
+      }
+
+      if (data.toString().includes("address already in use")) {
+        const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
+        logger.logLabeled("ERROR", emulator.name, message);
       }
     });
 
-    emulator.instance.on("error", (err) => {
-      handleEmulatorProcessError(emulator.name, err);
+    emulator.instance.on("error", (err: any) => {
+      void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
     emulator.instance.once("exit", async (code, signal) => {
@@ -431,7 +534,21 @@ async function _runBinary(
  * @param emulator
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
-  return DownloadDetails[emulator];
+  const details = DownloadDetails[emulator];
+  const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
+  if (pathOverride) {
+    const logger = EmulatorLogger.forEmulator(emulator);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Env variable override detected. Using ${emulator} emulator at ${pathOverride}`,
+    );
+    details.downloadPath = pathOverride;
+    details.binaryPath = pathOverride;
+    details.localOnly = true;
+    fs.chmodSync(pathOverride, 0o755);
+  }
+  return details;
 }
 
 /**
@@ -457,7 +574,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    if (emulator.instance) {
+
+    // kill(0) does not end the process, it just checks for existence. See https://man7.org/linux/man-pages/man2/kill.2.html#:~:text=If%20sig%20is%200%2C%20
+    if (emulator.instance && emulator.instance.kill(0)) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
@@ -465,7 +584,6 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
         logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
-
       emulator.instance.once("exit", () => {
         clearTimeout(killTimeout);
         resolve();
@@ -480,14 +598,15 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
 /**
  * @param targetName
  */
-export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
+export async function downloadIfNecessary(
+  targetName: DownloadableEmulators,
+): Promise<DownloadableEmulatorCommand> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
-  if (hasEmulator) {
-    return;
+  if (!hasEmulator) {
+    await downloadEmulator(targetName);
   }
-
-  await downloadEmulator(targetName);
+  return Commands[targetName];
 }
 
 /**
@@ -497,10 +616,15 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
  */
 export async function start(
   targetName: DownloadableEmulators,
-  args: any,
-  extraEnv: Partial<NodeJS.ProcessEnv> = {}
+  args: {
+    auto_download?: boolean;
+    port?: number;
+    host?: string;
+    [k: string]: any;
+  },
+  extraEnv: Partial<NodeJS.ProcessEnv> = {},
 ): Promise<void> {
-  const downloadDetails = DownloadDetails[targetName];
+  const downloadDetails = getDownloadDetails(targetName);
   const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);
@@ -509,8 +633,8 @@ export async function start(
       if (process.env.CI) {
         utils.logWarning(
           `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
-            targetName
-          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
+            targetName,
+          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`,
         );
       }
 
@@ -525,7 +649,15 @@ export async function start(
 
   logger.log(
     "DEBUG",
-    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
+    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
   );
   return _runBinary(emulator, command, extraEnv);
+}
+
+export function isIncomaptibleArchError(err: unknown): boolean {
+  return (
+    hasMessage(err) &&
+    /Unknown system error/.test(err.message ?? "") &&
+    process.platform === "darwin"
+  );
 }

@@ -38,7 +38,7 @@ export async function deploy(context: Context, options: Options): Promise<void> 
     if (!deploy.config?.public) {
       logLabeledBullet(
         `hosting[${deploy.config.site}]`,
-        'no "public" directory to upload, continuing with release'
+        'no "public" directory to upload, continuing with release',
       );
       return runDeploys(deploys, debugging);
     }
@@ -54,7 +54,7 @@ export async function deploy(context: Context, options: Options): Promise<void> 
 
     logLabeledBullet(
       `hosting[${deploy.config.site}]`,
-      `found ${files.length} files in ${bold(deploy.config.public)}`
+      `found ${files.length} files in ${bold(deploy.config.public)}`,
     );
 
     let concurrency = 200;
@@ -78,7 +78,7 @@ export async function deploy(context: Context, options: Options): Promise<void> 
 
     const progressInterval = setInterval(
       () => updateSpinner(uploader.statusMessage(), debugging),
-      debugging ? 2000 : 200
+      debugging ? 2000 : 200,
     );
 
     if (!debugging) {

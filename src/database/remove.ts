@@ -73,7 +73,7 @@ export default class DatabaseRemove {
     let batchSize = INITIAL_DELETE_BATCH_SIZE;
     while (true) {
       const subPathList = await this.listStack.run(() =>
-        this.listRemote.listPath(path, listNumSubPath)
+        this.listRemote.listPath(path, listNumSubPath),
       );
       if (subPathList.length === 0) {
         return false;

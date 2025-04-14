@@ -22,7 +22,7 @@ export const command = new Command("hosting:channel:open [channelId]")
   .action(
     async (
       channelId: string,
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ url: string }> => {
       const projectId = needProjectId(options);
       const siteId = options.site;
@@ -47,7 +47,7 @@ export const command = new Command("hosting:channel:open [channelId]")
       const channel = await getChannel(projectId, siteId, channelId);
       if (!channel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(channelId)} for site ${bold(siteId)}.`
+          `Could not find the channel ${bold(channelId)} for site ${bold(siteId)}.`,
         );
       }
 
@@ -57,5 +57,5 @@ export const command = new Command("hosting:channel:open [channelId]")
       }
 
       return { url: channel.url };
-    }
+    },
   );

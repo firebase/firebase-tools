@@ -24,5 +24,5 @@ exports.eventhandler = onCustomEventPublished(
       .collection("resizedImages")
       .doc(STORAGE_FILE_NAME)
       .set({ eventHandlerFired: true });
-  }
+  },
 );

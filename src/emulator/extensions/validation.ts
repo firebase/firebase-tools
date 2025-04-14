@@ -27,7 +27,7 @@ type APIInfo = {
  */
 export async function getUnemulatedAPIs(
   projectId: string,
-  instances: planner.InstanceSpec[]
+  instances: planner.InstanceSpec[],
 ): Promise<APIInfo[]> {
   const unemulatedAPIs: Record<string, APIInfo> = {};
   for (const i of instances) {
@@ -58,7 +58,7 @@ export async function getUnemulatedAPIs(
  */
 export function checkForUnemulatedTriggerTypes(
   backend: EmulatableBackend,
-  options: Options
+  options: Options,
 ): string[] {
   const triggers = backend.predefinedTriggers ?? [];
   const unemulatedTriggers = triggers

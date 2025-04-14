@@ -10,6 +10,7 @@ import { Options } from "../options";
 import * as projectConfig from "../functions/projectConfig";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "../emulator/registry";
+import { parseInspectionPort } from "../emulator/commandUtils";
 
 export class FunctionsServer {
   emulator?: FunctionsEmulator;
@@ -47,6 +48,8 @@ export class FunctionsServer {
       projectAlias: options.projectAlias,
       account,
       ...partialArgs,
+      // Non-optional; parseInspectionPort will set to false if missing.
+      debugPort: parseInspectionPort(options),
     };
 
     // Normally, these two fields are included in args (and typed as such).

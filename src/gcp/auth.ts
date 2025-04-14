@@ -1,7 +1,7 @@
 import { Client } from "../apiv2";
 import { identityOrigin } from "../api";
 
-const apiClient = new Client({ urlPrefix: identityOrigin, auth: true });
+const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
 /**
  * Returns the list of authorized domains.
@@ -10,7 +10,8 @@ const apiClient = new Client({ urlPrefix: identityOrigin, auth: true });
  */
 export async function getAuthDomains(project: string): Promise<string[]> {
   const res = await apiClient.get<{ authorizedDomains: string[] }>(
-    `/admin/v2/projects/${project}/config`
+    `/admin/v2/projects/${project}/config`,
+    { headers: { "x-goog-user-project": project } },
   );
   return res.body.authorizedDomains;
 }
@@ -28,7 +29,10 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
   >(
     `/admin/v2/projects/${project}/config`,
     { authorizedDomains: authDomains },
-    { queryParams: { update_mask: "authorizedDomains" } }
+    {
+      queryParams: { update_mask: "authorizedDomains" },
+      headers: { "x-goog-user-project": project },
+    },
   );
   return res.body.authorizedDomains;
 }

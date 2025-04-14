@@ -5,7 +5,7 @@ import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
 
-import { FirebaseError } from "./error";
+import { FirebaseError, getError } from "./error";
 import { listFiles } from "./listFiles";
 import { logger } from "./logger";
 import { Readable, Writable } from "stream";
@@ -37,7 +37,7 @@ export interface ArchiveResult {
  */
 export async function archiveDirectory(
   sourceDirectory: string,
-  options: ArchiveOptions = {}
+  options: ArchiveOptions = {},
 ): Promise<ArchiveResult> {
   let postfix = ".tar.gz";
   if (options.type === "zip") {
@@ -62,11 +62,11 @@ export async function archiveDirectory(
     const archive = await makeArchive;
     logger.debug(`Archived ${filesize(archive.size)} in ${sourceDirectory}.`);
     return archive;
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError("Failed to create archive.", { original: err });
+    throw new FirebaseError("Failed to create archive.", { original: getError(err) });
   }
 }
 
@@ -76,7 +76,7 @@ export async function archiveDirectory(
 async function tarDirectory(
   sourceDirectory: string,
   tempFile: tmp.FileResult,
-  options: ArchiveOptions
+  options: ArchiveOptions,
 ): Promise<ArchiveResult> {
   const allFiles = listFiles(sourceDirectory, options.ignore);
 
@@ -91,7 +91,7 @@ async function tarDirectory(
   }
   if (!allFiles.length) {
     throw new FirebaseError(
-      `Cannot create a tar archive with 0 files from directory "${sourceDirectory}"`
+      `Cannot create a tar archive with 0 files from directory "${sourceDirectory}"`,
     );
   }
 
@@ -104,7 +104,7 @@ async function tarDirectory(
       noDirRecurse: true,
       portable: true,
     },
-    allFiles
+    allFiles,
   );
   const stats = fs.statSync(tempFile.name);
   return {
@@ -122,7 +122,7 @@ async function tarDirectory(
 async function zipDirectory(
   sourceDirectory: string,
   tempFile: tmp.FileResult,
-  options: ArchiveOptions
+  options: ArchiveOptions,
 ): Promise<ArchiveResult> {
   const archiveFileStream = fs.createWriteStream(tempFile.name, {
     flags: "w",

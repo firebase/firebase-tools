@@ -2,11 +2,10 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "./error";
 
-export function responseToError(response: any, body: any): FirebaseError | undefined {
+export function responseToError(response: any, body: any, url?: string): FirebaseError | undefined {
   if (response.statusCode < 400) {
     return;
   }
-
   if (typeof body === "string") {
     if (response.statusCode === 404) {
       body = {
@@ -38,7 +37,10 @@ export function responseToError(response: any, body: any): FirebaseError | undef
     };
   }
 
-  const message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
+  let message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
+  if (url) {
+    message = "Request to " + url + " had " + message;
+  }
 
   let exitCode;
   if (response.statusCode >= 500) {

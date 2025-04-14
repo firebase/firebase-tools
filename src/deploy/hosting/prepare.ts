@@ -4,7 +4,7 @@ import * as config from "../../hosting/config";
 import * as deploymentTool from "../../deploymentTool";
 import * as clc from "colorette";
 import { Context } from "./context";
-import { Options } from "../../options";
+import { DeployOptions } from "../";
 import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
 import { trackGA4 } from "../../track";
@@ -14,7 +14,7 @@ import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
 
-function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
+function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -32,7 +32,7 @@ function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
  * normal boilerplate), and the only string might need to be updated with
  * addPinnedFunctionsToOnlyString.
  */
-export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+export function hasPinnedFunctions(options: HostingOptions & DeployOptions): boolean {
   handlePublicDirectoryFlag(options);
   for (const c of config.hostingConfig(options)) {
     for (const r of c.rewrites || []) {
@@ -52,7 +52,7 @@ export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
  */
 export async function addPinnedFunctionsToOnlyString(
   context: Context,
-  options: HostingOptions & Options
+  options: HostingOptions & DeployOptions,
 ): Promise<boolean> {
   if (!options.only) {
     return false;
@@ -79,7 +79,7 @@ export async function addPinnedFunctionsToOnlyString(
         options.only = ensureTargeted(
           options.only,
           generateSSRCodebaseId(c.site),
-          r.function.functionId
+          r.function.functionId,
         );
       } else {
         // This endpoint is just being added in this push. We don't know what codebase it is.
@@ -92,7 +92,7 @@ export async function addPinnedFunctionsToOnlyString(
         "hosting",
         "The following function(s) are pinned to site " +
           `${clc.bold(c.site)} and will be deployed as well: ` +
-          addedFunctionsPerSite.map(clc.bold).join(",")
+          addedFunctionsPerSite.map(clc.bold).join(","),
       );
       addedFunctions.push(...addedFunctionsPerSite);
     }
@@ -103,7 +103,10 @@ export async function addPinnedFunctionsToOnlyString(
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+export async function prepare(
+  context: Context,
+  options: HostingOptions & DeployOptions,
+): Promise<void> {
   handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);
@@ -136,7 +139,7 @@ export async function prepare(context: Context, options: HostingOptions & Option
         utils.logLabeledBullet(
           "hosting",
           `The site ${clc.bold(config.site)} will pin rewrites to the current ` +
-            `latest revision of service(s) ${runPins.map(clc.bold).join(",")}`
+            `latest revision of service(s) ${runPins.map(clc.bold).join(",")}`,
         );
       }
       const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
@@ -150,7 +153,7 @@ export async function prepare(context: Context, options: HostingOptions & Option
         api.createVersion(config.site, version),
       ]);
       return versionName;
-    })
+    }),
   );
   context.hosting = {
     deploys: [],
@@ -181,7 +184,7 @@ function rewriteTarget(source: HostingSource): string {
  */
 export async function unsafePins(
   context: Context,
-  config: config.HostingResolved
+  config: config.HostingResolved,
 ): Promise<string[]> {
   // Overwriting prod won't break prod
   if ((context.hostingChannel || "live") === "live") {
@@ -217,15 +220,14 @@ export async function unsafePins(
   const existingUntaggedRewrites: Record<string, string> = {};
   for (const rewrite of channelConfig?.release?.version?.config?.rewrites || []) {
     if ("run" in rewrite && !rewrite.run.tag) {
-      existingUntaggedRewrites[
-        rewriteTarget(rewrite)
-      ] = `${rewrite.run.region}/${rewrite.run.serviceId}`;
+      existingUntaggedRewrites[rewriteTarget(rewrite)] =
+        `${rewrite.run.region}/${rewrite.run.serviceId}`;
     }
   }
 
   // There is only a problem if we're targeting the same exact run service but
   // live isn't tagged.
   return Object.keys(targetTaggedRewrites).filter(
-    (target) => targetTaggedRewrites[target] === existingUntaggedRewrites[target]
+    (target) => targetTaggedRewrites[target] === existingUntaggedRewrites[target],
   );
 }

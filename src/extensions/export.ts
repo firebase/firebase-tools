@@ -11,7 +11,7 @@ import { getActiveSecrets } from "./secretsUtils";
 export function parameterizeProject(
   projectId: string,
   projectNumber: string,
-  spec: DeploymentInstanceSpec
+  spec: DeploymentInstanceSpec,
 ): DeploymentInstanceSpec {
   const newParams: Record<string, string> = {};
   for (const [key, val] of Object.entries(spec.params)) {
@@ -29,7 +29,7 @@ export function parameterizeProject(
  * We do this because old secret versions are destroyed on instance update, and to ensure that cross project installs work smoothly.
  */
 export async function setSecretParamsToLatest(
-  spec: DeploymentInstanceSpec
+  spec: DeploymentInstanceSpec,
 ): Promise<DeploymentInstanceSpec> {
   const newParams = { ...spec.params };
   const extensionVersion = await getExtensionVersion(spec);
@@ -46,7 +46,7 @@ export async function setSecretParamsToLatest(
 
 export function displayExportInfo(
   withRef: DeploymentInstanceSpec[],
-  withoutRef: DeploymentInstanceSpec[]
+  withoutRef: DeploymentInstanceSpec[],
 ): void {
   logger.info("The following Extension instances will be saved locally:");
   logger.info("");
@@ -55,7 +55,7 @@ export function displayExportInfo(
 
   if (withoutRef.length) {
     logger.info(
-      `Your project also has the following instances installed from local sources. These will not be saved to firebase.json:`
+      `Your project also has the following instances installed from local sources. These will not be saved to firebase.json:`,
     );
     for (const spec of withoutRef) {
       logger.info(spec.instanceId);

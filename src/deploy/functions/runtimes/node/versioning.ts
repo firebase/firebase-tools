@@ -36,7 +36,7 @@ export function findModuleVersion(name: string, resolvedPath: string): string | 
   while (true) {
     if (searchPath === "/" || path.basename(searchPath) === "node_modules") {
       logger.debug(
-        `Failed to find version of module ${name}: reached end of search path ${searchPath}`
+        `Failed to find version of module ${name}: reached end of search path ${searchPath}`,
       );
       return;
     }
@@ -47,7 +47,7 @@ export function findModuleVersion(name: string, resolvedPath: string): string | 
         return pkg.version;
       }
       logger.debug(
-        `Failed to find version of module ${name}: instead found ${pkg.name} at ${searchPath}`
+        `Failed to find version of module ${name}: instead found ${pkg.name} at ${searchPath}`,
       );
       return;
     }
@@ -68,13 +68,13 @@ export function getFunctionsSDKVersion(sourceDir: string): string | undefined {
       // Find the entry point of the firebase-function module. require.resolve works for project directories using
       //   npm, yarn (1), or yarn (1) workspaces. Does not support yarn (2) since GCF doesn't support it anyway:
       //   https://issuetracker.google.com/issues/213632942.
-      require.resolve("firebase-functions", { paths: [sourceDir] })
+      require.resolve("firebase-functions", { paths: [sourceDir] }),
     );
   } catch (e: any) {
     if (e.code === "MODULE_NOT_FOUND") {
       utils.logLabeledWarning(
         "functions",
-        "Couldn't find firebase-functions package in your source code. Have you run 'npm install'?"
+        "Couldn't find firebase-functions package in your source code. Have you run 'npm install'?",
       );
     }
     logger.debug("getFunctionsSDKVersion encountered error:", e);
@@ -93,7 +93,7 @@ export function getLatestSDKVersion(): string | undefined {
   if (child.error) {
     logger.debug(
       "checkFunctionsSDKVersion was unable to fetch information from NPM",
-      child.error.stack
+      child.error.stack,
     );
     return;
   }
@@ -128,12 +128,12 @@ export function checkFunctionsSDKVersion(currentVersion: string): void {
       clc.bold(clc.yellow("functions: ")) +
         "package.json indicates an outdated version of firebase-functions. Please upgrade using " +
         clc.bold("npm install --save firebase-functions@latest") +
-        " in your functions directory."
+        " in your functions directory.",
     );
     if (semver.major(currentVersion) < semver.major(latest)) {
       utils.logWarning(
         clc.bold(clc.yellow("functions: ")) +
-          "Please note that there will be breaking changes when you upgrade."
+          "Please note that there will be breaking changes when you upgrade.",
       );
     }
   } catch (e: any) {

@@ -6,20 +6,22 @@ import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
+import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:locations")
-  .description("List possible locations for your Cloud Firestore project.")
+  .description("list possible locations for your Cloud Firestore database")
   .before(requirePermissions, ["datastore.locations.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
+    const printer = new PrettyPrint();
 
     const locations: types.Location[] = await api.locations(options.project);
 
     if (options.json) {
       logger.info(JSON.stringify(locations, undefined, 2));
     } else {
-      api.prettyPrintLocations(locations);
+      printer.prettyPrintLocations(locations);
     }
 
     return locations;

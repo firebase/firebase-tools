@@ -16,7 +16,7 @@ export const command = new Command("experiments:describe <experiment>")
         message = `${message}\nDid you mean ${potentials[0]}?`;
       } else if (potentials.length) {
         message = `${message}\nDid you mean ${potentials.slice(0, -1).join(",")} or ${last(
-          potentials
+          potentials,
         )}?`;
       }
       throw new FirebaseError(message);

@@ -27,7 +27,7 @@ export class NodejsRuntime implements Runtime {
   // Checks if the codebase is using Node as runtime.
   async match(fs: FileSystem): Promise<boolean | null> {
     const areAllFilesPresent = await Promise.all(
-      this.runtimeRequiredFiles.map((file) => fs.exists(file))
+      this.runtimeRequiredFiles.map((file) => fs.exists(file)),
     );
 
     return areAllFilesPresent.every((present) => present);
@@ -48,8 +48,8 @@ export class NodejsRuntime implements Runtime {
       throw new FirebaseError(
         `This integration expects Node version ${conjoinOptions(
           supportedNodeVersions,
-          "or"
-        )}. You're running version ${versionNumber}, which is not compatible.`
+          "or",
+        )}. You're running version ${versionNumber}, which is not compatible.`,
       );
     }
 
@@ -99,7 +99,7 @@ export class NodejsRuntime implements Runtime {
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
     matchedFramework: FrameworkSpec | null,
-    fs: FileSystem
+    fs: FileSystem,
   ): Promise<LifecycleCommands> {
     return {
       build: this.getBuildCommand(packageManager, scripts, matchedFramework),
@@ -123,7 +123,7 @@ export class NodejsRuntime implements Runtime {
   getBuildCommand(
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
-    matchedFramework: FrameworkSpec | null
+    matchedFramework: FrameworkSpec | null,
   ): Command | undefined {
     let buildCommand: Command = { cmd: "" };
     if (scripts?.build) {
@@ -139,7 +139,7 @@ export class NodejsRuntime implements Runtime {
   getDevCommand(
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
-    matchedFramework: FrameworkSpec | null
+    matchedFramework: FrameworkSpec | null,
   ): Command | undefined {
     let devCommand: Command = { cmd: "", env: { NODE_ENV: "dev" } };
     if (scripts?.dev) {
@@ -156,7 +156,7 @@ export class NodejsRuntime implements Runtime {
     packageManager: PackageManager,
     scripts: Record<string, string> | undefined,
     matchedFramework: FrameworkSpec | null,
-    fs: FileSystem
+    fs: FileSystem,
   ): Promise<Command | undefined> {
     let runCommand: Command = { cmd: "", env: { NODE_ENV: "production" } };
     if (scripts?.start) {
@@ -187,7 +187,7 @@ export class NodejsRuntime implements Runtime {
         NODE_RUNTIME_ID,
         fs,
         allFrameworkSpecs,
-        dependencies
+        dependencies,
       );
 
       const runtimeSpec: RuntimeSpec = {
@@ -199,7 +199,7 @@ export class NodejsRuntime implements Runtime {
           packageManager,
           packageJSON.scripts,
           matchedFramework,
-          fs
+          fs,
         ),
       };
 

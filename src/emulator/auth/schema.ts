@@ -4144,6 +4144,9 @@ export interface components {
       signIn?: {
         allowDuplicateEmails?: boolean;
       };
+      emailPrivacyConfig?: {
+        enableImprovedEmailPrivacy?: boolean,
+      },
     };
     /** @description Details of all pending confirmation codes. */
     EmulatorV1ProjectsOobCodes: {

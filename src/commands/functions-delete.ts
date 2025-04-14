@@ -24,7 +24,7 @@ export const command = new Command("functions:delete [filters...]")
   .option(
     "--region <region>",
     "Specify region of the function to be deleted. " +
-      "If omitted, functions from all regions whose names match the filters will be deleted. "
+      "If omitted, functions from all regions whose names match the filters will be deleted. ",
   )
   .withForce()
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
@@ -62,8 +62,8 @@ export const command = new Command("functions:delete [filters...]")
     if (allEpToDelete.length === 0) {
       throw new FirebaseError(
         `The specified filters do not match any existing functions in project ${clc.bold(
-          context.projectId
-        )}.`
+          context.projectId,
+        )}.`,
       );
     }
 
@@ -78,7 +78,7 @@ export const command = new Command("functions:delete [filters...]")
           deleteList +
           "\n  Are you sure?",
       },
-      options
+      options,
     );
     if (!confirmDeletion) {
       throw new FirebaseError("Command aborted.");

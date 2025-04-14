@@ -18,3 +18,6 @@ webpack.*.js
 *.zip
 node_modules/
 dist/test/
+*.tgz
+package-lock.json
+.wdio-vscode-service/

@@ -9,7 +9,7 @@ import { FrameworkSpec, FileSystem } from "./discover/types";
 export async function compose(
   mode: Mode,
   fs: FileSystem,
-  allFrameworkSpecs: FrameworkSpec[]
+  allFrameworkSpecs: FrameworkSpec[],
 ): Promise<AppBundle> {
   let bundle: AppBundle = { version: "v1alpha" };
   const spec = await discover(fs, allFrameworkSpecs);

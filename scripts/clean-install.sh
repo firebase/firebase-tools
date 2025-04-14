@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 function cleanup() {
   echo "Cleaning up artifacts..."
@@ -9,9 +9,10 @@ function cleanup() {
 
 trap cleanup EXIT
 
-echo "Running clean-publish --without-publish, as we would before publishing to npm..."
-npx clean-publish --without-publish --before-script ./scripts/clean-shrinkwrap.sh --temp-dir clean
-echo "Ran clean-publish --without-publish."
+rm -rf ./clean || true
+echo "Running clean-publish@5.0.0 --without-publish, as we would before publishing to npm..."
+npx --yes clean-publish@5.0.0 --without-publish --before-script ./scripts/clean-shrinkwrap.sh --temp-dir clean
+echo "Ran clean-publish@5.0.0 --without-publish."
 echo "Packaging cleaned firebase-tools..."
 cd ./clean
 PACKED=$(npm pack --pack-destination ./ | tail -n 1)

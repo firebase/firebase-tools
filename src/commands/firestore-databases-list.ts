@@ -6,20 +6,22 @@ import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
+import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:databases:list")
-  .description("List databases in your Cloud Firestore project.")
+  .description("list the Cloud Firestore databases on your project")
   .before(requirePermissions, ["datastore.databases.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
+    const printer = new PrettyPrint();
 
     const databases: types.DatabaseResp[] = await api.listDatabases(options.project);
 
     if (options.json) {
       logger.info(JSON.stringify(databases, undefined, 2));
     } else {
-      api.prettyPrintDatabases(databases);
+      printer.prettyPrintDatabases(databases);
     }
 
     return databases;

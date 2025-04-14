@@ -48,11 +48,11 @@ async function deployIndexes(context: any, options: any): Promise<void> {
       await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
         utils.logSuccess(
           `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-            indexesFileName
-          )} successfully for ${databaseId} database`
+            indexesFileName,
+          )} successfully for ${databaseId} database`,
         );
       });
-    })
+    }),
   );
 }
 

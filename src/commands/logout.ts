@@ -77,7 +77,7 @@ export async function logoutAction(email: string | undefined, options: Options):
         await logout(token);
       } catch (e: any) {
         utils.logWarning(
-          `Invalid refresh token for ${account.user.email}, did not need to deauthorize`
+          `Invalid refresh token for ${account.user.email}, did not need to deauthorize`,
         );
       }
 

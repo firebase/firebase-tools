@@ -107,7 +107,7 @@ export class DockerDriver implements Driver {
   private execDockerPush(args: string[]) {
     console.debug(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
     console.info(
-      JSON.stringify({ foo: "bar", message: `executing docker build: ${args.join(" ")}` })
+      JSON.stringify({ foo: "bar", message: `executing docker build: ${args.join(" ")}` }),
     );
     console.error(JSON.stringify({ message: `executing docker build: ${args.join(" ")}` }));
     return spawn.sync("docker", ["push", ...args], {
@@ -144,7 +144,7 @@ export class DockerDriver implements Driver {
       .copyFrom(BUNDLE_PATH, "/bundle.json", stage);
     const ret = this.execDockerBuild(
       ["--target", exportStage, "--output", ".firebase/.output"],
-      contextDir
+      contextDir,
     );
     if (ret.error || ret.status !== 0) {
       throw new Error(`Failed to export bundle ${stage}: error=${ret.error} status=${ret.status}`);
@@ -191,7 +191,7 @@ export class DockerDriver implements Driver {
       const ret = this.execDockerPush([imageName]);
       if (ret.error || ret.status !== 0) {
         throw new Error(
-          `Failed to push image ${imageName}: error=${ret.error} status=${ret.status}`
+          `Failed to push image ${imageName}: error=${ret.error} status=${ret.status}`,
         );
       }
     }
@@ -213,7 +213,7 @@ export class DockerDriver implements Driver {
       .fromLastStage(hookStage)
       .run(
         `NODE_PATH=./node_modules node /framework/adapters/${hookScript}`,
-        `source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters`
+        `source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters`,
       );
     this.buildStage(hookStage, ".");
     return this.exportBundle(hookStage, ".");

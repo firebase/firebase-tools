@@ -1,14 +1,12 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
-import * as fs from "fs";
 
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types";
-
-const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
+import { readTemplateSync } from "../templates";
 
 export interface TemplateServerResponse {
   // __init.js content with only initializeApp()
@@ -38,8 +36,8 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
       utils.logLabeledWarning(
         "hosting",
         `Authentication error when trying to fetch your current web app configuration, have you run ${clc.bold(
-          "firebase login"
-        )}?`
+          "firebase login",
+        )}?`,
       );
     }
   }
@@ -57,7 +55,7 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
       "hosting",
       "Could not fetch web app configuration and there is no cached configuration on this machine. " +
         "Check your internet connection and make sure you are authenticated. " +
-        "To continue, you must call firebase.initializeApp({...}) in your code before using Firebase."
+        "To continue, you must call firebase.initializeApp({...}) in your code before using Firebase.",
     );
   }
 
@@ -77,14 +75,13 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   }
   const emulatorsJson = JSON.stringify(emulators, null, 2);
 
-  const js = INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`).replace(
-    "/*--EMULATORS--*/",
-    "var firebaseEmulators = undefined;"
-  );
-  const emulatorsJs = INIT_TEMPLATE.replace(
-    "/*--CONFIG--*/",
-    `var firebaseConfig = ${configJson};`
-  ).replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
+  const initTemplate = readTemplateSync("hosting/init.js");
+  const js = initTemplate
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", "var firebaseEmulators = undefined;");
+  const emulatorsJs = initTemplate
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
   return {
     js,
     emulatorsJs,

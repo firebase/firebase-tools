@@ -1,17 +1,17 @@
 import { Command } from "../command";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
 import { logger } from "../logger";
 
 export const command = new Command("appdistribution:testers:remove [emails...]")
-  .description("remove testers from a project (or group)")
+  .description("remove testers from a project (or App Distribution group, if specified via flag)")
   .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
   .option(
     "--group-alias <group-alias>",
-    "if specified, the testers are only removed from the group identified by this alias, but not the project"
+    "if specified, the testers are only removed from the group identified by this alias, but not the project",
   )
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {
@@ -22,15 +22,15 @@ export const command = new Command("appdistribution:testers:remove [emails...]")
       utils.logBullet(`Removing ${emailsArr.length} testers from group`);
       await appDistroClient.removeTestersFromGroup(
         `${projectName}/groups/${options.groupAlias}`,
-        emailsArr
+        emailsArr,
       );
     } else {
       let deleteResponse;
       try {
         utils.logBullet(`Deleting ${emailsArr.length} testers from project`);
         deleteResponse = await appDistroClient.removeTesters(projectName, emailsArr);
-      } catch (err: any) {
-        throw new FirebaseError(`Failed to remove testers ${err}`);
+      } catch (err: unknown) {
+        throw new FirebaseError(`Failed to remove testers ${getErrMsg(err)}`);
       }
 
       if (!deleteResponse.emails) {

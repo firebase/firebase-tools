@@ -1,5 +1,5 @@
 import { bold } from "colorette";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
@@ -21,7 +21,7 @@ export const command = new Command("hosting:channel:list")
   .before(requireHostingSite)
   .action(
     async (
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ channels: Channel[] }> => {
       const projectId = needProjectId(options);
       const siteId = options.site;
@@ -44,5 +44,5 @@ export const command = new Command("hosting:channel:list")
       logger.info(table.toString());
 
       return { channels };
-    }
+    },
   );

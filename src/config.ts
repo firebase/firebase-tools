@@ -32,6 +32,7 @@ export class Config {
     "hosting",
     "storage",
     "remoteconfig",
+    "dataconnect",
   ];
 
   public options: any;
@@ -57,7 +58,7 @@ export class Config {
         clc.bold('"firebase"') +
           " key in firebase.json is deprecated. Run " +
           clc.bold("firebase use --add") +
-          " instead"
+          " instead",
       );
     }
 
@@ -76,17 +77,30 @@ export class Config {
       }
     });
 
-    // Inject default functions config and source if missing.
-    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-      if (Array.isArray(this.get("functions"))) {
-        if (!this.get("functions.[0].source")) {
-          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
-        }
-      } else {
-        if (!this.get("functions.source")) {
-          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions source if missing.
+    if (this.get("functions")) {
+      if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+        if (Array.isArray(this.get("functions"))) {
+          if (!this.get("functions.[0].source")) {
+            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
+        } else {
+          if (!this.get("functions.source")) {
+            this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
         }
       }
+    }
+
+    if (
+      this._src.dataconnect?.location ||
+      (Array.isArray(this._src.dataconnect) && this._src.dataconnect.some((c: any) => c?.location))
+    ) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        "'location' has been moved from 'firebase.json' to 'dataconnect.yaml'. " +
+          "Please remove 'dataconnect.location' from 'firebase.json' and add it as top level field to 'dataconnect.yaml' instead ",
+      );
     }
   }
 
@@ -144,7 +158,7 @@ export class Config {
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
-          { exit: 1 }
+          { exit: 1 },
         );
     }
   }
@@ -172,6 +186,9 @@ export class Config {
   }
 
   path(pathName: string) {
+    if (path.isAbsolute(pathName)) {
+      return pathName;
+    }
     const outPath = path.normalize(path.join(this.projectDir, pathName));
     if (path.relative(this.projectDir, outPath).includes("..")) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
@@ -215,27 +232,37 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
-  askWriteProjectFile(p: string, content: any, force?: boolean) {
-    const writeTo = this.path(p);
-    let next;
-    if (fsutils.fileExistsSync(writeTo) && !force) {
-      next = promptOnce({
+  async askWriteProjectFile(
+    path: string,
+    content: any,
+    force?: boolean,
+    confirmByDefault?: boolean,
+  ): Promise<void> {
+    const writeTo = this.path(path);
+    let next = true;
+    if (typeof content !== "string") {
+      content = JSON.stringify(content, null, 2) + "\n";
+    }
+    let existingContent: string | undefined;
+    if (fsutils.fileExistsSync(writeTo)) {
+      existingContent = fsutils.readFile(writeTo);
+    }
+    if (existingContent && existingContent !== content && !force) {
+      next = await promptOnce({
         type: "confirm",
-        message: "File " + clc.underline(p) + " already exists. Overwrite?",
-        default: false,
+        message: "File " + clc.underline(path) + " already exists. Overwrite?",
+        default: !!confirmByDefault,
       });
-    } else {
-      next = Promise.resolve(true);
     }
 
-    return next.then((result: boolean) => {
-      if (result) {
-        this.writeProjectFile(p, content);
-        utils.logSuccess("Wrote " + clc.bold(p));
-      } else {
-        utils.logBullet("Skipping write of " + clc.bold(p));
-      }
-    });
+    if (existingContent === content) {
+      utils.logBullet(clc.bold(path) + " is unchanged");
+    } else if (next) {
+      this.writeProjectFile(path, content);
+      utils.logSuccess("Wrote " + clc.bold(path));
+    } else {
+      utils.logBullet("Skipping write of " + clc.bold(path));
+    }
   }
 
   public static load(options: any, allowMissing?: boolean): Config | null {

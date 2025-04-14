@@ -14,7 +14,7 @@ import { FirebaseError } from "../../error";
 async function promptForAccount() {
   logger.info();
   logger.info(
-    `Which account do you want to use for this project? Choose an account or add a new one now`
+    `Which account do you want to use for this project? Choose an account or add a new one now`,
   );
   logger.info();
 

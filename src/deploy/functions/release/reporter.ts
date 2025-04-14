@@ -40,7 +40,7 @@ export class DeploymentError extends Error {
   constructor(
     readonly endpoint: backend.Endpoint,
     readonly op: OperationType,
-    readonly original: unknown
+    readonly original: unknown,
   ) {
     super(`Failed to ${op} function ${endpoint.id} in region ${endpoint.region}`);
   }
@@ -59,7 +59,7 @@ export class AbortedDeploymentError extends DeploymentError {
 /** Add debugger logs and GA metrics for deploy stats. */
 export async function logAndTrackDeployStats(
   summary: Summary,
-  context?: args.Context
+  context?: args.Context,
 ): Promise<void> {
   let totalTime = 0;
   let totalErrors = 0;
@@ -78,8 +78,8 @@ export async function logAndTrackDeployStats(
       status: !result.error
         ? "success"
         : result.error instanceof AbortedDeploymentError
-        ? "aborted"
-        : "failure",
+          ? "aborted"
+          : "failure",
       duration: result.durationMs,
     };
     reports.push(trackGA4("function_deploy", fnDeployEvent));
@@ -145,7 +145,7 @@ export function printErrors(summary: Summary): void {
       errored
         .filter((r) => !(r.error instanceof AbortedDeploymentError))
         .map((result) => `\n\t${getFunctionLabel(result.endpoint)}`)
-        .join("")
+        .join(""),
   );
 
   printIamErrors(errored);
@@ -156,7 +156,7 @@ export function printErrors(summary: Summary): void {
 /** Print errors for failures to set invoker. */
 function printIamErrors(results: Array<Required<DeployResult>>): void {
   const iamFailures = results.filter(
-    (r) => r.error instanceof DeploymentError && r.error.op === "set invoker"
+    (r) => r.error instanceof DeploymentError && r.error.op === "set invoker",
   );
   if (!iamFailures.length) {
     return;
@@ -165,7 +165,7 @@ function printIamErrors(results: Array<Required<DeployResult>>): void {
   logger.info("");
   logger.info(
     "Unable to set the invoker for the IAM policy on the following functions:" +
-      iamFailures.map((result) => `\n\t${getFunctionLabel(result.endpoint)}`).join("")
+      iamFailures.map((result) => `\n\t${getFunctionLabel(result.endpoint)}`).join(""),
   );
 
   logger.info("");
@@ -173,7 +173,7 @@ function printIamErrors(results: Array<Required<DeployResult>>): void {
   logger.info("");
   logger.info(
     "- You may not have the roles/functions.admin IAM role. Note that " +
-      "roles/functions.developer does not allow you to change IAM policies."
+      "roles/functions.developer does not allow you to change IAM policies.",
   );
   logger.info("");
   logger.info("- An organization policy that restricts Network Access on your project.");
@@ -182,19 +182,19 @@ function printIamErrors(results: Array<Required<DeployResult>>): void {
   // has no explicit invoker set. If these failures were on an inferred setInvoker command
   // we need to let the customer know that it needs to be explicit next time.
   const hadImplicitMakePublic = iamFailures.find(
-    (r) => backend.isHttpsTriggered(r.endpoint) && !r.endpoint.httpsTrigger.invoker
+    (r) => backend.isHttpsTriggered(r.endpoint) && !r.endpoint.httpsTrigger.invoker,
   );
   if (!hadImplicitMakePublic) {
     return;
   }
   logger.info("");
   logger.info(
-    "One or more functions were being implicitly made publicly available on function create."
+    "One or more functions were being implicitly made publicly available on function create.",
   );
   logger.info(
     "Functions are not implicitly made public on updates. To try to make " +
       "these functions public on next deploy, configure these functions with " +
-      `${clc.bold("invoker")} set to ${clc.bold(`"public"`)}`
+      `${clc.bold("invoker")} set to ${clc.bold(`"public"`)}`,
   );
 }
 
@@ -222,7 +222,7 @@ function printQuotaErrors(results: Array<Required<DeployResult>>): void {
       "If you are deploying a large number of functions, " +
       "please deploy your functions in batches by using the --only flag, " +
       "and wait a few minutes before deploying again. " +
-      "Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more."
+      "Go to https://firebase.google.com/docs/cli/#partial_deploys to learn more.",
   );
 }
 
@@ -236,7 +236,7 @@ export function printAbortedErrors(results: Array<Required<DeployResult>>): void
   logger.info(
     "Because there were errors creating or updating functions, the following " +
       "functions were not deleted" +
-      aborted.map((result) => `\n\t${getFunctionLabel(result.endpoint)}`).join("")
+      aborted.map((result) => `\n\t${getFunctionLabel(result.endpoint)}`).join(""),
   );
   logger.info(`To delete these, use ${clc.bold("firebase functions:delete")}`);
 }

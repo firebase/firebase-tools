@@ -16,14 +16,17 @@ export interface ListRemote {
     path: string,
     numSubPath: number,
     startAfter?: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<string[]>;
 }
 
 export class RTDBListRemote implements ListRemote {
   private apiClient: Client;
 
-  constructor(private instance: string, private host: string) {
+  constructor(
+    private instance: string,
+    private host: string,
+  ) {
     const url = new URL(utils.getDatabaseUrl(this.host, this.instance, "/"));
     this.apiClient = new Client({ urlPrefix: url.origin, auth: true });
   }
@@ -32,7 +35,7 @@ export class RTDBListRemote implements ListRemote {
     path: string,
     numSubPath: number,
     startAfter?: string,
-    timeout?: number
+    timeout?: number,
   ): Promise<string[]> {
     const url = new URL(utils.getDatabaseUrl(this.host, this.instance, path + ".json"));
 
