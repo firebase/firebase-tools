@@ -11,5 +11,4 @@ mutation createComment($id: String, $content: String) @auth(level: PUBLIC) {
 
 fragment CommentContent on Comment {
   content
-  post
 }
