@@ -103,7 +103,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               title: `$(play) Run (local)`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
+              arguments: [x, documentNode, operationLocation, InstanceType.LOCAL],
             }),
           );
 
@@ -112,7 +112,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
               title: `$(play) Run (Production – Project: ${rc.projects.default})`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.PRODUCTION],
+              arguments: [x, documentNode, operationLocation, InstanceType.PRODUCTION],
             }),
           );
         }
