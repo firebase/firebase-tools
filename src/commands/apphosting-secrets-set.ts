@@ -62,9 +62,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
       return;
     }
 
-    const type = await prompt.promptOnce({
-      type: "list",
-      name: "type",
+    const type = await prompt.select({
       message: "Is this secret for production or only local testing?",
       choices: [
         { name: "Production", value: "production" },
@@ -73,9 +71,7 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     });
 
     if (type === "local") {
-      const emailList = await prompt.promptOnce({
-        type: "input",
-        name: "emails",
+      const emailList = await prompt.input({
         message:
           "Please enter a comma separated list of user or groups who should have access to this secret:",
       });

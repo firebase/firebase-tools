@@ -33,7 +33,7 @@ export async function promptForAppHostingYaml(
     if (fileName === APPHOSTING_BASE_YAML_FILE) {
       return {
         name: `base (${APPHOSTING_BASE_YAML_FILE})`,
-        value: baseFilePath,
+        value: baseFilePath!,
       };
     }
 
@@ -46,9 +46,7 @@ export async function promptForAppHostingYaml(
     };
   });
 
-  const fileToExportPath = await prompt.promptOnce({
-    name: "apphosting-yaml",
-    type: "list",
+  const fileToExportPath = await prompt.select<string>({
     message: promptMessage,
     choices: listOptions,
   });

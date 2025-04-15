@@ -11,7 +11,7 @@ import { configstore } from "./configstore";
 import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { promptOnce } from "./prompt";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
@@ -429,10 +429,7 @@ async function loginRemotely(): Promise<UserCredentials> {
   logger.info("3. Paste or enter the authorization code below once you have it:");
   logger.info();
 
-  const code = await promptOnce({
-    type: "input",
-    message: "Enter authorization code:",
-  });
+  const code = await input({ message: "Enter authorization code:" });
 
   try {
     const tokens = await getTokensFromAuthorizationCode(

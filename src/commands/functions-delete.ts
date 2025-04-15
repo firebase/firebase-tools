@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
@@ -68,18 +68,15 @@ export const command = new Command("functions:delete [filters...]")
     }
 
     const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message:
-          "You are about to delete the following Cloud Functions:\n" +
-          deleteList +
-          "\n  Are you sure?",
-      },
-      options,
-    );
+    const confirmDeletion = await confirm({
+      message:
+        "You are about to delete the following Cloud Functions:\n" +
+        deleteList +
+        "\n  Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmDeletion) {
       throw new FirebaseError("Command aborted.");
     }

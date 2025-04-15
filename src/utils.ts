@@ -22,10 +22,11 @@ import { configstore } from "./configstore";
 import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { promptOnce } from "./prompt";
+import { input, password } from "./prompt";
 import { readTemplateSync } from "./templates";
 import { isVSCodeExtension } from "./vsCodeUtils";
-
+import { Config } from "./config";
+import { dirExistsSync, fileExistsSync } from "./fsutils";
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
@@ -900,10 +901,7 @@ export function generateId(n = 6): string {
  */
 export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
   if ((!dataFile || dataFile === "-") && tty.isatty(0)) {
-    return promptOnce({
-      type: "password",
-      message: prompt,
-    });
+    return password({ message: prompt });
   }
   let input: string | number = 0;
   if (dataFile && dataFile !== "-") {
@@ -918,6 +916,7 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
     throw e;
   }
 }
+
 /**
  * Updates or creates a .gitignore file with the given entries in the given path
  */
@@ -937,4 +936,37 @@ export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
   }
 
   fs.writeFileSync(gitignorePath, content);
+}
+
+/**
+ * Prompts for a directory name, and reprompts if that path does not exist
+ * N.B. Moved from the original prompt library to this file because it brings in a lot of
+ * dependencies. Moved to "utils" because this file arleady brings in the world.
+ */
+export async function promptForDirectory(args: {
+  message: string;
+  config: Config;
+  default?: boolean;
+  relativeTo?: string;
+}): Promise<string> {
+  let dir: string = "";
+  while (!dir) {
+    const promptPath = await input(args.message);
+    let target: string;
+    if (args.relativeTo) {
+      target = path.resolve(args.relativeTo, promptPath);
+    } else {
+      target = args.config.path(promptPath);
+    }
+    if (fileExistsSync(target)) {
+      logger.error(
+        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
+      );
+    } else if (!dirExistsSync(target)) {
+      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
+    } else {
+      dir = target;
+    }
+  }
+  return dir;
 }

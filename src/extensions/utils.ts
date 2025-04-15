@@ -1,4 +1,3 @@
-import { promptOnce } from "../prompt";
 import {
   ParamOption,
   Resource,
@@ -7,29 +6,13 @@ import {
 } from "./types";
 import { RegistryEntry } from "./resolveSource";
 import { Runtime } from "../deploy/functions/runtimes/supported";
-
-/**
- * Modified version of the once function from prompt, to return as a joined string.
- */
-export async function onceWithJoin(question: any): Promise<string> {
-  const response = await promptOnce(question);
-  if (Array.isArray(response)) {
-    return response.join(",");
-  }
-  return response;
-}
-
-interface ListItem {
-  name?: string; // User friendly display name for the option
-  value: string; // Value of the option
-  checked: boolean; // Whether the option should be checked by default
-}
+import { Choice } from "../prompt";
 
 /**
  * Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
  */
-export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
-  return options.map((option: ParamOption): ListItem => {
+export function convertExtensionOptionToLabeledList(options: ParamOption[]): Choice<string>[] {
+  return options.map((option: ParamOption): Choice<string> => {
     return {
       checked: false,
       name: option.label,
@@ -43,7 +26,7 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
  */
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
-}): ListItem[] {
+}): Choice<string>[] {
   const l = Object.entries(officialExts).map(([key, entry]) => {
     return {
       checked: false,

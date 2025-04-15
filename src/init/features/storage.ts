@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../../logger";
-import { promptOnce } from "../../prompt";
+import { input } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
@@ -15,9 +15,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
 
-  const storageRulesFile = await promptOnce({
-    type: "input",
-    name: "rules",
+  const storageRulesFile = await input({
     message: "What file should be used for Storage Rules?",
     default: "storage.rules",
   });

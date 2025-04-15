@@ -3,7 +3,7 @@ import * as spawn from "cross-spawn";
 import { Config } from "../../../config";
 import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
 import { runWithVirtualEnv } from "../../../functions/python";
-import { promptOnce } from "../../../prompt";
+import { confirm } from "../../../prompt";
 import { latest } from "../../../deploy/functions/runtimes/supported";
 import { readTemplateSync } from "../../../templates";
 
@@ -38,9 +38,7 @@ export async function setup(setup: any, config: Config): Promise<void> {
     venvProcess.on("error", reject);
   });
 
-  const install = await promptOnce({
-    name: "install",
-    type: "confirm",
+  const install = await confirm({
     message: "Do you want to install dependencies now?",
     default: true,
   });

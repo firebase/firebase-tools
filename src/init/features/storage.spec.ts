@@ -13,7 +13,7 @@ describe("storage", () => {
 
   beforeEach(() => {
     askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
-    promptStub = sandbox.stub(prompt, "promptOnce");
+    promptStub = sandbox.stub(prompt, "input");
   });
 
   afterEach(() => {
