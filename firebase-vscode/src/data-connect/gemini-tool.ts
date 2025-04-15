@@ -28,7 +28,7 @@ import { ExtensionContext } from "vscode";
 import { InstanceType } from "./code-lens-provider";
 import { ObjectTypeDefinitionNode } from "graphql";
 
-export const DATACONNECT_TOOL_ID = "fdc";
+export const DATACONNECT_TOOL_ID = "dataconnect";
 export const DATACONNECT_DISPLAY_NAME = "Data Connect";
 export const SUGGESTED_PROMPTS = [
   "/schema Create a schema for a pizza store",
@@ -101,8 +101,8 @@ export class GeminiToolController implements SuggestedPromptProvider {
         const text = part.getPrompt();
 
         if (text.startsWith("@")) {
-          if (text !== "@fdc") {
-            return "Not @fdc tool";
+          if (text !== `@${DATACONNECT_TOOL_ID}`) {
+            return `Not @${DATACONNECT_TOOL_ID} tool`;
           }
           continue;
         } else if (text.startsWith("/")) {
