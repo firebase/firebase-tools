@@ -173,6 +173,7 @@ export async function setCleanupPolicy(
       ...repository.cleanupPolicies,
       ...generateCleanupPolicy(daysToKeep),
     },
+    cleanupPolicyDryRun: false,
     labels,
   };
   await exports.updateRepository(update);

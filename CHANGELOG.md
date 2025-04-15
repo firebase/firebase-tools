@@ -1,1 +1,3 @@
-fix: Upgrade inquirer library to fix some prompt bugs; some still remain (#8389)
+- Upgraded `inquirer` library to address some visual bugs with prompting (#8389)
+- Fixed an issue in the extensions emulator where parameter default values would not be substitued into resource definitions.
+- Keep artifact registry dry run off for policy changes (#8419)

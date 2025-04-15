@@ -23,6 +23,7 @@ export interface Repository {
   createTime: string;
   updateTime: string;
   cleanupPolicies?: Record<string, CleanupPolicy | undefined>;
+  cleanupPolicyDryRun?: boolean;
   labels?: Record<string, string>;
 }
 
@@ -84,7 +85,7 @@ export async function getRepository(repoPath: string): Promise<Repository> {
  * Update an Artifact Registry repository.
  */
 export async function updateRepository(repo: RepositoryInput): Promise<Repository> {
-  const updateMask = proto.fieldMasks(repo, "cleanupPolicies", "labels");
+  const updateMask = proto.fieldMasks(repo, "cleanupPolicies", "cleanupPolicyDryRun", "labels");
   if (updateMask.length === 0) {
     const res = await client.get<Repository>(repo.name!);
     return res.body;
