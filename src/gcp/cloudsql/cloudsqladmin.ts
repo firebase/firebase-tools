@@ -58,16 +58,14 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
   return `https://console.cloud.google.com/sql/instances/${instanceId}/overview?project=${projectId}`;
 }
 
-export async function createInstance(
-  args: {
-    projectId: string,
-    location: string,
-    instanceId: string,
-    enableGoogleMlIntegration: boolean,
-    waitForCreation: boolean,
-    freeTrial: boolean,
-  }
-): Promise<Instance | undefined> {
+export async function createInstance(args: {
+  projectId: string;
+  location: string;
+  instanceId: string;
+  enableGoogleMlIntegration: boolean;
+  waitForCreation: boolean;
+  freeTrial: boolean;
+}): Promise<Instance | undefined> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });

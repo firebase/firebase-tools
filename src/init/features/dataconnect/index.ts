@@ -123,13 +123,15 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     info.cloudSqlInstanceId === "" ||
     info.locationId === "" ||
     info.cloudSqlDatabase === "";
-  const shouldConfigureBackend = isBillingEnabled && requiredConfigUnset
-    && await confirm({
-        message: `Would you like to configure your backend resources now?`,
-        // For Blaze Projects, configure Cloud SQL by default.
-        // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
-        default: true,
-      });
+  const shouldConfigureBackend =
+    isBillingEnabled &&
+    requiredConfigUnset &&
+    (await confirm({
+      message: `Would you like to configure your backend resources now?`,
+      // For Blaze Projects, configure Cloud SQL by default.
+      // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+      default: true,
+    }));
   if (shouldConfigureBackend) {
     info = await promptForService(info);
     info = await promptForCloudSQL(setup, info);
@@ -166,7 +168,6 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
-      configYamlPath: join(config.get("dataconnect.source"), "dataconnect.yaml"),
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });

@@ -17,7 +17,6 @@ import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
-import { join } from "node:path";
 import { upgradeInstructions } from "../../dataconnect/freeTrial";
 
 /**
@@ -93,7 +92,6 @@ export default async function (context: any, options: DeployOptions): Promise<vo
               location: parseServiceName(s.serviceName).location,
               instanceId,
               databaseId,
-              configYamlPath: join(s.sourceDirectory, "dataconnect.yaml"),
               enableGoogleMlIntegration,
               waitForCreation: true,
               dryRun: options.dryRun,

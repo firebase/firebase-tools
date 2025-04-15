@@ -7,21 +7,13 @@ import { logger } from "../logger";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
-import {
-  getFreeTrialInstanceId,
-  freeTrialTermsLink,
-  printFreeTrialUnavailable,
-  isFreeTrialError,
-  checkFreeTrialInstanceUsed,
-} from "./freeTrial";
-import { FirebaseError } from "../error";
+import { freeTrialTermsLink, checkFreeTrialInstanceUsed } from "./freeTrial";
 
 export async function provisionCloudSql(args: {
   projectId: string;
   location: string;
   instanceId: string;
   databaseId: string;
-  configYamlPath: string;
   enableGoogleMlIntegration: boolean;
   waitForCreation: boolean;
   silent?: boolean;
@@ -33,7 +25,6 @@ export async function provisionCloudSql(args: {
     location,
     instanceId,
     databaseId,
-    configYamlPath,
     enableGoogleMlIntegration,
     waitForCreation,
     silent,
@@ -74,13 +65,15 @@ export async function provisionCloudSql(args: {
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
     silent ||
-    utils.logLabeledBullet(
-      "dataconnect",
-      `CloudSQL instance '${instanceId}' not found.` +
-        cta +
-        freeTrialUsed ? "" : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
-        dryRun ? `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`: "",
-    );
+      utils.logLabeledBullet(
+        "dataconnect",
+        `CloudSQL instance '${instanceId}' not found.` + cta + freeTrialUsed
+          ? ""
+          : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
+              dryRun
+            ? `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`
+            : "",
+      );
 
     if (!dryRun) {
       const newInstance = await promiseWithSpinner(
@@ -92,8 +85,7 @@ export async function provisionCloudSql(args: {
             enableGoogleMlIntegration,
             waitForCreation,
             freeTrial: !freeTrialUsed,
-            }
-          ),
+          }),
         "Creating your instance...",
       );
       if (newInstance) {
