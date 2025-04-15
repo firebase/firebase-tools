@@ -79,7 +79,7 @@ async function findGqlFiles(dir: string): Promise<string[]> {
   try {
     const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     const files = entries
-      .filter((file) => !file.isDirectory() && (file.name.endsWith(".gql") || file. file.name.endsWith(".graphql")))
+      .filter((file) => !file.isDirectory() && (file.name.endsWith(".gql") || file.name.endsWith(".graphql")))
       .map((file) => path.join(dir, file.name));
 
     const folders = entries.filter((folder) => folder.isDirectory());
