@@ -168,10 +168,7 @@ export const cloudSQLAdminOrigin = () =>
 export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 export const cloudAiCompanionOrigin = () =>
-  utils.envOverride(
-    "CLOUD_AI_COMPANION_URL",
-    "https://staging-cloudaicompanion-googleapis.sandbox.google.com/",
-  );
+  utils.envOverride("CLOUD_AI_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {
