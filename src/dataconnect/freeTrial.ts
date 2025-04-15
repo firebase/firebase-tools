@@ -22,17 +22,20 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
   };
   try {
     const ts = await queryTimeSeries(query, projectId);
-    let used = true
+    let used = true;
     if (ts.length) {
       used = ts[0].points.some((p) => p.value.int64Value);
     }
     if (used) {
-      utils.logLabeledWarning("dataconnect", "CloudSQL no cost trial has already been used on this project.");
+      utils.logLabeledWarning(
+        "dataconnect",
+        "CloudSQL no cost trial has already been used on this project.",
+      );
     }
     return used;
   } catch (err: any) {
     // If the metric doesn't exist, free trial is not used.
-    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!")
+    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
     return false;
   }
 }
