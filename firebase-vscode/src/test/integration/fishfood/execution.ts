@@ -51,11 +51,13 @@ firebaseSuite("Execution", async function () {
       );
 
       await commands.waitForEmulators();
+
       const current = await sidebar.currentEmulators();
       expect(current).toContain("dataconnect :9399");
+      await browser.pause(4000); // strange case where emulators are showing before actually callable
 
-      // Test 2 - Execute queries
-      console.log(`Running test: executing a query`);
+      // Test 1 - Execute mutation
+      console.log(`Running test: executing a mutation`);
 
       // Update arguments
       await execution.open();
@@ -63,13 +65,16 @@ firebaseSuite("Execution", async function () {
 
       // Insert a post
       await editor.openFile(mutationsPath);
+
       await editor.runLocalButton.waitForDisplayed();
       await editor.runLocalButton.click();
 
-      async function getExecutionStatus() {
+      async function getExecutionStatus(name: string) {
+        await browser.pause(1000);
         let item = await execution.history.getSelectedItem();
         let status = await item.getStatus();
-        while (status === "pending") {
+        let label = await item.getLabel();
+        while (status === "pending" && label !== name) {
           await browser.pause(1000);
           item = await execution.history.getSelectedItem();
           status = await item.getStatus();
@@ -79,9 +84,11 @@ firebaseSuite("Execution", async function () {
       }
 
       // Waiting for the execution to finish
-      let result = await getExecutionStatus();
-
+      let result = await getExecutionStatus("createPost");
       expect(await result.getLabel()).toBe("createPost");
+
+      // Test 2 - Execute mutation
+      console.log("Running test: executing a query");
 
       await execution.setVariables(`{"id": "42"}`);
 
@@ -114,6 +121,7 @@ firebaseSuite("Execution", async function () {
 
       console.log(`Running test: executing an operation with a fragment`);
 
+      await execution.setVariables(`{}`);
       await editor.openFile(queryWithFragmentPath);
       await editor.runLocalButton.waitForDisplayed();
       await editor.runLocalButton.click();
@@ -125,14 +133,9 @@ firebaseSuite("Execution", async function () {
       });
 
       // Check the history entry
-      const item3 = await execution.history.getSelectedItem();
-
-      // Waiting for the execution to finish
-      await browser.waitUntil(async () => {
-        const status = await item3.getStatus();
-        return status === "success";
-      });
+      const item3 = await getExecutionStatus("fragmentTest");
       expect(await item3.getLabel()).toBe("fragmentTest");
+      expect(await item3.getStatus()).toBe("sucess");
     },
   );
 });
