@@ -135,7 +135,7 @@ firebaseSuite("Execution", async function () {
       // Check the history entry
       const item3 = await getExecutionStatus("fragmentTest");
       expect(await item3.getLabel()).toBe("fragmentTest");
-      expect(await item3.getStatus()).toBe("sucess");
+      expect(await item3.getStatus()).toBe("success");
     },
   );
 });
