@@ -5,12 +5,17 @@ import {
 } from "../../utils/page_objects/execution";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { mockProject, mutationsPath, queriesPath, queryWithFragmentPath } from "../../utils/projects";
+import {
+  mockProject,
+  mutationsPath,
+  queriesPath,
+  queryWithFragmentPath,
+} from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
 import { Workbench, Notification } from "wdio-vscode-service";
-import {Notifications} from "../../utils/page_objects/notifications"
+import { Notifications } from "../../utils/page_objects/notifications";
 
 firebaseSuite("Execution", async function () {
   firebaseTest(
@@ -50,6 +55,7 @@ firebaseSuite("Execution", async function () {
       expect(current).toContain("dataconnect :9399");
 
       // Test 2 - Execute queries
+      console.log(`Running test: executing a query`);
 
       // Update arguments
       await execution.open();
@@ -105,6 +111,9 @@ firebaseSuite("Execution", async function () {
       );
 
       // Test 3: Execute operation with fragment
+
+      console.log(`Running test: executing an operation with a fragment`);
+
       await editor.openFile(queryWithFragmentPath);
       await editor.runLocalButton.waitForDisplayed();
       await editor.runLocalButton.click();
