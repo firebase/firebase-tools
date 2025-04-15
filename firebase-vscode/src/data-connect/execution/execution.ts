@@ -276,7 +276,7 @@ export function registerExecution(
         operationName: ast.name?.value,
         // We send the compiled GQL from the whole connector to support fragments
         // In the case of adhoc operation, just send the sole document
-        query: gqlText || document,
+        query: gqlText ?? document,
         variables: executionArgsJSON.value,
         path: documentPath,
         instance,

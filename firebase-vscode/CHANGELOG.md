@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Fragments now properly validate for execution
+
 ## 1.1.0
 
 - Updated internal `firebase-tools` dependency to 14.1.0

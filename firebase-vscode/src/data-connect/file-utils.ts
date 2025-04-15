@@ -1,8 +1,10 @@
 import vscode, { Uri } from "vscode";
 import path from "path";
-import { dataConnectConfigs } from "./config";
 import * as fs from "fs";
+
+import { dataConnectConfigs } from "./config";
 import { pluginLogger } from "../logger-wrapper";
+
 export async function checkIfFileExists(file: Uri) {
   try {
     await vscode.workspace.fs.stat(file);
@@ -57,12 +59,12 @@ export async function getConnectorGqlFiles(filePath: string): Promise<string[]> 
   return await findGqlFiles(activeDocumentConnector?.path || "");
 }
 
-export async function getConnectorGQLText(filePath: string) {
+export async function getConnectorGQLText(filePath: string): Promise<string> {
   const files = await getConnectorGqlFiles(filePath);
   return getTextFromFiles(files);
 }
 
-export function getTextFromFiles(files: string[]) {
+export function getTextFromFiles(files: string[]): string {
   return files.reduce((acc, filePath) => {
     try {
       return acc.concat(fs.readFileSync(filePath, "utf-8"), "\n");
@@ -77,7 +79,7 @@ async function findGqlFiles(dir: string): Promise<string[]> {
   try {
     const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     const files = entries
-      .filter((file) => !file.isDirectory() && (file.name.endsWith(".gql") || file.name.endsWith(".graphql")))
+      .filter((file) => !file.isDirectory() && (file.name.endsWith(".gql") || file. file.name.endsWith(".graphql")))
       .map((file) => path.join(dir, file.name));
 
     const folders = entries.filter((folder) => folder.isDirectory());
