@@ -90,7 +90,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
             const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
             return provisionCloudSql({
               projectId,
-              locationId: parseServiceName(s.serviceName).location,
+              location: parseServiceName(s.serviceName).location,
               instanceId,
               databaseId,
               configYamlPath: join(s.sourceDirectory, "dataconnect.yaml"),

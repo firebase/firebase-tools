@@ -12,12 +12,13 @@ import {
   freeTrialTermsLink,
   printFreeTrialUnavailable,
   isFreeTrialError,
+  checkFreeTrialInstanceUsed,
 } from "./freeTrial";
 import { FirebaseError } from "../error";
 
 export async function provisionCloudSql(args: {
   projectId: string;
-  locationId: string;
+  location: string;
   instanceId: string;
   databaseId: string;
   configYamlPath: string;
@@ -29,7 +30,7 @@ export async function provisionCloudSql(args: {
   let connectionName = ""; // Not used yet, will be used for schema migration
   const {
     projectId,
-    locationId,
+    location,
     instanceId,
     databaseId,
     configYamlPath,
@@ -71,45 +72,40 @@ export async function provisionCloudSql(args: {
     }
     cmekWarning();
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
+    const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
     silent ||
-      utils.logLabeledBullet(
-        "dataconnect",
-        `CloudSQL instance '${instanceId}' not found.` +
-          cta +
-          `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
-          `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
-      );
+    utils.logLabeledBullet(
+      "dataconnect",
+      `CloudSQL instance '${instanceId}' not found.` +
+        cta +
+        freeTrialUsed ? "" : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}` +
+        dryRun ? `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`: "",
+    );
+
     if (!dryRun) {
-      try {
-        const newInstance = await promiseWithSpinner(
-          () =>
-            cloudSqlAdminClient.createInstance(
-              projectId,
-              locationId,
-              instanceId,
-              enableGoogleMlIntegration,
-              waitForCreation,
-            ),
-          "Creating your instance...",
-        );
-        if (newInstance) {
-          silent || utils.logLabeledBullet("dataconnect", "Instance created");
-          connectionName = newInstance?.connectionName || "";
-        } else {
-          silent ||
-            utils.logLabeledBullet(
-              "dataconnect",
-              "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
-            );
-          return connectionName;
-        }
-      } catch (err: any) {
-        if (await isFreeTrialError(err, projectId)) {
-          const freeTrialInstanceId = await getFreeTrialInstanceId(projectId);
-          printFreeTrialUnavailable(projectId, configYamlPath, freeTrialInstanceId);
-          throw new FirebaseError("No-cost Cloud SQL trial has already been used on this project.");
-        }
-        throw err;
+      const newInstance = await promiseWithSpinner(
+        () =>
+          cloudSqlAdminClient.createInstance({
+            projectId,
+            location,
+            instanceId,
+            enableGoogleMlIntegration,
+            waitForCreation,
+            freeTrial: !freeTrialUsed,
+            }
+          ),
+        "Creating your instance...",
+      );
+      if (newInstance) {
+        silent || utils.logLabeledBullet("dataconnect", "Instance created");
+        connectionName = newInstance?.connectionName || "";
+      } else {
+        silent ||
+          utils.logLabeledBullet(
+            "dataconnect",
+            "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+          );
+        return connectionName;
       }
     }
   }
@@ -186,7 +182,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
 
 function cmekWarning() {
   const message =
-    "The no-cost Cloud SQL trial instance does not support customer managed encryption keys.\n" +
+    "Cloud SQL instances created via the Firebase CLI do not support customer managed encryption keys.\n" +
     "If you'd like to use a CMEK to encrypt your data, first create a CMEK encrypted instance (https://cloud.google.com/sql/docs/postgres/configure-cmek#createcmekinstance).\n" +
     "Then, edit your `dataconnect.yaml` file to use the encrypted instance and redeploy.";
   utils.logLabeledWarning("dataconnect", message);

@@ -59,21 +59,24 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
 }
 
 export async function createInstance(
-  projectId: string,
-  location: string,
-  instanceId: string,
-  enableGoogleMlIntegration: boolean,
-  waitForCreation: boolean,
+  args: {
+    projectId: string,
+    location: string,
+    instanceId: string,
+    enableGoogleMlIntegration: boolean,
+    waitForCreation: boolean,
+    freeTrial: boolean,
+  }
 ): Promise<Instance | undefined> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
-  if (enableGoogleMlIntegration) {
+  if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
   }
   let op: ClientResponse<Operation>;
   try {
-    op = await client.post<Partial<Instance>, Operation>(`projects/${projectId}/instances`, {
-      name: instanceId,
-      region: location,
+    op = await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
+      name: args.instanceId,
+      region: args.location,
       databaseVersion: "POSTGRES_15",
       settings: {
         tier: "db-f1-micro",
@@ -81,10 +84,10 @@ export async function createInstance(
         ipConfiguration: {
           authorizedNetworks: [],
         },
-        enableGoogleMlIntegration,
+        enableGoogleMlIntegration: args.enableGoogleMlIntegration,
         databaseFlags,
         storageAutoResize: false,
-        userLabels: { "firebase-data-connect": "ft" },
+        userLabels: { "firebase-data-connect": args.freeTrial ? "ft" : "nt" },
         insightsConfig: {
           queryInsightsEnabled: true,
           queryPlansPerMinute: 5, // Match the default settings
@@ -93,13 +96,13 @@ export async function createInstance(
       },
     });
   } catch (err: any) {
-    handleAllowlistError(err, location);
+    handleAllowlistError(err, args.location);
     throw err;
   }
-  if (!waitForCreation) {
+  if (!args.waitForCreation) {
     return;
   }
-  const opName = `projects/${projectId}/operations/${op.body.name}`;
+  const opName = `projects/${args.projectId}/operations/${op.body.name}`;
   const pollRes = await operationPoller.pollOperation<Instance>({
     apiOrigin: cloudSQLAdminOrigin(),
     apiVersion: API_VERSION,

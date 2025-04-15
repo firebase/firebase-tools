@@ -1,7 +1,9 @@
+import * as clc from "colorette";
+
 import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
 import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
-import * as clc from "colorette";
+import { confirm } from "../prompt";
 
 export function freeTrialTermsLink(): string {
   return "https://firebase.google.com/pricing";
