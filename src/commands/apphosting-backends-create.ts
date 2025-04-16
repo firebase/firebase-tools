@@ -1,6 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import requireInteractive from "../requireInteractive";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
@@ -18,6 +19,7 @@ export const command = new Command("apphosting:backends:create")
     "specify the service account used to run the server",
     "",
   )
+  .before(requireAuth)
   .before(ensureApiEnabled)
   .before(requireInteractive)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))

@@ -1,0 +1,19 @@
+steps:
+  # Grab the latest version, store in workspace
+  - id: "Read New Version Number from npm"
+    name: "node"
+    entrypoint: "sh"
+    args:
+      [
+        "-c",
+        "npm view firebase-tools version > /workspace/version_number.txt && cat /workspace/version_number.txt",
+      ]
+  # Publish the Firebase docker image
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "sh"
+    args:
+      - "-c"
+      - "docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/us/firebase:$(cat /workspace/version_number.txt) -t us-central1-docker.pkg.dev/$PROJECT_ID/us/firebase:latest -f ./Dockerfile ."
+
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/us/firebase"
