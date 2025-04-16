@@ -3,6 +3,7 @@ import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { logWarning } from "../utils";
 
 export const command = new Command("apphosting:rollouts:list <backendId>")
@@ -11,6 +12,7 @@ export const command = new Command("apphosting:rollouts:list <backendId>")
     "-l, --location <location>",
     "region of the rollouts (defaults to listing rollouts from all regions)",
   )
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     if (options.location !== undefined) {
