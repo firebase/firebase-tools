@@ -9,7 +9,6 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
-import Uri from 'vscode';
 import * as url from 'url';
 
 export interface FirestoreEmulatorArgs {
