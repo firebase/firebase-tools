@@ -10,6 +10,7 @@ import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 import { EmulatorHub } from "./hub";
+import * as url from 'url';
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -58,6 +59,20 @@ export class EmulatorUI extends ExpressBasedEmulator {
           experiments: [],
           ...(hub! as EmulatorHub).getRunningEmulatorsMapping(),
         };
+
+        if (json["firestore"]) {
+              try {
+                if (process.env["FIRESTORE_EMULATOR_HOST"]) {
+                  const hostEnv = url.parse(process.env["FIRESTORE_EMULATOR_HOST"])
+                  const host = hostEnv.hostname;
+                  const port = parseInt(hostEnv.port ?? `80`);
+
+          
+                }
+              } catch (err: any) {
+                console.log("Reading emulator host env var id not work")
+              }
+        }
 
         // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
         // for more detail
