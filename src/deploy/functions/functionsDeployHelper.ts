@@ -56,7 +56,7 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string): EndpointFilter[] {
+export function parseFunctionSelector(selector: string, strict: boolean): EndpointFilter[] {
   const fragments = selector.split(":");
   if (fragments.length < 2) {
     // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
@@ -67,10 +67,13 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
     //
     // We decide here to create filter for both conditions. This sounds sloppy, but it's only troublesome if there is
     // conflict between a codebase name as function id in the default codebase.
-    return [
-      { codebase: fragments[0] },
-      { codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
-    ];
+    //
+    // In strict mode, 'default' codebase is not optional and we always assume it is a codebase fragment.
+    const filters: EndpointFilter[] = [{ codebase: fragments[0] }];
+    if (!strict) {
+      filters.push({ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) });
+    }
+    return filters;
   }
   return [
     {
@@ -98,11 +101,16 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
  *     2) Grouped functions w/ "abc" prefix in the default codebase?
  *     3) All functions in the "abc" codebase?
  *
- *   Current implementation creates filters that match against all conditions.
+ *   The default implementation creates filters that match against all conditions.
+ *
+ *   In "strict" mode, we always assume the only filter follows the format functions:[codebase]:[fn].
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
-export function getEndpointFilters(options: { only?: string }): EndpointFilter[] | undefined {
+export function getEndpointFilters(
+  options: { only?: string },
+  strict = false,
+): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;
   }
@@ -113,7 +121,7 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector));
+        filters.push(...parseFunctionSelector(selector, strict));
       }
     }
   }
