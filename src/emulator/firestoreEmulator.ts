@@ -9,6 +9,8 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
+import Uri from 'vscode';
+import * as url from 'url';
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -82,8 +84,18 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   getInfo(): FirestoreEmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost();
-    const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    let host = this.args.host || Constants.getDefaultHost();
+    let port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    try {
+      if (process.env["FIRESTORE_EMULATOR_HOST"]) {
+        const hostEnv = url.parse(process.env["FIRESTORE_EMULATOR_HOST"])
+        host = hostEnv.hostname ?? host;
+        port = parseInt(hostEnv.port ?? `${port}`);
+
+      }
+    } catch (err: any) {
+      utils.logLabeledBullet("firestore", "Couldn't read host/port from env var");
+    }
     const reservedPorts = this.args.websocket_port ? [this.args.websocket_port] : [];
 
     return {
