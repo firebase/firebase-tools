@@ -61,8 +61,6 @@ export class EmulatorUI extends ExpressBasedEmulator {
         };
 
         if (json["firestore"]) {
-
-            console.log("Reading emulator host env var id not work")
               try {
                 if (process.env["FIRESTORE_EMULATOR_HOST"]) {
                   const hostEnv = url.parse(process.env["FIRESTORE_EMULATOR_HOST"])
@@ -70,7 +68,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
                   const port = parseInt(hostEnv.port ?? `80`);
 
                   json["firestore"] = {...json["firestore"], listen: { address: host, port}, host, port}
-          
+                  console.log(JSON.stringify(json, undefined, 4));
                 }
               } catch (err: any) {
                 console.log("Reading emulator host env var id not work")
