@@ -14,6 +14,7 @@ export function setEnvVarsForEmulators(
   env: Record<string, string | undefined>,
   emulators: EmulatorInfo[],
 ): void {
+  maybeUseMonospacePortForwarding(emulators);
   for (const emu of emulators) {
     const host = formatHost(emu);
     switch (emu.name) {

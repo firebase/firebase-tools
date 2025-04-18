@@ -10,9 +10,7 @@ import { emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 import { EmulatorHub } from "./hub";
-import * as url from 'url';
-import { analytics } from "@angular-devkit/core";
-import { maybeUseMonosapcePortForwarding } from "./env";
+import { maybeUseMonospacePortForwarding } from "./env";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -59,7 +57,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
       this.jsonHandler(() => {
 
         const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
-        maybeUseMonosapcePortForwarding(Object.values(emulatorInfos));
+        maybeUseMonospacePortForwarding(Object.values(emulatorInfos));
         const json = {
           projectId,
           experiments: enabledExperiments ?? [],
