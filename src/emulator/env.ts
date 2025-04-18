@@ -109,7 +109,7 @@ export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): 
       if (fsInfo.webSocketPort) {
         fsInfo.webSocketHost = `${fsInfo.webSocketPort}-${portForwardingHost}`;
         fsInfo.webSocketPort = 80;
-      } 
+      }
     }
   }
   return emulatorInfos;
