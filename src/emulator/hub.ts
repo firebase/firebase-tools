@@ -79,7 +79,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     await this.writeLocatorFile();
   }
 
-  getRunningEmulatorsMapping(): any {
+  getRunningEmulatorsMapping(): GetEmulatorsResponse {
     const emulators: GetEmulatorsResponse = {};
     for (const info of EmulatorRegistry.listRunningWithInfo()) {
       emulators[info.name] = {

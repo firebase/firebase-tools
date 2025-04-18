@@ -11,6 +11,7 @@ import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 import { EmulatorHub } from "./hub";
 import * as url from 'url';
+import { analytics } from "@angular-devkit/core";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -51,44 +52,32 @@ export class EmulatorUI extends ExpressBasedEmulator {
     let called = false
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
-    // hard to accomplish using client SDKs, consider adding an API below.
+    // hard to accomplish using client SDKs, consider adding an API below
     app.get(
       "/api/config",
       this.jsonHandler(() => {
+
+        const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
+        if (process.env.MONOSPACE_ENV && process.env.MONOSPACE_PORT_FORWARDING_HOST) {
+          for (const [name, info] of Object.entries(emulatorInfos)) {
+            const url = `${info.port}-${process.env.MONOSPACE_PORT_FORWARDING_HOST}`;
+            info.host = url;
+            info.listen = info.listen?.map(l => {
+              l.address = url;
+              l.port = 80;
+              return l;
+            });
+            info.port = 80;
+          }
+        }
         const json = {
           projectId,
-          experiments: [],
-          ...(hub! as EmulatorHub).getRunningEmulatorsMapping(),
+          experiments: enabledExperiments ?? [],
+          ...emulatorInfos,
+          analytics: emulatorGaSession
         };
-
-        if (json["firestore"]) {
-              try {
-                if (process.env["FIRESTORE_EMULATOR_HOST"]) {
-                  console.log(process.env["FIRESTORE_EMULATOR_HOST"])
-                  const hostEnv = url.parse(process.env["FIRESTORE_EMULATOR_HOST"])
-                  const host = hostEnv.hostname;
-                  const port = parseInt(hostEnv.port ?? `80`);
-
-                  json["firestore"] = {...json["firestore"], listen: { address: host, port}, host, port}
-                  !called && console.log(JSON.stringify(json, undefined, 4));
-                  called = true;
-                }
-              } catch (err: any) {
-                console.log("Reading emulator host env var id not work")
-              }
-        }
-
-        // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
-        // for more detail
-        if (emulatorGaSession) {
-          json.analytics = emulatorGaSession;
-        }
-
-        // pick up any experiments enabled with `firebase experiment:enable`
-        if (enabledExperiments) {
-          json.experiments = enabledExperiments;
-        }
-
+        !called && console.log(JSON.stringify(json, undefined, 4));
+        called = true;
         return Promise.resolve(json);
       }),
     );
