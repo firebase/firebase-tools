@@ -90,6 +90,9 @@ export async function getCredentialsEnvironment(
 export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[]{
   if (process.env.MONOSPACE_ENV && process.env.MONOSPACE_PORT_FORWARDING_HOST) {
     for (const info of emulatorInfos) {
+      if (info.host.includes(process.env.MONOSPACE_PORT_FORWARDING_HOST)) {
+        continue;
+      }
       const url = `${info.port}-${process.env.MONOSPACE_PORT_FORWARDING_HOST}`;
       info.host = url;
       info.listen = info.listen?.map(l => {
