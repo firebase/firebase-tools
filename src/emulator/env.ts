@@ -85,3 +85,19 @@ export async function getCredentialsEnvironment(
   }
   return credentialEnv;
 }
+
+export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[]{
+  if (process.env.MONOSPACE_ENV && process.env.MONOSPACE_PORT_FORWARDING_HOST) {
+    for (const info of emulatorInfos) {
+      const url = `${info.port}-${process.env.MONOSPACE_PORT_FORWARDING_HOST}`;
+      info.host = url;
+      info.listen = info.listen?.map(l => {
+        l.address = url;
+        l.port = 80;
+        return l;
+      });
+      info.port = 80;
+    }
+  }
+  return emulatorInfos;
+}
