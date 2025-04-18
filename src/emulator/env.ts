@@ -4,6 +4,7 @@ import { formatHost } from "./functionsEmulatorShared";
 import { Account } from "../types/auth/index";
 import { EmulatorLogger } from "./emulatorLogger";
 import { getCredentialPathAsync, hasDefaultCredentials } from "../defaultCredentials";
+import { FirestoreEmulatorInfo } from "./firestoreEmulator";
 
 /**
  * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
@@ -88,12 +89,15 @@ export async function getCredentialsEnvironment(
 }
 
 export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[]{
-  if (process.env.MONOSPACE_ENV && process.env.MONOSPACE_PORT_FORWARDING_HOST) {
+  const portForwardingHost = process.env.MONOSPACE_PORT_FORWARDING_HOST;
+  if (process.env.MONOSPACE_ENV && portForwardingHost) {
     for (const info of emulatorInfos) {
-      if (info.host.includes(process.env.MONOSPACE_PORT_FORWARDING_HOST)) {
+      if (info.host.includes(portForwardingHost)) {
+        // Don't double apply this.
+        // TODO: Just deep copy everything each time.
         continue;
       }
-      const url = `${info.port}-${process.env.MONOSPACE_PORT_FORWARDING_HOST}`;
+      const url = `${info.port}-${portForwardingHost}`;
       info.host = url;
       info.listen = info.listen?.map(l => {
         l.address = url;
@@ -101,6 +105,11 @@ export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): 
         return l;
       });
       info.port = 80;
+      const fsInfo = info as FirestoreEmulatorInfo;
+      if (fsInfo.webSocketPort) {
+        fsInfo.webSocketHost = `${fsInfo.webSocketPort}-${portForwardingHost}`;
+        fsInfo.webSocketPort = 80;
+      } 
     }
   }
   return emulatorInfos;
