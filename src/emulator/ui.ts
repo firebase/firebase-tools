@@ -48,6 +48,7 @@ export class EmulatorUI extends ExpressBasedEmulator {
     const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
     const webDir = path.join(downloadDetails.unzipDir!, "client");
 
+    let called = false
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
     // hard to accomplish using client SDKs, consider adding an API below.
@@ -63,12 +64,14 @@ export class EmulatorUI extends ExpressBasedEmulator {
         if (json["firestore"]) {
               try {
                 if (process.env["FIRESTORE_EMULATOR_HOST"]) {
+                  console.log(process.env["FIRESTORE_EMULATOR_HOST"])
                   const hostEnv = url.parse(process.env["FIRESTORE_EMULATOR_HOST"])
                   const host = hostEnv.hostname;
                   const port = parseInt(hostEnv.port ?? `80`);
 
                   json["firestore"] = {...json["firestore"], listen: { address: host, port}, host, port}
-                  console.log(JSON.stringify(json, undefined, 4));
+                  !called && console.log(JSON.stringify(json, undefined, 4));
+                  called = true;
                 }
               } catch (err: any) {
                 console.log("Reading emulator host env var id not work")
