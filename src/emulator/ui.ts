@@ -48,21 +48,20 @@ export class EmulatorUI extends ExpressBasedEmulator {
     const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
     const webDir = path.join(downloadDetails.unzipDir!, "client");
 
-    let called = false
+    let called = false;
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
     // hard to accomplish using client SDKs, consider adding an API below
     app.get(
       "/api/config",
       this.jsonHandler(() => {
-
         const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
         maybeUseMonospacePortForwarding(Object.values(emulatorInfos));
         const json = {
           projectId,
           experiments: enabledExperiments ?? [],
           ...emulatorInfos,
-          analytics: emulatorGaSession
+          analytics: emulatorGaSession,
         };
         !called && console.log(JSON.stringify(json, undefined, 4));
         called = true;

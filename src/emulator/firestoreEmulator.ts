@@ -9,7 +9,6 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
-import * as url from 'url';
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -83,8 +82,8 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   getInfo(): FirestoreEmulatorInfo {
-    let host = this.args.host || Constants.getDefaultHost();
-    let port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    const host = this.args.host || Constants.getDefaultHost();
+    const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
     const reservedPorts = this.args.websocket_port ? [this.args.websocket_port] : [];
 
     return {
