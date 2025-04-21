@@ -6,15 +6,22 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Constants } from "./constants";
-import { emulatorSession } from "../track";
+import { AnalyticsSession, emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
-import { EmulatorHub } from "./hub";
-import { maybeUseMonospacePortForwarding } from "./env";
+import { EmulatorHub, GetEmulatorsResponse } from "./hub";
+import { maybeUsePortForwarding } from "./env";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
   projectId: string;
+}
+
+// Response shape for /api/config endpoint. Contains info about which emulators are running and where.
+interface EmulatorConfigInfo extends GetEmulatorsResponse {
+  projectId: string;
+  experiments: string[];
+  analytics?: AnalyticsSession;
 }
 
 export class EmulatorUI extends ExpressBasedEmulator {
@@ -48,7 +55,6 @@ export class EmulatorUI extends ExpressBasedEmulator {
     const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
     const webDir = path.join(downloadDetails.unzipDir!, "client");
 
-    let called = false;
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
     // hard to accomplish using client SDKs, consider adding an API below
@@ -56,15 +62,13 @@ export class EmulatorUI extends ExpressBasedEmulator {
       "/api/config",
       this.jsonHandler(() => {
         const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
-        maybeUseMonospacePortForwarding(Object.values(emulatorInfos));
-        const json = {
+        maybeUsePortForwarding(Object.values(emulatorInfos));
+        const json: EmulatorConfigInfo = {
           projectId,
           experiments: enabledExperiments ?? [],
-          ...emulatorInfos,
           analytics: emulatorGaSession,
+          ...emulatorInfos,
         };
-        !called && console.log(JSON.stringify(json, undefined, 4));
-        called = true;
         return Promise.resolve(json);
       }),
     );

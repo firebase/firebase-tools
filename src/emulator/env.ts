@@ -15,7 +15,7 @@ export function setEnvVarsForEmulators(
   env: Record<string, string | undefined>,
   emulators: EmulatorInfo[],
 ): void {
-  maybeUseMonospacePortForwarding(emulators);
+  maybeUsePortForwarding(emulators);
   for (const emu of emulators) {
     const host = formatHost(emu);
     switch (emu.name) {
@@ -88,9 +88,9 @@ export async function getCredentialsEnvironment(
   return credentialEnv;
 }
 
-export function maybeUseMonospacePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[] {
-  const portForwardingHost = process.env.MONOSPACE_PORT_FORWARDING_HOST;
-  if (process.env.MONOSPACE_ENV && portForwardingHost) {
+export function maybeUsePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[] {
+  const portForwardingHost = process.env.FIREBASE_STUDIO_PORT_FORWARDING_HOST;
+  if (portForwardingHost) {
     for (const info of emulatorInfos) {
       if (info.host.includes(portForwardingHost)) {
         // Don't double apply this.
