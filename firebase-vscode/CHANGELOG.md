@@ -1,5 +1,7 @@
 ## Next
 
+- [Fixed] Fixed an issue where adhoc operations would fail to execute
+
 ## 1.2.0
 
 - Updated internal `firebase-tools` dependency to 14.2.0
