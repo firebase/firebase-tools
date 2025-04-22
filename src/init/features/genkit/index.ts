@@ -71,7 +71,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
       throw new FirebaseError(
         "Unable to determine which genkit version to install.\n" +
           `npm Error: ${getErrMsg(err)}\n\n` +
-          "For a possible workaround run\n  npm view genkit version\n" +
+          "For a possible workaround run\n  npm view genkit-cli version\n" +
           "and then set an environment variable:\n" +
           "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
           "and run `firebase init genkit` again",
