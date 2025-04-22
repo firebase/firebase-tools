@@ -6,6 +6,7 @@ export async function ensureApis(projectId: string): Promise<void> {
   await ensure(projectId, api.dataconnectOrigin(), prefix);
   await ensure(projectId, api.cloudSQLAdminOrigin(), prefix);
   await ensure(projectId, api.computeOrigin(), prefix);
+  await ensure(projectId, api.vertexAIOrigin(), prefix);
 }
 
 export async function ensureSparkApis(projectId: string): Promise<void> {
