@@ -101,14 +101,14 @@ export function maybeUsePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorI
       info.host = url;
       info.listen = info.listen?.map((l) => {
         l.address = url;
-        l.port = 80;
+        l.port = 443;
         return l;
       });
-      info.port = 80;
+      info.port = 443;
       const fsInfo = info as FirestoreEmulatorInfo;
       if (fsInfo.webSocketPort) {
         fsInfo.webSocketHost = `${fsInfo.webSocketPort}-${portForwardingHost}`;
-        fsInfo.webSocketPort = 80;
+        fsInfo.webSocketPort = 443;
       }
     }
   }
