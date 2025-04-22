@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import style from "./data-connect-execution-configuration.entry.scss";
 import {
+  VSCodeButton,
   VSCodeDropdown,
   VSCodeOption,
   VSCodePanels,
@@ -9,7 +10,7 @@ import {
   VSCodePanelView,
   VSCodeTextArea,
 } from "@vscode/webview-ui-toolkit/react";
-import { broker } from "../globals/html-broker";
+import { broker, useBroker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
 import { UserMockKind } from "../../common/messaging/protocol";
 
@@ -18,8 +19,26 @@ root.render(<DataConnectExecutionArgumentsApp />);
 
 export function DataConnectExecutionArgumentsApp() {
   function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setText(e.target.value);
     broker.send("definedDataConnectArgs", e.target.value);
   }
+
+  const lastOperation = useBroker("notifyLastOperation");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [textareaVariables, setText] = useState("{}");
+
+
+  const updateText = broker.on("notifyDataConnectArgs" , (newArgs: string) => {
+    setText(newArgs);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(0, 1);
+    }
+  })
+
+  const sendRerun = () => {
+    broker.send("rerunExecution");
+  };
 
   // Due to webview-ui-toolkit adding shadow-roots, css alone is not
   // enough to customize the look of the panels.
@@ -54,9 +73,17 @@ export function DataConnectExecutionArgumentsApp() {
       <VSCodePanelTab>AUTHENTICATION</VSCodePanelTab>
       <VSCodePanelView className={style.variable}>
         <textarea
-          defaultValue={"{}"}
+          ref={textareaRef}
+          value={textareaVariables}
           onChange={handleVariableChange}
+          className={style.variableInput}
         ></textarea>
+        <Spacer size="small"></Spacer>
+        {lastOperation && (
+          <VSCodeButton onClick={sendRerun}>
+            Rerun last execution: {lastOperation}
+          </VSCodeButton>
+        )}
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>
         <AuthUserMockForm />
@@ -74,12 +101,17 @@ function AuthUserMockForm() {
   );
 
   useEffect(() => {
-    broker.send("notifyAuthUserMockChange", selectedKind === UserMockKind.AUTHENTICATED ? {
-      kind: selectedKind,
-      claims:  claims,
-    } : {
-      kind: selectedKind,
-    });
+    broker.send(
+      "notifyAuthUserMockChange",
+      selectedKind === UserMockKind.AUTHENTICATED
+        ? {
+            kind: selectedKind,
+            claims: claims,
+          }
+        : {
+            kind: selectedKind,
+          },
+    );
   }, [selectedKind, claims]);
 
   let expandedForm: JSX.Element | undefined;

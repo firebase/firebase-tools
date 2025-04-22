@@ -1,7 +1,7 @@
 import * as mockfs from "mock-fs";
 
 import { expect } from "chai";
-import { getPlatformFromFolder } from "./fileUtils";
+import { frameworksMap, getPlatformFromFolder, SUPPORTED_FRAMEWORKS } from "./fileUtils";
 import { generateSdkYaml } from "../init/features/dataconnect/sdk";
 import { ConnectorYaml, Platform } from "./types";
 import FileSystem from "mock-fs/lib/filesystem";
@@ -137,10 +137,12 @@ describe("getPlatformFromFolder", () => {
 
 describe("generateSdkYaml", () => {
   // Test Data
-  const sampleConnectorYaml: ConnectorYaml = {
-    connectorId: "default",
-    generate: {},
-  };
+  function getSampleConnectorYaml(): ConnectorYaml {
+    return {
+      connectorId: "default",
+      generate: {},
+    };
+  }
   const connectorYamlFolder = "/my/app/folder/connector";
 
   const appFolderBase = "/my/app/folder";
@@ -192,11 +194,11 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
+      it(c.desc, async () => {
         mockfs({ [appFolderDetectable]: { ["package.json"]: "{}" } });
-        const modifiedYaml = generateSdkYaml(
+        const modifiedYaml = await generateSdkYaml(
           Platform.WEB,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -204,6 +206,47 @@ describe("generateSdkYaml", () => {
       });
     }
   });
+  for (const f of SUPPORTED_FRAMEWORKS) {
+    describe(`Check support for ${f} framework`, () => {
+      const cases = [
+        {
+          desc: `can detect a ${f}`,
+          deps: frameworksMap[f],
+          detect: true,
+        },
+        {
+          desc: `can detect not ${f}`,
+          deps: `not-${f}`,
+        },
+      ];
+      async function testDependency(dep: string, shouldDetect: boolean | undefined) {
+        mockfs({
+          [appFolderDetectable]: {
+            ["package.json"]: `{"dependencies": {"${dep}": "1"}}`,
+          },
+        });
+        const modifiedYaml = await generateSdkYaml(
+          Platform.WEB,
+          getSampleConnectorYaml(),
+          connectorYamlFolder,
+          appFolderDetectable,
+        );
+        console.log(`{"dependencies": {"${dep}": "1"}}`);
+        expect(modifiedYaml.generate?.javascriptSdk?.[f]).to.equal(shouldDetect);
+      }
+      for (const c of cases) {
+        it(c.desc, async () => {
+          if (Array.isArray(c.deps)) {
+            for (const dep of c.deps) {
+              await testDependency(dep, c.detect);
+            }
+          } else {
+            await testDependency(c.deps as string, c.detect);
+          }
+        });
+      }
+    });
+  }
 
   describe("IOS platform should add Swift SDK Generation", () => {
     const cases: {
@@ -237,10 +280,10 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
-        const modifiedYaml = generateSdkYaml(
+      it(c.desc, async () => {
+        const modifiedYaml = await generateSdkYaml(
           Platform.IOS,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -308,16 +351,16 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
+      it(c.desc, async () => {
         mockfs({
           [appFolderHasJava + "/app/src/main/java"]: {},
           [appFolderHasKotlin + "/app/src/main/kotlin"]: {},
           [appFolderHasBoth + "/app/src/main/java"]: {},
           [appFolderHasBoth + "/app/src/main/kotlin"]: {},
         });
-        const modifiedYaml = generateSdkYaml(
+        const modifiedYaml = await generateSdkYaml(
           Platform.ANDROID,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -358,10 +401,10 @@ describe("generateSdkYaml", () => {
       },
     ];
     for (const c of cases) {
-      it(c.desc, () => {
-        const modifiedYaml = generateSdkYaml(
+      it(c.desc, async () => {
+        const modifiedYaml = await generateSdkYaml(
           Platform.FLUTTER,
-          sampleConnectorYaml,
+          getSampleConnectorYaml(),
           connectorYamlFolder,
           c.appDir,
         );
@@ -370,9 +413,9 @@ describe("generateSdkYaml", () => {
     }
   });
 
-  it("should create generate object if it doesn't exist", () => {
+  it("should create generate object if it doesn't exist", async () => {
     const yamlWithoutGenerate: ConnectorYaml = { connectorId: "default-connector" };
-    const modifiedYaml = generateSdkYaml(
+    const modifiedYaml = await generateSdkYaml(
       Platform.WEB,
       yamlWithoutGenerate,
       connectorYamlFolder,
@@ -381,15 +424,15 @@ describe("generateSdkYaml", () => {
     expect(modifiedYaml.generate).to.exist;
   });
 
-  it("should not modify yaml for unknown platforms", () => {
+  it("should not modify yaml for unknown platforms", async () => {
     const unknownPlatform = "unknown" as Platform; // Type assertion for test
-    const modifiedYaml = generateSdkYaml(
+    const modifiedYaml = await generateSdkYaml(
       unknownPlatform,
-      sampleConnectorYaml,
+      getSampleConnectorYaml(),
       connectorYamlFolder,
       appFolderBase,
     );
-    expect(modifiedYaml).to.deep.equal(sampleConnectorYaml); // No changes
+    expect(modifiedYaml).to.deep.equal(getSampleConnectorYaml()); // No changes
   });
 
   afterEach(() => {

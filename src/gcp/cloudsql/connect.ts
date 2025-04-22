@@ -11,7 +11,6 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -22,8 +21,9 @@ export async function execute(
     username: string;
     password?: string;
     silent?: boolean;
+    transaction?: boolean;
   },
-) {
+): Promise<pg.QueryResult[]> {
   const logFn = opts.silent ? logger.debug : logger.info;
   const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
   const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
@@ -91,20 +91,33 @@ export async function execute(
     }
   }
 
+  const cleanUpFn = async () => {
+    conn.release();
+    await pool.end();
+    connector.close();
+  };
+
   const conn = await pool.connect();
+  const results: pg.QueryResult[] = [];
   logFn(`Logged in as ${opts.username}`);
+  if (opts.transaction) {
+    sqlStatements.unshift("BEGIN;");
+    sqlStatements.push("COMMIT;");
+  }
   for (const s of sqlStatements) {
     logFn(`Executing: '${s}'`);
     try {
-      await conn.query(s);
+      results.push(await conn.query(s));
     } catch (err) {
+      logFn(`Rolling back transaction due to error ${err}}`);
+      await conn.query("ROLLBACK;");
+      await cleanUpFn();
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
-  conn.release();
-  await pool.end();
-  connector.close();
+  await cleanUpFn();
+  return results;
 }
 
 export async function executeSqlCmdsAsIamUser(
@@ -113,7 +126,8 @@ export async function executeSqlCmdsAsIamUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-): Promise<void> {
+  transaction = false,
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   const { user: iamUser } = await getIAMUser(options);
 
@@ -123,6 +137,7 @@ export async function executeSqlCmdsAsIamUser(
     databaseId,
     username: iamUser,
     silent: silent,
+    transaction: transaction,
   });
 }
 
@@ -135,7 +150,8 @@ export async function executeSqlCmdsAsSuperUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-) {
+  transaction = false,
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
@@ -148,13 +164,14 @@ export async function executeSqlCmdsAsSuperUser(
     temporaryPassword,
   );
 
-  return await execute([`SET ROLE = cloudsqlsuperuser`, ...cmds], {
+  return await execute([`SET ROLE = '${superuser}'`, ...cmds], {
     projectId,
     instanceId,
     databaseId,
     username: superuser,
     password: temporaryPassword,
     silent: silent,
+    transaction: transaction,
   });
 }
 
@@ -177,8 +194,6 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
 // Steps:
 // 1. Create an IAM user for the current identity
 // 2. Create an IAM user for FDC P4SA
-// 3. Run setupSQLPermissions to setup the SQL database roles and permissions.
-// 4. Connect to the DB as the temporary user and run the necessary grants
 export async function setupIAMUsers(
   instanceId: string,
   databaseId: string,
@@ -200,18 +215,6 @@ export async function setupIAMUsers(
   );
   await cloudSqlAdminClient.createUser(projectId, instanceId, fdcP4SAmode, fdcP4SAUser);
 
-  // 3. Setup FDC required SQL roles and permissions.
-  await setupSQLPermissions(instanceId, databaseId, options, true);
-
-  // 4. Apply necessary grants.
-  const grants = [
-    // Grant firebaseowner role to the current IAM user.
-    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
-    // Grant firebaswriter to the FDC P4SA user
-    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
-  ];
-
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, /** silent=*/ true);
   return user;
 }
 

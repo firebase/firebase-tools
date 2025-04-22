@@ -17,7 +17,7 @@ import {
 } from "./pg-gateway/index";
 import { fromNodeSocket } from "./pg-gateway/platforms/node";
 import { logger } from "../../logger";
-import { hasMessage } from "../../error";
+import { hasMessage, FirebaseError } from "../../error";
 import { StringDecoder } from "node:string_decoder";
 
 export const TRUNCATE_TABLES_SQL = `
@@ -89,6 +89,10 @@ export class PostgresServer {
 
   async getDb(): Promise<PGlite> {
     if (!this.db) {
+      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+      if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
+        fs.mkdirSync(this.dataDirectory, { recursive: true });
+      }
       // Not all schemas will need vector installed, but we don't have an good way
       // to swap extensions after starting PGLite, so we always include it.
       const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
@@ -136,7 +140,8 @@ export class PostgresServer {
         const db = await PGlite.create(pgliteArgs);
         return db;
       }
-      throw err;
+      logger.debug(`Error from pglite: ${err}`);
+      throw new FirebaseError("Unexpected error starting up Postgres.");
     }
   }
 
@@ -160,6 +165,7 @@ export class PostgresServer {
 // TODO: Remove this code once https://github.com/electric-sql/pglite/pull/294 is released in PGLite
 export class PGliteExtendedQueryPatch {
   isExtendedQuery = false;
+  eqpErrored = false;
 
   constructor(public connection: PostgresConnection) {}
 
@@ -180,6 +186,7 @@ export class PGliteExtendedQueryPatch {
     // 'Sync' indicates the end of an extended query
     if (message[0] === FrontendMessageCode.Sync) {
       this.isExtendedQuery = false;
+      this.eqpErrored = false;
 
       // Manually inject 'ReadyForQuery' message at the end
       return this.connection.createReadyForQuery();
@@ -187,9 +194,13 @@ export class PGliteExtendedQueryPatch {
 
     // A PGlite response can contain multiple messages
     for await (const message of getMessages(response)) {
-      // If a prepared statement leads to an error message, we need to end the pipeline.
-      if (message[0] === BackendMessageCode.ErrorMessage) {
-        this.isExtendedQuery = false;
+      // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
+      // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
+      if (this.eqpErrored) {
+        continue;
+      }
+      if (this.isExtendedQuery && message[0] === BackendMessageCode.ErrorMessage) {
+        this.eqpErrored = true;
       }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {

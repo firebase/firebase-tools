@@ -3,19 +3,21 @@ import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config, Env, store } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
+import * as path from "path";
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 
-export type EnvironmentVariable = Omit<Env, "secret">;
-export type Secret = Omit<Env, "availability" | "value">;
+export type Secret = Omit<Env, "value">;
+export type EnvMap = Record<string, Omit<Env, "variable">>;
 
 /**
  * AppHostingYamlConfig is an object representing an apphosting.yaml configuration
  * present in the user's codebase (i.e 'apphosting.yaml', 'apphosting.staging.yaml', etc).
  */
 export class AppHostingYamlConfig {
-  private _environmentVariables: Map<string, EnvironmentVariable>;
-  private _secrets: Map<string, Secret>;
+  // Holds the basename of the file (e.g. apphosting.yaml vs apphosting.staging.yaml)
+  public filename: string | undefined;
+  public env: EnvMap = {};
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -23,18 +25,17 @@ export class AppHostingYamlConfig {
    * programatically read or manipulate the App Hosting config.
    */
   static async loadFromFile(filePath: string): Promise<AppHostingYamlConfig> {
-    const config = new AppHostingYamlConfig();
     if (!fileExistsSync(filePath)) {
-      throw new FirebaseError("Cannot load AppHostingYamlConfig from given path, it doesn't exist");
+      throw new FirebaseError(`Cannot load ${filePath} from given path, it doesn't exist`);
     }
+    const config = new AppHostingYamlConfig();
 
     const file = await readFileFromDirectory(dirname(filePath), basename(filePath));
+    config.filename = path.basename(filePath);
     const loadedAppHostingYaml = (await wrappedSafeLoad(file.source)) ?? {};
 
     if (loadedAppHostingYaml.env) {
-      const parsedEnvs = parseEnv(loadedAppHostingYaml.env);
-      config._environmentVariables = parsedEnvs.environmentVariables;
-      config._secrets = parsedEnvs.secrets;
+      config.env = toEnvMap(loadedAppHostingYaml.env);
     }
 
     return config;
@@ -48,43 +49,26 @@ export class AppHostingYamlConfig {
     return new AppHostingYamlConfig();
   }
 
-  private constructor() {
-    this._environmentVariables = new Map();
-    this._secrets = new Map();
-  }
-
-  get environmentVariables(): EnvironmentVariable[] {
-    return mapToArray(this._environmentVariables);
-  }
-
-  get secrets(): Secret[] {
-    return mapToArray(this._secrets);
-  }
-
-  addEnvironmentVariable(env: EnvironmentVariable) {
-    this._environmentVariables.set(env.variable, env);
-  }
-
-  addSecret(secret: Secret) {
-    this._secrets.set(secret.variable, secret);
-  }
-
-  clearSecrets() {
-    this._secrets.clear();
-  }
-
   /**
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.
    * */
-  merge(other: AppHostingYamlConfig) {
-    for (const [key, value] of other._environmentVariables) {
-      this._environmentVariables.set(key, value);
+  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext: boolean = true) {
+    if (!allowSecretsToBecomePlaintext) {
+      const wereSecrets = Object.entries(this.env)
+        .filter(([, env]) => env.secret)
+        .map(([key]) => key);
+      if (wereSecrets.some((key) => other.env[key]?.value)) {
+        throw new FirebaseError(
+          `Cannot convert secret to plaintext in ${other.filename ?? "apphosting yaml"}`,
+        );
+      }
     }
 
-    for (const [key, value] of other._secrets) {
-      this._secrets.set(key, value);
-    }
+    this.env = {
+      ...this.env,
+      ...other.env,
+    };
   }
 
   /**
@@ -99,32 +83,26 @@ export class AppHostingYamlConfig {
       yamlConfigToWrite = await wrappedSafeLoad(file.source);
     }
 
-    yamlConfigToWrite.env = [...this.environmentVariables, ...this.secrets];
+    yamlConfigToWrite.env = toEnvList(this.env);
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
 }
 
-function parseEnv(envs: Env[]) {
-  const environmentVariables = new Map<string, EnvironmentVariable>();
-  const secrets = new Map<string, Secret>();
-
-  for (const env of envs) {
-    if (env.value) {
-      environmentVariables.set(env.variable, env);
-    }
-
-    if (env.secret) {
-      secrets.set(env.variable, env);
-    }
-  }
-
-  return {
-    environmentVariables,
-    secrets,
-  };
+// TODO: generalize into a utility function and remove the key from the array type.
+export function toEnvMap(envs: Env[]): EnvMap {
+  return Object.fromEntries(
+    envs.map((env) => {
+      const variable = env.variable;
+      const tmp = { ...env };
+      delete (env as any).variable;
+      return [variable, tmp];
+    }),
+  );
 }
 
-function mapToArray(map: Map<string, Env>): Env[] {
-  return Array.from(map.values());
+export function toEnvList(envs: EnvMap): Env[] {
+  return Object.entries(envs).map(([variable, env]) => {
+    return { ...env, variable };
+  });
 }

@@ -1,4 +1,47 @@
-## NEXT
+## Next
+
+## 1.2.0
+
+- Updated internal `firebase-tools` dependency to 14.2.0
+- [Fixed] Fragments now properly validate for execution
+
+## 1.1.0
+
+- Updated internal `firebase-tools` dependency to 14.1.0
+- [Fixed] User auth will now load without requiring extension sidebar to open
+
+## 1.0.0
+
+- [Breaking] Updated minimum VSCode version requirement to 1.69.0 to ensure node 20 is used
+- Updated internal `firebase-tools` dependency to 14.0.0
+- [Added] Added rerun execution button in variables context
+- [Added] Provide default required variables during execution
+- [Fixed] Fixed an issue where environment variables provided in `extraEnv` were not respected in some cases
+
+## 0.14.2
+
+- Updated internal `firebase-tools` dependency to 13.34.0
+
+## 0.14.1
+
+- Updated internal `firebase-tools` dependency to 13.33.0
+- Updated introspection endpoint to V1
+- Allow unused variables in GraphQL queries and mutations.
+
+## 0.14.0
+
+- Updated internal `firebase-tools` dependency to 13.32.0
+- [Fixed] Graphql Language Server support for Windows
+
+## 0.13.1
+
+- Updated internal `firebase-tools` dependency to 13.31.2
+
+## 0.13.0
+
+- Updated internal `firebase-tools` dependency to 13.30.0
+- [Added] Added `extraEnv` setting to help extension development.
+- [Added] Make Run Local button always present
 
 ## 0.12.2
 

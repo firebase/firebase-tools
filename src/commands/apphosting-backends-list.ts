@@ -3,22 +3,22 @@ import { datetimeString } from "../utils";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
+import * as Table from "cli-table3";
 
-const Table = require("cli-table");
-const TABLE_HEAD = ["Backend", "Repository", "URL", "Location", "Updated Date"];
+const TABLE_HEAD = ["Backend", "Repository", "URL", "Primary Region", "Updated Date"];
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")
-  .option("-l, --location <location>", "list backends in the specified location", "-")
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    const location = options.location as string;
     let backendRes: apphosting.ListBackendsResponse;
     try {
-      backendRes = await apphosting.listBackends(projectId, location);
+      backendRes = await apphosting.listBackends(projectId, /* location= */ "-");
     } catch (err: unknown) {
       throw new FirebaseError(
         `Unable to list backends present for project: ${projectId}. Please check the parameters you have provided.`,

@@ -9,7 +9,7 @@ import { requireAuth } from "../requireAuth";
 
 export const command = new Command("dataconnect:sql:diff [serviceId]")
   .description(
-    "displays the differences between  a local DataConnect schema and your CloudSQL database's current schema",
+    "display the differences between a local Data Connect schema and your CloudSQL database's current schema",
   )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
@@ -23,6 +23,7 @@ export const command = new Command("dataconnect:sql:diff [serviceId]")
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
     const diffs = await diffSchema(
+      options,
       serviceInfo.schema,
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
     );

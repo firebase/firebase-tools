@@ -6,11 +6,10 @@ import { requireAuth } from "../requireAuth";
 import { listSecretVersions } from "../gcp/secretManager";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 export const command = new Command("apphosting:secrets:describe <secretName>")
-  .description("Get metadata for secret and its versions.")
+  .description("get metadata for secret and its versions")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(requirePermissions, ["secretmanager.secrets.get"])

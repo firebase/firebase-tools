@@ -333,6 +333,8 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -439,6 +441,8 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
     FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
   };
 
   try {
@@ -509,11 +513,15 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "ingressSettings",
     "timeoutSeconds",
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
     "serviceAccountEmail",
     "serviceAccount",
+    (from) =>
+      !from
+        ? null
+        : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
@@ -551,8 +559,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       eventType: endpoint.eventTrigger.eventType,
       retryPolicy: "RETRY_POLICY_UNSPECIFIED",
     };
-    if (endpoint.serviceAccount) {
-      gcfFunction.eventTrigger.serviceAccountEmail = endpoint.serviceAccount;
+    if (gcfFunction.serviceConfig.serviceAccountEmail) {
+      gcfFunction.eventTrigger.serviceAccountEmail = gcfFunction.serviceConfig.serviceAccountEmail;
     }
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
       if (!endpoint.eventTrigger.eventFilters?.topic) {
@@ -609,6 +617,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
   } else if (backend.isCallableTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-callable": "true" };
+    if (endpoint.callableTrigger.genkitAction) {
+      gcfFunction.labels["genkit-action"] = "true";
+    }
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -787,5 +798,6 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
+  proto.copyIfPresent(endpoint, gcfFunction, "state");
   return endpoint;
 }

@@ -6,7 +6,6 @@ export function responseToError(response: any, body: any, url?: string): Firebas
   if (response.statusCode < 400) {
     return;
   }
-
   if (typeof body === "string") {
     if (response.statusCode === 404) {
       body = {

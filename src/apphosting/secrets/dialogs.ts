@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
 import * as apphosting from "../../gcp/apphosting";
@@ -178,8 +178,8 @@ export async function selectBackendServiceAccounts(
   const table = new Table({
     head: tableData[0],
     style: { head: ["green"] },
-    rows: tableData[1],
   });
+  table.push(...tableData[1]);
   logger.info(table.toString());
 
   const allAccounts = metadata.reduce((accum: Set<string>, row) => {
@@ -207,8 +207,14 @@ function toUpperSnakeCase(key: string): string {
     .toUpperCase();
 }
 
-export async function envVarForSecret(secret: string): Promise<string> {
-  const upper = toUpperSnakeCase(secret);
+export async function envVarForSecret(
+  secret: string,
+  trimTestPrefix: boolean = false,
+): Promise<string> {
+  let upper = toUpperSnakeCase(secret);
+  if (trimTestPrefix && upper.startsWith("TEST_")) {
+    upper = upper.substring("TEST_".length);
+  }
   if (upper === secret) {
     try {
       env.validateKey(secret);

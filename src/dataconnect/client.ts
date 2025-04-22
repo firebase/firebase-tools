@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
-const DATACONNECT_API_VERSION = "v1beta";
+const DATACONNECT_API_VERSION = "v1";
 const PAGE_SIZE_MAX = 100;
 
 const dataconnectClient = () =>
@@ -61,28 +61,17 @@ export async function createService(
   return pollRes;
 }
 
-async function deleteService(serviceName: string): Promise<types.Service> {
-  // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
-  const op = await dataconnectClient().delete<types.Service>(serviceName);
+export async function deleteService(serviceName: string): Promise<types.Service> {
+  // Note that we need to force delete in order to delete child resources too.
+  const op = await dataconnectClient().delete<types.Service>(serviceName, {
+    queryParams: { force: "true" },
+  });
   const pollRes = await operationPoller.pollOperation<types.Service>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
   });
   return pollRes;
-}
-
-export async function deleteServiceAndChildResources(serviceName: string): Promise<void> {
-  const connectors = await listConnectors(serviceName);
-  await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
-  try {
-    await deleteSchema(serviceName);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw err;
-    }
-  }
-  await deleteService(serviceName);
 }
 
 /** Schema methods */

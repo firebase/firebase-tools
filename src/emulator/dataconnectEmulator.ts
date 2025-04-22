@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dataConnectLocalConnString } from "../api";
+import { dataConnectLocalConnString, vertexAIOrigin } from "../api";
 import { Constants } from "./constants";
 import {
   getPID,
@@ -12,6 +12,7 @@ import {
   stop,
   downloadIfNecessary,
   isIncomaptibleArchError,
+  getDownloadDetails,
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
@@ -27,6 +28,9 @@ import { Config } from "../config";
 import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
+import { Account } from "../types/auth";
+import { getCredentialsEnvironment } from "./env";
+import { ensure } from "../ensureApiEnabled";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -41,17 +45,21 @@ export interface DataConnectEmulatorArgs {
   enable_output_generated_sdk: boolean;
   importPath?: string;
   debug?: boolean;
+  extraEnv?: Record<string, string>;
+  account?: Account;
 }
 
 export interface DataConnectGenerateArgs {
   configDir: string;
   connectorId: string;
   watch?: boolean;
+  account?: Account;
 }
 
 export interface DataConnectBuildArgs {
   configDir: string;
   projectId?: string;
+  account?: Account;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -71,8 +79,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     let resolvedConfigDir;
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
-
-      const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
+      const info = await DataConnectEmulator.build({
+        configDir: resolvedConfigDir,
+        account: this.args.account,
+      });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
@@ -81,6 +91,7 @@ export class DataConnectEmulator implements EmulatorInstance {
             "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
           );
         } else {
+          await ensure(this.args.projectId, vertexAIOrigin(), "dataconnect", /* silent=*/ true);
           this.logger.logLabeled(
             "WARN",
             "dataconnect",
@@ -91,13 +102,18 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    await start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: resolvedConfigDir,
-      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
-      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
-    });
+    const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
+    await start(
+      Emulators.DATACONNECT,
+      {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+        enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+      },
+      env,
+    );
 
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
@@ -119,7 +135,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           dataDirectory = this.args.config.path(dataDirectory);
         }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
+          ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,
@@ -196,6 +212,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     return Emulators.DATACONNECT;
   }
 
+  getVersion(): string {
+    return getDownloadDetails(Emulators.DATACONNECT).version;
+  }
+
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
@@ -230,7 +250,8 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (args.watch) {
       cmd.push("--watch");
     }
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    const env = await DataConnectEmulator.getEnv(args.account);
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
         `Unknown system error when running the Data Connect toolkit. ` +
@@ -258,8 +279,8 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (args.projectId) {
       cmd.push(`--project_id=${args.projectId}`);
     }
-
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    const env = await DataConnectEmulator.getEnv(args.account);
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
         `Unkown system error when running the Data Connect toolkit. ` +
@@ -331,6 +352,19 @@ export class DataConnectEmulator implements EmulatorInstance {
       }
     }
     return false;
+  }
+
+  static async getEnv(
+    account?: Account,
+    extraEnv: Record<string, string> = {},
+  ): Promise<NodeJS.ProcessEnv> {
+    const credsEnv = await getCredentialsEnvironment(
+      account,
+      EmulatorLogger.forEmulator(Emulators.DATACONNECT),
+      "dataconnect",
+      true,
+    );
+    return { ...process.env, ...extraEnv, ...credsEnv };
   }
 }
 

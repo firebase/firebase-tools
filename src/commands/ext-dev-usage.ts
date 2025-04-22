@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { Command } from "../command";
@@ -14,11 +14,11 @@ import { promptOnce } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")
-  .description("get usage for an extension")
+  .description("get usage statistics for an extension")
   .help(
     "use this command to get the usage of extensions you published. " +
       "Specify the publisher ID you used to publish your extensions, " +
-      "or the extension ref of your published extension.",
+      "or the extension ref of your published extension",
   )
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")

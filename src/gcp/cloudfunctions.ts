@@ -552,6 +552,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "sourceUploadUrl",
   );
+
   proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
   proto.convertIfPresent(
     endpoint,
@@ -576,6 +577,18 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
+  proto.convertIfPresent(endpoint, gcfFunction, "state", "status", (status) => {
+    if (status === "ACTIVE") {
+      return "ACTIVE";
+    } else if (status === "OFFLINE") {
+      return "FAILED";
+    } else if (status === "DEPLOY_IN_PROGRESS") {
+      return "DEPLOYING";
+    } else if (status === "DELETE_IN_PROGRESS") {
+      return "DELETING";
+    }
+    return "UNKONWN";
+  });
   return endpoint;
 }
 
@@ -666,7 +679,10 @@ export function functionFromEndpoint(
     "environmentVariables",
     "secretEnvironmentVariables",
   );
-  proto.renameIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount");
+
+  proto.convertIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount", (from) =>
+    !from ? null : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
+  );
   proto.convertIfPresent(
     gcfFunction,
     endpoint,

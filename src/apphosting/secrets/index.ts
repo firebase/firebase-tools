@@ -98,18 +98,82 @@ export async function grantSecretAccess(
     );
   }
 
+  const updatedBindings = existingBindings.concat(newBindings);
   try {
-    // TODO: Merge with existing bindings with the same role
-    const updatedBindings = existingBindings.concat(newBindings);
     await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
   } catch (err: unknown) {
     throw new FirebaseError(
-      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
+      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+        "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
       { original: getError(err) },
     );
   }
 
   utils.logSuccess(`Successfully set IAM bindings on secret ${secretName}.\n`);
+}
+
+/**
+ * Grants the following users or groups access to the provided secret.
+ */
+export async function grantEmailsSecretAccess(
+  projectId: string,
+  secretNames: string[],
+  emails: string[],
+): Promise<void> {
+  // This feels like a hack, but it's actually sorta taking advantage of an escalation of privilege in Google IAM.
+  // The correct way to determine if an email address is a user or group is to use the Google Admin API
+  // (GET e.g. admin.googleapis.com/admin/directory/v1/users/<email> or GET admin.googleapis.com/admin/driectory/v1/groups/<email>)
+  // but that would require us to have admin permissions on GMail for example. Fortunately, IAM seems to give us well formed errors
+  // that dictate what type of role the email address should have been bound with. This seems... like a design mistake. If they knew
+  // already, why not just accept the value without leaking its type?
+  // Note: we keep typeGuesses outside of the loop so that we learn the type of principal an email is once across all secrets.
+  const typeGuesses = Object.fromEntries(emails.map((email) => [email, "user"]));
+  for (const secretName of secretNames) {
+    let existingBindings;
+    try {
+      existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+          "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+        { original: getError(err) },
+      );
+    }
+
+    do {
+      try {
+        const newBindings: iam.Binding[] = [
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: Object.entries(typeGuesses).map(([email, type]) => `${type}:${email}`),
+          },
+        ];
+        const updatedBindings = existingBindings.concat(newBindings);
+        await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
+        break;
+      } catch (err: any) {
+        if (!(err instanceof FirebaseError)) {
+          throw new FirebaseError(
+            `Unexpected error updating IAM bindings on secret: ${secretName}`,
+            {
+              original: getError(err),
+            },
+          );
+        }
+        const match = /Principal (.*) is of type "([^"]+)"/.exec(err.message);
+        if (!match) {
+          throw new FirebaseError(
+            `Failed to set IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
+            { original: getError(err) },
+          );
+        }
+        typeGuesses[match[1]] = match[2];
+        continue;
+      }
+    } while (true);
+
+    utils.logSuccess(`Successfully set IAM bindings on secret ${secretName}.\n`);
+  }
 }
 
 /**

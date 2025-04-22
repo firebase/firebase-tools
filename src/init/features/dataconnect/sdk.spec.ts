@@ -4,6 +4,7 @@ import { expect } from "chai";
 
 import * as sdk from "./sdk";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import { Config } from "../../../config";
 
 const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
 
@@ -16,10 +17,14 @@ describe("init dataconnect:sdk", () => {
     const sandbox = sinon.createSandbox();
     let generateStub: sinon.SinonStub;
     let fsStub: sinon.SinonStub;
+    let emptyConfig: Config;
+    let askProjectWriteFileStub: sinon.SinonStub;
 
     beforeEach(() => {
       fsStub = sandbox.stub(fs, "writeFileSync");
       generateStub = sandbox.stub(DataConnectEmulator, "generate");
+      emptyConfig = new Config({}, { projectDir: process.cwd() });
+      askProjectWriteFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
     });
 
     afterEach(() => {
@@ -42,14 +47,11 @@ describe("init dataconnect:sdk", () => {
       it(c.desc, async () => {
         generateStub.resolves();
         fsStub.returns({});
-        await sdk.actuate(c.sdkInfo);
+
+        await sdk.actuate(c.sdkInfo, emptyConfig);
         expect(generateStub.called).to.equal(c.shouldGenerate);
-        expect(fsStub.args).to.deep.equal([
-          [
-            `${process.cwd()}/dataconnect/connector/connector.yaml`,
-            CONNECTOR_YAML_CONTENTS,
-            "utf8",
-          ],
+        expect(askProjectWriteFileStub.args).to.deep.equal([
+          ["dataconnect/connector/connector.yaml", CONNECTOR_YAML_CONTENTS],
         ]);
       });
     }

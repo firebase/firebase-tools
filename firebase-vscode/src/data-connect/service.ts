@@ -4,7 +4,6 @@ import {
   IntrospectionQuery,
   getIntrospectionQuery,
 } from "graphql";
-import { assertExecutionResult } from "../../common/graphql";
 import { DataConnectError } from "../../common/error";
 import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
@@ -15,6 +14,7 @@ import { dataConnectConfigs } from "../data-connect/config";
 import { firebaseRC } from "../core/config";
 import {
   dataconnectDataplaneClient,
+  dataconnectOrigin,
   executeGraphQL,
   DATACONNECT_API_VERSION,
 } from "../../../src/dataconnect/dataplaneClient";
@@ -190,7 +190,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await this.dataConnectToolkit.getFDCToolkitURL()) +
-        `/v1beta/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+        `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -236,6 +236,7 @@ export class DataConnectService {
     });
     if (params.instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
+      pluginLogger.info(`ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`);
       const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {

@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "0.12.2",
+  "version": "1.2.0",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -87,7 +87,7 @@
           "default": "./exportedData",
           "markdownDescription": "%ext.config.emulators.exportPath%"
         },
-        "firebase.emulators.exportOnExit":{
+        "firebase.emulators.exportOnExit": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "%ext.config.emulators.exportOnExit%"
@@ -96,6 +96,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%ext.config.debug%"
+        },
+        "firebase.extraEnv": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "%ext.config.extraEnv%"
         }
       }
     },

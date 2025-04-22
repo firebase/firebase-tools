@@ -33,6 +33,7 @@ export function load(client: any): any {
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
+  client.apps.init = loadCommand("apps-init");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.apps.android = {};
   client.apps.android.sha = {};
@@ -75,9 +76,6 @@ export function load(client: any): any {
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
-  client.experimental = {};
-  client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
   client.experiments = {};
   client.experiments.list = loadCommand("experiments-list");
   client.experiments.describe = loadCommand("experiments-describe");
@@ -142,6 +140,8 @@ export function load(client: any): any {
   client.functions.secrets.describe = loadCommand("functions-secrets-describe");
   client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
+  client.functions.artifacts = {};
+  client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
@@ -180,7 +180,6 @@ export function load(client: any): any {
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
     client.apphosting.config = {};
-    client.apphosting.config.export = loadCommand("apphosting-config-export");
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
       client.apphosting.builds.get = loadCommand("apphosting-builds-get");
@@ -220,6 +219,7 @@ export function load(client: any): any {
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};
   client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+  client.dataconnect.sql.setup = loadCommand("dataconnect-sql-setup");
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");

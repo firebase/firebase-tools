@@ -7,12 +7,12 @@ import { pickService } from "../dataconnect/fileUtils";
 import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
-import { fdcSqlRoleMap } from "../gcp/cloudsql/permissions";
+import { fdcSqlRoleMap } from "../gcp/cloudsql/permissionsSetup";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
 export const command = new Command("dataconnect:sql:grant [serviceId]")
-  .description("Grants the SQL role <role> to the provided user or service account <email>.")
+  .description("grants the SQL role <role> to the provided user or service account <email>")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
   .option(
     "-E, --email <email>",
