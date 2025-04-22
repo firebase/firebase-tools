@@ -66,7 +66,7 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
     genkitVersion = process.env.GENKIT_DEV_VERSION;
   } else {
     try {
-      genkitVersion = await spawnWithOutput("npm", ["view", "genkit", "version"]);
+      genkitVersion = await spawnWithOutput("npm", ["view", "genkit-cli", "version"]);
     } catch (err: unknown) {
       throw new FirebaseError(
         "Unable to determine which genkit version to install.\n" +
@@ -124,7 +124,7 @@ export interface GenkitSetup extends Setup {
   [key: string]: unknown;
 }
 
-function showStartMessage(config: Config, command: string) {
+function showStartMessage(config: Config, command: string): void {
   logger.info("\nLogin to Google Cloud using:");
   logger.info(
     clc.bold(
