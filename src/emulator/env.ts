@@ -89,7 +89,7 @@ export async function getCredentialsEnvironment(
 }
 
 export function maybeUsePortForwarding(emulatorInfos: EmulatorInfo[]): EmulatorInfo[] {
-  const portForwardingHost = process.env.FIREBASE_STUDIO_PORT_FORWARDING_HOST;
+  const portForwardingHost = process.env.WEB_HOST;
   if (portForwardingHost) {
     for (const info of emulatorInfos) {
       if (info.host.includes(portForwardingHost)) {
