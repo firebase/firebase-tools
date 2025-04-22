@@ -1,0 +1,1 @@
+- Fixed version for init genkit. Previously it was looking for the version of the old package 'genkit' instead of th new 'genkit-cli'.
