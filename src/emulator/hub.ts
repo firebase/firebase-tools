@@ -29,7 +29,7 @@ export interface EmulatorHubArgs {
   listenForEmulator: Record<PortName, ListenSpec[]>;
 }
 
-export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
+export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
 export class EmulatorHub extends ExpressBasedEmulator {
   static CLI_VERSION = pkg.version;
@@ -79,7 +79,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     await this.writeLocatorFile();
   }
 
-  getRunningEmulatorsMapping(): any {
+  getRunningEmulatorsMapping(): GetEmulatorsResponse {
     const emulators: GetEmulatorsResponse = {};
     for (const info of EmulatorRegistry.listRunningWithInfo()) {
       emulators[info.name] = {
