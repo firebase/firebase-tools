@@ -1,0 +1,1 @@
+- Updated the Firebase Data Connect local toolkit to v2.3.0, which adds support for `inc` and `dec` update transforms for `Date` and `Timestamp` scalars. (#8455)
