@@ -1,4 +1,8 @@
-## Next
+## NEXT
+
+## 1.3.0
+
+- [Fixed] Fixed an issue where adhoc operations would fail to execute
 
 ## 1.2.0
 

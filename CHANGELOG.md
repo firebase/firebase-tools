@@ -1,0 +1,5 @@
+- Fixed version for init genkit. Previously it was looking for the version of the old package 'genkit' instead of th new 'genkit-cli'.
+- Updated the Firebase Data Connect local toolkit to v2.3.1, which contains the following changes: (#8455)
+  - Added support for `inc` and `dec` update transforms for `Date` and `Timestamp` scalars.
+  - Fixed a bug where `OR` and `AND` clauses may be evaluated in the incorrect order.
+  - Fixed an issue where `{includes: $var}` or `{includesAll: [$var]}` clauses should be dropped if `$var` is missing.
