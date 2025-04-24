@@ -1,1 +1,1 @@
-* Clean up prompt for setting up web frameworks for Data Connect developers.
+- Clean up prompt for setting up web frameworks for Data Connect developers.
