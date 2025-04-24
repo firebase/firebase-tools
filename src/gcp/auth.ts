@@ -4,24 +4,24 @@ import { identityOrigin } from "../api";
 const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
 interface ProviderUserInfo {
-  providerId: string,
-  displayName: string,
-  photoUrl: string,
-  federatedId: string,
-  email: string,
-  rawId: string,
-  screenName: string,
-  phoneNumber: string
+  providerId: string;
+  displayName: string;
+  photoUrl: string;
+  federatedId: string;
+  email: string;
+  rawId: string;
+  screenName: string;
+  phoneNumber: string;
 }
 
 interface SetAccountInfoResponse {
-  localId: string,
-  idToken: string,
-  providerUserInfo: ProviderUserInfo[],
-  newEmail: string,
-  refreshToken: string,
-  expiresIn: string,
-  emailVerified: boolean
+  localId: string;
+  idToken: string;
+  providerUserInfo: ProviderUserInfo[];
+  newEmail: string;
+  refreshToken: string;
+  expiresIn: string;
+  emailVerified: boolean;
 }
 
 /**
@@ -65,18 +65,18 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
  * @param disabled sets whether the user is marked as disabled (true) or enabled (false).
  * @return the call succeeded (true).
  */
-export async function disableUser(project:string, uid:string, disabled:boolean): Promise<boolean> {
+export async function disableUser(
+  project: string,
+  uid: string,
+  disabled: boolean,
+): Promise<boolean> {
   const res = await apiClient.post<
-    { disableUser: boolean, targetProjectId: string, localId: string },
+    { disableUser: boolean; targetProjectId: string; localId: string },
     SetAccountInfoResponse
-  >(
-    '/v1/accounts:update',
-    {
-      disableUser: disabled,
-      targetProjectId: project,
-      localId: uid,
-    },
-  );
-  return (res.status == 200);
-  
+  >("/v1/accounts:update", {
+    disableUser: disabled,
+    targetProjectId: project,
+    localId: uid,
+  });
+  return res.status === 200;
 }
