@@ -22,7 +22,7 @@ import * as winston from "winston";
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
 
-function cli(pkg: any) {
+export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
 
   const args = process.argv.slice(2);

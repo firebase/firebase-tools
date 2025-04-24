@@ -3,16 +3,17 @@
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 
-const { silenceStdout } = require("../logger");
+import { silenceStdout } from "../logger";
 silenceStdout();
 
-const { FirebaseMcpServer } = require("../mcp/index");
+import { FirebaseMcpServer } from "../mcp/index";
 
 const cmd = new Command("mcp").before(requireAuth);
 
 export async function mcp() {
   const options: any = {};
+  options.cwd = process.env.PROJECT_ROOT || process.env.CWD;
   await cmd.prepare(options);
   const server = new FirebaseMcpServer({ cliOptions: options });
-  server.start();
+  await server.start();
 }
