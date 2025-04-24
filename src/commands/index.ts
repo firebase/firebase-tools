@@ -195,7 +195,9 @@ export function load(client: any): any {
   client.login.list = loadCommand("login-list");
   client.login.use = loadCommand("login-use");
   client.logout = loadCommand("logout");
-  client.mcp = loadCommand("mcp");
+  if (experiments.isEnabled("mcp")) {
+    client.mcp = loadCommand("mcp");
+  }
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");

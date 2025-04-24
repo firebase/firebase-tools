@@ -2,6 +2,7 @@
 
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
+import { isEnabled } from "../experiments";
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
@@ -12,7 +13,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 // we short-circuit the normal process for MCP
-if (process.argv[2] === "mcp") {
+if (isEnabled("mcp") && process.argv[2] === "experimental:mcp") {
   const { mcp } = require("./mcp");
   mcp();
 } else {
