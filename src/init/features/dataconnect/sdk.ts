@@ -131,7 +131,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
             choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
               value: frameworkStr,
               name: frameworkStr,
-              checked: newConnectorYaml!.generate?.javascriptSdk![frameworkStr]!!
+              checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
             })),
           },
         ],
