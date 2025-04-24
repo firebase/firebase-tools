@@ -1,12 +1,9 @@
+/* eslint camelcase: 0 */
+
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import {
-  AppPlatform,
-  getAppConfig,
-  getSdkConfig,
-  listFirebaseApps,
-} from "../../../management/apps.js";
+import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
 
 const PLATFORM_MAP: Record<string, AppPlatform> = {
   ios: AppPlatform.IOS,
@@ -46,6 +43,7 @@ export const get_sdk_config = tool(
         `Could not find an app for platform '${inputPlatform}' in project '${projectId}'`,
       );
     const sdkConfig = await getAppConfig(appId, platform);
-    return toContent(sdkConfig);
+    // TODO: return as string with comment about filename for ios and android
+    return toContent(sdkConfig, { format: "json" });
   },
 );

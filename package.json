@@ -169,7 +169,9 @@
     "winston": "^3.0.0",
     "winston-transport": "^4.4.0",
     "ws": "^7.5.10",
-    "yaml": "^2.4.1"
+    "yaml": "^2.4.1",
+    "zod": "^3.24.3",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@angular-devkit/architect": "^0.1402.2",

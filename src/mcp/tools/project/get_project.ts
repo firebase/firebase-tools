@@ -1,3 +1,5 @@
+/* eslint camelcase: 0 */
+
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { getProject } from "../../../management/projects.js";
@@ -13,7 +15,7 @@ export const get_project = tool(
       readOnlyHint: true,
     },
   },
-  async ({}, { projectId }) => {
+  async (_, { projectId }) => {
     if (!projectId) return mcpError(`No current project detected.`);
     return toContent(await getProject(projectId));
   },

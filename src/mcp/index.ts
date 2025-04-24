@@ -7,14 +7,9 @@ import {
   ListToolsRequestSchema,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { initializeApp, type App as FirebaseApp } from "firebase-admin/app";
-import { SERVER_FEATURES, ServerFeature } from "./types.js";
+import { ServerFeature } from "./types.js";
 import { tools } from "./tools/index.js";
 import { ServerTool } from "./tool.js";
-import { Config } from "../config.js";
-import { logger } from "../logger.js";
-import winston from "winston";
-import { requireAuth } from "../requireAuth.js";
 
 const SERVER_VERSION = "0.0.1";
 
@@ -46,13 +41,13 @@ export class FirebaseMcpServer {
     return this.activeTools.find((t) => t.mcp.name === name) || null;
   }
 
-  async mcpListTools(): Promise<ListToolsResult> {
-    return {
+  mcpListTools(): Promise<ListToolsResult> {
+    return Promise.resolve({
       tools: this.activeTools.map((t) => t.mcp),
       _meta: {
         activeFeatures: this.activeFeatures,
       },
-    };
+    });
   }
 
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
