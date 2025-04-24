@@ -63,7 +63,7 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
  * @param project project identifier.
  * @param uid the user id of the user from the firebase project.
  * @param disabled sets whether the user is marked as disabled (true) or enabled (false).
- * @returns the call succeeded (true).
+ * @return the call succeeded (true).
  */
 export async function disableUser(project:string, uid:string, disabled:boolean): Promise<boolean> {
   const res = await apiClient.post<
