@@ -3,6 +3,27 @@ import { identityOrigin } from "../api";
 
 const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
+interface ProviderUserInfo {
+  providerId: string,
+  displayName: string,
+  photoUrl: string,
+  federatedId: string,
+  email: string,
+  rawId: string,
+  screenName: string,
+  phoneNumber: string
+}
+
+interface SetAccountInfoResponse {
+  localId: string,
+  idToken: string,
+  providerUserInfo: ProviderUserInfo[],
+  newEmail: string,
+  refreshToken: string,
+  expiresIn: string,
+  emailVerified: boolean
+}
+
 /**
  * Returns the list of authorized domains.
  * @param project project identifier.
@@ -35,4 +56,27 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
     },
   );
   return res.body.authorizedDomains;
+}
+
+/**
+ * Disables or enabled a user from a particular project.
+ * @param project project identifier.
+ * @param uid the user id of the user from the firebase project.
+ * @param disabled sets whether the user is marked as disabled (true) or enabled (false).
+ * @returns the call succeeded (true).
+ */
+export async function disableUser(project:string, uid:string, disabled:boolean): Promise<boolean> {
+  const res = await apiClient.post<
+    { disableUser: boolean, targetProjectId: string, localId: string },
+    SetAccountInfoResponse
+  >(
+    '/v1/accounts:update',
+    {
+      disableUser: disabled,
+      targetProjectId: project,
+      localId: uid,
+    },
+  );
+  return (res.status == 200);
+  
 }
