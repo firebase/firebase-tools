@@ -49,6 +49,7 @@ export const command = new Command("dataconnect:sdk:generate")
           connectorId: conn.connectorYaml.connectorId,
           watch: options.watch,
           account,
+          cwd: options.projectRoot,
         });
         logger.info(output);
         logger.info(`Generated SDKs for ${conn.connectorYaml.connectorId}`);

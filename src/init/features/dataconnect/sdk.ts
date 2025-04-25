@@ -236,6 +236,7 @@ export async function actuate(sdkInfo: SDKInfo, config: Config) {
     configDir: sdkInfo.connectorInfo.directory,
     connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
     account,
+    cwd: config.projectDir,
   });
   logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
   if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {

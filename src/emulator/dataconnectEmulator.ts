@@ -54,6 +54,7 @@ export interface DataConnectGenerateArgs {
   connectorId: string;
   watch?: boolean;
   account?: Account;
+  cwd?: string;
 }
 
 export interface DataConnectBuildArgs {
@@ -240,6 +241,7 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   static async generate(args: DataConnectGenerateArgs): Promise<string> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
+    logger.debug(`Generating SDKs with config: ${JSON.stringify(args, undefined, 4)}`);
     const cmd = [
       "--logtostderr",
       "-v=2",
@@ -251,7 +253,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       cmd.push("--watch");
     }
     const env = await DataConnectEmulator.getEnv(args.account);
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env, cwd: args.cwd });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
         `Unknown system error when running the Data Connect toolkit. ` +
