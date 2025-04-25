@@ -5,12 +5,6 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
 
-const PLATFORM_MAP: Record<string, AppPlatform> = {
-  ios: AppPlatform.IOS,
-  android: AppPlatform.ANDROID,
-  web: AppPlatform.WEB,
-};
-
 export const get_sdk_config = tool(
   {
     name: "get_sdk_config",
@@ -30,7 +24,7 @@ export const get_sdk_config = tool(
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
     if (!projectId) return mcpError("No current project detected.");
-    let platform = PLATFORM_MAP[inputPlatform || ""];
+    let platform = inputPlatform?.toUpperCase() as AppPlatform;
     if (!platform && !appId)
       return mcpError(
         "Must specify one of 'web', 'ios', or 'android' for platform or an app_id for get_sdk_config tool.",
