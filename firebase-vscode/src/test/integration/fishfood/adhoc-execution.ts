@@ -16,6 +16,7 @@ import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
 import { Workbench, Notification } from "wdio-vscode-service";
 import { Notifications } from "../../utils/page_objects/notifications";
+import path from "path";
 
 firebaseSuite("Execution", async function () {
   firebaseTest(
@@ -56,15 +57,44 @@ firebaseSuite("Execution", async function () {
       expect(current).toContain("dataconnect :9399");
       await browser.pause(4000); // strange case where emulators are showing before actually callable
 
-      // Test 1 - Execute mutation
-      console.log(`Running test: executing a mutation`);
+      // Test 1 - Execute adhoc read data
 
-      // Update arguments
-      await execution.open();
-      await execution.setVariables(`{"id": "42", "content": "Hello, World!"}`);
+      // Open the schema file
+      const schemaFilePath = path.join(
+        __dirname,
+        "..",
+        "..",
+        "test_projects",
+        "fishfood",
+        "dataconnect",
+        "schema",
+        "schema.gql",
+      );
+      await editor.openFile(schemaFilePath);
 
-      // Insert a post
-      await editor.openFile(mutationsPath);
+      // Verify that inline Read Data button is displayed
+      const readDataButton = await editor.readDataButton;
+      await readDataButton.waitForDisplayed();
+
+      // Click the Read Data button
+      await readDataButton.click();
+
+      // Wait a bit for the query to be generated
+      await browser.pause(5000);
+
+      // Verify the generated query
+      const activeEditor = await editor.getActiveEditor();
+      const editorTitle = activeEditor?.document.fileName.split("/").pop();
+      const editorContent = await editor.activeEditorContent();
+
+      expect(editorContent).toHaveText(`query {
+  posts{
+    id
+    content
+  }
+}`);
+      // file should be created, saved, then opened
+      expect(activeEditor?.document.isDirty).toBe(false);
 
       await editor.runLocalButton.waitForDisplayed();
       await editor.runLocalButton.click();
@@ -79,63 +109,14 @@ firebaseSuite("Execution", async function () {
           item = await execution.history.getSelectedItem();
           status = await item.getStatus();
         }
-
         return item;
       }
 
-      // Waiting for the execution to finish
-      let result = await getExecutionStatus("createPost");
-      expect(await result.getLabel()).toBe("createPost");
-
-      // Test 2 - Execute mutation
-      console.log("Running test: executing a query");
-
-      await execution.setVariables(`{"id": "42"}`);
-
-      // Execute query
-      await editor.openFile(queriesPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
-
-      // Waiting for the new history entry to appear
-      await browser.waitUntil(async () => {
-        const selectedItem = await execution.history.getSelectedItem();
-        return (await selectedItem.getLabel()) === "getPost";
-      });
-
       // Check the history entry
-      const item2 = await execution.history.getSelectedItem();
-
-      // Waiting for the execution to finish
-      await browser.waitUntil(async () => {
-        const status = await item2.getStatus();
-        return status === "success";
-      });
-
-      expect(await item2.getLabel()).toBe("getPost");
-      expect(await item2.getDescription()).toHaveText(
-        'Arguments: {"id": "42"}',
-      );
-
-      // Test 3: Execute operation with fragment
-
-      console.log(`Running test: executing an operation with a fragment`);
-
-      await execution.setVariables(`{}`);
-      await editor.openFile(queryWithFragmentPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
-
-      // Waiting for the new history entry to appear
-      await browser.waitUntil(async () => {
-        const selectedItem = await execution.history.getSelectedItem();
-        return (await selectedItem.getLabel()) === "fragmentTest";
-      });
-
-      // Check the history entry
-      const item3 = await getExecutionStatus("fragmentTest");
-      expect(await item3.getLabel()).toBe("fragmentTest");
+      const item3 = await getExecutionStatus("anonymous");
+      expect(await item3.getLabel()).toBe("anonymous");
       expect(await item3.getStatus()).toBe("success");
+      await editor.closeAllEditors();
     },
   );
 });

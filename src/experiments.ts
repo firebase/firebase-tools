@@ -129,13 +129,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-
-  fdcconnectorevolution: {
-    shortDescription: "Enable Data Connect connector evolution warnings.",
-    fullDescription: "Enable Data Connect connector evolution warnings.",
-    default: true,
-    public: false,
-  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
