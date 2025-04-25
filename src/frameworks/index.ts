@@ -125,6 +125,7 @@ export async function prepareFrameworks(
   emulators: EmulatorInfo[] = [],
 ): Promise<void> {
   const project = needProjectId(context || options);
+  const isDemoProject = Constants.isDemoProject(project);
   const projectRoot = resolveProjectPath(options, ".");
   const account = getProjectDefaultAccount(projectRoot);
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
@@ -140,6 +141,9 @@ export async function prepareFrameworks(
   // think this breaks any other situation because we don't need a site during
   // emulation unless we have multiple sites, in which case we're guaranteed to
   // either have site or target set.
+  if (isDemoProject) {
+    options.site = project
+  }
   if (!options.site) {
     try {
       await requireHostingSite(options);
@@ -207,7 +211,6 @@ export async function prepareFrameworks(
     });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
-      const isDemoProject = Constants.isDemoProject(project);
 
       const sites = isDemoProject ? listDemoSites(project) : await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
