@@ -29,7 +29,7 @@ export const get_sdk_config = tool(
       return mcpError(
         "Must specify one of 'web', 'ios', or 'android' for platform or an app_id for get_sdk_config tool.",
       );
-    const apps = await listFirebaseApps(projectId, platform || AppPlatform.ANY);
+    const apps = await listFirebaseApps(projectId, platform ?? AppPlatform.ANY);
     platform = platform || apps.find((app) => app.appId === appId)?.platform;
     appId = appId || apps.find((app) => app.platform === platform)?.appId;
     if (!appId)

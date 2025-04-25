@@ -24,7 +24,7 @@ export const list_apps = tool(
     if (!projectId) return mcpError("No current project detected.");
     const apps = await listFirebaseApps(
       projectId,
-      (platform?.toUpperCase() as AppPlatform) || AppPlatform.ANY,
+      (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
     );
     return toContent(apps);
   },
