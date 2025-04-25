@@ -10,7 +10,6 @@ import { AnalyticsSession, emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
 import { EmulatorHub, GetEmulatorsResponse } from "./hub";
-import { maybeUsePortForwarding } from "./env";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
@@ -62,7 +61,6 @@ export class EmulatorUI extends ExpressBasedEmulator {
       "/api/config",
       this.jsonHandler(() => {
         const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
-        maybeUsePortForwarding(Object.values(emulatorInfos));
         const json: EmulatorConfigInfo = {
           projectId,
           experiments: enabledExperiments ?? [],
