@@ -142,7 +142,7 @@ export async function prepareFrameworks(
   // emulation unless we have multiple sites, in which case we're guaranteed to
   // either have site or target set.
   if (isDemoProject) {
-    options.site = project
+    options.site = project;
   }
   if (!options.site) {
     try {
@@ -211,7 +211,6 @@ export async function prepareFrameworks(
     });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
-
       const sites = isDemoProject ? listDemoSites(project) : await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
