@@ -129,6 +129,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
