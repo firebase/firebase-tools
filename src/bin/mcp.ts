@@ -7,13 +7,20 @@ import { silenceStdout } from "../logger";
 silenceStdout();
 
 import { FirebaseMcpServer } from "../mcp/index";
-
-const cmd = new Command("mcp").before(requireAuth);
+import { parseArgs } from "util";
+import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
 
 export async function mcp() {
-  const options: any = {};
-  options.cwd = process.env.PROJECT_ROOT || process.env.CWD;
-  await cmd.prepare(options);
-  const server = new FirebaseMcpServer({ cliOptions: options });
+  const { values } = parseArgs({
+    options: {
+      only: { type: "string", default: "" },
+      dir: { type: "string" },
+    },
+    allowPositionals: true,
+  });
+  const activeFeatures = (values.only || "")
+    .split(",")
+    .filter((f) => SERVER_FEATURES.includes(f as any)) as ServerFeature[];
+  const server = new FirebaseMcpServer({ activeFeatures });
   await server.start();
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 const PLATFORM_MAP: Record<string, AppPlatform> = {
   ios: AppPlatform.IOS,
@@ -27,9 +28,12 @@ export const get_sdk_config = tool(
       title: "Get Firebase SDK Config",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresProject: true,
+    },
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
+    if (!projectId) return NO_PROJECT_ERROR;
     let platform = PLATFORM_MAP[inputPlatform || ""];
     if (!platform && !appId)
       return mcpError(

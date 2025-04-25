@@ -4,6 +4,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 const PLATFORM_MAP: Record<string, AppPlatform> = {
   ios: AppPlatform.IOS,
@@ -25,9 +26,12 @@ export const list_apps = tool(
       title: "List Firebase Apps",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresProject: true,
+    },
   },
   async ({ platform }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
+    if (!projectId) return NO_PROJECT_ERROR;
     const apps = await listFirebaseApps(projectId, PLATFORM_MAP[platform || ""] || AppPlatform.ANY);
     return toContent(apps);
   },

@@ -1,0 +1,27 @@
+/* eslint camelcase: 0 */
+
+import { z } from "zod";
+import { tool } from "../../tool.js";
+import { mcpError, toContent } from "../../util.js";
+import { configstore } from "../../../configstore.js";
+import { detectProjectRoot } from "../../../detectProjectRoot.js";
+
+export const get_firebase_directory = tool(
+  {
+    name: "get_firebase_directory",
+    description:
+      "Gets the current Firbase project directory. If this has been set using the `set_firebase_directory` tool it will return that, otherwise it will look for a PROJECT_ROOT environment variable or the current working directory of the running Firebase MCP server.",
+    inputSchema: z.object({}),
+    annotations: {
+      title: "Get Firebase Project Directory",
+      readOnlyHint: true,
+    },
+  },
+  async (_, { host }) => {
+    if (!detectProjectRoot({ cwd: host.projectRoot }))
+      return mcpError(
+        `There is no detected 'firebase.json' in directory '${host.projectRoot}'. Please use the 'set_firebase_directory' tool to activate a Firebase project directory.`,
+      );
+    return toContent(`The current Firebase project directory is '${host.projectRoot}'.`);
+  },
+);
