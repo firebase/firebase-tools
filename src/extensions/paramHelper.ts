@@ -225,3 +225,16 @@ export function isSystemParam(paramName: string): boolean {
   const regex = /^firebaseextensions\.[a-zA-Z0-9\.]*\//;
   return regex.test(paramName);
 }
+
+// Populate default values for missing params.
+// This is only needed when emulating extensions - when deploying, this is handled in the back end.
+export function populateDefaultParams(
+  params: Record<string, string>,
+  spec: ExtensionSpec,
+): Record<string, string> {
+  const ret = { ...params };
+  for (const p of spec.params) {
+    ret[p.param] = ret[p.param] ?? p.default;
+  }
+  return ret;
+}
