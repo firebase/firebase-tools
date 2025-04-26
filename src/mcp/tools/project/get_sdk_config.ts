@@ -4,13 +4,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
-
-const PLATFORM_MAP: Record<string, AppPlatform> = {
-  ios: AppPlatform.IOS,
-  android: AppPlatform.ANDROID,
-  web: AppPlatform.WEB,
-};
 
 export const get_sdk_config = tool(
   {
@@ -33,13 +26,13 @@ export const get_sdk_config = tool(
     },
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    let platform = PLATFORM_MAP[inputPlatform || ""];
+    if (!projectId) return mcpError("No current project detected.");
+    let platform = inputPlatform?.toUpperCase() as AppPlatform;
     if (!platform && !appId)
       return mcpError(
         "Must specify one of 'web', 'ios', or 'android' for platform or an app_id for get_sdk_config tool.",
       );
-    const apps = await listFirebaseApps(projectId, platform || AppPlatform.ANY);
+    const apps = await listFirebaseApps(projectId, platform ?? AppPlatform.ANY);
     platform = platform || apps.find((app) => app.appId === appId)?.platform;
     appId = appId || apps.find((app) => app.platform === platform)?.appId;
     if (!appId)

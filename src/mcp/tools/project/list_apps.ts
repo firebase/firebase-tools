@@ -4,13 +4,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
-
-const PLATFORM_MAP: Record<string, AppPlatform> = {
-  ios: AppPlatform.IOS,
-  android: AppPlatform.ANDROID,
-  web: AppPlatform.WEB,
-};
 
 export const list_apps = tool(
   {
@@ -31,8 +24,11 @@ export const list_apps = tool(
     },
   },
   async ({ platform }, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    const apps = await listFirebaseApps(projectId, PLATFORM_MAP[platform || ""] || AppPlatform.ANY);
+    if (!projectId) return mcpError("No current project detected.");
+    const apps = await listFirebaseApps(
+      projectId,
+      (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
+    );
     return toContent(apps);
   },
 );
