@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { configstore } from "../../../configstore.js";
 import { detectProjectRoot } from "../../../detectProjectRoot.js";
 
 export const get_firebase_directory = tool(
@@ -17,11 +16,15 @@ export const get_firebase_directory = tool(
       readOnlyHint: true,
     },
   },
-  async (_, { host }) => {
+  (_, { host }) => {
     if (!detectProjectRoot({ cwd: host.projectRoot }))
-      return mcpError(
-        `There is no detected 'firebase.json' in directory '${host.projectRoot}'. Please use the 'set_firebase_directory' tool to activate a Firebase project directory.`,
+      return Promise.resolve(
+        mcpError(
+          `There is no detected 'firebase.json' in directory '${host.projectRoot}'. Please use the 'set_firebase_directory' tool to activate a Firebase project directory.`,
+        ),
       );
-    return toContent(`The current Firebase project directory is '${host.projectRoot}'.`);
+    return Promise.resolve(
+      toContent(`The current Firebase project directory is '${host.projectRoot}'.`),
+    );
   },
 );

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { getProject } from "../../../management/projects.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_project = tool(

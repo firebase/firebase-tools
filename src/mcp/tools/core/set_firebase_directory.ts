@@ -5,7 +5,6 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { existsSync } from "fs";
 import { join } from "path";
-import { configstore } from "../../../configstore.js";
 
 export const set_firebase_directory = tool(
   {
@@ -25,18 +24,22 @@ export const set_firebase_directory = tool(
       idempotentHint: true,
     },
   },
-  async ({ dir }, { host }) => {
+  ({ dir }, { host }) => {
     if (dir === null) {
       host.setProjectRoot(null);
-      return toContent(
-        `Firebase MCP project directory setting deleted. New project root is: ${host.projectRoot || "unset"}`,
+      return Promise.resolve(
+        toContent(
+          `Firebase MCP project directory setting deleted. New project root is: ${host.projectRoot || "unset"}`,
+        ),
       );
     }
 
-    if (!existsSync(dir)) return mcpError(`Directory '${dir}' does not exist.`);
+    if (!existsSync(dir)) return Promise.resolve(mcpError(`Directory '${dir}' does not exist.`));
     if (!existsSync(join(dir, "firebase.json")))
-      return mcpError(`Directory '${dir}' does not contain a 'firebase.json' file.`);
+      return Promise.resolve(
+        mcpError(`Directory '${dir}' does not contain a 'firebase.json' file.`),
+      );
     host.setProjectRoot(dir);
-    return toContent(`Firebase MCP project directory set to '${dir}'.`);
+    return Promise.resolve(toContent(`Firebase MCP project directory set to '${dir}'.`));
   },
 );
