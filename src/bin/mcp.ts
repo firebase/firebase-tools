@@ -1,14 +1,24 @@
 #!/usr/bin/env node
 
-import { Command } from "../command";
-import { requireAuth } from "../requireAuth";
-
 import { silenceStdout } from "../logger";
 silenceStdout();
 
 import { FirebaseMcpServer } from "../mcp/index";
 import { parseArgs } from "util";
 import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
+
+const STARTUP_MESSAGE = `
+This is a running process of the Firebase MCP server. This command should only be executed by an MCP client. An example MCP client configuration might be:
+
+{
+  "mcpServers": {
+    "firebase": {
+      "command": "firebase",
+      "args": ["experimental:mcp", "--dir", "/path/to/firebase/project"]
+    }
+  }
+}
+`;
 
 export async function mcp() {
   const { values } = parseArgs({
@@ -21,6 +31,7 @@ export async function mcp() {
   const activeFeatures = (values.only || "")
     .split(",")
     .filter((f) => SERVER_FEATURES.includes(f as any)) as ServerFeature[];
-  const server = new FirebaseMcpServer({ activeFeatures });
+  const server = new FirebaseMcpServer({ activeFeatures, projectRoot: values.dir });
   await server.start();
+  if (process.stdin.isTTY) process.stderr.write(STARTUP_MESSAGE);
 }

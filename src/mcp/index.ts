@@ -44,6 +44,7 @@ export class FirebaseMcpServer {
   }
 
   get availableTools(): ServerTool[] {
+    console.error("fixed tools is:", this.fixedRoot);
     const toolDefs: ServerTool[] = this.fixedRoot ? [] : [...coreTools];
     const activeFeatures = this.activeFeatures?.length
       ? this.activeFeatures
