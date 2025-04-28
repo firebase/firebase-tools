@@ -41,7 +41,6 @@ interface UserInfo {
   createdAt: string;
   screenName: string;
   customAuth: boolean;
-  rawPassword?: string;
   phoneNumber: string;
   customAttributes: string;
   emailLinkSignin: boolean;
