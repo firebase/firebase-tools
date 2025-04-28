@@ -105,16 +105,7 @@ export async function getAuthUser(
   limit = 1000,
   offset = 0,
 ): Promise<{ recordCount: string; userInfo: UserInfo }[]> {
-  const expression: { email?: string; phoneNumber?: string; userId?: string } = {};
-  if (email !== undefined) {
-    expression.email = email;
-  }
-  if (phone !== undefined) {
-    expression.phoneNumber = phone;
-  }
-  if (uid !== undefined) {
-    expression.userId = uid;
-  }
+  const expression: { email?: string; phoneNumber?: string; userId?: string } = { email, phoneNumber: phone, userId: uid };
   const res = await apiClient.post<
     {
       limit: string;
