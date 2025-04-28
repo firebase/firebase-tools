@@ -26,8 +26,12 @@ export const get_auth_user = tool(
     if (!projectId) return mcpError(`No current project detected.`);
     try {
       return toContent(await findUser(projectId, email, phoneNumber, uid));
-    } catch (err: any) {
-      return mcpError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return mcpError(err.message);
+      } else {
+        return mcpError("unknown error");
+      }
     }
   },
 );
