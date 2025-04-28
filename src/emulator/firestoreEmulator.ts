@@ -40,7 +40,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.args.functions_emulator = EmulatorRegistry.url(Emulators.FUNCTIONS).host;
     }
-
+    utils.logLabeledBullet("firestore", `Starting Firestore with ${JSON.stringify(this.args, undefined, 4)}`)
     if (this.args.rules && this.args.project_id) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
