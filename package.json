@@ -5,6 +5,7 @@
   "main": "./lib/index.js",
   "bin": {
     "firebase": "./lib/bin/firebase.js",
+    "firebase-tools": "./lib/bin/firebase.js",
     "firebase-mcp": "./lib/bin/firebase-mcp.js"
   },
   "scripts": {
