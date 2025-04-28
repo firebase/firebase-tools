@@ -1,7 +1,7 @@
 // This is an independently executed script that parses triggers
 // from a functions package directory.
 "use strict";
-
+/* eslint-disable @typescript-eslint/no-require-imports */
 var url = require("url");
 var extractTriggers = require("./extractTriggers");
 var EXIT = function () {
