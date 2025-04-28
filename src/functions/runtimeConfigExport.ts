@@ -95,11 +95,11 @@ export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void>
  * Throws KeyValidationError if the converted key is invalid.
  */
 export function convertKey(configKey: string, prefix: string): string {
-  /* prettier-ignore */
+  /* biome-ignore format: Keep comments aligned */
   const baseKey = configKey
-      .toUpperCase()       // 1. Uppercase all characters (e.g. SOME-SERVICE.KEY)
-      .replace(/\./g, "_") // 2. Dots to underscores (e.g. SOME-SERVICE_KEY)
-      .replace(/-/g, "_"); // 3. Dashses to underscores (e.g. SOME_SERVICE_KEY)
+    .toUpperCase()       // 1. Uppercase all characters (e.g. SOME-SERVICE.KEY)
+    .replace(/\./g, "_") // 2. Dots to underscores (e.g. SOME-SERVICE_KEY)
+    .replace(/-/g, "_"); // 3. Dashses to underscores (e.g. SOME_SERVICE_KEY)
 
   let envKey = baseKey;
   try {
