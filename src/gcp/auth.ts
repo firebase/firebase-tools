@@ -96,19 +96,16 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
  * @param offset the amount to page through the results
  * @return an array of user info
  */
-export async function getAuthUser(
+export async function findUser(
   project: string,
   email?: string,
   phone?: string,
   uid?: string,
-  limit = 1000,
-  offset = 0,
-): Promise<{ recordCount: string; userInfo: UserInfo }[]> {
+): Promise<UserInfo> {
   const expression: { email?: string; phoneNumber?: string; userId?: string } = { email, phoneNumber: phone, userId: uid };
   const res = await apiClient.post<
     {
       limit: string;
-      offset: string;
       expression: { email?: string; phoneNumber?: string; userId?: string }[];
     },
     {
@@ -117,8 +114,10 @@ export async function getAuthUser(
     }[]
   >(`/v1/projects/${project}/accounts:query`, {
     expression: [expression],
-    limit: limit.toString(),
-    offset: offset.toString(),
+    limit: "1",
   });
-  return res.body;
+  if (res.body.length === 0) {
+    throw new Error("No users found");
+  }
+  return res.body[0].userInfo;
 }

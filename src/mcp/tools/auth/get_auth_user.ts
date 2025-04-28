@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { getAuthUser } from "../../../gcp/auth.js";
+import { findUser } from "../../../gcp/auth.js";
 
 export const get_auth_user = tool(
   {
@@ -24,6 +24,10 @@ export const get_auth_user = tool(
       return mcpError(`No user identifier supplied in get_auth_user tool`);
     }
     if (!projectId) return mcpError(`No current project detected.`);
-    return toContent(await getAuthUser(projectId, email, phoneNumber, uid, 1, 0));
+    try {
+      return toContent(await findUser(projectId, email, phoneNumber, uid));
+    } catch (err: any) {
+      return mcpError(err.message);
+    }
   },
 );
