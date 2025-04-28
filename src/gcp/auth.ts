@@ -92,8 +92,6 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
  * @param email the users email to lookup.
  * @param phone the users phone number to lookup.
  * @param uid the users id to lookup.
- * @param limit the amount of results to return.
- * @param offset the amount to page through the results
  * @return an array of user info
  */
 export async function findUser(
@@ -102,7 +100,11 @@ export async function findUser(
   phone?: string,
   uid?: string,
 ): Promise<UserInfo> {
-  const expression: { email?: string; phoneNumber?: string; userId?: string } = { email, phoneNumber: phone, userId: uid };
+  const expression: { email?: string; phoneNumber?: string; userId?: string } = {
+    email,
+    phoneNumber: phone,
+    userId: uid,
+  };
   const res = await apiClient.post<
     {
       limit: string;
