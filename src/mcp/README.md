@@ -1,6 +1,6 @@
 # Firebase MCP Server
 
-The Firebase MCP Server provides assistive utilities to compatible AI-assistent
+The Firebase MCP Server provides assistive utilities to compatible AI-assistant
 development tools.
 
 ## Usage
