@@ -7,7 +7,7 @@ export const get_firebase_directory = tool(
   {
     name: "get_firebase_directory",
     description:
-      "Gets the current Firbase project directory. If this has been set using the `set_firebase_directory` tool it will return that, otherwise it will look for a PROJECT_ROOT environment variable or the current working directory of the running Firebase MCP server.",
+      "Gets the current Firebase project directory. If this has been set using the `set_firebase_directory` tool it will return that, otherwise it will look for a PROJECT_ROOT environment variable or the current working directory of the running Firebase MCP server.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Firebase Project Directory",
