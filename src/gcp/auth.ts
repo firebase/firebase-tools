@@ -112,14 +112,14 @@ export async function findUser(
     },
     {
       recordCount: string;
-      userInfo: UserInfo;
-    }[]
+      userInfo: UserInfo[];
+    }
   >(`/v1/projects/${project}/accounts:query`, {
     expression: [expression],
     limit: "1",
   });
-  if (res.body.length === 0) {
+  if (res.body.userInfo.length === 0) {
     throw new Error("No users found");
   }
-  return res.body[0].userInfo;
+  return res.body.userInfo[0];
 }
