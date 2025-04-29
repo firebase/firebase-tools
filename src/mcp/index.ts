@@ -36,9 +36,9 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.projectRoot =
-      options.projectRoot ||
-      (configstore.get(PROJECT_ROOT_KEY) as string) ||
-      process.env.PROJECT_ROOT ||
+      options.projectRoot ??
+      (configstore.get(PROJECT_ROOT_KEY) as string) ??
+      process.env.PROJECT_ROOT ??
       process.cwd();
     if (options.projectRoot) this.fixedRoot = true;
   }

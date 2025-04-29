@@ -352,9 +352,9 @@ function isDebugMode(): boolean {
   if (account?.user.email.endsWith("@google.com")) {
     try {
       require("../tsconfig.json");
-      // logger.debug(
-      //   `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
-      // );
+      logger.debug(
+        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
+      );
       return true;
     } catch {
       // The file above present in the repo but not packaged to npm. If require
