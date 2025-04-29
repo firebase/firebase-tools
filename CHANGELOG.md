@@ -1,0 +1,1 @@
+- Enhance firebase init apphosting to support local source deploys. (#8479)
