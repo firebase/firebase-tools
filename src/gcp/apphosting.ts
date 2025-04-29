@@ -34,7 +34,7 @@ export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 export interface Backend {
   name: string;
   mode?: string;
-  codebase: Codebase;
+  codebase?: Codebase;
   servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;

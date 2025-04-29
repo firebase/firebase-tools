@@ -133,8 +133,8 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    gitRepositoryLink,
     serviceAccount,
+    gitRepositoryLink,
     webApp?.id,
     rootDir,
   );
@@ -255,7 +255,7 @@ export async function ensureAppHostingComputeServiceAccount(
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNewBackendId(
+export async function promptNewBackendId(
   projectId: string,
   location: string,
   prompt: any,
@@ -289,18 +289,20 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: GitRepositoryLink,
   serviceAccount: string | null,
+  repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${repository.name}`,
-      rootDirectory: rootDir,
-    },
+    codebase: repository
+      ? {
+          repository: `${repository.name}`,
+          rootDirectory: rootDir,
+        }
+      : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
