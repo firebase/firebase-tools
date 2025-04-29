@@ -59,7 +59,7 @@ import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
-import { getCredentialsEnvironment, maybeUsePortForwarding, setEnvVarsForEmulators } from "./env";
+import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { ExtensionsEmulator } from "./extensionsEmulator";
@@ -1427,7 +1427,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.args.remoteEmulators) {
       emulatorInfos = emulatorInfos.concat(Object.values(this.args.remoteEmulators));
     }
-    maybeUsePortForwarding(emulatorInfos);
     setEnvVarsForEmulators(envs, emulatorInfos);
 
     if (this.debugMode) {
