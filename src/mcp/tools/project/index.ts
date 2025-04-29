@@ -1,5 +1,3 @@
-/* eslint camelcase: 0 */
-
 import type { ServerTool } from "../../tool.js";
 
 import { get_project } from "./get_project.js";
