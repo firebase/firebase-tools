@@ -50,6 +50,25 @@ interface UserInfo {
   lastRefreshAt: string;
 }
 
+interface SetAccountInfoResponse {
+  localId: string;
+  idToken: string;
+  providerUserInfo: {
+    providerId: string;
+    displayName: string;
+    photoUrl: string;
+    federatedId: string;
+    email: string;
+    rawId: string;
+    screenName: string;
+    phoneNumber: string;
+  }[];
+  newEmail: string;
+  refreshToken: string;
+  expiresIn: string;
+  emailVerified: boolean;
+}
+
 const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
 /**
@@ -122,4 +141,27 @@ export async function findUser(
     throw new Error("No users found");
   }
   return res.body.userInfo[0];
+}
+
+/**
+ * disableUser disables or enables a user from a particular project.
+ * @param project project identifier.
+ * @param uid the user id of the user from the firebase project.
+ * @param disabled sets whether the user is marked as disabled (true) or enabled (false).
+ * @return the call succeeded (true).
+ */
+export async function disableUser(
+  project: string,
+  uid: string,
+  disabled: boolean,
+): Promise<boolean> {
+  const res = await apiClient.post<
+    { disableUser: boolean; targetProjectId: string; localId: string },
+    SetAccountInfoResponse
+  >("/v1/accounts:update", {
+    disableUser: disabled,
+    targetProjectId: project,
+    localId: uid,
+  });
+  return res.status === 200;
 }
