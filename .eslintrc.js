@@ -108,6 +108,10 @@ module.exports = {
       },
       rules: {},
     },
+    {
+      files: ["src/mcp/tools/**/*.ts"],
+      rules: { camelcase: "off" },
+    },
   ],
   globals: {},
   parserOptions: {

@@ -1,5 +1,3 @@
-/* eslint camelcase: 0 */
-
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { getProject } from "../../../management/projects.js";
