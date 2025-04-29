@@ -1,6 +1,55 @@
 import { Client } from "../apiv2";
 import { identityOrigin } from "../api";
 
+interface MfaEnrollment {
+  mfaEnrollmentId: string;
+  displayName: string;
+  enrolledAt: string;
+  phoneInfo?: string;
+  emailInfo?: {
+    emailAddress: string;
+  };
+  unobfuscatedPhoneInfo?: string;
+}
+
+interface UserInfo {
+  localId: string;
+  email: string;
+  displayName: string;
+  language: string;
+  photoUrl: string;
+  timeZone: string;
+  dateOfBirth: string;
+  passwordHash: string;
+  salt: string;
+  version: number;
+  emailVerified: boolean;
+  passwordUpdatedAt: number;
+  providerUserInfo: {
+    providerId: string;
+    displayName: string;
+    photoUrl: string;
+    federatedId: string;
+    email: string;
+    rawId: string;
+    screenName: string;
+    phoneNumber: string;
+  }[];
+  validSince: string;
+  disabled: boolean;
+  lastLoginAt: string;
+  createdAt: string;
+  screenName: string;
+  customAuth: boolean;
+  phoneNumber: string;
+  customAttributes: string;
+  emailLinkSignin: boolean;
+  tenantId: string;
+  mfaInfo: MfaEnrollment[];
+  initialEmail: string;
+  lastRefreshAt: string;
+}
+
 const apiClient = new Client({ urlPrefix: identityOrigin(), auth: true });
 
 /**
@@ -35,4 +84,42 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
     },
   );
   return res.body.authorizedDomains;
+}
+
+/**
+ * findUser searches for an auth user in a project.
+ * @param project project identifier.
+ * @param email the users email to lookup.
+ * @param phone the users phone number to lookup.
+ * @param uid the users id to lookup.
+ * @return an array of user info
+ */
+export async function findUser(
+  project: string,
+  email?: string,
+  phone?: string,
+  uid?: string,
+): Promise<UserInfo> {
+  const expression: { email?: string; phoneNumber?: string; userId?: string } = {
+    email,
+    phoneNumber: phone,
+    userId: uid,
+  };
+  const res = await apiClient.post<
+    {
+      limit: string;
+      expression: { email?: string; phoneNumber?: string; userId?: string }[];
+    },
+    {
+      recordCount: string;
+      userInfo: UserInfo[];
+    }
+  >(`/v1/projects/${project}/accounts:query`, {
+    expression: [expression],
+    limit: "1",
+  });
+  if (res.body.userInfo.length === 0) {
+    throw new Error("No users found");
+  }
+  return res.body.userInfo[0];
 }
