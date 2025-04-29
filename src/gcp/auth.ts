@@ -87,7 +87,7 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
 }
 
 /**
- * getAuthUser
+ * findUser searches for an auth user in a project.
  * @param project project identifier.
  * @param email the users email to lookup.
  * @param phone the users phone number to lookup.
