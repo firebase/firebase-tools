@@ -37,7 +37,7 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.projectRoot =
       options.projectRoot ||
-      configstore.get(PROJECT_ROOT_KEY) ||
+      (configstore.get(PROJECT_ROOT_KEY) as string) ||
       process.env.PROJECT_ROOT ||
       process.cwd();
     if (options.projectRoot) this.fixedRoot = true;
@@ -75,17 +75,17 @@ export class FirebaseMcpServer {
     };
   }
 
-  setProjectRoot(newRoot: string | null) {
+  setProjectRoot(newRoot: string | null): void {
     if (newRoot === null) {
       configstore.delete(PROJECT_ROOT_KEY);
       this.projectRoot = process.env.PROJECT_ROOT || process.cwd();
-      this.server.sendToolListChanged();
+      void this.server.sendToolListChanged();
       return;
     }
 
     configstore.set(PROJECT_ROOT_KEY, newRoot);
     this.projectRoot = newRoot;
-    this.server.sendToolListChanged();
+    void this.server.sendToolListChanged();
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
@@ -107,7 +107,7 @@ export class FirebaseMcpServer {
     return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
   }
 
-  async start() {
+  async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
   }

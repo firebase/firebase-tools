@@ -20,7 +20,7 @@ This is a running process of the Firebase MCP server. This command should only b
 }
 `;
 
-export async function mcp() {
+export async function mcp(): Promise<void> {
   const { values } = parseArgs({
     options: {
       only: { type: "string", default: "" },
@@ -30,7 +30,7 @@ export async function mcp() {
   });
   const activeFeatures = (values.only || "")
     .split(",")
-    .filter((f) => SERVER_FEATURES.includes(f as any)) as ServerFeature[];
+    .filter((f) => SERVER_FEATURES.includes(f as ServerFeature)) as ServerFeature[];
   const server = new FirebaseMcpServer({ activeFeatures, projectRoot: values.dir });
   await server.start();
   if (process.stdin.isTTY) process.stderr.write(STARTUP_MESSAGE);
