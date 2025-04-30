@@ -16,7 +16,6 @@ export const set_auth_claims = tool(
     }),
     annotations: {
       title: "Set a custom claim on a specific user.",
-      destructiveHint: true,
       idempotentHint: true,
     },
   },
