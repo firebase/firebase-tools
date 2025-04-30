@@ -10,9 +10,11 @@ export const set_sms_region_policy = tool(
     description:
       "Sets an SMS Region Policy for Firebase Auth to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
     inputSchema: z.object({
-      allow_list: z
-        .boolean()
-        .describe("true for allow these countries, false for deny these countries"),
+      policy_type: z
+        .enum(["ALLOW", "DENY"])
+        .describe(
+          "with an ALLOW policy, only the specified country codes can use SMS auth. with a DENY policy, all countries can use SMS auth except the ones specified",
+        ),
       country_codes: z
         .array(z.string())
         .describe("the country codes to allow or deny based on ISO 3166"),
@@ -23,12 +25,12 @@ export const set_sms_region_policy = tool(
       destructiveHint: true,
     },
   },
-  async ({ allow_list, country_codes }, { projectId }) => {
+  async ({ policy_type, country_codes }, { projectId }) => {
     if (!projectId) return NO_PROJECT_ERROR;
     country_codes = country_codes.map((code) => {
       return code.toUpperCase();
     });
-    if (allow_list) {
+    if (policy_type === "ALLOW") {
       return toContent(await setAllowSmsRegionPolicy(projectId, country_codes));
     }
     return toContent(await setDenySmsRegionPolicy(projectId, country_codes));
