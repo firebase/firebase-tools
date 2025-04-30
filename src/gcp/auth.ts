@@ -141,7 +141,12 @@ export async function findUser(
   if (res.body.userInfo.length === 0) {
     throw new Error("No users found");
   }
-  return res.body.userInfo[0];
+  const modifiedUserInfo = res.body.userInfo.map((ui) => {
+    ui.uid = ui.localId;
+    delete ui.localId;
+    return ui;
+  });
+  return modifiedUserInfo[0];
 }
 
 /**
@@ -172,24 +177,28 @@ export async function disableUser(
  * @param project project identifier.
  * @param uid the user id of the user from the firebase project.
  * @param claim the key value in the custom claim.
- * @param value the value in the custom claim.
+ * @param options modifiers to setting custom claims
+ * @param options.merge whether to preserve the existing custom claims on the user
  * @return the results of the accounts update request.
  */
 export async function setCustomClaim(
   project: string,
   uid: string,
   claim: Record<string, unknown>,
-  options?: {merge?: boolean}
+  options?: { merge?: boolean },
 ): Promise<UserInfo> {
   let user = await findUser(project, undefined, undefined, uid);
-  if (user.localId !== uid) {
+  if (user.uid !== uid) {
     throw new Error(`Could not find ${uid} in the auth db, please check the uid again.`);
   }
   let attributeJson = new Map<string, string | number | boolean>();
   if (user.customAttributes !== undefined && user.customAttributes !== "") {
     attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
   }
-  const reqClaim = JSON.stringify({ ...attributeJson, ...claim });
+  let reqClaim = JSON.stringify(claim);
+  if (options?.merge) {
+    reqClaim = JSON.stringify({ ...attributeJson, ...claim });
+  }
   const res = await apiClient.post<
     { customAttributes: string; targetProjectId: string; localId: string },
     SetAccountInfoResponse
