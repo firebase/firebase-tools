@@ -9,7 +9,7 @@ export const set_auth_claim = tool(
     description:
       "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value.",
     inputSchema: z.object({
-      uid: z.string().describe("the UID or localId of the user to update"),
+      uid: z.string().describe("the UID of the user to update"),
       claim: z.string().describe("the name (key) of the claim to update, e.g. 'admin'"),
       value: z
         .union([
