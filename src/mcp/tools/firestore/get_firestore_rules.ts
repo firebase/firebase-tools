@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
 
 export const get_firestore_rules = tool(
@@ -15,11 +14,11 @@ export const get_firestore_rules = tool(
     },
     _meta: {
       requiresProject: true,
+      requiresAuth: true,
     },
   },
   async (_, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    const rulesetName = await getLatestRulesetName(projectId, "cloud.firestore");
+    const rulesetName = await getLatestRulesetName(projectId!, "cloud.firestore");
     if (!rulesetName)
       return mcpError(`No active Firestore rules were found in project '${projectId}'`);
     const rules = await getRulesetContent(rulesetName);

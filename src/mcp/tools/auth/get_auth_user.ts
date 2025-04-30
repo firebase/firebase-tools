@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { findUser } from "../../../gcp/auth.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_auth_user = tool(
   {
