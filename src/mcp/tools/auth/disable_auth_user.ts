@@ -25,11 +25,7 @@ export const disable_auth_user = tool(
       }
       return toContent(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        return mcpError(err.message);
-      } else {
-        return mcpError("unknown error");
-      }
+      return mcpError(err);
     }
   },
 );
