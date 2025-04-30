@@ -96,10 +96,6 @@ export interface FirestoreDocument {
   updateTime: string; // Timestamp format
 }
 
-export interface StructuredQuery {
-  // fill in values
-}
-
 /**
  * Get a firebase database instance.
  * @param {string} project the Google Cloud project
