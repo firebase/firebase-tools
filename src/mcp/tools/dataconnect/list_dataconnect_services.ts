@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const list_dataconnect_services = tool(
   {
@@ -15,11 +14,11 @@ export const list_dataconnect_services = tool(
     },
     _meta: {
       requiresProject: true,
+      requiresAuth: true,
     },
   },
   async (_, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    const services = await client.listAllServices(projectId);
+    const services = await client.listAllServices(projectId!);
     return toContent(services, { format: "yaml" });
   },
 );

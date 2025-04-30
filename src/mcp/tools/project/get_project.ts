@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { getProject } from "../../../management/projects.js";
 import { toContent } from "../../util.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_project = tool(
   {
@@ -14,11 +13,11 @@ export const get_project = tool(
       readOnlyHint: true,
     },
     _meta: {
+      requiresAuth: true,
       requiresProject: true,
     },
   },
   async (_, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await getProject(projectId));
+    return toContent(await getProject(projectId!));
   },
 );

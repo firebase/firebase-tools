@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { disableUser } from "../../../gcp/auth.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const disable_auth_user = tool(
   {
@@ -17,10 +16,13 @@ export const disable_auth_user = tool(
       destructiveHint: true,
       idempotentHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ uid, disabled }, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    const res = await disableUser(projectId, uid, disabled);
+    const res = await disableUser(projectId!, uid, disabled);
     if (res) {
       return toContent(`User ${uid} as been ${disabled ? "disabled" : "enabled"}`);
     }

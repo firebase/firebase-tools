@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { setCustomClaim } from "../../../gcp/auth.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const set_auth_claim = tool(
   {
@@ -26,9 +25,12 @@ export const set_auth_claim = tool(
       title: "Set custom Firebase Auth claim",
       idempotentHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ uid, claim, value }, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true }));
+    return toContent(await setCustomClaim(projectId!, uid, { [claim]: value }, { merge: true }));
   },
 );

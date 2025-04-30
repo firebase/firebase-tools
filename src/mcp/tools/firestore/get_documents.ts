@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 import { firestoreDocumentToJson } from "./converter.js";
 
 export const get_documents = tool(
@@ -26,13 +25,16 @@ export const get_documents = tool(
       title: "Get Firestore documents",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ paths }, { projectId }) => {
     // database ??= "(default)";
-    if (!projectId) return NO_PROJECT_ERROR;
     if (!paths.length) return mcpError("Must supply at least one document path.");
 
-    const { documents, missing } = await getDocuments(projectId, paths);
+    const { documents, missing } = await getDocuments(projectId!, paths);
     if (missing.length > 0 && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }

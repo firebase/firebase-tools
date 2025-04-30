@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { findUser } from "../../../gcp/auth.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_auth_user = tool(
   {
@@ -17,12 +16,15 @@ export const get_auth_user = tool(
       title: "Get information about 1 user.",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ email, phoneNumber, uid }, { projectId }) => {
     if (email === undefined && phoneNumber === undefined && uid === undefined) {
       return mcpError(`No user identifier supplied in get_auth_user tool`);
     }
-    if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await findUser(projectId, email, phoneNumber, uid));
+    return toContent(await findUser(projectId!, email, phoneNumber, uid));
   },
 );
