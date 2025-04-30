@@ -7,6 +7,7 @@ import {
   ListToolsRequestSchema,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { mcpError } from "./util.js";
 import { ServerFeature } from "./types.js";
 import { tools } from "./tools/index.js";
 import { ServerTool } from "./tool.js";
@@ -113,7 +114,11 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresAuth && !(await this.getAuthenticated())) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
-    return tool.fn(toolArgs, { projectId, host: this });
+    try {
+      return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
+    } catch (err: unknown) {
+      return mcpError(err);
+    }
   }
 
   async start(): Promise<void> {

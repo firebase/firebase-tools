@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const list_apps = tool(
   {

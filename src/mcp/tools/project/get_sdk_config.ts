@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_sdk_config = tool(
   {
