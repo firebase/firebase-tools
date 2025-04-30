@@ -25,11 +25,7 @@ export const get_auth_user = tool(
     try {
       return toContent(await findUser(projectId, email, phoneNumber, uid));
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        return mcpError(err.message);
-      } else {
-        return mcpError("unknown error");
-      }
+      return mcpError(err);
     }
   },
 );
