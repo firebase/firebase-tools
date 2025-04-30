@@ -10,18 +10,19 @@ export const list_collections = tool(
     description:
       "Retrieves a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
-      database: z
-        .string()
-        .nullish()
-        .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      // TODO: support multiple databases
+      // database: z
+      //   .string()
+      //   .nullish()
+      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
     }),
     annotations: {
       title: "List Firestore collections",
       readOnlyHint: true,
     },
   },
-  async ({ database }, { projectId }) => {
-    database ??= "(default)";
+  async (_, { projectId }) => {
+    // database ??= "(default)";
     if (!projectId) return NO_PROJECT_ERROR;
     try {
       return toContent(await listCollectionIds(projectId));

@@ -11,10 +11,11 @@ export const get_documents = tool(
     description:
       "Retrieves one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
-      database: z
-        .string()
-        .nullish()
-        .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      // TODO: Support configurable database
+      // database: z
+      //   .string()
+      //   .nullish()
+      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
       paths: z
         .array(z.string())
         .describe(
@@ -26,8 +27,8 @@ export const get_documents = tool(
       readOnlyHint: true,
     },
   },
-  async ({ database, paths }, { projectId }) => {
-    database ??= "(default)";
+  async ({ paths }, { projectId }) => {
+    // database ??= "(default)";
     if (!projectId) return NO_PROJECT_ERROR;
     if (!paths.length) return mcpError("Must supply at least one document path.");
 
