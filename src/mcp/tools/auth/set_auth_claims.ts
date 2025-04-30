@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { setCustomClaim } from "../../../gcp/auth.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const set_auth_claim = tool(
   {
@@ -27,11 +28,7 @@ export const set_auth_claim = tool(
     },
   },
   async ({ uid, claim, value }, { projectId }) => {
-    if (!projectId) return mcpError(`No current project detected.`);
-    try {
-      return toContent(await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true }));
-    } catch (err: unknown) {
-      return mcpError(err);
-    }
+    if (!projectId) return NO_PROJECT_ERROR;
+    return toContent(await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true }));
   },
 );

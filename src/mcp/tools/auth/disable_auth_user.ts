@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { disableUser } from "../../../gcp/auth.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const disable_auth_user = tool(
   {
@@ -18,15 +19,11 @@ export const disable_auth_user = tool(
     },
   },
   async ({ uid, disabled }, { projectId }) => {
-    if (!projectId) return mcpError(`No current project detected.`);
-    try {
-      const res = await disableUser(projectId, uid, disabled);
-      if (res) {
-        return toContent(`User ${uid} as been ${disabled ? "disabled" : "enabled"}`);
-      }
-      return toContent(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
-    } catch (err: unknown) {
-      return mcpError(err);
+    if (!projectId) return NO_PROJECT_ERROR;
+    const res = await disableUser(projectId, uid, disabled);
+    if (res) {
+      return toContent(`User ${uid} as been ${disabled ? "disabled" : "enabled"}`);
     }
+    return toContent(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
   },
 );

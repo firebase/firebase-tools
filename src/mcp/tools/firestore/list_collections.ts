@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { listCollectionIds } from "../../../gcp/firestore.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
 
@@ -30,10 +30,6 @@ export const list_collections = tool(
   async (_, { projectId }) => {
     // database ??= "(default)";
     if (!projectId) return NO_PROJECT_ERROR;
-    try {
-      return toContent(await listCollectionIds(projectId));
-    } catch (e) {
-      return mcpError(e);
-    }
+    return toContent(await listCollectionIds(projectId));
   },
 );

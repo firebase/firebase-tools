@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const get_sdk_config = tool(
   {
@@ -24,7 +25,7 @@ export const get_sdk_config = tool(
     },
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
+    if (!projectId) return NO_PROJECT_ERROR;
     let platform = inputPlatform?.toUpperCase() as AppPlatform;
     if (!platform && !appId)
       return mcpError(
