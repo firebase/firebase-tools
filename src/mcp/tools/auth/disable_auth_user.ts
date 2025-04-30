@@ -16,11 +16,14 @@ export const disable_auth_user = tool(
       destructiveHint: true,
       idempotentHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ uid, disabled }, { projectId }) => {
-    if (!projectId) return mcpError(`No current project detected.`);
     try {
-      const res = await disableUser(projectId, uid, disabled);
+      const res = await disableUser(projectId!, uid, disabled);
       if (res) {
         return toContent(`User ${uid} as been ${disabled ? "disabled" : "enabled"}`);
       }

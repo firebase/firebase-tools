@@ -14,11 +14,11 @@ export const get_project = tool(
       readOnlyHint: true,
     },
     _meta: {
+      requiresAuth: true,
       requiresProject: true,
     },
   },
   async (_, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await getProject(projectId));
+    return toContent(await getProject(projectId!));
   },
 );

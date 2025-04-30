@@ -19,12 +19,12 @@ export const list_apps = tool(
     },
     _meta: {
       requiresProject: true,
+      requiresAuth: true,
     },
   },
   async ({ platform }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
     const apps = await listFirebaseApps(
-      projectId,
+      projectId!,
       (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
     );
     return toContent(apps);

@@ -25,11 +25,14 @@ export const set_auth_claim = tool(
       title: "Set custom Firebase Auth claim",
       idempotentHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async ({ uid, claim, value }, { projectId }) => {
-    if (!projectId) return mcpError(`No current project detected.`);
     try {
-      return toContent(await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true }));
+      return toContent(await setCustomClaim(projectId!, uid, { [claim]: value }, { merge: true }));
     } catch (err: unknown) {
       return mcpError(err);
     }
