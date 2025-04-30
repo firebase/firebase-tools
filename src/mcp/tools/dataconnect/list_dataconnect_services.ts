@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
+import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const list_dataconnect_services = tool(
   {
@@ -18,7 +18,7 @@ export const list_dataconnect_services = tool(
     },
   },
   async (_, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
+    if (!projectId) return NO_PROJECT_ERROR;
     const services = await client.listAllServices(projectId);
     return toContent(services, { format: "yaml" });
   },
