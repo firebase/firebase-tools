@@ -13,7 +13,8 @@ interface MfaEnrollment {
 }
 
 interface UserInfo {
-  localId: string;
+  uid?: string;
+  localId?: string;
   email: string;
   displayName: string;
   language: string;
@@ -177,19 +178,18 @@ export async function disableUser(
 export async function setCustomClaim(
   project: string,
   uid: string,
-  claim: string,
-  value: string | number | boolean,
+  claim: Record<string, unknown>,
+  options?: {merge?: boolean}
 ): Promise<UserInfo> {
   let user = await findUser(project, undefined, undefined, uid);
   if (user.localId !== uid) {
     throw new Error(`Could not find ${uid} in the auth db, please check the uid again.`);
   }
-  const newClaim = { [claim]: value };
   let attributeJson = new Map<string, string | number | boolean>();
   if (user.customAttributes !== undefined && user.customAttributes !== "") {
     attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
   }
-  const reqClaim = JSON.stringify({ ...attributeJson, ...newClaim });
+  const reqClaim = JSON.stringify({ ...attributeJson, ...claim });
   const res = await apiClient.post<
     { customAttributes: string; targetProjectId: string; localId: string },
     SetAccountInfoResponse
