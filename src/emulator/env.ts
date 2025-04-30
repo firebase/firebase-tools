@@ -4,6 +4,7 @@ import { formatHost } from "./functionsEmulatorShared";
 import { Account } from "../types/auth/index";
 import { EmulatorLogger } from "./emulatorLogger";
 import { getCredentialPathAsync, hasDefaultCredentials } from "../defaultCredentials";
+import { FirestoreEmulatorInfo } from "./firestoreEmulator";
 
 /**
  * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
@@ -84,4 +85,30 @@ export async function getCredentialsEnvironment(
     }
   }
   return credentialEnv;
+}
+
+export function maybeUsePortForwarding(i: EmulatorInfo): EmulatorInfo {
+  const portForwardingHost = process.env.WEB_HOST;
+  if (portForwardingHost) {
+    const info = { ...i };
+    if (info.host.includes(portForwardingHost)) {
+      // Never double apply this. Added as a safety check against sloppy usage.
+      return info;
+    }
+    const url = `${info.port}-${portForwardingHost}`;
+    info.host = url;
+    info.listen = info.listen?.map((l) => {
+      l.address = url;
+      l.port = 443;
+      return l;
+    });
+    info.port = 443;
+    const fsInfo = info as FirestoreEmulatorInfo;
+    if (fsInfo.webSocketPort) {
+      fsInfo.webSocketHost = `${fsInfo.webSocketPort}-${portForwardingHost}`;
+      fsInfo.webSocketPort = 443;
+    }
+    return info;
+  }
+  return i;
 }

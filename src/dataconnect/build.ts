@@ -1,7 +1,6 @@
 import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
-import * as experiments from "../experiments";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
@@ -15,13 +14,7 @@ export async function build(
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
   const args: DataConnectBuildArgs = { configDir, account };
-  if (experiments.isEnabled("fdcconnectorevolution") && options.projectId) {
-    const flags = process.env["DATA_CONNECT_PREVIEW"];
-    if (flags) {
-      process.env["DATA_CONNECT_PREVIEW"] = flags + ",conn_evolution";
-    } else {
-      process.env["DATA_CONNECT_PREVIEW"] = "conn_evolution";
-    }
+  if (options.projectId) {
     args.projectId = options.projectId;
   }
   const buildResult = await DataConnectEmulator.build(args);

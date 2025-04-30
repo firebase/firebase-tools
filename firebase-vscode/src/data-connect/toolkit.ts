@@ -39,12 +39,6 @@ export class DataConnectToolkit implements vscode.Disposable {
     const port = await findOpenPort(DEFAULT_PORT);
     const settings = getSettings();
 
-    // Set the conn_evolution preview flag if it's not already set.
-    const previewFlags = new Set(["conn_evolution"]);
-    if (settings.extraEnv["DATA_CONNECT_PREVIEW"]) {
-      settings.extraEnv["DATA_CONNECT_PREVIEW"].split(',').forEach(f => previewFlags.add(f));
-    }
-
     const toolkitArgs: DataConnectEmulatorArgs = {
       projectId: "toolkit",
       listen: [{ address: "localhost", port, family: "IPv4" }],
@@ -54,7 +48,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       autoconnectToPostgres: false,
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
-      extraEnv: {...settings.extraEnv, ...{"DATA_CONNECT_PREVIEW": Array.from(previewFlags).join(',')}},
+      extraEnv: settings.extraEnv,
     };
     pluginLogger.info(`Starting Data Connect toolkit (version ${DataConnectToolkitController.getVersion()}) on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
