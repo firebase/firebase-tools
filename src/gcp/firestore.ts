@@ -24,10 +24,10 @@ export interface Database {
   locationId: string;
   type: "DATABASE_TYPE_UNSPECIFIED" | "FIRESTORE_NATIVE" | "DATASTORE_MODE";
   concurrencyMode:
-  | "CONCURRENCY_MODE_UNSPECIFIED"
-  | "OPTIMISTIC"
-  | "PESSIMISTIC"
-  | "OPTIMISTIC_WITH_ENTITY_GROUPS";
+    | "CONCURRENCY_MODE_UNSPECIFIED"
+    | "OPTIMISTIC"
+    | "PESSIMISTIC"
+    | "OPTIMISTIC_WITH_ENTITY_GROUPS";
   appEngineIntegrationMode: "APP_ENGINE_INTEGRATION_MODE_UNSPECIFIED" | "ENABLED" | "DISABLED";
   keyPrefix: string;
   etag: string;
