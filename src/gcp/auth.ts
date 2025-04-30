@@ -42,7 +42,7 @@ interface UserInfo {
   screenName: string;
   customAuth: boolean;
   phoneNumber: string;
-  customAttributes: string;
+  customAttributes?: string;
   emailLinkSignin: boolean;
   tenantId: string;
   mfaInfo: MfaEnrollment[];
@@ -164,4 +164,43 @@ export async function disableUser(
     localId: uid,
   });
   return res.status === 200;
+}
+
+/**
+ * setCustomClaim sets a new custom claim on the uid specified in the project.
+ * @param project project identifier.
+ * @param uid the user id of the user from the firebase project.
+ * @param claim the key value in the custom claim.
+ * @param value the value in the custom claim.
+ * @return the results of the accounts update request.
+ */
+export async function setCustomClaim(
+  project: string,
+  uid: string,
+  claim: string,
+  value: string | number | boolean,
+): Promise<UserInfo> {
+  let user = await findUser(project, undefined, undefined, uid);
+  if (user.localId !== uid) {
+    throw new Error(`Could not find ${uid} in the auth db, please check the uid again.`);
+  }
+  const newClaim = { [claim]: value };
+  let attributeJson = new Map<string, string | number | boolean>();
+  if (user.customAttributes !== undefined && user.customAttributes !== "") {
+    attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
+  }
+  const reqClaim = JSON.stringify({ ...newClaim, ...attributeJson });
+  const res = await apiClient.post<
+    { customAttributes: string; targetProjectId: string; localId: string },
+    SetAccountInfoResponse
+  >("/v1/accounts:update", {
+    customAttributes: reqClaim,
+    targetProjectId: project,
+    localId: uid,
+  });
+  if (res.status !== 200) {
+    throw new Error("something went wrong in the request");
+  }
+  user = await findUser(project, undefined, undefined, uid);
+  return user;
 }

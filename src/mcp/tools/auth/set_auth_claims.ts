@@ -1,29 +1,29 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { findUser } from "../../../gcp/auth.js";
+import { setCustomClaim } from "../../../gcp/auth.js";
 
-export const get_auth_user = tool(
+export const set_auth_claims = tool(
   {
     name: "set_auth_claims",
     description: "Sets a list of specific claims for a user.",
     inputSchema: z.object({
-      email: z.string().optional(),
-      phoneNumber: z.string().optional(),
-      uid: z.string().optional(),
+      uid: z.string().describe("the UID or localId of the user to update"),
+      claim: z.string().describe("the key value int he custom claim to update"),
+      value: z
+        .union([z.string(), z.boolean(), z.number()])
+        .describe("the value of the custom claim"),
     }),
     annotations: {
-      title: "Get information about 1 user.",
-      readOnlyHint: true,
+      title: "Set a custom claim on a specific user.",
+      destructiveHint: true,
+      idempotentHint: true,
     },
   },
-  async ({ email, phoneNumber, uid }, { projectId }) => {
-    if (email === undefined && phoneNumber === undefined && uid === undefined) {
-      return mcpError(`No user identifier supplied in get_auth_user tool`);
-    }
+  async ({ uid, claim, value }, { projectId }) => {
     if (!projectId) return mcpError(`No current project detected.`);
     try {
-      return toContent(await findUser(projectId, email, phoneNumber, uid));
+      return toContent(await setCustomClaim(projectId, uid, claim, value));
     } catch (err: unknown) {
       return mcpError(err);
     }
