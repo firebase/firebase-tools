@@ -6,7 +6,7 @@ import { setCustomClaim } from "../../../gcp/auth.js";
 export const set_auth_claims = tool(
   {
     name: "set_auth_claims",
-    description: "Sets a list of specific claims for a user.",
+    description: "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value.",
     inputSchema: z.object({
       uid: z.string().describe("the UID or localId of the user to update"),
       claim: z.string().describe("the key value int he custom claim to update"),
