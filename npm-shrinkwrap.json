@@ -82,8 +82,7 @@
         "zod-to-json-schema": "^3.24.5"
       },
       "bin": {
-        "firebase": "lib/bin/firebase.js",
-        "firebase-mcp": "lib/bin/firebase-mcp.js"
+        "firebase": "lib/bin/firebase.js"
       },
       "devDependencies": {
         "@angular-devkit/architect": "^0.1402.2",
