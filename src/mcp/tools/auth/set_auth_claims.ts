@@ -22,7 +22,7 @@ export const set_auth_claim = tool(
         .describe("the value of the custom claim"),
     }),
     annotations: {
-      title: "Set a custom claim on a specific user.",
+      title: "Set custom Firebase Auth claim",
       idempotentHint: true,
     },
   },
