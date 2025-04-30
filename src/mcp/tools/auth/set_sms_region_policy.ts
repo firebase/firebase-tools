@@ -8,7 +8,7 @@ export const set_sms_region_policy = tool(
   {
     name: "set_sms_region_policy",
     description:
-      "Sets an SMS Region Policy for your Firebase project to restrict the regions which can recieve text messages based on an allow or deny list",
+      "Sets an SMS Region Policy for Firebase Auth to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
     inputSchema: z.object({
       allow_list: z
         .boolean()
