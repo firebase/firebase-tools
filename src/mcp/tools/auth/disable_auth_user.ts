@@ -13,7 +13,8 @@ export const disable_auth_user = tool(
     }),
     annotations: {
       title: "Disable or enable a particular user",
-      readOnlyHint: true,
+      destructiveHint: true,
+      idempotentHint: true,
     },
   },
   async ({ uid, disabled }, { projectId }) => {
