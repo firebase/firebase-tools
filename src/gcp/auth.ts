@@ -189,7 +189,7 @@ export async function setCustomClaim(
   if (user.customAttributes !== undefined && user.customAttributes !== "") {
     attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
   }
-  const reqClaim = JSON.stringify({ ...newClaim, ...attributeJson });
+  const reqClaim = JSON.stringify({ ...attributeJson, ...newClaim });
   const res = await apiClient.post<
     { customAttributes: string; targetProjectId: string; localId: string },
     SetAccountInfoResponse
