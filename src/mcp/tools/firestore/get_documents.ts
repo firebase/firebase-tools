@@ -56,12 +56,8 @@ export const get_documents = tool(
         ];
       }
       return docsContent;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        return mcpError(err.message);
-      } else {
-        return mcpError("unknown error");
-      }
+    } catch (e) {
+      return mcpError(e);
     }
   },
 );

@@ -15,6 +15,12 @@ export const list_collections = tool(
       //   .string()
       //   .nullish()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      document_path: z
+        .string()
+        .nullish()
+        .describe(
+          "a parent document to list subcollections under. only needed for subcollections, omit to list top-level collections",
+        ),
     }),
     annotations: {
       title: "List Firestore collections",
@@ -26,12 +32,8 @@ export const list_collections = tool(
     if (!projectId) return NO_PROJECT_ERROR;
     try {
       return toContent(await listCollectionIds(projectId));
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        return mcpError(err.message);
-      } else {
-        return mcpError("unknown error");
-      }
+    } catch (e) {
+      return mcpError(e);
     }
   },
 );
