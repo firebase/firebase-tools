@@ -17,6 +17,7 @@ import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
 import { Options } from "../options.js";
 import { getProjectId } from "../projectUtils.js";
+import { mcpAuthError, NO_PROJECT_ERROR } from "./errors.js";
 
 const SERVER_VERSION = "0.0.1";
 const PROJECT_ROOT_KEY = "mcp.projectRoot";
@@ -26,7 +27,6 @@ const cmd = new Command("experimental:mcp").before(requireAuth);
 export class FirebaseMcpServer {
   projectRoot?: string;
   server: Server;
-  cliOptions: any;
   activeFeatures?: ServerFeature[];
   fixedRoot?: boolean;
 
@@ -55,11 +55,6 @@ export class FirebaseMcpServer {
     return toolDefs;
   }
 
-  async activeTools(): Promise<ServerTool[]> {
-    const hasActiveProject = !!(await this.getProjectId());
-    return this.availableTools.filter((t) => hasActiveProject || !t.mcp._meta?.requiresProject);
-  }
-
   getTool(name: string): ServerTool | null {
     return this.availableTools.find((t) => t.mcp.name === name) || null;
   }
@@ -67,10 +62,11 @@ export class FirebaseMcpServer {
   async mcpListTools(): Promise<ListToolsResult> {
     const hasActiveProject = !!(await this.getProjectId());
     return {
-      tools: (await this.activeTools()).map((t) => t.mcp),
+      tools: this.availableTools.map((t) => t.mcp),
       _meta: {
         projectRoot: this.projectRoot,
         projectDetected: hasActiveProject,
+        authenticated: await this.getAuthenticated(),
         activeFeatures: this.activeFeatures,
       },
     };
@@ -99,11 +95,24 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
+  async getAuthenticated(): Promise<boolean> {
+    try {
+      await requireAuth(await this.resolveOptions());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
     const toolName = request.params.name;
     const toolArgs = request.params.arguments;
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
+
+    const projectId = await this.getProjectId();
+    if (tool.mcp._meta?.requiresAuth && !(await this.getAuthenticated())) return mcpAuthError();
+    if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
     try {
       return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });

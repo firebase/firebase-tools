@@ -26,6 +26,10 @@ export const list_collections = tool(
       title: "List Firestore collections",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async (_, { projectId }) => {
     // database ??= "(default)";
