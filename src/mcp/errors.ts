@@ -10,5 +10,7 @@ export function mcpAuthError() {
   return mcpError(`The user is not currently logged into the Firebase CLI, which is required to use this tool. Please instruct the user to execute this shell command to sign in or to configure [Application Default Credentials][ADC] on their machine.
 \`\`\`sh
 ${cmd} login
-\`\`\``);
+\`\`\`
+
+[ADC]: https://cloud.google.com/docs/authentication/application-default-credentials`);
 }
