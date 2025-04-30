@@ -191,12 +191,12 @@ export async function setCustomClaim(
   if (user.uid !== uid) {
     throw new Error(`Could not find ${uid} in the auth db, please check the uid again.`);
   }
-  let attributeJson = new Map<string, string | number | boolean>();
-  if (user.customAttributes !== undefined && user.customAttributes !== "") {
-    attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
-  }
   let reqClaim = JSON.stringify(claim);
   if (options?.merge) {
+    let attributeJson = new Map<string, string | number | boolean>();
+    if (user.customAttributes !== undefined && user.customAttributes !== "") {
+      attributeJson = JSON.parse(user.customAttributes) as Map<string, string | number | boolean>;
+    }
     reqClaim = JSON.stringify({ ...attributeJson, ...claim });
   }
   const res = await apiClient.post<
