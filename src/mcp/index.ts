@@ -6,7 +6,6 @@ import {
   CallToolResult,
   ListToolsRequestSchema,
   ListToolsResult,
-  McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { mcpError } from "./util.js";
 import { ServerFeature } from "./types.js";
