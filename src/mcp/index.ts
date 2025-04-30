@@ -7,6 +7,7 @@ import {
   ListToolsRequestSchema,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { mcpError } from "./util.js";
 import { ServerFeature } from "./types.js";
 import { tools } from "./tools/index.js";
 import { ServerTool } from "./tool.js";
@@ -104,7 +105,11 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
-    return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
+    try {
+      return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
+    } catch (err: unknown) {
+      return mcpError(err);
+    }
   }
 
   async start(): Promise<void> {
