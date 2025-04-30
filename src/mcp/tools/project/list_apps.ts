@@ -17,6 +17,9 @@ export const list_apps = tool(
       title: "List Firebase Apps",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresProject: true,
+    },
   },
   async ({ platform }, { projectId }) => {
     if (!projectId) return mcpError("No current project detected.");

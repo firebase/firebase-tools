@@ -19,9 +19,16 @@ export function toContent(data: any, options?: { format: "json" | "yaml" }): Cal
   };
 }
 
-export function mcpError(message: string, code?: string): CallToolResult {
+export function mcpError(message: Error | string | unknown, code?: string): CallToolResult {
+  let errorMessage = "unknown error";
+  if (message instanceof Error) {
+    errorMessage = message.message;
+  }
+  if (typeof message === "string") {
+    errorMessage = message;
+  }
   return {
     isError: true,
-    content: [{ type: "text", text: `"Error: ${code ? `${code}: ` : ""}${message}` }],
+    content: [{ type: "text", text: `"Error: ${code ? `${code}: ` : ""}${errorMessage}` }],
   };
 }

@@ -19,6 +19,9 @@ export const get_sdk_config = tool(
       title: "Get Firebase SDK Config",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresProject: true,
+    },
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
     if (!projectId) return mcpError("No current project detected.");
