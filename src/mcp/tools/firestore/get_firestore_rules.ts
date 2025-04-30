@@ -19,14 +19,10 @@ export const get_firestore_rules = tool(
   },
   async (_, { projectId }) => {
     if (!projectId) return NO_PROJECT_ERROR;
-    try {
-      const rulesetName = await getLatestRulesetName(projectId, "cloud.firestore");
-      if (!rulesetName)
-        return mcpError(`No active Firestore rules were found in project '${projectId}'`);
-      const rules = await getRulesetContent(rulesetName);
-      return toContent(rules[0].content);
-    } catch (e) {
-      return mcpError(e);
-    }
+    const rulesetName = await getLatestRulesetName(projectId, "cloud.firestore");
+    if (!rulesetName)
+      return mcpError(`No active Firestore rules were found in project '${projectId}'`);
+    const rules = await getRulesetContent(rulesetName);
+    return toContent(rules[0].content);
   },
 );

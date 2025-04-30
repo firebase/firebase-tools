@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
+import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const list_apps = tool(
   {
@@ -22,7 +23,7 @@ export const list_apps = tool(
     },
   },
   async ({ platform }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
+    if (!projectId) return NO_PROJECT_ERROR;
     const apps = await listFirebaseApps(
       projectId,
       (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,

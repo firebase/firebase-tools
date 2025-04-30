@@ -32,32 +32,28 @@ export const get_documents = tool(
     if (!projectId) return NO_PROJECT_ERROR;
     if (!paths.length) return mcpError("Must supply at least one document path.");
 
-    try {
-      const { documents, missing } = await getDocuments(projectId, paths);
-      if (missing.length > 0 && documents.length === 0) {
-        return mcpError(`None of the specified documents were found in project '${projectId}'`);
-      }
-
-      const docs = documents.map(firestoreDocumentToJson);
-
-      if (documents.length === 1 && missing.length === 0) {
-        // return a single document as YAML if that's all we have/need
-        return toContent(docs[0]);
-      }
-      const docsContent = toContent(docs);
-      if (missing.length) {
-        docsContent.content = [
-          { type: "text", text: "Retrieved documents:\n\n" },
-          ...docsContent.content,
-          {
-            type: "text",
-            text: `The following documents do not exist: ${missing.join(", ")}`,
-          },
-        ];
-      }
-      return docsContent;
-    } catch (e) {
-      return mcpError(e);
+    const { documents, missing } = await getDocuments(projectId, paths);
+    if (missing.length > 0 && documents.length === 0) {
+      return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
+
+    const docs = documents.map(firestoreDocumentToJson);
+
+    if (documents.length === 1 && missing.length === 0) {
+      // return a single document as YAML if that's all we have/need
+      return toContent(docs[0]);
+    }
+    const docsContent = toContent(docs);
+    if (missing.length) {
+      docsContent.content = [
+        { type: "text", text: "Retrieved documents:\n\n" },
+        ...docsContent.content,
+        {
+          type: "text",
+          text: `The following documents do not exist: ${missing.join(", ")}`,
+        },
+      ];
+    }
+    return docsContent;
   },
 );

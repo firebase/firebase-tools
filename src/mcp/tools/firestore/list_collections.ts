@@ -30,10 +30,6 @@ export const list_collections = tool(
   async (_, { projectId }) => {
     // database ??= "(default)";
     if (!projectId) return NO_PROJECT_ERROR;
-    try {
-      return toContent(await listCollectionIds(projectId));
-    } catch (e) {
-      return mcpError(e);
-    }
+    return toContent(await listCollectionIds(projectId));
   },
 );
