@@ -24,9 +24,12 @@ export const set_sms_region_policy = tool(
       idempotentHint: true,
       destructiveHint: true,
     },
+    _meta: {
+      requiresProject: true,
+      requiresAuth: true,
+    },
   },
   async ({ policy_type, country_codes }, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
     country_codes = country_codes.map((code) => {
       return code.toUpperCase();
     });
