@@ -34,7 +34,7 @@ export const set_sms_region_policy = tool(
       return code.toUpperCase();
     });
     if (policy_type === "ALLOW") {
-      return toContent(await setAllowSmsRegionPolicy(projectId, country_codes));
+      return toContent(await setAllowSmsRegionPolicy(projectId!, country_codes));
     }
     return toContent(await setDenySmsRegionPolicy(projectId, country_codes));
   },
