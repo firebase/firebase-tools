@@ -13,8 +13,9 @@ export const generate_dataconnect_operation = tool(
         .describe("A description of the query or mutation operation you would like to generate"),
       service: z
         .string()
+        .nullish()
         .describe(
-          "The service id or name of the deployed Firebase Data Connect Schema in format: projects/<project-id>/locations/<location>/services/<service-name>",
+          "Optional: Uses the service from the firebase.json file if nothing provided. The service id or name of the deployed Firebase Data Connect Schema in format: projects/<project-id>/locations/<location>/services/<service-name>.",
         ),
     }),
     annotations: {
