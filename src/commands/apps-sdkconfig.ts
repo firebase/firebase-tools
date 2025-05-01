@@ -17,8 +17,8 @@ import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
 import { Options } from "../options";
+import { select, confirm } from "../prompt";
 
 function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
@@ -47,8 +47,7 @@ async function selectAppInteractively(
     };
   });
 
-  return await promptOnce({
-    type: "list",
+  return await select<AppMetadata>({
     message:
       `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
       "app to get the configuration data:",
@@ -131,11 +130,7 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         if (options.nonInteractive) {
           throw new FirebaseError(`${filename} already exists`);
         }
-        const overwrite = await promptOnce({
-          type: "confirm",
-          default: false,
-          message: `${filename} already exists. Do you want to overwrite?`,
-        });
+        const overwrite = await confirm(`${filename} already exists. Do you want to overwrite?`);
 
         if (!overwrite) {
           return fileInfo;

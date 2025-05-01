@@ -1,8 +1,8 @@
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
-import { promptOnce } from "../prompt";
 import { Site, createSite } from "./api";
+import { input } from "../prompt";
 
 const nameSuggestion = new RegExp("try something like `(.+)`");
 // const prompt = "Please provide an unique, URL-friendly id for the site (<id>.web.app):";
@@ -37,8 +37,7 @@ export async function interactiveCreateHostingSite(
 
   while (!newSite) {
     if (!id || suggestion) {
-      id = await promptOnce({
-        type: "input",
+      id = await input({
         message: prompt,
         validate: (s: string) => s.length > 0, // Prevents an empty string from being submitted!
         default: suggestion,

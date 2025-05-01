@@ -78,6 +78,7 @@ async function deprecate(
     });
   if (filteredExtensionVersions.length > 0) {
     const consent = await confirm({
+      message: "Continue?",
       default: false,
       force: options.force,
       nonInteractive: options.nonInteractive,

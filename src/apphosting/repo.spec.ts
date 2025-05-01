@@ -50,7 +50,7 @@ describe("composer", () => {
   describe("connect GitHub repo", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStubbedInstance<typeof prompt>;
     let pollOperationStub: sinon.SinonStub;
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
@@ -62,7 +62,10 @@ describe("composer", () => {
     let openInBrowserPopupStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      promptStub = sandbox.stub(prompt);
+      promptStub.input.throws("Unexpected input call");
+      promptStub.search.throws("Unexpected search call");
+      promptStub.confirm.throws("Unexpected confirm call");
       pollOperationStub = sandbox
         .stub(poller, "pollOperation")
         .throws("Unexpected pollOperation call");
@@ -145,7 +148,7 @@ describe("composer", () => {
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.onFirstCall().resolves("any key");
+      promptStub.input.onFirstCall().resolves("any key");
 
       await repo.getOrCreateConnection(projectId, location, connectionId);
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
@@ -156,7 +159,7 @@ describe("composer", () => {
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.resolves("any key");
+      promptStub.input.resolves("any key");
       getProjectNumberStub.onFirstCall().resolves(projectId);
       openInBrowserPopupStub.resolves({ url: "", cleanup: sandbox.stub() });
 
@@ -172,7 +175,7 @@ describe("composer", () => {
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
       createRepositoryStub.resolves({ name: "op" });
       pollOperationStub.resolves(repos.repositories[0]);
@@ -195,7 +198,7 @@ describe("composer", () => {
     it("re-uses existing repository it already exists", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.resolves(repos.repositories[0]);
 
       const r = await repo.getOrCreateRepository(
