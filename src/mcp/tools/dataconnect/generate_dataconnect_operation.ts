@@ -6,7 +6,7 @@ import { generateOperation } from "../../../gif/fdcExperience.js";
 export const generate_dataconnect_operation = tool(
   {
     name: "generate_dataconnect_operation",
-    description: "Generates a Firebase Data Connect Operation based on the deployed app schema.",
+    description: "Generates a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
     inputSchema: z.object({
       prompt: z
         .string()
