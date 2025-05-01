@@ -2,6 +2,8 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { generateOperation } from "../../../gif/fdcExperience.js";
+import { Config } from "../../../config.js";
+import { readFirebaseJson } from "../../../dataconnect/fileUtils.js";
 
 export const generate_dataconnect_operation = tool(
   {
@@ -32,9 +34,27 @@ export const generate_dataconnect_operation = tool(
       // TODO: Create an endpoint to check for GiF activiation.
     },
   },
-  async ({ prompt, service }, { projectId }) => {
+  async ({ prompt, service }, { projectId, host }) => {
     if (!service) {
-      // find the service here and assign it.
+      const projectRoot = host.projectRoot;
+      if (!projectRoot) {
+        throw new Error("No project directory supplied. A service must be supplied instead.");
+      }
+      const config = new Config(`${projectRoot}/firebase.json`);
+      const dataConnect = readFirebaseJson(config);
+      console.error(dataConnect, projectRoot, config);
+      if (dataConnect.length === 0) {
+        throw new Error("no data connect sources detected in firebase.json");
+      }
+      if (dataConnect.length !== 1) {
+        const sources = dataConnect.map((dcs) => {
+          return dcs.source;
+        });
+        throw new Error(
+          `muliple services detected in firebase.json. Please select one service from : ${sources.join(",")}`,
+        );
+      }
+      service = dataConnect[0].source;
     }
     const schema = await generateOperation(prompt, service, projectId!);
     return toContent(schema);
