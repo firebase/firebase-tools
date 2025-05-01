@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { setAllowSmsRegionPolicy, setDenySmsRegionPolicy } from "../../../gcp/auth.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 
 export const set_sms_region_policy = tool(
   {
