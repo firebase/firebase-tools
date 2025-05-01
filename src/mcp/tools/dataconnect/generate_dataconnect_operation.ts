@@ -8,9 +8,12 @@ export const generate_dataconnect_operation = tool(
     name: "generate_dataconnect_operation",
     description: "Generates a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
     inputSchema: z.object({
+      // Lifted guidance from : https://cloud.google.com/gemini/docs/discover/write-prompts
       prompt: z
         .string()
-        .describe("A description of the query or mutation operation you would like to generate"),
+        .describe(
+          "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users requst",
+        ),
       service: z
         .string()
         .nullish()
