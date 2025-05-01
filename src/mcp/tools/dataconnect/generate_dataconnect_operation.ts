@@ -8,7 +8,9 @@ export const generate_dataconnect_operation = tool(
     name: "generate_dataconnect_operation",
     description: "Generates a Firebase Data Connect Operation based on the deployed app schema.",
     inputSchema: z.object({
-      prompt: z.string().describe("A description of an app that you are interested in building"),
+      prompt: z
+        .string()
+        .describe("A description of the query or mutation operation you would like to generate"),
       service: z
         .string()
         .describe(
