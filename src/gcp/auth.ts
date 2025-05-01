@@ -213,3 +213,55 @@ export async function setCustomClaim(
   user = await findUser(project, undefined, undefined, uid);
   return user;
 }
+
+/**
+ * setAllowSmsRegionPolicy updates the allowed regions for sms auth and MFA in Firebase.
+ * @param project project identifier.
+ * @param countryCodes the country codes to allow based on ISO 3166.
+ * @return call success.
+ */
+export async function setAllowSmsRegionPolicy(
+  project: string,
+  countryCodes: string[],
+): Promise<boolean> {
+  const res = await apiClient.patch<
+    { sms_region_config: { allowlist_only: { allowed_regions: string[] } } },
+    {}
+  >(`/admin/v2/projects/${project}/config?updateMask=sms_region_config`, {
+    sms_region_config: {
+      allowlist_only: {
+        allowed_regions: countryCodes,
+      },
+    },
+  });
+  if (res.status !== 200) {
+    throw new Error("SMS Region Policy failed to be configured");
+  }
+  return true;
+}
+
+/**
+ * setDenySmsRegionPolicy updates the deny regions for sms auth and MFA in Firebase.
+ * @param project project identifier.
+ * @param countryCodes the country codes to allow based on ISO 3166.
+ * @return call success.
+ */
+export async function setDenySmsRegionPolicy(
+  project: string,
+  countryCodes: string[],
+): Promise<boolean> {
+  const res = await apiClient.patch<
+    { sms_region_config: { allow_by_default: { disallowed_regions: string[] } } },
+    {}
+  >(`/admin/v2/projects/${project}/config?updateMask=sms_region_config`, {
+    sms_region_config: {
+      allow_by_default: {
+        disallowed_regions: countryCodes,
+      },
+    },
+  });
+  if (res.status !== 200) {
+    throw new Error("SMS Region Policy failed to be configured");
+  }
+  return true;
+}
