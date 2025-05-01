@@ -3,11 +3,14 @@ import { cloudCompanionOrigin } from "../api";
 
 const apiClient = new Client({ urlPrefix: cloudCompanionOrigin(), auth: true });
 const schemaGeneratorExperience = "/appeco/firebase/fdc-schema-generator";
+const geminiInFirebaseChatExperience = "/appeco/firebase/firebase-chat/free";
 
 export interface GenerateSchemaRequest {
   input: { messages: { content: string; author: string }[] };
   experienceContext: { experience: string };
 }
+
+export type ChatExperienceRequest = GenerateSchemaRequest;
 
 export interface GenerateSchemaResponse {
   output: { messages: { content: string }[] };
@@ -15,6 +18,24 @@ export interface GenerateSchemaResponse {
     additionalContext: {
       "@type": string;
       firebaseFdcDisplayContext: { schemaSyntaxError: string };
+    };
+  };
+}
+
+export interface ChatExperienceResponse {
+  output: { messages: { content: string; author: string }[] };
+  outputDataContext: {
+    additionalContext: { "@type": string };
+    attributionContext: {
+      citationMetadata: {
+        citations: {
+          startIndex: number;
+          endIndex: number;
+          url: string;
+          title: string;
+          license: string;
+        }[];
+      };
     };
   };
 }
@@ -36,4 +57,26 @@ export async function generateSchema(prompt: string, project: string): Promise<s
     },
   );
   return res.body.output.messages[0].content;
+}
+
+/**
+ * chatWithFirebase interacts with the Gemini in Firebase integration providing deeper knowledge on Firebase.
+ * @param prompt the interaction that the user would like to have with the service.
+ * @param project project identifier.
+ * @return ChatExperienceResponse includes not only the message from the service but also links to the resources used by the service.
+ */
+export async function chatWithFirebase(
+  prompt: string,
+  project: string,
+): Promise<ChatExperienceResponse> {
+  const res = await apiClient.post<ChatExperienceRequest, ChatExperienceResponse>(
+    `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
+    {
+      input: { messages: [{ content: prompt, author: "USER" }] },
+      experienceContext: {
+        experience: geminiInFirebaseChatExperience,
+      },
+    },
+  );
+  return res.body;
 }
