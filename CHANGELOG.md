@@ -1,1 +1,1 @@
-- Upgraded `inquirer` library to address some visual bugs with prompting (#8389)
+- Fixed an issue where the prompt to create apphosting.emulator.yaml did not work with backends that are not at the project.root (#8412)
