@@ -119,12 +119,12 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     if (unusedFrameworks.length > 0) {
       const additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
         message:
-              "Which frameworks would you like to generate SDKs for? " +
-              "Press Space to select features, then Enter to confirm your choices.",
-            choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
-              value: frameworkStr,
-              checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
-            })),
+          "Which frameworks would you like to generate SDKs for? " +
+          "Press Space to select features, then Enter to confirm your choices.",
+        choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
+          value: frameworkStr,
+          checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
+        })),
       });
       for (const framework of additionalFrameworks) {
         newConnectorYaml!.generate!.javascriptSdk![framework] = true;

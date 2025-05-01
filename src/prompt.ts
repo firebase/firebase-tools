@@ -264,7 +264,7 @@ export async function password(opts: string | PasswordOptions): Promise<string> 
 
 /**
  * Options for the search function.
- * 
+ *
  * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme. Some options are missing to promote consistency
  * within the CLI.
