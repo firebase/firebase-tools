@@ -1,3 +1,0 @@
-- Cleaned up prompt for setting up web frameworks during `init dataconnect`.
-- Fixed an issue were the Emualtor suite would check for auth when using `demo-` projects.
-- Updated the Firebase Data Connect local toolkit to v2.4.0, which adds support for `add` and `remove` list update transforms and fixes an issue where updating a column to `null` was ignored. (#8484)

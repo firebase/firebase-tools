@@ -4,9 +4,9 @@ import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { firestoreDocumentToJson } from "./converter.js";
 
-export const get_documents = tool(
+export const get_firestore_documents = tool(
   {
-    name: "get_documents",
+    name: "get_firestore_documents",
     description:
       "Retrieves one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
@@ -32,10 +32,10 @@ export const get_documents = tool(
   },
   async ({ paths }, { projectId }) => {
     // database ??= "(default)";
-    if (!paths.length) return mcpError("Must supply at least one document path.");
+    if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
     const { documents, missing } = await getDocuments(projectId!, paths);
-    if (missing.length > 0 && documents.length === 0) {
+    if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 

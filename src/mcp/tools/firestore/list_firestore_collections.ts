@@ -4,9 +4,9 @@ import { toContent } from "../../util.js";
 import { listCollectionIds } from "../../../gcp/firestore.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
 
-export const list_collections = tool(
+export const list_firestore_collections = tool(
   {
-    name: "list_collections",
+    name: "list_firestore_collections",
     description:
       "Retrieves a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
