@@ -5,7 +5,7 @@ import * as nock from "nock";
 import * as api from "../api";
 import * as projectManager from "./projects";
 import * as pollUtils from "../operation-poller";
-import * as prompt from "../prompt";
+import * as promptImport from "../prompt";
 import { FirebaseError } from "../error";
 import { CloudProjectInfo, FirebaseProjectMetadata } from "../types/project";
 
@@ -97,11 +97,16 @@ describe("Project management", () => {
   });
 
   describe("Interactive flows", () => {
-    let promptOnceStub: sinon.SinonStub;
+    let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
 
     beforeEach(() => {
-      sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      prompt = sinon.stub(promptImport);
+      prompt.select.throws("Unexpected select call");
+      prompt.input.throws("Unexpected input call");
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
     });
 
     describe("getOrPromptProject", () => {
@@ -112,13 +117,12 @@ describe("Project management", () => {
           .reply(200, {
             results: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
           });
-        promptOnceStub.resolves("my-project-123");
+        prompt.select.resolves("my-project-123");
 
         const project = await projectManager.getOrPromptProject({});
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
-        expect(promptOnceStub).to.be.calledOnce;
-        expect(promptOnceStub.firstCall.args[0].type).to.equal("list");
+        expect(prompt.select).to.be.calledOnce;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -133,13 +137,12 @@ describe("Project management", () => {
         nock(api.firebaseApiOrigin())
           .get("/v1beta1/projects/my-project-123")
           .reply(200, TEST_FIREBASE_PROJECT);
-        promptOnceStub.resolves("my-project-123");
+        prompt.input.resolves("my-project-123");
 
         const project = await projectManager.getOrPromptProject({});
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
-        expect(promptOnceStub).to.be.calledOnce;
-        expect(promptOnceStub.firstCall.args[0].type).to.equal("input");
+        expect(prompt.input).to.be.calledOnce;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -158,7 +161,8 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "There are no Firebase projects associated with this account.",
         );
-        expect(promptOnceStub).to.be.not.called;
+        expect(prompt.select).to.be.not.called;
+        expect(prompt.input).to.be.not.called;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -171,7 +175,8 @@ describe("Project management", () => {
         const project = await projectManager.getOrPromptProject(options);
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
-        expect(promptOnceStub).to.be.not.called;
+        expect(prompt.select).to.be.not.called;
+        expect(prompt.input).to.be.not.called;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -193,7 +198,8 @@ describe("Project management", () => {
             ". Please make sure the project exists and your account has permission to access it.",
         );
         expect(err.original.toString()).to.contain("Failed to get project");
-        expect(promptOnceStub).to.be.not.called;
+        expect(prompt.input).to.be.not.called;
+        expect(prompt.select).to.be.not.called;
         expect(nock.isDone()).to.be.true;
       });
     });
@@ -206,13 +212,12 @@ describe("Project management", () => {
           .reply(200, {
             projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
           });
-        promptOnceStub.resolves("my-project-123");
+        prompt.select.resolves("my-project-123");
 
         const projectId = await projectManager.promptAvailableProjectId();
 
         expect(projectId).to.deep.equal("my-project-123");
-        expect(promptOnceStub).to.be.calledOnce;
-        expect(promptOnceStub.firstCall.args[0].type).to.equal("list");
+        expect(prompt.select).to.be.calledOnce;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -224,13 +229,12 @@ describe("Project management", () => {
             projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
             nextPageToken: "token",
           });
-        promptOnceStub.resolves("my-project-123");
+        prompt.input.resolves("my-project-123");
 
         const projectId = await projectManager.promptAvailableProjectId();
 
         expect(projectId).to.deep.equal("my-project-123");
-        expect(promptOnceStub).to.be.calledOnce;
-        expect(promptOnceStub.firstCall.args[0].type).to.equal("input");
+        expect(prompt.input).to.be.calledOnce;
         expect(nock.isDone()).to.be.true;
       });
 
@@ -252,7 +256,8 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "There are no available Google Cloud projects to add Firebase services.",
         );
-        expect(promptOnceStub).to.be.not.called;
+        expect(prompt.input).to.be.not.called;
+        expect(prompt.select).to.be.not.called;
         expect(nock.isDone()).to.be.true;
       });
     });

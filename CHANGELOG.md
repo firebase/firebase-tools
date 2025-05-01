@@ -1,0 +1,1 @@
+- Upgraded `inquirer` library to address some visual bugs with prompting (#8389)

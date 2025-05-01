@@ -187,8 +187,7 @@ export async function selectBackendServiceAccounts(
     accum.add(row.runServiceAccount);
     return accum;
   }, new Set<string>());
-  const chosen = await prompt.promptOnce({
-    type: "checkbox",
+  const chosen = await prompt.checkbox({
     message:
       "Which service accounts would you like to grant access? " +
       "Press Space to select accounts, then Enter to confirm your choices.",
@@ -225,7 +224,7 @@ export async function envVarForSecret(
   }
 
   do {
-    const test = await prompt.promptOnce({
+    const test = await prompt.input({
       message: "What environment variable name would you like to use?",
       default: upper,
     });
