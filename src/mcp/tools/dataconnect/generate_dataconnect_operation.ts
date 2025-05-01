@@ -30,6 +30,9 @@ export const generate_dataconnect_operation = tool(
     },
   },
   async ({ prompt, service }, { projectId }) => {
+    if (!service) {
+      // find the service here and assign it.
+    }
     const schema = await generateOperation(prompt, service, projectId!);
     return toContent(schema);
   },
