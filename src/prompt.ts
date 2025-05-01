@@ -3,6 +3,9 @@ import { FirebaseError } from "./error";
 
 export { Separator } from "@inquirer/prompts";
 
+/**
+ * Common options for all prompts.
+ */
 export interface BasicOptions<T> {
   message: string;
   default?: T;
@@ -10,6 +13,13 @@ export interface BasicOptions<T> {
   nonInteractive?: boolean;
 }
 
+/**
+ * Guard function to check if the prompt should return a default value or throw an error.
+ * This is used to prevent prompts from being shown in non-interactive mode.
+ *
+ * @param opts - The options for the prompt.
+ * @returns An object indicating whether to return a value or not.
+ */
 export function guard<T>(
   opts: BasicOptions<T>,
 ): { shouldReturn: true; value: T } | { shouldReturn: false; value: undefined } {
@@ -66,7 +76,7 @@ export async function input(opts: InputConfig | string): Promise<string> {
 /**
  * Options for the confirm function.
  *
- * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme.
  */
 export type ConfirmConfig = BasicOptions<boolean> & {
@@ -121,7 +131,7 @@ type MaybeLiteral<Value> = Value extends string ? Value : never;
 /**
  * Options for the checkbox function.
  *
- * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme. Some options are missing to promote consistency
  * within the CLI.
  */
@@ -154,7 +164,7 @@ export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Val
 /**
  * Options for the checkbox function.
  *
- * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme. Some options are missing to promote consistency
  * within the CLI.
  * TODO: Had difficulty coalescing literals using Choice<Value>[]. Look into it.
@@ -183,7 +193,7 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
 /**
  * Options for the number function.
  *
- * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme. Some options are missing to promote consistency
  * within the CLI.
  */
@@ -220,7 +230,7 @@ export async function number(opts: string | NumberOptions): Promise<number> {
 /**
  * Options for the checkbox function.
  *
- * Epxorted because Inquirer does not export its own input configs anymore. Some unused
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
  * options are missing, such as theme. Some options are missing to promote consistency
  * within the CLI.
  */
@@ -252,6 +262,13 @@ export async function password(opts: string | PasswordOptions): Promise<string> 
   });
 }
 
+/**
+ * Options for the search function.
+ * 
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
 export type SearchOptions<Value> = BasicOptions<Value> & {
   source: (
     term: string | undefined,
@@ -267,6 +284,7 @@ export type SearchOptions<Value> = BasicOptions<Value> & {
   pageSize?: number | undefined;
 };
 
+/** Search for a value given a sorce callback. */
 export async function search<Value>(opts: SearchOptions<Value>): Promise<Value> {
   const { shouldReturn, value } = guard(opts);
   if (shouldReturn) {
