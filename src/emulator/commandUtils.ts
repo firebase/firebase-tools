@@ -156,16 +156,18 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
-  try {
-    await requireAuth(options);
-  } catch (e: any) {
-    logger.debug(e);
-    utils.logLabeledWarning(
-      "emulators",
-      `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
-        "firebase login",
-      )} to authenticate the CLI.`,
-    );
+  if (!Constants.isDemoProject(options.project)) {
+    try {
+      await requireAuth(options);
+    } catch (e: any) {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
+          "firebase login",
+        )} to authenticate the CLI.`,
+      );
+    }
   }
 
   if (canStartWithoutConfig && !options.config) {

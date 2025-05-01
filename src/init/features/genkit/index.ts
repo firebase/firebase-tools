@@ -38,49 +38,62 @@ import {
 
 interface GenkitInfo {
   genkitVersion: string;
+  cliVersion: string;
+  vertexVersion: string;
+  googleAiVersion: string;
   templateVersion: string;
-  useInit: boolean;
   stopInstall: boolean;
 }
 
 // This is the next breaking change version past the latest template.
 const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
+const MIN_VERSION = "0.6.0";
 
 // This is the latest template. It is the default.
 const LATEST_TEMPLATE = "1.0.0";
+
+async function getPackageVersion(packageName: string, envVariable: string): Promise<string> {
+  // Allow the installed version to be set for dev purposes.
+  const envVal = process.env[envVariable];
+  if (envVal && typeof envVal === "string") {
+    if (semver.parse(envVal)) {
+      return envVal;
+    } else {
+      throw new FirebaseError(`Invalid version string '${envVal}' specified in ${envVariable}`);
+    }
+  }
+  try {
+    const output = await spawnWithOutput("npm", ["view", packageName, "version"]);
+    if (!output) {
+      throw new FirebaseError(`Unable to determine ${packageName} version to install`);
+    }
+    return output;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Unable to determine which version of ${packageName} to install.\n` +
+        `npm Error: ${getErrMsg(err)}\n\n` +
+        "For a possible workaround run\n  npm view " +
+        packageName +
+        " version\n" +
+        "and then set an environment variable:\n" +
+        `  export ${envVariable}=<output from previous command>\n` +
+        "and run `firebase init genkit` again",
+    );
+  }
+}
 
 /**
  * Determines which version and template to install
  * @return a GenkitInfo object
  */
-async function getGenkitVersion(): Promise<GenkitInfo> {
-  let genkitVersion: string;
+async function getGenkitInfo(): Promise<GenkitInfo> {
   let templateVersion = LATEST_TEMPLATE;
-  let useInit = false;
   let stopInstall = false;
 
-  // Allow the installed version to be set for dev purposes.
-  if (process.env.GENKIT_DEV_VERSION && typeof process.env.GENKIT_DEV_VERSION === "string") {
-    semver.parse(process.env.GENKIT_DEV_VERSION);
-    genkitVersion = process.env.GENKIT_DEV_VERSION;
-  } else {
-    try {
-      genkitVersion = await spawnWithOutput("npm", ["view", "genkit", "version"]);
-    } catch (err: unknown) {
-      throw new FirebaseError(
-        "Unable to determine which genkit version to install.\n" +
-          `npm Error: ${getErrMsg(err)}\n\n` +
-          "For a possible workaround run\n  npm view genkit version\n" +
-          "and then set an environment variable:\n" +
-          "  export GENKIT_DEV_VERSION=<output from previous command>\n" +
-          "and run `firebase init genkit` again",
-      );
-    }
-  }
-
-  if (!genkitVersion) {
-    throw new FirebaseError("Unable to determine genkit version to install");
-  }
+  const genkitVersion = await getPackageVersion("genkit", "GENKIT_DEV_VERSION");
+  const cliVersion = await getPackageVersion("genkit-cli", "GENKIT_CLI_DEV_VERSION");
+  const vertexVersion = await getPackageVersion("@genkit-ai/vertexai", "GENKIT_VERTEX_VERSION");
+  const googleAiVersion = await getPackageVersion("@genkit-ai/googleai", "GENKIT_GOOGLEAI_VERSION");
 
   if (semver.gte(genkitVersion, UNKNOWN_VERSION_TOO_HIGH)) {
     // We don't know about this version. (Can override with GENKIT_DEV_VERSION)
@@ -100,14 +113,23 @@ async function getGenkitVersion(): Promise<GenkitInfo> {
   } else if (semver.gte(genkitVersion, "1.0.0-rc.1")) {
     // 1.0.0-rc.1 < 1.0.0
     templateVersion = "1.0.0";
-  } else if (semver.gte(genkitVersion, "0.6.0")) {
+  } else if (semver.gte(genkitVersion, MIN_VERSION)) {
     templateVersion = "0.9.0";
   } else {
-    templateVersion = "";
-    useInit = true;
+    throw new FirebaseError(
+      `The requested version of Genkit (${genkitVersion}) is no ` +
+        `longer supported. Please specify a newer version.`,
+    );
   }
 
-  return { genkitVersion, templateVersion, useInit, stopInstall };
+  return {
+    genkitVersion,
+    cliVersion,
+    vertexVersion,
+    googleAiVersion,
+    templateVersion,
+    stopInstall,
+  };
 }
 
 /**
@@ -123,11 +145,14 @@ export interface GenkitSetup extends Setup {
   [key: string]: unknown;
 }
 
-function showStartMessage(config: Config, command: string) {
+function showStartMessage(setup: GenkitSetup, command: string): void {
+  logger.info();
   logger.info("\nLogin to Google Cloud using:");
   logger.info(
     clc.bold(
-      clc.green(`    gcloud auth application-default login --project ${config.options.project}\n`),
+      clc.green(
+        `    gcloud auth application-default login --project ${setup.projectId || "your-project-id"}\n`,
+      ),
     ),
   );
   logger.info("Then start the Genkit developer experience by running:");
@@ -138,7 +163,7 @@ function showStartMessage(config: Config, command: string) {
  * doSetup is the entry point for setting up the genkit suite.
  */
 export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
-  const genkitInfo = await getGenkitVersion();
+  const genkitInfo = await getGenkitInfo();
   if (genkitInfo.stopInstall) {
     logLabeledWarning("genkit", "Stopped Genkit initialization");
     return;
@@ -176,40 +201,19 @@ export async function doSetup(setup: GenkitSetup, config: Config, options: Optio
   });
 
   try {
-    logLabeledBullet("genkit", `Installing Genkit CLI version ${genkitInfo.genkitVersion}`);
+    logLabeledBullet("genkit", `Installing Genkit CLI version ${genkitInfo.cliVersion}`);
     if (installType === "globally") {
-      if (genkitInfo.useInit) {
-        await wrapSpawn("npm", ["install", "-g", `genkit@${genkitInfo.genkitVersion}`], projectDir);
-        await wrapSpawn("genkit", ["init", "-p", "firebase"], projectDir);
-        logger.info("Start the Genkit developer experience by running:");
-        logger.info(`    cd ${setup.functions.source} && genkit start`);
-      } else {
-        await wrapSpawn(
-          "npm",
-          ["install", "-g", `genkit-cli@${genkitInfo.genkitVersion}`],
-          projectDir,
-        );
-        await genkitSetup(options, genkitInfo, projectDir);
-        showStartMessage(config, `cd ${setup.functions.source} && npm run genkit:start`);
-      }
+      await wrapSpawn("npm", ["install", "-g", `genkit-cli@${genkitInfo.cliVersion}`], projectDir);
+      await genkitSetup(options, genkitInfo, projectDir);
+      showStartMessage(setup, `cd ${setup.functions.source} && npm run genkit:start`);
     } else {
-      if (genkitInfo.useInit) {
-        await wrapSpawn(
-          "npm",
-          ["install", `genkit@${genkitInfo.genkitVersion}`, "--save-dev"],
-          projectDir,
-        );
-        await wrapSpawn("npx", ["genkit", "init", "-p", "firebase"], projectDir);
-        showStartMessage(config, `cd ${setup.functions.source} && npx genkit start`);
-      } else {
-        await wrapSpawn(
-          "npm",
-          ["install", `genkit-cli@${genkitInfo.genkitVersion}`, "--save-dev"],
-          projectDir,
-        );
-        await genkitSetup(options, genkitInfo, projectDir);
-        showStartMessage(config, `cd ${setup.functions.source} && npm run genkit:start`);
-      }
+      await wrapSpawn(
+        "npm",
+        ["install", `genkit-cli@${genkitInfo.cliVersion}`, "--save-dev"],
+        projectDir,
+      );
+      await genkitSetup(options, genkitInfo, projectDir);
+      showStartMessage(setup, `cd ${setup.functions.source} && npm run genkit:start`);
     }
   } catch (err) {
     logLabeledError("genkit", `Genkit initialization failed: ${getErrMsg(err)}`);
@@ -258,17 +262,17 @@ interface PromptOption {
 }
 
 /** Model to plugin name. */
-function getModelOptions(genkitVersion: string): Record<ModelProvider, PromptOption> {
+function getModelOptions(genkitInfo: GenkitInfo): Record<ModelProvider, PromptOption> {
   const modelOptions: Record<ModelProvider, PromptOption> = {
     vertexai: {
       label: "Google Cloud Vertex AI",
       plugin: "@genkit-ai/vertexai",
-      package: `@genkit-ai/vertexai@${genkitVersion}`,
+      package: `@genkit-ai/vertexai@${genkitInfo.vertexVersion}`,
     },
     googleai: {
       label: "Google AI",
       plugin: "@genkit-ai/googleai",
-      package: `@genkit-ai/googleai@${genkitVersion}`,
+      package: `@genkit-ai/googleai@${genkitInfo.googleAiVersion}`,
     },
     none: { label: "None", plugin: undefined, package: undefined },
   };
@@ -332,7 +336,7 @@ export async function genkitSetup(
   projectDir: string,
 ): Promise<void> {
   // Choose a model
-  const modelOptions = getModelOptions(genkitInfo.genkitVersion);
+  const modelOptions = getModelOptions(genkitInfo);
   const supportedModels = Object.keys(modelOptions) as ModelProvider[];
   const model = await select<ModelProvider>({
     message: "Select a model provider:",

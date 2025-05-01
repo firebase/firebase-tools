@@ -1710,12 +1710,9 @@ export class FunctionsEmulator implements EmulatorInstance {
    * @param emulator
    */
   private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
-    if (this.args.remoteEmulators) {
-      if (this.args.remoteEmulators[emulator]) {
-        return this.args.remoteEmulators[emulator];
-      }
+    if (this.args.remoteEmulators?.[emulator]) {
+      return this.args.remoteEmulators[emulator];
     }
-
     return EmulatorRegistry.getInfo(emulator);
   }
 

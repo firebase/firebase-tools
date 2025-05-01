@@ -1,6 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { FirebaseError, getError } from "../error";
 import { confirm } from "../prompt";
 import * as utils from "../utils";
@@ -12,6 +13,7 @@ import * as ora from "ora";
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
   .withForce()
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);

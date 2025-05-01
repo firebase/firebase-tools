@@ -121,7 +121,12 @@ function maybeUseVSCodeLogger(logger: winston.Logger): winston.Logger {
 
 const rawLogger = winston.createLogger();
 // Set a default silent logger to suppress logs during tests
-rawLogger.add(new winston.transports.Console({ silent: true }));
+rawLogger.add(
+  new winston.transports.Console({
+    silent: true,
+    consoleWarnLevels: ["debug", "warn"],
+  }),
+);
 rawLogger.exitOnError = false;
 
 // The type system for TypeScript is a bit wonky. The type of winston.LeveledLogMessage
@@ -130,6 +135,12 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export const logger = maybeUseVSCodeLogger(
+export let logger: Logger = maybeUseVSCodeLogger(
   annotateDebugLines(expandErrors(rawLogger)),
 ) as unknown as Logger;
+
+export function silenceStdout() {
+  logger = winston.createLogger({
+    silent: true,
+  }) as unknown as Logger;
+}
