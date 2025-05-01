@@ -7,7 +7,7 @@ export const get_dataconnect_connector = tool(
   {
     name: "get_dataconnect_connector",
     description:
-      "Get the Firebase Data Connect Connector, which includes the pre-defined GraphQL queries accessible to client SDKs.",
+      "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
       name: z
         .string()
@@ -29,9 +29,7 @@ export const get_dataconnect_connector = tool(
   async ({ name }, { projectId }) => {
     // Cross-region aggregation list don't support filter on child resource name.
     // We list all resources in the project and do a client-side filtering.
-    let connectors = await client.listConnectors(`projects/${projectId}/locations/-/services/-`, [
-      ["*"],
-    );
+    let connectors = await client.listConnectors(`projects/${projectId}/locations/-/services/-`, ["*"]);
     if (name) {
       connectors = connectors?.filter((s) => (s.name as string).includes(name));
     }
