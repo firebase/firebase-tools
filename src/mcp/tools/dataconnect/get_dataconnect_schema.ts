@@ -14,7 +14,7 @@ export const get_dataconnect_schema = tool(
         .nullish()
         .describe(
           "The Firebase Data Connect service name to look for. By default, it returns all schema in the project." +
-          "(e.g. `<my-fdc-service-name>` or`locations/us-central1/services/<my-fdc-service-name>`)",
+            "(e.g. `<my-fdc-service-name>` or`locations/us-central1/services/<my-fdc-service-name>`)",
         ),
     }),
     annotations: {
