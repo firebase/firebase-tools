@@ -30,6 +30,6 @@ export const get_dataconnect_schema = tool(
   async ({ serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     const schemas = await client.listSchemas(serviceInfo.serviceName, ["*"]);
-    return toContent(schemas?.map(schemaToJson));
+    return toContent(schemas?.map(schemaToJson).join("\n\n"));
   },
 );

@@ -1,18 +1,25 @@
+import { dump } from "js-yaml";
 import { Schema, Connector, Source } from "../../../dataconnect/types";
 
 export function schemaToJson(s: Schema) {
-  return {
-    name: s.name,
-    datasources: s.datasources,
-    source: sourceToJson(s.source),
-  };
+  return (
+    dump({
+      name: s.name,
+      datasources: s.datasources,
+    }) +
+    "\n\n" +
+    sourceToJson(s.source)
+  );
 }
 
 export function connectorToJson(s: Connector) {
-  return {
-    name: s.name,
-    source: sourceToJson(s.source),
-  };
+  return (
+    dump({
+      name: s.name,
+    }) +
+    "\n\n" +
+    sourceToJson(s.source)
+  );
 }
 
 export function sourceToJson(s: Source) {

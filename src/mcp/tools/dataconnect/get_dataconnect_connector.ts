@@ -30,6 +30,6 @@ export const get_dataconnect_connector = tool(
   async ({ serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
-    return toContent(connectors.map(connectorToJson));
+    return toContent(connectors.map(connectorToJson).join("\n\n"));
   },
 );
