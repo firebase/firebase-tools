@@ -6,9 +6,9 @@ import { Param, ParamOption, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
 import { logPrefix, substituteParams } from "./extensionsHelper";
-import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
+import { convertExtensionOptionToLabeledList, getRandomString } from "./utils";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { input, password, confirm, select, checkbox } from "../prompt";
 import * as utils from "../utils";
 import { ParamBindingOptions } from "./paramHelper";
 import { needProjectId } from "../projectUtils";
@@ -113,11 +113,9 @@ export async function ask(args: {
   });
   if (advancedParams.length) {
     promises.push(async () => {
-      const shouldPrompt = await promptOnce({
-        type: "confirm",
-        message: "Do you want to configure any advanced parameters for this instance?",
-        default: false,
-      });
+      const shouldPrompt = await confirm(
+        "Do you want to configure any advanced parameters for this instance?",
+      );
       if (shouldPrompt) {
         const advancedPromises = advancedParams.map((paramSpec) => {
           return async () => {
@@ -177,14 +175,10 @@ export async function askForParam(args: {
   while (!valid) {
     switch (paramSpec.type) {
       case ParamType.SELECT:
-        response = await promptOnce({
-          name: "input",
-          type: "list",
-          default: () => {
-            if (paramSpec.default) {
-              return getInquirerDefault(_.get(paramSpec, "options", []), paramSpec.default);
-            }
-          },
+        response = await select<string>({
+          default: paramSpec.default
+            ? getInquirerDefault(_.get(paramSpec, "options", []), paramSpec.default)
+            : undefined,
           message:
             "Which option do you want enabled for this parameter? " +
             "Select an option with the arrow keys, and use Enter to confirm your choice. " +
@@ -194,22 +188,19 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.MULTISELECT:
-        response = await onceWithJoin({
-          name: "input",
-          type: "checkbox",
-          default: () => {
-            if (paramSpec.default) {
-              const defaults = paramSpec.default.split(",");
-              return defaults.map((def) => {
-                return getInquirerDefault(_.get(paramSpec, "options", []), def);
-              });
-            }
-          },
-          message:
-            "Which options do you want enabled for this parameter? " +
-            "Press Space to select, then Enter to confirm your choices. ",
-          choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
-        });
+        response = (
+          await checkbox<string>({
+            default: paramSpec.default
+              ? paramSpec.default.split(",").map((def) => {
+                  return getInquirerDefault(_.get(paramSpec, "options", []), def);
+                })
+              : undefined,
+            message:
+              "Which options do you want enabled for this parameter? " +
+              "Press Space to select, then Enter to confirm your choices. ",
+            choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
+          })
+        ).join(",");
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.SECRET:
@@ -231,9 +222,7 @@ export async function askForParam(args: {
         break;
       default:
         // Default to ParamType.STRING
-        response = await promptOnce({
-          name: paramSpec.param,
-          type: "input",
+        response = await input({
           default: paramSpec.default,
           message: `Enter a value for ${label}:`,
         });
@@ -252,9 +241,7 @@ function isValidSecretLocations(secretLocations: string[], paramSpec: Param): bo
 
 async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
   if (paramSpec.required) {
-    return await promptOnce({
-      name: "input",
-      type: "checkbox",
+    return await checkbox<string>({
       message: "Where would you like to store your secrets? You must select at least one value",
       choices: [
         {
@@ -271,9 +258,7 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
       ],
     });
   }
-  return await promptOnce({
-    name: "input",
-    type: "checkbox",
+  return await checkbox<string>({
     message:
       "Where would you like to store your secrets? " +
       "If you don't want to set this optional secret, leave both options unselected to skip it",
@@ -297,13 +282,10 @@ async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<
   let value;
   do {
     utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
-    value = await promptOnce({
-      name: paramSpec.param,
-      type: "input",
-      message:
-        `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
+    value = await input(
+      `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
         `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
-    });
+    );
   } while (!value);
   return value;
 }
@@ -313,8 +295,7 @@ async function promptReconfigureSecret(
   instanceId: string,
   paramSpec: Param,
 ): Promise<string> {
-  const action = await promptOnce({
-    type: "list",
+  const action = await select<SecretUpdateAction>({
     message: `Choose what you would like to do with this secret:`,
     choices: [
       { name: "Leave unchanged", value: SecretUpdateAction.LEAVE },
@@ -331,11 +312,9 @@ async function promptReconfigureSecret(
       } else {
         secretName = await generateSecretName(projectId, instanceId, paramSpec.param);
       }
-      const secretValue = await promptOnce({
-        name: paramSpec.param,
-        type: "password",
-        message: `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
-      });
+      const secretValue = await password(
+        `This secret will be stored in Cloud Secret Manager as ${secretName}.\nEnter new value for ${paramSpec.label.trim()}:`,
+      );
       if (secretValue === "" && paramSpec.required) {
         logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
         return promptReconfigureSecret(projectId, instanceId, paramSpec);
@@ -377,12 +356,13 @@ export async function promptCreateSecret(
   secretName?: string,
 ): Promise<string> {
   const name = secretName ?? (await generateSecretName(projectId, instanceId, paramSpec.param));
-  const secretValue = await promptOnce({
-    name: paramSpec.param,
-    type: "password",
-    default: paramSpec.default,
-    message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${name} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
-  });
+  // N.B. Is it actually possible to have a default value for a password?!
+  const secretValue =
+    (await password({
+      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${name} and managed by Firebase Extensions (Firebase Extensions Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${paramSpec.label.trim()}:`,
+    })) ||
+    paramSpec.default ||
+    "";
   if (secretValue === "" && paramSpec.required) {
     logger.info(`Secret value cannot be empty for required param ${paramSpec.param}`);
     return promptCreateSecret(projectId, instanceId, paramSpec, name);

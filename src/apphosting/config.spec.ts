@@ -155,7 +155,7 @@ env:
       expect(discoverBackendRoot).to.have.been.called;
       expect(load).to.have.been.calledWith("CWD/apphosting.yaml");
       expect(prompt.confirm).to.not.have.been.called;
-      expect(prompt.promptOnce).to.not.have.been.called;
+      expect(prompt.input).to.not.have.been.called;
     });
 
     it("inserts into an existing doc", async () => {
@@ -180,7 +180,7 @@ env:
         secret: "SECRET",
       });
       expect(store).to.have.been.calledWithMatch(path.join("CWD", "apphosting.yaml"), doc);
-      expect(prompt.promptOnce).to.not.have.been.called;
+      expect(prompt.input).to.not.have.been.called;
     });
 
     it("inserts into an new doc", async () => {
@@ -188,7 +188,7 @@ env:
       discoverBackendRoot.returns(null);
       findEnv.withArgs(doc, "SECRET").returns(undefined);
       prompt.confirm.resolves(true);
-      prompt.promptOnce.resolves("CWD");
+      prompt.input.resolves("CWD");
       envVarForSecret.resolves("SECRET_VARIABLE");
 
       await config.maybeAddSecretToYaml("SECRET");
@@ -199,7 +199,7 @@ env:
         message: "Would you like to add this secret to apphosting.yaml?",
         default: true,
       });
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message:
           "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
         default: process.cwd(),
@@ -346,7 +346,7 @@ env:
     it("noops with no envs", async () => {
       await expect(config.overrideChosenEnv(undefined, {})).to.eventually.deep.equal({});
 
-      expect(promptImport.promptOnce).to.not.have.been.called;
+      expect(promptImport.checkbox).to.not.have.been.called;
       expect(csmImport.getSecret).to.not.have.been.called;
     });
 
@@ -356,11 +356,11 @@ env:
         API_KEY: { secret: "api-key" },
       };
 
-      prompt.promptOnce.onFirstCall().resolves([]);
+      prompt.checkbox.onFirstCall().resolves([]);
 
       await expect(config.overrideChosenEnv(undefined, originalEnv)).to.eventually.deep.equal({});
 
-      expect(prompt.promptOnce).to.have.been.calledOnce;
+      expect(prompt.checkbox).to.have.been.calledOnce;
       expect(csm.secretExists).to.not.have.been.called;
     });
 
@@ -370,14 +370,15 @@ env:
         VARIABLE2: { variable: "VARIABLE2", value: "value2" },
       };
 
-      prompt.promptOnce.onFirstCall().resolves(["VARIABLE2"]);
-      prompt.promptOnce.onSecondCall().resolves("new-value2");
+      prompt.checkbox.onFirstCall().resolves(["VARIABLE2"]);
+      prompt.input.onFirstCall().resolves("new-value2");
 
       await expect(config.overrideChosenEnv(undefined, originalEnv)).to.eventually.deep.equal({
         VARIABLE2: { variable: "VARIABLE2", value: "new-value2" },
       });
 
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.checkbox).to.have.been.calledOnce;
+      expect(prompt.input).to.have.been.calledOnce;
       expect(csmImport.secretExists).to.not.have.been.called;
     });
 
@@ -386,7 +387,7 @@ env:
         API_KEY: { variable: "API_KEY", secret: "api-key" },
       };
 
-      prompt.promptOnce.onFirstCall().resolves(["API_KEY"]);
+      prompt.checkbox.onFirstCall().resolves(["API_KEY"]);
 
       await expect(config.overrideChosenEnv(undefined, originalEnv)).to.be.rejectedWith(
         FirebaseError,
@@ -399,16 +400,18 @@ env:
         API_KEY: { variable: "API_KEY", secret: "api-key" },
       };
 
-      prompt.promptOnce.onFirstCall().resolves(["API_KEY"]);
-      prompt.promptOnce.onSecondCall().resolves("test-api-key");
+      prompt.checkbox.onFirstCall().resolves(["API_KEY"]);
+      prompt.input.onFirstCall().resolves("test-api-key");
       csm.secretExists.withArgs("project", "test-api-key").resolves(false);
-      prompt.promptOnce.onThirdCall().resolves("plaintext secret value");
+      prompt.password.onFirstCall().resolves("plaintext secret value");
 
       await expect(config.overrideChosenEnv("project", originalEnv)).to.eventually.deep.equal({
         API_KEY: { variable: "API_KEY", secret: "test-api-key" },
       });
 
-      expect(prompt.promptOnce).to.have.been.calledThrice;
+      expect(prompt.checkbox).to.have.been.calledOnce;
+      expect(prompt.input).to.have.been.calledOnce;
+      expect(prompt.password).to.have.been.calledOnce;
       expect(csm.secretExists).to.have.been.calledOnce;
       expect(csm.createSecret).to.have.been.calledOnce;
       expect(csm.addVersion).to.have.been.calledOnce;
@@ -420,18 +423,21 @@ env:
         API_KEY: { variable: "API_KEY", secret: "api-key" },
       };
 
-      prompt.promptOnce.onCall(0).resolves(["API_KEY"]);
-      prompt.promptOnce.onCall(1).resolves("test-api-key");
+      prompt.checkbox.onFirstCall().resolves(["API_KEY"]);
+      prompt.input.onFirstCall().resolves("test-api-key");
       csm.secretExists.withArgs("project", "test-api-key").resolves(true);
-      prompt.promptOnce.onCall(2).resolves("pick-new");
-      prompt.promptOnce.onCall(3).resolves("test-api-key2");
-      prompt.promptOnce.onCall(4).resolves("plaintext secret value");
+      prompt.select.onFirstCall().resolves("pick-new");
+      prompt.input.onSecondCall().resolves("test-api-key2");
+      prompt.password.resolves("plaintext secret value");
 
       await expect(config.overrideChosenEnv("project", originalEnv)).to.eventually.deep.equal({
         API_KEY: { variable: "API_KEY", secret: "test-api-key2" },
       });
 
-      expect(prompt.promptOnce.callCount).to.equal(5);
+      expect(prompt.checkbox).to.have.been.calledOnce;
+      expect(prompt.input).to.have.been.calledTwice;
+      expect(prompt.select).to.have.been.calledOnce;
+      expect(prompt.password).to.have.been.calledOnce;
       expect(csm.secretExists).to.have.been.calledTwice;
       expect(csm.createSecret).to.have.been.calledOnce;
       expect(csm.addVersion).to.have.been.calledOnce;
@@ -443,16 +449,18 @@ env:
         API_KEY: { variable: "API_KEY", secret: "api-key" },
       };
 
-      prompt.promptOnce.onFirstCall().resolves(["API_KEY"]);
-      prompt.promptOnce.onSecondCall().resolves("test-api-key");
+      prompt.checkbox.onFirstCall().resolves(["API_KEY"]);
+      prompt.input.onFirstCall().resolves("test-api-key");
       csm.secretExists.withArgs("project", "test-api-key").resolves(true);
-      prompt.promptOnce.onThirdCall().resolves("reuse");
+      prompt.select.onFirstCall().resolves("reuse");
 
       await expect(config.overrideChosenEnv("project", originalEnv)).to.eventually.deep.equal({
         API_KEY: { variable: "API_KEY", secret: "test-api-key" },
       });
 
-      expect(prompt.promptOnce).to.have.been.calledThrice;
+      expect(prompt.checkbox).to.have.been.calledOnce;
+      expect(prompt.input).to.have.been.calledOnce;
+      expect(prompt.select).to.have.been.calledOnce;
       expect(csm.secretExists).to.have.been.calledOnce;
       expect(csm.createSecret).to.not.have.been.called;
       expect(csm.addVersion).to.not.have.been.called;

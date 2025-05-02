@@ -10,7 +10,7 @@ import { getPublisherProfile, listExtensions } from "../extensions/publisherApi"
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")
@@ -52,9 +52,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
         );
       }
 
-      extensionName = await promptOnce({
-        type: "list",
-        name: "extension",
+      extensionName = await select<string>({
         message: "Which published extension do you want to view the stats for?",
         choices: extensions.map((e) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars

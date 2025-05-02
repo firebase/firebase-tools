@@ -15,14 +15,13 @@
  */
 
 import * as fs from "fs";
-import * as inquirer from "inquirer";
 import * as path from "path";
 import * as semver from "semver";
 import * as clc from "colorette";
 
 import { doSetup as functionsSetup } from "../functions";
 import { Config } from "../../../config";
-import { confirm } from "../../../prompt";
+import { confirm, select } from "../../../prompt";
 import { wrapSpawn, spawnWithOutput } from "../../spawn";
 import { Options } from "../../../options";
 import { getProjectId } from "../../../projectUtils";
@@ -193,19 +192,13 @@ export async function doSetup(setup: GenkitSetup, config: Config, options: Optio
 
   const projectDir = `${config.projectDir}/${setup.functions.source}`;
 
-  const installType = (
-    await inquirer.prompt<{ choice: string }>([
-      {
-        name: "choice",
-        type: "list",
-        message: "Install the Genkit CLI globally or locally in this project?",
-        choices: [
-          { name: "Globally", value: "globally" },
-          { name: "Just this project", value: "project" },
-        ],
-      },
-    ])
-  ).choice;
+  const installType = await select({
+    message: "Install the Genkit CLI globally or locally in this project?",
+    choices: [
+      { name: "Globally", value: "globally" },
+      { name: "Just this project", value: "project" },
+    ],
+  });
 
   try {
     logLabeledBullet("genkit", `Installing Genkit CLI version ${genkitInfo.cliVersion}`);
@@ -345,18 +338,13 @@ export async function genkitSetup(
   // Choose a model
   const modelOptions = getModelOptions(genkitInfo);
   const supportedModels = Object.keys(modelOptions) as ModelProvider[];
-  const answer = await inquirer.prompt<{ model: ModelProvider }>([
-    {
-      type: "list",
-      name: "model",
-      message: "Select a model provider:",
-      choices: supportedModels.map((model) => ({
-        name: modelOptions[model].label,
-        value: model,
-      })),
-    },
-  ]);
-  const model = answer.model;
+  const model = await select<ModelProvider>({
+    message: "Select a model provider:",
+    choices: supportedModels.map((model) => ({
+      name: modelOptions[model].label,
+      value: model,
+    })),
+  });
 
   if (model === "vertexai") {
     await ensureVertexApiEnabled(options);
@@ -659,18 +647,13 @@ export async function promptWriteMode(
   message: string,
   defaultOption: WriteMode = "merge",
 ): Promise<WriteMode> {
-  const answer = await inquirer.prompt<{ option: WriteMode }>([
-    {
-      type: "list",
-      name: "option",
-      message,
-      choices: [
-        { name: "Set if unset", value: "merge" },
-        { name: "Overwrite", value: "overwrite" },
-        { name: "Keep unchanged", value: "keep" },
-      ],
-      default: defaultOption,
-    },
-  ]);
-  return answer.option;
+  return select({
+    message,
+    choices: [
+      { name: "Set if unset", value: "merge" },
+      { name: "Overwrite", value: "overwrite" },
+      { name: "Keep unchanged", value: "keep" },
+    ],
+    default: defaultOption,
+  });
 }

@@ -226,17 +226,17 @@ describe("askUserForParam", () => {
     });
   });
   describe("askForParam with string param", () => {
-    let promptStub: sinon.SinonStub;
+    let inputStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
-      promptStub.onCall(0).returns("Invalid123");
-      promptStub.onCall(1).returns("InvalidStill123");
-      promptStub.onCall(2).returns("ValidName");
+      inputStub = sinon.stub(prompt, "input");
+      inputStub.onCall(0).returns("Invalid123");
+      inputStub.onCall(1).returns("InvalidStill123");
+      inputStub.onCall(2).returns("ValidName");
     });
 
     afterEach(() => {
-      promptStub.restore();
+      inputStub.restore();
     });
 
     it("should keep prompting user until valid input is given", async () => {
@@ -246,7 +246,7 @@ describe("askUserForParam", () => {
         paramSpec: testSpec,
         reconfiguring: false,
       });
-      expect(promptStub.calledThrice).to.be.true;
+      expect(inputStub).to.be.calledThrice;
     });
   });
 
@@ -266,14 +266,20 @@ describe("askUserForParam", () => {
       default: "XXX.YYY",
     };
 
-    let promptStub: sinon.SinonStub;
+    let checkboxStub: sinon.SinonStub;
+    let inputStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
+    let passwordStub: sinon.SinonStub;
     let createSecret: sinon.SinonStub;
     let secretExists: sinon.SinonStub;
     let addVersion: sinon.SinonStub;
     let grantRole: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
+      checkboxStub = sinon.stub(prompt, "checkbox");
+      inputStub = sinon.stub(prompt, "input");
+      confirmStub = sinon.stub(prompt, "confirm");
+      passwordStub = sinon.stub(prompt, "password");
       secretExists = sinon.stub(secretManagerApi, "secretExists");
       createSecret = sinon.stub(secretManagerApi, "createSecret");
       addVersion = sinon.stub(secretManagerApi, "addVersion");
@@ -286,7 +292,10 @@ describe("askUserForParam", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
+      checkboxStub.restore();
+      inputStub.restore();
+      confirmStub.restore();
+      passwordStub.restore();
       secretExists.restore();
       createSecret.restore();
       addVersion.restore();
@@ -294,8 +303,9 @@ describe("askUserForParam", () => {
     });
 
     it("should return the correct user input for secret stored with Secret Manager", async () => {
-      promptStub.onCall(0).returns([SecretLocation.CLOUD.toString()]);
-      promptStub.onCall(1).returns("ABC.123");
+      confirmStub.onFirstCall().resolves(true);
+      checkboxStub.onFirstCall().resolves([SecretLocation.CLOUD.toString()]);
+      passwordStub.onFirstCall().resolves("ABC.123");
 
       const result = await askForParam({
         projectId: "project-id",
@@ -305,16 +315,18 @@ describe("askUserForParam", () => {
       });
 
       // prompt for secret storage location, then prompt for secret value
-      expect(promptStub.calledTwice).to.be.true;
-      expect(grantRole.calledOnce).to.be.true;
+      expect(checkboxStub).to.be.calledOnce;
+      expect(passwordStub).to.be.calledOnce;
+      expect(grantRole).to.be.calledOnce;
       expect(result).to.be.eql({
         baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
       });
     });
 
     it("should return the correct user input for secret stored in a local file", async () => {
-      promptStub.onCall(0).returns([SecretLocation.LOCAL.toString()]);
-      promptStub.onCall(1).returns("ABC.123");
+      confirmStub.onFirstCall().resolves(true);
+      checkboxStub.onFirstCall().resolves([SecretLocation.LOCAL.toString()]);
+      inputStub.onFirstCall().resolves("ABC.123");
 
       const result = await askForParam({
         projectId: "project-id",
@@ -323,9 +335,11 @@ describe("askUserForParam", () => {
         reconfiguring: false,
       });
       // prompt for secret storage location, then prompt for secret value
-      expect(promptStub.calledTwice).to.be.true;
+      expect(checkboxStub).to.be.called.calledOnce;
+      expect(inputStub).to.be.calledOnce;
+      expect(passwordStub).to.not.have.been.called;
       // Shouldn't make any api calls.
-      expect(grantRole.calledOnce).to.be.false;
+      expect(grantRole).to.not.have.been.called;
       expect(result).to.be.eql({
         baseValue: "",
         local: "ABC.123",
@@ -333,11 +347,12 @@ describe("askUserForParam", () => {
     });
 
     it("should handle cloud & local secret storage at the same time", async () => {
-      promptStub
-        .onCall(0)
+      checkboxStub
+        .onFirstCall()
         .returns([SecretLocation.CLOUD.toString(), SecretLocation.LOCAL.toString()]);
-      promptStub.onCall(1).returns("ABC.123");
-      promptStub.onCall(2).returns("LOCAL.ABC.123");
+      inputStub.onFirstCall().returns("local");
+      passwordStub.onFirstCall().returns("ABC.123");
+      inputStub.onFirstCall().returns("LOCAL.ABC.123");
 
       const result = await askForParam({
         projectId: "project-id",
@@ -346,8 +361,10 @@ describe("askUserForParam", () => {
         reconfiguring: false,
       });
       // prompt for secret storage location, then prompt for cloud secret value, then local
-      expect(promptStub.calledThrice).to.be.true;
-      expect(grantRole.calledOnce).to.be.true;
+      expect(checkboxStub).to.have.been.calledOnce;
+      expect(passwordStub).to.have.been.calledOnce;
+      expect(inputStub).to.have.been.calledOnce;
+      expect(grantRole).to.have.been.calledOnce;
       expect(result).to.be.eql({
         baseValue: `projects/${stubSecret.projectId}/secrets/${stubSecret.name}/versions/${stubSecretVersion.versionId}`,
         local: "LOCAL.ABC.123",
@@ -361,8 +378,7 @@ describe("askUserForParam", () => {
 
     beforeEach(() => {
       subVarSpy = sinon.spy(extensionsHelper, "substituteParams");
-      promptStub = sinon.stub(prompt, "promptOnce");
-      promptStub.returns("ValidName");
+      promptStub = sinon.stub(prompt, "input").resolves("ValidName");
     });
 
     afterEach(() => {

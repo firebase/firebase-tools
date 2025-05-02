@@ -194,7 +194,7 @@ export async function maybeAddSecretToYaml(
     return;
   }
   if (!path) {
-    path = await prompt.promptOnce({
+    path = await prompt.input({
       message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
@@ -218,11 +218,11 @@ export async function maybeAddSecretToYaml(
  */
 export async function maybeGenerateEmulatorYaml(
   projectId: string | undefined,
-  repoRoot: string,
+  backendRoot: string,
 ): Promise<Env[] | null> {
   // Even if the app is in /project/app, the user might have their apphosting.yaml file in /project/apphosting.yaml.
   // Walk up the tree to see if we find other local files so that we can put apphosting.emulator.yaml in the right place.
-  const basePath = dynamicDispatch.discoverBackendRoot(repoRoot) || repoRoot;
+  const basePath = dynamicDispatch.discoverBackendRoot(backendRoot) || backendRoot;
   if (fs.fileExistsSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE))) {
     logger.debug(
       "apphosting.emulator.yaml already exists, skipping generation and secrets access prompt",
@@ -289,12 +289,9 @@ export async function overrideChosenEnv(
     return {};
   }
 
-  const toOverwrite = await prompt.promptOnce({
-    type: "checkbox",
+  const toOverwrite = await prompt.checkbox({
     message: "Which environment variables would you like to override?",
-    choices: names.map((name) => {
-      return { name };
-    }),
+    choices: names,
   });
 
   if (!projectId && toOverwrite.some((name) => "secret" in env[name])) {
@@ -306,10 +303,7 @@ export async function overrideChosenEnv(
   const newEnv: Record<string, Env> = {};
   for (const name of toOverwrite) {
     if ("value" in env[name]) {
-      const newValue = await prompt.promptOnce({
-        type: "input",
-        message: `What new value would you like for plaintext ${name}?`,
-      });
+      const newValue = await prompt.input(`What new value would you like for plaintext ${name}?`);
       newEnv[name] = { variable: name, value: newValue };
       continue;
     }
@@ -317,15 +311,13 @@ export async function overrideChosenEnv(
     let secretRef: string;
     let action: "reuse" | "create" | "pick-new" = "pick-new";
     while (action === "pick-new") {
-      secretRef = await prompt.promptOnce({
-        type: "input",
+      secretRef = await prompt.input({
         message: `What would you like to name the secret reference for ${name}?`,
         default: suggestedTestKeyName(name),
       });
 
       if (await csm.secretExists(projectId!, secretRef)) {
-        action = await prompt.promptOnce({
-          type: "list",
+        action = await prompt.select<"reuse" | "pick-new">({
           message:
             "This secret reference already exists, would you like to reuse it or create a new one?",
           choices: [
@@ -343,10 +335,9 @@ export async function overrideChosenEnv(
       continue;
     }
 
-    const secretValue = await prompt.promptOnce({
-      type: "password",
-      message: `What new value would you like for secret ${name} [input is hidden]?`,
-    });
+    const secretValue = await prompt.password(
+      `What new value would you like for secret ${name} [input is hidden]?`,
+    );
     // TODO: Do we need to support overriding locations? Inferring them from the original?
     await csm.createSecret(projectId!, secretRef!, { [csm.FIREBASE_MANAGED]: "apphosting" });
     await csm.addVersion(projectId!, secretRef!, secretValue);
