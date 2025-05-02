@@ -5,7 +5,6 @@ import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as portfinder from "portfinder";
 import * as url from "url";
-import { GetApplicationDefault } from "google-auth-library";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
@@ -40,7 +39,6 @@ import {
 } from "./types/auth";
 import { readTemplate } from "./templates";
 import { refreshAuth } from "./requireAuth";
-import { Options } from "./options";
 
 portfinder.setBasePort(9005);
 
