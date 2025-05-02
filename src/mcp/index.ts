@@ -117,8 +117,8 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
     try {
-      const res = tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
-      await trackGA4("mcp_tool_call", { tool_name: toolName, error: 0 });
+      const res = await tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
+      await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0});
       return res;
     } catch (err: unknown) {
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: 1 });
