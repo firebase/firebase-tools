@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
 import { pickService } from "../../../dataconnect/fileUtils.js";
+import { connectorToJson } from "./converter.js";
 
 export const get_dataconnect_connector = tool(
   {
@@ -29,6 +30,6 @@ export const get_dataconnect_connector = tool(
   async ({ serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
-    return toContent(connectors);
+    return toContent(connectors.map(connectorToJson));
   },
 );
