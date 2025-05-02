@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
+import { pickService } from "../../../dataconnect/fileUtils.js";
 
 export const get_dataconnect_connector = tool(
   {
@@ -9,12 +10,11 @@ export const get_dataconnect_connector = tool(
     description:
       "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
-      name: z
+      serviceId: z
         .string()
-        .nullish()
+        .nullable()
         .describe(
-          "The Firebase Data Connect Connector name to look for. By default, it returns all connectors in the project." +
-          "(e.g. `<my-connector>`, `services/<my-service>/connectors/<my-connector>` or `locations/us-central1/services/<my-service>/connectors/<my-connector>``)",
+          "The Firebase Data Connect service ID to look for. By default, it would pick the the service ID project directory.",
         ),
     }),
     annotations: {
@@ -26,13 +26,9 @@ export const get_dataconnect_connector = tool(
       requiresAuth: true,
     },
   },
-  async ({ name }, { projectId }) => {
-    // Cross-region aggregation list don't support filter on child resource name.
-    // We list all resources in the project and do a client-side filtering.
-    let connectors = await client.listConnectors(`projects/${projectId}/locations/-/services/-`, ["*"]);
-    if (name) {
-      connectors = connectors?.filter((s) => (s.name as string).includes(name));
-    }
+  async ({ serviceId }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+    const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
     return toContent(connectors);
   },
 );
