@@ -1,5 +1,4 @@
 import fetch from "node-fetch";
-import * as ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
 import { getGlobalDefaultAccount } from "./auth";
 
