@@ -98,9 +98,7 @@ export async function pickService(
   const serviceCfgs = readFirebaseJson(config);
   let serviceInfo: ServiceInfo;
   if (serviceCfgs.length === 0) {
-    throw new FirebaseError(
-      `No Data Connect services found in firebase.json. ${JSON.stringify(serviceCfgs)} ${JSON.stringify(config)}`,
-    );
+    throw new FirebaseError("No Data Connect services found in firebase.json.");
   } else if (serviceCfgs.length === 1) {
     serviceInfo = await load(projectId, config, serviceCfgs[0].source);
   } else {

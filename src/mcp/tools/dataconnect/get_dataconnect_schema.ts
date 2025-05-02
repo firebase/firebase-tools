@@ -3,7 +3,6 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
 import { pickService } from "../../../dataconnect/fileUtils.js";
-import { schema } from "@angular-devkit/core";
 import { schemaToJson } from "./converter.js";
 
 export const get_dataconnect_schema = tool(
