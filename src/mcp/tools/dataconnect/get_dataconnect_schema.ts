@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import * as client from "../../../dataconnect/client";
 import { pickService } from "../../../dataconnect/fileUtils.js";
-import { schemaToJson } from "./converter.js";
+import { schemaToText } from "./converter.js";
 
 export const get_dataconnect_schema = tool(
   {
@@ -30,6 +30,6 @@ export const get_dataconnect_schema = tool(
   async ({ serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     const schemas = await client.listSchemas(serviceInfo.serviceName, ["*"]);
-    return toContent(schemas?.map(schemaToJson).join("\n\n"));
+    return toContent(schemas?.map(schemaToText).join("\n\n"));
   },
 );
