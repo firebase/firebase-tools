@@ -771,10 +771,3 @@ export function addAdditionalAccount(account: Account): void {
   additionalAccounts.push(account);
   configstore.set("additionalAccounts", additionalAccounts);
 }
-
-export async function isHuman(options: Options) {
-  if (loggedIn()) {
-    return true;
-  }
-  const adc =  await auth.getApplicationDefault();
-}

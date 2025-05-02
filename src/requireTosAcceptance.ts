@@ -9,7 +9,7 @@ import {
   isProductTosAccepted,
 } from "./gcp/firedata";
 import { consoleOrigin } from "./api";
-import { hasDefaultCredentials } from "./defaultCredentials";
+import { loggedIn } from "./auth";
 
 const consoleLandingPage = new Map<TosId, string>([
   [APPHOSTING_TOS_ID, `${consoleOrigin()}/project/_/apphosting`],
@@ -28,11 +28,13 @@ const consoleLandingPage = new Map<TosId, string>([
  * generic ToS error messages.
  */
 export function requireTosAcceptance(tosId: TosId): (options: Options) => Promise<void> {
-  return (options: Options) => requireTos(options, tosId);
+  return () => requireTos(tosId);
 }
 
-async function requireTos(options: Options, tosId: TosId): Promise<void> {
-  if (await hasDefaultCredentials()) {
+async function requireTos(tosId: TosId): Promise<void> {
+  // If they are not logged in, they either cannot make calls, or are using a service account.
+  // Either way, no need to check TOS.
+  if (!loggedIn()) {
     return;
   }
   const res = await getTosStatus();
