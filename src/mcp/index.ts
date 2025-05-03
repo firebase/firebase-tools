@@ -18,6 +18,7 @@ import { requireAuth } from "../requireAuth.js";
 import { Options } from "../options.js";
 import { getProjectId } from "../projectUtils.js";
 import { mcpAuthError, NO_PROJECT_ERROR } from "./errors.js";
+import { Config } from "../config.js";
 
 const SERVER_VERSION = "0.0.1";
 const PROJECT_ROOT_KEY = "mcp.projectRoot";
@@ -115,7 +116,8 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
     try {
-      return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this });
+      const config = Config.load({ cwd: this.projectRoot });
+      return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this, config });
     } catch (err: unknown) {
       return mcpError(err);
     }
