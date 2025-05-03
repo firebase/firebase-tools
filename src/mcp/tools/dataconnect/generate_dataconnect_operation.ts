@@ -16,11 +16,11 @@ export const generate_dataconnect_operation = tool(
         .describe(
           "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users requst",
         ),
-      service: z
+      serviceId: z
         .string()
         .nullish()
         .describe(
-          "Optional: Uses the serviceId from the firebase.json file if nothing provided. The service id or name of the deployed Firebase Data Connect Schema in format: projects/<project-id>/locations/<location>/services/<service-name>.",
+          "Optional: Uses the serviceId from the firebase.json file if nothing provided. The serviceId of the deployed Firebase resource.",
         ),
     }),
     annotations: {
@@ -34,11 +34,11 @@ export const generate_dataconnect_operation = tool(
       // TODO: Create an endpoint to check for GiF activiation.
     },
   },
-  async ({ prompt, service }, { projectId, host, config }) => {
+  async ({ prompt, serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(
       projectId!,
       config!,
-      service || undefined,
+      serviceId || undefined,
     );
     const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
     return toContent(schema);
