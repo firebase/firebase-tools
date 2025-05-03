@@ -20,7 +20,7 @@ export const generate_dataconnect_operation = tool(
         .string()
         .nullish()
         .describe(
-          "Optional: Uses the service from the firebase.json file if nothing provided. The service id or name of the deployed Firebase Data Connect Schema in format: projects/<project-id>/locations/<location>/services/<service-name>.",
+          "Optional: Uses the serviceId from the firebase.json file if nothing provided. The service id or name of the deployed Firebase Data Connect Schema in format: projects/<project-id>/locations/<location>/services/<service-name>.",
         ),
     }),
     annotations: {
