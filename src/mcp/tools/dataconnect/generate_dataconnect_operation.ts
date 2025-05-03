@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { generateOperation } from "../../../gif/fdcExperience.js";
-import { Config } from "../../../config.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 
 export const generate_dataconnect_operation = tool(
@@ -35,10 +34,10 @@ export const generate_dataconnect_operation = tool(
       // TODO: Create an endpoint to check for GiF activiation.
     },
   },
-  async ({ prompt, service }, { projectId, host }) => {
+  async ({ prompt, service }, { projectId, host, config }) => {
     const serviceInfo = await pickService(
       projectId!,
-      Config.load({ cwd: host.projectRoot })!,
+      config!,
       service || undefined,
     );
     const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
