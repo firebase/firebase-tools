@@ -115,7 +115,7 @@ export async function generateOperation(
     {
       input: { messages: [{ content: prompt, author: "USER" }] },
       experienceContext: {
-              experience: operationGeneratorExperience,
+        experience: operationGeneratorExperience,
       },
       clientContext: {
         additionalContext: {
