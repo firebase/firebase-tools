@@ -35,11 +35,7 @@ export const generate_dataconnect_operation = tool(
     },
   },
   async ({ prompt, serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(
-      projectId!,
-      config!,
-      serviceId || undefined,
-    );
+    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
     return toContent(schema);
   },
