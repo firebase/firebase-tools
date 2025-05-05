@@ -18,6 +18,7 @@ import { requireAuth } from "../requireAuth.js";
 import { Options } from "../options.js";
 import { getProjectId } from "../projectUtils.js";
 import { mcpAuthError, NO_PROJECT_ERROR } from "./errors.js";
+import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 
 const SERVER_VERSION = "0.0.1";
@@ -62,6 +63,7 @@ export class FirebaseMcpServer {
 
   async mcpListTools(): Promise<ListToolsResult> {
     const hasActiveProject = !!(await this.getProjectId());
+    await trackGA4("mcp_list_tools", {});
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
@@ -117,8 +119,15 @@ export class FirebaseMcpServer {
 
     try {
       const config = Config.load({ cwd: this.projectRoot });
-      return tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this, config });
+      const res = await tool.fn(toolArgs, {
+        projectId: await this.getProjectId(),
+        host: this,
+        config,
+      });
+      await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
+      return res;
     } catch (err: unknown) {
+      await trackGA4("mcp_tool_call", { tool_name: toolName, error: 1 });
       return mcpError(err);
     }
   }
