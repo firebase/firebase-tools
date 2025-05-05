@@ -120,7 +120,7 @@ export class FirebaseMcpServer {
     try {
       const config = Config.load({ cwd: this.projectRoot });
       const res = await tool.fn(toolArgs, { projectId: await this.getProjectId(), host: this, config });
-      await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0});
+      await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
       return res;
     } catch (err: unknown) {
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: 1 });
