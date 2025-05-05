@@ -84,9 +84,6 @@ describe("requireTosAcceptance", () => {
   });
 
   it("should resolve to if not a human", async () => {
-    nock("https://mobilesdk-pa.googleapis.com")
-      .get("/v1/accessmanagement/tos:getStatus")
-      .reply(200, SAMPLE_RESPONSE);
     loggedInStub.returns(false);
 
     await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
