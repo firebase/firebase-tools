@@ -7,7 +7,7 @@ export const get_storage_rules = tool(
   {
     name: "get_storage_rules",
     description: "Retrieves the Firebase Cloud Storage Rules for the default bucket.",
-    inputSchema: z.object({}),
+    inputSchema: z.object({}), // TODO: Support multiple buckets
     annotations: {
       title: "Get Current Firebase Cloud Storage Rules",
       readOnlyHint: true,
