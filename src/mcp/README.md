@@ -12,6 +12,14 @@ as an argument to operate against the project of your working directory.
 For clients that don't operate within a specific workspace, the Firebase MCP
 server makes tools available to read and write a project directory.
 
+
+### Enable Firebase CLI experiments
+
+Firebase MCP server command aren't visible unless you enable the experiements.
+```
+npx -y firebase-tools experiments:enable mcp
+```
+
 ### Example: Cursor
 
 In `.cursor/mcp.json` in your workspace directory, add the Firebase MCP server:
@@ -21,7 +29,7 @@ In `.cursor/mcp.json` in your workspace directory, add the Firebase MCP server:
   "mcpServers": {
     "firebase": {
       "command": "npx",
-      "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "<your_absolute_workspace_dir>"]
+      "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "."]
     }
   }
 }
@@ -29,7 +37,7 @@ In `.cursor/mcp.json` in your workspace directory, add the Firebase MCP server:
 
 ### Command Line Options
 
-- `--dir <absolute_dir_path>`: The absolute path of a directory containing `firebase.json` to set a project context for the MCP server. If unspecified, the `{get|set}_firebase_directory` tools will become available and the default directory will be the working directory where the MCP server was started.
+- `--dir <dir_path>`: The absolute path of a directory containing `firebase.json` to set a project context for the MCP server. If unspecified, the `{get|set}_firebase_directory` tools will become available and the default directory will be the working directory where the MCP server was started.
 - `--only <feature1,feature2>`: A comma-separated list of feature groups to activate. Use this to limit the tools exposed to only features you are actively using.
 
 ## Tools
