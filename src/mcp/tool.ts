@@ -1,6 +1,14 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { z, ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import type { FirebaseMcpServer } from "./index";
+import { Config } from "../config";
+
+export interface ServerToolContext {
+  projectId?: string;
+  config: Config | null;
+  host: FirebaseMcpServer;
+}
 
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
   mcp: {
@@ -14,8 +22,14 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
       idempotentHint?: boolean;
       openWorldHint?: boolean;
     };
+    _meta?: {
+      /** Set this on a tool if it *always* requires a project to work. */
+      requiresProject?: boolean;
+      /** Set this on a tool if it *always* requires a signed-in user to work. */
+      requiresAuth?: boolean;
+    };
   };
-  fn: (input: z.infer<InputSchema>, ctx: { projectId?: string }) => Promise<CallToolResult>;
+  fn: (input: z.infer<InputSchema>, ctx: ServerToolContext) => Promise<CallToolResult>;
 }
 
 export function tool<InputSchema extends ZodTypeAny>(

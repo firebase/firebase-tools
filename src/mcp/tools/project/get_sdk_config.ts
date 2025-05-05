@@ -1,5 +1,3 @@
-/* eslint camelcase: 0 */
-
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
@@ -21,15 +19,18 @@ export const get_sdk_config = tool(
       title: "Get Firebase SDK Config",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresProject: true,
+      requiresAuth: true,
+    },
   },
   async ({ platform: inputPlatform, app_id: appId }, { projectId }) => {
-    if (!projectId) return mcpError("No current project detected.");
     let platform = inputPlatform?.toUpperCase() as AppPlatform;
     if (!platform && !appId)
       return mcpError(
         "Must specify one of 'web', 'ios', or 'android' for platform or an app_id for get_sdk_config tool.",
       );
-    const apps = await listFirebaseApps(projectId, platform ?? AppPlatform.ANY);
+    const apps = await listFirebaseApps(projectId!, platform ?? AppPlatform.ANY);
     platform = platform || apps.find((app) => app.appId === appId)?.platform;
     appId = appId || apps.find((app) => app.platform === platform)?.appId;
     if (!appId)

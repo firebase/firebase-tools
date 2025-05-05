@@ -1,9 +1,7 @@
-/* eslint camelcase: 0 */
-
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { getProject } from "../../../management/projects.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 
 export const get_project = tool(
   {
@@ -14,9 +12,12 @@ export const get_project = tool(
       title: "Get Current Firebase Project",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
   async (_, { projectId }) => {
-    if (!projectId) return mcpError(`No current project detected.`);
-    return toContent(await getProject(projectId));
+    return toContent(await getProject(projectId!));
   },
 );

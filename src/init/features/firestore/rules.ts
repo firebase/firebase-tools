@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import * as gcp from "../../../gcp";
 import * as fsutils from "../../../fsutils";
-import { prompt, promptOnce } from "../../../prompt";
+import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
 import * as utils from "../../../utils";
 import { readTemplateSync } from "../../../templates";
@@ -11,52 +11,38 @@ const DEFAULT_RULES_FILE = "firestore.rules";
 
 const RULES_TEMPLATE = readTemplateSync("init/firestore/firestore.rules");
 
-export function initRules(setup: any, config: any): Promise<any> {
+export async function initRules(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore Security Rules allow you to define how and when to allow");
   logger.info("requests. You can keep these rules in your project directory");
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
 
-  return prompt(setup.config.firestore, [
-    {
-      type: "input",
-      name: "rules",
+  const filename =
+    setup.config.firestore.rules ||
+    (await input({
       message: "What file should be used for Firestore Rules?",
       default: DEFAULT_RULES_FILE,
-    },
-  ])
-    .then(() => {
-      const filename = setup.config.firestore.rules;
+    }));
 
-      if (fsutils.fileExistsSync(filename)) {
-        const msg =
-          "File " +
-          clc.bold(filename) +
-          " already exists." +
-          " Do you want to overwrite it with the Firestore Rules from the Firebase Console?";
-        return promptOnce({
-          type: "confirm",
-          message: msg,
-          default: false,
-        });
-      }
+  if (fsutils.fileExistsSync(filename)) {
+    const msg =
+      "File " +
+      clc.bold(filename) +
+      " already exists." +
+      " Do you want to overwrite it with the Firestore Rules from the Firebase Console?";
+    if (!(await confirm(msg))) {
+      return;
+    }
+  }
 
-      return Promise.resolve(true);
-    })
-    .then((overwrite) => {
-      if (!overwrite) {
-        return Promise.resolve();
-      }
+  if (!setup.projectId) {
+    return config.writeProjectFile(setup.config.firestore.rules, getDefaultRules());
+  }
 
-      if (!setup.projectId) {
-        return config.writeProjectFile(setup.config.firestore.rules, getDefaultRules());
-      }
-
-      return getRulesFromConsole(setup.projectId).then((contents: any) => {
-        return config.writeProjectFile(setup.config.firestore.rules, contents);
-      });
-    });
+  return getRulesFromConsole(setup.projectId).then((contents: any) => {
+    return config.writeProjectFile(setup.config.firestore.rules, contents);
+  });
 }
 
 function getDefaultRules(): string {

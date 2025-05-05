@@ -74,6 +74,28 @@ export interface ListBackupsResponse {
   unreachable?: string[];
 }
 
+// Based on https://cloud.google.com/firestore/docs/reference/rest/v1/Value
+export type FirestoreValue =
+  | { nullValue: null }
+  | { booleanValue: boolean }
+  | { integerValue: string } // Keep as string as per REST API, handle conversion in toJson
+  | { doubleValue: number }
+  | { timestampValue: string } // ISO 8601 format
+  | { stringValue: string }
+  | { bytesValue: string } // base64 encoded
+  | { referenceValue: string } // Full resource name string
+  | { geoPointValue: { latitude: number; longitude: number } }
+  | { arrayValue: { values?: FirestoreValue[] } }
+  | { mapValue: { fields?: Record<string, FirestoreValue> } };
+
+// Based on https://cloud.google.com/firestore/docs/reference/rest/v1/projects.databases.documents#Document
+export interface FirestoreDocument {
+  name: string; // Resource name: projects/{projectId}/databases/{databaseId}/documents/{document_path}
+  fields?: { [key: string]: FirestoreValue };
+  createTime: string; // Timestamp format
+  updateTime: string; // Timestamp format
+}
+
 /**
  * Get a firebase database instance.
  * @param {string} project the Google Cloud project
@@ -116,6 +138,30 @@ export function listCollectionIds(
   return apiClient.post<any, { collectionIds?: string[] }>(url, data).then((res) => {
     return res.body.collectionIds || [];
   });
+}
+
+/**
+ * Get multiple documents by path.
+ * @param {string} project the Google Cloud project ID.
+ * @param {string[]} paths The document paths to fetch.
+ * @return {Promise<string[]>} a promise for an array of collection IDs.
+ */
+export async function getDocuments(
+  project: string,
+  paths: string[],
+  allowEmulator?: boolean,
+): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const basePath = `projects/${project}/databases/(default)/documents`;
+  const url = `${basePath}:batchGet`;
+  const fullPaths = paths.map((p) => `${basePath}/${p}`);
+  const res = await apiClient.post<
+    { documents: string[] },
+    { found?: FirestoreDocument; missing?: string }[]
+  >(url, { documents: fullPaths });
+  const out: { documents: FirestoreDocument[]; missing: string[] } = { documents: [], missing: [] };
+  res.body.map((r) => (r.missing ? out.missing.push(r.missing) : out.documents.push(r.found!)));
+  return out;
 }
 
 /**

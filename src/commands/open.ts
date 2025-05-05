@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import { Command } from "../command";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
@@ -78,8 +78,7 @@ export const command = new Command("open [link]")
     }
 
     if (!link) {
-      const name = await promptOnce({
-        type: "list",
+      const name = await select({
         message: "What link would you like to open?",
         choices: CHOICES,
       });
