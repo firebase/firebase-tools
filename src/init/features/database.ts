@@ -33,7 +33,7 @@ interface DatabaseSetupConfig {
 }
 
 const DEFAULT_RULES = JSON.stringify(
-  { rules: { ".read": "auth != null", ".write": "auth != null" } },
+  { rules: { some_path: { ".read": "auth != null", ".write": "auth != null" } } },
   null,
   2,
 );
