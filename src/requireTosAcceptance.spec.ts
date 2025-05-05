@@ -88,7 +88,7 @@ describe("requireTosAcceptance", () => {
       .get("/v1/accessmanagement/tos:getStatus")
       .reply(200, SAMPLE_RESPONSE);
     loggedInStub.returns(false);
-    
+
     await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
 
     expect(nock.isDone()).to.be.true;
