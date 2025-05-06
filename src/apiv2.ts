@@ -425,7 +425,7 @@ export class Client {
                 original: err,
               });
             }
-            throw new FirebaseError(`Failed to make request to ${fetchURL}, ${err}`, {
+            throw new FirebaseError(`Failed to make request to ${fetchURL}`, {
               original: err,
             });
           } finally {
