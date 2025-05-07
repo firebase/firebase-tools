@@ -1,3 +1,6 @@
 - Fixed an issue where the prompt to create apphosting.emulator.yaml did not work with backends that are not at the project.root (#8412)
 - Fixed an issue where Terms of Service acceptance would be checked for non-human users.
 - Fixed an issue where Cloud Resource Manager was called without checking whether it is enabled on the user's project.
+- Updated the Firebase Data Connect local toolkit to v2.5.0, which includes the following changes: (#8514)
+  - Fixed an issue where some server value expression errors incorrectly abort mutation execution.
+  - Added README generation to Angular codegen, which explains how to use generated query and mutation injector functions.
