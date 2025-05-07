@@ -159,6 +159,8 @@ export const dataconnectP4SADomain = () =>
   );
 export const dataConnectLocalConnString = () =>
   utils.envOverride("FIREBASE_DATACONNECT_POSTGRESQL_STRING", "");
+export const dataConnectConnectorName = () =>
+  utils.envOverride("FIREBASE_DATACONNECT_CONNECTOR", "");
 export const cloudSQLAdminOrigin = () =>
   utils.envOverride("CLOUD_SQL_URL", "https://sqladmin.googleapis.com");
 export const vertexAIOrigin = () =>

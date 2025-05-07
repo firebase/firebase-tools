@@ -23,6 +23,8 @@ import { logBullet, envOverride } from "../../../utils";
 import { checkBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
+import { parseConnectorName } from "../../../dataconnect/names";
+import { dataConnectConnectorName } from "../../../api";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -74,13 +76,32 @@ const defaultConnector = {
 
 const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
+function infoFromConnector(name: string): RequiredInfo {
+  const connName = parseConnectorName(name);
+  const info: RequiredInfo = {
+    serviceId: connName.serviceId,
+    locationId: connName.location,
+    cloudSqlInstanceId: "",
+    isNewInstance: false,
+    cloudSqlDatabase: "",
+    isNewDatabase: false,
+    connectors: [defaultConnector],
+    schemaGql: [defaultSchema],
+    shouldProvisionCSQL: false,
+  };
+  return info;
+}
+
 // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
   if (setup.projectId) {
     isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
-  const info = await askQuestions(setup, isBillingEnabled);
+  const info =
+    dataConnectConnectorName() !== ""
+      ? infoFromConnector(dataConnectConnectorName())
+      : await askQuestions(setup, isBillingEnabled);
   // Most users will want to perist data between emulator runs, so set this to a reasonable default.
 
   const dir: string = config.get("dataconnect.source", "dataconnect");
