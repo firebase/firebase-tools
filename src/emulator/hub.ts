@@ -77,6 +77,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
   override async start(): Promise<void> {
     await super.start();
     await this.writeLocatorFile();
+    setInterval(() => this.ok(path.resolve("emulatorexport2"), "continuousExport"), 15000);
   }
 
   getRunningEmulatorsMapping(): GetEmulatorsResponse {
@@ -88,6 +89,25 @@ export class EmulatorHub extends ExpressBasedEmulator {
       };
     }
     return emulators;
+  }
+  
+  // FIXME makes UI flash - why? websocket issue
+  async ok(exportPath: string, initiatedBy: string) {
+    const exportAbsPath = path.resolve(exportPath);
+    if (!fs.existsSync(exportAbsPath)) {
+      utils.logBullet(`Creating export directory ${exportAbsPath}`);
+      fs.mkdirSync(exportAbsPath);
+    }
+    try {
+      await new HubExport(this.args.projectId, {
+        path: exportAbsPath,
+        initiatedBy,
+      }).exportAll();
+      utils.logLabeledBullet("emulators", "Export complete.");
+    } catch (e: any) {
+      const errorString = e.message || JSON.stringify(e);
+      utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
+    }
   }
 
   protected override async createExpressApp(): Promise<express.Express> {

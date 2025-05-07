@@ -156,6 +156,11 @@ export class HubExport {
     logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
     rmSync(this.exportPath, { recursive: true });
     fse.moveSync(this.tmpDir, this.exportPath);
+   // FIXME rmSync(this.tmpDir, { recursive: true });     // Doesn't delete temp?
+
+    // FIXME what's the default directory we should use in firebase.json?
+    // FIXME where does the current default come from?
+    // this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
