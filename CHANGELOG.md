@@ -4,3 +4,4 @@
 - Updated the Firebase Data Connect local toolkit to v2.5.0, which includes the following changes: (#8514)
   - Fixed an issue where some server value expression errors incorrectly abort mutation execution.
   - Added README generation to Angular codegen, which explains how to use generated query and mutation injector functions.
+- Updated emulator UI to v1.15.0, which fixes some issues when running on Firebase Studio.
