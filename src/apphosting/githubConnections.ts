@@ -95,7 +95,6 @@ export function generateRepositoryId(remoteUri: string): string | undefined {
   return extractRepoSlugFromUri(remoteUri)?.replaceAll("/", "-");
 }
 
-// Change from function to const to make it easier to stub
 export const generateConnectionId = (): string => {
   const randomHash = Math.random().toString(36).slice(6);
   return `apphosting-github-conn-${randomHash}`;
