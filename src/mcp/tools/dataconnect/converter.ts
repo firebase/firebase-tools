@@ -46,7 +46,7 @@ export function graphqlResponseToToolResponse(
   g: GraphqlResponse | GraphqlResponseError,
 ): CallToolResult {
   if (isGraphQLResponse(g)) {
-    const isError = g.errors.length > 0;
+    const isError = g.errors?.length > 0;
     const contentString = `${isError ? "A GraphQL error occurred while executing the operation:" : ""}${JSON.stringify(g, null, 2)}`;
     return {
       isError,
