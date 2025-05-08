@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { generateSchema } from "../../../gif/fdcExperience.js";
 
-export const generate_dataconnect_schema = tool(
+export const generate_schema = tool(
   {
-    name: "generate_dataconnect_schema",
+    name: "generate_schema",
     description:
       "Generates a Firebase Data Connect Schema based on the users description of an app.",
     inputSchema: z.object({

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client";
+import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { schemaToText } from "./converter.js";
 
-export const get_dataconnect_schema = tool(
+export const get_schema = tool(
   {
-    name: "get_dataconnect_schema",
+    name: "get_schema",
     description:
       "List the Firebase Data Connect Schema in the project, which includes Cloud SQL data sources and the GraphQL Schema describing what tables are available.",
     inputSchema: z.object({

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
+import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules.js";
 
-export const get_storage_rules = tool(
+export const get_rules = tool(
   {
-    name: "get_storage_rules",
+    name: "get_rules",
     description: "Retrieves the Firebase Cloud Storage Rules for the default bucket.",
     inputSchema: z.object({}), // TODO: Support multiple buckets
     annotations: {
