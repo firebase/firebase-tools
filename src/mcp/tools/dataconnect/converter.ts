@@ -1,9 +1,16 @@
 import { dump } from "js-yaml";
-import { Schema, Connector, Source, GraphqlResponseError, GraphqlResponse, isGraphQLResponse } from '../../../dataconnect/types';
+import {
+  Schema,
+  Connector,
+  Source,
+  GraphqlResponseError,
+  GraphqlResponse,
+  isGraphQLResponse,
+} from "../../../dataconnect/types";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { mcpError } from "../../util";
 
-export function schemaToText(s: Schema): string  {
+export function schemaToText(s: Schema): string {
   return (
     dump({
       name: s.name,
@@ -14,7 +21,7 @@ export function schemaToText(s: Schema): string  {
   );
 }
 
-export function connectorToText(s: Connector): string  {
+export function connectorToText(s: Connector): string {
   return (
     dump({
       name: s.name,
@@ -35,15 +42,17 @@ export function sourceToText(s: Source): string {
   return output;
 }
 
-export function graphqlResponseToToolResponse(g: GraphqlResponse | GraphqlResponseError): CallToolResult {
+export function graphqlResponseToToolResponse(
+  g: GraphqlResponse | GraphqlResponseError,
+): CallToolResult {
   if (isGraphQLResponse(g)) {
     const isError = g.errors.length > 0;
-    const contentString = `${isError ? 'A GraphQL error occurred while executing the operation:' : ''}${JSON.stringify(g, null, 2)}`;
+    const contentString = `${isError ? "A GraphQL error occurred while executing the operation:" : ""}${JSON.stringify(g, null, 2)}`;
     return {
       isError,
-      content: [{type: "text", text: contentString}],
-    }
-  }  else  {
+      content: [{ type: "text", text: contentString }],
+    };
+  } else {
     return mcpError(JSON.stringify(g, null, 2));
   }
 }
