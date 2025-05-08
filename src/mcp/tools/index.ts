@@ -10,12 +10,15 @@ import { storageTools } from "./storage/index.js";
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
-  const toolDefs: ServerTool[] = coreTools;
+  const toolDefs: ServerTool[] = addPrefixToToolName("firebase_", coreTools);
   if (!fixedRoot) {
     // Present if the root is not fixed.
     toolDefs.push(...directoryTools);
   }
-  for (const key of activeFeatures || (Object.keys(tools) as ServerFeature[])) {
+  if (!activeFeatures || !activeFeatures.length) {
+    activeFeatures = Object.keys(tools) as ServerFeature[];
+  }
+  for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
   }
   return toolDefs;
