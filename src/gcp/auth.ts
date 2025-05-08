@@ -163,6 +163,9 @@ export async function listUsers(project: string, limit: number): Promise<UserInf
   }
   const userInfo: UserInfo[] = [];
   while (offset < limit) {
+    if (queryLimit + offset > limit) {
+      queryLimit = limit - offset;
+    }
     const res = await apiClient.post<
       {
         limit: string;
