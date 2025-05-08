@@ -24,9 +24,6 @@ export const get_object_download_url = tool(
   },
   async ({ bucket, objectPath }, { projectId }) => {
     if (!bucket) {
-      if (!projectId) {
-        throw new Error("projectId is required");
-      }
       bucket = `${projectId}.firebasestorage.app`;
     }
     const downloadUrl = await getDownloadUrl(bucket, objectPath);
