@@ -1,9 +1,8 @@
-import { consult_firebase_assistant } from "./consult_firebase_assistant";
-import { get_firebase_directory } from "./get_firebase_directory";
-import { set_firebase_directory } from "./set_firebase_directory";
+import type { ServerTool } from "../../tool.js";
 
-export const coreTools = [
-  get_firebase_directory,
-  set_firebase_directory,
-  consult_firebase_assistant,
-];
+import { consult_assistant } from "./consult_assistant.js";
+import { get_project } from "./get_project.js";
+import { get_sdk_config } from "./get_sdk_config.js";
+import { list_apps } from "./list_apps.js";
+
+export const coreTools: ServerTool[] = [get_project, list_apps, get_sdk_config, consult_assistant];
