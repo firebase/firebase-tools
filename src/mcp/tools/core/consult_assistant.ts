@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { chatWithFirebase } from "../../../gif/fdcExperience.js";
 
-export const consult_firebase_assistant = tool(
+export const consult_assistant = tool(
   {
-    name: "consult_firebase_assistant",
+    name: "consult_assistant",
     description:
       "Send a question to an AI assistant specifically enhanced to answer Firebase questions.",
     inputSchema: z.object({
@@ -20,7 +20,7 @@ export const consult_firebase_assistant = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      // TODO: Create an endpoint to check for GiF activation.
     },
   },
   async ({ prompt }, { projectId }) => {
