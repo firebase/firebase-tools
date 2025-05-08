@@ -223,12 +223,17 @@ export interface ExecuteGraphqlRequest {
   extensions?: { impersonate?: Impersonation };
 }
 
-export interface ExecuteGraphqlResponse {
+export interface GraphqlResponse {
   data: Record<string, any>;
   errors: any[];
 }
 
-export interface ExecuteGraphqlResponseError {
+export interface ExecuteOperationRequest {
+  operationName: string;
+  variables?: { [key: string]: string };
+}
+
+export interface GraphqlResponseError {
   error: { code: number; message: string; status: string; details: any[] };
 }
 
