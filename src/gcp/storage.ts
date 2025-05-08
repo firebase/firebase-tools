@@ -349,7 +349,8 @@ export async function getDownloadUrl(bucketName: string, objectPath: string): Pr
     throw new FirebaseError(
       `${err} Check that you have permission in the Firebase console to generate a download token`,
       {
-      original: err,
-    });
+        original: err,
+      },
+    );
   }
 }
