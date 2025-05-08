@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { getDownloadUrl } from "../../../gcp/storage.js";
 
-export const get_download_url = tool(
+export const get_storage_object_download_url = tool(
   {
-    name: "get_download_url",
+    name: "get_storage_object_download_url",
     description: "Retrieves the download URL for an object in Firebase Storage.",
     inputSchema: z.object({
       bucket: z.string().describe("The bucket name in Firebase Storage."),
