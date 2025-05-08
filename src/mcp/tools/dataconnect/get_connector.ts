@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client";
+import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { connectorToText } from "./converter.js";
 
-export const get_dataconnect_connector = tool(
+export const get_connector = tool(
   {
-    name: "get_dataconnect_connector",
+    name: "get_connector",
     description:
       "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({

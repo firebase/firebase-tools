@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { setCustomClaim } from "../../../gcp/auth.js";
 
-export const set_auth_claim = tool(
+export const set_claim = tool(
   {
-    name: "set_auth_claims",
+    name: "set_claims",
     description:
       "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value.",
     inputSchema: z.object({

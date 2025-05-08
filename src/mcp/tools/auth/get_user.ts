@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { findUser } from "../../../gcp/auth.js";
 
-export const get_auth_user = tool(
+export const get_user = tool(
   {
-    name: "get_auth_user",
+    name: "get_user",
     description: "Retrieves a user based on an email address, phone number, or UID.",
     inputSchema: z.object({
       email: z.string().optional(),
@@ -23,7 +23,7 @@ export const get_auth_user = tool(
   },
   async ({ email, phoneNumber, uid }, { projectId }) => {
     if (email === undefined && phoneNumber === undefined && uid === undefined) {
-      return mcpError(`No user identifier supplied in get_auth_user tool`);
+      return mcpError(`No user identifier supplied in auth_get_user tool`);
     }
     return toContent(await findUser(projectId!, email, phoneNumber, uid));
   },
