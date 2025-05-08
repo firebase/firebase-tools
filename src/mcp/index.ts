@@ -9,10 +9,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { mcpError } from "./util.js";
 import { ServerFeature } from "./types.js";
-import { tools } from "./tools/index.js";
+import { availableTools } from "./tools/index.js";
 import { ServerTool } from "./tool.js";
 import { configstore } from "../configstore.js";
-import { coreTools } from "./tools/core/index.js";
 import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
 import { Options } from "../options.js";
@@ -47,14 +46,7 @@ export class FirebaseMcpServer {
   }
 
   get availableTools(): ServerTool[] {
-    const toolDefs: ServerTool[] = this.fixedRoot ? [] : [...coreTools];
-    const activeFeatures = this.activeFeatures?.length
-      ? this.activeFeatures
-      : (Object.keys(tools) as ServerFeature[]);
-    for (const key of activeFeatures || []) {
-      toolDefs.push(...tools[key]);
-    }
-    return toolDefs;
+    return availableTools(!!this.fixedRoot, this.activeFeatures);
   }
 
   getTool(name: string): ServerTool | null {

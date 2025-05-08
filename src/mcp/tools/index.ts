@@ -3,11 +3,25 @@ import { ServerFeature } from "../types.js";
 import { authTools } from "./auth/index.js";
 import { dataconnectTools } from "./dataconnect/index.js";
 import { firestoreTools } from "./firestore/index.js";
-import { projectTools } from "./project/index.js";
+import { directoryTools } from "./directory/index.js";
+import { coreTools } from "./core/index.js";
 import { storageTools } from "./storage/index.js";
 
-export const tools: Record<ServerFeature, ServerTool[]> = {
-  project: projectTools,
+/** availableTools returns the list of MCP tools available given the server flags */
+export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
+  // Core tools are always present.
+  const toolDefs: ServerTool[] = coreTools;
+  if (!fixedRoot) {
+    // Present if the root is not fixed.
+    toolDefs.push(...directoryTools);
+  }
+  for (const key of activeFeatures || (Object.keys(tools) as ServerFeature[])) {
+    toolDefs.push(...tools[key]);
+  }
+  return toolDefs;
+}
+
+const tools: Record<ServerFeature, ServerTool[]> = {
   firestore: addPrefixToToolName("firestore_", firestoreTools),
   auth: addPrefixToToolName("auth_", authTools),
   dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
