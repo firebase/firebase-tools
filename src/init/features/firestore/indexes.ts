@@ -25,6 +25,7 @@ export async function initIndexes(setup: any, config: any): Promise<any> {
       message: "What file should be used for Firestore indexes?",
       default: "firestore.indexes.json",
     }));
+  setup.config.firestore.indexes = filename;
 
   if (fsutils.fileExistsSync(filename)) {
     const msg =
