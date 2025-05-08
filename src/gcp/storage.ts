@@ -148,6 +148,24 @@ interface StorageServiceAccountResponse {
   kind: string;
 }
 
+export interface FirebaseMetadata {
+  name: string;
+  bucket: string;
+  generation: string;
+  metageneration: string;
+  contentType: string;
+  timeCreated: string;
+  updated: string;
+  storageClass: string;
+  size: string;
+  md5Hash: string;
+  contentEncoding: string;
+  contentDisposition: string;
+  crc32c: string;
+  etag: string;
+  downloadTokens?: string;
+}
+
 export async function getDefaultBucket(projectId: string): Promise<string> {
   await ensure(projectId, firebaseStorageOrigin(), "storage", false);
   try {
@@ -304,5 +322,35 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
     throw new FirebaseError("Failed to obtain the Cloud Storage service agent", {
       original: err,
     });
+  }
+}
+
+/**
+ * getDownloadUrl finds a publicly accessible download url for an object in Firebase storage.
+ * @param bucketName the bucket which contains the object you are looking for.
+ * @param objectPath a path within the bucket where the obejct resides.
+ * @return the string HTTP path to download the object.
+ */
+export async function getDownloadUrl(bucketName: string, objectPath: string): Promise<string> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin() });
+    const response = await localAPIClient.get<FirebaseMetadata>(
+      `/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}`,
+    );
+    if (!response.body.downloadTokens) {
+      throw new Error(
+        "no download tokens exist for ${objectPath}, please visit the Firebase console to make one",
+      );
+    }
+    const [token] = response.body.downloadTokens.split(",");
+    return `${firebaseStorageOrigin()}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+  } catch (err: any) {
+    logger.error(err);
+    throw new FirebaseError(
+      `${err} Check that you have permission in the Firebase console to generate a download token`,
+      {
+        original: err,
+      },
+    );
   }
 }
