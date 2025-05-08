@@ -3,9 +3,9 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { disableUser } from "../../../gcp/auth.js";
 
-export const disable_auth_user = tool(
+export const disable_user = tool(
   {
-    name: "disable_auth_user",
+    name: "disable_user",
     description: "Disables or enables a user based on a UID.",
     inputSchema: z.object({
       uid: z.string().describe("The localId or UID of the user to disable or enable"),

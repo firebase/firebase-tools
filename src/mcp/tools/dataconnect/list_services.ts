@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client";
+import * as client from "../../../dataconnect/client.js";
 
-export const list_dataconnect_services = tool(
+export const list_services = tool(
   {
-    name: "list_dataconnect_services",
+    name: "list_services",
     description: "List the Firebase Data Connect services available in the current project.",
     inputSchema: z.object({}),
     annotations: {

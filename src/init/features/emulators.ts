@@ -71,7 +71,7 @@ export async function doSetup(setup: Setup, config: Config) {
       const ui = setup.config.emulators.ui || {};
       setup.config.emulators.ui = ui;
 
-      ui.enalbed = await confirm({
+      ui.enabled = await confirm({
         message: `Would you like to enable the ${uiDesc}?`,
         default: true,
       });

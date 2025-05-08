@@ -1,15 +1,15 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client";
+import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
-import { schemaToText } from "./converter.js";
+import { connectorToText } from "./converter.js";
 
-export const get_dataconnect_schema = tool(
+export const get_connector = tool(
   {
-    name: "get_dataconnect_schema",
+    name: "get_connector",
     description:
-      "List the Firebase Data Connect Schema in the project, which includes Cloud SQL data sources and the GraphQL Schema describing what tables are available.",
+      "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
       serviceId: z
         .string()
@@ -19,7 +19,7 @@ export const get_dataconnect_schema = tool(
         ),
     }),
     annotations: {
-      title: "Obtain the Firebase Data Connect Schemas that's available in the backend",
+      title: "Obtain the Firebase Data Connect Connectors that's available in the backend",
       readOnlyHint: true,
     },
     _meta: {
@@ -29,7 +29,7 @@ export const get_dataconnect_schema = tool(
   },
   async ({ serviceId }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
-    const schemas = await client.listSchemas(serviceInfo.serviceName, ["*"]);
-    return toContent(schemas?.map(schemaToText).join("\n\n"));
+    const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
+    return toContent(connectors.map(connectorToText).join("\n\n"));
   },
 );

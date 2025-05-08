@@ -8,8 +8,18 @@ import { storageTools } from "./storage/index.js";
 
 export const tools: Record<ServerFeature, ServerTool[]> = {
   project: projectTools,
-  firestore: firestoreTools,
-  auth: authTools,
-  dataconnect: dataconnectTools,
-  storage: storageTools,
+  firestore: addPrefixToToolName("firestore_", firestoreTools),
+  auth: addPrefixToToolName("auth_", authTools),
+  dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
+  storage: addPrefixToToolName("storage_", storageTools),
 };
+
+function addPrefixToToolName(prefix: string, tools: ServerTool[]): ServerTool[] {
+  return tools.map((tool) => ({
+    ...tool,
+    mcp: {
+      ...tool.mcp,
+      name: `${prefix}${tool.mcp.name}`,
+    },
+  }));
+}
