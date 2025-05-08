@@ -37,7 +37,7 @@ In `.cursor/mcp.json` in your workspace directory, add the Firebase MCP server:
 | Tool Name                | Feature Group | Description                                                                                                         |
 | ------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `get_project_directory` | `directory`        | When running without the `--dir` command, retrieves the current directory (defaults to current working directory).  |
-| `set_project_directoryj` | `directory`        | When running without the `--dir` command, sets the current project directory (i.e. one with `firebase.json` in it). |
+| `set_project_directory` | `directory`        | When running without the `--dir` command, sets the current project directory (i.e. one with `firebase.json` in it). |
 | `firebase_get_project`            | `core`     | Get basic information about the active project in the current Firebase directory.                                   |
 | `firebase_list_apps`              | `core`     | List registered apps for the currently active project.                                                              |
 | `firebase_get_sdk_config`         | `core`     | Get an Firebase client SDK config for a specific platform.                                                          |
