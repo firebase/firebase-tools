@@ -237,6 +237,10 @@ export interface GraphqlResponseError {
   error: { code: number; message: string; status: string; details: any[] };
 }
 
+
+export const isGraphQLResponse = (g: any): g is GraphqlResponse => !!g.data || !!g.errors;
+export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g.error;
+
 interface ImpersonationAuthenticated {
   authClaims: any;
 }
