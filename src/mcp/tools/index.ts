@@ -1,4 +1,3 @@
-import { add } from "lodash";
 import { ServerTool } from "../tool.js";
 import { ServerFeature } from "../types.js";
 import { authTools } from "./auth/index.js";
