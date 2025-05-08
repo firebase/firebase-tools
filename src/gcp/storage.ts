@@ -345,8 +345,10 @@ export async function getDownloadUrl(bucketName: string, objectPath: string): Pr
     const [token] = response.body.downloadTokens.split(",");
     return `${firebaseStorageOrigin()}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
   } catch (err: any) {
-    logger.debug(err);
-    throw new FirebaseError("Failed to obtain the download URL", {
+    logger.error(err);
+    throw new FirebaseError(
+      `${err} Check that you have permission in the Firebase console to generate a download token`,
+      {
       original: err,
     });
   }
