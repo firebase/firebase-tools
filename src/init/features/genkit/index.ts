@@ -382,13 +382,14 @@ export async function genkitSetup(
       default: true,
     }))
   ) {
-
-    logger.info("Telemetry data can be used to monitor and gain insights into your AI features. There may be a cost associated with using this feature. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.");
+    logger.info(
+      "Telemetry data can be used to monitor and gain insights into your AI features. There may be a cost associated with using this feature. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.",
+    );
     const enableTelemetry =
-      options.nonInteractive || 
+      options.nonInteractive ||
       (await confirm({
         message: "Would like you to enable telemetry collection?",
-        default: true
+        default: true,
       }));
 
     generateSampleFile(
@@ -396,7 +397,8 @@ export async function genkitSetup(
       plugins,
       projectDir,
       genkitInfo.templateVersion,
-      enableTelemetry);
+      enableTelemetry,
+    );
   }
 }
 
@@ -639,15 +641,16 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
 }
 
 function renderConfig(pluginNames: string[], template: string, enableTelemetry: boolean): string {
-  const imports = pluginNames
-    .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName));
+  const imports = pluginNames.map((pluginName) =>
+    generateImportStatement(pluginToInfo[pluginName].imports, pluginName),
+  );
   if (enableTelemetry) {
     imports.push(generateImportStatement("enableFirebaseTelemetry", "@genkit-ai/firebase"));
   }
   const telemetryBlock = enableTelemetry
     ? "\n// Collect telemetry data to enable production monitoring.\n" +
-       "// See https://firebase.google.com/docs/genkit/observability/telemetry-collection.\n" +
-       "enableFirebaseTelemetry();\n"
+      "// See https://firebase.google.com/docs/genkit/observability/telemetry-collection.\n" +
+      "enableFirebaseTelemetry();\n"
     : "";
   const plugins =
     pluginNames.map((pluginName) => `    ${pluginToInfo[pluginName].init},`).join("\n") ||
