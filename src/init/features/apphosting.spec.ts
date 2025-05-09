@@ -1,37 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
-import * as prompt from "../../prompt";
-import { promptExistingBackend, upsertAppHostingConfig } from "./apphosting";
-import { FirebaseError } from "../../error";
-
-const TEST_PROJECT_ID = "project-1234";
+import { upsertAppHostingConfig } from "./apphosting";
 
 describe("apphosting", () => {
-  let promptOnceStub: sinon.SinonStub;
-  let getBackendStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
-    getBackendStub = sinon.stub(backend, "getBackend").throws("Unexpected getBackend call");
-  });
-
   afterEach(() => {
     sinon.verifyAndRestore();
-  });
-
-  describe("promptExistingBackend", () => {
-    it("re-prompts when we fail to find the backend", async () => {
-      promptOnceStub.onFirstCall().resolves("incorrect-backend-name");
-      promptOnceStub.onSecondCall().resolves("correct-backend-name");
-      getBackendStub.onFirstCall().rejects(new FirebaseError("backend not found"));
-      getBackendStub.onSecondCall().resolves();
-
-      await promptExistingBackend(TEST_PROJECT_ID);
-
-      expect(promptOnceStub.calledTwice).to.be.true;
-    });
   });
 
   describe("upsertAppHostingConfig", () => {
