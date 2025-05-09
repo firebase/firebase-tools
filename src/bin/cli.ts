@@ -5,19 +5,15 @@ import { marked } from "marked";
 marked.use(markedTerminal() as any);
 
 import { CommanderStatic } from "commander";
-import { join } from "node:path";
-import { SPLAT } from "triple-beam";
-import { stripVTControlCharacters } from "node:util";
 import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
 import { handlePreviewToggles } from "../handlePreviewToggles";
-import { logger } from "../logger";
+import { logger, useFileLogger } from "../logger";
 import * as client from "..";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
-import * as winston from "winston";
 
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
@@ -28,51 +24,13 @@ export function cli(pkg: any) {
   const args = process.argv.slice(2);
   let cmd: CommanderStatic;
 
-  function findAvailableLogFile(): string {
-    const candidates = ["firebase-debug.log"];
-    for (let i = 1; i < 10; i++) {
-      candidates.push(`firebase-debug.${i}.log`);
-    }
-
-    for (const c of candidates) {
-      const logFilename = join(process.cwd(), c);
-
-      try {
-        const fd = fs.openSync(logFilename, "r+");
-        fs.closeSync(fd);
-        return logFilename;
-      } catch (e: any) {
-        if (e.code === "ENOENT") {
-          // File does not exist, which is fine
-          return logFilename;
-        }
-
-        // Any other error (EPERM, etc) means we won't be able to log to
-        // this file so we skip it.
-      }
-    }
-
-    throw new Error("Unable to obtain permissions for firebase-debug.log");
-  }
-
-  const logFilename = findAvailableLogFile();
-
   if (!process.env.DEBUG && args.includes("--debug")) {
     process.env.DEBUG = "true";
   }
 
   process.env.IS_FIREBASE_CLI = "true";
 
-  logger.add(
-    new winston.transports.File({
-      level: "debug",
-      filename: logFilename,
-      format: winston.format.printf((info) => {
-        const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
-        return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
-      }),
-    }),
-  );
+  const logFilename = useFileLogger();
 
   logger.debug("-".repeat(70));
   logger.debug("Command:      ", process.argv.join(" "));
