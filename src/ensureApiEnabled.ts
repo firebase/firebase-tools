@@ -181,7 +181,7 @@ export async function bestEffortEnsure(
   silent = false,
 ) {
   try {
-    return ensure(projectId, apiUri, prefix, silent);
+    return await ensure(projectId, apiUri, prefix, silent);
   } catch (err: any) {
     logger.debug(
       `Unable to check that ${apiUri} is enabled on ${projectId}. Calls to it will fail if it is not enabled`,
