@@ -37,14 +37,15 @@ export async function doSetup(setup: Setup, config: Config) {
   }
 
   setup.config.emulators = setup.config.emulators || {};
+  const emulators: any = setup.config.emulators;
   for (const selected of selections.emulators) {
-    setup.config.emulators[selected] = setup.config.emulators[selected] || {};
+    emulators[selected] = emulators[selected] || {};
 
-    const currentPort = setup.config.emulators[selected].port;
+    const currentPort = emulators[selected].port;
     if (currentPort) {
       utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
     } else {
-      setup.config.emulators[selected].port = await number({
+      emulators[selected].port = await number({
         message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
         default: Constants.getDefaultPort(selected),
       });
@@ -54,7 +55,7 @@ export async function doSetup(setup: Setup, config: Config) {
     if (additionalInitFn) {
       const additionalOptions = await additionalInitFn(config);
       if (additionalOptions) {
-        setup.config.emulators[selected] = {
+        emulators[selected] = {
           ...setup.config.emulators[selected],
           ...additionalOptions,
         };
@@ -82,7 +83,7 @@ export async function doSetup(setup: Setup, config: Config) {
         );
 
         // Parse the input as a number
-        const portNum = Number.parseInt(ui.port);
+        const portNum = Number.parseInt(ui.port as any);
         ui.port = isNaN(portNum) ? undefined : portNum;
       }
     }

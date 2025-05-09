@@ -5,9 +5,11 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
 import { RCData } from "../rc";
+import { Config } from "../config";
+import { FirebaseConfig } from "../firebaseConfig";
 
 export interface Setup {
-  config: Record<string, any>;
+  config: FirebaseConfig;
   rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
@@ -17,23 +19,25 @@ export interface Setup {
   hosting?: Record<string, any>;
 }
 
-const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
-  ["account", features.account],
-  ["database", features.database],
-  ["firestore", features.firestore],
-  ["dataconnect", features.dataconnect],
-  ["dataconnect:sdk", features.dataconnectSdk],
-  ["functions", features.functions],
-  ["hosting", features.hosting],
-  ["storage", features.storage],
-  ["emulators", features.emulators],
-  ["extensions", features.extensions],
-  ["project", features.project], // always runs, sets up .firebaserc
-  ["remoteconfig", features.remoteconfig],
-  ["hosting:github", features.hostingGithub],
-  ["genkit", features.genkit],
-  ["apphosting", features.apphosting],
-]);
+const featureFns = new Map<string, (setup: any, config: Config, options?: any) => Promise<unknown>>(
+  [
+    ["account", features.account],
+    ["database", features.database],
+    ["firestore", features.firestore],
+    ["dataconnect", features.dataconnect],
+    ["dataconnect:sdk", features.dataconnectSdk],
+    ["functions", features.functions],
+    ["hosting", features.hosting],
+    ["storage", features.storage],
+    ["emulators", features.emulators],
+    ["extensions", features.extensions],
+    ["project", features.project], // always runs, sets up .firebaserc
+    ["remoteconfig", features.remoteconfig],
+    ["hosting:github", features.hostingGithub],
+    ["genkit", features.genkit],
+    ["apphosting", features.apphosting],
+  ],
+);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
