@@ -1,17 +1,19 @@
 import * as clc from "colorette";
 import { existsSync } from "fs";
+import * as fuzzy from "fuzzy";
+import * as inquirer from "inquirer";
 import * as ora from "ora";
 import * as path from "path";
 import { webApps } from "../../apphosting/app";
 import {
   createBackend,
-  getBackend,
   promptLocation,
-  promptNewBackendId,
+  promptNewBackendId
 } from "../../apphosting/backend";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
+import { listBackends, parseBackendName } from "../../gcp/apphosting";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { promptOnce } from "../../prompt";
 import { readTemplateSync } from "../../templates";
@@ -34,7 +36,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
     rootDir: "",
     ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "functions"],
   };
-  const createOrLink = await promptOnce({
+  const createOrLink: string = await promptOnce({
     name: "createOrLink",
     type: "list",
     default: "Create a new backend",
@@ -44,7 +46,9 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
       { name: "Link to an existing backend", value: "link" },
     ],
   });
-  if (createOrLink === "create") {
+  if (createOrLink === "link") {
+    backendConfig.backendId = await promptExistingBackend(projectId);
+  } else if (createOrLink === "create") {
     logBullet(`${clc.yellow("===")} Set up your backend`);
     const location = await promptLocation(
       projectId,
@@ -61,7 +65,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
 
     const webApp = await webApps.getOrCreateWebApp(
       projectId,
-      "1:319766234289:web:318a6b73ce925a813bce90",
+      /* firebaseWebAppId= */ null,
       backendId,
     );
     if (!webApp) {
@@ -73,13 +77,15 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
       projectId,
       location,
       backendId,
-      null,
-      undefined,
+      /* serviceAccount= */ null,
+      /* repository= */ undefined,
       webApp?.id,
     );
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   } else {
-    backendConfig.backendId = await promptExistingBackend(projectId);
+    throw new FirebaseError(
+      `Invalid value for createOrLink "${createOrLink}". Please contact Firebase Support with the contents of your firebase-debug.log.`,
+    );
   }
 
   logBullet(`${clc.yellow("===")} Deploy local source setup`);
@@ -87,7 +93,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
     name: "rootDir",
     type: "input",
     default: "/",
-    message: "Specify your app's root directory",
+    message: "Specify your app's root directory relative to your firebase.json directory",
   });
 
   upsertAppHostingConfig(backendConfig, config);
@@ -109,27 +115,33 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
   utils.logSuccess("Firebase initialization complete!");
 }
 
-// Exported for unit testing.
-export async function promptExistingBackend(projectId: string): Promise<string> {
-  while (true) {
-    const backendId = await promptOnce({
-      name: "backendId",
-      type: "input",
-      message: "Provide a backend name:",
-    });
-    try {
-      await getBackend(projectId, backendId);
-      return backendId;
-    } catch (err) {
-      utils.logWarning(
-        `Failed to get backend with ID ${backendId}: ${(err as FirebaseError).message}`,
+async function promptExistingBackend(projectId: string): Promise<string> {
+  const { backends } = await listBackends(projectId, "-");
+  const backendId = await promptOnce({
+    type: "autocomplete",
+    name: "backendId",
+    message: "Which backend would you like to link?",
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy
+            .filter(input, backends, {
+              extract: (backend) => parseBackendName(backend.name).id,
+            })
+            .map((result) => {
+              return {
+                name: parseBackendName(result.original.name).id,
+                value: parseBackendName(result.original.name).id,
+              };
+            }),
+        ]),
       );
-      utils.logBullet("Please try again.");
-    }
-  }
+    },
+  });
+  return backendId;
 }
 
-// Exported for unit testing.
+/** Exported for unit testing. */
 export function upsertAppHostingConfig(backendConfig: AppHostingSingle, config: Config): void {
   if (!config.src.apphosting) {
     config.set("apphosting", backendConfig);
