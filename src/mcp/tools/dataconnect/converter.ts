@@ -1,7 +1,16 @@
 import { dump } from "js-yaml";
-import { Schema, Connector, Source } from "../../../dataconnect/types";
+import {
+  Schema,
+  Connector,
+  Source,
+  GraphqlResponseError,
+  GraphqlResponse,
+  isGraphQLResponse,
+} from "../../../dataconnect/types";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { mcpError } from "../../util";
 
-export function schemaToText(s: Schema) {
+export function schemaToText(s: Schema): string {
   return (
     dump({
       name: s.name,
@@ -12,7 +21,7 @@ export function schemaToText(s: Schema) {
   );
 }
 
-export function connectorToText(s: Connector) {
+export function connectorToText(s: Connector): string {
   return (
     dump({
       name: s.name,
@@ -22,7 +31,7 @@ export function connectorToText(s: Connector) {
   );
 }
 
-export function sourceToText(s: Source) {
+export function sourceToText(s: Source): string {
   let output = "";
   s.files?.forEach((f) => {
     output += `\n# ${f.path}`;
@@ -31,4 +40,19 @@ export function sourceToText(s: Source) {
     output += "```\n";
   });
   return output;
+}
+
+export function graphqlResponseToToolResponse(
+  g: GraphqlResponse | GraphqlResponseError,
+): CallToolResult {
+  if (isGraphQLResponse(g)) {
+    const isError = g.errors?.length > 0;
+    const contentString = `${isError ? "A GraphQL error occurred while executing the operation:" : ""}${JSON.stringify(g, null, 2)}`;
+    return {
+      isError,
+      content: [{ type: "text", text: contentString }],
+    };
+  } else {
+    return mcpError(JSON.stringify(g, null, 2));
+  }
 }

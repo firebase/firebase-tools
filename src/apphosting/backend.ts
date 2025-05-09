@@ -17,7 +17,7 @@ import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
-import { input, confirm, select, checkbox } from "../prompt";
+import { input, confirm, select, checkbox, search, Choice } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
@@ -27,6 +27,7 @@ import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
+import * as fuzzy from "fuzzy";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -126,8 +127,8 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    gitRepositoryLink,
     serviceAccount,
+    gitRepositoryLink,
     webApp?.id,
     rootDir,
   );
@@ -246,7 +247,7 @@ export async function ensureAppHostingComputeServiceAccount(
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNewBackendId(projectId: string, location: string): Promise<string> {
+export async function promptNewBackendId(projectId: string, location: string): Promise<string> {
   while (true) {
     const backendId = await input({
       default: "my-web-app",
@@ -280,18 +281,20 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: GitRepositoryLink,
   serviceAccount: string | null,
+  repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${repository.name}`,
-      rootDirectory: rootDir,
-    },
+    codebase: repository
+      ? {
+          repository: `${repository.name}`,
+          rootDirectory: rootDir,
+        }
+      : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
@@ -385,11 +388,11 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  const location = (await select<string>({
+  const location = await select<string>({
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
-  })) as string;
+  });
 
   logSuccess(`Location set to ${location}.\n`);
 
@@ -411,6 +414,39 @@ export async function getBackendForLocation(
       original: getError(err),
     });
   }
+}
+
+/**
+ * Prompts users to select an existing backend.
+ * @param projectId the user's project ID
+ * @param promptMessage prompt message to display to the user
+ * @return the selected backend ID
+ */
+export async function promptExistingBackend(
+  projectId: string,
+  promptMessage: string,
+): Promise<string> {
+  const { backends } = await apphosting.listBackends(projectId, "-");
+  const backendId: string = await search({
+    message: promptMessage,
+    source: (input = ""): Promise<Choice<string>[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy
+            .filter(input, backends, {
+              extract: (backend) => apphosting.parseBackendName(backend.name).id,
+            })
+            .map((result) => {
+              return {
+                name: apphosting.parseBackendName(result.original.name).id,
+                value: apphosting.parseBackendName(result.original.name).id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+  return backendId;
 }
 
 /**

@@ -1,1 +1,2 @@
-- Fixed issue where `firebase init firestore` would raise an error due to rules/indexes file path being undefined. (#8518)
+- Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
+- Enhance firebase init apphosting to support local source deploys. (#8479)
