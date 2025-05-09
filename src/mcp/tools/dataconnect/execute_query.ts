@@ -6,10 +6,10 @@ import * as client from "../../../dataconnect/dataplaneClient.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { graphqlResponseToToolResponse } from "./converter.js";
 
-export const execute_dataconnect_mutation = tool(
+export const execute_query = tool(
   {
-    name: "execute_dataconnect_mutation",
-    description: "Executes a deployed Data Connect query or mutation. Can read and write data.",
+    name: "execute_query",
+    description: "Executes a deployed Data Connect query. Cannot write any data.",
     inputSchema: z.object({
       operationName: z.string().describe("The name of the deployed operation you want to execute"),
       serviceId: z
@@ -28,12 +28,12 @@ export const execute_dataconnect_mutation = tool(
         .record(z.string())
         .optional()
         .describe(
-          "Variables for this operation. Use get_dataconnect_connector to find the expected variables for this query",
+          "Variables for this operation. Use dataconnect_get_connector to find the expected variables for this query",
         ),
     }),
     annotations: {
-      title: "Executes a deployed Data Connect query or mutation",
-      readOnlyHint: false,
+      title: "Executes a deployed Data Connect query.",
+      readOnlyHint: true,
     },
     _meta: {
       requiresProject: true,
@@ -54,7 +54,7 @@ export const execute_dataconnect_mutation = tool(
       connectorId = serviceInfo.connectorInfo[0].connectorYaml.connectorId;
     }
     const connectorPath = `${serviceInfo.serviceName}/connectors/${connectorId}`;
-    const response = await client.executeGraphQLMutation(
+    const response = await client.executeGraphQLQuery(
       client.dataconnectDataplaneClient(),
       connectorPath,
       { operationName, variables },

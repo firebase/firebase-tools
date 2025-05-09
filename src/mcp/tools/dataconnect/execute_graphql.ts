@@ -5,12 +5,12 @@ import * as client from "../../../dataconnect/dataplaneClient.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { graphqlResponseToToolResponse } from "./converter.js";
 
-export const execute_dataconnect_graphql_read = tool(
+export const execute_graphql = tool(
   {
-    name: "execute_dataconnect_graphql_read",
-    description: "Executes a arbitrary GraphQL against a Data Connect service. Cannot write data.",
+    name: "execute_graphql",
+    description: "Executes an arbitrary GraphQL against a Data Connect service",
     inputSchema: z.object({
-      query: z.string().describe("A GraphQL query to execute against the service"),
+      query: z.string().describe("A GraphQL query or mutation to execute against the service"),
       serviceId: z
         .string()
         .nullable()
@@ -20,8 +20,8 @@ export const execute_dataconnect_graphql_read = tool(
       variables: z.record(z.string()).optional().describe("Variables for this operation."),
     }),
     annotations: {
-      title: "Executes a arbitrary GraphQL query against a Data Connect service",
-      readOnlyHint: true,
+      title: "Executes a arbitrary GraphQL query or mutation against a Data Connect service",
+      readOnlyHint: false,
     },
     _meta: {
       requiresProject: true,
@@ -30,7 +30,7 @@ export const execute_dataconnect_graphql_read = tool(
   },
   async ({ query, serviceId, variables }, { projectId, config }) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
-    const response = await client.executeGraphQLRead(
+    const response = await client.executeGraphQL(
       client.dataconnectDataplaneClient(),
       serviceInfo.serviceName,
       { name: "", query, variables },
