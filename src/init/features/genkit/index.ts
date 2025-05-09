@@ -382,7 +382,21 @@ export async function genkitSetup(
       default: true,
     }))
   ) {
-    generateSampleFile(modelOptions[model].plugin, plugins, projectDir, genkitInfo.templateVersion);
+
+    logger.info("Telemetry data can be used to monitor and gain insights into your AI features. There may be a cost associated with using this feature. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.");
+    const enableTelemetry =
+      options.nonInteractive || 
+      (await confirm({
+        message: "Would like you to enable telemetry collection?",
+        default: true
+      }));
+
+    generateSampleFile(
+      modelOptions[model].plugin,
+      plugins,
+      projectDir,
+      genkitInfo.templateVersion,
+      enableTelemetry);
   }
 }
 
@@ -507,6 +521,7 @@ function generateSampleFile(
   configPlugins: string[],
   projectDir: string,
   templateVersion: string,
+  enableTelemetry: boolean,
 ): void {
   let modelImport = "";
   if (modelPlugin && pluginToInfo[modelPlugin].model) {
@@ -534,6 +549,7 @@ function generateSampleFile(
           ? pluginToInfo[modelPlugin].model || pluginToInfo[modelPlugin].modelStr || ""
           : "'' /* TODO: Set a model. */",
       ),
+    enableTelemetry,
   );
   logLabeledBullet("genkit", "Generating sample file");
   try {
@@ -622,16 +638,24 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
   }
 }
 
-function renderConfig(pluginNames: string[], template: string): string {
+function renderConfig(pluginNames: string[], template: string, enableTelemetry: boolean): string {
   const imports = pluginNames
-    .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName))
-    .join("\n");
+    .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName));
+  if (enableTelemetry) {
+    imports.push(generateImportStatement("enableFirebaseTelemetry", "@genkit-ai/firebase"));
+  }
+  const telemetryBlock = enableTelemetry
+    ? "\n// Collect telemetry data to enable production monitoring.\n" +
+       "// See https://firebase.google.com/docs/genkit/observability/telemetry-collection.\n" +
+       "enableFirebaseTelemetry();\n"
+    : "";
   const plugins =
     pluginNames.map((pluginName) => `    ${pluginToInfo[pluginName].init},`).join("\n") ||
     "    /* Add your plugins here. */";
   return template
-    .replace("$GENKIT_CONFIG_IMPORTS", imports)
-    .replace("$GENKIT_CONFIG_PLUGINS", plugins);
+    .replace("$GENKIT_CONFIG_IMPORTS", imports.join("\n"))
+    .replace("$GENKIT_CONFIG_PLUGINS", plugins)
+    .replace("$GENKIT_ENABLE_TELEMETRY", telemetryBlock);
 }
 
 function generateImportStatement(imports: string, name: string): string {
