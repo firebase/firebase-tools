@@ -131,7 +131,7 @@ export async function findUser(
       expression: { email?: string; phoneNumber?: string; userId?: string }[];
     },
     {
-      recordCount: string;
+      recordsCount: string;
       userInfo: UserInfo[];
     }
   >(`/v1/projects/${project}/accounts:query`, {
@@ -147,6 +147,50 @@ export async function findUser(
     return ui;
   });
   return modifiedUserInfo[0];
+}
+
+/**
+ * listUsers returns all auth users in a project.
+ * @param project project identifier.
+ * @param limit the total number of users to return.
+ * @return an array of users info
+ */
+export async function listUsers(project: string, limit: number): Promise<UserInfo[]> {
+  let queryLimit = limit;
+  let offset = 0;
+  if (limit > 500) {
+    queryLimit = 500;
+  }
+  const userInfo: UserInfo[] = [];
+  while (offset < limit) {
+    if (queryLimit + offset > limit) {
+      queryLimit = limit - offset;
+    }
+    const res = await apiClient.post<
+      {
+        limit: string;
+        offset: string;
+      },
+      {
+        recordsCount: string;
+        userInfo: UserInfo[];
+      }
+    >(`/v1/projects/${project}/accounts:query`, {
+      offset: offset.toString(),
+      limit: queryLimit.toString(),
+    });
+    if (res.body.recordsCount === "0") {
+      break;
+    }
+    offset += Number(res.body.recordsCount);
+    const modifiedUserInfo = res.body.userInfo.map((ui) => {
+      ui.uid = ui.localId;
+      delete ui.localId;
+      return ui;
+    });
+    userInfo.push(...modifiedUserInfo);
+  }
+  return userInfo;
 }
 
 /**
