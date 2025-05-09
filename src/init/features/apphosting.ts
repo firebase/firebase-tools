@@ -1,19 +1,17 @@
 import * as clc from "colorette";
 import { existsSync } from "fs";
-import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
 import * as ora from "ora";
 import * as path from "path";
 import { webApps } from "../../apphosting/app";
 import {
   createBackend,
+  promptExistingBackend,
   promptLocation,
-  promptNewBackendId
+  promptNewBackendId,
 } from "../../apphosting/backend";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
-import { listBackends, parseBackendName } from "../../gcp/apphosting";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { promptOnce } from "../../prompt";
 import { readTemplateSync } from "../../templates";
@@ -47,8 +45,11 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
     ],
   });
   if (createOrLink === "link") {
-    backendConfig.backendId = await promptExistingBackend(projectId);
-  } else if (createOrLink === "create") {
+    backendConfig.backendId = await promptExistingBackend(
+      projectId,
+      "Which backend would you like to link?",
+    );
+  } else {
     logBullet(`${clc.yellow("===")} Set up your backend`);
     const location = await promptLocation(
       projectId,
@@ -82,10 +83,6 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
       webApp?.id,
     );
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
-  } else {
-    throw new FirebaseError(
-      `Invalid value for createOrLink "${createOrLink}". Please contact Firebase Support with the contents of your firebase-debug.log.`,
-    );
   }
 
   logBullet(`${clc.yellow("===")} Deploy local source setup`);
@@ -113,32 +110,6 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
   );
 
   utils.logSuccess("Firebase initialization complete!");
-}
-
-async function promptExistingBackend(projectId: string): Promise<string> {
-  const { backends } = await listBackends(projectId, "-");
-  const backendId = await promptOnce({
-    type: "autocomplete",
-    name: "backendId",
-    message: "Which backend would you like to link?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          ...fuzzy
-            .filter(input, backends, {
-              extract: (backend) => parseBackendName(backend.name).id,
-            })
-            .map((result) => {
-              return {
-                name: parseBackendName(result.original.name).id,
-                value: parseBackendName(result.original.name).id,
-              };
-            }),
-        ]),
-      );
-    },
-  });
-  return backendId;
 }
 
 /** Exported for unit testing. */

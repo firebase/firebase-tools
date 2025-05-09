@@ -27,6 +27,8 @@ import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
+import * as fuzzy from "fuzzy";
+import * as inquirer from "inquirer";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -424,6 +426,41 @@ export async function getBackendForLocation(
       original: getError(err),
     });
   }
+}
+
+/**
+ * Prompts users to select an existing backend.
+ * @param projectId the user's project ID
+ * @param promptMessage prompt message to display to the user
+ * @return the selected backend ID
+ */
+export async function promptExistingBackend(
+  projectId: string,
+  promptMessage: string,
+): Promise<string> {
+  const { backends } = await apphosting.listBackends(projectId, "-");
+  const backendId = await promptOnce({
+    type: "autocomplete",
+    name: "backendId",
+    message: promptMessage,
+    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy
+            .filter(input, backends, {
+              extract: (backend) => apphosting.parseBackendName(backend.name).id,
+            })
+            .map((result) => {
+              return {
+                name: apphosting.parseBackendName(result.original.name).id,
+                value: apphosting.parseBackendName(result.original.name).id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+  return backendId;
 }
 
 /**
