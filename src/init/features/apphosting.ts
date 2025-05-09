@@ -13,10 +13,10 @@ import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
-import { promptOnce } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
+import { input, select } from "../../prompt";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
@@ -34,9 +34,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
     rootDir: "",
     ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "functions"],
   };
-  const createOrLink: string = await promptOnce({
-    name: "createOrLink",
-    type: "list",
+  const createOrLink: string = await select({
     default: "Create a new backend",
     message: "Please select an option",
     choices: [
@@ -55,12 +53,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
       projectId,
       "Select a primary region to host your backend:\n",
     );
-    const backendId = await promptNewBackendId(projectId, location, {
-      name: "backendId",
-      type: "input",
-      default: "my-web-app",
-      message: "Provide a name for your backend [1-30 characters]",
-    });
+    const backendId = await promptNewBackendId(projectId, location);
     utils.logSuccess(`Name set to ${backendId}\n`);
     backendConfig.backendId = backendId;
 
@@ -86,9 +79,7 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
   }
 
   logBullet(`${clc.yellow("===")} Deploy local source setup`);
-  backendConfig.rootDir = await promptOnce({
-    name: "rootDir",
-    type: "input",
+  backendConfig.rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your firebase.json directory",
   });
