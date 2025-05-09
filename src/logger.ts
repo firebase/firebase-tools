@@ -175,7 +175,7 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export let logger: Logger = maybeUseVSCodeLogger(
+export const logger: Logger = maybeUseVSCodeLogger(
   annotateDebugLines(expandErrors(rawLogger)),
 ) as unknown as Logger;
 
@@ -194,7 +194,7 @@ export function useFileLogger(logFile?: string): string {
       }),
     }),
   );
-  return logFileName
+  return logFileName;
 }
 
 /**
