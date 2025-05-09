@@ -1,0 +1,2 @@
+- Fixed issue where `firebase init firestore` would raise an error due to rules/indexes file path being undefined. (#8518)
+- Fixed issue where Secret Manager API was not automatically enabled for functions using secrets. (#8528)
