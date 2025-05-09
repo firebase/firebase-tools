@@ -20,8 +20,8 @@ import {
 } from "../../../src/dataconnect/dataplaneClient";
 import {
   ExecuteGraphqlRequest,
-  ExecuteGraphqlResponse,
-  ExecuteGraphqlResponseError,
+  GraphqlResponse,
+  GraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
 import { Client, ClientResponse } from "../../../src/apiv2";
@@ -83,33 +83,33 @@ export class DataConnectService {
   }
   private async handleProdResponse(
     response: ClientResponse<
-      ExecuteGraphqlResponse | ExecuteGraphqlResponseError
+      GraphqlResponse | GraphqlResponseError
     >,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse =
-        response as ClientResponse<ExecuteGraphqlResponseError>;
+        response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Prod Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
     }
-    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
+    const successResponse = response as ClientResponse<GraphqlResponse>;
     return successResponse.body;
   }
 
   private async handleEmulatorResponse(
     response: ClientResponse<
-      ExecuteGraphqlResponse | ExecuteGraphqlResponseError
+      GraphqlResponse | GraphqlResponseError
     >,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse =
-        response as ClientResponse<ExecuteGraphqlResponseError>;
+        response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Emulator Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
     }
-    const successResponse = response as ClientResponse<ExecuteGraphqlResponse>;
+    const successResponse = response as ClientResponse<GraphqlResponse>;
     return successResponse.body;
   }
 

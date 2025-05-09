@@ -37,9 +37,7 @@ interface ConnectionNameParts {
   id: string;
 }
 
-// Note: This does not match the sentinel oauth connection
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
-const APPHOSTING_OAUTH_CONN_NAME = "firebase-app-hosting-github-oauth";
 const CONNECTION_NAME_REGEX =
   /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
 
@@ -97,13 +95,10 @@ export function generateRepositoryId(remoteUri: string): string | undefined {
   return extractRepoSlugFromUri(remoteUri)?.replaceAll("/", "-");
 }
 
-/**
- * Generates connection id that matches specific id format recognized by all Firebase clients.
- */
-function generateConnectionId(): string {
+export const generateConnectionId = (): string => {
   const randomHash = Math.random().toString(36).slice(6);
   return `apphosting-github-conn-${randomHash}`;
-}
+};
 
 const ADD_ACCOUNT_CHOICE = "@ADD_ACCOUNT";
 const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
@@ -111,7 +106,7 @@ const MANAGE_INSTALLATION_CHOICE = "@MANAGE_INSTALLATION";
 /**
  * Prompts the user to create a GitHub connection.
  */
-export async function getOrCreateGithubConnectionWithSentinel(
+export async function getOrCreateFullyInstalledGithubConnection(
   projectId: string,
   location: string,
   createConnectionId?: string,
@@ -132,7 +127,7 @@ export async function getOrCreateGithubConnectionWithSentinel(
     }
   }
 
-  // Fetch the sentinel Oauth connection first which is needed to create further GitHub connections.
+  // Just fetch a fully installed App Hosting connection as it would have the oauth credentials required.
   const oauthConn = await getOrCreateOauthConnection(projectId, location);
   let installationId = await promptGitHubInstallation(projectId, location, oauthConn);
 
@@ -186,7 +181,7 @@ export async function linkGitHubRepository(
   location: string,
   createConnectionId?: string,
 ): Promise<devConnect.GitRepositoryLink> {
-  const connection = await getOrCreateGithubConnectionWithSentinel(
+  const connection = await getOrCreateFullyInstalledGithubConnection(
     projectId,
     location,
     createConnectionId,
@@ -357,7 +352,7 @@ export async function listValidInstallations(
 }
 
 /**
- * Gets or creates the sentinel GitHub connection resource that contains our Firebase-wide GitHub Oauth token.
+ * Gets or creates the fully installed GitHub connection resource that contains our Firebase-wide GitHub Oauth token.
  * This Oauth token can be used to create other connections without reprompting the user to grant access.
  */
 export async function getOrCreateOauthConnection(
@@ -365,18 +360,17 @@ export async function getOrCreateOauthConnection(
   location: string,
 ): Promise<devConnect.Connection> {
   let conn: devConnect.Connection;
-  try {
-    conn = await devConnect.getConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-  } catch (err: unknown) {
-    if ((err as any).status === 404) {
-      // Cloud build P4SA requires the secret manager admin role.
-      // This is required when creating an initial connection which is the Oauth connection in our case.
-      await ensureSecretManagerAdminGrant(projectId);
-      conn = await createConnection(projectId, location, APPHOSTING_OAUTH_CONN_NAME);
-    } else {
-      throw err;
-    }
+  const completedConnections = await listAppHostingConnections(projectId, location);
+  if (completedConnections.length > 0) {
+    /**
+     * any valid app hosting connection can be used, we just want the associated
+     * oauth credential, don't care about the connection itself.
+     * */
+    return completedConnections[0];
   }
+
+  await ensureSecretManagerAdminGrant(projectId);
+  conn = await createConnection(projectId, location, generateConnectionId());
 
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("Please authorize the Firebase GitHub app by visiting this url:");
@@ -599,7 +593,6 @@ export async function listAppHostingConnections(
   location: string,
 ): Promise<devConnect.Connection[]> {
   const conns = await devConnect.listAllConnections(projectId, location);
-
   return conns.filter(
     (conn) =>
       APPHOSTING_CONN_PATTERN.test(conn.name) &&

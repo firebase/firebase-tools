@@ -15,7 +15,7 @@ export const get_schema = tool(
         .string()
         .nullable()
         .describe(
-          "The Firebase Data Connect service ID to look for. By default, it would pick the the service ID project directory.",
+          "The Firebase Data Connect service ID to look for. If there is only one service defined in firebase.json, this can be omitted and that will be used.",
         ),
     }),
     annotations: {
