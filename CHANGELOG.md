@@ -1,1 +1,2 @@
 - Fixed issue where `firebase init firestore` would raise an error due to rules/indexes file path being undefined. (#8518)
+- Fixed an issue where `firebase use` required `serviceusage.viewer` permissions. (#8519)
