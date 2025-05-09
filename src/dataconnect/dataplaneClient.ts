@@ -44,7 +44,7 @@ export async function executeGraphQLQuery(
   const res = await client.post<
     types.ExecuteOperationRequest,
     types.GraphqlResponse | types.GraphqlResponseError
-  >(`${connectorPath}:executeGraphql`, body, { resolveOnHTTPError: true });
+  >(`${connectorPath}:executeQuery`, body, { resolveOnHTTPError: true });
   return res;
 }
 
@@ -56,6 +56,6 @@ export async function executeGraphQLMutation(
   const res = await client.post<
     types.ExecuteOperationRequest,
     types.GraphqlResponse | types.GraphqlResponseError
-  >(`${connectorPath}:executeGraphql`, body, { resolveOnHTTPError: true });
+  >(`${connectorPath}:executeMutation`, body, { resolveOnHTTPError: true });
   return res;
 }
