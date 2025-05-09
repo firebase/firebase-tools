@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client";
+import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { schemaToText } from "./converter.js";
 
-export const get_dataconnect_schema = tool(
+export const get_schema = tool(
   {
-    name: "get_dataconnect_schema",
+    name: "get_schema",
     description:
       "List the Firebase Data Connect Schema in the project, which includes Cloud SQL data sources and the GraphQL Schema describing what tables are available.",
     inputSchema: z.object({
@@ -15,7 +15,7 @@ export const get_dataconnect_schema = tool(
         .string()
         .nullable()
         .describe(
-          "The Firebase Data Connect service ID to look for. By default, it would pick the the service ID project directory.",
+          "The Firebase Data Connect service ID to look for. If there is only one service defined in firebase.json, this can be omitted and that will be used.",
         ),
     }),
     annotations: {

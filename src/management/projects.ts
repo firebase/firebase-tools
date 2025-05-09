@@ -9,7 +9,7 @@ import * as api from "../api";
 import { logger } from "../logger";
 import * as utils from "../utils";
 import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project";
-import { ensure } from "../ensureApiEnabled";
+import { bestEffortEnsure } from "../ensureApiEnabled";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -469,7 +469,7 @@ export interface ProjectInfo {
  * @param projectId
  */
 export async function getProject(projectId: string): Promise<ProjectInfo> {
-  await ensure(projectId, api.resourceManagerOrigin(), "firebase", true);
+  await bestEffortEnsure(projectId, api.resourceManagerOrigin(), "firebase", true);
   const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
   return response.body;
 }

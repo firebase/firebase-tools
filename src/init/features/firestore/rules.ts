@@ -24,6 +24,7 @@ export async function initRules(setup: any, config: any): Promise<any> {
       message: "What file should be used for Firestore Rules?",
       default: DEFAULT_RULES_FILE,
     }));
+  setup.config.firestore.rules = filename;
 
   if (fsutils.fileExistsSync(filename)) {
     const msg =

@@ -4,9 +4,9 @@ import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { firestoreDocumentToJson } from "./converter.js";
 
-export const get_firestore_documents = tool(
+export const get_documents = tool(
   {
-    name: "get_firestore_documents",
+    name: "get_documents",
     description:
       "Retrieves one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
