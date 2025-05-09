@@ -13,10 +13,10 @@ import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
+import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
-import { input, select } from "../../prompt";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
