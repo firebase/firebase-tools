@@ -1,2 +1,2 @@
-- Fixed issue where `firebase init firestore` would raise an error due to rules/indexes file path being undefined. (#8518)
 - Fixed issue where Secret Manager API was not automatically enabled for functions using secrets. (#8528)
+- Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
