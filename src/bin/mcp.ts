@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
-import { silenceStdout } from "../logger";
-silenceStdout();
-
+import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
 import { parseArgs } from "util";
 import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
@@ -28,6 +26,7 @@ export async function mcp(): Promise<void> {
     },
     allowPositionals: true,
   });
+  useFileLogger();
   const activeFeatures = (values.only || "")
     .split(",")
     .filter((f) => SERVER_FEATURES.includes(f as ServerFeature)) as ServerFeature[];

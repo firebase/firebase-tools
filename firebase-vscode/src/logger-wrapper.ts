@@ -6,8 +6,7 @@ import { transports, format } from "winston";
 import Transport from "winston-transport";
 import { stripVTControlCharacters } from "node:util";
 import { SPLAT } from "triple-beam";
-import { logger as cliLogger } from "../../src/logger";
-import { setupLoggers, tryStringify } from "../../src/utils";
+import { logger as cliLogger, useConsoleLoggers, useFileLogger } from "../../src/logger";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
 import { getRootFolders } from "./core/config";
 
@@ -40,7 +39,7 @@ for (const logLevel in pluginLogger) {
 export function logSetup() {
   // Log to console (use built in CLI functionality)
   process.env.DEBUG = "true";
-  setupLoggers();
+  useConsoleLoggers();
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.
@@ -62,18 +61,7 @@ export function logSetup() {
     filePath = path.join(rootFolders[0], ".firebase", "logs", "vsce-debug.log");
   }
   pluginLogger.info("Logging to path", filePath);
-  cliLogger.add(
-    new transports.File({
-      level: "debug",
-      filename: filePath,
-      format: format.printf((info) => {
-        const segments = [info.message, ...(info[SPLAT] || [])].map(
-          tryStringify,
-        );
-        return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
-      }),
-    }),
-  );
+  useFileLogger(filePath);
   cliLogger.add(new VSCodeOutputTransport({ level: "info" }));
 }
 
