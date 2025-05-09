@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError } from "../../util.js";
-import { deleteDocument, getDocuments } from "../../../gcp/firestore.js";
+import { mcpError, toContent } from "../../util.js";
+import { getDocuments } from "../../../gcp/firestore.js";
+import { FirestoreDelete } from "../../../firestore/delete.js";
 
 export const delete_document = tool(
   {
@@ -36,14 +37,16 @@ export const delete_document = tool(
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
-    await deleteDocument(path);
+    const firestoreDelete = new FirestoreDelete(projectId!, path, { databaseId: "(default)" });
+
+    await firestoreDelete.execute();
 
     const { documents: postDeleteDocuments, missing: postDeleteMissing } = await getDocuments(
       projectId!,
       [path],
     );
     if (postDeleteMissing.length > 0 && postDeleteDocuments.length === 0) {
-      return `Successfully removed document located at : ${path}`;
+      return toContent(`Successfully removed document located at : ${path}`);
     }
 
     return mcpError(`Failed to remove document located at : ${path}`);
