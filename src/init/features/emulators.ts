@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as utils from "../../utils";
-import { prompt } from "../../prompt";
+import { confirm, checkbox, number } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
@@ -17,22 +17,20 @@ export async function doSetup(setup: Setup, config: Config) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
+      // TODO: latest versions of inquirer have a name vs description.
+      // We should learn more and whether it's worth investing in.
       name: Constants.description(e),
-      checked: config && (config.has(e) || config.has(`emulators.${e}`)),
+      checked: config?.has(e) || config?.has(`emulators.${e}`),
     };
   });
 
   const selections: EmulatorsInitSelections = {};
-  await prompt(selections, [
-    {
-      type: "checkbox",
-      name: "emulators",
-      message:
-        "Which Firebase emulators do you want to set up? " +
-        "Press Space to select emulators, then Enter to confirm your choices.",
-      choices: choices,
-    },
-  ]);
+  selections.emulators = await checkbox<Emulators>({
+    message:
+      "Which Firebase emulators do you want to set up? " +
+      "Press Space to select emulators, then Enter to confirm your choices.",
+    choices: choices,
+  });
 
   if (!selections.emulators) {
     return;
@@ -46,14 +44,10 @@ export async function doSetup(setup: Setup, config: Config) {
     if (currentPort) {
       utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
     } else {
-      await prompt(setup.config.emulators[selected], [
-        {
-          type: "number",
-          name: "port",
-          message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
-          default: Constants.getDefaultPort(selected as Emulators),
-        },
-      ]);
+      setup.config.emulators[selected].port = await number({
+        message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
+        default: Constants.getDefaultPort(selected),
+      });
     }
 
     const additionalInitFn = AdditionalInitFns[selected];
@@ -77,25 +71,15 @@ export async function doSetup(setup: Setup, config: Config) {
       const ui = setup.config.emulators.ui || {};
       setup.config.emulators.ui = ui;
 
-      await prompt(ui, [
-        {
-          name: "enabled",
-          type: "confirm",
-          message: `Would you like to enable the ${uiDesc}?`,
-          default: true,
-        },
-      ]);
+      ui.enabled = await confirm({
+        message: `Would you like to enable the ${uiDesc}?`,
+        default: true,
+      });
 
       if (ui.enabled) {
-        await prompt(ui, [
-          {
-            type: "input",
-            name: "port",
-            message: `Which port do you want to use for the ${clc.underline(
-              uiDesc,
-            )} (leave empty to use any available port)?`,
-          },
-        ]);
+        ui.port = await number(
+          `Which port do you want to use for the ${clc.underline(uiDesc)} (leave empty to use any available port)?`,
+        );
 
         // Parse the input as a number
         const portNum = Number.parseInt(ui.port);
@@ -103,14 +87,10 @@ export async function doSetup(setup: Setup, config: Config) {
       }
     }
 
-    await prompt(selections, [
-      {
-        name: "download",
-        type: "confirm",
-        message: "Would you like to download the emulators now?",
-        default: true,
-      },
-    ]);
+    selections.download = await confirm({
+      message: "Would you like to download the emulators now?",
+      default: true,
+    });
   }
 
   // Set the default behavior to be single project mode.

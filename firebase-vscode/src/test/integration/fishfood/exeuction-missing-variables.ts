@@ -21,7 +21,7 @@ firebaseSuite("Execution", async function () {
     const commands = new FirebaseCommands();
     await commands.waitForUser();
 
-    const notication = new Notifications(workbench);
+    const notification = new Notifications(workbench);
 
     await mockUser({ email: "test@gmail.com" });
     await mockProject("test-project");
@@ -41,12 +41,12 @@ firebaseSuite("Execution", async function () {
     await editor.runLocalButton.waitForDisplayed();
     await editor.runLocalButton.click();
     
-    const editVariablesNotif = await notication.getEditVariablesNotification();
+    const editVariablesNotif = await notification.getEditVariablesNotification();
 
     if (!editVariablesNotif) {
       throw(new Error("Edit Variables Notification not found"));
     }
-    await notication.editVariablesFromNotification(editVariablesNotif);
+    await notification.editVariablesFromNotification(editVariablesNotif);
 
     expect(await execution.getVariables()).toEqual(`{"id":"42","content":""}`);
 

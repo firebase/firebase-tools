@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { confirm, promptOnce } from "../../../prompt";
+import { confirm, input, select } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -124,14 +124,14 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     info.locationId === "" ||
     info.cloudSqlDatabase === "";
   const shouldConfigureBackend =
-    isBillingEnabled && requiredConfigUnset
-      ? await confirm({
-          message: `Would you like to configure your backend resources now?`,
-          // For Blaze Projects, configure Cloud SQL by default.
-          // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
-          default: true,
-        })
-      : false;
+    isBillingEnabled &&
+    requiredConfigUnset &&
+    (await confirm({
+      message: `Would you like to configure your backend resources now?`,
+      // For Blaze Projects, configure Cloud SQL by default.
+      // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+      default: true,
+    }));
   if (shouldConfigureBackend) {
     info = await promptForService(info);
     info = await promptForCloudSQL(setup, info);
@@ -165,10 +165,9 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
   if (setup.projectId && info.shouldProvisionCSQL) {
     await provisionCloudSql({
       projectId: setup.projectId,
-      locationId: info.locationId,
+      location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
-      configYamlPath: join(config.get("dataconnect.source"), "dataconnect.yaml"),
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
@@ -299,7 +298,11 @@ async function promptForExistingServices(
     if (serviceFromEnvVar) {
       choice = serviceFromEnvVar;
     } else {
-      const choices: { name: string; value: { service: Service; schema?: Schema } | undefined }[] =
+      interface Choice {
+        service: Service;
+        schema?: Schema;
+      }
+      const choices: Array<{ name: string; value: Choice | undefined }> =
         existingServicesAndSchemas.map((s) => {
           const serviceName = parseServiceName(s.service.name);
           return {
@@ -308,10 +311,9 @@ async function promptForExistingServices(
           };
         });
       choices.push({ name: "Create a new service", value: undefined });
-      choice = await promptOnce({
+      choice = await select<Choice | undefined>({
         message:
           "Your project already has existing services. Which would you like to set up local files for?",
-        type: "list",
         choices,
       });
     }
@@ -370,10 +372,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
     if (choices.length) {
       if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
         choices.push({ name: "Create a new free trial instance", value: "", location: "" });
+      } else {
+        choices.push({ name: "Create a new CloudSQL instance", value: "", location: "" });
       }
-      info.cloudSqlInstanceId = await promptOnce({
+      info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
-        type: "list",
         choices,
       });
       if (info.cloudSqlInstanceId !== "") {
@@ -386,17 +389,15 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   // No existing instance found or choose to create new instance.
   if (info.cloudSqlInstanceId === "") {
     info.isNewInstance = true;
-    info.cloudSqlInstanceId = await promptOnce({
+    info.cloudSqlInstanceId = await input({
       message: `What ID would you like to use for your new CloudSQL instance?`,
-      type: "input",
       default: `${info.serviceId.toLowerCase() || "app"}-fdc`,
     });
   }
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
-    info.locationId = await promptOnce({
+    info.locationId = await select<string>({
       message: "What location would like to use?",
-      type: "list",
       choices,
     });
   }
@@ -411,9 +412,8 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
       });
       choices.push({ name: "Create a new database", value: "" });
       if (dbs.length) {
-        info.cloudSqlDatabase = await promptOnce({
+        info.cloudSqlDatabase = await select<string>({
           message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
-          type: "list",
           choices,
         });
       }
@@ -428,9 +428,8 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   // Prompt for a name.
   if (info.cloudSqlDatabase === "") {
     info.isNewDatabase = true;
-    info.cloudSqlDatabase = await promptOnce({
+    info.cloudSqlDatabase = await input({
       message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
-      type: "input",
       default: `fdcdb`,
     });
   }
@@ -439,9 +438,8 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
 
 async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
   if (info.serviceId === "") {
-    info.serviceId = await promptOnce({
+    info.serviceId = await input({
       message: "What ID would you like to use for this service?",
-      type: "input",
       default: basename(process.cwd()),
     });
   }

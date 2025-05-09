@@ -421,7 +421,7 @@ describe("cloudfunctionsv2", () => {
       });
     });
 
-    it("should expand shorthand SA to full email", () => {
+    it("should expand shorthand service account to full email", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint({
           ...ENDPOINT,
@@ -433,6 +433,22 @@ describe("cloudfunctionsv2", () => {
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           serviceAccountEmail: `sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
+        },
+      });
+    });
+
+    it("should handle null service account", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          serviceAccount: null,
+          httpsTrigger: {},
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: null,
         },
       });
     });

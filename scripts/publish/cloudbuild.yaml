@@ -117,6 +117,22 @@ steps:
     entrypoint: "node"
     args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
 
+  # Grab the latest version, store in workspace
+  - id: "Read New Version Number from npm"
+    name: "node"
+    entrypoint: "sh"
+    args: ["-c", "npm view firebase-tools version > /workspace/version_number.txt"]
+
+  # Publish the Firebase docker image
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "sh"
+    args:
+      - "-c"
+      - "docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ."
+
+images:
+  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+
 timeout: 1200s # 20 minutes
 
 options:
@@ -130,3 +146,4 @@ substitutions:
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
   _REPOSITORY_NAME: "firebase-tools"
+  _ARTIFACT_REGISTRY_PROJECT: "firebase-cli"

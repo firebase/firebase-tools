@@ -3,6 +3,7 @@ import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { logWarning } from "../utils";
 
 export const command = new Command("apphosting:builds:create <backendId>")
@@ -10,6 +11,7 @@ export const command = new Command("apphosting:builds:create <backendId>")
   .option("-l, --location <location>", "specify the region of the backend")
   .option("-i, --id <buildId>", "id of the build (defaults to autogenerating a random id)", "")
   .option("-b, --branch <branch>", "repository branch to deploy (defaults to 'main')", "main")
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);

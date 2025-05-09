@@ -9,13 +9,15 @@ import * as cloudbilling from "../gcp/cloudbilling";
 const expect = chai.expect;
 
 describe("checkProjectBilling", () => {
-  let promptOnceStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
+  let selectStub: sinon.SinonStub;
   let checkBillingEnabledStub: sinon.SinonStub;
   let listBillingAccountsStub: sinon.SinonStub;
   let setBillingAccountStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm");
+    selectStub = sinon.stub(prompt, "select");
 
     checkBillingEnabledStub = sinon.stub(cloudbilling, "checkBillingEnabled");
     checkBillingEnabledStub.resolves();
@@ -28,7 +30,8 @@ describe("checkProjectBilling", () => {
   });
 
   afterEach(() => {
-    promptOnceStub.restore();
+    confirmStub.restore();
+    selectStub.restore();
     checkBillingEnabledStub.restore();
     listBillingAccountsStub.restore();
     setBillingAccountStub.restore();
@@ -46,7 +49,8 @@ describe("checkProjectBilling", () => {
 
     expect(listBillingAccountsStub.notCalled);
     expect(setBillingAccountStub.notCalled);
-    expect(promptOnceStub.notCalled);
+    expect(confirmStub.notCalled);
+    expect(selectStub.notCalled);
   });
 
   it("should list accounts if no billing account set, but accounts available.", async () => {
@@ -62,7 +66,7 @@ describe("checkProjectBilling", () => {
     checkBillingEnabledStub.resolves(false);
     listBillingAccountsStub.resolves(accounts);
     setBillingAccountStub.resolves(true);
-    promptOnceStub.resolves("test-account");
+    selectStub.resolves("test-account");
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
@@ -80,7 +84,6 @@ describe("checkProjectBilling", () => {
     checkBillingEnabledStub.onCall(0).resolves(false);
     checkBillingEnabledStub.onCall(1).resolves(true);
     listBillingAccountsStub.resolves([]);
-    promptOnceStub.resolves();
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {

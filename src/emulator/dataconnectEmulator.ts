@@ -362,6 +362,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       account,
       EmulatorLogger.forEmulator(Emulators.DATACONNECT),
       "dataconnect",
+      true,
     );
     return { ...process.env, ...extraEnv, ...credsEnv };
   }

@@ -47,9 +47,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.14.0",
-        expectedSize: 3615311,
-        expectedChecksum: "30763ff4a8b81e2c482f05b56799b5c0",
+        version: "1.15.0",
+        expectedSize: 3538469,
+        expectedChecksum: "2f13d5aea9524564c8b7adaa9cfa2128",
       },
   pubsub: {
     version: "0.8.14",
@@ -59,20 +59,20 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   dataconnect:
     process.platform === "darwin" // macos
       ? {
-          version: "2.0.0",
-          expectedSize: 26440448,
-          expectedChecksum: "64fd9ad182e59a46b9462757db6d5aac",
+          version: "2.5.0",
+          expectedSize: 27378432,
+          expectedChecksum: "d18bc3a07be90886f6ec212f3393b66e",
         }
       : process.platform === "win32" // windows
         ? {
-            version: "2.0.0",
-            expectedSize: 26884096,
-            expectedChecksum: "92d654dfbb07fee4e1db2328ba6e00a7",
+            version: "2.5.0",
+            expectedSize: 27836416,
+            expectedChecksum: "d335e9295b00381eb12682bc944ffef7",
           }
         : {
-            version: "2.0.0", // linux
-            expectedSize: 26353816,
-            expectedChecksum: "29c7a57a00cb11f44f9b0ffb4710bbd2",
+            version: "2.5.0", // linux
+            expectedSize: 27295896,
+            expectedChecksum: "dc44dbfd972a9b3608794909df517077",
           },
 };
 

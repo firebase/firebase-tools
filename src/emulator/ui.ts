@@ -6,14 +6,21 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Constants } from "./constants";
-import { emulatorSession } from "../track";
+import { AnalyticsSession, emulatorSession } from "../track";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
-import { EmulatorHub } from "./hub";
+import { EmulatorHub, GetEmulatorsResponse } from "./hub";
 
 export interface EmulatorUIOptions {
   listen: ListenSpec[];
   projectId: string;
+}
+
+// Response shape for /api/config endpoint. Contains info about which emulators are running and where.
+interface EmulatorConfigInfo extends GetEmulatorsResponse {
+  projectId: string;
+  experiments: string[];
+  analytics?: AnalyticsSession;
 }
 
 export class EmulatorUI extends ExpressBasedEmulator {
@@ -49,27 +56,17 @@ export class EmulatorUI extends ExpressBasedEmulator {
 
     // Exposes the host and port of various emulators to facilitate accessing
     // them using client SDKs. For features that involve multiple emulators or
-    // hard to accomplish using client SDKs, consider adding an API below.
+    // hard to accomplish using client SDKs, consider adding an API below
     app.get(
       "/api/config",
       this.jsonHandler(() => {
-        const json = {
+        const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
+        const json: EmulatorConfigInfo = {
           projectId,
-          experiments: [],
-          ...(hub! as EmulatorHub).getRunningEmulatorsMapping(),
+          experiments: enabledExperiments ?? [],
+          analytics: emulatorGaSession,
+          ...emulatorInfos,
         };
-
-        // Googlers: see go/firebase-emulator-ui-usage-collection-design?pli=1#heading=h.jwz7lj6r67z8
-        // for more detail
-        if (emulatorGaSession) {
-          json.analytics = emulatorGaSession;
-        }
-
-        // pick up any experiments enabled with `firebase experiment:enable`
-        if (enabledExperiments) {
-          json.experiments = enabledExperiments;
-        }
-
         return Promise.resolve(json);
       }),
     );

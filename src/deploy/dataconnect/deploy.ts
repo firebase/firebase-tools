@@ -8,7 +8,6 @@ import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
-import { join } from "node:path";
 import { confirm } from "../../prompt";
 
 /**
@@ -94,10 +93,9 @@ export default async function (
           const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
           return provisionCloudSql({
             projectId,
-            locationId: parseServiceName(s.serviceName).location,
+            location: parseServiceName(s.serviceName).location,
             instanceId,
             databaseId,
-            configYamlPath: join(s.sourceDirectory, "dataconnect.yaml"),
             enableGoogleMlIntegration,
             waitForCreation: true,
           });
