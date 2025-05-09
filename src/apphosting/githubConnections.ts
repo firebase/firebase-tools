@@ -362,6 +362,10 @@ export async function getOrCreateOauthConnection(
   let conn: devConnect.Connection;
   const completedConnections = await listAppHostingConnections(projectId, location);
   if (completedConnections.length > 0) {
+    /**
+     * any valid app hosting connection can be used, we just want the associated
+     * oauth credential, don't care about the connection itself.
+     * */
     return completedConnections[0];
   }
 
