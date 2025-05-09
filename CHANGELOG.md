@@ -1,1 +1,2 @@
 - Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
+- Enhance firebase init apphosting to support local source deploys. (#8479)
