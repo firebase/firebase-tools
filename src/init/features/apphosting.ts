@@ -6,6 +6,7 @@ import { webApps } from "../../apphosting/app";
 import {
   createBackend,
   promptExistingBackend,
+  ensureAppHostingComputeServiceAccount,
   promptLocation,
   promptNewBackendId,
 } from "../../apphosting/backend";
@@ -26,6 +27,21 @@ const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.ya
 export async function doSetup(setup: any, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
   await checkBillingEnabled(projectId);
+  // N.B. To deploy from source, the App Hosting Compute Service Account must have
+  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
+  // not add the objectViewer role, which means all existing customers will need to
+  // add it before deploying from source.
+  //
+  // We don't want to update the IAM permissions right before attempting to deploy,
+  // since IAM propagation delay will likely cause the first one to fail. However,
+  // `firebase init apphosting` is a prerequisite to the `firebase deploy` command,
+  // so we check and add the role here to give the IAM changes time to propagate.
+  await ensureAppHostingComputeServiceAccount(
+    projectId,
+    /* serviceAccount= */ null,
+    /* deployFromSource= */ true,
+  );
+
   utils.logBullet(
     "This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup.",
   );
