@@ -369,9 +369,8 @@ export async function getOrCreateOauthConnection(
     return completedConnections[0];
   }
 
-  const connectionId = generateConnectionId();
   await ensureSecretManagerAdminGrant(projectId);
-  conn = await createConnection(projectId, location, connectionId);
+  conn = await createConnection(projectId, location, generateConnectionId());
 
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {
     utils.logBullet("Please authorize the Firebase GitHub app by visiting this url:");
