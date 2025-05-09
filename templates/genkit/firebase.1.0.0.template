@@ -20,7 +20,7 @@ const ai = genkit({
 $GENKIT_CONFIG_PLUGINS
   ],
 });
-
+$GENKIT_ENABLE_TELEMETRY
 // Define a simple flow that prompts an LLM to generate menu suggestions.
 const menuSuggestionFlow = ai.defineFlow({
     name: "menuSuggestionFlow",
