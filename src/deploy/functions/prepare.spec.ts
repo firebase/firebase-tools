@@ -2,6 +2,8 @@ import { expect } from "chai";
 
 import * as backend from "./backend";
 import * as prepare from "./prepare";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as serviceusage from "../../gcp/serviceusage";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as sinon from "sinon";
 import * as prompt from "../../prompt";
@@ -417,6 +419,98 @@ describe("prepare", () => {
           {} as any,
         ),
       ).to.be.rejectedWith(FirebaseError);
+    });
+  });
+
+  describe("ensureAllRequiredAPIsEnabled", () => {
+    let sinonSandbox: sinon.SinonSandbox;
+    let ensureApiStub: sinon.SinonStub;
+    let generateServiceIdentityStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sinonSandbox = sinon.createSandbox();
+      ensureApiStub = sinonSandbox.stub(ensureApiEnabled, "ensure").resolves();
+      generateServiceIdentityStub = sinonSandbox
+        .stub(serviceusage, "generateServiceIdentity")
+        .resolves();
+    });
+
+    afterEach(() => {
+      sinonSandbox.restore();
+    });
+
+    it("should not enable any APIs for an empty backend", async () => {
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty());
+      expect(ensureApiStub.called).to.be.false;
+      expect(generateServiceIdentityStub.called).to.be.false;
+    });
+
+    it("should enable APIs from backend.requiredAPIs", async () => {
+      const api1 = "testapi1.googleapis.com";
+      const api2 = "testapi2.googleapis.com";
+      const b = backend.empty();
+      b.requiredAPIs = [{ api: api1 }, { api: api2 }];
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b);
+      expect(ensureApiStub.calledWith("project", api1, "functions", false)).to.be.true;
+      expect(ensureApiStub.calledWith("project", api2, "functions", false)).to.be.true;
+    });
+
+    it("should enable Secret Manager API if secrets are used ", async () => {
+      const e: backend.Endpoint = {
+        id: "hasSecrets",
+        platform: "gcfv1",
+        region: "us-central1",
+        project: "project",
+        entryPoint: "entry",
+        runtime: "nodejs22",
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "secret",
+            projectId: "project",
+          },
+        ],
+      };
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      expect(
+        ensureApiStub.calledWith(
+          "project",
+          "https://secretmanager.googleapis.com",
+          "functions",
+          false,
+        ),
+      ).to.be.true;
+    });
+
+    it("should enable GCFv2 APIs and generate required service identities", async () => {
+      const e: backend.Endpoint = {
+        id: "v2",
+        platform: "gcfv2",
+        region: "us-central1",
+        project: "project",
+        entryPoint: "entry",
+        runtime: "nodejs22",
+        httpsTrigger: {},
+      };
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+
+      expect(ensureApiStub.calledWith("project", "https://run.googleapis.com", "functions")).to.be
+        .true;
+      expect(ensureApiStub.calledWith("project", "https://eventarc.googleapis.com", "functions")).to
+        .be.true;
+      expect(ensureApiStub.calledWith("project", "https://pubsub.googleapis.com", "functions")).to
+        .be.true;
+      expect(ensureApiStub.calledWith("project", "https://storage.googleapis.com", "functions")).to
+        .be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "pubsub.googleapis.com", "functions"),
+      ).to.be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "eventarc.googleapis.com", "functions"),
+      ).to.be.true;
     });
   });
 });

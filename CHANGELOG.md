@@ -1,2 +1,3 @@
+- Fixed issue where Secret Manager API was not automatically enabled for functions using secrets. (#8528)
 - Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
 - Enhance firebase init apphosting to support local source deploys. (#8479)
