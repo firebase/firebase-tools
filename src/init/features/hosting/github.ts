@@ -132,7 +132,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   // If the developer is using predeploy scripts in firebase.json,
   // remind them before they set up a script in their workflow file.
-  if (setup.config.hosting.predeploy) {
+  if ((setup.config.hosting as any).predeploy) {
     logBullet(`You have a predeploy script configured in firebase.json.`);
   }
 

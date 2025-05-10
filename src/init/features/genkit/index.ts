@@ -162,7 +162,8 @@ function showStartMessage(setup: GenkitSetup, command: string): void {
 /**
  * doSetup is the entry point for setting up the genkit suite.
  */
-export async function doSetup(setup: GenkitSetup, config: Config, options: Options): Promise<void> {
+export async function doSetup(initSetup: Setup, config: Config, options: Options): Promise<void> {
+  const setup: GenkitSetup = initSetup as GenkitSetup;
   const genkitInfo = await getGenkitInfo();
   if (genkitInfo.stopInstall) {
     logLabeledWarning("genkit", "Stopped Genkit initialization");
