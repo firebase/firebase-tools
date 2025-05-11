@@ -7,19 +7,20 @@ export const set_claim = tool(
   {
     name: "set_claims",
     description:
-      "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value.",
+      "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value. Specify ONLY ONE OF `value` or `json_value` parameters.",
     inputSchema: z.object({
       uid: z.string().describe("the UID of the user to update"),
       claim: z.string().describe("the name (key) of the claim to update, e.g. 'admin'"),
       value: z
-        .union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.record(z.union([z.string(), z.number(), z.boolean()])),
-          z.array(z.union([z.string(), z.number(), z.boolean()])),
-        ])
-        .describe("the value of the custom claim"),
+        .union([z.string(), z.number(), z.boolean()])
+        .describe("set the value of the custom claim to the specified simple scalar value")
+        .optional(),
+      json_value: z
+        .string()
+        .optional()
+        .describe(
+          "set the claim to a complex JSON value like an object or an array. string must be parseable as valid JSON",
+        ),
     }),
     annotations: {
       title: "Set custom Firebase Auth claim",
