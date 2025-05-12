@@ -180,6 +180,30 @@ export async function doSetup(
 }
 
 /**
+ * Setup up a new App Hosting backend to deploy from source.
+ */
+export async function doSetupSourceDeploy(
+  projectId: string,
+  backendId: string,
+): Promise<{ backend: Backend; location: string }> {
+  const location = await promptLocation(
+    projectId,
+    "Select a primary region to host your backend:\n",
+  );
+  const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
+  const createBackendSpinner = ora("Creating your new backend...").start();
+  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+  return {
+    backend,
+    location,
+  };
+}
+
+/**
  * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
  */
 export async function createGitRepoLink(

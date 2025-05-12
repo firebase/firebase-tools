@@ -1,4 +1,3 @@
-import * as ora from "ora";
 import * as path from "path";
 import {
   artifactRegistryDomain,
@@ -8,11 +7,9 @@ import {
   iamOrigin,
   secretManagerOrigin,
 } from "../../api";
-import { webApps } from "../../apphosting/app";
 import {
-  createBackend,
+  doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
-  promptLocation,
 } from "../../apphosting/backend";
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
@@ -57,6 +54,7 @@ export default async function (context: Context, options: Options): Promise<void
     const filteredBackends = backends.filter(
       (backend) => parseBackendName(backend.name).id === cfg.backendId,
     );
+    let location: string;
     if (filteredBackends.length === 0) {
       if (options.force) {
         throw new FirebaseError(
@@ -66,32 +64,13 @@ export default async function (context: Context, options: Options): Promise<void
         );
       }
       logBullet(`No backend '${cfg.backendId}' found. Creating a new backend...`);
-      const location = await promptLocation(
-        projectId,
-        "Select a primary region to host your backend:\n",
-      );
-      const webApp = await webApps.getOrCreateWebApp(projectId, null, cfg.backendId);
-      if (!webApp) {
-        logWarning(`Firebase web app not set`);
-      }
-      const createBackendSpinner = ora("Creating your new backend...").start();
-      const backend = await createBackend(
-        projectId,
-        location,
-        cfg.backendId,
-        null,
-        undefined,
-        webApp?.id,
-      );
-      createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
-      context.backendConfigs.set(cfg.backendId, cfg);
-      context.backendLocations.set(cfg.backendId, location);
+      ({ location } = await doSetupSourceDeploy(projectId, cfg.backendId));
     } else if (filteredBackends.length === 1) {
-      const backend = filteredBackends[0];
-      const { location } = parseBackendName(backend.name);
       if (cfg.alwaysDeployFromSource === false) {
         continue;
       }
+      const backend = filteredBackends[0];
+      ({ location } = parseBackendName(backend.name));
       // We prompt the user for confirmation if they are attempting to deploy from source
       // when the backend already has a remote repo connected. We force deploy if the command
       // is run with the --force flag.
@@ -104,9 +83,8 @@ export default async function (context: Context, options: Options): Promise<void
           id,
         );
 
-        let confirmDeploy: boolean;
         if (!options.force) {
-          confirmDeploy = await confirm({
+          const confirmDeploy = await confirm({
             default: true,
             message: `${cfg.backendId} is linked to the remote repository at ${gitRepositoryLink.cloneUri}. Are you sure you want to deploy your local source?`,
           });
@@ -116,16 +94,12 @@ export default async function (context: Context, options: Options): Promise<void
           logBullet(
             `Your deployment preferences have been saved to firebase.json. On future invocations of "firebase deploy", your local source will be deployed to my-backend. You can edit this setting in your firebase.json at any time.`,
           );
-        } else {
-          confirmDeploy = true;
-        }
-        if (!confirmDeploy) {
-          logWarning(`Skipping deployment of backend ${cfg.backendId}`);
-          continue;
+          if (!confirmDeploy) {
+            logWarning(`Skipping deployment of backend ${cfg.backendId}`);
+            continue;
+          }
         }
       }
-      context.backendConfigs.set(cfg.backendId, cfg);
-      context.backendLocations.set(cfg.backendId, location);
     } else {
       const locations = filteredBackends.map((b) => parseBackendName(b.name).location);
       throw new FirebaseError(
@@ -133,6 +107,8 @@ export default async function (context: Context, options: Options): Promise<void
           "Please delete and recreate any backends that share an ID with another backend.",
       );
     }
+    context.backendConfigs.set(cfg.backendId, cfg);
+    context.backendLocations.set(cfg.backendId, location);
   }
   return;
 }
@@ -161,7 +137,7 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
     }
     if (selector.startsWith("apphosting:")) {
       const backendId = selector.replace("apphosting:", "");
-      if (selector.length > 0) {
+      if (backendId.length > 0) {
         backendIds.push(backendId);
       }
     }
@@ -169,13 +145,5 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
   if (backendIds.length === 0) {
     return [];
   }
-
-  const filtered = [];
-  for (const id of backendIds) {
-    const cfg = backendConfigs.find((cfg) => cfg.backendId === id);
-    if (cfg) {
-      filtered.push(cfg);
-    }
-  }
-  return filtered;
+  return backendConfigs.filter((cfg) => backendIds.includes(cfg.backendId));
 }

@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { webApps } from "../../apphosting/app";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
@@ -47,25 +46,17 @@ describe("apphosting", () => {
     }),
   };
 
-  let promptOnceStub: sinon.SinonStub;
-  let promptLocationStub: sinon.SinonStub;
-  let getOrCreateWebAppStub: sinon.SinonStub;
-  let createBackendStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
+  let doSetupSourceDeployStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
-    promptOnceStub = sinon.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
-    promptLocationStub = sinon
-      .stub(backend, "promptLocation")
-      .throws("Unexpected promptLocation call");
-    getOrCreateWebAppStub = sinon
-      .stub(webApps, "getOrCreateWebApp")
-      .throws("Unexpected getOrCreateWebAppStub call");
-    createBackendStub = sinon
-      .stub(backend, "createBackend")
-      .throws("Unexpected createBackend call");
+    confirmStub = sinon.stub(prompt, "confirm").throws("Unexpected confirm call");
+    doSetupSourceDeployStub = sinon
+      .stub(backend, "doSetupSourceDeploy")
+      .throws("Unexpected doSetupSourceDeploy call");
     listBackendsStub = sinon
       .stub(apphosting, "listBackends")
       .throws("Unexpected listBackends call");
@@ -106,22 +97,11 @@ describe("apphosting", () => {
       listBackendsStub.onFirstCall().resolves({
         backends: [],
       });
-      promptLocationStub.onFirstCall().resolves("us-central1");
-      getOrCreateWebAppStub.onFirstCall().resolves({
-        id: "my-web-app",
-      });
-      createBackendStub.onFirstCall().resolves({ name: "foo" });
+      doSetupSourceDeployStub.resolves({ location: "us-central1" });
 
       await prepare(context, opts);
 
-      expect(createBackendStub).to.be.calledWith(
-        "my-project",
-        "us-central1",
-        "foo",
-        null,
-        undefined,
-        "my-web-app",
-      );
+      expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo");
       expect(context.backendLocations.get("foo")).to.equal("us-central1");
       expect(context.backendConfigs.get("foo")).to.deep.equal({
         backendId: "foo",
@@ -176,7 +156,7 @@ describe("apphosting", () => {
       getGitRepositoryLinkStub.onFirstCall().resolves({
         cloneUri: "github.com/my-org/foo.git",
       });
-      promptOnceStub.onFirstCall().resolves(true);
+      confirmStub.onFirstCall().resolves(true);
 
       await prepare(context, opts);
 

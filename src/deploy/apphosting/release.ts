@@ -41,10 +41,8 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
-  const multipleRolloutsMessage = `Starting new rollouts for backends ${Array.from(context.backendConfigs.keys()).join(", ")}`;
-  const singleRolloutMessage = `Starting a new rollout for backend ${Array.from(context.backendConfigs.keys()).join(", ")}`;
   logBullet(
-    `${rollouts.length > 1 ? multipleRolloutsMessage : singleRolloutMessage}; this may take a few minutes. It's safe to exit now.`,
+    `Starting rollout(s) for backend(s) ${Array.from(context.backendConfigs.keys()).join(", ")}; this may take a few minutes. It's safe to exit now.`,
   );
   const results = await Promise.allSettled(rollouts);
   for (let i = 0; i < results.length; i++) {
