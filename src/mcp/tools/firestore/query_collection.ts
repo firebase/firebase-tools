@@ -76,7 +76,6 @@ export const query_collection = tool(
     const structuredQuery: StructuredQuery = {
       from: [{ collectionId: collectionPath, allDescendants: false }],
     };
-    console.error(JSON.stringify(filter));
     if (filter.where) {
       structuredQuery.where = {
         fieldFilter: {
@@ -96,7 +95,6 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    console.error(JSON.stringify(structuredQuery));
     const { documents } = await queryCollection(projectId!, structuredQuery);
 
     const docs = documents.map(firestoreDocumentToJson);
