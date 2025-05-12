@@ -142,6 +142,28 @@ interface GetDefaultBucketResponse {
   };
 }
 
+interface CreateBucketRequest {
+  name: string;
+  location: string;
+  lifecycle: {
+    rule: LifecycleRule[];
+  };
+}
+
+interface LifecycleRule {
+  action: {
+    type: string;
+  };
+  condition: {
+    age: number;
+  };
+}
+
+interface UploadObjectResponse {
+  selfLink: string;
+  mediaLink: string;
+}
+
 /** Response type for obtaining the storage service agent */
 interface StorageServiceAccountResponse {
   email_address: string;
@@ -230,7 +252,11 @@ export async function uploadObject(
   source: { file: string; stream: Readable },
   /** Bucket to upload to. */
   bucketName: string,
-): Promise<{ bucket: string; object: string; generation: string | null }> {
+): Promise<{
+  bucket: string;
+  object: string;
+  generation: string | null;
+}> {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
@@ -250,6 +276,20 @@ export async function uploadObject(
     object: path.basename(source.file),
     generation: res.response.headers.get("x-goog-generation"),
   };
+}
+
+/**
+ * Get a storage object from GCP.
+ * @param {string} bucketName name of the storage bucket that contains the object
+ * @param {string} objectName name of the object
+ */
+export async function getObject(
+  bucketName: string,
+  objectName: string,
+): Promise<UploadObjectResponse> {
+  const client = new Client({ urlPrefix: storageOrigin() });
+  const res = await client.get<UploadObjectResponse>(`/storage/v1/b/${bucketName}/o/${objectName}`);
+  return res.body;
 }
 
 /**
@@ -275,6 +315,36 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
   } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to obtain the storage bucket", {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Creates a storage bucket on GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/insert
+ * @param {string} bucketName name of the storage bucket
+ * @return a bucket resource object
+ */
+export async function createBucket(
+  projectId: string,
+  req: CreateBucketRequest,
+): Promise<BucketResponse> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    const result = await localAPIClient.post<CreateBucketRequest, BucketResponse>(
+      `/storage/v1/b`,
+      req,
+      {
+        queryParams: {
+          project: projectId,
+        },
+      },
+    );
+    return result.body;
+  } catch (err: any) {
+    logger.debug(err);
+    throw new FirebaseError("Failed to create the storage bucket", {
       original: err,
     });
   }

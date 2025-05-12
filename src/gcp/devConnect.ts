@@ -305,6 +305,19 @@ export async function fetchGitHubInstallations(
 }
 
 /**
+ * Splits a Git Repository Link resource name into its parts.
+ */
+export function parseGitRepositoryLinkName(gitRepositoryLinkName: string): {
+  projectName: string;
+  location: string;
+  connectionName: string;
+  id: string;
+} {
+  const [, projectName, , location, , connectionName, , id] = gitRepositoryLinkName.split("/");
+  return { projectName, location, connectionName, id };
+}
+
+/**
  * Creates a GitRepositoryLink. Upon linking a Git Repository, Developer
  * Connect will configure the Git Repository to send webhook events to
  * Developer Connect.

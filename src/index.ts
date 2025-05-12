@@ -2,8 +2,7 @@ import * as program from "commander";
 import * as clc from "colorette";
 import * as leven from "leven";
 
-import { logger } from "./logger";
-import { setupLoggers } from "./utils";
+import { logger, useConsoleLoggers } from "./logger";
 
 const pkg = require("../package.json");
 
@@ -76,7 +75,7 @@ const RENAMED_COMMANDS: Record<string, string> = {
 
 // Default handler, this is called when no other command action matches.
 program.action((_, args) => {
-  setupLoggers();
+  useConsoleLoggers();
 
   const cmd = args[0];
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
