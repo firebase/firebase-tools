@@ -77,9 +77,8 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
-  let hasBilling = false;
+  const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
-    hasBilling = await isBillingEnabled(setup);
     hasBilling ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
   let info: RequiredInfo = {
