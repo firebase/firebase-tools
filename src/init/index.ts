@@ -34,12 +34,12 @@ interface Feature {
   // OLD WAY: A single setup function to ask questions and actuate the setup.
   doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 
-  // NEW WAY: Split the init into two parts:
+  // NEW WAY: Split the init into phases:
   // 1. askQuestions: Ask the user questions and update `setup.featureInfo` with the answers.
   askQuestions?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
   // 2. actuate: Use the answers in `setup.featureInfo` to actuate the setup.
   actuate?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
-  // 3. [optional]: Additional follow-up steps to run after the setup is completed.
+  // 3. [optional] Additional follow-up steps to run after the setup is completed.
   postSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 }
 
@@ -47,9 +47,9 @@ const featuresList: Feature[] = [
   { name: "account", doSetup: features.account },
   { name: "database", doSetup: features.database },
   { name: "firestore", doSetup: features.firestore },
-  // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
   {
     name: "dataconnect",
+    // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
     askQuestions: features.dataconnectAskQuestions,
     actuate: features.dataconnectActuate,
     postSetup: features.dataconnectPostSetup,
