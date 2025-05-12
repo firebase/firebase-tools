@@ -38,8 +38,6 @@ import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
-import { getAnalyticsContext } from "../analytics";
-import { ChatContext } from "./ai-tools/gca-tool-types";
 
 /**
  * DataConnect Emulator service
@@ -289,7 +287,6 @@ export class DataConnectService {
     const request: CallCloudAiCompanionRequest = {
       servicePath,
       naturalLanguageQuery,
-      ideContext: getAnalyticsContext(this.context),
       chatHistory
     };
 
