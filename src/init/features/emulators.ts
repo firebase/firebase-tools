@@ -7,6 +7,7 @@ import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 import { Setup } from "../index";
 import { AdditionalInitFns } from "../../emulator/initEmulators";
 import { Config } from "../../config";
+import { EmulatorsConfig } from "../../firebaseConfig";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -37,8 +38,9 @@ export async function doSetup(setup: Setup, config: Config) {
   }
 
   setup.config.emulators = setup.config.emulators || {};
-  const emulators: any = setup.config.emulators;
+  const emulators: EmulatorsConfig = setup.config.emulators;
   for (const selected of selections.emulators) {
+    if (selected === "extensions") continue;
     emulators[selected] = emulators[selected] || {};
 
     const currentPort = emulators[selected].port;

@@ -232,7 +232,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: number | string;
+    port?: number;
   };
   extensions?: {};
   eventarc?: {

@@ -7,6 +7,7 @@ import * as features from "./features";
 import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
+import { Options } from "../options";
 
 export interface Setup {
   config: FirebaseConfig;
@@ -21,7 +22,7 @@ export interface Setup {
 
 interface Feature {
   name: string;
-  doSetup: (setup: Setup, config: Config, options?: any) => Promise<unknown>;
+  doSetup: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 }
 
 const featuresList: Feature[] = [
