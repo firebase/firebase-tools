@@ -100,7 +100,8 @@ export interface BuildConfig {
 }
 
 interface BuildSource {
-  codebase: CodebaseSource;
+  codebase?: CodebaseSource;
+  archive?: ArchiveSource;
 }
 
 interface CodebaseSource {
@@ -114,6 +115,21 @@ interface CodebaseSource {
   commitMessage: string;
   uri: string;
   commitTime: string;
+}
+
+interface ArchiveSource {
+  // oneof reference
+  userStorageUri?: string;
+  externalSignedUri?: string;
+  // end oneof reference
+  rootDirectory?: string;
+  author?: SourceUserMetadata;
+}
+
+interface SourceUserMetadata {
+  displayName: string;
+  email: string;
+  imageUri: string;
 }
 
 interface Status {
