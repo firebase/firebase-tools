@@ -12,20 +12,24 @@ import {
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
 import { input, select } from "../../prompt";
+import { Setup } from "..";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
 /**
  * Set up an apphosting.yaml file for a new App Hosting project.
  */
-export async function doSetup(setup: any, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
-  await checkBillingEnabled(projectId);
+  if (!setup.isBillingEnabled) {
+    throw new FirebaseError(
+      "Firebase App Hosting requires a billing-enabled project. Please enable billing in the Google Cloud Console.",
+    );
+  }
   utils.logBullet(
     "This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup.",
   );

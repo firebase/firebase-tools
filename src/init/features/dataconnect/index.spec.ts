@@ -148,9 +148,9 @@ describe("init dataconnect", () => {
             projectId: "test-project",
             rcfile: MOCK_RC,
             config: c.config.src,
+            featureInfo: { dataconnect: c.requiredInfo },
           },
           c.config,
-          c.requiredInfo,
         );
         expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
         if (c.expectEnsureSchemaGQL) {

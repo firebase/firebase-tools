@@ -14,6 +14,9 @@ import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { Setup } from "..";
+import { checkBillingEnabled } from "../../gcp/cloudbilling";
+import { Config } from "../../config";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -97,7 +100,7 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function doSetup(setup: any, config: any, options: any): Promise<void> {
+export async function doSetup(setup: Setup, config: Config, options: any): Promise<void> {
   setup.project = {};
 
   logger.info();
@@ -116,6 +119,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
     setup.projectId = rcProject.projectId;
     setup.projectLocation = rcProject?.resources?.locationId;
+    setup.isBillingEnabled = await checkBillingEnabled(setup.projectId);
     return;
   }
 
@@ -136,7 +140,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", projectInfo.id);
   setup.projectId = projectInfo.id;
-  setup.instance = projectInfo.instance;
   setup.projectLocation = projectInfo.location;
   utils.makeActiveProject(config.projectDir, projectInfo.id);
+  setup.isBillingEnabled = await checkBillingEnabled(setup.projectId);
 }
