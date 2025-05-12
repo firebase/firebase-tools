@@ -8,6 +8,7 @@ import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
 import { Options } from "../options";
+import { a } from '../../clean/src/accountExporter.spec';
 
 export interface Setup {
   config: FirebaseConfig;
@@ -67,12 +68,13 @@ const featuresList: Feature[] = [
   { name: "apphosting", doSetup: features.apphosting },
 ];
 
-const featureFns = new Map(featuresList.map((feature) => [feature.name, feature.doSetup]));
+const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    if (!featureFns.has(nextFeature)) {
+    const f = featureMap.get(nextFeature);
+    if (!f) {
       const availableFeatures = Object.keys(features)
         .filter((f) => f !== "project")
         .join(", ");
@@ -83,12 +85,19 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
 
     logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
 
-    const fn = featureFns.get(nextFeature);
-    if (!fn) {
-      // We've already checked that the function exists, so this really should never happen.
-      throw new FirebaseError(`We've lost the function to init ${nextFeature}`, { exit: 2 });
+    if (f.doSetup) {
+      await f.doSetup(setup, config, options);
+    } else {
+      if (f.askQuestions) {
+      await f.askQuestions(setup, config, options);
+      }
+      if (f.actuate) {
+      await f.actuate(setup, config, options);
+      }
     }
-    await fn(setup, config, options);
+    if (f.postSetup) {
+      await f.postSetup(setup, config, options);
+    }
     return init(setup, config, options);
   }
 }
