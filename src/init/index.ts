@@ -88,10 +88,10 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       await f.doSetup(setup, config, options);
     } else {
       if (f.askQuestions) {
-      await f.askQuestions(setup, config, options);
+        await f.askQuestions(setup, config, options);
       }
       if (f.actuate) {
-      await f.actuate(setup, config, options);
+        await f.actuate(setup, config, options);
       }
     }
     if (f.postSetup) {
