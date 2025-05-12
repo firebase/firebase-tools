@@ -45,7 +45,7 @@ function buildRequest(
   { servicePath, naturalLanguageQuery, chatHistory }: CallCloudAiCompanionRequest,
   type: GENERATION_TYPE,
 ): CloudAICompanionRequest {
-  const { serviceId, projectId } = getServiceParts(servicePath);
+  const { serviceId } = getServiceParts(servicePath);
   const input: CloudAICompanionInput = {
     messages: [
       ...chatHistory,
