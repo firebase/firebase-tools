@@ -147,7 +147,7 @@ export function findAvailableLogFile(): string {
   throw new Error("Unable to obtain permissions for firebase-debug.log");
 }
 
-function tryStringify(value: any) {
+export function tryStringify(value: any) {
   if (typeof value === "string") {
     return value;
   }
