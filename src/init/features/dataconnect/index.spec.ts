@@ -147,7 +147,7 @@ describe("init dataconnect", () => {
           {
             projectId: "test-project",
             rcfile: MOCK_RC,
-            config: c.config,
+            config: c.config.src,
           },
           c.config,
           c.requiredInfo,
