@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
+import { mcpError, toContent } from "../../util.js";
 import { setCustomClaim } from "../../../gcp/auth.js";
 
 export const set_claim = tool(
@@ -19,7 +19,7 @@ export const set_claim = tool(
         .string()
         .optional()
         .describe(
-          "set the claim to a complex JSON value like an object or an array. string must be parseable as valid JSON",
+          "set the claim to a complex JSON value like an object or an array by providing stringified JSON. string must be parseable as valid JSON",
         ),
     }),
     annotations: {
@@ -31,7 +31,15 @@ export const set_claim = tool(
       requiresProject: true,
     },
   },
-  async ({ uid, claim, value }, { projectId }) => {
+  async ({ uid, claim, value, json_value }, { projectId }) => {
+    if (value && json_value) return mcpError("Must supply only `value` or `json_value`, not both.");
+    if (json_value) {
+      try {
+        value = JSON.parse(json_value);
+      } catch (e) {
+        return mcpError(`Provided \`json_value\` was not valid JSON: ${json_value}`);
+      }
+    }
     return toContent(await setCustomClaim(projectId!, uid, { [claim]: value }, { merge: true }));
   },
 );
