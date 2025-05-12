@@ -4,7 +4,7 @@ import { tool } from "../../tool.js";
 import { mcpError } from "../../util.js";
 import * as client from "../../../dataconnect/dataplaneClient.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
-import { graphqlResponseToToolResponse } from "./converter.js";
+import { graphqlResponseToToolResponse, parseVariables } from "./converter.js";
 
 export const execute_query = tool(
   {
@@ -25,10 +25,10 @@ export const execute_query = tool(
           "The Firebase Data Connect connector ID to look for. If there is only one connector defined in dataconnect.yaml, this can be omitted and that will be used.",
         ),
       variables: z
-        .record(z.string())
+        .string()
         .optional()
         .describe(
-          "Variables for this operation. Use dataconnect_get_connector to find the expected variables for this query",
+          "A stringified JSON object containing the variables needed to execute the operation. The value MUST be able to be parsed as a JSON object.",
         ),
     }),
     annotations: {
@@ -40,7 +40,10 @@ export const execute_query = tool(
       requiresAuth: true,
     },
   },
-  async ({ operationName, serviceId, connectorId, variables }, { projectId, config }) => {
+  async (
+    { operationName, serviceId, connectorId, variables: unparsedVariables },
+    { projectId, config },
+  ) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     if (!connectorId) {
       if (serviceInfo.connectorInfo.length === 0) {
@@ -57,7 +60,7 @@ export const execute_query = tool(
     const response = await client.executeGraphQLQuery(
       client.dataconnectDataplaneClient(),
       connectorPath,
-      { operationName, variables },
+      { operationName, variables: parseVariables(unparsedVariables) },
     );
     return graphqlResponseToToolResponse(response.body);
   },
