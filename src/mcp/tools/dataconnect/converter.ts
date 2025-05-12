@@ -56,3 +56,13 @@ export function graphqlResponseToToolResponse(
     return mcpError(JSON.stringify(g, null, 2));
   }
 }
+
+export function parseVariables(unparsedVariables?: string): Record<string, any> {
+  try {
+    const variables = JSON.parse(unparsedVariables || "{}");
+    if (typeof variables !== "object") throw new Error("not an object");
+    return variables;
+  } catch (e) {
+    throw new Error("Provided variables string `" + unparsedVariables + "` is not valid JSON.");
+  }
+}

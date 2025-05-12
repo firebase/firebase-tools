@@ -5,9 +5,12 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
 import { RCData } from "../rc";
+import { Config } from "../config";
+import { FirebaseConfig } from "../firebaseConfig";
+import { Options } from "../options";
 
 export interface Setup {
-  config: Record<string, any>;
+  config: FirebaseConfig;
   rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
@@ -17,23 +20,30 @@ export interface Setup {
   hosting?: Record<string, any>;
 }
 
-const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
-  ["account", features.account],
-  ["database", features.database],
-  ["firestore", features.firestore],
-  ["dataconnect", features.dataconnect],
-  ["dataconnect:sdk", features.dataconnectSdk],
-  ["functions", features.functions],
-  ["hosting", features.hosting],
-  ["storage", features.storage],
-  ["emulators", features.emulators],
-  ["extensions", features.extensions],
-  ["project", features.project], // always runs, sets up .firebaserc
-  ["remoteconfig", features.remoteconfig],
-  ["hosting:github", features.hostingGithub],
-  ["genkit", features.genkit],
-  ["apphosting", features.apphosting],
-]);
+interface Feature {
+  name: string;
+  doSetup: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+}
+
+const featuresList: Feature[] = [
+  { name: "account", doSetup: features.account },
+  { name: "database", doSetup: features.database },
+  { name: "firestore", doSetup: features.firestore },
+  { name: "dataconnect", doSetup: features.dataconnect },
+  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  { name: "functions", doSetup: features.functions },
+  { name: "hosting", doSetup: features.hosting },
+  { name: "storage", doSetup: features.storage },
+  { name: "emulators", doSetup: features.emulators },
+  { name: "extensions", doSetup: features.extensions },
+  { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
+  { name: "remoteconfig", doSetup: features.remoteconfig },
+  { name: "hosting:github", doSetup: features.hostingGithub },
+  { name: "genkit", doSetup: features.genkit },
+  { name: "apphosting", doSetup: features.apphosting },
+];
+
+const featureFns = new Map(featuresList.map((feature) => [feature.name, feature.doSetup]));
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
