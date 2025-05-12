@@ -68,20 +68,22 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   for (const cfg of context.backendConfigs.values()) {
-    const zippedSourcePath = await createArchive(cfg, options.projectRoot);
+    const { projectSourcePath, zippedSourcePath } = await createArchive(cfg, options.projectRoot);
     const backendLocation = context.backendLocations.get(cfg.backendId);
     if (!backendLocation) {
       throw new FirebaseError(
         `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
     }
-    await gcs.uploadObject(
+    logBullet(`Uploading source code at ${projectSourcePath}...`);
+    const { bucket, object } = await gcs.uploadObject(
       {
         file: zippedSourcePath,
         stream: fs.createReadStream(zippedSourcePath),
       },
       `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`,
     );
+    logBullet(`Source code uploaded at gs://${bucket}/${object}`);
     context.backendStorageUris.set(
       cfg.backendId,
       `gs://firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}/${path.basename(zippedSourcePath)}`,

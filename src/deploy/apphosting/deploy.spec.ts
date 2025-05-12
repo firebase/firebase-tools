@@ -89,8 +89,14 @@ describe("apphosting", () => {
         }),
       );
       createBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves();
+      createArchiveStub.resolves({
+        projectSourcePath: "my-project/",
+        zippedSourcePath: "path/to/foo-1234.zip",
+      });
+      uploadObjectStub.resolves({
+        bucket: "firebaseapphosting-sources-12345678-us-central1",
+        object: "foo-1234",
+      });
       createReadStreamStub.resolves();
 
       await deploy(context, opts);
@@ -103,8 +109,14 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves("000000000000");
       getBucketStub.resolves();
       createBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves();
+      createArchiveStub.resolves({
+        projectSourcePath: "my-project/",
+        zippedSourcePath: "path/to/foo-1234.zip",
+      });
+      uploadObjectStub.resolves({
+        bucket: "firebaseapphosting-sources-12345678-us-central1",
+        object: "foo-1234",
+      });
       createReadStreamStub.resolves();
 
       await deploy(context, opts);

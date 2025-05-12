@@ -14,7 +14,7 @@ import * as readline from "readline";
 export async function createArchive(
   config: AppHostingSingle,
   projectRoot?: string,
-): Promise<string> {
+): Promise<{ projectSourcePath: string; zippedSourcePath: string }> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -47,12 +47,11 @@ export async function createArchive(
       { original: err as Error, exit: 1 },
     );
   }
-  return tmpFile;
+  return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
 }
 
 async function parseGitIgnorePatterns(filePath = ".gitignore"): Promise<string[]> {
   const absoluteFilePath: string = path.resolve(filePath);
-  const lines: string[] = [];
   return new Promise<string[]>((resolve, reject) => {
     if (!fs.existsSync(absoluteFilePath)) {
       resolve([]);
@@ -63,11 +62,13 @@ async function parseGitIgnorePatterns(filePath = ".gitignore"): Promise<string[]
       input: fileStream,
       crlfDelay: Infinity,
     });
+    const lines: string[] = [];
     rl.on("line", (line: string) => {
-      if (line.startsWith("#") || line.trim() === "") {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith("#") || trimmedLine === "") {
         return;
       }
-      lines.push(line);
+      lines.push(trimmedLine);
     });
     rl.on("close", () => {
       resolve(lines);
