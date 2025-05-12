@@ -38,20 +38,21 @@ export async function doSetup(setup: Setup, config: Config) {
   }
 
   setup.config.emulators = setup.config.emulators || {};
-  const emulators: EmulatorsConfig = setup.config.emulators;
+  const emulators: EmulatorsConfig = setup.config.emulators || {};
   for (const selected of selections.emulators) {
     if (selected === "extensions") continue;
-    emulators[selected] = emulators[selected] || {};
+    const selectedEmulator = emulators[selected] || {};
 
-    const currentPort = emulators[selected].port;
+    const currentPort = selectedEmulator.port;
     if (currentPort) {
       utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
     } else {
-      emulators[selected].port = await number({
+      selectedEmulator.port = await number({
         message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
         default: Constants.getDefaultPort(selected),
       });
     }
+    emulators[selected] = selectedEmulator;
 
     const additionalInitFn = AdditionalInitFns[selected];
     if (additionalInitFn) {
