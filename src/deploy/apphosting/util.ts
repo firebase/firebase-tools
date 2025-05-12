@@ -5,7 +5,6 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
-import * as readline from "readline";
 
 /**
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
@@ -25,7 +24,7 @@ export async function createArchive(
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = await parseGitIgnorePatterns();
+  const gitIgnorePatterns = parseGitIgnorePatterns();
   ignore.push(...gitIgnorePatterns);
 
   if (!projectRoot) {
@@ -50,38 +49,13 @@ export async function createArchive(
   return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
 }
 
-async function parseGitIgnorePatterns(filePath = ".gitignore"): Promise<string[]> {
-  const absoluteFilePath: string = path.resolve(filePath);
-  return new Promise<string[]>((resolve, reject) => {
-    if (!fs.existsSync(absoluteFilePath)) {
-      resolve([]);
-      return;
-    }
-    const fileStream: fs.ReadStream = fs.createReadStream(absoluteFilePath);
-    const rl: readline.Interface = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity,
-    });
-    const lines: string[] = [];
-    rl.on("line", (line: string) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith("#") || trimmedLine === "") {
-        return;
-      }
-      lines.push(trimmedLine);
-    });
-    rl.on("close", () => {
-      resolve(lines);
-    });
-    rl.on("error", (err: Error) => {
-      console.error(`Error reading lines from file ${absoluteFilePath}:`, err);
-      reject(err);
-    });
-    fileStream.on("error", (err: Error) => {
-      console.error(`Error with file stream for ${absoluteFilePath}:`, err);
-      reject(err);
-    });
-  });
+function parseGitIgnorePatterns(filePath = ".gitignore"): string[] {
+  const absoluteFilePath = path.resolve(filePath);
+  return fs
+    .readFileSync(absoluteFilePath)
+    .toString() // Buffer -> string
+    .split("\n") // split into lines
+    .filter((line) => !line.trim().startsWith("#") && !(line.trim() === "")); // remove comments and empty lines
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
