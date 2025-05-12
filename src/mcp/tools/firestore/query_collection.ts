@@ -43,6 +43,7 @@ export const query_collection = tool(
               .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
               .describe("the value to compare against"),
           })
+          .array()
           .nullish(),
         order: z
           .object({
@@ -78,10 +79,15 @@ export const query_collection = tool(
     };
     if (filter.where) {
       structuredQuery.where = {
-        fieldFilter: {
-          field: { fieldPath: filter.where.field },
-          op: filter.where.op,
-          value: convertInputToValue(filter.where.value),
+        compositeFilter: {
+          op: "AND",
+          filters: filter.where.map((f) => ({
+            fieldFilter: {
+              field: { fieldPath: f.field },
+              op: f.op,
+              value: convertInputToValue(f.value),
+            },
+          })),
         },
       };
     }

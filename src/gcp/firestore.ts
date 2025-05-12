@@ -36,21 +36,26 @@ export interface Database {
 export interface StructuredQuery {
   from: { collectionId: string; allDescendants: boolean }[];
   where?: {
-    fieldFilter: {
-      field: { fieldPath: string };
-      op:
-        | "OPERATOR_UNSPECIFIED"
-        | "LESS_THAN"
-        | "LESS_THAN_OR_EQUAL"
-        | "GREATER_THAN"
-        | "GREATER_THAN_OR_EQUAL"
-        | "EQUAL"
-        | "NOT_EQUAL"
-        | "ARRAY_CONTAINS"
-        | "ARRAY_CONTAINS_ANY"
-        | "IN"
-        | "NOT_IN";
-      value: FirestoreValue;
+    compositeFilter: {
+      op: "OR" | "AND";
+      filters: {
+        fieldFilter: {
+          field: { fieldPath: string };
+          op:
+            | "OPERATOR_UNSPECIFIED"
+            | "LESS_THAN"
+            | "LESS_THAN_OR_EQUAL"
+            | "GREATER_THAN"
+            | "GREATER_THAN_OR_EQUAL"
+            | "EQUAL"
+            | "NOT_EQUAL"
+            | "ARRAY_CONTAINS"
+            | "ARRAY_CONTAINS_ANY"
+            | "IN"
+            | "NOT_IN";
+          value: FirestoreValue;
+        };
+      }[];
     };
   };
   orderBy?: {
