@@ -19,6 +19,7 @@ import { getProjectId } from "../projectUtils.js";
 import { mcpAuthError, NO_PROJECT_ERROR } from "./errors.js";
 import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
+import { loadRC } from "../rc.js";
 
 const SERVER_VERSION = "0.0.1";
 const PROJECT_ROOT_KEY = "mcp.projectRoot";
@@ -110,11 +111,14 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
     try {
-      const config = Config.load({ cwd: this.projectRoot });
+      const cliOpts = { cwd: this.projectRoot };
+      const config = Config.load(cliOpts) as Config;
+      const rc = loadRC(cliOpts);
       const res = await tool.fn(toolArgs, {
         projectId: await this.getProjectId(),
         host: this,
         config,
+        rc,
       });
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
       return res;
