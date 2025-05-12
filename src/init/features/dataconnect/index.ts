@@ -143,7 +143,10 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
   config.set("emulators.dataconnect.dataDir", dataDir);
 
-  const info = setup.featureInfo!.dataconnect!;
+  const info = setup.featureInfo?.dataconnect;
+  if (!info) {
+    throw new Error("Data Connect feature RequiredInfo is not provided");
+  }
   await writeFiles(config, info);
 
   if (setup.projectId && info.shouldProvisionCSQL) {
