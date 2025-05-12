@@ -20,6 +20,7 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logBullet, envOverride } from "../../../utils";
+import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 
@@ -76,12 +77,10 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
+  let hasBilling = false;
   if (setup.projectId) {
-    if (setup.isBillingEnabled) {
-      await ensureApis(setup.projectId);
-    } else {
-      await ensureSparkApis(setup.projectId);
-    }
+    hasBilling = await isBillingEnabled(setup);
+    hasBilling ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
   }
   let info: RequiredInfo = {
     serviceId: "",
@@ -95,7 +94,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     shouldProvisionCSQL: false,
   };
   // Query backend and pick up any existing services quickly.
-  info = await promptForExistingServices(setup, info, setup.isBillingEnabled!!);
+  info = await promptForExistingServices(setup, info, hasBilling);
 
   const requiredConfigUnset =
     info.serviceId === "" ||
@@ -103,7 +102,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     info.locationId === "" ||
     info.cloudSqlDatabase === "";
   const shouldConfigureBackend =
-    setup.isBillingEnabled &&
+    hasBilling &&
     requiredConfigUnset &&
     (await confirm({
       message: `Would you like to configure your backend resources now?`,
@@ -118,7 +117,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     info.shouldProvisionCSQL = !!(
       setup.projectId &&
       (info.isNewInstance || info.isNewDatabase) &&
-      setup.isBillingEnabled &&
+      hasBilling &&
       (await confirm({
         message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
         default: true,
