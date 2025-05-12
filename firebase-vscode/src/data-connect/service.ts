@@ -39,7 +39,7 @@ import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
 import { getAnalyticsContext } from "../analytics";
-import { ChatContext } from "./gemini-tool-types";
+import { ChatContext } from "./ai-tools/gca-tool-types";
 
 /**
  * DataConnect Emulator service
@@ -279,7 +279,6 @@ export class DataConnectService {
     type: "schema" | "operation",
     chatHistory: ChatMessage[],
   ): Promise<CloudAICompanionResponse | undefined> {
-    console.log("Harold creating client");
     const client = cloudAICompationClient();
     const servicePath = await this.servicePath(dataConnectConfigs.value?.tryReadValue?.values[0].path as string);
 
