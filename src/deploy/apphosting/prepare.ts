@@ -117,16 +117,16 @@ export default async function (context: Context, options: Options): Promise<void
  * Exported for unit testing. Filters backend configs based on user input.
  */
 export function getBackendConfigs(options: Options): AppHostingMultiple {
-  if (!options.only) {
-    return [];
-  }
   if (!options.config.src.apphosting) {
     return [];
   }
   const backendConfigs = Array.isArray(options.config.src.apphosting)
     ? options.config.src.apphosting
     : [options.config.src.apphosting];
-
+  // If no --only specifier is passed, return all backend configs
+  if (!options.only) {
+    return backendConfigs;
+  }
   const selectors = options.only.split(",");
   const backendIds: string[] = [];
   for (const selector of selectors) {

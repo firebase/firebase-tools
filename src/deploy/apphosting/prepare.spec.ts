@@ -184,6 +184,18 @@ describe("apphosting", () => {
       },
     ];
 
+    it("selects all backends when no --only is passed", () => {
+      const configs = getBackendConfigs({
+        ...BASE_OPTS,
+        only: "",
+        config: new Config({
+          apphosting: apphostingConfig,
+        }),
+      });
+
+      expect(configs).to.deep.equal(apphostingConfig);
+    });
+
     it("selects all backends when --apphosting is passed", () => {
       const configs = getBackendConfigs({
         ...BASE_OPTS,
