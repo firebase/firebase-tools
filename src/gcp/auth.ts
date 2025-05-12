@@ -138,7 +138,7 @@ export async function findUser(
     expression: [expression],
     limit: "1",
   });
-  if (res.body.userInfo.length === 0) {
+  if (!res.body.userInfo?.length) {
     throw new Error("No users found");
   }
   const modifiedUserInfo = res.body.userInfo.map((ui) => {
