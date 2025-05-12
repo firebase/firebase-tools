@@ -7,8 +7,8 @@ import {
   ListToolsRequestSchema,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpError } from "./util.js";
-import { ServerFeature } from "./types.js";
+import { checkFeatureActive, mcpError } from "./util.js";
+import { SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
 import { ServerTool } from "./tool.js";
 import { configstore } from "../configstore.js";
@@ -30,6 +30,7 @@ export class FirebaseMcpServer {
   projectRoot?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
+  detectedFeatures?: ServerFeature[];
   fixedRoot?: boolean;
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
@@ -44,28 +45,32 @@ export class FirebaseMcpServer {
       process.env.PROJECT_ROOT ??
       process.cwd();
     if (options.projectRoot) this.fixedRoot = true;
+    this.detectActiveFeatures();
+  }
+
+  async detectActiveFeatures(): Promise<ServerFeature[]> {
+    if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
+    const options = await this.resolveOptions();
+    const projectId = await this.getProjectId();
+    const detected = await Promise.all(
+      SERVER_FEATURES.map(async (f) => {
+        if (await checkFeatureActive(f, projectId, options)) return f;
+        return null;
+      }),
+    );
+    this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    return this.detectedFeatures;
   }
 
   get availableTools(): ServerTool[] {
-    return availableTools(!!this.fixedRoot, this.activeFeatures);
+    return availableTools(
+      !!this.fixedRoot,
+      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
+    );
   }
 
   getTool(name: string): ServerTool | null {
     return this.availableTools.find((t) => t.mcp.name === name) || null;
-  }
-
-  async mcpListTools(): Promise<ListToolsResult> {
-    const hasActiveProject = !!(await this.getProjectId());
-    await trackGA4("mcp_list_tools", {});
-    return {
-      tools: this.availableTools.map((t) => t.mcp),
-      _meta: {
-        projectRoot: this.projectRoot,
-        projectDetected: hasActiveProject,
-        authenticated: await this.getAuthenticated(),
-        activeFeatures: this.activeFeatures,
-      },
-    };
   }
 
   setProjectRoot(newRoot: string | null): void {
@@ -98,6 +103,22 @@ export class FirebaseMcpServer {
     } catch (e) {
       return false;
     }
+  }
+
+  async mcpListTools(): Promise<ListToolsResult> {
+    if (!this.activeFeatures) await this.detectActiveFeatures();
+    const hasActiveProject = !!(await this.getProjectId());
+    await trackGA4("mcp_list_tools", {});
+    return {
+      tools: this.availableTools.map((t) => t.mcp),
+      _meta: {
+        projectRoot: this.projectRoot,
+        projectDetected: hasActiveProject,
+        authenticated: await this.getAuthenticated(),
+        activeFeatures: this.activeFeatures,
+        detectedFeatures: this.detectedFeatures,
+      },
+    };
   }
 
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
