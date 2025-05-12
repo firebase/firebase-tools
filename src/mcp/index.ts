@@ -83,6 +83,7 @@ export class FirebaseMcpServer {
 
     configstore.set(PROJECT_ROOT_KEY, newRoot);
     this.projectRoot = newRoot;
+    this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
   }
 
