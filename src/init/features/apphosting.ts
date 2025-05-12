@@ -28,7 +28,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
   if (!(await isBillingEnabled(setup))) {
     throw new FirebaseError(
-      "Firebase App Hosting requires a billing-enabled project. Please enable billing in the Google Cloud Console.",
+      "Firebase App Hosting requires billing to be enabled on your project. Please enable billing by following the steps at https://cloud.google.com/billing/docs/how-to/modify-project",
     );
   }
   utils.logBullet(
