@@ -55,7 +55,7 @@ describe("project", () => {
     describe('with "Use an existing project" option', () => {
       it("should set up the correct properties in the project", async () => {
         const options = { project: "my-project" };
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
         prompt.select.onFirstCall().resolves("Use an existing project");
         getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
@@ -75,7 +75,7 @@ describe("project", () => {
     describe('with "Create a new project" option', () => {
       it("should create a new project and set up the correct properties", async () => {
         const options = {};
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         prompt.select.onFirstCall().resolves("Create a new project");
         prompt.input.onFirstCall().resolves("my-project-123");
         prompt.input.onSecondCall().resolves("my-project");
@@ -97,7 +97,7 @@ describe("project", () => {
 
       it("should throw if project ID is empty after prompt", async () => {
         const options = {};
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         prompt.select.onFirstCall().resolves("Create a new project");
         prompt.input.resolves("");
         configstoreSetStub.onFirstCall().resolves();
@@ -119,7 +119,7 @@ describe("project", () => {
     describe('with "Add Firebase resources to GCP project" option', () => {
       it("should add firebase resources and set up the correct properties", async () => {
         const options = {};
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         prompt.select
           .onFirstCall()
           .resolves("Add Firebase to an existing Google Cloud Platform project");
@@ -140,7 +140,7 @@ describe("project", () => {
 
       it("should throw if project ID is empty after prompt", async () => {
         const options = {};
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         prompt.select
           .onFirstCall()
           .resolves("Add Firebase to an existing Google Cloud Platform project");
@@ -163,7 +163,7 @@ describe("project", () => {
     describe(`with "Don't set up a default project" option`, () => {
       it("should set up the correct properties when not choosing a project", async () => {
         const options = {};
-        const setup = { config: {}, rcfile: { projects: {}, targets: {}, etags: {} } };
+        const setup = { config: {}, rcfile: {} };
         prompt.select.resolves("Don't set up a default project");
 
         await doSetup(setup, emptyConfig, options);

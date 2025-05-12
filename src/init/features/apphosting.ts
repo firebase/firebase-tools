@@ -17,6 +17,7 @@ import * as utils from "../../utils";
 import { logBullet } from "../../utils";
 import { input, select } from "../../prompt";
 import { Setup } from "..";
+import { isBillingEnabled } from "../../gcp/cloudbilling";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
@@ -25,7 +26,7 @@ const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.ya
  */
 export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
-  if (!setup.isBillingEnabled) {
+  if (!(await isBillingEnabled(setup))) {
     throw new FirebaseError(
       "Firebase App Hosting requires a billing-enabled project. Please enable billing in the Google Cloud Console.",
     );
