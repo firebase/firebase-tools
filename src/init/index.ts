@@ -8,7 +8,6 @@ import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
 import { Options } from "../options";
-import { a } from '../../clean/src/accountExporter.spec';
 
 export interface Setup {
   config: FirebaseConfig;
