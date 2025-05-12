@@ -1,29 +1,29 @@
 import * as ora from "ora";
+import * as path from "path";
+import {
+  artifactRegistryDomain,
+  cloudbuildOrigin,
+  cloudRunApiOrigin,
+  developerConnectOrigin,
+  iamOrigin,
+  secretManagerOrigin,
+} from "../../api";
 import { webApps } from "../../apphosting/app";
 import {
   createBackend,
   ensureAppHostingComputeServiceAccount,
   promptLocation,
 } from "../../apphosting/backend";
+import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
-import { listBackends, parseBackendName } from "../../gcp/apphosting";
+import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
+import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { promptOnce } from "../../prompt";
+import { confirm } from "../../prompt";
 import { logBullet, logWarning } from "../../utils";
 import { Context } from "./args";
-import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
-import * as path from "path";
-import {
-  developerConnectOrigin,
-  cloudbuildOrigin,
-  secretManagerOrigin,
-  cloudRunApiOrigin,
-  artifactRegistryDomain,
-  iamOrigin,
-} from "../../api";
-import { ensure } from "../../ensureApiEnabled";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -31,6 +31,7 @@ import { ensure } from "../../ensureApiEnabled";
  */
 export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
+  await ensureApiEnabled(options);
 
   context.backendConfigs = new Map<string, AppHostingSingle>();
   context.backendLocations = new Map<string, string>();
@@ -105,9 +106,7 @@ export default async function (context: Context, options: Options): Promise<void
 
         let confirmDeploy: boolean;
         if (!options.force) {
-          confirmDeploy = await promptOnce({
-            type: "confirm",
-            name: "deploy",
+          confirmDeploy = await confirm({
             default: true,
             message: `${cfg.backendId} is linked to the remote repository at ${gitRepositoryLink.cloneUri}. Are you sure you want to deploy your local source?`,
           });

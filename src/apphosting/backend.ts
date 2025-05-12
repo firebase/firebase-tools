@@ -243,6 +243,10 @@ export async function ensureAppHostingComputeServiceAccount(
       );
     }
   }
+  // N.B. To deploy from source, the App Hosting Compute Service Account must have
+  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
+  // not add the objectViewer role, which means all existing customers will need to
+  // add it before deploying from source.
   if (deployFromSource) {
     const policy = await getIamPolicy(projectId);
     const objectViewerBinding = policy.bindings.find(

@@ -21,8 +21,7 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
-  const backendLocations = context.backendLocations.values() || [];
-  for (const loc of backendLocations) {
+  for (const loc of context.backendLocations.values()) {
     const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
     try {
       await gcs.getBucket(bucketName);
@@ -37,7 +36,7 @@ export default async function (context: Context, options: Options): Promise<void
         try {
           await gcs.createBucket(projectId, {
             name: bucketName,
-            location: "US-CENTRAL1",
+            location: loc,
             lifecycle: {
               rule: [
                 {

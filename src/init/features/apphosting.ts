@@ -18,6 +18,7 @@ import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
+import { ensureApiEnabled } from "../../gcp/apphosting";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
@@ -27,10 +28,9 @@ const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.ya
 export async function doSetup(setup: any, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
   await checkBillingEnabled(projectId);
-  // N.B. To deploy from source, the App Hosting Compute Service Account must have
-  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
-  // not add the objectViewer role, which means all existing customers will need to
-  // add it before deploying from source.
+  await ensureApiEnabled({ projectId });
+  // N.B. Deploying a backend from source requires the App Hosting compute service
+  // account to have the storage.objectViewer IAM role.
   //
   // We don't want to update the IAM permissions right before attempting to deploy,
   // since IAM propagation delay will likely cause the first one to fail. However,
