@@ -454,7 +454,7 @@ async function promptForRepo(
 ): Promise<{ repo: string; key: string; keyId: string }> {
   let key = "";
   let keyId = "";
-  const { repo } =
+  const repo =
     options.repo ||
     (await input({
       default: defaultGithubRepo(), // TODO look at github origin
@@ -498,6 +498,8 @@ async function promptForRepo(
         return true;
       },
     }));
+  options.repo = repo;
+
   return { repo, key, keyId };
 }
 
