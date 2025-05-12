@@ -2,11 +2,10 @@ import * as path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as os from "os";
-import { transports, format } from "winston";
 import Transport from "winston-transport";
 import { stripVTControlCharacters } from "node:util";
 import { SPLAT } from "triple-beam";
-import { logger as cliLogger, useConsoleLoggers, useFileLogger } from "../../src/logger";
+import { logger as cliLogger, useConsoleLoggers, useFileLogger, tryStringify } from "../../src/logger";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
 import { getRootFolders } from "./core/config";
 
