@@ -1,2 +1,3 @@
 - Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
 - Enhance firebase init apphosting to support local source deploys. (#8479)
+- Fixed issue where `firebase init hosting:github` isn't correctly parsing the repo input. (#8536)
