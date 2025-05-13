@@ -7,6 +7,7 @@ import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 import { Setup } from "../index";
 import { AdditionalInitFns } from "../../emulator/initEmulators";
 import { Config } from "../../config";
+import { EmulatorsConfig } from "../../firebaseConfig";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -37,24 +38,27 @@ export async function doSetup(setup: Setup, config: Config) {
   }
 
   setup.config.emulators = setup.config.emulators || {};
+  const emulators: EmulatorsConfig = setup.config.emulators || {};
   for (const selected of selections.emulators) {
-    setup.config.emulators[selected] = setup.config.emulators[selected] || {};
+    if (selected === "extensions") continue;
+    const selectedEmulator = emulators[selected] || {};
 
-    const currentPort = setup.config.emulators[selected].port;
+    const currentPort = selectedEmulator.port;
     if (currentPort) {
       utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
     } else {
-      setup.config.emulators[selected].port = await number({
+      selectedEmulator.port = await number({
         message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
         default: Constants.getDefaultPort(selected),
       });
     }
+    emulators[selected] = selectedEmulator;
 
     const additionalInitFn = AdditionalInitFns[selected];
     if (additionalInitFn) {
       const additionalOptions = await additionalInitFn(config);
       if (additionalOptions) {
-        setup.config.emulators[selected] = {
+        emulators[selected] = {
           ...setup.config.emulators[selected],
           ...additionalOptions,
         };
@@ -82,7 +86,7 @@ export async function doSetup(setup: Setup, config: Config) {
         );
 
         // Parse the input as a number
-        const portNum = Number.parseInt(ui.port);
+        const portNum = Number.parseInt(ui.port as any);
         ui.port = isNaN(portNum) ? undefined : portNum;
       }
     }

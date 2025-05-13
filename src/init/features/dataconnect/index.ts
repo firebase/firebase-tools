@@ -20,7 +20,7 @@ import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnec
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { logBullet, envOverride } from "../../../utils";
-import { checkBillingEnabled } from "../../../gcp/cloudbilling";
+import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 
@@ -74,36 +74,13 @@ const defaultConnector = {
 
 const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
-// doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const isBillingEnabled = setup.projectId ? await checkBillingEnabled(setup.projectId) : false;
-  if (setup.projectId) {
-    isBillingEnabled ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
-  }
-  const info = await askQuestions(setup, isBillingEnabled);
-  // Most users will want to perist data between emulator runs, so set this to a reasonable default.
-
-  const dir: string = config.get("dataconnect.source", "dataconnect");
-  const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
-  config.set("emulators.dataconnect.dataDir", dataDir);
-  await actuate(setup, config, info);
-
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  if (cwdPlatformGuess !== Platform.NONE) {
-    await sdk.doSetup(setup, config);
-  } else {
-    logBullet(
-      `If you'd like to add the generated SDK to your app later, run ${clc.bold("firebase init dataconnect:sdk")}`,
-    );
-  }
-  if (setup.projectId && !isBillingEnabled) {
-    logBullet(upgradeInstructions(setup.projectId));
-  }
-}
-
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<RequiredInfo> {
+export async function askQuestions(setup: Setup): Promise<void> {
+  const hasBilling = await isBillingEnabled(setup);
+  if (setup.projectId) {
+    hasBilling ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
+  }
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -116,7 +93,7 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     shouldProvisionCSQL: false,
   };
   // Query backend and pick up any existing services quickly.
-  info = await promptForExistingServices(setup, info, isBillingEnabled);
+  info = await promptForExistingServices(setup, info, hasBilling);
 
   const requiredConfigUnset =
     info.serviceId === "" ||
@@ -124,7 +101,7 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     info.locationId === "" ||
     info.cloudSqlDatabase === "";
   const shouldConfigureBackend =
-    isBillingEnabled &&
+    hasBilling &&
     requiredConfigUnset &&
     (await confirm({
       message: `Would you like to configure your backend resources now?`,
@@ -139,7 +116,7 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     info.shouldProvisionCSQL = !!(
       setup.projectId &&
       (info.isNewInstance || info.isNewDatabase) &&
-      isBillingEnabled &&
+      hasBilling &&
       (await confirm({
         message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
         default: true,
@@ -154,12 +131,22 @@ async function askQuestions(setup: Setup, isBillingEnabled: boolean): Promise<Re
     info.locationId = info.locationId || `us-central1`;
     info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
-  return info;
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.dataconnect = info;
 }
 
 // actuate writes product specific files and makes product specifc API calls.
 // It does not handle writing firebase.json and .firebaserc
-export async function actuate(setup: Setup, config: Config, info: RequiredInfo) {
+export async function actuate(setup: Setup, config: Config): Promise<void> {
+  // Most users will want to persist data between emulator runs, so set this to a reasonable default.
+  const dir: string = config.get("dataconnect.source", "dataconnect");
+  const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
+  config.set("emulators.dataconnect.dataDir", dataDir);
+
+  const info = setup.featureInfo?.dataconnect;
+  if (!info) {
+    throw new Error("Data Connect feature RequiredInfo is not provided");
+  }
   await writeFiles(config, info);
 
   if (setup.projectId && info.shouldProvisionCSQL) {
@@ -171,6 +158,20 @@ export async function actuate(setup: Setup, config: Config, info: RequiredInfo) 
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
+  }
+}
+
+export async function postSetup(setup: Setup, config: Config): Promise<void> {
+  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
+  if (cwdPlatformGuess !== Platform.NONE) {
+    await sdk.doSetup(setup, config);
+  } else {
+    logBullet(
+      `If you'd like to add the generated SDK to your app later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+    );
+  }
+  if (setup.projectId && !setup.isBillingEnabled) {
+    logBullet(upgradeInstructions(setup.projectId));
   }
 }
 

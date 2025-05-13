@@ -132,7 +132,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   // If the developer is using predeploy scripts in firebase.json,
   // remind them before they set up a script in their workflow file.
-  if (setup.config.hosting.predeploy) {
+  if (!Array.isArray(setup.config.hosting) && setup.config.hosting.predeploy) {
     logBullet(`You have a predeploy script configured in firebase.json.`);
   }
 
@@ -454,7 +454,7 @@ async function promptForRepo(
 ): Promise<{ repo: string; key: string; keyId: string }> {
   let key = "";
   let keyId = "";
-  const { repo } =
+  const repo =
     options.repo ||
     (await input({
       default: defaultGithubRepo(), // TODO look at github origin
@@ -498,6 +498,8 @@ async function promptForRepo(
         return true;
       },
     }));
+  options.repo = repo;
+
   return { repo, key, keyId };
 }
 
