@@ -25,6 +25,7 @@ export const create_android_sha = tool(
     annotations: {
       title: "Add SHA Certificate to Android App",
       destructiveHint: false,
+      readOnlyHint: false,
     },
     _meta: {
       requiresAuth: true,
@@ -32,22 +33,16 @@ export const create_android_sha = tool(
     },
   },
   async ({ appId, shaHash }, { projectId }) => {
-    try {
-      // Add the SHA certificate
-      const certType = getCertHashType(shaHash);
-      const shaCertificate = await createAppAndroidSha(projectId!, appId, {
-        shaHash,
-        certType,
-      });
-      
-      return toContent({
-        ...shaCertificate,
-        message: `Successfully added ${certType} certificate to Android app ${appId}`,
-      });
-    } catch (error: any) {
-      return mcpError(
-        `Failed to add SHA certificate to Android app: ${error.message || JSON.stringify(error)}`
-      );
-    }
+    // Add the SHA certificate
+    const certType = getCertHashType(shaHash);
+    const shaCertificate = await createAppAndroidSha(projectId!, appId, {
+      shaHash,
+      certType,
+    });
+    
+    return toContent({
+      ...shaCertificate,
+      message: `Successfully added ${certType} certificate to Android app ${appId}`,
+    });
   },
 ); 

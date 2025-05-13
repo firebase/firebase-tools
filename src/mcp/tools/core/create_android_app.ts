@@ -14,6 +14,7 @@ export const create_android_app = tool(
     annotations: {
       title: "Create Android App",
       destructiveHint: false,
+      readOnlyHint: false,
     },
     _meta: {
       requiresAuth: true,
@@ -21,15 +22,11 @@ export const create_android_app = tool(
     },
   },
   async ({ displayName, packageName }, { projectId }) => {
-    try {
-      const androidApp = await createAndroidApp(projectId!, {
-        displayName,
-        packageName,
-      });
-      
-      return toContent(androidApp);
-    } catch (error) {
-      return mcpError(error);
-    }
+    const androidApp = await createAndroidApp(projectId!, {
+      displayName,
+      packageName,
+    });
+    
+    return toContent(androidApp);
   },
 );

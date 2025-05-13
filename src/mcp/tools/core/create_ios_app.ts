@@ -15,6 +15,7 @@ export const create_ios_app = tool(
     annotations: {
       title: "Create iOS App",
       destructiveHint: false,
+      readOnlyHint: false,
     },
     _meta: {
       requiresAuth: true,
@@ -22,16 +23,12 @@ export const create_ios_app = tool(
     },
   },
   async ({ displayName, bundleId, appStoreId }, { projectId }) => {
-    try {
-      const iosApp = await createIosApp(projectId!, {
-        displayName,
-        bundleId,
-        appStoreId,
-      });
-      
-      return toContent(iosApp);
-    } catch (error) {
-      return mcpError(error);
-    }
+    const iosApp = await createIosApp(projectId!, {
+      displayName,
+      bundleId,
+      appStoreId,
+    });
+    
+    return toContent(iosApp);
   },
 );

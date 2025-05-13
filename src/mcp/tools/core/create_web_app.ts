@@ -13,6 +13,7 @@ export const create_web_app = tool(
     annotations: {
       title: "Create Web App",
       destructiveHint: false,
+      readOnlyHint: false,
     },
     _meta: {
       requiresAuth: true,
@@ -20,14 +21,10 @@ export const create_web_app = tool(
     },
   },
   async ({ displayName }, { projectId }) => {
-    try {
-      const webApp = await createWebApp(projectId!, {
-        displayName,
-      });
-      
-      return toContent(webApp);
-    } catch (error) {
-      return mcpError(error);
-    }
+    const webApp = await createWebApp(projectId!, {
+      displayName,
+    });
+    
+    return toContent(webApp);
   },
 );
