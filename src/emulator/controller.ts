@@ -61,6 +61,8 @@ import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { dataConnectLocalConnString } from "../api";
+import { getEndpointFilters } from "../deploy/functions/functionsDeployHelper";
+import { ValidatedConfig } from "../functions/projectConfig";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -109,6 +111,68 @@ export async function cleanShutdown(): Promise<void> {
   );
   await EmulatorRegistry.stopAll();
   await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
+}
+
+/**
+ * Prepares a list of EmulatableBackend objects based on functions configuration and options.
+ * This includes filtering based on the --only flag.
+ *
+ * @internal Exported for testing.
+ */
+export function prepareFunctionsBackends(
+  options: EmulatorOptions,
+  functionsCfg: ValidatedConfig,
+  projectDir: string,
+): EmulatableBackend[] {
+  const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+  const emulatableBackends: EmulatableBackend[] = [];
+
+  const filters = getEndpointFilters(options, true /* strict */);
+  const codebaseFilters = filters?.map((f) => f.codebase);
+
+  const filterFn = (codebase: string): boolean => {
+    if (!codebaseFilters) {
+      return true;
+    }
+    return codebaseFilters.includes(codebase);
+  };
+
+  for (const cfg of functionsCfg) {
+    const codebase = cfg.codebase ?? "default";
+    if (!filterFn(codebase)) {
+      functionsLogger.logLabeled(
+        "INFO",
+        "functions",
+        `Skipping codebase ${codebase} due to --only filter`,
+      );
+      continue;
+    }
+    const functionsDir = path.join(projectDir, cfg.source);
+    const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
+    // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
+    // will dynamically detect it later.
+    // TODO: does runtime even need to be a part of EmultableBackend now that we have dynamic runtime
+    // detection? Might be an extensions thing.
+    if (runtime && !isRuntime(runtime)) {
+      throw new FirebaseError(
+        `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
+      );
+    }
+    emulatableBackends.push({
+      functionsDir,
+      runtime,
+      codebase: cfg.codebase,
+      env: {
+        ...options.extDevEnv,
+      },
+      secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+      // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+      // Ideally, we should handle that case via ExtensionEmulator.
+      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+      ignore: cfg.ignore,
+    });
+  }
+  return emulatableBackends;
 }
 
 /**
@@ -260,7 +324,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-interface EmulatorOptions extends Options {
+export interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
   logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
@@ -522,35 +586,19 @@ export async function startAll(
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeAndValidate(options.config.src.functions);
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertIsStringOrUndefined(options.extDevDir);
-
-    for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
-      const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
-      // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
-      // will dynamically detect it later.
-      // TODO: does runtime even need to be a part of EmultableBackend now that we have dynamic runtime
-      // detection? Might be an extensions thing.
-      if (runtime && !isRuntime(runtime)) {
-        throw new FirebaseError(
-          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
-        );
-      }
-      emulatableBackends.push({
-        functionsDir,
-        runtime,
-        codebase: cfg.codebase,
-        env: {
-          ...options.extDevEnv,
-        },
-        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        ignore: cfg.ignore,
-      });
+    try {
+      const functionsCfg = normalizeAndValidate(options.config.src.functions);
+      const functionsBackends = prepareFunctionsBackends(options, functionsCfg, projectDir);
+      emulatableBackends.push(...functionsBackends);
+    } catch (err: any) {
+      // This error is already logged in shouldStart, but we catch it again here
+      // to be safe.
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
+        "WARN",
+        `Could not prepare functions backends: ${err?.message}`,
+      );
     }
   }
 
