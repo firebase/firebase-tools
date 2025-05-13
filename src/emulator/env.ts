@@ -70,7 +70,14 @@ export async function getCredentialsEnvironment(
 ): Promise<Record<string, string>> {
   // Provide default application credentials when appropriate
   const credentialEnv: Record<string, string> = {};
-  if (account) {
+  if (await hasDefaultCredentials()) {
+    !silent &&
+      logger.logLabeled(
+        "WARN",
+        logLabel,
+        `Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful!`,
+      );
+  } else if (account) {
     const defaultCredPath = await getCredentialPathAsync(account);
     if (defaultCredPath) {
       logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
