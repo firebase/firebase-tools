@@ -3,6 +3,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { Duration, assertOneOf, durationFromSeconds } from "./proto";
 import { FirebaseError } from "../error";
+import { E } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
 
 const prodOnlyClient = new Client({
   auth: true,
@@ -33,30 +34,36 @@ export interface Database {
   etag: string;
 }
 
+interface FieldFilter {
+  field: { fieldPath: string };
+  op:
+    | "OPERATOR_UNSPECIFIED"
+    | "LESS_THAN"
+    | "LESS_THAN_OR_EQUAL"
+    | "GREATER_THAN"
+    | "GREATER_THAN_OR_EQUAL"
+    | "EQUAL"
+    | "NOT_EQUAL"
+    | "ARRAY_CONTAINS"
+    | "ARRAY_CONTAINS_ANY"
+    | "IN"
+    | "NOT_IN";
+  value: FirestoreValue;
+}
+
+interface CompositeFilter {
+  op: "OR" | "AND";
+  filters: {
+    fieldFilter?: FieldFilter;
+    compositeFilter?: CompositeFilter;
+  }[];
+}
+
 export interface StructuredQuery {
   from: { collectionId: string; allDescendants: boolean }[];
   where?: {
-    compositeFilter: {
-      op: "OR" | "AND";
-      filters: {
-        fieldFilter: {
-          field: { fieldPath: string };
-          op:
-            | "OPERATOR_UNSPECIFIED"
-            | "LESS_THAN"
-            | "LESS_THAN_OR_EQUAL"
-            | "GREATER_THAN"
-            | "GREATER_THAN_OR_EQUAL"
-            | "EQUAL"
-            | "NOT_EQUAL"
-            | "ARRAY_CONTAINS"
-            | "ARRAY_CONTAINS_ANY"
-            | "IN"
-            | "NOT_IN";
-          value: FirestoreValue;
-        };
-      }[];
-    };
+    compositeFilter?: CompositeFilter;
+    fieldFilter?: FieldFilter;
   };
   orderBy?: {
     field: { fieldPath: string };
@@ -215,27 +222,31 @@ export async function queryCollection(
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const basePath = `projects/${project}/databases/(default)/documents`;
   const url = `${basePath}:runQuery`;
-  const res = await apiClient.post<
-    {
-      structuredQuery: StructuredQuery;
-      explainOptions: { analyze: boolean };
-      newTransaction: { readOnly: { readTime: string } };
-      // readTime: string;
-    },
-    RunQueryResponse[]
-  >(url, {
-    structuredQuery: structuredQuery,
-    explainOptions: { analyze: true },
-    newTransaction: { readOnly: { readTime: new Date().toISOString() } },
-    // readTime: new Date().toISOString(),
-  });
-  const out: { documents: FirestoreDocument[] } = { documents: [] };
-  res.body.map((r) => {
-    if (r.document) {
-      out.documents.push(r.document);
-    }
-  });
-  return out;
+  try {
+    const res = await apiClient.post<
+      {
+        structuredQuery: StructuredQuery;
+        explainOptions: { analyze: boolean };
+        newTransaction: { readOnly: { readTime: string } };
+        // readTime: string;
+      },
+      RunQueryResponse[]
+    >(url, {
+      structuredQuery: structuredQuery,
+      explainOptions: { analyze: true },
+      newTransaction: { readOnly: { readTime: new Date().toISOString() } },
+      // readTime: new Date().toISOString(),
+    });
+    const out: { documents: FirestoreDocument[] } = { documents: [] };
+    res.body.map((r) => {
+      if (r.document) {
+        out.documents.push(r.document);
+      }
+    });
+    return out;
+  } catch (err: FirebaseError | unknown) {
+    throw JSON.stringify(err);
+  }
 }
 
 /**

@@ -20,40 +20,47 @@ export const query_collection = tool(
         .describe(
           "A collection path (e.g. `collectionName/` or `parentCollection/parentDocument/collectionName`)",
         ),
-      filter: z.object({
-        where: z
-          .object({
-            field: z.string().describe("the field searching against"),
-            op: z
-              .enum([
-                "OPERATOR_UNSPECIFIED",
-                "LESS_THAN",
-                "LESS_THAN_OR_EQUAL",
-                "GREATER_THAN",
-                "GREATER_THAN_OR_EQUAL",
-                "EQUAL",
-                "NOT_EQUAL",
-                "ARRAY_CONTAINS",
-                "ARRAY_CONTAINS_ANY",
-                "IN",
-                "NOT_IN",
-              ])
-              .describe("the equality evaluator to use"),
-            value: z
-              .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
-              .describe("the value to compare against"),
-          })
-          .array()
-          .nullish(),
-        order: z
-          .object({
-            orderBy: z.string().describe("the field to order by"),
-            orderByDirection: z
-              .enum(["ASCENDING", "DESCENDING", "DIRECTION_UNSPECIFIED"])
-              .describe("the direction to order values"),
-          })
-          .nullish(),
-      }),
+      filters: z
+        .object({
+          compareValue: z
+            .object({
+              stringValue: z.string().nullish().describe("The string value to compare against."),
+              booleanValue: z.string().nullish().describe("The boolean value to compare against."),
+              stringArrayValue: z
+                .array(z.string())
+                .nullish()
+                .describe("The string value to compare against."),
+              integerValue: z.number().nullish().describe("The integer value to compare against."),
+              doubleValue: z.number().nullish().describe("The double value to compare against."),
+            })
+            .describe("One and only one value may be specified per filters object."),
+          field: z.string().describe("the field searching against"),
+          op: z
+            .enum([
+              "OPERATOR_UNSPECIFIED",
+              "LESS_THAN",
+              "LESS_THAN_OR_EQUAL",
+              "GREATER_THAN",
+              "GREATER_THAN_OR_EQUAL",
+              "EQUAL",
+              "NOT_EQUAL",
+              "ARRAY_CONTAINS",
+              "ARRAY_CONTAINS_ANY",
+              "IN",
+              "NOT_IN",
+            ])
+            .describe("the equality evaluator to use"),
+        })
+        .array()
+        .describe("the multiple filters to use in querying against the existing collection."),
+      order: z
+        .object({
+          orderBy: z.string().describe("the field to order by"),
+          orderByDirection: z
+            .enum(["ASCENDING", "DESCENDING", "DIRECTION_UNSPECIFIED"])
+            .describe("the direction to order values"),
+        })
+        .nullish(),
       limit: z
         .number()
         .describe("The maximum amount of records to return. Default is 10.")
@@ -68,7 +75,7 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collectionPath, filter, limit }, { projectId }) => {
+  async ({ collectionPath, filters, order, limit }, { projectId }) => {
     // database ??= "(default)";
 
     if (!collectionPath || !collectionPath.length)
@@ -77,25 +84,39 @@ export const query_collection = tool(
     const structuredQuery: StructuredQuery = {
       from: [{ collectionId: collectionPath, allDescendants: false }],
     };
-    if (filter.where) {
+    if (filters) {
       structuredQuery.where = {
         compositeFilter: {
           op: "AND",
-          filters: filter.where.map((f) => ({
-            fieldFilter: {
-              field: { fieldPath: f.field },
-              op: f.op,
-              value: convertInputToValue(f.value),
-            },
-          })),
+          filters: filters.map((f) => {
+            if (
+              f.compareValue.booleanValue &&
+              f.compareValue.doubleValue &&
+              f.compareValue.integerValue &&
+              f.compareValue.stringArrayValue &&
+              f.compareValue.stringValue
+            ) {
+              throw mcpError("One and only one value may be specified per filters object.");
+            }
+            const out = Object.entries(f.compareValue).filter(([key, value]) => {
+              return value !== null && value !== undefined;
+            });
+            return {
+              fieldFilter: {
+                field: { fieldPath: f.field },
+                op: f.op,
+                value: convertInputToValue(out[0][1]),
+              },
+            };
+          }),
         },
       };
     }
-    if (filter.order) {
+    if (order) {
       structuredQuery.orderBy = [
         {
-          field: { fieldPath: filter.order.orderBy },
-          direction: filter.order.orderByDirection,
+          field: { fieldPath: order.orderBy },
+          direction: order.orderByDirection,
         },
       ];
     }
