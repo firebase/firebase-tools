@@ -1357,10 +1357,7 @@
                             "type": "string"
                         },
                         "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
+                            "type": "number"
                         }
                     },
                     "type": "object"
