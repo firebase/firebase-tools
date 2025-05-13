@@ -7,6 +7,7 @@ import { RC } from "../rc";
 
 export interface ServerToolContext {
   projectId?: string;
+  accountEmail?: string | null;
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
