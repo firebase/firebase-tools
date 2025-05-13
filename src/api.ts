@@ -52,6 +52,8 @@ export const apphostingGitHubAppInstallationURL = () =>
 
 export const authOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
+export const authManagementOrigin = () =>
+  utils.envOverride("FIREBASE_AUTH_MANAGEMENT_URL", "https://identitytoolkit.googleapis.com");
 export const consoleOrigin = () =>
   utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com");
 export const dynamicLinksOrigin = () =>
