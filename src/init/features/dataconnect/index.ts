@@ -93,7 +93,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     shouldProvisionCSQL: false,
   };
   // Query backend and pick up any existing services quickly.
-  info = await promptForExistingServices(setup, info, hasBilling);
+  info = await promptForExistingServices(setup, info);
 
   const requiredConfigUnset =
     info.serviceId === "" ||
@@ -110,6 +110,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       default: true,
     }));
   if (shouldConfigureBackend) {
+    // TODO: Prompt for app idea and use GiF backend to generate them.
     info = await promptForService(info);
     info = await promptForCloudSQL(setup, info);
 
@@ -122,14 +123,6 @@ export async function askQuestions(setup: Setup): Promise<void> {
         default: true,
       }))
     );
-  } else {
-    // Ensure that the suggested name is DNS compatible
-    const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
-    info.serviceId = info.serviceId || defaultServiceId;
-    info.cloudSqlInstanceId =
-      info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
-    info.locationId = info.locationId || `us-central1`;
-    info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -147,6 +140,14 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   if (!info) {
     throw new Error("Data Connect feature RequiredInfo is not provided");
   }
+  // Populate the default values of required fields.
+  const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
+  info.serviceId = info.serviceId || defaultServiceId;
+  info.cloudSqlInstanceId =
+    info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
+  info.locationId = info.locationId || `us-central1`;
+  info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
+
   await writeFiles(config, info);
 
   if (setup.projectId && info.shouldProvisionCSQL) {
@@ -266,24 +267,15 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForExistingServices(
-  setup: Setup,
-  info: RequiredInfo,
-  isBillingEnabled: boolean,
-): Promise<RequiredInfo> {
-  if (!setup.projectId || !isBillingEnabled) {
-    // TODO(b/368609569): Don't gate this behind billing once backend billing fix is rolled out.
+async function promptForExistingServices(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+  // Check for existing Firebase Data Connect services.
+  if (!setup.projectId) {
     return info;
   }
-
-  // Check for existing Firebase Data Connect services.
   const existingServices = await listAllServices(setup.projectId);
   const existingServicesAndSchemas = await Promise.all(
     existingServices.map(async (s) => {
-      return {
-        service: s,
-        schema: await getSchema(s.name),
-      };
+      return { service: s, schema: await getSchema(s.name) };
     }),
   );
   if (existingServicesAndSchemas.length) {
