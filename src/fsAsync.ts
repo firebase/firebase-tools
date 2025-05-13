@@ -68,18 +68,19 @@ export async function readdirRecursive(
 
   // Re-include the files may have been previously ignored
   for (const p of options.include || []) {
-    if (!existsSync(join(options.path, p))) {
+    const absPath = join(options.path, p);
+    if (!existsSync(absPath)) {
       continue;
     }
-    if (filenames.includes(join(options.path, p))) {
+    if (filenames.includes(absPath)) {
       continue;
     }
-    const fstat = statSync(join(options.path, p));
+    const fstat = statSync(absPath);
     if (fstat.isFile()) {
-      files.push({ name: join(options.path, p), mode: fstat.mode });
+      files.push({ name: absPath, mode: fstat.mode });
     } else {
       const filesToInclude = await readdirRecursiveHelper({
-        path: join(options.path, p),
+        path: absPath,
         filter: (t: string) => filenames.includes(join(options.path, t)),
       });
       files.push(...filesToInclude);
