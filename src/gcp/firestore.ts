@@ -244,6 +244,8 @@ export async function queryCollection(
     });
     return out;
   } catch (err: FirebaseError | unknown) {
+    // Used to get the URL to automatically build the composite index.
+    // Otherwise a generic 400 error is returned to the user without info.
     throw JSON.stringify(err);
   }
 }
