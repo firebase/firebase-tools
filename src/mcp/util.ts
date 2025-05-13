@@ -2,6 +2,9 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { execSync } from "child_process";
 import { dump } from "js-yaml";
 import { platform } from "os";
+import { ServerFeature } from "./types";
+import { authManagementOrigin, dataconnectOrigin, firestoreOrigin, storageOrigin } from "../api";
+import { check } from "../ensureApiEnabled";
 
 export function toContent(data: any, options?: { format: "json" | "yaml" }): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
@@ -52,4 +55,31 @@ export function commandExistsSync(command: string): boolean {
     // If the command is not found, execSync will throw an error (non-zero exit code)
     return false;
   }
+}
+
+const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
+  firestore: firestoreOrigin(),
+  storage: storageOrigin(),
+  dataconnect: dataconnectOrigin(),
+  auth: authManagementOrigin(),
+};
+/**
+ * Detects whether an MCP feature is active in the current project root. Relies first on
+ * `firebase.json` configuration, but falls back to API checks.
+ */
+export async function checkFeatureActive(
+  feature: ServerFeature,
+  projectId?: string,
+  options?: any,
+): Promise<boolean> {
+  // if the feature is configured in firebase.json, it's active
+  if (feature in (options?.config?.data || {})) return true;
+  // if the feature's api is active in the project, it's active
+  try {
+    if (projectId) return await check(projectId, SERVER_FEATURE_APIS[feature], "", true);
+  } catch (e) {
+    // if we don't have network or something, better to default to on
+    return true;
+  }
+  return false;
 }

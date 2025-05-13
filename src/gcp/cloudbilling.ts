@@ -1,5 +1,6 @@
 import { cloudbillingOrigin } from "../api";
 import { Client } from "../apiv2";
+import { Setup } from "../init";
 import * as utils from "../utils";
 
 const API_VERSION = "v1";
@@ -11,6 +12,23 @@ export interface BillingAccount {
   displayName: string;
   masterBillingAccount: string;
 }
+
+/**
+ * Returns whether or not project has billing enabled.
+ * Cache the result in the init Setup metadata.
+ * @param setup
+ */
+export async function isBillingEnabled(setup: Setup): Promise<boolean> {
+  if (setup.isBillingEnabled !== undefined) {
+    return setup.isBillingEnabled;
+  }
+  if (!setup.projectId) {
+    return false;
+  }
+  setup.isBillingEnabled = await checkBillingEnabled(setup.projectId);
+  return setup.isBillingEnabled;
+}
+
 /**
  * Returns whether or not project has billing enabled.
  * @param projectId
