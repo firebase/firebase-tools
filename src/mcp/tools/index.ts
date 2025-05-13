@@ -15,7 +15,7 @@ export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeatur
     // Present if the root is not fixed.
     toolDefs.push(...directoryTools);
   }
-  if (!activeFeatures || !activeFeatures.length) {
+  if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   for (const key of activeFeatures) {
