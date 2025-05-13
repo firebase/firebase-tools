@@ -132,6 +132,18 @@ describe("init dataconnect", () => {
         desc: "should handle schema with no files",
         requiredInfo: mockRequiredInfo({
           schemaGql: [],
+          connectors: [
+            {
+              id: "my-connector",
+              path: "hello",
+              files: [
+                {
+                  path: "queries.gql",
+                  content: "## Fake GQL",
+                },
+              ],
+            },
+          ],
         }),
         config: mockConfig({
           dataconnect: {
@@ -141,10 +153,8 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
-          "dataconnect/schema/schema.gql",
-          "dataconnect/connector/connector.yaml",
-          "dataconnect/connector/queries.gql",
-          "dataconnect/connector/mutations.gql",
+          "dataconnect/hello/connector.yaml",
+          "dataconnect/hello/queries.gql",
         ],
         expectCSQLProvisioning: false,
         expectEnsureSchemaGQL: true,
