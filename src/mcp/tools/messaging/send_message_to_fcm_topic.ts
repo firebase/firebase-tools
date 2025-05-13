@@ -22,12 +22,9 @@ export const send_message_to_fcm_topic = tool(
     },
   },
   async ({ topic, title, body }, { projectId }) => {
-    if (projectId === undefined) {
-      return mcpError(`No projectId specified in the send_message_to_fcm_topic tool`);
-    }
     if (topic === undefined) {
       return mcpError(`No topic specified in the send_message_to_fcm_topic tool`);
     }
-    return toContent(await sendMessageToFcmTopic(projectId, topic, title, body));
+    return toContent(await sendMessageToFcmTopic(projectId!, topic, title, body));
   },
 );

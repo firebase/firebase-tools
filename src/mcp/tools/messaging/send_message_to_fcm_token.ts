@@ -22,12 +22,9 @@ export const send_message_to_fcm_token = tool(
     },
   },
   async ({ fcmToken, title, body }, { projectId }) => {
-    if (projectId === undefined) {
-      return mcpError(`No projectId specified in the send_message_to_fcm_token tool`);
-    }
     if (fcmToken === undefined) {
       return mcpError(`No fcmToken specified in the send_message_to_fcm_token tool`);
     }
-    return toContent(await sendMessageToFcmToken(projectId, fcmToken, title, body));
+    return toContent(await sendMessageToFcmToken(projectId!, fcmToken, title, body));
   },
 );
