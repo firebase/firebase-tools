@@ -6,7 +6,7 @@ import { actuate, Setup, SetupInfo } from "../../../init/index.js";
 export const init = tool(
   {
     name: "init",
-    description: "Initialize the Firebase Products.",
+    description: "Initialize the Firebase Products. Provide the desired features information.",
     inputSchema: z.object({
       features: z.object({
         // TODO: Add all the features here.
@@ -33,7 +33,7 @@ export const init = tool(
       }),
     }),
     annotations: {
-      title: "List the Firebase Data Connect Services that's available in the backend",
+      title: "Initialize Firebase Products",
       readOnlyHint: false,
     },
     _meta: {
