@@ -6,8 +6,13 @@ import { actuate, Setup, SetupInfo } from "../../../init/index.js";
 export const init = tool(
   {
     name: "init",
-    description: "Initialize the Firebase Products. Provide the desired features information.",
+    description:
+      "Initialize the Firebase Products. It takes a feature map to describe each desired product.",
     inputSchema: z.object({
+      // force: z
+      //   .boolean()
+      //   .default(false)
+      //   .describe("Force the initialization without prompting for confirmation. Without force, it prompts if any existing files are overwritten."),
       features: z.object({
         // TODO: Add all the features here.
         dataconnect: z.object({
@@ -24,10 +29,12 @@ export const init = tool(
           cloudSqlInstanceId: z
             .string()
             .optional()
-            .describe("The GCP Cloud SQL instance ID to use in the Firebase Data Connect service."),
+            .describe(
+              "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
+            ),
           cloudSqlDatabase: z
             .string()
-            .optional()
+            .default("fdcdb")
             .describe("The Postgres database ID to use in the Firebase Data Connect service."),
         }),
       }),
