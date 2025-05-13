@@ -5,40 +5,75 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as features from "./features";
 import { RCData } from "../rc";
+import { Config } from "../config";
+import { FirebaseConfig } from "../firebaseConfig";
+import { Options } from "../options";
 
 export interface Setup {
-  config: Record<string, any>;
+  config: FirebaseConfig;
   rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
+  featureInfo?: SetupInfo;
+
+  /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
   projectLocation?: string;
+  isBillingEnabled?: boolean;
+
   hosting?: Record<string, any>;
 }
 
-const featureFns = new Map<string, (setup: any, config: any, options?: any) => Promise<unknown>>([
-  ["account", features.account],
-  ["database", features.database],
-  ["firestore", features.firestore],
-  ["dataconnect", features.dataconnect],
-  ["dataconnect:sdk", features.dataconnectSdk],
-  ["functions", features.functions],
-  ["hosting", features.hosting],
-  ["storage", features.storage],
-  ["emulators", features.emulators],
-  ["extensions", features.extensions],
-  ["project", features.project], // always runs, sets up .firebaserc
-  ["remoteconfig", features.remoteconfig],
-  ["hosting:github", features.hostingGithub],
-  ["genkit", features.genkit],
-  ["apphosting", features.apphosting],
-]);
+export interface SetupInfo {
+  dataconnect?: features.DataconnectInfo;
+}
+
+interface Feature {
+  name: string;
+  // OLD WAY: A single setup function to ask questions and actuate the setup.
+  doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+
+  // NEW WAY: Split the init into phases:
+  // 1. askQuestions: Ask the user questions and update `setup.featureInfo` with the answers.
+  askQuestions?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+  // 2. actuate: Use the answers in `setup.featureInfo` to actuate the setup.
+  actuate?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+  // 3. [optional] Additional follow-up steps to run after the setup is completed.
+  postSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+}
+
+const featuresList: Feature[] = [
+  { name: "account", doSetup: features.account },
+  { name: "database", doSetup: features.database },
+  { name: "firestore", doSetup: features.firestore },
+  {
+    name: "dataconnect",
+    // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
+    askQuestions: features.dataconnectAskQuestions,
+    actuate: features.dataconnectActuate,
+    postSetup: features.dataconnectPostSetup,
+  },
+  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  { name: "functions", doSetup: features.functions },
+  { name: "hosting", doSetup: features.hosting },
+  { name: "storage", doSetup: features.storage },
+  { name: "emulators", doSetup: features.emulators },
+  { name: "extensions", doSetup: features.extensions },
+  { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
+  { name: "remoteconfig", doSetup: features.remoteconfig },
+  { name: "hosting:github", doSetup: features.hostingGithub },
+  { name: "genkit", doSetup: features.genkit },
+  { name: "apphosting", doSetup: features.apphosting },
+];
+
+const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    if (!featureFns.has(nextFeature)) {
+    const f = featureMap.get(nextFeature);
+    if (!f) {
       const availableFeatures = Object.keys(features)
         .filter((f) => f !== "project")
         .join(", ");
@@ -49,12 +84,19 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
 
     logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
 
-    const fn = featureFns.get(nextFeature);
-    if (!fn) {
-      // We've already checked that the function exists, so this really should never happen.
-      throw new FirebaseError(`We've lost the function to init ${nextFeature}`, { exit: 2 });
+    if (f.doSetup) {
+      await f.doSetup(setup, config, options);
+    } else {
+      if (f.askQuestions) {
+        await f.askQuestions(setup, config, options);
+      }
+      if (f.actuate) {
+        await f.actuate(setup, config, options);
+      }
     }
-    await fn(setup, config, options);
+    if (f.postSetup) {
+      await f.postSetup(setup, config, options);
+    }
     return init(setup, config, options);
   }
 }

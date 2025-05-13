@@ -13,21 +13,26 @@ import {
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
 import { ensureApiEnabled } from "../../gcp/apphosting";
+import { Setup } from "..";
+import { isBillingEnabled } from "../../gcp/cloudbilling";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
 /**
  * Set up an apphosting.yaml file for a new App Hosting project.
  */
-export async function doSetup(setup: any, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
-  await checkBillingEnabled(projectId);
+  if (!(await isBillingEnabled(setup))) {
+    throw new FirebaseError(
+      "Firebase App Hosting requires billing to be enabled on your project. Please enable billing by following the steps at https://cloud.google.com/billing/docs/how-to/modify-project",
+    );
+  }
   await ensureApiEnabled({ projectId });
   // N.B. Deploying a backend from source requires the App Hosting compute service
   // account to have the storage.objectViewer IAM role.
@@ -41,7 +46,6 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
     /* serviceAccount= */ null,
     /* deployFromSource= */ true,
   );
-
   utils.logBullet(
     "This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup.",
   );

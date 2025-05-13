@@ -18,19 +18,7 @@ import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";
 import { Client } from "../../apiv2";
 import { rtdbManagementOrigin } from "../../api";
-
-interface DatabaseSetup {
-  projectId?: string;
-  instance?: string;
-  config?: DatabaseSetupConfig;
-}
-
-interface DatabaseSetupConfig {
-  database?: {
-    rules?: string;
-  };
-  defaultInstanceLocation?: DatabaseLocation;
-}
+import { Setup } from "..";
 
 const DEFAULT_RULES = JSON.stringify(
   { rules: { ".read": "auth != null", ".write": "auth != null" } },
@@ -119,36 +107,40 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
   }
 }
 
+async function initializeDatabaseInstance(projectId: string): Promise<DatabaseInstance | null> {
+  await ensure(projectId, rtdbManagementOrigin(), "database", false);
+  logger.info();
+
+  const instance = await getDefaultDatabaseInstance({ project: projectId });
+  if (instance !== "") {
+    return await getDatabaseInstanceDetails(projectId, instance);
+  }
+
+  const createDefault = await confirm({
+    message:
+      "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
+    default: true,
+  });
+
+  if (createDefault) {
+    return await createDefaultDatabaseInstance(projectId);
+  }
+
+  return null;
+}
+
 /**
  * doSetup is the entry point for setting up the database product.
  * @param setup information helpful for database setup
  * @param config legacy config parameter. not used for database setup.
  */
-export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config): Promise<void> {
   setup.config = setup.config || {};
 
-  let instanceDetails;
+  let instanceDetails: DatabaseInstance | null = null;
   if (setup.projectId) {
-    await ensure(setup.projectId, rtdbManagementOrigin(), "database", false);
-    logger.info();
-    setup.instance =
-      setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
-    if (setup.instance !== "") {
-      instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
-    } else {
-      const createDefault = await confirm({
-        message:
-          "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
-        default: true,
-      });
-      if (createDefault) {
-        instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
-      }
-    }
+    instanceDetails = await initializeDatabaseInstance(setup.projectId);
   }
-
-  // Add 'database' section to config
-  setup.config.database = setup.config.database || {};
 
   logger.info();
   logger.info(
@@ -157,24 +149,21 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
-  setup.config.database.rules =
-    setup.config.database.rules ||
-    (await input({
-      message: "What file should be used for Realtime Database Security Rules?",
-      default: "database.rules.json",
-    }));
-
-  const filename = setup.config.database.rules;
+  const filename = await input({
+    message: "What file should be used for Realtime Database Security Rules?",
+    default: "database.rules.json",
+  });
   if (!filename) {
     throw new FirebaseError("Must specify location for Realtime Database rules file.");
   }
 
+  // Add 'database' section to config
+  setup.config.database = { rules: filename };
+
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
     const rulesDescription = instanceDetails
-      ? `the Realtime Database Security Rules for ${clc.bold(
-          instanceDetails.name,
-        )} from the Firebase console`
+      ? `the Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`
       : "default rules";
     const msg = `File ${clc.bold(
       filename,
