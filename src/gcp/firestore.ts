@@ -3,7 +3,6 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { Duration, assertOneOf, durationFromSeconds } from "./proto";
 import { FirebaseError } from "../error";
-import { E } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
 
 const prodOnlyClient = new Client({
   auth: true,

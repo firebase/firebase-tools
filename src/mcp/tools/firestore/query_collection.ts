@@ -98,7 +98,7 @@ export const query_collection = tool(
             ) {
               throw mcpError("One and only one value may be specified per filters object.");
             }
-            const out = Object.entries(f.compareValue).filter(([key, value]) => {
+            const out = Object.entries(f.compareValue).filter(([, value]) => {
               return value !== null && value !== undefined;
             });
             return {
