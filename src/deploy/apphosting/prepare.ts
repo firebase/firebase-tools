@@ -1,17 +1,9 @@
 import * as path from "path";
 import {
-  artifactRegistryDomain,
-  cloudbuildOrigin,
-  cloudRunApiOrigin,
-  developerConnectOrigin,
-  iamOrigin,
-  secretManagerOrigin,
-} from "../../api";
-import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
+  ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
-import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
@@ -29,24 +21,16 @@ import { Context } from "./args";
 export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   await ensureApiEnabled(options);
-
-  context.backendConfigs = new Map<string, AppHostingSingle>();
-  context.backendLocations = new Map<string, string>();
-  context.backendStorageUris = new Map<string, string>();
-
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-    ensure(projectId, iamOrigin(), "apphosting", true),
-  ]);
+  await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(
     projectId,
     /* serviceAccount= */ null,
     /* deployFromSource= */ true,
   );
+
+  context.backendConfigs = new Map<string, AppHostingSingle>();
+  context.backendLocations = new Map<string, string>();
+  context.backendStorageUris = new Map<string, string>();
 
   const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");

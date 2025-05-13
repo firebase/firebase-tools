@@ -31,6 +31,7 @@ export interface SetupInfo {
 
 interface Feature {
   name: string;
+  displayName?: string;
   // OLD WAY: A single setup function to ask questions and actuate the setup.
   doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 
@@ -64,7 +65,7 @@ const featuresList: Feature[] = [
   { name: "remoteconfig", doSetup: features.remoteconfig },
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
-  { name: "apphosting", doSetup: features.apphosting },
+  { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
@@ -82,7 +83,9 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       );
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
+    logger.info(
+      clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
+    );
 
     if (f.doSetup) {
       await f.doSetup(setup, config, options);

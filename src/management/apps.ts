@@ -525,6 +525,17 @@ export async function listFirebaseApps(
     return apps;
   } catch (err: any) {
     logger.debug(err.message);
+    if ((err as FirebaseError).status === 404) {
+      throw new FirebaseError(
+        `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
+          "apps because the project was not found. If you have not enabled Firebase on " +
+          "your project, run 'firebase projects:addfirebase <your-project>' and try again.",
+        {
+          exit: 2,
+          original: err,
+        },
+      );
+    }
     throw new FirebaseError(
       `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
         "apps. See firebase-debug.log for more info.",

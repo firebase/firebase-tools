@@ -76,14 +76,7 @@ export async function doSetup(
   webAppName: string | null,
   serviceAccount: string | null,
 ): Promise<void> {
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-    ensure(projectId, iamOrigin(), "apphosting", true),
-  ]);
+  await ensureRequiredApisEnabled(projectId);
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
@@ -201,6 +194,20 @@ export async function doSetupSourceDeploy(
     backend,
     location,
   };
+}
+
+/**
+ * Check that all GCP APIs required for App Hosting are enabled.
+ */
+export async function ensureRequiredApisEnabled(projectId: string): Promise<void> {
+  await Promise.all([
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
+  ]);
 }
 
 /**
