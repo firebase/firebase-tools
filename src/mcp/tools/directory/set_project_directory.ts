@@ -4,9 +4,9 @@ import { mcpError, toContent } from "../../util.js";
 import { existsSync } from "fs";
 import { join } from "path";
 
-export const set_firebase_directory = tool(
+export const set_project_directory = tool(
   {
-    name: "set_firebase_directory",
+    name: "set_project_directory",
     description:
       "Sets the project directory for the Firebase MCP server to utilize for project detection and authentication. This should be a directory with a `firebase.json` file in it. This information is persisted between sessions.",
     inputSchema: z.object({

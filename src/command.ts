@@ -3,7 +3,7 @@ import { CommanderStatic } from "commander";
 import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
+import { getInheritedOption, withTimeout } from "./utils";
 import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
@@ -13,6 +13,7 @@ import { selectAccount, setActiveAccount } from "./auth";
 import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
+import { useConsoleLoggers } from "./logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -311,7 +312,7 @@ export class Command {
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
     } else {
-      setupLoggers();
+      useConsoleLoggers();
     }
 
     if (getInheritedOption(options, "config")) {

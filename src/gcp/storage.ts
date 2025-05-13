@@ -142,10 +142,50 @@ interface GetDefaultBucketResponse {
   };
 }
 
+interface CreateBucketRequest {
+  name: string;
+  location: string;
+  lifecycle: {
+    rule: LifecycleRule[];
+  };
+}
+
+interface LifecycleRule {
+  action: {
+    type: string;
+  };
+  condition: {
+    age: number;
+  };
+}
+
+interface UploadObjectResponse {
+  selfLink: string;
+  mediaLink: string;
+}
+
 /** Response type for obtaining the storage service agent */
 interface StorageServiceAccountResponse {
   email_address: string;
   kind: string;
+}
+
+export interface FirebaseMetadata {
+  name: string;
+  bucket: string;
+  generation: string;
+  metageneration: string;
+  contentType: string;
+  timeCreated: string;
+  updated: string;
+  storageClass: string;
+  size: string;
+  md5Hash: string;
+  contentEncoding: string;
+  contentDisposition: string;
+  crc32c: string;
+  etag: string;
+  downloadTokens?: string;
 }
 
 export async function getDefaultBucket(projectId: string): Promise<string> {
@@ -212,7 +252,11 @@ export async function uploadObject(
   source: { file: string; stream: Readable },
   /** Bucket to upload to. */
   bucketName: string,
-): Promise<{ bucket: string; object: string; generation: string | null }> {
+): Promise<{
+  bucket: string;
+  object: string;
+  generation: string | null;
+}> {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
@@ -232,6 +276,20 @@ export async function uploadObject(
     object: path.basename(source.file),
     generation: res.response.headers.get("x-goog-generation"),
   };
+}
+
+/**
+ * Get a storage object from GCP.
+ * @param {string} bucketName name of the storage bucket that contains the object
+ * @param {string} objectName name of the object
+ */
+export async function getObject(
+  bucketName: string,
+  objectName: string,
+): Promise<UploadObjectResponse> {
+  const client = new Client({ urlPrefix: storageOrigin() });
+  const res = await client.get<UploadObjectResponse>(`/storage/v1/b/${bucketName}/o/${objectName}`);
+  return res.body;
 }
 
 /**
@@ -257,6 +315,36 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
   } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to obtain the storage bucket", {
+      original: err,
+    });
+  }
+}
+
+/**
+ * Creates a storage bucket on GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/insert
+ * @param {string} bucketName name of the storage bucket
+ * @return a bucket resource object
+ */
+export async function createBucket(
+  projectId: string,
+  req: CreateBucketRequest,
+): Promise<BucketResponse> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    const result = await localAPIClient.post<CreateBucketRequest, BucketResponse>(
+      `/storage/v1/b`,
+      req,
+      {
+        queryParams: {
+          project: projectId,
+        },
+      },
+    );
+    return result.body;
+  } catch (err: any) {
+    logger.debug(err);
+    throw new FirebaseError("Failed to create the storage bucket", {
       original: err,
     });
   }
@@ -304,5 +392,35 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
     throw new FirebaseError("Failed to obtain the Cloud Storage service agent", {
       original: err,
     });
+  }
+}
+
+/**
+ * getDownloadUrl finds a publicly accessible download url for an object in Firebase storage.
+ * @param bucketName the bucket which contains the object you are looking for.
+ * @param objectPath a path within the bucket where the obejct resides.
+ * @return the string HTTP path to download the object.
+ */
+export async function getDownloadUrl(bucketName: string, objectPath: string): Promise<string> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin() });
+    const response = await localAPIClient.get<FirebaseMetadata>(
+      `/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}`,
+    );
+    if (!response.body.downloadTokens) {
+      throw new Error(
+        "no download tokens exist for ${objectPath}, please visit the Firebase console to make one",
+      );
+    }
+    const [token] = response.body.downloadTokens.split(",");
+    return `${firebaseStorageOrigin()}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+  } catch (err: any) {
+    logger.error(err);
+    throw new FirebaseError(
+      `${err} Check that you have permission in the Firebase console to generate a download token`,
+      {
+        original: err,
+      },
+    );
   }
 }

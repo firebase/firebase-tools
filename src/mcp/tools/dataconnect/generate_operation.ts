@@ -4,9 +4,9 @@ import { toContent } from "../../util.js";
 import { generateOperation } from "../../../gif/fdcExperience.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 
-export const generate_dataconnect_operation = tool(
+export const generate_operation = tool(
   {
-    name: "generate_dataconnect_operation",
+    name: "generate_operation",
     description:
       "Generates a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
     inputSchema: z.object({

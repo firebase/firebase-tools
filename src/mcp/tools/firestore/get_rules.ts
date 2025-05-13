@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
-import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
+import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules.js";
 
-export const get_firestore_rules = tool(
+export const get_rules = tool(
   {
-    name: "get_firestore_rules",
+    name: "get_rules",
     description: "Retrieves the active Firestore security rules for the current project.",
     inputSchema: z.object({}),
     annotations: {

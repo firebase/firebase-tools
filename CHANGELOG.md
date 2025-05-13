@@ -1,3 +1,5 @@
-- Fixed an issue where the prompt to create apphosting.emulator.yaml did not work with backends that are not at the project.root (#8412)
-- Fixed an issue where Terms of Service acceptance would be checked for non-human users.
-- Fixed an issue where Cloud Resource Manager was called without checking whether it is enabled on the user's project.
+- Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
+- Enhance firebase init apphosting to support local source deploys. (#8479)
+- Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
+- Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
+- Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)

@@ -232,7 +232,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: number | string;
+    port?: number;
   };
   extensions?: {};
   eventarc?: {
@@ -264,6 +264,17 @@ export type DataConnectMultiple = DataConnectSingle[];
 
 export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
+export type AppHostingSingle = {
+  backendId: string;
+  rootDir: string;
+  ignore: string[];
+  alwaysDeployFromSource?: boolean;
+};
+
+export type AppHostingMultiple = AppHostingSingle[];
+
+export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
+
 export type FirebaseConfig = {
   /**
    * @TJS-format uri
@@ -278,4 +289,5 @@ export type FirebaseConfig = {
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
+  apphosting?: AppHostingConfig;
 };
