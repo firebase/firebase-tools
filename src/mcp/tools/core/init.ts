@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { actuate, Setup } from "../../../init/index.js";
+import { actuate, Setup, SetupInfo } from "../../../init/index.js";
 
 export const init = tool(
   {
@@ -11,8 +11,24 @@ export const init = tool(
       features: z.object({
         // TODO: Add all the features here.
         dataconnect: z.object({
-          serviceId: z.string().optional().describe("The Firebase Data Connect service ID to setup."),
-          locationId: z.string().default("us-central1").describe("The GCP region ID to set up the Firebase Data Connect service. For example, us-central1."),
+          serviceId: z
+            .string()
+            .optional()
+            .describe(
+              "Configure the Firebase Data Connect service ID to setup. Default to match the current folder name.",
+            ),
+          locationId: z
+            .string()
+            .default("us-central1")
+            .describe("The GCP region ID to set up the Firebase Data Connect service."),
+          cloudSqlInstanceId: z
+            .string()
+            .optional()
+            .describe("The GCP Cloud SQL instance ID to use in the Firebase Data Connect service."),
+          cloudSqlDatabase: z
+            .string()
+            .optional()
+            .describe("The Postgres database ID to use in the Firebase Data Connect service."),
         }),
       }),
     }),
@@ -21,25 +37,38 @@ export const init = tool(
       readOnlyHint: false,
     },
     _meta: {
-      requiresProject: false, // Can start from stratch.
+      requiresProject: false, // Can start from scratch.
       requiresAuth: false, // Will throw error if the specific feature needs it.
     },
   },
-  async ({features}, { projectId, config, rc }) => {
+  async ({ features }, { projectId, config, rc }) => {
+    const featuresList: string[] = [];
+    const featureInfo: SetupInfo = {};
+    if (features.dataconnect) {
+      featuresList.push("dataconnect");
+      featureInfo.dataconnect = {
+        serviceId: features.dataconnect.serviceId || "",
+        locationId: features.dataconnect.locationId || "",
+        cloudSqlInstanceId: features.dataconnect.cloudSqlInstanceId || "",
+        cloudSqlDatabase: features.dataconnect.cloudSqlDatabase || "",
+        connectors: [], // TODO populate with GiF,
+        isNewInstance: false,
+        isNewDatabase: false,
+        schemaGql: [], // TODO populate with GiF
+        shouldProvisionCSQL: false,
+      };
+    }
+
     const setup: Setup = {
       config: config.src,
       rcfile: rc.data,
-      projectId,
-      features: [],
-      featureInfo: {},
+      projectId: projectId,
+      features: featuresList,
+      featureInfo: featureInfo,
     };
-    if (features.dataconnect) {
-      setup.features.push("dataconnect");
-      setup.featureInfo.dataconnect = features.dataconnect;
-    }
     await actuate(setup, config, {});
     return toContent(
-      `The Firebase Data Connect Services has been initialized. You can now use the Firebase Data Connect Services.`,
+      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}`,
     );
   },
 );
