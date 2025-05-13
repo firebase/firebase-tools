@@ -10,7 +10,7 @@ import {
 import { checkFeatureActive, mcpError } from "./util.js";
 import { SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
-import { ServerTool } from "./tool.js";
+import { ServerTool, ServerToolContext } from "./tool.js";
 import { configstore } from "../configstore.js";
 import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
@@ -132,16 +132,15 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresAuth && !(await this.getAuthenticated())) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
+    const options = { projectDir: this.projectRoot, cwd: this.projectRoot };
+    const toolsCtx: ServerToolContext = {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+    };
     try {
-      const cliOpts = { cwd: this.projectRoot };
-      const config = Config.load(cliOpts) as Config;
-      const rc = loadRC(cliOpts);
-      const res = await tool.fn(toolArgs, {
-        projectId: await this.getProjectId(),
-        host: this,
-        config,
-        rc,
-      });
+      const res = await tool.fn(toolArgs, toolsCtx);
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
       return res;
     } catch (err: unknown) {
