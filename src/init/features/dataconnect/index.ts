@@ -88,8 +88,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
     isNewInstance: false,
     cloudSqlDatabase: "",
     isNewDatabase: false,
-    connectors: [defaultConnector],
-    schemaGql: [defaultSchema],
+    connectors: [],
+    schemaGql: [],
     shouldProvisionCSQL: false,
   };
   // Query backend and pick up any existing services quickly.
@@ -147,6 +147,12 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
+  // Make sure to add add some GQL files.
+  // Use the template if the existing service is empty (no schema / connector GQL).
+  if (!info.schemaGql.length && !info.connectors.flatMap((r) => r.files).length) {
+    info.schemaGql = [defaultSchema];
+    info.connectors = [defaultConnector];
+  }
 
   await writeFiles(config, info);
 
@@ -182,16 +188,6 @@ async function writeFiles(config: Config, info: RequiredInfo) {
     ...info,
     connectorDirs: info.connectors.map((c) => c.path),
   });
-  // If we are starting from a fresh project without data connect,
-  if (!config.get("dataconnect.source")) {
-    // Make sure to add add some GQL files.
-    // Use the template if the existing service is empty (no schema / connector GQL).
-    if (!info.schemaGql.length && !info.connectors.flatMap((r) => r.files).length) {
-      info.schemaGql = [defaultSchema];
-      info.connectors = [defaultConnector];
-    }
-  }
-
   config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(
     join(dir, "dataconnect.yaml"),
