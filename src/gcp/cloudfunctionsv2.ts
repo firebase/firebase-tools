@@ -421,26 +421,30 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
+  // Copy the Cloud Function to a local variable so that included buildEnvironmentVariables do not live between retires.
+  // Otherwise, proto.fieldMasks will parse out each buildEnvironmentVariables into a separate updateMask field.
+  // Then the API call will fail with a 400: `The updateMask field contains fields not existing in CloudFunction resource`.
+  const cf: InputCloudFunction = { ...cloudFunction };
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
-    cloudFunction,
+    cf,
     /* doNotRecurseIn...=*/ "labels",
     "serviceConfig.environmentVariables",
     "serviceConfig.secretEnvironmentVariables",
   );
 
-  cloudFunction.buildConfig.environmentVariables = {
-    ...cloudFunction.buildConfig.environmentVariables,
+  cf.buildConfig.environmentVariables = {
+    ...cf.buildConfig.environmentVariables,
     // Disable GCF from automatically running npm run build script
     // https://cloud.google.com/functions/docs/release-notes
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
   fieldMasks.push("buildConfig.buildEnvironmentVariables");
 
-  cloudFunction.serviceConfig.environmentVariables = {
-    ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+  cf.serviceConfig.environmentVariables = {
+    ...cf.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: cf.buildConfig.entryPoint.replaceAll("-", "."),
     // Enable logging execution id by default for better debugging
     LOG_EXECUTION_ID: "true",
   };
@@ -449,14 +453,10 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     const queryParams = {
       updateMask: fieldMasks.join(","),
     };
-    const res = await client.patch<typeof cloudFunction, Operation>(
-      cloudFunction.name,
-      cloudFunction,
-      { queryParams },
-    );
+    const res = await client.patch<typeof cf, Operation>(cf.name, cf, { queryParams });
     return res.body;
   } catch (err: any) {
-    throw functionsOpLogReject(cloudFunction, "update", err);
+    throw functionsOpLogReject(cf, "update", err);
   }
 }
 

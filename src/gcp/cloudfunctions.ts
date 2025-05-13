@@ -357,18 +357,22 @@ export async function setInvokerUpdate(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>,
 ): Promise<Operation> {
-  const endpoint = `/${cloudFunction.name}`;
+  // Copy the Cloud Function to a local variable so that included buildEnvironmentVariables do not live between retires.
+  // Otherwise, proto.fieldMasks will parse out each buildEnvironmentVariables into a separate updateMask field.
+  // Then the API call will fail with a 400: `The updateMask field contains fields not existing in CloudFunction resource`.
+  const cf: Omit<CloudFunction, OutputOnlyFields> = { ...cloudFunction };
+  const endpoint = `/${cf.name}`;
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
   // so we don't recurse for field masks.
   const fieldMasks = proto.fieldMasks(
-    cloudFunction,
+    cf,
     /* doNotRecurseIn...=*/ "labels",
     "environmentVariables",
     "secretEnvironmentVariables",
   );
 
-  cloudFunction.buildEnvironmentVariables = {
-    ...cloudFunction.buildEnvironmentVariables,
+  cf.buildEnvironmentVariables = {
+    ...cf.buildEnvironmentVariables,
     // Disable GCF from automatically running npm run build script
     // https://cloud.google.com/functions/docs/release-notes
     GOOGLE_NODE_RUN_SCRIPTS: "",
@@ -380,7 +384,7 @@ export async function updateFunction(
   try {
     const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
-      cloudFunction,
+      cf,
       {
         queryParams: {
           updateMask: fieldMasks.join(","),
@@ -393,7 +397,7 @@ export async function updateFunction(
       type: "update",
     };
   } catch (err: any) {
-    throw functionsOpLogReject(cloudFunction.name, "update", err);
+    throw functionsOpLogReject(cf.name, "update", err);
   }
 }
 
