@@ -23,6 +23,7 @@ export const VALID_DEPLOY_TARGETS = [
   "remoteconfig",
   "extensions",
   "dataconnect",
+  "messaging",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],
@@ -70,6 +71,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
   ],
+  messaging: ["cloudmessaging.messages.create"]
 };
 
 export const command = new Command("deploy")

@@ -208,6 +208,8 @@ export function load(client: any): any {
   client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
   client.remoteconfig.versions = {};
   client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
+  client.messaging = {};
+  client.messaging.send = loadCommand("messaging-sendmessage");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};

@@ -73,6 +73,11 @@ let choices: {
     checked: false,
   },
   {
+    value: "messaging",
+    name: "Messaging: Send messages using Firebase Messaging",
+    checked: false,
+  },
+  {
     value: "extensions",
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
