@@ -421,6 +421,18 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
+  };
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -428,22 +440,8 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     /* doNotRecurseIn...=*/ "labels",
     "serviceConfig.environmentVariables",
     "serviceConfig.secretEnvironmentVariables",
+    "buildConfig.environmentVariables",
   );
-
-  cloudFunction.buildConfig.environmentVariables = {
-    ...cloudFunction.buildConfig.environmentVariables,
-    // Disable GCF from automatically running npm run build script
-    // https://cloud.google.com/functions/docs/release-notes
-    GOOGLE_NODE_RUN_SCRIPTS: "",
-  };
-  fieldMasks.push("buildConfig.buildEnvironmentVariables");
-
-  cloudFunction.serviceConfig.environmentVariables = {
-    ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
-    // Enable logging execution id by default for better debugging
-    LOG_EXECUTION_ID: "true",
-  };
 
   try {
     const queryParams = {
