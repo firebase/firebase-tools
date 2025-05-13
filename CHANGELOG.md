@@ -4,3 +4,4 @@
 - Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
 - Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
+- Fixed multi tenancy support for SSO users in the auth emulator (#8544)
