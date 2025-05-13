@@ -2,3 +2,4 @@
 - Enhance firebase init apphosting to support local source deploys. (#8479)
 - Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
 - Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
+- Fixed an issue where Extensions, Cloud Functions, and App Hosting would run into issues on projects where the default compute service account was changed.
