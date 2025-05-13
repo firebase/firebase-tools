@@ -357,34 +357,29 @@ export async function setInvokerUpdate(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>,
 ): Promise<Operation> {
-  // Copy the Cloud Function to a local variable so that included buildEnvironmentVariables do not live between retires.
-  // Otherwise, proto.fieldMasks will parse out each buildEnvironmentVariables into a separate updateMask field.
-  // Then the API call will fail with a 400: `The updateMask field contains fields not existing in CloudFunction resource`.
-  const cf: Omit<CloudFunction, OutputOnlyFields> = { ...cloudFunction };
-  const endpoint = `/${cf.name}`;
-  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
-  // so we don't recurse for field masks.
-  const fieldMasks = proto.fieldMasks(
-    cf,
-    /* doNotRecurseIn...=*/ "labels",
-    "environmentVariables",
-    "secretEnvironmentVariables",
-  );
-
-  cf.buildEnvironmentVariables = {
-    ...cf.buildEnvironmentVariables,
+  const endpoint = `/${cloudFunction.name}`;
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
     // Disable GCF from automatically running npm run build script
     // https://cloud.google.com/functions/docs/release-notes
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
-  fieldMasks.push("buildEnvironmentVariables");
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
+  // so we don't recurse for field masks.
+  const fieldMasks = proto.fieldMasks(
+    cloudFunction,
+    /* doNotRecurseIn...=*/ "labels",
+    "environmentVariables",
+    "secretEnvironmentVariables",
+    "buildEnvironmentVariables",
+  );
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
     const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
-      cf,
+      cloudFunction,
       {
         queryParams: {
           updateMask: fieldMasks.join(","),
@@ -397,7 +392,7 @@ export async function updateFunction(
       type: "update",
     };
   } catch (err: any) {
-    throw functionsOpLogReject(cf.name, "update", err);
+    throw functionsOpLogReject(cloudFunction.name, "update", err);
   }
 }
 
