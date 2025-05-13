@@ -15,7 +15,7 @@ export const init = tool(
             .string()
             .optional()
             .describe(
-              "Configure the Firebase Data Connect service ID to setup. Default to match the current folder name.",
+              "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
             ),
           locationId: z
             .string()
