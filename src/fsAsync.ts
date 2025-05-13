@@ -2,12 +2,15 @@ import { join } from "path";
 import { readdirSync, statSync } from "fs-extra";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
+import { existsSync } from "fs";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
   path: string;
   // Files to ignore.
   ignore?: string[];
+  // Files in the ignore array to include.
+  include?: string[];
 }
 
 export interface ReaddirRecursiveFile {
@@ -57,8 +60,30 @@ export async function readdirRecursive(
       return rule(t);
     });
   };
-  return readdirRecursiveHelper({
+  const files = await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
   });
+  const filenames = files.map((file) => file.name);
+
+  // Re-include the files may have been previously ignored
+  for (const p of options.include || []) {
+    if (!existsSync(join(options.path, p))) {
+      continue;
+    }
+    if (filenames.includes(join(options.path, p))) {
+      continue;
+    }
+    const fstat = statSync(join(options.path, p));
+    if (fstat.isFile()) {
+      files.push({ name: join(options.path, p), mode: fstat.mode });
+    } else {
+      const filesToInclude = await readdirRecursiveHelper({
+        path: join(options.path, p),
+        filter: (t: string) => filenames.includes(join(options.path, t)),
+      });
+      files.push(...filesToInclude);
+    }
+  }
+  return files;
 }

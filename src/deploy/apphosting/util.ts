@@ -24,14 +24,18 @@ export async function createArchive(
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns();
-  ignore.push(...gitIgnorePatterns);
+  const { ignorePatterns, negationPatterns } = parseGitIgnorePatterns();
+  ignore.push(...ignorePatterns);
 
   if (!projectRoot) {
     projectRoot = process.cwd();
   }
   try {
-    const files = await fsAsync.readdirRecursive({ path: projectRoot, ignore: ignore });
+    const files = await fsAsync.readdirRecursive({
+      path: projectRoot,
+      ignore: ignore,
+      include: negationPatterns.map((pattern) => pattern.slice(1)), // remove "!" from pattern
+    });
     for (const file of files) {
       const name = path.relative(projectRoot, file.name);
       archive.file(file.name, {
@@ -49,13 +53,23 @@ export async function createArchive(
   return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
 }
 
-function parseGitIgnorePatterns(filePath = ".gitignore"): string[] {
+function parseGitIgnorePatterns(filePath = ".gitignore"): {
+  ignorePatterns: string[];
+  negationPatterns: string[];
+} {
   const absoluteFilePath = path.resolve(filePath);
-  return fs
+  const lines = fs
     .readFileSync(absoluteFilePath)
     .toString() // Buffer -> string
     .split("\n") // split into lines
-    .filter((line) => !line.trim().startsWith("#") && !(line.trim() === "")); // remove comments and empty lines
+    .map((line) => line.trim())
+    .filter((line) => !line.startsWith("#") && !(line === "")); // remove comments and empty lines
+  const ignores = lines.filter((line) => !line.startsWith("!"));
+  const negations = lines.filter((line) => line.startsWith("!"));
+  return {
+    ignorePatterns: ignores,
+    negationPatterns: negations,
+  };
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
