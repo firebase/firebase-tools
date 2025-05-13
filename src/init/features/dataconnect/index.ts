@@ -147,8 +147,8 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
-  // Make sure to add add some GQL files.
-  // Use the template if the existing service is empty (no schema / connector GQL).
+  // Make sure to add some GQL files.
+  // Use the template if it starts from scratch or the existing service has no GQL source.
   if (!info.schemaGql.length && !info.connectors.flatMap((r) => r.files).length) {
     info.schemaGql = [defaultSchema];
     info.connectors = [defaultConnector];
