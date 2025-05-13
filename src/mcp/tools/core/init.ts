@@ -60,13 +60,14 @@ export const init = tool(
     }
 
     const setup: Setup = {
-      config: config.src,
-      rcfile: rc.data,
+      config: config?.src,
+      rcfile: rc?.data,
       projectId: projectId,
       features: featuresList,
       featureInfo: featureInfo,
     };
-    await actuate(setup, config, {});
+    // Set force to true to avoid prompting the user for confirmation.
+    await actuate(setup, config, { force: true });
     return toContent(
       `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}`,
     );

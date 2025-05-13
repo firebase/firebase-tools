@@ -151,6 +151,7 @@ describe("init dataconnect", () => {
             featureInfo: { dataconnect: c.requiredInfo },
           },
           c.config,
+          {},
         );
         expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
         if (c.expectEnsureSchemaGQL) {

@@ -130,7 +130,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
 // actuate writes product specific files and makes product specifc API calls.
 // It does not handle writing firebase.json and .firebaserc
-export async function actuate(setup: Setup, config: Config): Promise<void> {
+export async function actuate(setup: Setup, config: Config, options: any): Promise<void> {
   // Most users will want to persist data between emulator runs, so set this to a reasonable default.
   const dir: string = config.get("dataconnect.source", "dataconnect");
   const dataDir = config.get("emulators.dataconnect.dataDir", `${dir}/.dataconnect/pgliteData`);
@@ -154,7 +154,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     info.connectors = [defaultConnector];
   }
 
-  await writeFiles(config, info);
+  await writeFiles(config, info, options);
 
   if (setup.projectId && info.shouldProvisionCSQL) {
     await provisionCloudSql({
@@ -182,7 +182,7 @@ export async function postSetup(setup: Setup, config: Config): Promise<void> {
   }
 }
 
-async function writeFiles(config: Config, info: RequiredInfo) {
+async function writeFiles(config: Config, info: RequiredInfo, options: any): Promise<void> {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
   const subbedDataconnectYaml = subDataconnectYamlValues({
     ...info,
@@ -192,7 +192,7 @@ async function writeFiles(config: Config, info: RequiredInfo) {
   await config.askWriteProjectFile(
     join(dir, "dataconnect.yaml"),
     subbedDataconnectYaml,
-    false,
+    !!options.force,
     // Default to override dataconnect.yaml
     // Sole purpose of `firebase init dataconnect` is to update `dataconnect.yaml`.
     true,
@@ -200,7 +200,7 @@ async function writeFiles(config: Config, info: RequiredInfo) {
 
   if (info.schemaGql.length) {
     for (const f of info.schemaGql) {
-      await config.askWriteProjectFile(join(dir, "schema", f.path), f.content);
+      await config.askWriteProjectFile(join(dir, "schema", f.path), f.content, !!options.force);
     }
   } else {
     // Even if the schema is empty, lets give them an empty .gql file to get started.
