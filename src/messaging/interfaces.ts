@@ -3,7 +3,7 @@ export interface BaseMessage {
 }
 
 export interface TokenMessage extends BaseMessage {
-  fcmToken: string;
+  token: string;
 }
 
 export interface TopicMessage extends BaseMessage {

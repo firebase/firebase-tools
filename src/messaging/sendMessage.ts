@@ -32,7 +32,7 @@ export async function sendMessageToFcmToken(
       body: body,
     };
     const message: TokenMessage = {
-      fcmToken: fcmToken,
+      token: fcmToken,
       notification: notification,
     };
     const messageData = {
