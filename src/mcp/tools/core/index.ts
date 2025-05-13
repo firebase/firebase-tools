@@ -10,6 +10,7 @@ import { create_android_app } from "./create_android_app.js";
 import { create_web_app } from "./create_web_app.js";
 import { get_admin_sdk_config } from "./get_admin_sdk_config.js";
 import { create_android_sha } from "./create_android_sha.js";
+import { init } from "./init.js";
 
 export const coreTools: ServerTool[] = [
   get_project,
@@ -22,4 +23,5 @@ export const coreTools: ServerTool[] = [
   create_web_app,
   create_android_sha,
   consult_assistant,
+  init,
 ];
