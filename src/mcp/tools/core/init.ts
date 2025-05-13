@@ -63,7 +63,7 @@ export const init = tool(
       config: config?.src,
       rcfile: rc?.data,
       projectId: projectId,
-      features: featuresList,
+      features: [featuresList...],
       featureInfo: featureInfo,
     };
     // Set force to true to avoid prompting the user for confirmation.
