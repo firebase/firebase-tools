@@ -4,5 +4,6 @@ export const SERVER_FEATURES = [
   "dataconnect",
   "auth",
   "messaging",
+  "remoteconfig",
 ] as const;
 export type ServerFeature = (typeof SERVER_FEATURES)[number];
