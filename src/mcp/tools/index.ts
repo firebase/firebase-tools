@@ -11,7 +11,7 @@ import { messagingTools } from "./messaging/index.js";
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
-  const toolDefs: ServerTool[] = addPrefixToToolName("firebase_", coreTools);
+  const toolDefs: ServerTool[] = addProductGroupPrefix("firebase", coreTools);
   if (!fixedRoot) {
     // Present if the root is not fixed.
     toolDefs.push(...directoryTools);
@@ -26,19 +26,40 @@ export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeatur
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  firestore: addPrefixToToolName("firestore_", firestoreTools),
-  auth: addPrefixToToolName("auth_", authTools),
-  dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
-  storage: addPrefixToToolName("storage_", storageTools),
-  messaging: addPrefixToToolName("messaging_", messagingTools),
+  firestore: addProductGroupPrefix("firestore", firestoreTools),
+  auth: addProductGroupPrefix("auth", authTools),
+  dataconnect: addProductGroupPrefix("dataconnect", dataconnectTools),
+  storage: addProductGroupPrefix("storage", storageTools),
+  messaging: addProductGroupPrefix("messaging", messagingTools),
 };
 
-function addPrefixToToolName(prefix: string, tools: ServerTool[]): ServerTool[] {
+function addProductGroupPrefix(productGroup: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
     ...tool,
     mcp: {
       ...tool.mcp,
-      name: `${prefix}${tool.mcp.name}`,
+      name: `${productGroup}_${tool.mcp.name}`,
+      productGroup,
     },
   }));
+}
+
+/**
+ * Generates a markdown table of all available tools and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfTools(): string {
+  const allTools = availableTools(false, []);
+  let doc = `
+| Tool Name                        | Feature Group | Description         |
+| -------------------------------- | ------------- | ------------------- |`;
+  for (const tool of allTools) {
+    let productGroup = tool.mcp.productGroup || "directory";
+    if (productGroup === "firebase") {
+      productGroup = "core";
+    }
+    doc += `
+| ${tool.mcp.name} | ${productGroup} | ${tool.mcp.description} |`;
+  }
+  return doc;
 }

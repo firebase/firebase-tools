@@ -4,6 +4,7 @@ import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
 import { parseArgs } from "util";
 import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
+import { markdownDocsOfTools } from "../mcp/tools/index.js";
 
 const STARTUP_MESSAGE = `
 This is a running process of the Firebase MCP server. This command should only be executed by an MCP client. An example MCP client configuration might be:
@@ -21,11 +22,16 @@ This is a running process of the Firebase MCP server. This command should only b
 export async function mcp(): Promise<void> {
   const { values } = parseArgs({
     options: {
+      help: { type: "boolean", default: false },
       only: { type: "string", default: "" },
       dir: { type: "string" },
     },
     allowPositionals: true,
   });
+  if (values.help) {
+    console.log(markdownDocsOfTools());
+    return;
+  }
   useFileLogger();
   const activeFeatures = (values.only || "")
     .split(",")

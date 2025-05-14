@@ -15,6 +15,7 @@ export interface ServerToolContext {
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
   mcp: {
     name: string;
+    productGroup?: string;
     description?: string;
     inputSchema: any;
     annotations?: {
