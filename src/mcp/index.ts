@@ -7,10 +7,10 @@ import {
   ListToolsRequestSchema,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpError } from "./util.js";
-import { ServerFeature } from "./types.js";
+import { checkFeatureActive, mcpError } from "./util.js";
+import { SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
-import { ServerTool } from "./tool.js";
+import { ServerTool, ServerToolContext } from "./tool.js";
 import { configstore } from "../configstore.js";
 import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
@@ -30,6 +30,7 @@ export class FirebaseMcpServer {
   projectRoot?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
+  detectedFeatures?: ServerFeature[];
   fixedRoot?: boolean;
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
@@ -44,28 +45,32 @@ export class FirebaseMcpServer {
       process.env.PROJECT_ROOT ??
       process.cwd();
     if (options.projectRoot) this.fixedRoot = true;
+    this.detectActiveFeatures();
+  }
+
+  async detectActiveFeatures(): Promise<ServerFeature[]> {
+    if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
+    const options = await this.resolveOptions();
+    const projectId = await this.getProjectId();
+    const detected = await Promise.all(
+      SERVER_FEATURES.map(async (f) => {
+        if (await checkFeatureActive(f, projectId, options)) return f;
+        return null;
+      }),
+    );
+    this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    return this.detectedFeatures;
   }
 
   get availableTools(): ServerTool[] {
-    return availableTools(!!this.fixedRoot, this.activeFeatures);
+    return availableTools(
+      !!this.fixedRoot,
+      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
+    );
   }
 
   getTool(name: string): ServerTool | null {
     return this.availableTools.find((t) => t.mcp.name === name) || null;
-  }
-
-  async mcpListTools(): Promise<ListToolsResult> {
-    const hasActiveProject = !!(await this.getProjectId());
-    await trackGA4("mcp_list_tools", {});
-    return {
-      tools: this.availableTools.map((t) => t.mcp),
-      _meta: {
-        projectRoot: this.projectRoot,
-        projectDetected: hasActiveProject,
-        authenticated: await this.getAuthenticated(),
-        activeFeatures: this.activeFeatures,
-      },
-    };
   }
 
   setProjectRoot(newRoot: string | null): void {
@@ -78,6 +83,7 @@ export class FirebaseMcpServer {
 
     configstore.set(PROJECT_ROOT_KEY, newRoot);
     this.projectRoot = newRoot;
+    this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
   }
 
@@ -100,6 +106,22 @@ export class FirebaseMcpServer {
     }
   }
 
+  async mcpListTools(): Promise<ListToolsResult> {
+    if (!this.activeFeatures) await this.detectActiveFeatures();
+    const hasActiveProject = !!(await this.getProjectId());
+    await trackGA4("mcp_list_tools", {});
+    return {
+      tools: this.availableTools.map((t) => t.mcp),
+      _meta: {
+        projectRoot: this.projectRoot,
+        projectDetected: hasActiveProject,
+        authenticated: await this.getAuthenticated(),
+        activeFeatures: this.activeFeatures,
+        detectedFeatures: this.detectedFeatures,
+      },
+    };
+  }
+
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
     const toolName = request.params.name;
     const toolArgs = request.params.arguments;
@@ -110,16 +132,15 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresAuth && !(await this.getAuthenticated())) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
+    const options = { projectDir: this.projectRoot, cwd: this.projectRoot };
+    const toolsCtx: ServerToolContext = {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+    };
     try {
-      const cliOpts = { cwd: this.projectRoot };
-      const config = Config.load(cliOpts) as Config;
-      const rc = loadRC(cliOpts);
-      const res = await tool.fn(toolArgs, {
-        projectId: await this.getProjectId(),
-        host: this,
-        config,
-        rc,
-      });
+      const res = await tool.fn(toolArgs, toolsCtx);
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
       return res;
     } catch (err: unknown) {
