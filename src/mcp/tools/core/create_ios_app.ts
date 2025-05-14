@@ -12,7 +12,7 @@ export const create_ios_app = tool(
         .string()
         .optional()
         .describe("The user-friendly display name for your iOS app."),
-      bundleId: z.string().describe("The bundle ID for your iOS app (e.g., com.example.myapp)."),
+      bundleId: z.string().describe("The bundle ID for your iOS app (e.g., com.example.app)."),
       appStoreId: z.string().optional().describe("The App Store ID for your iOS app (optional)."),
     }),
     annotations: {
