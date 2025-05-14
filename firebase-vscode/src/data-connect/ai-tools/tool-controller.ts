@@ -43,6 +43,7 @@ export class GeminiToolController {
 
   // entry points from vscode to respsective tools
   private registerCommands(): void {
+    /** Demo only */
     // vscode.commands.registerCommand(
     //   "firebase.dataConnect.refineOperation",
     //   async (ast: ObjectTypeDefinitionNode) => {
@@ -57,6 +58,7 @@ export class GeminiToolController {
     //     }
     //   },
     // );
+    /** End Demo only */
   }
   private highlightActiveType(ast: ObjectTypeDefinitionNode) {
     const editor = vscode.window.activeTextEditor;

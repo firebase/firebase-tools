@@ -9,20 +9,9 @@ import {
   CommandDetail,
   CommandProvider,
   GeminiCodeAssist,
-  SuggestedPromptProvider,
-  Variable,
-  VariableProvider,
-  HandlerButtonOptions,
-  ChatContext,
-  PromptPart,
-  VariableChatContext,
-  GeminiTool,
 } from "./gca-tool-types";
-import { EmulatorsController } from "../../core/emulators";
 import {
-  getHighlightedText,
   insertToBottomOfActiveFile,
-  parseGraphql,
 } from "../file-utils";
 import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
@@ -85,12 +74,16 @@ export class GCAToolClient {
     responseStream: ChatResponseStream,
     token: vscode.CancellationToken,
   ): Promise<void> {
+
+    // Helper just to convert to markdown first
     function pushToResponseStream(text: string) {
       const markdown = new vscode.MarkdownString(text);
       responseStream.push(markdown);
     }
+
+    // Adds the Graphql code block button "Insert to bottom of file"
     addCodeHandlers(responseStream);
-    const chatContext = request.context;
+
     let response: ChatMessage[];
 
     // parse the prompt
@@ -101,6 +94,8 @@ export class GCAToolClient {
     }
     const content = getPrompt(request.prompt);
     const command = getCommand(request.prompt);
+
+    // Forward to tool controller
     try {
       this.history.push({ author: "USER", content, commandContext: command });
       response = await this.toolController.handleChat(
@@ -116,8 +111,7 @@ export class GCAToolClient {
         errorMessage = error;
       }
 
-      responseStream.push(new vscode.MarkdownString(errorMessage));
-      responseStream.close();
+      pushToResponseStream(errorMessage);
       return;
     }
     const agentMessage = response.pop()?.content;

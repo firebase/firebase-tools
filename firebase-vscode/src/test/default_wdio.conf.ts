@@ -3,6 +3,7 @@ import * as fs from "fs";
 
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
+import setupVscodeEnv from "./utils/install-extensions";
 
 process.env.VSCODE_TEST_MODE = "true";
 
@@ -40,6 +41,7 @@ export const config: WebdriverIO.Config = {
   logLevel: "debug",
 
   beforeTest: async function () {
+    await setupVscodeEnv();
     const workbench = await browser.getWorkbench();
     const notifications = new Notifications(workbench);
     await notifications.installRecommendedExtension({
