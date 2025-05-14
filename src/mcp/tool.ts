@@ -11,7 +11,7 @@ export interface ServerToolContext {
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
-  emulatorHubClient?: EmulatorHubClient
+  emulatorHubClient?: EmulatorHubClient;
 }
 
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {

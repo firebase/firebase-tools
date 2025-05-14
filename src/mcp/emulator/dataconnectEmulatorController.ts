@@ -18,7 +18,9 @@ function formatEndpoint(emulatorInfo: EmulatorInfo): DataConnectEmulatorDetails 
   };
 }
 
-export async function getDataConnectEmulatorDetails(hubClient?: EmulatorHubClient): Promise<DataConnectEmulatorDetails | undefined> {
+export async function getDataConnectEmulatorDetails(
+  hubClient?: EmulatorHubClient,
+): Promise<DataConnectEmulatorDetails | undefined> {
   if (!hubClient || !hubClient.foundHub()) {
     return undefined; // Hub itself not found
   }
@@ -32,7 +34,9 @@ export async function getDataConnectEmulatorDetails(hubClient?: EmulatorHubClien
     }
   } catch (error) {
     // Log detailed error for server-side debugging, but return undefined to the tool
-    console.warn(`MCP: Error querying EmulatorHub for DataConnect emulator: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(
+      `MCP: Error querying EmulatorHub for DataConnect emulator: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return undefined;
   }
   return undefined; // DataConnect emulator specifically not found

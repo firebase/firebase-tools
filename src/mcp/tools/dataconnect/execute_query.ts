@@ -53,7 +53,10 @@ export const execute_query = tool(
 
     if (!connectorId) {
       if (serviceInfo.connectorInfo.length === 0) {
-        return mcpError(`Service ${serviceInfo.serviceName} has no connectors`, "NO_CONNECTORS_FOUND");
+        return mcpError(
+          `Service ${serviceInfo.serviceName} has no connectors`,
+          "NO_CONNECTORS_FOUND",
+        );
       }
       if (serviceInfo.connectorInfo.length > 1) {
         return mcpError(
