@@ -39,7 +39,7 @@ export const create_android_sha = tool(
       shaHash,
       certType,
     });
-    
+
     return toContent({
       ...shaCertificate,
       message: `Successfully added ${certType} certificate to Android app ${appId}`,
