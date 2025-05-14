@@ -18,7 +18,7 @@ async function checkCloudProject(projectId: string): Promise<ProjectInfo | undef
   try {
     return await getProject(projectId);
   } catch (err: any) {
-    if (getErrStatus(err) === 404) {
+    if (getErrStatus(err) === 403) {
       return undefined;
     }
     throw err;
@@ -34,7 +34,7 @@ async function checkFirebaseEnabled(
   try {
     return await getFirebaseProject(projectId);
   } catch (err: any) {
-    if (getErrStatus(err) === 404) {
+    if (getErrStatus(err) === 403) {
       return undefined;
     }
     throw err;
