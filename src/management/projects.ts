@@ -26,6 +26,9 @@ export interface ProjectParentResource {
   type: ProjectParentResourceType;
 }
 
+/**
+ *
+ */
 export async function promptProjectCreation(): Promise<{ projectId: string; displayName: string }> {
   const projectId = await prompt.input({
     message:
@@ -70,6 +73,9 @@ const resourceManagerClient = new Client({
   apiVersion: "v1",
 });
 
+/**
+ *
+ */
 export async function createFirebaseProjectAndLog(
   projectId: string,
   options: { displayName?: string; parentResource?: ProjectParentResource },
@@ -87,6 +93,9 @@ export async function createFirebaseProjectAndLog(
   return addFirebaseToCloudProjectAndLog(projectId);
 }
 
+/**
+ *
+ */
 export async function addFirebaseToCloudProjectAndLog(
   projectId: string,
 ): Promise<FirebaseProjectMetadata> {
@@ -472,4 +481,37 @@ export async function getProject(projectId: string): Promise<ProjectInfo> {
   await bestEffortEnsure(projectId, api.resourceManagerOrigin(), "firebase", true);
   const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
   return response.body;
+}
+
+/**
+ * Checks if Firebase services are enabled for a Google Cloud Platform project.
+ * @param projectId The project ID to check
+ * @return A promise that resolves to the Firebase project metadata if enabled, undefined otherwise
+ */
+export async function checkFirebaseEnabledForCloudProject(
+  projectId: string,
+): Promise<FirebaseProjectMetadata | undefined> {
+  try {
+    const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
+      method: "GET",
+      path: `/projects/${projectId}`,
+      timeout: TIMEOUT_MILLIS,
+    });
+    return res.body;
+  } catch (err: any) {
+    if (getErrStatus(err) === 404) {
+      // 404 means Firebase is not enabled for this project
+      return undefined;
+    }
+    let message = err.message;
+    if (err.original) {
+      message += ` (original: ${err.original.message})`;
+    }
+    logger.debug(message);
+    throw new FirebaseError(
+      `Failed to check if Firebase is enabled for project ${projectId}. ` +
+        "Please make sure the project exists and your account has permission to access it.",
+      { exit: 2, original: err },
+    );
+  }
 }

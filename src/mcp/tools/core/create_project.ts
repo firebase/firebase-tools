@@ -2,13 +2,12 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import {
+  checkFirebaseEnabledForCloudProject,
   createFirebaseProjectAndLog,
-  getFirebaseProject,
   addFirebaseToCloudProject,
   getProject,
   ProjectInfo,
 } from "../../../management/projects.js";
-import { FirebaseProjectMetadata } from "../../../types/project";
 import { getErrStatus } from "../../../error.js";
 
 /**
@@ -25,29 +24,13 @@ async function checkCloudProject(projectId: string): Promise<ProjectInfo | undef
   }
 }
 
-/**
- * Checks if Firebase is enabled for a project
- */
-async function checkFirebaseEnabled(
-  projectId: string,
-): Promise<FirebaseProjectMetadata | undefined> {
-  try {
-    return await getFirebaseProject(projectId);
-  } catch (err: any) {
-    if (getErrStatus(err) === 403) {
-      return undefined;
-    }
-    throw err;
-  }
-}
-
 export const create_project = tool(
   {
     name: "create_project",
     description: "Creates a new Firebase project or returns an existing one.",
     inputSchema: z.object({
-      projectId: z.string().describe("The project ID to create or use."),
-      displayName: z
+      project_id: z.string().describe("The project ID to create or use."),
+      display_name: z
         .string()
         .optional()
         .describe("The user-friendly display name for the project."),
@@ -62,35 +45,40 @@ export const create_project = tool(
       requiresProject: false,
     },
   },
-  async ({ projectId, displayName }) => {
-    // Check if cloud project exists
-    const cloudProject = await checkCloudProject(projectId);
+  async ({ project_id, display_name }) => {
+    try {
+      // Check if cloud project exists
+      const cloudProject = await checkCloudProject(project_id);
 
-    // If project doesn't exist, create it and add Firebase
-    if (!cloudProject) {
-      const newProject = await createFirebaseProjectAndLog(projectId, {
-        displayName: displayName,
-      });
-      return toContent({
-        message: `Successfully created new Firebase project: ${projectId}`,
-        project: newProject,
-      });
-    }
+      // If project doesn't exist, create it and add Firebase
+      if (!cloudProject) {
+        const newProject = await createFirebaseProjectAndLog(project_id, {
+          displayName: display_name,
+        });
+        return toContent({
+          message: `Successfully created new Firebase project: ${project_id}`,
+          project: newProject,
+        });
+      }
 
-    // Check if Firebase is enabled
-    let firebaseProject = await checkFirebaseEnabled(projectId);
-    if (firebaseProject) {
+      // Check if Firebase is enabled
+      let firebaseProject = await checkFirebaseEnabledForCloudProject(project_id);
+      if (firebaseProject) {
+        return toContent({
+          message: `Project ${project_id} already exists and has Firebase enabled.`,
+          project: firebaseProject,
+        });
+      }
+
+      // Project exists but Firebase is not enabled
+      firebaseProject = await addFirebaseToCloudProject(project_id);
       return toContent({
-        message: `Project ${projectId} already exists and has Firebase enabled.`,
+        message: `Successfully added Firebase to existing project: ${project_id}`,
         project: firebaseProject,
       });
+    } catch (err: any) {
+      const originalMessage = err.original ? `: ${err.original.message}` : "";
+      throw new Error(`${err.message}\nOriginal error: ${originalMessage}`);
     }
-
-    // Project exists but Firebase is not enabled
-    firebaseProject = await addFirebaseToCloudProject(projectId);
-    return toContent({
-      message: `Successfully added Firebase to existing project: ${projectId}`,
-      project: firebaseProject,
-    });
   },
 );
