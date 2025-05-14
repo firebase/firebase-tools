@@ -3,16 +3,17 @@ import * as fs from "fs";
 
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
-import setupVscodeEnv from "./utils/install-extensions";
 
 process.env.VSCODE_TEST_MODE = "true";
-
+// used to preload extension dependencies
+const prebuiltExtensionsDir = path.resolve(__dirname, "../../prebuilt-extensions");
 export const vscodeConfigs = {
   browserName: "vscode",
   browserVersion: "1.96.4", // also possible: "insiders" or a specific version e.g. "1.80.0"
   "wdio:vscodeOptions": {
     vscodeArgs: {
       disableExtensions: false,
+      extensionsDir: prebuiltExtensionsDir,
     },
     // points to directory where extension package.json is located
     extensionPath: path.join(__dirname, "..", ".."),
@@ -41,7 +42,6 @@ export const config: WebdriverIO.Config = {
   logLevel: "debug",
 
   beforeTest: async function () {
-    await setupVscodeEnv();
     const workbench = await browser.getWorkbench();
     const notifications = new Notifications(workbench);
     await notifications.installRecommendedExtension({
