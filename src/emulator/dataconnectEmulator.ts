@@ -67,7 +67,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
-  private usingExistingEmulator = false;
+  private usingExistingEmulator: boolean = false;
   private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {

@@ -147,7 +147,7 @@ export interface FirestoreDocument {
 export async function getDatabase(
   project: string,
   database: string,
-  allowEmulator = false,
+  allowEmulator: boolean = false,
 ): Promise<Database> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = `projects/${project}/databases/${database}`;
@@ -167,7 +167,10 @@ export async function getDatabase(
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-export function listCollectionIds(project: string, allowEmulator = false): Promise<string[]> {
+export function listCollectionIds(
+  project: string,
+  allowEmulator: boolean = false,
+): Promise<string[]> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   const data = {
@@ -255,7 +258,7 @@ export async function queryCollection(
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-export async function deleteDocument(doc: any, allowEmulator = false): Promise<any> {
+export async function deleteDocument(doc: any, allowEmulator: boolean = false): Promise<any> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   return apiClient.delete(doc.name);
 }
@@ -272,7 +275,7 @@ export async function deleteDocument(doc: any, allowEmulator = false): Promise<a
 export async function deleteDocuments(
   project: string,
   docs: any[],
-  allowEmulator = false,
+  allowEmulator: boolean = false,
 ): Promise<number> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
   const url = "projects/" + project + "/databases/(default)/documents:commit";

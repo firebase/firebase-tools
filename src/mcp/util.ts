@@ -12,13 +12,10 @@ import {
 } from "../api";
 import { check } from "../ensureApiEnabled";
 
-/**
- *
- */
 export function toContent(data: any, options?: { format: "json" | "yaml" }): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
 
-  let text = "";
+  let text: string = "";
   const format = options?.format || "yaml"; // use YAML because it's a little more prose-like for the LLM to parse
   switch (format) {
     case "json":
@@ -33,9 +30,6 @@ export function toContent(data: any, options?: { format: "json" | "yaml" }): Cal
   };
 }
 
-/**
- *
- */
 export function mcpError(message: Error | string | unknown, code?: string): CallToolResult {
   let errorMessage = "unknown error";
   if (message instanceof Error) {
@@ -50,9 +44,6 @@ export function mcpError(message: Error | string | unknown, code?: string): Call
   };
 }
 
-/**
- *
- */
 export function commandExistsSync(command: string): boolean {
   try {
     const isWindows = platform() === "win32";
