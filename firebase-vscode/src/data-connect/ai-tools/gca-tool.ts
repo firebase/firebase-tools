@@ -91,7 +91,6 @@ export class GCAToolClient {
     }
     addCodeHandlers(responseStream);
     const chatContext = request.context;
-    console.log("harold context: ", chatContext);
     let response: ChatMessage[];
 
     // parse the prompt
@@ -233,78 +232,4 @@ function getPrompt(prompt: ChatPrompt): string {
     return prompt.getPromptParts()[2].getPrompt();
   }
   return prompt.fullPrompt();
-}
-
-/** Start of history management functions */
-// function modifyHistory(history: ChatMessage[], type: string): ChatMessage[] {
-//   if (type === "operation") {
-//     // operation api uses "SERVER" to represent API responses
-//     return history.map((item) => {
-//       if (item.author === "MODEL") {
-//         item.author = "SERVER";
-//       }
-//       return item;
-//     });
-//   }
-//   return history;
-// }
-
-class ChatContextImpl implements ChatContext {
-  id: string | vscode.Uri;
-  context: string;
-
-  constructor(id: string | vscode.Uri, context: string) {
-    this.id = id;
-    this.context = context;
-  }
-  public getText(): string {
-    return this.context;
-  }
-}
-
-class VariableChatContextImpl implements VariableChatContext {
-  constructor(
-    readonly id: string,
-    readonly variable: Variable,
-  ) {}
-
-  getText() {
-    return this.variable.name;
-  }
-}
-
-export class VariableImpl implements Variable {
-  constructor(
-    readonly name: string,
-    readonly description?: string,
-  ) {}
-}
-
-class PromptPartImpl implements PromptPart {
-  private prompt: string;
-
-  constructor(e: string) {
-    this.prompt = e;
-  }
-
-  getPrompt(): string {
-    return this.prompt;
-  }
-}
-
-export function constructPrompt(
-  prompt: string,
-  schema: string,
-  highlighted: string,
-) {
-  if (highlighted) {
-    prompt =
-      `This is the Graphql I have currently selected: ${highlighted} \n`.concat(
-        prompt,
-      );
-  }
-  if (schema) {
-    prompt = `This is my Graphql Schema: ${schema} \n`.concat(prompt);
-  }
-  return prompt;
 }

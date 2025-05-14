@@ -158,17 +158,23 @@ export function registerFdc(
     emulatorController,
     context,
   );
- 
-  const gcaToolClient = new GCAToolClient(
-   context,
-   new GeminiToolController(analyticsLogger, broker, context, fdcService, dataConnectConfigs)
+
+
+  /** Gemini Related activations */
+  const toolController = new GeminiToolController(
+    analyticsLogger,
+    fdcService,
+    dataConnectConfigs,
   );
+  const gcaToolClient = new GCAToolClient(context, toolController);
 
   gcaToolClient.activate();
 
   broker.on("firebase.activate.gemini", () => {
     vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
   });
+
+  /** End Gemini activations */
 
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
@@ -270,6 +276,7 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    toolController,
     {
       dispose: () => {
         client.stop();

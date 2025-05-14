@@ -107,9 +107,11 @@ function EmulatorsPanel() {
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
-        <a onClick={() => {
-          broker.send("fdc.open-emulator-settings")
-        }}>
+        <a
+          onClick={() => {
+            broker.send("fdc.open-emulator-settings");
+          }}
+        >
           Configure emulator
         </a>
       </Label>
@@ -154,16 +156,6 @@ function DataConnect() {
       </Label>
 
       <Spacer size="xlarge" />
-      <VSCodeButton
-        appearance="secondary"
-        onClick={() => {
-          broker.send("firebase.activate.gemini");
-        }}
-      >
-        Generate Schema with Gemini
-      </VSCodeButton>
-
-      <Spacer size="xlarge" />
       <VSCodeButton onClick={() => broker.send("fdc.deploy-all")}>
         Deploy to production
       </VSCodeButton>
@@ -174,10 +166,27 @@ function DataConnect() {
           Deploying schema and connectors
         </a>
       </Label>
+      <Spacer size="xlarge"></Spacer>
+      <Label level={2}>Generate Schema and Operations (Preview)</Label>
+      <Spacer size="medium"></Spacer>
+      <VSCodeButton
+        appearance="secondary"
+        onClick={() => {
+          broker.send("firebase.activate.gemini");
+        }}
+      >
+        Try Gemini with @data-connect
+      </VSCodeButton>
+      <Spacer size="xsmall" />
+      <Label level={3}>
+        See also:{" "}
+        <a href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data">
+          Gemini in Firebase Usage and Terms
+        </a>
+      </Label>
     </>
   );
 }
-
 function Content() {
   useEffect(() => {
     broker.send("getDocsLink");

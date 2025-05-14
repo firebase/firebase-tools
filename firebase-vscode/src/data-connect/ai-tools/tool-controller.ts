@@ -12,13 +12,11 @@ import { pluginLogger as logger } from "../../logger-wrapper";
 import { CloudAICompanionResponse, ChatMessage } from "../../dataconnect/types";
 import { ChatContext } from "./gca-tool-types";
 import { ObjectTypeDefinitionNode, OperationDefinitionNode } from "graphql";
-import { getHighlightedText } from "../file-utils";
+import { getHighlightedText, findGqlFiles } from "../file-utils";
 import { CommandContext, Chat, Context, Command, BackendAuthor } from "./types";
 import { env } from "../../core/env";
 
 const USER_PREAMBLE = "This is the user's prompt: \n";
-const USER_REFINE_PREAMBLE =
-  "This is the modification the user would like to make: \n";
 
 const SCHEMA_PROMPT_PREAMBLE =
   "This is the user's current schema in their code base.: \n";
@@ -35,15 +33,12 @@ const HIGHLIGHTED_TEXT_PREAMBLE =
 export class GeminiToolController {
   constructor(
     private readonly analyticsLogger: AnalyticsLogger,
-    private readonly broker: ExtensionBrokerImpl,
-    private readonly context: vscode.ExtensionContext,
     private readonly fdcService: DataConnectService,
     private configs: Signal<
       Result<ResolvedDataConnectConfigs | undefined> | undefined
     >,
   ) {
     this.registerCommands();
-    this.registerBrokerHandlers(broker);
   }
 
   // entry points from vscode to respsective tools
@@ -183,57 +178,6 @@ export class GeminiToolController {
     }
   }
 
-  public async handleSchema(prompt: string, chatHistory: Chat[]) {}
-
-  private async setupRefineOperation(prompt: string, chatHistory: Chat[]) {
-    const preamble =
-      "This is the GraphQL Operation that was generated previously: ";
-
-    // TODO: more verification
-    const lastChat = chatHistory.pop();
-    let operation = "";
-    if (!lastChat) {
-      // could not find an operation, TODO: response appropriately
-    } else {
-      operation = lastChat.content;
-    }
-
-    return preamble.concat(NEW_LINE, operation);
-  }
-
-  private async setupRefineSchema(prompt: string, chatHistory: Chat[]) {
-    const SCHEMA_PREAMBLE =
-      "This is the GraphQL Schema that was generated previously: \n";
-
-    // TODO: more verification
-    const lastChat = chatHistory.pop();
-    let schema = "";
-    if (!lastChat) {
-      // could not find a schema, use the schema in editor
-      schema = await this.collectSchemaText();
-    } else {
-      schema = lastChat.content;
-    }
-
-    return prompt.concat(SCHEMA_PREAMBLE, schema);
-  }
-
-  // checks if last chat in the history is a generated code response from a model
-  private isLastChatGenerated(chatHistory: Chat[]): boolean {
-    const lastChat = chatHistory.pop();
-    return (
-      lastChat !== undefined &&
-      isAuthorBackend(lastChat.author) &&
-      lastChat.commandContext !== undefined &&
-      lastChat.commandContext !== CommandContext.NO_OP
-    );
-  }
-
-  private async setupModifyExistingSchema(
-    prompt: string,
-    chatHistory: Chat[],
-  ) {}
-
   async callGenerateApi(
     documentPath: string,
     prompt: string,
@@ -268,7 +212,7 @@ export class GeminiToolController {
 
       let schema: string = "";
       const schemaPath = path.join(service.path, service.schemaDir);
-      const schemaFiles = await this.findGqlFiles(schemaPath);
+      const schemaFiles = await findGqlFiles(schemaPath);
       for (const file of schemaFiles) {
         schema = schema.concat(fs.readFileSync(file, "utf-8"));
       }
@@ -278,103 +222,56 @@ export class GeminiToolController {
     }
   }
 
-  async collectGqlFiles(type: "schema" | "operation"): Promise<string[]> {
-    try {
-      const service =
-        this.configs?.value?.tryReadValue?.findEnclosingServiceForPath(
-          vscode.window.activeTextEditor?.document.uri.fsPath || "",
-        );
+  /** Demo usage only */
+  private async setupRefineOperation(prompt: string, chatHistory: Chat[]) {
+    const preamble =
+      "This is the GraphQL Operation that was generated previously: ";
 
-      if (!service) {
-        // The entrypoint is not a codelens file, so we can't determine the service.
-        return [];
-      }
-
-      const gqlFiles: string[] = [];
-      const activeDocumentConnector = service.findEnclosingConnectorForPath(
-        vscode.window.activeTextEditor?.document.uri.fsPath || "",
-      );
-
-      switch (type) {
-        case "operation":
-          const files = await this.findGqlFiles(
-            activeDocumentConnector?.path || "",
-          );
-
-          for (const file of files) {
-            gqlFiles.push(file);
-          }
-          break;
-        case "schema":
-          const schemaPath = path.join(service.path, service.schemaDir);
-          const schemaFiles = await this.findGqlFiles(schemaPath);
-
-          for (const file of schemaFiles) {
-            gqlFiles.push(file);
-          }
-          break;
-      }
-
-      return gqlFiles || [];
-    } catch (error) {
-      throw new Error(`Failed to collect GQL files: ${error}`);
+    // TODO: more verification
+    const lastChat = chatHistory.pop();
+    let operation = "";
+    if (!lastChat) {
+      // could not find an operation, TODO: response appropriately
+    } else {
+      operation = lastChat.content;
     }
+
+    return preamble.concat(NEW_LINE, operation);
   }
 
-  private async findGqlFiles(dir: string): Promise<string[]> {
-    try {
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-      const files = entries
-        .filter((file) => !file.isDirectory() && file.name.endsWith(".gql"))
-        .map((file) => path.join(dir, file.name));
+  private async setupRefineSchema(prompt: string, chatHistory: Chat[]) {
+    const SCHEMA_PREAMBLE =
+      "This is the GraphQL Schema that was generated previously: \n";
 
-      const folders = entries.filter((folder) => folder.isDirectory());
-
-      for (const folder of folders) {
-        files.push(...(await this.findGqlFiles(path.join(dir, folder.name))));
-      }
-
-      return files;
-    } catch (error) {
-      throw new Error(`Failed to find GQL files: ${error}`);
+    // TODO: more verification
+    const lastChat = chatHistory.pop();
+    let schema = "";
+    if (!lastChat) {
+      // could not find a schema, use the schema in editor
+      schema = await this.collectSchemaText();
+    } else {
+      schema = lastChat.content;
     }
+
+    return prompt.concat(SCHEMA_PREAMBLE, schema);
   }
 
-  private isSchemaFile(filePath: string): boolean {
-    try {
-      return filePath.toLowerCase().includes("schema");
-    } catch (error) {
-      throw new Error(`Failed to check if file is a schema file: ${error}`);
-    }
+  private isAuthorBackend(author: string) {
+    return Object.values(BackendAuthor).includes(author);
   }
 
-  private isOperationFile(filePath: string): boolean {
-    try {
-      return (
-        filePath.toLowerCase().includes("mutations") ||
-        filePath.toLowerCase().includes("queries")
-      );
-    } catch (error) {
-      throw new Error(`Failed to check if file is an operation file: ${error}`);
-    }
+  // checks if last chat in the history is a generated code response from a model
+  private isLastChatGenerated(chatHistory: Chat[]): boolean {
+    const lastChat = chatHistory.pop();
+    return (
+      lastChat !== undefined &&
+      this.isAuthorBackend(lastChat.author) &&
+      lastChat.commandContext !== undefined &&
+      lastChat.commandContext !== CommandContext.NO_OP
+    );
   }
 
-  private registerBrokerHandlers(broker: ExtensionBrokerImpl): void {
-    broker.on("fdc.generate-schema", async (args) => {
-      const { type } = args;
-      try {
-        vscode.commands.executeCommand("cloudcode.duetAI.sendTransformToChat");
-
-        // this.generationEntrypoint(type, undefined, undefined);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to generate schema: ${error}`);
-      }
-    });
-  }
+  /** End demo code */
 
   dispose() {}
-}
-
-function isAuthorBackend(author: string) {
-  return Object.values(BackendAuthor).includes(author);
 }

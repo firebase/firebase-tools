@@ -103,8 +103,6 @@ export interface WebviewToExtensionParamsMap {
   /** Opens generated docs */
   "fdc.open-docs": void;
 
-  /** Handles AI generation requests */
-  "fdc.generate-schema": { type: "schema" | "operation" };
   /** Opens settings page searching for Data Connect emualtor settings */
   "fdc.open-emulator-settings": void;
 
