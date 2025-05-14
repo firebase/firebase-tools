@@ -57,7 +57,6 @@ export function getHighlightedText(): string {
 }
 
 export function parseGraphql(content: string) {
-  console.log(content);
   content = content.replaceAll("```", "");
   content = content.replaceAll("graphql", "");
   const documentNode = parse(content);

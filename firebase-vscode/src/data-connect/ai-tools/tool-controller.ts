@@ -43,20 +43,20 @@ export class GeminiToolController {
 
   // entry points from vscode to respsective tools
   private registerCommands(): void {
-    vscode.commands.registerCommand(
-      "firebase.dataConnect.refineOperation",
-      async (ast: ObjectTypeDefinitionNode) => {
-        this.highlightActiveType(ast);
-        if (env.value.isMonospace) {
-          vscode.commands.executeCommand("aichat.prompt", {
-            prefillPrompt: "@data-connect /generate_operation ",
-          });
-        } else {
-          // change to prefill when GCA releases feature
-          vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
-        }
-      },
-    );
+    // vscode.commands.registerCommand(
+    //   "firebase.dataConnect.refineOperation",
+    //   async (ast: ObjectTypeDefinitionNode) => {
+    //     this.highlightActiveType(ast);
+    //     if (env.value.isMonospace) {
+    //       vscode.commands.executeCommand("aichat.prompt", {
+    //         prefillPrompt: "@data-connect /generate_operation ",
+    //       });
+    //     } else {
+    //       // change to prefill when GCA releases feature
+    //       vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+    //     }
+    //   },
+    // );
   }
   private highlightActiveType(ast: ObjectTypeDefinitionNode) {
     const editor = vscode.window.activeTextEditor;
