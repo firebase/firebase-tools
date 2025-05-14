@@ -10,9 +10,14 @@ export function getDefaultCloudBuildServiceAgent(projectNumber: string): string 
   return `${projectNumber}@cloudbuild.gserviceaccount.com`;
 }
 
-/** Returns the default compute engine service agent */
-export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
+/** Returns the default compute engine service account */
+export function getDefaultComputeEngineServiceAccount(projectNumber: string): string {
   return `${projectNumber}-compute@developer.gserviceaccount.com`;
+}
+
+/** Returns the default app engine service account */
+export function getDefaultAppEngineServiceAccount(projectId: string): string {
+  return `${projectId}@appspot.gserviceaccount.com`;
 }
 
 // IAM Policy

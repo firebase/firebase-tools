@@ -142,6 +142,8 @@ export function load(client: any): any {
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.functions.artifacts = {};
   client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
+  client.functions.permissions = {};
+  client.functions.permissions.grant = loadCommand("functions-permissions-grant");
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
