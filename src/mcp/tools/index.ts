@@ -7,6 +7,7 @@ import { directoryTools } from "./directory/index.js";
 import { coreTools } from "./core/index.js";
 import { storageTools } from "./storage/index.js";
 import { messagingTools } from "./messaging/index.js";
+import { remoteConfigTools } from "./remoteconfig/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
@@ -31,6 +32,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
   storage: addPrefixToToolName("storage_", storageTools),
   messaging: addPrefixToToolName("messaging_", messagingTools),
+  remoteconfig: addPrefixToToolName("remoteconfig_", remoteConfigTools),
 };
 
 function addPrefixToToolName(prefix: string, tools: ServerTool[]): ServerTool[] {
