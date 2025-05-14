@@ -7,11 +7,12 @@ import { directoryTools } from "./directory/index.js";
 import { coreTools } from "./core/index.js";
 import { storageTools } from "./storage/index.js";
 import { messagingTools } from "./messaging/index.js";
+import { remoteConfigTools } from "./remoteconfig/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
-  const toolDefs: ServerTool[] = addProductGroupPrefix("firebase", coreTools);
+  const toolDefs: ServerTool[] = addFeaturePrefix("firebase", coreTools);
   if (!fixedRoot) {
     // Present if the root is not fixed.
     toolDefs.push(...directoryTools);
@@ -26,20 +27,24 @@ export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeatur
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  firestore: addProductGroupPrefix("firestore", firestoreTools),
-  auth: addProductGroupPrefix("auth", authTools),
-  dataconnect: addProductGroupPrefix("dataconnect", dataconnectTools),
-  storage: addProductGroupPrefix("storage", storageTools),
-  messaging: addProductGroupPrefix("messaging", messagingTools),
+  firestore: addFeaturePrefix("firestore", firestoreTools),
+  auth: addFeaturePrefix("auth", authTools),
+  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
+  storage: addFeaturePrefix("storage", storageTools),
+  messaging: addFeaturePrefix("messaging", messagingTools),
+  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
 };
 
-function addProductGroupPrefix(productGroup: string, tools: ServerTool[]): ServerTool[] {
+function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
     ...tool,
     mcp: {
       ...tool.mcp,
-      name: `${productGroup}_${tool.mcp.name}`,
-      productGroup,
+      name: `${feature}_${tool.mcp.name}`,
+      meta: {
+        ...tool.mcp._meta,
+        feature,
+      },
     },
   }));
 }
@@ -51,15 +56,15 @@ function addProductGroupPrefix(productGroup: string, tools: ServerTool[]): Serve
 export function markdownDocsOfTools(): string {
   const allTools = availableTools(false, []);
   let doc = `
-| Tool Name                        | Feature Group | Description         |
-| -------------------------------- | ------------- | ------------------- |`;
+| Tool Name | Feature Group | Description |
+| --------- | ------------- | ----------- |`;
   for (const tool of allTools) {
-    let productGroup = tool.mcp.productGroup || "directory";
-    if (productGroup === "firebase") {
-      productGroup = "core";
+    let feature = tool.mcp?._meta?.feature || "directory";
+    if (feature === "firebase") {
+      feature = "core";
     }
     doc += `
-| ${tool.mcp.name} | ${productGroup} | ${tool.mcp.description} |`;
+| ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
   }
   return doc;
 }

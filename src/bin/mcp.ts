@@ -22,13 +22,13 @@ This is a running process of the Firebase MCP server. This command should only b
 export async function mcp(): Promise<void> {
   const { values } = parseArgs({
     options: {
-      help: { type: "boolean", default: false },
       only: { type: "string", default: "" },
       dir: { type: "string" },
+      "generate-tool-list": { type: "boolean", default: false },
     },
     allowPositionals: true,
   });
-  if (values.help) {
+  if (values["generate-tool-list"]) {
     console.log(markdownDocsOfTools());
     return;
   }
