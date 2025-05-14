@@ -8,6 +8,7 @@
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
+    "resolveJsonModule": true,
     "sourceMap": true,
     "skipLibCheck": true,
     "typeRoots": [
