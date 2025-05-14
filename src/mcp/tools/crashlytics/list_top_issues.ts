@@ -8,12 +8,17 @@ export const list_top_issues = tool(
         name:"list_top_issues",
         description: "List the top issues happening in the application.",
         inputSchema: z.object({
+            /* Platform for which the issues are to be fetched. For eg: ANDROID, IOS. */
             platform: z.string(),
-            packageName: z.string(),
-            issueCount: z.string().optional(),
+            /* Name of the package for the mobile application. Typically of format com.x.y. */
+            package_name: z.string(),
+            /* Number of issues that needs to be fetched. */
+            issue_count: z.number().optional(),
+            /* Number of days to look back to fetch issues. Defaults to 7 days. */
+            lookback_period: z.number().optional(),
         }),
         annotations: {
-            title: "Get the list of top issues in the application",
+            title: "List Top Crashlytics Issues.",
             readOnlyHint: true,
         },
         _meta: {
@@ -21,19 +26,22 @@ export const list_top_issues = tool(
             requiresProject: true,
         },
     },
-    async ({ platform, packageName, issueCount }, { projectId }) => {
+    async ({ platform, package_name, issue_count, lookback_period }, { projectId }) => {
         if (projectId === undefined) {
-          return mcpError(`No projectId specified in the tool to get the list of issues.`);
+            return mcpError(`Must specify 'projectId' parameter.`);
         }
         if (platform === undefined) {
-            return mcpError(`Platform is a required information to get the list of issues.`);
+            return mcpError(`Must specify 'platform' parameter.`);
         }
-        if (packageName === undefined) {
-            return mcpError(`Package name is a required information to get the list of issues.`);
+        if (package_name === undefined) {
+            return mcpError(`Must specify 'package_name' parameter.`);
         }
-        if (issueCount === undefined) {
-            issueCount = "10"
+        if (issue_count === undefined) {
+            issue_count = 10
         }
-        return toContent(await listTopIssues(projectId, platform, packageName, issueCount));
+        if (lookback_period === undefined) {
+            lookback_period = 7
+        }
+        return toContent(await listTopIssues(projectId, platform, package_name, issue_count, lookback_period));
       },
 )

@@ -15,7 +15,8 @@ export async function listTopIssues(
     projectId: string,
     platform: string,
     packageName: string, 
-    issueCount: string
+    issueCount: number,
+    lookbackPeriod: number,
 ): Promise<string> {
     try {
         const filters: FirebaseFilters = {
@@ -29,7 +30,7 @@ export async function listTopIssues(
         }
 
         const now = new Date();
-        const pastDate: Date = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const pastDate = new Date(Date.now() - (lookbackPeriod * 24 * 60 * 60 * 1000));
         const timeInterval: FirebaseFilterInterval = {
             startTime: pastDate.toISOString(),
             endTime: now.toISOString()
