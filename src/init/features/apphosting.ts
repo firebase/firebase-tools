@@ -36,13 +36,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   }
   await ensureApiEnabled({ projectId });
   await ensureRequiredApisEnabled(projectId);
-  // N.B. Deploying a backend from source requires the App Hosting compute service
-  // account to have the storage.objectViewer IAM role.
-  //
-  // We don't want to update the IAM permissions right before attempting to deploy,
-  // since IAM propagation delay will likely cause the first one to fail. However,
-  // `firebase init apphosting` is a prerequisite to the `firebase deploy` command,
-  // so we check and add the role here to give the IAM changes time to propagate.
   try {
     await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
   } catch (err) {
