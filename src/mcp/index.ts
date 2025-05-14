@@ -32,6 +32,7 @@ export class FirebaseMcpServer {
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
   fixedRoot?: boolean;
+  clientInfo?: { name?: string; version?: string };
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
@@ -41,10 +42,11 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.server.oninitialized = () => {
       const clientInfo = this.server.getClientVersion();
+      this.clientInfo = clientInfo;
       if (clientInfo?.name) {
         trackGA4("mcp_client_connected", {
-          client_name: clientInfo.name,
-          client_version: clientInfo.version,
+          mcp_client_name: clientInfo.name,
+          mcp_client_version: clientInfo.version,
         });
       }
     };
@@ -118,7 +120,10 @@ export class FirebaseMcpServer {
   async mcpListTools(): Promise<ListToolsResult> {
     if (!this.activeFeatures) await this.detectActiveFeatures();
     const hasActiveProject = !!(await this.getProjectId());
-    await trackGA4("mcp_list_tools", {});
+    await trackGA4("mcp_list_tools", {
+      mcp_client_name: this.clientInfo?.name,
+      mcp_client_version: this.clientInfo?.version,
+    });
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
@@ -150,10 +155,20 @@ export class FirebaseMcpServer {
     };
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
-      await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
+      await trackGA4("mcp_tool_call", {
+        tool_name: toolName,
+        error: res.isError ? 1 : 0,
+        mcp_client_name: this.clientInfo?.name,
+        mcp_client_version: this.clientInfo?.version,
+      });
       return res;
     } catch (err: unknown) {
-      await trackGA4("mcp_tool_call", { tool_name: toolName, error: 1 });
+      await trackGA4("mcp_tool_call", {
+        tool_name: toolName,
+        error: 1,
+        mcp_client_name: this.clientInfo?.name,
+        mcp_client_version: this.clientInfo?.version,
+      });
       return mcpError(err);
     }
   }
