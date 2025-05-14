@@ -8,8 +8,7 @@ export const list_top_issues = tool(
     name: "list_top_issues",
     description: "List the top issues happening in the application.",
     inputSchema: z.object({
-      app_id: z.string()
-        .describe("appId for which the issues list is fetched."),
+      app_id: z.string().describe("appId for which the issues list is fetched."),
       issue_count: z
         .number()
         .optional()
@@ -34,8 +33,6 @@ export const list_top_issues = tool(
     issue_count ??= 10;
     lookback_days ??= 7;
 
-    return toContent(
-      await listTopIssues(projectId!, app_id, issue_count, lookback_days)
-    );
+    return toContent(await listTopIssues(projectId!, app_id, issue_count, lookback_days));
   },
 );
