@@ -8,10 +8,8 @@ export const list_top_issues = tool(
     name: "list_top_issues",
     description: "List the top issues happening in the application.",
     inputSchema: z.object({
-      /* Platform for which the issues are to be fetched. For eg: ANDROID, IOS. */
-      platform: z.string(),
-      /* Name of the package for the mobile application. Typically of format com.x.y. */
-      package_name: z.string(),
+      /* AppId for which the issues list is fetched. */
+      app_id: z.string(),
       /* Number of issues that needs to be fetched. */
       issue_count: z.number().optional(),
       /* Number of days to look back to fetch issues. Defaults to 7 days. */
@@ -26,12 +24,9 @@ export const list_top_issues = tool(
       requiresProject: true,
     },
   },
-  async ({ platform, package_name, issue_count, lookback_period }, { projectId }) => {
-    if (platform === undefined) {
-      return mcpError(`Must specify 'platform' parameter.`);
-    }
-    if (package_name === undefined) {
-      return mcpError(`Must specify 'package_name' parameter.`);
+  async ({ app_id, issue_count, lookback_period }, { projectId }) => {
+    if (app_id === undefined) {
+      return mcpError(`Must specify 'app_id' parameter.`);
     }
     if (issue_count === undefined) {
       issue_count = 10;
@@ -40,7 +35,7 @@ export const list_top_issues = tool(
       lookback_period = 7;
     }
     return toContent(
-      await listTopIssues(projectId!, platform, package_name, issue_count, lookback_period),
+      await listTopIssues(projectId!, app_id, issue_count, lookback_period),
     );
   },
 );
