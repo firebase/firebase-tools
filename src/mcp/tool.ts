@@ -4,12 +4,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { FirebaseMcpServer } from "./index";
 import { Config } from "../config";
 import { RC } from "../rc";
+import { EmulatorHubClient } from "../emulator/hubClient";
 
 export interface ServerToolContext {
   projectId?: string;
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
+  emulatorHubClient?: EmulatorHubClient
 }
 
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
