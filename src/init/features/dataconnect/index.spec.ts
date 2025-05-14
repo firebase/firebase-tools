@@ -58,7 +58,14 @@ describe("init dataconnect", () => {
         requiredInfo: mockRequiredInfo(),
         config: mockConfig({ dataconnect: { source: "not-dataconnect" } }),
         expectedSource: "not-dataconnect",
-        expectedFiles: ["not-dataconnect/dataconnect.yaml"],
+        expectedFiles: [
+          "not-dataconnect/dataconnect.yaml",
+          // Populate the default template.
+          "not-dataconnect/schema/schema.gql",
+          "not-dataconnect/connector/connector.yaml",
+          "not-dataconnect/connector/queries.gql",
+          "not-dataconnect/connector/mutations.gql",
+        ],
         expectCSQLProvisioning: false,
         expectEnsureSchemaGQL: false,
       },
@@ -125,6 +132,18 @@ describe("init dataconnect", () => {
         desc: "should handle schema with no files",
         requiredInfo: mockRequiredInfo({
           schemaGql: [],
+          connectors: [
+            {
+              id: "my-connector",
+              path: "hello",
+              files: [
+                {
+                  path: "queries.gql",
+                  content: "## Fake GQL",
+                },
+              ],
+            },
+          ],
         }),
         config: mockConfig({
           dataconnect: {
@@ -132,7 +151,11 @@ describe("init dataconnect", () => {
           },
         }),
         expectedSource: "dataconnect",
-        expectedFiles: ["dataconnect/dataconnect.yaml"],
+        expectedFiles: [
+          "dataconnect/dataconnect.yaml",
+          "dataconnect/hello/connector.yaml",
+          "dataconnect/hello/queries.gql",
+        ],
         expectCSQLProvisioning: false,
         expectEnsureSchemaGQL: true,
       },
@@ -151,6 +174,7 @@ describe("init dataconnect", () => {
             featureInfo: { dataconnect: c.requiredInfo },
           },
           c.config,
+          {},
         );
         expect(c.config.get("dataconnect.source")).to.equal(c.expectedSource);
         if (c.expectEnsureSchemaGQL) {
