@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import { Command } from "../command";
 import * as utils from "../utils";
 import * as auth from "../auth";
