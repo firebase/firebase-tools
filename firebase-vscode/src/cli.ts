@@ -2,9 +2,7 @@ import {
   getAllAccounts,
   getGlobalDefaultAccount,
   loginGoogle,
-  setActiveAccount,
   setGlobalDefaultAccount,
-  setRefreshToken,
 } from "../../src/auth";
 import { logoutAction } from "../../src/commands/logout";
 import { listFirebaseProjects } from "../../src/management/projects";
@@ -87,7 +85,6 @@ export async function requireAuthWrapper(
       });
     }
     setAccessToken(await getAccessToken());
-    setActiveAccount(optsCopy, account!);
     if (userEmail) {
       pluginLogger.debug("User found: ", userEmail);
 
