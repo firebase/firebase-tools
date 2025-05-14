@@ -2,14 +2,18 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
-import { FirebaseFilters, FirebaseFilterInterval, listTopIssuesParams, PageDetails } from "./paramInterface";
+import { 
+    FirebaseFilters,
+    FirebaseFilterInterval,
+    listTopIssuesParams,
+    PageDetails } from "./paramInterface";
 
 const TIMEOUT = 10000;
 
 const apiClient = new Client({
     urlPrefix: crashlyticsApiOrigin(),
     apiVersion: "v1",
-  });
+});
 
 export async function listTopIssues(
     projectId: string,
