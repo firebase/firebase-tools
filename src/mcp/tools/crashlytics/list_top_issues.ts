@@ -27,9 +27,6 @@ export const list_top_issues = tool(
         },
     },
     async ({ platform, package_name, issue_count, lookback_period }, { projectId }) => {
-        if (projectId === undefined) {
-            return mcpError(`Must specify 'projectId' parameter.`);
-        }
         if (platform === undefined) {
             return mcpError(`Must specify 'platform' parameter.`);
         }
@@ -42,6 +39,6 @@ export const list_top_issues = tool(
         if (lookback_period === undefined) {
             lookback_period = 7
         }
-        return toContent(await listTopIssues(projectId, platform, package_name, issue_count, lookback_period));
+        return toContent(await listTopIssues(projectId!, platform, package_name, issue_count, lookback_period));
       },
 )
