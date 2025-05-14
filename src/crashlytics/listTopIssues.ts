@@ -6,8 +6,8 @@ import {
   FirebaseFilters,
   FirebaseFilterInterval,
   listTopIssuesParams,
-  PageDetails
- } from "./paramInterface";
+  PageDetails,
+} from "./paramInterface";
 
 const TIMEOUT = 10000;
 
@@ -47,9 +47,9 @@ export async function listTopIssues(
     };
 
     const params: listTopIssuesParams = {
-      filters : filters,
+      filters: filters,
       interval: timeInterval,
-      orderBy : "ORDER_EVENTS",
+      orderBy: "ORDER_EVENTS",
       pageDetails: pageDetails,
     };
 
@@ -64,7 +64,7 @@ export async function listTopIssues(
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to fetch the top issues for the Firebase Project ${projectId}, PackageName ${packageName}.",
-      { original: err }
+      { original: err },
     );
   }
 }

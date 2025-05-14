@@ -43,4 +43,4 @@ export const list_top_issues = tool(
       await listTopIssues(projectId!, platform, package_name, issue_count, lookback_period),
     );
   },
-)
+);
