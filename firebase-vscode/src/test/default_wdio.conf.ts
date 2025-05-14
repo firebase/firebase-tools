@@ -48,6 +48,7 @@ export const config: WebdriverIO.Config = {
       extensionId: "graphql.vscode-graphql-syntax",
       message: "It is recommended to install GraphQL: Syntax Highlighter",
     });
+    await browser.pause(3000); // temporary fix, since installing the GCA extension takes over the main page
   },
 
   afterTest: async function (test) {
