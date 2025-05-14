@@ -99,7 +99,7 @@ export class FirebaseMcpServer {
 
   async getAuthenticatedUser(): Promise<string | null> {
     try {
-      return (await requireAuth(await this.resolveOptions())) ?? null;
+      return await requireAuth(await this.resolveOptions());
     } catch (e) {
       return null;
     }
