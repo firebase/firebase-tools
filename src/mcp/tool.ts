@@ -8,6 +8,7 @@ import { EmulatorHubClient } from "../emulator/hubClient";
 
 export interface ServerToolContext {
   projectId?: string;
+  accountEmail?: string | null;
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
