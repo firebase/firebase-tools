@@ -13,11 +13,11 @@ export interface PageDetails {
   /**
    * Number of issues to fetch in a request.
    */
-  pageSize: number
+  pageSize: number;
   /**
    * Parameter used when fetching multiple pages. A reference to know the number of issues fetched so for.
    */
-  pageToken: string
+  pageToken: string;
 }
 
 /**

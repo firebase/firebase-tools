@@ -5,7 +5,7 @@ import { listTopIssues } from "../../../crashlytics/listTopIssues.js";
 
 export const list_top_issues = tool(
   {
-    name:"list_top_issues",
+    name: "list_top_issues",
     description: "List the top issues happening in the application.",
     inputSchema: z.object({
       /* Platform for which the issues are to be fetched. For eg: ANDROID, IOS. */
@@ -34,11 +34,13 @@ export const list_top_issues = tool(
       return mcpError(`Must specify 'package_name' parameter.`);
     }
     if (issue_count === undefined) {
-      issue_count = 10
+      issue_count = 10;
     }
     if (lookback_period === undefined) {
-      lookback_period = 7
+      lookback_period = 7;
     }
-    return toContent(await listTopIssues(projectId!, platform, package_name, issue_count, lookback_period));
+    return toContent(
+      await listTopIssues(projectId!, platform, package_name, issue_count, lookback_period),
+    );
   },
 )
