@@ -29,6 +29,8 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
       requiresProject?: boolean;
       /** Set this on a tool if it *always* requires a signed-in user to work. */
       requiresAuth?: boolean;
+      /** Tools are grouped by feature. --only can configure what tools is available. */
+      feature?: string;
     };
   };
   fn: (input: z.infer<InputSchema>, ctx: ServerToolContext) => Promise<CallToolResult>;
