@@ -76,6 +76,9 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
+/**
+ *
+ */
 export async function askQuestions(setup: Setup): Promise<void> {
   const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
@@ -130,6 +133,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
 // actuate writes product specific files and makes product specifc API calls.
 // It does not handle writing firebase.json and .firebaserc
+/**
+ *
+ */
 export async function actuate(setup: Setup, config: Config, options: any): Promise<void> {
   // Most users will want to persist data between emulator runs, so set this to a reasonable default.
   const dir: string = config.get("dataconnect.source", "dataconnect");
@@ -168,6 +174,9 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   }
 }
 
+/**
+ *
+ */
 export async function postSetup(setup: Setup, config: Config): Promise<void> {
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
   if (cwdPlatformGuess !== Platform.NONE) {

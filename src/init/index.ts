@@ -69,6 +69,9 @@ const featuresList: Feature[] = [
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
+/**
+ *
+ */
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
@@ -92,6 +95,9 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
   }
 }
 
+/**
+ *
+ */
 export async function actuate(setup: Setup, config: any, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
