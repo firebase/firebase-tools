@@ -9,7 +9,7 @@
     "sourceMap": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-
+    "resolveJsonModule": true,
     //"moduleResolution": "node",
     "outDir": "../../dist/test",
     "rootDirs": ["../", "../../common/", "../../../src/"],

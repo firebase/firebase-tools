@@ -108,12 +108,11 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
-  async getAuthenticated(): Promise<boolean> {
+  async getAuthenticatedUser(): Promise<string | null> {
     try {
-      await requireAuth(await this.resolveOptions());
-      return true;
+      return await requireAuth(await this.resolveOptions());
     } catch (e) {
-      return false;
+      return null;
     }
   }
 
@@ -129,7 +128,7 @@ export class FirebaseMcpServer {
       _meta: {
         projectRoot: this.projectRoot,
         projectDetected: hasActiveProject,
-        authenticated: await this.getAuthenticated(),
+        authenticatedUser: await this.getAuthenticatedUser(),
         activeFeatures: this.activeFeatures,
         detectedFeatures: this.detectedFeatures,
       },
@@ -143,7 +142,8 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     const projectId = await this.getProjectId();
-    if (tool.mcp._meta?.requiresAuth && !(await this.getAuthenticated())) return mcpAuthError();
+    const accountEmail = await this.getAuthenticatedUser();
+    if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
     const options = { projectDir: this.projectRoot, cwd: this.projectRoot };
@@ -152,6 +152,7 @@ export class FirebaseMcpServer {
       host: this,
       config: Config.load(options, true) || new Config({}, options),
       rc: loadRC(options),
+      accountEmail,
     };
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
