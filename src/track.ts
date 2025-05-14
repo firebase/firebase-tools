@@ -20,7 +20,8 @@ type cliEventNames =
   | "codebase_deploy"
   | "function_deploy_group"
   | "mcp_tool_call"
-  | "mcp_list_tools";
+  | "mcp_list_tools"
+  | "mcp_client_connected";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
