@@ -46,7 +46,6 @@ export const execute_graphql_read = tool(
       return mcpError("Project ID is required but not found.", "PROJECT_ID_MISSING");
     }
     const serviceInfo = await pickService(projectId, config, serviceId || undefined);
-    const servicePath = serviceInfo.serviceName; // e.g., projects/PROJECT_ID/services/SERVICE_ID
 
     let apiClient: Client;
 
@@ -68,7 +67,7 @@ export const execute_graphql_read = tool(
       apiClient = dataplane.dataconnectDataplaneClient();
     }
 
-    const response = await dataplane.executeGraphQLRead(apiClient, servicePath, {
+    const response = await dataplane.executeGraphQLRead(apiClient, serviceInfo.serviceName, {
       name: "",
       query,
       variables: parseVariables(unparsedVariables),
