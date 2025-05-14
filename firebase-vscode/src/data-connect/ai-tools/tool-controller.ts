@@ -54,7 +54,7 @@ export class GeminiToolController {
         this.highlightActiveType(ast);
         if (env.value.isMonospace) {
           vscode.commands.executeCommand("aichat.prompt", {
-            prefillPrompt: "@dataconnect /generate_operation ",
+            prefillPrompt: "@data-connect /generate_operation ",
           });
         } else {
           // change to prefill when GCA releases feature
@@ -260,7 +260,6 @@ export class GeminiToolController {
   async collectSchemaText(): Promise<string> {
     try {
       const service = this.configs?.value?.tryReadValue?.values[0];
-      console.log(service);
 
       if (!service) {
         // The entrypoint is not a codelens file, so we can't determine the service.
@@ -269,13 +268,10 @@ export class GeminiToolController {
 
       let schema: string = "";
       const schemaPath = path.join(service.path, service.schemaDir);
-      console.log("PATH: ", schemaPath);
       const schemaFiles = await this.findGqlFiles(schemaPath);
-      console.log(schemaFiles);
       for (const file of schemaFiles) {
         schema = schema.concat(fs.readFileSync(file, "utf-8"));
       }
-      console.log("SCHEMA: ", schema);
       return schema;
     } catch (error) {
       throw new Error(`Failed to collect GQL files: ${error}`);

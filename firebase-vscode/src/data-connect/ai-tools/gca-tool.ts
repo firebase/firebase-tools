@@ -28,7 +28,7 @@ import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
 import { ChatMessage } from "../../dataconnect/types";
-export const DATACONNECT_TOOL_ID = "dataconnect";
+export const DATACONNECT_TOOL_ID = "data-connect";
 export const DATACONNECT_DISPLAY_NAME = "Data Connect";
 export const SUGGESTED_PROMPTS = [
   "/generate_schema Create a schema for a pizza store",
@@ -37,8 +37,8 @@ export const SUGGESTED_PROMPTS = [
 const HELP_MESSAGE = `
 Welcome to the Data Connect Tool.
 Usage:
-  @dataconnect /generate_schema <your prompt>
-  @dataconnect /generate_operation <your prompt>
+  @data-connect /generate_schema <your prompt>\n
+  @data-connect /generate_operation <your prompt>
 `;
 
 export class GCAToolClient {
@@ -206,7 +206,7 @@ function isPromptValid(prompt: ChatPrompt): boolean {
   if (prompt.length < 2) {
     return false;
   }
-  if (prompt.getPromptParts()[0].getPrompt() !== "@dataconnect") {
+  if (prompt.getPromptParts()[0].getPrompt() !== "@data-connect") {
     return false;
   }
 
@@ -228,7 +228,7 @@ function getCommand(prompt: ChatPrompt): Command {
 function getPrompt(prompt: ChatPrompt): string {
   if (
     prompt.length > 2 &&
-    prompt.getPromptParts()[0].getPrompt() === "@dataconnect"
+    prompt.getPromptParts()[0].getPrompt() === "@data-connect"
   ) {
     return prompt.getPromptParts()[2].getPrompt();
   }

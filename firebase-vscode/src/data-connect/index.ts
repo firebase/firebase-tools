@@ -32,9 +32,9 @@ import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
-import { GeminiAssistController } from "./gemini-assist";
 import { emulators } from "../init/features";
-import { GeminiToolController } from "./gemini-tool";
+import { GCAToolClient } from "./ai-tools/gca-tool";
+import { GeminiToolController } from "./ai-tools/tool-controller";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -158,24 +158,14 @@ export function registerFdc(
     emulatorController,
     context,
   );
-
-  const configs = dataConnectConfigs.value?.tryReadValue;
-  const geminiAssist = new GeminiAssistController(
-    analyticsLogger,
-    broker,
-    context,
-    fdcService,
-    dataConnectConfigs,
+ 
+  const gcaToolClient = new GCAToolClient(
+   context,
+   new GeminiToolController(analyticsLogger, broker, context, fdcService, dataConnectConfigs)
   );
 
-  const geminiTool = new GeminiToolController(
-    geminiAssist,
-    fdcService,
-    emulatorController,
-    context,
-  );
-  geminiTool.activate();
-  let activated = false;
+  gcaToolClient.activate();
+
   broker.on("firebase.activate.gemini", () => {
     vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
   });
@@ -280,7 +270,6 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
-    geminiAssist,
     {
       dispose: () => {
         client.stop();
