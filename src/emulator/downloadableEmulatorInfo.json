@@ -38,19 +38,19 @@
           "version": "2.5.0",
           "expectedSize": 27378432,
           "expectedChecksum": "d18bc3a07be90886f6ec212f3393b66e",
-    "expectedChecksumSHA256": "33620e1297e7ca8e44b4c2f27edcf499c5fa825587121d8e97ea7ce830964405"
+    "expectedChecksumSHA256": "a863e04f45a6704c25f1a7155c13dac5ed5f481f1a75ed11e45abed570d13117"
         },
     "win32": {
             "version": "2.5.0",
             "expectedSize": 27836416,
             "expectedChecksum": "d335e9295b00381eb12682bc944ffef7",
-    "expectedChecksumSHA256": "4c895af818e63d92910f6327a8dc5e0f0ec467450f59f2061a9a795a20876eee"
+    "expectedChecksumSHA256": "8a216c475c4796bfcd65bcfb52aa303b3d79f389e3675dbf37702052d82c04c5"
           },
       "linux": {
             "version": "2.5.0",
             "expectedSize": 27295896,
             "expectedChecksum": "dc44dbfd972a9b3608794909df517077",
-            "expectedChecksumSHA256": "2861ba6fc6468b7e5e5a1e1ff0b8f7191fe6a465690994c5756de659c22f192d"
+            "expectedChecksumSHA256": "7276447968da6375d3818f5011b1474f39510ec53b2fa14c4b771f795e19e7bd"
           }
         }
 }
