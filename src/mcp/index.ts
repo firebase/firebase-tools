@@ -39,6 +39,15 @@ export class FirebaseMcpServer {
     this.server.registerCapabilities({ tools: { listChanged: true } });
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
+    this.server.oninitialized = async () => {
+      const result = await this.server.getClientVersion();
+      if (result?.name) {
+        trackGA4("mcp_client_connected", {
+          client_name: result.name,
+          client_version: result.version,
+        });
+      }
+    };
     this.projectRoot =
       options.projectRoot ??
       (configstore.get(PROJECT_ROOT_KEY) as string) ??
