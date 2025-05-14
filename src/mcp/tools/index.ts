@@ -12,7 +12,7 @@ import { remoteConfigTools } from "./remoteconfig/index.js";
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
-  const toolDefs: ServerTool[] = addPrefixToToolName("firebase_", coreTools);
+  const toolDefs: ServerTool[] = addFeaturePrefix("firebase", coreTools);
   if (!fixedRoot) {
     // Present if the root is not fixed.
     toolDefs.push(...directoryTools);
@@ -27,20 +27,44 @@ export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeatur
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  firestore: addPrefixToToolName("firestore_", firestoreTools),
-  auth: addPrefixToToolName("auth_", authTools),
-  dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
-  storage: addPrefixToToolName("storage_", storageTools),
-  messaging: addPrefixToToolName("messaging_", messagingTools),
-  remoteconfig: addPrefixToToolName("remoteconfig_", remoteConfigTools),
+  firestore: addFeaturePrefix("firestore", firestoreTools),
+  auth: addFeaturePrefix("auth", authTools),
+  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
+  storage: addFeaturePrefix("storage", storageTools),
+  messaging: addFeaturePrefix("messaging", messagingTools),
+  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
 };
 
-function addPrefixToToolName(prefix: string, tools: ServerTool[]): ServerTool[] {
+function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
     ...tool,
     mcp: {
       ...tool.mcp,
-      name: `${prefix}${tool.mcp.name}`,
+      name: `${feature}_${tool.mcp.name}`,
+      _meta: {
+        ...tool.mcp._meta,
+        feature,
+      },
     },
   }));
+}
+
+/**
+ * Generates a markdown table of all available tools and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfTools(): string {
+  const allTools = availableTools(false, []);
+  let doc = `
+| Tool Name | Feature Group | Description |
+| --------- | ------------- | ----------- |`;
+  for (const tool of allTools) {
+    let feature = tool.mcp?._meta?.feature || "directory";
+    if (feature === "firebase") {
+      feature = "core";
+    }
+    doc += `
+| ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
+  }
+  return doc;
 }
