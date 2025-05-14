@@ -24,8 +24,8 @@ export async function createArchive(
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const { ignorePatterns, negationPatterns } = parseGitIgnorePatterns();
-  ignore.push(...ignorePatterns);
+  const gitIgnorePatterns = parseGitIgnorePatterns();
+  ignore.push(...gitIgnorePatterns);
 
   if (!projectRoot) {
     projectRoot = process.cwd();
@@ -34,7 +34,7 @@ export async function createArchive(
     const files = await fsAsync.readdirRecursive({
       path: projectRoot,
       ignore: ignore,
-      include: negationPatterns.map((pattern) => pattern.slice(1)), // remove "!" from pattern
+      isGitIgnore: true,
     });
     for (const file of files) {
       const name = path.relative(projectRoot, file.name);
@@ -53,10 +53,7 @@ export async function createArchive(
   return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
 }
 
-function parseGitIgnorePatterns(filePath = ".gitignore"): {
-  ignorePatterns: string[];
-  negationPatterns: string[];
-} {
+function parseGitIgnorePatterns(filePath = ".gitignore"): string[] {
   const absoluteFilePath = path.resolve(filePath);
   const lines = fs
     .readFileSync(absoluteFilePath)
@@ -64,12 +61,7 @@ function parseGitIgnorePatterns(filePath = ".gitignore"): {
     .split("\n") // split into lines
     .map((line) => line.trim())
     .filter((line) => !line.startsWith("#") && !(line === "")); // remove comments and empty lines
-  const ignores = lines.filter((line) => !line.startsWith("!"));
-  const negations = lines.filter((line) => line.startsWith("!"));
-  return {
-    ignorePatterns: ignores,
-    negationPatterns: negations,
-  };
+  return lines;
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {

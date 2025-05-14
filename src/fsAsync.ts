@@ -1,14 +1,15 @@
-import { join } from "path";
 import { readdirSync, statSync } from "fs-extra";
+import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
-import { existsSync } from "fs";
+import { join, relative } from "path";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
   path: string;
   // Files to ignore.
   ignore?: string[];
+  isGitIgnore?: boolean;
   // Files in the ignore array to include.
   include?: string[];
 }
@@ -55,36 +56,22 @@ export async function readdirRecursive(
   const rules = (options.ignore || []).map((glob) => {
     return (p: string) => minimatch(p, glob, mmopts);
   });
+  const gitIgnoreRules = ignorePkg()
+    .add(options.ignore || [])
+    .createFilter();
+
   const filter = (t: string): boolean => {
+    if (options.isGitIgnore) {
+      // the git ignore filter will return true if given path should be included,
+      // so we need to negative that return false to avoid filtering it.
+      return !gitIgnoreRules(relative(options.path, t));
+    }
     return rules.some((rule) => {
       return rule(t);
     });
   };
-  const files = await readdirRecursiveHelper({
+  return await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
   });
-  const filenames = files.map((file) => file.name);
-
-  // Re-include the files may have been previously ignored
-  for (const p of options.include || []) {
-    const absPath = join(options.path, p);
-    if (!existsSync(absPath)) {
-      continue;
-    }
-    if (filenames.includes(absPath)) {
-      continue;
-    }
-    const fstat = statSync(absPath);
-    if (fstat.isFile()) {
-      files.push({ name: absPath, mode: fstat.mode });
-    } else {
-      const filesToInclude = await readdirRecursiveHelper({
-        path: absPath,
-        filter: (t: string) => filenames.includes(join(options.path, t)),
-      });
-      files.push(...filesToInclude);
-    }
-  }
-  return files;
 }
