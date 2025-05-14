@@ -96,11 +96,11 @@ describe("fsAsync", () => {
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });
 
-    it("should support git negation via options", async () => {
+    it("should support .gitignore rules via options", async () => {
       const results = await fsAsync.readdirRecursive({
         path: baseDir,
-        ignore: [path.join(baseDir, "subdir/nesteddir")],
-        include: ["subdir/nesteddir/nestedfile"],
+        ignore: ["subdir/nesteddir/*", "!subdir/nesteddir/nestedfile"],
+        isGitIgnore: true,
       });
 
       const gotFileNames = results.map((r) => r.name).sort();
