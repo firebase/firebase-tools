@@ -34,12 +34,6 @@ In `.cursor/mcp.json` in your workspace directory, add the Firebase MCP server:
 
 ## Tools
 
-Generate the  below table using the following command:
-
-```bash
-firebase experimental:mcp --generate-tool-docs
-```
-
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |
 | firebase_get_project | core | Retrieves information about the currently active Firebase project. |
