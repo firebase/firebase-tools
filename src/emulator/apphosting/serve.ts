@@ -15,12 +15,19 @@ import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
 import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getError } from "../../error";
 import * as secrets from "../../gcp/secretManager";
 import { logLabeledError } from "../../utils";
+import * as apphosting from "../../gcp/apphosting";
+import { logWarning } from "../../utils";
+import { Constants } from "../constants";
+import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
+import { AppPlatform, getAppConfig } from "../../management/apps";
+import { dirname } from "path";
 
 interface StartOptions {
   projectId?: string;
+  backendId?: string;
   port?: number;
   startCommand?: string;
   rootDirectory?: string;
@@ -41,7 +48,13 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     port += 1;
   }
 
-  await serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
+  await serve(
+    options?.projectId,
+    options?.backendId,
+    port,
+    options?.startCommand,
+    options?.rootDirectory,
+  );
 
   return { hostname, port };
 }
@@ -102,6 +115,7 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
  */
 async function serve(
   projectId: string | undefined,
+  backendId: string | undefined,
   port: number,
   startCommand?: string,
   backendRelativeDir?: string,
@@ -118,8 +132,28 @@ async function serve(
   const environmentVariablesToInject = {
     ...getEmulatorEnvs(),
     ...Object.fromEntries(await Promise.all(resolveEnv)),
+    FIREBASE_APP_HOSTING: "1",
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    GCLOUD_PROJECT: projectId,
+    PROJECT_ID: projectId,
     PORT: port.toString(),
   };
+
+  if (projectId && backendId) {
+    const webappConfig = await getBackendAppConfig(projectId, backendId);
+    if (webappConfig) {
+      environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
+      environmentVariablesToInject["FIREBASE_CONFIG"] ||= JSON.stringify({
+        databaseURL: webappConfig.databaseURL,
+        storageBucket: webappConfig.storageBucket,
+        projectId: webappConfig.projectId,
+      });
+      await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
+    }
+  } else {
+    logWarning("No projectId or backendId provided. Skipping Firebase WebApp config.");
+  }
+
   if (startCommand) {
     logger.logLabeled(
       "BULLET",
@@ -166,4 +200,45 @@ export function getEmulatorEnvs(): Record<string, string> {
   setEnvVarsForEmulators(envs, emulatorInfos);
 
   return envs;
+}
+
+async function tripFirebasePostinstall(
+  rootDirectory: string,
+  env: Record<string, string>,
+): Promise<void> {
+  let firebaseUtilPath;
+  try {
+    firebaseUtilPath = dirname(
+      require.resolve("@firebase/util/package.json", { paths: [rootDirectory] }),
+    );
+  } catch (err: unknown) {
+    return;
+  }
+
+  await spawnWithCommandString("npm run postinstall", firebaseUtilPath, env).catch((err) => {
+    logWarning(`Failed to run postinstall script for @firebase/util: ${getError(err).message}.`);
+  });
+}
+
+async function getBackendAppConfig(
+  projectId: string,
+  backendId: string,
+): Promise<WebConfig | undefined> {
+  if (Constants.isDemoProject(projectId)) {
+    return constructDefaultWebSetup(projectId);
+  }
+
+  const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
+  const backend = backendsList?.backends.find((b) => b.name.split("/").at(-1) === backendId);
+
+  if (!backend) {
+    logWarning(`Unable to lookup details for backend ${backendId}.`);
+    return undefined;
+  }
+
+  if (!backend.appId) {
+    return undefined;
+  }
+
+  return (await getAppConfig(backend.appId, AppPlatform.WEB)) as WebConfig;
 }
