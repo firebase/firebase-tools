@@ -18,9 +18,9 @@ export const get_admin_sdk_config = tool(
     },
   },
   async (_, { projectId }) => {
-    const adminSdkConfig = await getProjectAdminSdkConfigOrCached(projectId!);
+    const adminSdkConfig = await getProjectAdminSdkConfigOrCached(projectId || "");
     if (!adminSdkConfig) {
-      return mcpError(`No Admin SDK configuration found in project '${projectId}'`);
+      return mcpError(`No Admin SDK configuration found in project '${projectId || ""}'`);
     }
     return toContent(adminSdkConfig);
   },

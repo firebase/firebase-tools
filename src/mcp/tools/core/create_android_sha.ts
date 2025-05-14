@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { toContent, mcpError } from "../../util.js";
+import { toContent } from "../../util.js";
 import { createAppAndroidSha, ShaCertificateType } from "../../../management/apps.js";
 
 /**
@@ -45,4 +45,4 @@ export const create_android_sha = tool(
       message: `Successfully added ${certType} certificate to Android app ${appId}`,
     });
   },
-); 
+);

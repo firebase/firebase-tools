@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { toContent, mcpError } from "../../util.js";
+import { toContent } from "../../util.js";
 import { createWebApp } from "../../../management/apps.js";
 
 export const create_web_app = tool(
@@ -8,7 +8,10 @@ export const create_web_app = tool(
     name: "create_web_app",
     description: "Creates a new Web app in your Firebase project.",
     inputSchema: z.object({
-      displayName: z.string().optional().describe("The user-friendly display name for your Web app."),
+      displayName: z
+        .string()
+        .optional()
+        .describe("The user-friendly display name for your Web app."),
     }),
     annotations: {
       title: "Create Web App",
@@ -24,7 +27,7 @@ export const create_web_app = tool(
     const webApp = await createWebApp(projectId!, {
       displayName,
     });
-    
+
     return toContent(webApp);
   },
 );
