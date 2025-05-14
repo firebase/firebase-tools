@@ -7,6 +7,7 @@ import { get_sdk_config } from "./get_sdk_config.js";
 import { list_apps } from "./list_apps.js";
 import { create_project } from "./create_project.js";
 import { init } from "./init.js";
+// import { get_environment } from "./get_environment.js";
 
 export const coreTools: ServerTool[] = [
   get_project,
@@ -15,5 +16,6 @@ export const coreTools: ServerTool[] = [
   get_sdk_config,
   create_project,
   consult_assistant,
+  // get_environment, // leaving commented out for the moment
   init,
 ];
