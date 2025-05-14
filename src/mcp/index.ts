@@ -10,7 +10,7 @@ import {
 import { checkFeatureActive, mcpError } from "./util.js";
 import { SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
-import { ServerTool } from "./tool.js";
+import { ServerTool, ServerToolContext } from "./tool.js";
 import { configstore } from "../configstore.js";
 import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
@@ -97,7 +97,7 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
-  async getAuthenticated(): Promise<string | null> {
+  async getAuthenticatedUser(): Promise<string | null> {
     try {
       return (await requireAuth(await this.resolveOptions())) ?? null;
     } catch (e) {
@@ -114,7 +114,7 @@ export class FirebaseMcpServer {
       _meta: {
         projectRoot: this.projectRoot,
         projectDetected: hasActiveProject,
-        authenticatedUser: await this.getAuthenticated(),
+        authenticatedUser: await this.getAuthenticatedUser(),
         activeFeatures: this.activeFeatures,
         detectedFeatures: this.detectedFeatures,
       },
@@ -128,21 +128,20 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     const projectId = await this.getProjectId();
-    const accountEmail = await this.getAuthenticated();
+    const accountEmail = await this.getAuthenticatedUser();
     if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
+    const options = { projectDir: this.projectRoot, cwd: this.projectRoot };
+    const toolsCtx: ServerToolContext = {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+      accountEmail,
+    };
     try {
-      const cliOpts = { cwd: this.projectRoot };
-      const config = Config.load(cliOpts) as Config;
-      const rc = loadRC(cliOpts);
-      const res = await tool.fn(toolArgs, {
-        projectId: await this.getProjectId(),
-        host: this,
-        config,
-        rc,
-        accountEmail,
-      });
+      const res = await tool.fn(toolArgs, toolsCtx);
       await trackGA4("mcp_tool_call", { tool_name: toolName, error: res.isError ? 1 : 0 });
       return res;
     } catch (err: unknown) {
