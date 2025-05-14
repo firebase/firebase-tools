@@ -22,7 +22,7 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
-import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json"
+import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -30,23 +30,30 @@ const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
 const EMULATOR_UPDATE_DETAILS: {
-  database: EmulatorUpdateDetails,
-  firestore: EmulatorUpdateDetails,
-  storage: EmulatorUpdateDetails,
-  pubsub: EmulatorUpdateDetails,
+  database: EmulatorUpdateDetails;
+  firestore: EmulatorUpdateDetails;
+  storage: EmulatorUpdateDetails;
+  pubsub: EmulatorUpdateDetails;
   ui: {
-    main: EmulatorUpdateDetails,
-    snapshot: EmulatorUpdateDetails,
-  },
+    main: EmulatorUpdateDetails;
+    snapshot: EmulatorUpdateDetails;
+  };
   dataconnect: {
-    darwin: EmulatorUpdateDetails,
-    win32: EmulatorUpdateDetails,
-    linux: EmulatorUpdateDetails,
-  },
+    darwin: EmulatorUpdateDetails;
+    win32: EmulatorUpdateDetails;
+    linux: EmulatorUpdateDetails;
+  };
 } = emulatorUpdateDetails;
 
-const emulatorUiDetails = experiments.isEnabled('emulatoruisnapshot') ? EMULATOR_UPDATE_DETAILS.ui.snapshot : EMULATOR_UPDATE_DETAILS.ui.main;
-const dataconnectDetails = process.platform === 'darwin' ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin : process.platform === 'win32' ? EMULATOR_UPDATE_DETAILS.dataconnect.win32 : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
+const emulatorUiDetails = experiments.isEnabled("emulatoruisnapshot")
+  ? EMULATOR_UPDATE_DETAILS.ui.snapshot
+  : EMULATOR_UPDATE_DETAILS.ui.main;
+const dataconnectDetails =
+  process.platform === "darwin"
+    ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin
+    : process.platform === "win32"
+      ? EMULATOR_UPDATE_DETAILS.dataconnect.win32
+      : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(
@@ -94,12 +101,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     version: emulatorUiDetails.version,
     downloadPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}.zip`),
     unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}}`),
-    binaryPath: path.join(
-      CACHE_DIR,
-      `ui-v${emulatorUiDetails.version}}`,
-      "server",
-      "server.mjs",
-    ),
+    binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}}`, "server", "server.mjs"),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${emulatorUiDetails.version}.zip`,
