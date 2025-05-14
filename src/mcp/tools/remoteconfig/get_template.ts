@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { toContent } from "../../util.js";
 import { getTemplate } from "../../../remoteconfig/get.js";
 
 export const get_rc_template = tool(
@@ -20,9 +20,6 @@ export const get_rc_template = tool(
     },
   },
   async ({ versionNumber }, { projectId }) => {
-    if (projectId === undefined) {
-      return mcpError(`No projectId specified in the get_template tool`);
-    }
     return toContent(await getTemplate(projectId!, versionNumber));
   },
 );
