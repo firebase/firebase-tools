@@ -27,7 +27,7 @@ export interface ProjectParentResource {
 }
 
 /**
- *
+ * Prompt user to create a new project
  */
 export async function promptProjectCreation(): Promise<{ projectId: string; displayName: string }> {
   const projectId = await prompt.input({
@@ -74,7 +74,7 @@ const resourceManagerClient = new Client({
 });
 
 /**
- *
+ * Create a new Google Cloud Platform project and add Firebase resources to it
  */
 export async function createFirebaseProjectAndLog(
   projectId: string,
@@ -94,7 +94,7 @@ export async function createFirebaseProjectAndLog(
 }
 
 /**
- *
+ * Add Firebase resources to a Google Cloud Platform project
  */
 export async function addFirebaseToCloudProjectAndLog(
   projectId: string,
