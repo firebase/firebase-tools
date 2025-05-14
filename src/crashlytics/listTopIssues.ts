@@ -14,11 +14,11 @@ export async function listTopIssues(
   projectId: string,
   appId: string,
   issueCount: number,
-  lookbackPeriod: number,
+  lookbackDays: number,
 ): Promise<string> {
   try {
     const now = new Date();
-    const pastDate = new Date(Date.now() - lookbackPeriod * 24 * 60 * 60 * 1000);
+    const pastDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${issueCount}`);

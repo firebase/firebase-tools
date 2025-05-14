@@ -8,12 +8,17 @@ export const list_top_issues = tool(
     name: "list_top_issues",
     description: "List the top issues happening in the application.",
     inputSchema: z.object({
-      /* AppId for which the issues list is fetched. */
-      app_id: z.string(),
-      /* Number of issues that needs to be fetched. */
-      issue_count: z.number().optional(),
-      /* Number of days to look back to fetch issues. Defaults to 7 days. */
-      lookback_period: z.number().optional(),
+      app_id: z
+        .string()
+        .describe("appId for which the issues list is fetched."),
+      issue_count: z
+        .number()
+        .optional()
+        .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified."),
+      lookback_days: z
+        .number()
+        .optional()
+        .describe("Number of days looked back to fetch top issues. Defaults to 7 if unspecified."),
     }),
     annotations: {
       title: "List Top Crashlytics Issues.",
@@ -24,18 +29,14 @@ export const list_top_issues = tool(
       requiresProject: true,
     },
   },
-  async ({ app_id, issue_count, lookback_period }, { projectId }) => {
-    if (app_id === undefined) {
-      return mcpError(`Must specify 'app_id' parameter.`);
-    }
-    if (issue_count === undefined) {
-      issue_count = 10;
-    }
-    if (lookback_period === undefined) {
-      lookback_period = 7;
-    }
+  async ({ app_id, issue_count, lookback_days }, { projectId }) => {
+    if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
+
+    issue_count ??= 10;
+    lookback_days ??= 7;
+
     return toContent(
-      await listTopIssues(projectId!, app_id, issue_count, lookback_period),
+      await listTopIssues(projectId!, app_id, issue_count, lookback_days),
     );
   },
 );
