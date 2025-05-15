@@ -437,7 +437,7 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
     if (
       await confirm({
         message: `Do you want Gemini to help generate a schema for your service?`,
-        default: true,
+        default: false,
       })
     ) {
       await ensureGIFApis(setup.projectId!);
