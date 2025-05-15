@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { confirm, checkbox, input } from "../prompt";
 import { requireAuth } from "../requireAuth";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess, logError } from "../utils";
 import { formatServiceAccount } from "../gcp/proto";
 import * as permissions from "../functions/permissions";
 import {
@@ -37,18 +37,27 @@ export const command = new Command("functions:permissions:grant")
     if (options.serviceAccount) {
       serviceAccounts = [
         formatServiceAccount(options.serviceAccount, projectId, true /* removeTypePrefix */),
-      ] as string[];
+      ];
+    } else if (options.force) {
+      // When --force is used, --service-account must be specified if not prompting.
+      throw new FirebaseError("The --service-account flag must be provided when using --force.");
     } else {
       const projectNumber = await needProjectNumber(options);
-      serviceAccounts = await promptForServiceAccounts({ projectId, projectNumber });
+      serviceAccounts = await promptForServiceAccounts(options, { projectId, projectNumber });
     }
 
     let rolesToGrant: string[] = [];
     if (options.role) {
       rolesToGrant = [permissions.normalizeRole(options.role as string)];
+    } else if (options.force) {
+      // When --force is used and --role is not specified, use default roles.
+      logBullet(
+        `Using default roles for grant: ${clc.bold(RUN_BUILDER_ROLE)} and ${clc.bold(SDK_SERVICE_AGENT_ROLE)}`,
+      );
+      rolesToGrant = [RUN_BUILDER_ROLE, SDK_SERVICE_AGENT_ROLE];
     } else {
       logBullet("Selecting roles to grant...");
-      rolesToGrant = await promptForRoles();
+      rolesToGrant = await promptForRoles(options);
     }
 
     const confirmMessage =
@@ -69,61 +78,60 @@ export const command = new Command("functions:permissions:grant")
       throw new FirebaseError("Command aborted.", { exit: 1 });
     }
 
-    // const results = [];
-    // for (const serviceAccount of serviceAccounts) {
-    //   try {
-    //     await functionsPermissions.grantRolesToServiceAccount(
-    //       projectId,
-    //       serviceAccount,
-    //       rolesToGrant,
-    //     );
-    //     results.push({
-    //       serviceAccount,
-    //       roles: rolesToGrant,
-    //       success: true,
-    //     });
-    //   } catch (err) {
-    //     logWarning(`Failed to grant roles to ${serviceAccount}: ${err}`);
-    //     results.push({
-    //       serviceAccount,
-    //       roles: rolesToGrant,
-    //       success: false,
-    //       error: err,
-    //     });
-    //   }
-    // }
+    const results = [];
+    for (const serviceAccount of serviceAccounts) {
+      try {
+        await permissions.grantRolesToServiceAccount(projectId, serviceAccount, rolesToGrant);
+        results.push({
+          serviceAccount,
+          roles: rolesToGrant,
+          success: true,
+        });
+      } catch (err) {
+        results.push({
+          serviceAccount,
+          roles: rolesToGrant,
+          success: false,
+          error: err,
+        });
+      }
+    }
 
-    // // Output results
-    // for (const result of results) {
-    //   if (result.success) {
-    //     for (const role of result.roles) {
-    //       logSuccess(
-    //         `Successfully added role ${clc.bold(role)} to ${clc.bold(result.serviceAccount)}`,
-    //       );
-    //     }
-    //   }
-    // }
+    for (const result of results) {
+      if (result.success) {
+        logSuccess(
+          `Successfully added roles ${clc.bold(result.roles.join(", "))} to ${clc.bold(result.serviceAccount)}`,
+        );
+      }
+    }
 
-    // // Check if any operations failed
-    // const failures = results.filter((r) => !r.success);
-    // if (failures.length > 0) {
-    //   throw new FirebaseError(
-    //     "Some permission grants failed. Please have an IAM administrator retry the command.",
-    //     { exit: 1 },
-    //   );
-    // }
+    const failures = results.filter((r) => !r.success);
+    if (failures.length > 0) {
+      for (const result of failures) {
+        logError(
+          `Failed to add roles ${clc.bold(result.roles.join(", "))} to ${clc.bold(result.serviceAccount)}`,
+        );
+      }
+      throw new FirebaseError(
+        "Some permission grants failed. Please have an IAM administrator retry the command.",
+        { children: failures.map((f) => f.error) },
+      );
+    }
   });
 
 /**
  * Prompts the user to select service accounts associated with Firebase Functions.
  */
-export async function promptForServiceAccounts({
-  projectId,
-  projectNumber,
-}: {
-  projectId: string;
-  projectNumber: string;
-}): Promise<string[]> {
+export async function promptForServiceAccounts(
+  options: any,
+  {
+    projectId,
+    projectNumber,
+  }: {
+    projectId: string;
+    projectNumber: string;
+  },
+): Promise<string[]> {
   const v1SA = getDefaultAppEngineServiceAccount(projectId);
   const v2SA = getDefaultComputeEngineServiceAccount(projectNumber);
   const choices = [
@@ -170,7 +178,7 @@ export async function promptForServiceAccounts({
  * Prompts the user to select roles to grant
  * @returns Promise resolving to selected roles
  */
-export async function promptForRoles(): Promise<string[]> {
+export async function promptForRoles(options: any): Promise<string[]> {
   const choices = [
     {
       name: `Default builder permissions (${RUN_BUILDER_ROLE})`,
