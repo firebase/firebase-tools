@@ -1,8 +1,8 @@
 import { Client } from "../apiv2";
-import { cloudCompanionOrigin } from "../api";
+import { cloudAiCompanionOrigin } from "../api";
 import { FirebaseError } from "../error";
 
-const apiClient = new Client({ urlPrefix: cloudCompanionOrigin(), auth: true });
+const apiClient = new Client({ urlPrefix: cloudAiCompanionOrigin(), auth: true });
 const schemaGeneratorExperience = "/appeco/firebase/fdc-schema-generator";
 const geminiInFirebaseChatExperience = "/appeco/firebase/firebase-chat/free";
 const operationGeneratorExperience = "/appeco/firebase/fdc-query-generator";
