@@ -9,7 +9,7 @@ export const get_object_download_url = tool(
     description: "Retrieves the download URL for an object in Firebase Storage.",
     inputSchema: z.object({
       bucket: z.string().nullish().describe("The bucket name in Firebase Storage."),
-      objectPath: z
+      object_path: z
         .string()
         .describe("The path to the object in Firebase storage without the bucket name attached"),
     }),
@@ -22,11 +22,11 @@ export const get_object_download_url = tool(
       requiresAuth: true,
     },
   },
-  async ({ bucket, objectPath }, { projectId }) => {
+  async ({ bucket, object_path }, { projectId }) => {
     if (!bucket) {
       bucket = `${projectId}.firebasestorage.app`;
     }
-    const downloadUrl = await getDownloadUrl(bucket, objectPath);
+    const downloadUrl = await getDownloadUrl(bucket, object_path);
     return toContent(downloadUrl);
   },
 );
