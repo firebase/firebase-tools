@@ -35,6 +35,7 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     );
   }
   await ensureApiEnabled({ projectId });
+  await ensureRequiredApisEnabled(projectId);
   // N.B. Deploying a backend from source requires the App Hosting compute service
   // account to have the storage.objectViewer IAM role.
   //
@@ -42,14 +43,12 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   // since IAM propagation delay will likely cause the first one to fail. However,
   // `firebase init apphosting` is a prerequisite to the `firebase deploy` command,
   // so we check and add the role here to give the IAM changes time to propagate.
-  await ensureAppHostingComputeServiceAccount(
-    projectId,
-    /* serviceAccount= */ null,
-    /* deployFromSource= */ true,
-  );
-  await ensureRequiredApisEnabled(projectId);
   try {
-    await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
+    await ensureAppHostingComputeServiceAccount(
+      projectId,
+      /* serviceAccount= */ "",
+      /* deployFromSource= */ true,
+    );
   } catch (err) {
     if ((err as FirebaseError).status === 400) {
       utils.logWarning(

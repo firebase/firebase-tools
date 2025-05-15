@@ -21,15 +21,14 @@ export async function createArchive(
   });
   const archive = archiver("zip");
 
-  // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns();
-  ignore.push(...gitIgnorePatterns);
-
   if (!projectRoot) {
     projectRoot = process.cwd();
   }
+  // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
+  const ignore = config.ignore || ["node_modules", ".git"];
+  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  const gitIgnorePatterns = parseGitIgnorePatterns(projectRoot);
+  ignore.push(...gitIgnorePatterns);
   try {
     const files = await fsAsync.readdirRecursive({
       path: projectRoot,
@@ -53,8 +52,8 @@ export async function createArchive(
   return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
 }
 
-function parseGitIgnorePatterns(filePath = ".gitignore"): string[] {
-  const absoluteFilePath = path.resolve(filePath);
+function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
+  const absoluteFilePath = path.resolve(path.join(projectRoot, gitIgnorePath));
   const lines = fs
     .readFileSync(absoluteFilePath)
     .toString() // Buffer -> string

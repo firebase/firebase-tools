@@ -4,7 +4,6 @@ import {
   ensureAppHostingComputeServiceAccount,
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
-import { FirebaseError } from "../../error";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
@@ -13,6 +12,7 @@ import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -22,11 +22,21 @@ export default async function (context: Context, options: Options): Promise<void
   const projectId = needProjectId(options);
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
-  await ensureAppHostingComputeServiceAccount(
-    projectId,
-    /* serviceAccount= */ null,
-    /* deployFromSource= */ true,
-  );
+  try {
+    await ensureAppHostingComputeServiceAccount(
+      projectId,
+      /* serviceAccount= */ "",
+      /* deployFromSource= */ true,
+    );
+  } catch (err) {
+    if ((err as FirebaseError).status === 400) {
+      logLabeledWarning(
+        "apphosting",
+        "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
+      );
+    }
+    throw err;
+  }
 
   context.backendConfigs = new Map<string, AppHostingSingle>();
   context.backendLocations = new Map<string, string>();
@@ -111,6 +121,16 @@ export default async function (context: Context, options: Options): Promise<void
   if (notFoundBackends.length === 0) {
     return;
   }
+  if (options.force) {
+    logLabeledWarning(
+      "apphosting",
+      `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
+        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+        "then retry deployment.",
+    );
+    return;
+  }
   const confirmCreate = await confirm({
     default: true,
     message: `Did not find backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}. Do you want to create them (you'll have the option to select which to create in the next step)?`,
@@ -126,13 +146,6 @@ export default async function (context: Context, options: Options): Promise<void
     notFoundBackends.find((backend) => backend.backendId === id),
   ) as AppHostingSingle[];
   for (const cfg of selectedBackends) {
-    if (options.force) {
-      throw new FirebaseError(
-        `Failed to deploy in non-interactive mode: backend ${cfg.backendId} does not exist yet, ` +
-          "and we cannot create one for you because you must choose a primary region for the backend. " +
-          "Please run 'firebase apphosting:backends:create' to create the backend, then retry deployment.",
-      );
-    }
     logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
     const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
     context.backendConfigs.set(cfg.backendId, cfg);
