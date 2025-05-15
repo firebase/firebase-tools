@@ -26,11 +26,14 @@ export interface Setup {
 }
 
 export interface SetupInfo {
+  database?: features.DatabaseInfo;
+  firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
 }
 
 interface Feature {
   name: string;
+  displayName?: string;
   // OLD WAY: A single setup function to ask questions and actuate the setup.
   doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 
@@ -45,8 +48,16 @@ interface Feature {
 
 const featuresList: Feature[] = [
   { name: "account", doSetup: features.account },
-  { name: "database", doSetup: features.database },
-  { name: "firestore", doSetup: features.firestore },
+  {
+    name: "database",
+    askQuestions: features.databaseAskQuestions,
+    actuate: features.databaseActuate,
+  },
+  {
+    name: "firestore",
+    askQuestions: features.firestoreAskQuestions,
+    actuate: features.firestoreActuate,
+  },
   {
     name: "dataconnect",
     // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
@@ -64,16 +75,27 @@ const featuresList: Feature[] = [
   { name: "remoteconfig", doSetup: features.remoteconfig },
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
-  { name: "apphosting", doSetup: features.apphosting },
+  { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
-export async function init(setup: Setup, config: any, options: any): Promise<any> {
+export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    const f = lookupFeature(nextFeature);
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
+    const f = featureMap.get(nextFeature);
+    if (!f) {
+      const availableFeatures = Object.keys(features)
+        .filter((f) => f !== "project")
+        .join(", ");
+      throw new FirebaseError(
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
+      );
+    }
+
+    logger.info(
+      clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
+    );
 
     if (f.doSetup) {
       await f.doSetup(setup, config, options);
@@ -92,7 +114,7 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
   }
 }
 
-export async function actuate(setup: Setup, config: any, options: any): Promise<any> {
+export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
     const f = lookupFeature(nextFeature);

@@ -13,8 +13,8 @@ export const set_claim = tool(
       claim: z.string().describe("the name (key) of the claim to update, e.g. 'admin'"),
       value: z
         .union([z.string(), z.number(), z.boolean()])
-        .describe("set the value of the custom claim to the specified simple scalar value")
-        .optional(),
+        .optional()
+        .describe("set the value of the custom claim to the specified simple scalar value"),
       json_value: z
         .string()
         .optional()

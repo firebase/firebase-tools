@@ -122,3 +122,5 @@ export type DecommissionedRuntime = {
     ? R
     : never;
 }[keyof typeof RUNTIMES];
+
+export type ActiveRuntime = Exclude<Runtime, DecommissionedRuntime>;
