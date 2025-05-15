@@ -19,7 +19,7 @@ export const init = tool(
       features: z.object({
         // TODO: Add all the features here.
         database: z.object({
-          rulesFilename: z
+          rules_filename: z
             .string()
             .optional()
             .default("database.rules.json")
@@ -31,12 +31,12 @@ export const init = tool(
             .describe("The security rules to use for Realtime Database Security Rules."),
         }),
         firestore: z.object({
-          databaseId: z
+          database_id: z
             .string()
             .optional()
             .default("(default)")
             .describe("The database ID to use for Firestore."),
-          rulesFilename: z
+          rules_filename: z
             .string()
             .optional()
             .default("firestore.rules")
@@ -49,24 +49,24 @@ export const init = tool(
             ),
         }),
         dataconnect: z.object({
-          serviceId: z
+          service_id: z
             .string()
             .optional()
             .describe(
               "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
             ),
-          locationId: z
+          location_id: z
             .string()
             .optional()
             .default("us-central1")
             .describe("The GCP region ID to set up the Firebase Data Connect service."),
-          cloudSqlInstanceId: z
+          cloudsql_instance_id: z
             .string()
             .optional()
             .describe(
               "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
             ),
-          cloudSqlDatabase: z
+          cloudsql_database: z
             .string()
             .optional()
             .default("fdcdb")
@@ -89,7 +89,7 @@ export const init = tool(
     if (features.database) {
       featuresList.push("database");
       featureInfo.database = {
-        rulesFilename: features.database.rulesFilename,
+        rulesFilename: features.database.rules_filename,
         rules: features.database.rules,
         writeRules: true,
       };
@@ -97,8 +97,8 @@ export const init = tool(
     if (features.firestore) {
       featuresList.push("firestore");
       featureInfo.firestore = {
-        databaseId: features.firestore.databaseId,
-        rulesFilename: features.firestore.rulesFilename,
+        databaseId: features.firestore.database_id,
+        rulesFilename: features.firestore.rules_filename,
         rules: features.firestore.rules || "",
         writeRules: true,
         indexesFilename: "",
@@ -109,10 +109,10 @@ export const init = tool(
     if (features.dataconnect) {
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
-        serviceId: features.dataconnect.serviceId || "",
-        locationId: features.dataconnect.locationId || "",
-        cloudSqlInstanceId: features.dataconnect.cloudSqlInstanceId || "",
-        cloudSqlDatabase: features.dataconnect.cloudSqlDatabase || "",
+        serviceId: features.dataconnect.service_id || "",
+        locationId: features.dataconnect.location_id || "",
+        cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
+        cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
         connectors: [], // TODO populate with GiF,
         isNewInstance: false,
         isNewDatabase: false,
