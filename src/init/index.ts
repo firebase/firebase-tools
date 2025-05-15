@@ -118,8 +118,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
     const f = lookupFeature(nextFeature);
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
-
     if (f.doSetup) {
       throw new FirebaseError(
         `The feature ${nextFeature} does not support actuate yet. Please run ${clc.bold("firebase init " + nextFeature)} instead.`,
