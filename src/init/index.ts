@@ -103,3 +103,35 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
     return init(setup, config, options);
   }
 }
+
+export async function actuate(setup: Setup, config: any, options: any): Promise<any> {
+  const nextFeature = setup.features?.shift();
+  if (nextFeature) {
+    const f = lookupFeature(nextFeature);
+    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
+
+    if (f.doSetup) {
+      throw new FirebaseError(
+        `The feature ${nextFeature} does not support actuate yet. Please run ${clc.bold("firebase init " + nextFeature)} instead.`,
+      );
+    } else {
+      if (f.actuate) {
+        await f.actuate(setup, config, options);
+      }
+    }
+    return actuate(setup, config, options);
+  }
+}
+
+function lookupFeature(feature: string): Feature {
+  const f = featureMap.get(feature);
+  if (!f) {
+    const availableFeatures = Object.keys(features)
+      .filter((f) => f !== "project")
+      .join(", ");
+    throw new FirebaseError(
+      `${clc.bold(feature)} is not a valid feature. Must be one of ${availableFeatures}`,
+    );
+  }
+  return f;
+}

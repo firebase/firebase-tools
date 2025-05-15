@@ -1,4 +1,8 @@
+- Fixed issue where Secret Manager API was not automatically enabled for functions using secrets. (#8528)
 - Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
 - Enhance firebase init apphosting to support local source deploys. (#8479)
 - Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
 - Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
+- Changed firebase init template for functions to pin runtime version on init. (#8553)
+- Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
+- Provision App Hosting compute service account during init flow. (#8580)
