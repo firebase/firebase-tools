@@ -10,7 +10,7 @@ export const list_top_issues = tool(
     inputSchema: z.object({
       app_id: z.string()
         .optional()
-        .describe("appId for which the issues list is fetched. Defaults to the first app in the the list of apps."),
+        .describe("AppId for which the issues list is fetched. Defaults to the first appId provided by firebase_list_apps."),
       issue_count: z
         .number()
         .optional()
