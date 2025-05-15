@@ -5,5 +5,6 @@ export const SERVER_FEATURES = [
   "auth",
   "messaging",
   "remoteconfig",
+  "apphosting",
 ] as const;
 export type ServerFeature = (typeof SERVER_FEATURES)[number];
