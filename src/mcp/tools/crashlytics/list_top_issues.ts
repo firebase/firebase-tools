@@ -8,9 +8,12 @@ export const list_top_issues = tool(
     name: "list_top_issues",
     description: "List the top crashes from crashlytics happening in the application.",
     inputSchema: z.object({
-      app_id: z.string()
+      app_id: z
+        .string()
         .optional()
-        .describe("AppId for which the issues list is fetched. Defaults to the first appId provided by firebase_list_apps."),
+        .describe(
+          "AppId for which the issues list is fetched. Defaults to the first appId provided by firebase_list_apps.",
+        ),
       issue_count: z
         .number()
         .optional()
