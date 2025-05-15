@@ -1,9 +1,10 @@
-import { expect } from 'chai';
-import { extractCodeBlock } from './fdcExperience.js'; // Adjust the path to your file
+import { expect } from "chai";
+import { extractCodeBlock } from "./fdcExperience.js"; // Adjust the path to your file
 
 describe("extractCodeBlock", () => {
   it("should extract a basic GraphQL query block", () => {
-    const text = 'Here is a GraphQL query:\n```graphql\nquery GetUser { user(id: "1") { name email } }\n```\nThanks!';
+    const text =
+      'Here is a GraphQL query:\n```graphql\nquery GetUser { user(id: "1") { name email } }\n```\nThanks!';
     const expected = 'query GetUser { user(id: "1") { name email } }';
     expect(extractCodeBlock(text)).to.eq(expected);
   });
