@@ -9,7 +9,7 @@ import { messagingTools } from "./messaging/index.js";
 import { remoteConfigTools } from "./remoteconfig/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
-export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
+export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
   const toolDefs: ServerTool[] = addFeaturePrefix("firebase", coreTools);
   if (!activeFeatures?.length) {
@@ -49,7 +49,7 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
  * This is used for generating documentation.
  */
 export function markdownDocsOfTools(): string {
-  const allTools = availableTools(false, []);
+  const allTools = availableTools([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
