@@ -333,6 +333,7 @@ export function registerExecution(
             ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
             : DATA_CONNECT_EVENT_NAME.RUN_PROD,
         );
+        vscode.window.activeTextEditor?.document.save();
         executeOperation(ast, location, instanceType);
       },
     ),
