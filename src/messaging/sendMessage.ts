@@ -2,7 +2,7 @@ import { messagingApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { Notification, TokenMessage, TopicMessage } from "./interfaces";
+import { Message, Notification, TopicMessage } from "./interfaces";
 
 const TIMEOUT = 10000;
 
@@ -16,23 +16,32 @@ const apiClient = new Client({
  * @param projectId Project ID to which this token belongs to.
  * @param fcmToken The FCM Token to send to.
  * @param title The title of the message.
- * @param body The body of the message.
+ * @param options The body of the message.
  * @return {Promise} Returns a promise fulfilled with a unique message ID string
  * after the message has been successfully handed off to the FCM service for delivery.
  */
-export async function sendMessageToFcmToken(
+export async function sendFcmMessage(
   projectId: string,
-  fcmToken: string,
-  title?: string,
-  body?: string,
+  options: {
+    topic?: string;
+    token?: string;
+    title?: string;
+    body?: string;
+    image?: string;
+  },
 ): Promise<string> {
   try {
     const notification: Notification = {
-      title: title,
-      body: body,
+      title: options.title,
+      body: options.body,
+      image: options.image,
     };
-    const message: TokenMessage = {
-      token: fcmToken,
+    if (!options.token && !options.topic) {
+      throw new FirebaseError("Must supply either token or topic to send FCM message.");
+    }
+    const message: Message = {
+      token: options.token!,
+      topic: options.topic!,
       notification: notification,
     };
     const messageData = {
@@ -48,7 +57,7 @@ export async function sendMessageToFcmToken(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to send message to ${fcmToken} for the project ${projectId}. `,
+      `Failed to send message to '${options.token || options.topic}' for the project '${projectId}'. `,
       { original: err },
     );
   }
