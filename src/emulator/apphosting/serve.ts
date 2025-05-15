@@ -6,7 +6,7 @@
 import { isIPv4 } from "net";
 import * as clc from "colorette";
 import { checkListenable } from "../portUtils";
-import { detectStartCommand } from "./developmentServer";
+import { detectPackageManager, detectStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString } from "../../init/spawn";
 import { logger } from "./developmentServer";
@@ -15,15 +15,15 @@ import { getLocalAppHostingConfiguration } from "./config";
 import { resolveProjectPath } from "../../projectPath";
 import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
-import { FirebaseError, getError } from "../../error";
+import { FirebaseError } from "../../error";
 import * as secrets from "../../gcp/secretManager";
-import { logLabeledError } from "../../utils";
+import { logLabeledError, logLabeledWarning } from "../../utils";
 import * as apphosting from "../../gcp/apphosting";
-import { logWarning } from "../../utils";
 import { Constants } from "../constants";
 import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
 import { AppPlatform, getAppConfig } from "../../management/apps";
-import { dirname } from "path";
+import { spawnSync } from "child_process";
+import { gte as semverGte } from "semver";
 
 interface StartOptions {
   projectId?: string;
@@ -129,9 +129,10 @@ async function serve(
     value.value ? value.value : await loadSecret(projectId, value.secret!),
   ]);
 
-  const environmentVariablesToInject = {
+  const environmentVariablesToInject: NodeJS.ProcessEnv = {
     ...getEmulatorEnvs(),
     ...Object.fromEntries(await Promise.all(resolveEnv)),
+    NODE_ENV: process.env.NODE_ENV,
     FIREBASE_APP_HOSTING: "1",
     X_GOOGLE_TARGET_PLATFORM: "fah",
     GCLOUD_PROJECT: projectId,
@@ -139,7 +140,11 @@ async function serve(
     PORT: port.toString(),
   };
 
-  if (projectId && backendId) {
+  const packageManager = await detectPackageManager(backendRoot);
+  if (packageManager === "pnpm") {
+    // TODO(jamesdaniels) look into pnpm support for autoinit
+    logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
+  } else if (projectId && backendId) {
     const webappConfig = await getBackendAppConfig(projectId, backendId);
     if (webappConfig) {
       environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
@@ -151,7 +156,7 @@ async function serve(
       await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
     }
   } else {
-    logWarning("No projectId or backendId provided. Skipping Firebase WebApp config.");
+    await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }
 
   if (startCommand) {
@@ -202,22 +207,50 @@ export function getEmulatorEnvs(): Record<string, string> {
   return envs;
 }
 
+type Dependency = {
+  name: string;
+  version: string;
+  path: string;
+  dependencies?: Record<string, Dependency>;
+};
+
 async function tripFirebasePostinstall(
   rootDirectory: string,
-  env: Record<string, string>,
+  env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  let firebaseUtilPath;
-  try {
-    firebaseUtilPath = dirname(
-      require.resolve("@firebase/util/package.json", { paths: [rootDirectory] }),
-    );
-  } catch (err: unknown) {
-    return;
-  }
-
-  await spawnWithCommandString("npm run postinstall", firebaseUtilPath, env).catch((err) => {
-    logWarning(`Failed to run postinstall script for @firebase/util: ${getError(err).message}.`);
+  const npmLs = spawnSync("npm", ["ls", "@firebase/util", "--json", "--long"], {
+    cwd: rootDirectory,
+    shell: process.platform === "win32",
   });
+  const npmLsResults = JSON.parse(npmLs.stdout.toString().trim());
+  const dependenciesToSearch: Dependency[] = Object.values(npmLsResults.dependencies);
+  const firebaseUtilPaths: string[] = [];
+  for (const dependency of dependenciesToSearch) {
+    if (
+      dependency.name === "@firebase/util" &&
+      semverGte(dependency.version, "1.11.0") &&
+      firebaseUtilPaths.indexOf(dependency.path) === -1
+    ) {
+      firebaseUtilPaths.push(dependency.path);
+    }
+    if (dependency.dependencies) {
+      dependenciesToSearch.push(...Object.values(dependency.dependencies));
+    }
+  }
+  await Promise.all(
+    firebaseUtilPaths.map(
+      (path) =>
+        new Promise<void>((resolve) => {
+          spawnSync("npm", ["run", "postinstall"], {
+            cwd: path,
+            env,
+            stdio: "ignore",
+            shell: process.platform === "win32",
+          });
+          resolve();
+        }),
+    ),
+  );
 }
 
 async function getBackendAppConfig(
@@ -229,10 +262,13 @@ async function getBackendAppConfig(
   }
 
   const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
-  const backend = backendsList?.backends.find((b) => b.name.split("/").at(-1) === backendId);
+  const backend = backendsList?.backends.find((b) => b.name.split("/").pop() === backendId);
 
   if (!backend) {
-    logWarning(`Unable to lookup details for backend ${backendId}.`);
+    logLabeledWarning(
+      "apphosting",
+      `Unable to lookup details for backend ${backendId}. Firebase SDK autoinit will not be available.`,
+    );
     return undefined;
   }
 
