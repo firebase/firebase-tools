@@ -87,7 +87,7 @@ export function spawnWithOutput(cmd: string, args: string[]): Promise<string> {
 export function spawnWithCommandString(
   cmd: string,
   projectDir: string,
-  environmentVariables?: Record<string, string>,
+  environmentVariables?: NodeJS.ProcessEnv,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const installer = spawn(cmd, {
