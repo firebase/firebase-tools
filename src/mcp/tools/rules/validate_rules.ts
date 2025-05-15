@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { testRuleset } from "../../../gcp/rules.js";
 import { readFileSync } from "fs";
+import { resolve } from "path";
 
 // Define interfaces for clarity, based on typical lint/validation issue structures.
 // These could potentially be imported if they are exported from gcp/rules.js or a shared types file.
@@ -97,7 +98,7 @@ export function validateRulesTool(productName: string) {
         requiresAuth: true,
       },
     },
-    async ({ source, source_file }, { projectId, config }) => {
+    async ({ source, source_file }, { projectId, config, host }) => {
       if (source && source_file) {
         return mcpError("Must supply `source` or `source_file`, not both.");
       }
@@ -105,7 +106,10 @@ export function validateRulesTool(productName: string) {
       let rulesSourceContent: string;
       if (source_file) {
         try {
-          rulesSourceContent = readFileSync(config.readProjectFile(source_file)).toString();
+          const filePath = resolve(source_file, host.projectRoot!);
+          if (filePath.includes("../"))
+            return mcpError("Cannot read files outside of the project directory.");
+          rulesSourceContent = config.readProjectFile(source_file);
         } catch (e: any) {
           return mcpError(`Failed to read source_file '${source_file}': ${e.message}`);
         }
