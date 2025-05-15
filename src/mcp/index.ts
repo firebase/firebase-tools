@@ -185,6 +185,9 @@ export class FirebaseMcpServer {
 
     const projectId = await this.getProjectId();
     const accountEmail = await this.getAuthenticatedUser();
+    if (!this.cachedProjectRoot) {
+      return mcpError("No project root set. Please set the project root before calling tools.");
+    }
     if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
