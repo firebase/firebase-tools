@@ -1,3 +1,4 @@
+- Updated supported runtimes for functions. Default python runtime is now 3.13. (#8534)
 - Fixed issue where Secret Manager API was not automatically enabled for functions using secrets. (#8528)
 - Changed artifact registry cleanup policy error to warn for CI/CD workloads #8513
 - Enhance firebase init apphosting to support local source deploys. (#8479)
@@ -7,3 +8,10 @@
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
 - Add SDK autoinit capabilities to App Hosting emulator. (#8582)
 - Provision App Hosting compute service account during init flow. (#8580)
+- Updated the Firebase Data Connect local toolkit to v2.6.1, which includes the following changes: (#8598)
+  - Fixed a bug where `@transaction` continued to execute after errors and produces more confusing errors.
+  - Fixed a bug where rolled-back fields in `@transaction` returned bogus data that had been invalidated by the rollback. They now correctly return null with a corresponding error "(rolled back)".
+  - Disallow `@check` on side-effect fields if the mutation doesn't have `@transaction`.
+  - Improved error messages when reading a field of `null` in CEL expressions.
+  - Updated the underlying Go dependency version from v1.22.2 to v1.22.12.
+  - Added the `response` binding to Server Values and `@check(expr:)` CEL expressions.

@@ -34,8 +34,8 @@ export const update_environment = tool(
       readOnlyHint: true,
     },
     _meta: {
-      requiresAuth: true,
-      requiresProject: true,
+      requiresAuth: false,
+      requiresProject: false,
     },
   },
   async ({ project_dir, active_project, active_user_account }, { config, rc, host }) => {
@@ -50,7 +50,7 @@ export const update_environment = tool(
     }
     if (active_user_account) {
       assertAccount(active_user_account, { mcp: true });
-      setProjectAccount(host.projectRoot!, active_user_account);
+      setProjectAccount(host.cachedProjectRoot!, active_user_account);
       output += `- Updated active account to '${active_user_account}'\n`;
     }
 
