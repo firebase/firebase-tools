@@ -3,6 +3,10 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { createAndroidApp, createIosApp, createWebApp } from "../../../management/apps.js";
 
+const CREATE_APP_OUTUT_PREFIX = "Created app with the following details:\n\n";
+const CREATE_APP_OUTUT_SUFFIX =
+  "\n\nTo fetch the SDK configuration for this app, use the firebase_get_sdk_config tool.";
+
 export const create_app = tool(
   {
     name: "create_app",
@@ -59,6 +63,11 @@ export const create_app = tool(
               displayName: display_name,
               packageName: android_config!.package_name,
             }),
+            {
+              format: "yaml",
+              contentPrefix: CREATE_APP_OUTUT_PREFIX,
+              contentSuffix: CREATE_APP_OUTUT_SUFFIX,
+            },
           );
         case "ios":
           return toContent(
@@ -67,12 +76,22 @@ export const create_app = tool(
               bundleId: ios_config!.bundle_id,
               appStoreId: ios_config!.app_store_id,
             }),
+            {
+              format: "yaml",
+              contentPrefix: CREATE_APP_OUTUT_PREFIX,
+              contentSuffix: CREATE_APP_OUTUT_SUFFIX,
+            },
           );
         case "web":
           return toContent(
             await createWebApp(projectId!, {
               displayName: display_name,
             }),
+            {
+              format: "yaml",
+              contentPrefix: CREATE_APP_OUTUT_PREFIX,
+              contentSuffix: CREATE_APP_OUTUT_SUFFIX,
+            },
           );
       }
     } catch (err: any) {
