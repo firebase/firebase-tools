@@ -6,9 +6,9 @@ import { rollbackTemplate } from "../../../remoteconfig/rollback.js";
 export const rollback_rc_template = tool(
   {
     name: "rollback_template",
-    description: "Rollback to a specific version of Remote Config template for a project",
+    description: "Rolls back a previous version of the project's Remote Config template.",
     inputSchema: z.object({
-      version_number: z.number().optional(),
+      version_number: z.number().describe("Required version number to rollback to"),
     }),
     annotations: {
       title: "Rollback remote config template",
