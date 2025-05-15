@@ -4,4 +4,7 @@
 - Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
 - Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
 - Fixed an issue where Extensions, Cloud Functions, and App Hosting would run into issues on projects where the default compute service account was changed.
+- Changed firebase init template for functions to pin runtime version on init. (#8553)
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
+- Add SDK autoinit capabilities to App Hosting emulator. (#8582)
+- Provision App Hosting compute service account during init flow. (#8580)

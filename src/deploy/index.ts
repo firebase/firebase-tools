@@ -17,6 +17,7 @@ import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
+import * as AppHostingTarget from "./apphosting";
 import { prepareFrameworks } from "../frameworks";
 import { Context } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
@@ -35,6 +36,7 @@ const TARGETS = {
   remoteconfig: RemoteConfigTarget,
   extensions: ExtensionsTarget,
   dataconnect: DataConnectTarget,
+  apphosting: AppHostingTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };

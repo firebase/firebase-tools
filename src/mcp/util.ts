@@ -3,13 +3,26 @@ import { execSync } from "child_process";
 import { dump } from "js-yaml";
 import { platform } from "os";
 import { ServerFeature } from "./types";
-import { authManagementOrigin, dataconnectOrigin, firestoreOrigin, storageOrigin } from "../api";
+import {
+  authManagementOrigin,
+  dataconnectOrigin,
+  firestoreOrigin,
+  messagingApiOrigin,
+  remoteConfigApiOrigin,
+  storageOrigin,
+} from "../api";
 import { check } from "../ensureApiEnabled";
 
-export function toContent(data: any, options?: { format: "json" | "yaml" }): CallToolResult {
+/**
+ * Converts data to a CallToolResult.
+ */
+export function toContent(
+  data: any,
+  options?: { format?: "json" | "yaml"; contentPrefix?: string; contentSuffix?: string },
+): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
 
-  let text: string = "";
+  let text = "";
   const format = options?.format || "yaml"; // use YAML because it's a little more prose-like for the LLM to parse
   switch (format) {
     case "json":
@@ -19,11 +32,16 @@ export function toContent(data: any, options?: { format: "json" | "yaml" }): Cal
       text = dump(data);
       break;
   }
+  const prefix = options?.contentPrefix || "";
+  const suffix = options?.contentSuffix || "";
   return {
-    content: [{ type: "text", text }],
+    content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
   };
 }
 
+/**
+ * Returns an error message to the user.
+ */
 export function mcpError(message: Error | string | unknown, code?: string): CallToolResult {
   let errorMessage = "unknown error";
   if (message instanceof Error) {
@@ -38,6 +56,9 @@ export function mcpError(message: Error | string | unknown, code?: string): Call
   };
 }
 
+/**
+ * Checks if a command exists in the system.
+ */
 export function commandExistsSync(command: string): boolean {
   try {
     const isWindows = platform() === "win32";
@@ -62,7 +83,10 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   storage: storageOrigin(),
   dataconnect: dataconnectOrigin(),
   auth: authManagementOrigin(),
+  messaging: messagingApiOrigin(),
+  remoteconfig: remoteConfigApiOrigin(),
 };
+
 /**
  * Detects whether an MCP feature is active in the current project root. Relies first on
  * `firebase.json` configuration, but falls back to API checks.

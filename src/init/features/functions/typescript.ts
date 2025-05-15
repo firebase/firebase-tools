@@ -2,6 +2,7 @@ import { askInstallDependencies } from "./npm-dependencies";
 import { confirm } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
 import { readTemplateSync } from "../../../templates";
+import * as supported from "../../../deploy/functions/runtimes/supported";
 
 const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/typescript/package.lint.json");
 const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
@@ -28,7 +29,10 @@ export async function setup(setup: any, config: any): Promise<any> {
     cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');
     await config.askWriteProjectFile(
       `${setup.functions.source}/package.json`,
-      PACKAGE_LINTING_TEMPLATE,
+      PACKAGE_LINTING_TEMPLATE.replace(
+        "{{RUNTIME}}",
+        supported.latest("nodejs").replace("nodejs", ""),
+      ),
     );
     await config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
     // TODO: isn't this file out of date now?
@@ -40,7 +44,10 @@ export async function setup(setup: any, config: any): Promise<any> {
     cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');
     await config.askWriteProjectFile(
       `${setup.functions.source}/package.json`,
-      PACKAGE_NO_LINTING_TEMPLATE,
+      PACKAGE_NO_LINTING_TEMPLATE.replace(
+        "{{RUNTIME}}",
+        supported.latest("nodejs").replace("nodejs", ""),
+      ),
     );
   }
 
