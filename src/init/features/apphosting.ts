@@ -2,9 +2,12 @@ import * as clc from "colorette";
 import { existsSync } from "fs";
 import * as ora from "ora";
 import * as path from "path";
+import { Setup } from "..";
 import { webApps } from "../../apphosting/app";
 import {
   createBackend,
+  ensureAppHostingComputeServiceAccount,
+  ensureRequiredApisEnabled,
   promptExistingBackend,
   promptLocation,
   promptNewBackendId,
@@ -12,12 +15,12 @@ import {
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
+import { ensureApiEnabled } from "../../gcp/apphosting";
+import { isBillingEnabled } from "../../gcp/cloudbilling";
+import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
-import { input, select } from "../../prompt";
-import { Setup } from "..";
-import { isBillingEnabled } from "../../gcp/cloudbilling";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
@@ -31,6 +34,19 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       "Firebase App Hosting requires billing to be enabled on your project. Please enable billing by following the steps at https://cloud.google.com/billing/docs/how-to/modify-project",
     );
   }
+  await ensureApiEnabled({ projectId });
+  await ensureRequiredApisEnabled(projectId);
+  try {
+    await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
+  } catch (err) {
+    if ((err as FirebaseError).status === 400) {
+      utils.logWarning(
+        "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
+      );
+    }
+    throw err;
+  }
+
   utils.logBullet(
     "This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup.",
   );
