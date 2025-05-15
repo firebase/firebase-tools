@@ -9,6 +9,7 @@ import { create_app } from "./create_app.js";
 import { get_admin_sdk_config } from "./get_admin_sdk_config.js";
 import { create_android_sha } from "./create_android_sha.js";
 import { init } from "./init.js";
+// import { get_environment } from "./get_environment.js";
 
 export const coreTools: ServerTool[] = [
   get_project,
@@ -19,5 +20,6 @@ export const coreTools: ServerTool[] = [
   create_app,
   create_android_sha,
   consult_assistant,
+  // get_environment, // leaving commented out for the moment
   init,
 ];
