@@ -14,7 +14,7 @@ import { insertToBottomOfActiveFile } from "../file-utils";
 import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
-import { ChatMessage } from "../../dataconnect/types";
+import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
 export const DATACONNECT_TOOL_ID = "data-connect";
 export const DATACONNECT_DISPLAY_NAME = "Data Connect";
 export const SUGGESTED_PROMPTS = [

@@ -1,4 +1,4 @@
-import { ChatMessage } from "../../dataconnect/types";
+import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
 
 export enum Command {
   GENERATE_SCHEMA = "generate_schema",

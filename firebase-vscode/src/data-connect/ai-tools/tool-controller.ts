@@ -7,7 +7,7 @@ import { Result } from "../../result";
 import { AnalyticsLogger } from "../../analytics";
 import { ResolvedDataConnectConfigs } from "../config";
 import { DataConnectService } from "../service";
-import { CloudAICompanionResponse, ChatMessage } from "../../dataconnect/types";
+import { CloudAICompanionResponse, ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
 import { ObjectTypeDefinitionNode, OperationDefinitionNode } from "graphql";
 import { getHighlightedText, findGqlFiles } from "../file-utils";
 import { CommandContext, Chat, Context, Command, BackendAuthor } from "./types";
