@@ -7,6 +7,7 @@
 - Fixed an issue where Extensions, Cloud Functions, and App Hosting would run into issues on projects where the default compute service account was changed.
 - Changed firebase init template for functions to pin runtime version on init. (#8553)
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
+- Fixed multi tenancy support for SSO users in the auth emulator (#8544)
 - Add SDK autoinit capabilities to App Hosting emulator. (#8582)
 - Provision App Hosting compute service account during init flow. (#8580)
 - Updated the Firebase Data Connect local toolkit to v2.6.1, which includes the following changes: (#8598)
