@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { testRuleset } from "../../../gcp/rules.js";
-import { readFileSync } from "fs";
 import { resolve } from "path";
 
 // Define interfaces for clarity, based on typical lint/validation issue structures.
