@@ -20,7 +20,15 @@ import { Client } from "../../apiv2";
 import { rtdbManagementOrigin } from "../../api";
 import { Setup } from "..";
 
-const DEFAULT_RULES = JSON.stringify(
+export interface RequiredInfo {
+  rulesFilename: string;
+  rules: string;
+  writeRules: boolean;
+}
+
+const DEFAULT_RULES_FILENAME = "database.rules.json";
+
+export const DEFAULT_RULES = JSON.stringify(
   { rules: { ".read": "auth != null", ".write": "auth != null" } },
   null,
   2,
@@ -134,9 +142,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
  * @param setup information helpful for database setup
  * @param config legacy config parameter. not used for database setup.
  */
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  setup.config = setup.config || {};
-
+export async function askQuestions(setup: Setup): Promise<void> {
   let instanceDetails: DatabaseInstance | null = null;
   if (setup.projectId) {
     instanceDetails = await initializeDatabaseInstance(setup.projectId);
@@ -149,46 +155,56 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
-  const filename = await input({
+  const rulesFilename = await input({
     message: "What file should be used for Realtime Database Security Rules?",
-    default: "database.rules.json",
+    default: DEFAULT_RULES_FILENAME,
   });
-  if (!filename) {
+  if (!rulesFilename) {
     throw new FirebaseError("Must specify location for Realtime Database rules file.");
   }
-
-  // Add 'database' section to config
-  setup.config.database = { rules: filename };
-
-  let writeRules = true;
-  if (fsutils.fileExistsSync(filename)) {
+  const info: RequiredInfo = {
+    rulesFilename,
+    rules: DEFAULT_RULES,
+    writeRules: true,
+  };
+  if (fsutils.fileExistsSync(rulesFilename)) {
     const rulesDescription = instanceDetails
       ? `the Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`
       : "default rules";
     const msg = `File ${clc.bold(
-      filename,
+      rulesFilename,
     )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
 
-    writeRules = await confirm(msg);
+    info.writeRules = await confirm(msg);
   }
-  if (writeRules) {
-    if (instanceDetails) {
-      writeDBRules(
-        await getDBRules(instanceDetails),
-        `Database Rules for ${instanceDetails.name}`,
-        filename,
-        config,
-      );
-      return;
+  if (info.writeRules && instanceDetails) {
+    info.rules = await getDBRules(instanceDetails);
+  }
+
+  // Add 'database' section to config.
+  setup.config.database = { rules: rulesFilename };
+  // Add 'database' section to featureInfo.
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.database = info;
+}
+
+export async function actuate(setup: Setup, config: Config): Promise<void> {
+  const info = setup.featureInfo?.database;
+  if (!info) {
+    throw new FirebaseError("No database RequiredInfo found in setup actuate.");
+  }
+  info.rulesFilename = info.rulesFilename || "database.rules.json";
+  if (info.writeRules) {
+    if (info.rules === DEFAULT_RULES) {
+      writeDBRules(info.rules, `Default rules for ${setup.projectId}`, info.rulesFilename, config);
+    } else {
+      writeDBRules(info.rules, `Database Rules for ${setup.projectId}`, info.rulesFilename, config);
     }
-    writeDBRules(DEFAULT_RULES, "Default rules", filename, config);
-    return;
+  } else {
+    logger.info("Skipping overwrite of Realtime Database Security Rules.");
+    logger.info(
+      `The security rules defined in ${clc.bold(info.rulesFilename)} will be published when you run ${clc.bold("firebase deploy")}.`,
+    );
   }
-  logger.info("Skipping overwrite of Realtime Database Security Rules.");
-  logger.info(
-    `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
-      "firebase deploy",
-    )}.`,
-  );
-  return;
+  return Promise.resolve();
 }

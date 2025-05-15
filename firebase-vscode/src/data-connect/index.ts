@@ -154,6 +154,7 @@ export function registerFdc(
     authService,
     dataConnectToolkit,
     emulatorController,
+    context,
   );
 
   // register codelens

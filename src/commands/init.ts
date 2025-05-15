@@ -48,7 +48,7 @@ let choices: {
   },
   {
     value: "apphosting",
-    name: "App Hosting: Configure an apphosting.yaml file for App Hosting",
+    name: "App Hosting: Enable web app deployments with App Hosting",
     checked: false,
     hidden: false,
   },

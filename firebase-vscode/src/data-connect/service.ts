@@ -1,4 +1,5 @@
 import fetch, { Response } from "node-fetch";
+import { ExtensionContext } from "vscode";
 import {
   ExecutionResult,
   IntrospectionQuery,
@@ -9,7 +10,7 @@ import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { dataConnectConfigs } from "../data-connect/config";
+import { dataConnectConfigs, VSCODE_ENV_VARS } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
 import {
@@ -18,7 +19,16 @@ import {
   executeGraphQL,
   DATACONNECT_API_VERSION,
 } from "../../../src/dataconnect/dataplaneClient";
+
 import {
+  cloudAICompationClient,
+  callCloudAICompanion,
+} from "../../../src/dataconnect/cloudAiCompanionClient";
+
+import {
+  CallCloudAiCompanionRequest,
+  ChatMessage,
+  CloudAICompanionResponse,
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
@@ -37,15 +47,15 @@ export class DataConnectService {
     private authService: AuthService,
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
-  ) { }
+    private context: ExtensionContext,
+  ) {}
 
-  async servicePath(
-    path: string
-  ): Promise<string | undefined> {
+  async servicePath(path: string): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)
+        ?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -258,6 +268,31 @@ export class DataConnectService {
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
   }
+
+  // Start cloud section
+
+  async generateOperation(
+    path: string, /** currently unused; instead reading the first service config */
+    naturalLanguageQuery: string,
+    type: "schema" | "operation",
+    chatHistory: ChatMessage[],
+  ): Promise<CloudAICompanionResponse | undefined> {
+    const client = cloudAICompationClient();
+    const servicePath = await this.servicePath(dataConnectConfigs.value?.tryReadValue?.values[0].path as string);
+
+    if (!servicePath) {
+      return undefined;
+    }
+
+    const request: CallCloudAiCompanionRequest = {
+      servicePath,
+      naturalLanguageQuery,
+      chatHistory
+    };
+
+    const resp = await callCloudAICompanion(client, request, type);
+    return resp.body as CloudAICompanionResponse;
+  }
 }
 
 function parseVariableString(variables: string): Record<string, any> {
@@ -268,7 +303,7 @@ function parseVariableString(variables: string): Record<string, any> {
     return JSON.parse(variables);
   } catch (e: any) {
     throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
     );
   }
 }
