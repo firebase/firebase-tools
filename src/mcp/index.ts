@@ -111,7 +111,7 @@ export class FirebaseMcpServer {
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = { cwd: this.projectRoot };
+    const options: Partial<Options> = { cwd: this.projectRoot, isMCP: true };
     await cmd.prepare(options);
     return options;
   }
