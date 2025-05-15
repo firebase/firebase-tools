@@ -75,7 +75,7 @@ export default async function (context: Context, options: Options): Promise<void
         `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
     }
-    logBullet(`Uploading source code at ${projectSourcePath}...`);
+    logBullet(`Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`);
     const { bucket, object } = await gcs.uploadObject(
       {
         file: zippedSourcePath,

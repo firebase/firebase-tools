@@ -47,6 +47,7 @@ describe("apphosting", () => {
   };
 
   let confirmStub: sinon.SinonStub;
+  let checkboxStub: sinon.SinonStub;
   let doSetupSourceDeployStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
@@ -54,6 +55,7 @@ describe("apphosting", () => {
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
     confirmStub = sinon.stub(prompt, "confirm").throws("Unexpected confirm call");
+    checkboxStub = sinon.stub(prompt, "checkbox").throws("Unexpected checkbox scall");
     doSetupSourceDeployStub = sinon
       .stub(backend, "doSetupSourceDeploy")
       .throws("Unexpected doSetupSourceDeploy call");
@@ -98,6 +100,8 @@ describe("apphosting", () => {
         backends: [],
       });
       doSetupSourceDeployStub.resolves({ location: "us-central1" });
+      confirmStub.resolves(true);
+      checkboxStub.resolves(["foo"]);
 
       await prepare(context, opts);
 
