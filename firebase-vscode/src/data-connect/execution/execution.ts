@@ -327,7 +327,7 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      (ast, location, instanceType: InstanceType) => {
+      async (ast, location, instanceType: InstanceType) => {
         analyticsLogger.logger.logUsage(
           instanceType === InstanceType.LOCAL
             ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
