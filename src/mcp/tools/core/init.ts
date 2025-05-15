@@ -19,10 +19,12 @@ export const init = tool(
         database: z.object({
           rulesFilename: z
             .string()
+            .optional()
             .default("database.rules.json")
             .describe("The file to use for Realtime Database Security Rules."),
           rules: z
             .string()
+            .optional()
             .default(DEFAULT_RULES)
             .describe("The security rules to use for Realtime Database Security Rules."),
         }),
@@ -35,6 +37,7 @@ export const init = tool(
             ),
           locationId: z
             .string()
+            .optional()
             .default("us-central1")
             .describe("The GCP region ID to set up the Firebase Data Connect service."),
           cloudSqlInstanceId: z
@@ -45,6 +48,7 @@ export const init = tool(
             ),
           cloudSqlDatabase: z
             .string()
+            .optional()
             .default("fdcdb")
             .describe("The Postgres database ID to use in the Firebase Data Connect service."),
         }),
