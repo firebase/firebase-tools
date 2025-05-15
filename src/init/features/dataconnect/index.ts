@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride, promiseWithSpinner, logLabeledWarning } from "../../../utils";
+import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -441,6 +441,7 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
         default: true,
       })
     ) {
+      ensureGIFApis(setup.projectId!);
       const prompt = await input({
         message: "Describe the app you are building:",
         default: "movie rating app",
