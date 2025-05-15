@@ -28,6 +28,8 @@ export interface BaseOptions {
   // Emulator specific import/export options
   exportOnExit?: boolean | string;
   import?: string;
+
+  isMCP?: boolean;
 }
 
 export interface Options extends BaseOptions {
