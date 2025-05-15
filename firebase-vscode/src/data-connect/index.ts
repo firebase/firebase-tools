@@ -31,7 +31,7 @@ import { registerWebview } from "../webview";
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
-import { AnalyticsLogger } from "../analytics";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { emulators } from "../init/features";
 import { GCAToolClient } from "./ai-tools/gca-tool";
 import { GeminiToolController } from "./ai-tools/tool-controller";
@@ -159,7 +159,6 @@ export function registerFdc(
     context,
   );
 
-
   /** Gemini Related activations */
   const toolController = new GeminiToolController(
     analyticsLogger,
@@ -171,6 +170,7 @@ export function registerFdc(
   gcaToolClient.activate();
 
   broker.on("firebase.activate.gemini", () => {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.TRY_GEMINI_CLICKED);
     vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
   });
 

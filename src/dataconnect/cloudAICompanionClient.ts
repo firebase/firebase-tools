@@ -7,6 +7,7 @@ import {
   ClientContext,
   CallCloudAiCompanionRequest,
 } from "./types";
+import { FirebaseError } from "../error";
 
 const CLOUD_AI_COMPANION_VERSION = "v1";
 const CLIENT_CONTEXT_NAME_IDENTIFIER = "firebase_vscode";
@@ -29,16 +30,21 @@ export async function callCloudAICompanion(
   client: Client,
   vscodeRequest: CallCloudAiCompanionRequest,
   type: GENERATION_TYPE,
-): Promise<ClientResponse<CloudAICompanionResponse>> {
+): Promise<CloudAICompanionResponse> {
   const request = buildRequest(vscodeRequest, type);
   const { projectId } = getServiceParts(vscodeRequest.servicePath);
 
   const instance = toChatResourceName(projectId);
-  const res = await client.post<CloudAICompanionRequest, CloudAICompanionResponse>(
-    `${instance}:completeTask`,
-    request,
-  );
-  return res;
+
+  try {
+    const res = await client.post<CloudAICompanionRequest, CloudAICompanionResponse>(
+      `${instance}:completeTask`,
+      request,
+    );
+    return res.body;
+  } catch (error: unknown) {
+    return { output: { messages: [] }, error: error as FirebaseError };
+  }
 }
 
 function buildRequest(

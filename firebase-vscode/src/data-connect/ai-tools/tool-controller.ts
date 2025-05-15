@@ -6,15 +6,12 @@ import { Signal } from "@preact/signals-core";
 import { Result } from "../../result";
 import { AnalyticsLogger } from "../../analytics";
 import { ResolvedDataConnectConfigs } from "../config";
-import { ExtensionBrokerImpl } from "../../extension-broker";
 import { DataConnectService } from "../service";
-import { pluginLogger as logger } from "../../logger-wrapper";
 import { CloudAICompanionResponse, ChatMessage } from "../../dataconnect/types";
-import { ChatContext } from "./gca-tool-types";
 import { ObjectTypeDefinitionNode, OperationDefinitionNode } from "graphql";
 import { getHighlightedText, findGqlFiles } from "../file-utils";
 import { CommandContext, Chat, Context, Command, BackendAuthor } from "./types";
-import { env } from "../../core/env";
+import { DATA_CONNECT_EVENT_NAME } from "../../analytics";
 
 const USER_PREAMBLE = "This is the user's prompt: \n";
 
@@ -101,8 +98,14 @@ export class GeminiToolController {
     // set type
     if (command === Command.GENERATE_OPERATION) {
       type = "operation";
+      this.analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.GEMINI_OPERATION_CALL,
+      );
     } else if (command === Command.GENERATE_SCHEMA) {
       type = "schema";
+      this.analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.GEMINI_SCHEMA_CALL,
+      );
     } else {
       // undetermined process
       chatHistory.push({
@@ -140,6 +143,13 @@ export class GeminiToolController {
       type,
       this.cleanHistory(chatHistory, type),
     );
+
+    if (resp.error) {
+      this.analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.GEMINI_ERROR,
+      );
+      return [{ author: "MODEL", content: resp.error.message }];
+    }
 
     return resp.output.messages;
   }

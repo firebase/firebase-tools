@@ -10,9 +10,7 @@ import {
   CommandProvider,
   GeminiCodeAssist,
 } from "./gca-tool-types";
-import {
-  insertToBottomOfActiveFile,
-} from "../file-utils";
+import { insertToBottomOfActiveFile } from "../file-utils";
 import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
@@ -74,7 +72,6 @@ export class GCAToolClient {
     responseStream: ChatResponseStream,
     token: vscode.CancellationToken,
   ): Promise<void> {
-
     // Helper just to convert to markdown first
     function pushToResponseStream(text: string) {
       const markdown = new vscode.MarkdownString(text);
@@ -112,6 +109,10 @@ export class GCAToolClient {
       }
 
       pushToResponseStream(errorMessage);
+
+      // reset history on error
+      this.history = [];
+      responseStream.close();
       return;
     }
     const agentMessage = response.pop()?.content;

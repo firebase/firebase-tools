@@ -1,3 +1,5 @@
+import { FirebaseError } from "firebase-admin";
+
 // Schema is a singleton, so we always call it 'main'
 export const SCHEMA_ID = "main";
 
@@ -308,6 +310,7 @@ export interface CloudAICompanionResponse {
   output: {
     messages: ChatMessage[];
   };
+  error?: FirebaseError
 }
 
 export interface FdcRequestInfo {

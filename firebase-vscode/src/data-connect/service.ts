@@ -291,9 +291,8 @@ export class DataConnectService {
       naturalLanguageQuery,
       chatHistory
     };
-
     const resp = await callCloudAICompanion(client, request, type);
-    return resp.body as CloudAICompanionResponse;
+    return resp;
   }
 }
 
