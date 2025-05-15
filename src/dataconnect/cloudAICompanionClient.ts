@@ -1,4 +1,4 @@
-import { ClientResponse, Client } from "../apiv2";
+import { Client } from "../apiv2";
 import { cloudAiCompanionOrigin } from "../api";
 import {
   CloudAICompanionResponse,
@@ -6,7 +6,7 @@ import {
   CloudAICompanionInput,
   ClientContext,
   CallCloudAiCompanionRequest,
-} from "./types";
+} from "./cloudAICompanionTypes";
 import { FirebaseError } from "../error";
 
 const CLOUD_AI_COMPANION_VERSION = "v1";

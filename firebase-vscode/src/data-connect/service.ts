@@ -26,20 +26,20 @@ import {
 } from "../../../src/dataconnect/cloudAiCompanionClient";
 
 import {
-  CallCloudAiCompanionRequest,
-  ChatMessage,
-  CloudAICompanionResponse,
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
+import {
+  CloudAICompanionResponse,
+  CallCloudAiCompanionRequest,
+  ChatMessage,
+} from "../dataconnect/cloudAICompanionTypes";
 import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
-import { getAnalyticsContext } from "../analytics";
-import { ChatContext } from "./ai-tools/gca-tool-types";
 
 /**
  * DataConnect Emulator service
@@ -94,13 +94,10 @@ export class DataConnectService {
     return response.text();
   }
   private async handleProdResponse(
-    response: ClientResponse<
-      GraphqlResponse | GraphqlResponseError
-    >,
+    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<GraphqlResponseError>;
+      const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Prod Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
@@ -110,13 +107,10 @@ export class DataConnectService {
   }
 
   private async handleEmulatorResponse(
-    response: ClientResponse<
-      GraphqlResponse | GraphqlResponseError
-    >,
+    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<GraphqlResponseError>;
+      const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Emulator Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
@@ -129,7 +123,7 @@ export class DataConnectService {
    *
    * If the JSON is invalid, will throw.
    */
-  private _serializeBody(body: { variables?: string;[key: string]: unknown }) {
+  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
     if (!body.variables || body.variables.trim().length === 0) {
       body.variables = undefined;
       return JSON.stringify(body);
@@ -202,7 +196,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await this.dataConnectToolkit.getFDCToolkitURL()) +
-        `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -248,7 +242,9 @@ export class DataConnectService {
     });
     if (params.instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
-      pluginLogger.info(`ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`);
+      pluginLogger.info(
+        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`,
+      );
       const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {
@@ -274,13 +270,15 @@ export class DataConnectService {
   // Start cloud section
 
   async generateOperation(
-    path: string, /** currently unused; instead reading the first service config */
+    path: string /** currently unused; instead reading the first service config */,
     naturalLanguageQuery: string,
     type: "schema" | "operation",
     chatHistory: ChatMessage[],
   ): Promise<CloudAICompanionResponse | undefined> {
     const client = cloudAICompationClient();
-    const servicePath = await this.servicePath(dataConnectConfigs.value?.tryReadValue?.values[0].path as string);
+    const servicePath = await this.servicePath(
+      dataConnectConfigs.value?.tryReadValue?.values[0].path as string,
+    );
 
     if (!servicePath) {
       return undefined;
@@ -289,7 +287,7 @@ export class DataConnectService {
     const request: CallCloudAiCompanionRequest = {
       servicePath,
       naturalLanguageQuery,
-      chatHistory
+      chatHistory,
     };
     const resp = await callCloudAICompanion(client, request, type);
     return resp;
