@@ -1,6 +1,6 @@
 ## NEXT
 
-- [Added] @data-connect tool callable from the Gemini Code Assist extension. 
+- [Added] @data-connect tool callable from the Gemini Code Assist extension.
 
 ## 1.3.1
 
