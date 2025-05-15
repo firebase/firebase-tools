@@ -21,6 +21,7 @@ import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 import { loadRC } from "../rc.js";
 import { EmulatorHubClient } from "../emulator/hubClient.js";
+import { existsSync } from "node:fs";
 
 const SERVER_VERSION = "0.0.1";
 
@@ -185,9 +186,13 @@ export class FirebaseMcpServer {
 
     const projectId = await this.getProjectId();
     const accountEmail = await this.getAuthenticatedUser();
-    if (!this.cachedProjectRoot) {
-      return mcpError("No project root set. Please set the project root before calling tools.");
-    }
+    if (
+      tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
+      (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
+    )
+      return mcpError(
+        `Project directory '${this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"}' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
+      );
     if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
     if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
 
