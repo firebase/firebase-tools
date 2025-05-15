@@ -7,7 +7,7 @@ const TIMEOUT = 10000;
 
 const apiClient = new Client({
   urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1main",
+  apiVersion: "v1alpha",
 });
 
 export async function listTopIssues(
@@ -22,15 +22,22 @@ export async function listTopIssues(
 
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${issueCount}`);
-    queryParams.set("filters.interval.start_time", pastDate.toISOString());
-    queryParams.set("filters.interval.end_time", now.toISOString());
+
+    const requestProjectId = parseProjectId(appId);
+    if (requestProjectId == undefined) {
+      throw new FirebaseError("Unable to get the projectId from the AppId.")
+    }
 
     const response = await apiClient.request<void, string>({
       method: "GET",
-      path: `/projects/-/apps/${appId}/reports/topIssues`,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      path: `/projects/${requestProjectId}/apps/${appId}/reports/topIssues`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });
+
     return response.body;
   } catch (err: any) {
     logger.debug(err.message);
@@ -39,4 +46,12 @@ export async function listTopIssues(
       { original: err },
     );
   }
+}
+
+function parseProjectId(appId: string): string | undefined {
+  const appIdParts = appId.split(':');
+    if (appIdParts.length > 1) {
+      return appIdParts[1];
+    }
+  return undefined
 }
