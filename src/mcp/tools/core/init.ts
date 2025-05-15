@@ -17,7 +17,6 @@ export const init = tool(
       //   .default(false)
       //   .describe("Force the initialization without prompting for confirmation. Without force, it prompts if any existing files are overwritten."),
       features: z.object({
-        // TODO: Add all the features here.
         database: z.object({
           rules_filename: z
             .string()
