@@ -130,9 +130,9 @@ async function serve(
   ]);
 
   const environmentVariablesToInject: NodeJS.ProcessEnv = {
+    NODE_ENV: process.env.NODE_ENV,
     ...getEmulatorEnvs(),
     ...Object.fromEntries(await Promise.all(resolveEnv)),
-    NODE_ENV: process.env.NODE_ENV,
     FIREBASE_APP_HOSTING: "1",
     X_GOOGLE_TARGET_PLATFORM: "fah",
     GCLOUD_PROJECT: projectId,
@@ -220,6 +220,9 @@ async function tripFirebasePostinstall(
     cwd: rootDirectory,
     shell: process.platform === "win32",
   });
+  if (!npmLs.stdout) {
+    return;
+  }
   const npmLsResults = JSON.parse(npmLs.stdout.toString().trim());
   const dependenciesToSearch: Dependency[] = Object.values(npmLsResults.dependencies);
   const firebaseUtilPaths: string[] = [];
@@ -235,6 +238,7 @@ async function tripFirebasePostinstall(
       dependenciesToSearch.push(...Object.values(dependency.dependencies));
     }
   }
+
   await Promise.all(
     firebaseUtilPaths.map(
       (path) =>
@@ -268,7 +272,9 @@ async function getBackendAppConfig(
   }
 
   const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
-  const backend = backendsList?.backends.find((b) => b.name.split("/").pop() === backendId);
+  const backend = backendsList?.backends.find(
+    (b) => apphosting.parseBackendName(b.name).id === backendId,
+  );
 
   if (!backend) {
     logLabeledWarning(
