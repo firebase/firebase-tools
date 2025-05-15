@@ -144,7 +144,7 @@ async function serve(
   if (packageManager === "pnpm") {
     // TODO(jamesdaniels) look into pnpm support for autoinit
     logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
-  } else if (projectId && backendId) {
+  } else {
     const webappConfig = await getBackendAppConfig(projectId, backendId);
     if (webappConfig) {
       environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
@@ -153,9 +153,7 @@ async function serve(
         storageBucket: webappConfig.storageBucket,
         projectId: webappConfig.projectId,
       });
-      await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
     }
-  } else {
     await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }
 
@@ -254,11 +252,19 @@ async function tripFirebasePostinstall(
 }
 
 async function getBackendAppConfig(
-  projectId: string,
-  backendId: string,
+  projectId?: string,
+  backendId?: string,
 ): Promise<WebConfig | undefined> {
+  if (!projectId) {
+    return undefined;
+  }
+
   if (Constants.isDemoProject(projectId)) {
     return constructDefaultWebSetup(projectId);
+  }
+
+  if (!backendId) {
+    return undefined;
   }
 
   const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
