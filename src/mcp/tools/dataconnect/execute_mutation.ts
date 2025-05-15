@@ -33,7 +33,7 @@ export const execute_mutation = tool(
         .describe(
           "A stringified JSON object containing the variables needed to execute the operation. The value MUST be able to be parsed as a JSON object.",
         ),
-      useEmulator: z.boolean().optional().describe("Target the DataConnect emulator if true."),
+      useEmulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
       title: "Executes a deployed Data Connect query or mutation",

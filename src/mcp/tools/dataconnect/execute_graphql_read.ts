@@ -26,7 +26,7 @@ export const execute_graphql_read = tool(
         .describe(
           "A stringified JSON object containing variables for the operation. MUST be valid JSON.",
         ),
-      useEmulator: z.boolean().optional().describe("Target the DataConnect emulator if true."),
+      useEmulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
       title: "Executes a arbitrary GraphQL query against a Data Connect service",
