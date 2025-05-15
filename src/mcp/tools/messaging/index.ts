@@ -1,5 +1,4 @@
 import { ServerTool } from "../../tool.js";
-import { send_message_to_fcm_token } from "./send_message_to_fcm_token.js";
-import { send_message_to_fcm_topic } from "./send_message_to_fcm_topic.js";
+import { send_message } from "./send_message.js";
 
-export const messagingTools: ServerTool[] = [send_message_to_fcm_token, send_message_to_fcm_topic];
+export const messagingTools: ServerTool[] = [send_message];
