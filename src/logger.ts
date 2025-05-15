@@ -161,12 +161,6 @@ export function tryStringify(value: any) {
 
 const rawLogger = winston.createLogger();
 // Set a default silent logger to suppress logs during tests
-rawLogger.add(
-  new winston.transports.Console({
-    silent: true,
-    consoleWarnLevels: ["debug", "warn"],
-  }),
-);
 rawLogger.exitOnError = false;
 
 // The type system for TypeScript is a bit wonky. The type of winston.LeveledLogMessage
@@ -194,6 +188,7 @@ export function useFileLogger(logFile?: string): string {
       }),
     }),
   );
+  console.debug = logger.debug.bind(logger);
   console.log = logger.info.bind(logger);
   console.error = logger.error.bind(logger);
   console.warn = logger.warn.bind(logger);
@@ -204,26 +199,32 @@ export function useFileLogger(logFile?: string): string {
  * Sets up logging to the command line.
  */
 export function useConsoleLoggers(): void {
-  if (process.env.DEBUG) {
-    logger.add(
-      new winston.transports.Console({
-        level: "debug",
-        format: winston.format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${stripVTControlCharacters(segments.join(" "))}`;
-        }),
-      }),
-    );
-  } else if (process.env.IS_FIREBASE_CLI) {
-    logger.add(
-      new winston.transports.Console({
-        level: "info",
-        format: winston.format.printf((info) =>
-          [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk === "string")
-            .join(" "),
-        ),
-      }),
-    );
-  }
+  // logger.add(
+  //   new winston.transports.Console({
+  //     silent: true,
+  //     consoleWarnLevels: ["debug", "warn"],
+  //   }),
+  // );
+  // if (process.env.DEBUG) {
+  //   logger.add(
+  //     new winston.transports.Console({
+  //       level: "debug",
+  //       format: winston.format.printf((info) => {
+  //         const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+  //         return `${stripVTControlCharacters(segments.join(" "))}`;
+  //       }),
+  //     }),
+  //   );
+  // } else if (process.env.IS_FIREBASE_CLI) {
+  //   logger.add(
+  //     new winston.transports.Console({
+  //       level: "info",
+  //       format: winston.format.printf((info) =>
+  //         [info.message, ...(info[SPLAT] || [])]
+  //           .filter((chunk) => typeof chunk === "string")
+  //           .join(" "),
+  //       ),
+  //     }),
+  //   );
+  // }
 }
