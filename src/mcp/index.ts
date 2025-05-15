@@ -25,7 +25,7 @@ import { EmulatorHubClient } from "../emulator/hubClient.js";
 const SERVER_VERSION = "0.0.1";
 const PROJECT_ROOT_KEY = "mcp.projectRoot";
 
-const cmd = new Command("experimental:mcp").before(requireAuth);
+const cmd = new Command("experimental:mcp");
 
 export class FirebaseMcpServer {
   projectRoot?: string;

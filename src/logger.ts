@@ -194,6 +194,9 @@ export function useFileLogger(logFile?: string): string {
       }),
     }),
   );
+  console.log = logger.info.bind(logger);
+  console.error = logger.error.bind(logger);
+  console.warn = logger.warn.bind(logger);
   return logFileName;
 }
 
