@@ -26,6 +26,7 @@ export interface Setup {
 }
 
 export interface SetupInfo {
+  database?: features.DatabaseInfo;
   dataconnect?: features.DataconnectInfo;
 }
 
@@ -45,7 +46,11 @@ interface Feature {
 
 const featuresList: Feature[] = [
   { name: "account", doSetup: features.account },
-  { name: "database", doSetup: features.database },
+  {
+    name: "database",
+    askQuestions: features.databaseAskQuestions,
+    actuate: features.databaseActuate,
+  },
   { name: "firestore", doSetup: features.firestore },
   {
     name: "dataconnect",
@@ -69,7 +74,7 @@ const featuresList: Feature[] = [
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
-export async function init(setup: Setup, config: any, options: any): Promise<any> {
+export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
     const f = lookupFeature(nextFeature);
@@ -92,7 +97,7 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
   }
 }
 
-export async function actuate(setup: Setup, config: any, options: any): Promise<any> {
+export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
     const f = lookupFeature(nextFeature);
