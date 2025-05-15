@@ -8,24 +8,24 @@ export const create_app = tool(
     name: "create_app",
     description: "Creates a new app in your Firebase project for Web, iOS, or Android.",
     inputSchema: z.object({
-      displayName: z.string().optional().describe("The user-friendly display name for your app."),
+      display_name: z.string().optional().describe("The user-friendly display name for your app."),
       platform: z
         .enum(["web", "ios", "android"])
         .describe("The platform for which to create an app."),
-      androidConfig: z
+      android_config: z
         .object({
-          packageName: z
+          package_name: z
             .string()
             .describe("The package name for your Android app (e.g., com.example.myapp)."),
         })
         .optional()
         .describe("Configuration for Android apps."),
-      iosConfig: z
+      ios_config: z
         .object({
-          bundleId: z
+          bundle_id: z
             .string()
             .describe("The bundle ID for your iOS app (e.g., com.example.myapp)."),
-          appStoreId: z
+          app_store_id: z
             .string()
             .optional()
             .describe("The App Store ID for your iOS app (optional)."),
@@ -43,11 +43,11 @@ export const create_app = tool(
       requiresProject: true,
     },
   },
-  async ({ displayName, platform, androidConfig, iosConfig }, { projectId }) => {
-    if (platform === "android" && !androidConfig) {
+  async ({ display_name, platform, android_config, ios_config }, { projectId }) => {
+    if (platform === "android" && !android_config) {
       throw new Error("Android configuration is required when platform is 'android'");
     }
-    if (platform === "ios" && !iosConfig) {
+    if (platform === "ios" && !ios_config) {
       throw new Error("iOS configuration is required when platform is 'ios'");
     }
 
@@ -56,22 +56,22 @@ export const create_app = tool(
         case "android":
           return toContent(
             await createAndroidApp(projectId!, {
-              displayName,
-              packageName: androidConfig!.packageName,
+              displayName: display_name,
+              packageName: android_config!.package_name,
             }),
           );
         case "ios":
           return toContent(
             await createIosApp(projectId!, {
-              displayName,
-              bundleId: iosConfig!.bundleId,
-              appStoreId: iosConfig!.appStoreId,
+              displayName: display_name,
+              bundleId: ios_config!.bundle_id,
+              appStoreId: ios_config!.app_store_id,
             }),
           );
         case "web":
           return toContent(
             await createWebApp(projectId!, {
-              displayName,
+              displayName: display_name,
             }),
           );
       }
