@@ -14,7 +14,7 @@ export const get_object_download_url = tool(
         .describe("The path to the object in Firebase storage without the bucket name attached"),
     }),
     annotations: {
-      title: "Get the download url for an obejct in Firebase Storage.",
+      title: "Get the download url for an object in Firebase Storage.",
       readOnlyHint: true,
     },
     _meta: {
