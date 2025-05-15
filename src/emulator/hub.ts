@@ -64,9 +64,12 @@ export class EmulatorHub extends ExpressBasedEmulator {
   }
 
   static getLocatorFilePath(projectId: string): string {
-    const dir = os.tmpdir();
-    const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
+    return path.join(
+      os.homedir(),
+        ".cache",
+        "firebase",
+        `hub-${projectId}.json`,
+      );
   }
 
   constructor(private args: EmulatorHubArgs) {
