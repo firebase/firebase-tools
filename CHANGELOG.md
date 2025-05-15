@@ -7,4 +7,4 @@
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
 - Add SDK autoinit capabilities to App Hosting emulator. (#8582)
 - Provision App Hosting compute service account during init flow. (#8580)
-- `firebase init dataconnect` is now integrated with Gemini in Firebase API to generate Schema based on description (#8596).
+- `firebase init dataconnect` is now integrated with Gemini in Firebase API to generate Schema based on description. (#8596)
