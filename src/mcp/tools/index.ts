@@ -54,7 +54,7 @@ export function markdownDocsOfTools(): string {
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
   for (const tool of allTools) {
-    let feature = tool.mcp?._meta?.feature || "directory";
+    let feature = tool.mcp?._meta?.feature || "";
     if (feature === "firebase") {
       feature = "core";
     }
