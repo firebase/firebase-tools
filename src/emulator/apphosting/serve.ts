@@ -140,7 +140,7 @@ async function serve(
     PORT: port.toString(),
   };
 
-  const packageManager = await detectPackageManager(backendRoot);
+  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
   if (packageManager === "pnpm") {
     // TODO(jamesdaniels) look into pnpm support for autoinit
     logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
