@@ -39,22 +39,22 @@
   },
   "dataconnect": {
     "darwin": {
-      "version": "2.5.0",
-      "expectedSize": 27378432,
-      "expectedChecksum": "d18bc3a07be90886f6ec212f3393b66e",
-      "expectedChecksumSHA256": "a863e04f45a6704c25f1a7155c13dac5ed5f481f1a75ed11e45abed570d13117"
+      "version": "2.6.1",
+      "expectedSize": 27415296,
+      "expectedChecksum": "5814d22b06b1321409f40693dfe47288",
+      "expectedChecksumSHA256": "8df1cfac6ef747909b3c18b57ba52b70a11d53b9d0a22b197011d6550ceca133"
     },
     "win32": {
-      "version": "2.5.0",
-      "expectedSize": 27836416,
-      "expectedChecksum": "d335e9295b00381eb12682bc944ffef7",
-      "expectedChecksumSHA256": "8a216c475c4796bfcd65bcfb52aa303b3d79f389e3675dbf37702052d82c04c5"
+      "version": "2.6.1",
+      "expectedSize": 27875328,
+      "expectedChecksum": "21381052c2bf767ee84fb85975cfd4d5",
+      "expectedChecksumSHA256": "6bebaa9575b460c4fa170b191d94722923a3c869bc1eca24c7e444428e6b7a70"
     },
     "linux": {
-      "version": "2.5.0",
-      "expectedSize": 27295896,
-      "expectedChecksum": "dc44dbfd972a9b3608794909df517077",
-      "expectedChecksumSHA256": "7276447968da6375d3818f5011b1474f39510ec53b2fa14c4b771f795e19e7bd"
+      "version": "2.6.1",
+      "expectedSize": 27332760,
+      "expectedChecksum": "0480a92f5af8e8441e680dc4e7995263",
+      "expectedChecksumSHA256": "4f60baf4649c670227314302056f50b1c40ccc8d673b98d16935977508342a67"
     }
   }
 }
