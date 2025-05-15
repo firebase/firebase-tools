@@ -441,7 +441,7 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
         default: true,
       })
     ) {
-      ensureGIFApis(setup.projectId!);
+      await ensureGIFApis(setup.projectId!);
       const prompt = await input({
         message: "Describe the app you are building:",
         default: "movie rating app",
