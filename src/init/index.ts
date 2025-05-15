@@ -83,7 +83,16 @@ const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    const f = lookupFeature(nextFeature);
+    const f = featureMap.get(nextFeature);
+    if (!f) {
+      const availableFeatures = Object.keys(features)
+        .filter((f) => f !== "project")
+        .join(", ");
+      throw new FirebaseError(
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
+      );
+    }
+
     logger.info(
       clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
     );
