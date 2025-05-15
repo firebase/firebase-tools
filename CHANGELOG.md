@@ -6,7 +6,7 @@
 - Changed firebase init template for functions to pin runtime version on init. (#8553)
 - Fix an issue where updating a Cloud Function that retires would add incorrect fields to the updateMask. (#8560)
 - Provision App Hosting compute service account during init flow. (#8580)
-- Updated the Firebase Data Connect local toolkit to v2.6.1, which includes the following changes: (#pr)
+- Updated the Firebase Data Connect local toolkit to v2.6.1, which includes the following changes: (#8598)
   - Fixed a bug where `@transaction` continued to execute after errors and produces more confusing errors.
   - Fixed a bug where rolled-back fields in `@transaction` returned bogus data that had been invalidated by the rollback. They now correctly return null with a corresponding error "(rolled back)".
   - Disallow `@check` on side-effect fields if the mutation doesn't have `@transaction`.
