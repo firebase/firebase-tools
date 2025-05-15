@@ -9,7 +9,6 @@ import {
   ensureAppHostingComputeServiceAccount,
   ensureRequiredApisEnabled,
   promptExistingBackend,
-  ensureAppHostingComputeServiceAccount,
   promptLocation,
   promptNewBackendId,
 } from "../../apphosting/backend";
@@ -22,9 +21,6 @@ import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
-import { ensureApiEnabled } from "../../gcp/apphosting";
-import { Setup } from "..";
-import { isBillingEnabled } from "../../gcp/cloudbilling";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
