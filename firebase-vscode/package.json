@@ -216,7 +216,7 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
-    "pretest:e2e": "code --install-extension Google.geminicodeassist --extensions-dir ./prebuilt-extensions/",
+    "pretest:e2e": "curl -fsSL https://code-server.dev/install.sh | sh && code-server --install-extension Google.geminicodeassist --extensions-dir ./prebuilt-extensions/",
     "pretest:unit": "npm run test-compile && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "npm run test:e2e:empty && npm run test:e2e:fishfood",

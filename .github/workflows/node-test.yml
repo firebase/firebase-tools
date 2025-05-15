@@ -108,10 +108,6 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run build
         working-directory: firebase-vscode
-      - run: curl -fsSL https://code-server.dev/install.sh | sh
-        working-directory: firebase-vscode
-      - run: code-server --install-extension Google.geminicodeassist  --extensions-dir ./prebuilt-extensions
-        working-directory: firebase-vscode
 
       - run: npm i -g firebase-tools@latest
 
