@@ -29,7 +29,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given config w/o source", () => {
-      expect(() => projectConfig.validate([{ runtime: "nodejs10" }])).to.throw(
+      expect(() => projectConfig.validate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
         /codebase source must be specified/,
       );
@@ -84,7 +84,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given singleton config w/o source", () => {
-      expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs10" })).to.throw(
+      expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs22" })).to.throw(
         FirebaseError,
         /codebase source must be specified/,
       );
@@ -98,7 +98,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given multi-resource config w/o source", () => {
-      expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs10" }])).to.throw(
+      expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
         /codebase source must be specified/,
       );
