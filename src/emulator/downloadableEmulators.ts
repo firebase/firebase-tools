@@ -100,8 +100,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   ui: {
     version: emulatorUiDetails.version,
     downloadPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}.zip`),
-    unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}}`),
-    binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}}`, "server", "server.mjs"),
+    unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
+    binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`, "server", "server.mjs"),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${emulatorUiDetails.version}.zip`,
