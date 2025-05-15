@@ -19,10 +19,11 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride } from "../../../utils";
+import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
+import { generateSchema } from "../../../gif/fdcExperience";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -111,7 +112,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     }));
   if (shouldConfigureBackend) {
     // TODO: Prompt for app idea and use GiF backend to generate them.
-    info = await promptForService(info);
+    info = await promptForSchema(setup, info);
     info = await promptForCloudSQL(setup, info);
 
     info.shouldProvisionCSQL = !!(
@@ -425,12 +426,24 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   return info;
 }
 
-async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (info.serviceId === "") {
     info.serviceId = await input({
       message: "What ID would you like to use for this service?",
       default: basename(process.cwd()),
     });
+    if (
+      await confirm({
+        message: `Do you want Gemini to help generate the schema?`,
+        default: true,
+      })
+    ) {
+      const schema = await promiseWithSpinner(
+          () => generateSchema(setup.projectId!, info.serviceId),
+          "Generating the Data Connect Schema...",
+      );
+      info.schemaGql = [{ path: "schema.gql", content: schema }];
+    }
   }
   return info;
 }
