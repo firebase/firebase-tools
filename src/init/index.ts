@@ -27,6 +27,7 @@ export interface Setup {
 
 export interface SetupInfo {
   database?: features.DatabaseInfo;
+  firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
 }
 
@@ -52,7 +53,11 @@ const featuresList: Feature[] = [
     askQuestions: features.databaseAskQuestions,
     actuate: features.databaseActuate,
   },
-  { name: "firestore", doSetup: features.firestore },
+  {
+    name: "firestore",
+    askQuestions: features.firestoreAskQuestions,
+    actuate: features.firestoreActuate,
+  },
   {
     name: "dataconnect",
     // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.

@@ -8,7 +8,9 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initialize the Firebase Products. It takes a feature map to describe each desired product.",
+      "Setup the Firebase workspace and initialize selected features." +
+      " It takes a feature map that describe each desired product. All the features are optional." +
+      " Provide only requested products.",
     inputSchema: z.object({
       // force: z
       //   .boolean()
@@ -27,6 +29,24 @@ export const init = tool(
             .optional()
             .default(DEFAULT_RULES)
             .describe("The security rules to use for Realtime Database Security Rules."),
+        }),
+        firestore: z.object({
+          databaseId: z
+            .string()
+            .optional()
+            .default("(default)")
+            .describe("The database ID to use for Firestore."),
+          rulesFilename: z
+            .string()
+            .optional()
+            .default("firestore.rules")
+            .describe("The file to use for Firestore Security Rules."),
+          rules: z
+            .string()
+            .optional()
+            .describe(
+              "The security rules to use for Firestore Security Rules. Default to open rules that expires in 30 days.",
+            ),
         }),
         dataconnect: z.object({
           serviceId: z
@@ -66,6 +86,26 @@ export const init = tool(
   async ({ features }, { projectId, config, rc }) => {
     const featuresList: string[] = [];
     const featureInfo: SetupInfo = {};
+    if (features.database) {
+      featuresList.push("database");
+      featureInfo.database = {
+        rulesFilename: features.database.rulesFilename,
+        rules: features.database.rules,
+        writeRules: true,
+      };
+    }
+    if (features.firestore) {
+      featuresList.push("firestore");
+      featureInfo.firestore = {
+        databaseId: features.firestore.databaseId,
+        rulesFilename: features.firestore.rulesFilename,
+        rules: features.firestore.rules || "",
+        writeRules: true,
+        indexesFilename: "",
+        indexes: "",
+        writeIndexes: true,
+      };
+    }
     if (features.dataconnect) {
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
@@ -80,14 +120,6 @@ export const init = tool(
         shouldProvisionCSQL: false,
       };
     }
-    if (features.database) {
-      featuresList.push("database");
-      featureInfo.database = {
-        rulesFilename: features.database.rulesFilename,
-        rules: features.database.rules,
-        writeRules: true,
-      };
-    }
     const setup: Setup = {
       config: config?.src,
       rcfile: rc?.data,
@@ -97,6 +129,8 @@ export const init = tool(
     };
     // Set force to true to avoid prompting the user for confirmation.
     await actuate(setup, config, { force: true });
+    config.writeProjectFile("firebase.json", setup.config);
+    config.writeProjectFile(".firebaserc", setup.rcfile);
     return toContent(
       `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}`,
     );
