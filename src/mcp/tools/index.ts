@@ -7,7 +7,7 @@ import { coreTools } from "./core/index.js";
 import { storageTools } from "./storage/index.js";
 import { messagingTools } from "./messaging/index.js";
 import { remoteConfigTools } from "./remoteconfig/index.js";
-import { crashlyticsTools } from "./crashlytics/index.js"
+import { crashlyticsTools } from "./crashlytics/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
