@@ -20,6 +20,7 @@ import { mcpAuthError, NO_PROJECT_ERROR } from "./errors.js";
 import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 import { loadRC } from "../rc.js";
+import { EmulatorHubClient } from "../emulator/hubClient.js";
 
 const SERVER_VERSION = "0.0.1";
 const PROJECT_ROOT_KEY = "mcp.projectRoot";
@@ -33,6 +34,7 @@ export class FirebaseMcpServer {
   detectedFeatures?: ServerFeature[];
   fixedRoot?: boolean;
   clientInfo?: { name?: string; version?: string };
+  emulatorHubClient?: EmulatorHubClient;
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
@@ -71,6 +73,19 @@ export class FirebaseMcpServer {
     );
     this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
     return this.detectedFeatures;
+  }
+
+  async getEmulatorHubClient(): Promise<EmulatorHubClient | undefined> {
+    // Single initilization
+    if (this.emulatorHubClient) {
+      return this.emulatorHubClient;
+    }
+    const projectId = await this.getProjectId();
+    if (!projectId) {
+      return;
+    }
+    this.emulatorHubClient = new EmulatorHubClient(projectId);
+    return this.emulatorHubClient;
   }
 
   get availableTools(): ServerTool[] {
