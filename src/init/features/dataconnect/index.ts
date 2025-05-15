@@ -23,7 +23,7 @@ import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-import { generateSchema } from "../../../gif/fdcExperience";
+import { extractCodeBlock, generateSchema } from "../../../gif/fdcExperience";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -438,11 +438,16 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
         default: true,
       })
     ) {
+      const prompt = await input({
+        message: "Describe the app you are building:",
+        default: "movie rating app",
+      });
       const schema = await promiseWithSpinner(
-          () => generateSchema(setup.projectId!, info.serviceId),
-          "Generating the Data Connect Schema...",
+        () => generateSchema(prompt, setup.projectId!),
+        "Generating the Data Connect Schema...",
       );
-      info.schemaGql = [{ path: "schema.gql", content: schema }];
+      info.schemaGql = [{ path: "schema.gql", content: extractCodeBlock(schema) }];
+      info.connectors = [emptyConnector];
     }
   }
   return info;
