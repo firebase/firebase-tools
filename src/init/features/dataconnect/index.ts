@@ -111,7 +111,6 @@ export async function askQuestions(setup: Setup): Promise<void> {
       default: true,
     }));
   if (shouldConfigureBackend) {
-    // TODO: Prompt for app idea and use GiF backend to generate them.
     info = await promptForSchema(setup, info);
     info = await promptForCloudSQL(setup, info);
 
