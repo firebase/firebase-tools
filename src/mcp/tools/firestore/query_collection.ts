@@ -26,7 +26,7 @@ export const query_collection = tool(
             .object({
               string_value: z.string().nullish().describe("The string value to compare against."),
               boolean_value: z.string().nullish().describe("The boolean value to compare against."),
-              stringArray_value: z
+              string_array_value: z
                 .array(z.string())
                 .nullish()
                 .describe("The string value to compare against."),
@@ -93,7 +93,7 @@ export const query_collection = tool(
               f.compare_value.boolean_value &&
               f.compare_value.double_value &&
               f.compare_value.integer_value &&
-              f.compare_value.stringArray_value &&
+              f.compare_value.string_array_value &&
               f.compare_value.string_value
             ) {
               throw mcpError("One and only one value may be specified per filters object.");
