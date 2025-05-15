@@ -48,7 +48,7 @@ export const execute_mutation = tool(
     { operationName, serviceId, connectorId, variables: unparsedVariables, useEmulator },
     { projectId, config, host },
   ) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+    const serviceInfo = await pickService(projectId!, config, serviceId || undefined);
     let apiClient: Client;
 
     if (!connectorId) {
