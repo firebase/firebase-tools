@@ -19,7 +19,7 @@ export const list_users = tool(
       requiresProject: true,
     },
   },
-  async ({ limit }, { projectId }) => {
+  async ({ limit } = {}, { projectId }) => {
     if (!limit) {
       limit = 100;
     }
