@@ -6,7 +6,7 @@ import { listTopIssues } from "../../../crashlytics/listTopIssues.js";
 export const list_top_issues = tool(
   {
     name: "list_top_issues",
-    description: "List the top issues happening in the application.",
+    description: "List the top crashes from crashlytics happening in the application.",
     inputSchema: z.object({
       app_id: z.string().describe("appId for which the issues list is fetched."),
       issue_count: z
