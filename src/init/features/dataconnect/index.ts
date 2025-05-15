@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
+import { logBullet, envOverride, promiseWithSpinner, logLabeledWarning } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -432,6 +432,9 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
       message: "What ID would you like to use for this service?",
       default: basename(process.cwd()),
     });
+    logBullet(
+      `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
+    );
     if (
       await confirm({
         message: `Do you want Gemini to help generate the schema?`,
