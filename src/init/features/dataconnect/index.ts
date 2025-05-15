@@ -431,16 +431,16 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
       message: "What ID would you like to use for this service?",
       default: basename(process.cwd()),
     });
-    logBullet(
-      `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
-    );
     if (
-      await confirm({
+      setup.projectId && await confirm({
         message: `Do you want Gemini to help generate a schema for your service?`,
         default: false,
       })
     ) {
-      await ensureGIFApis(setup.projectId!);
+      logBullet(
+        `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
+      );
+      await ensureGIFApis(setup.projectId);
       const prompt = await input({
         message: "Describe the app you are building:",
         default: "movie rating app",
