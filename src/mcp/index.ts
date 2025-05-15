@@ -59,7 +59,6 @@ export class FirebaseMcpServer {
       process.cwd();
     if (options.projectRoot) this.fixedRoot = true;
     this.detectActiveFeatures();
-    this.getEmulatorHubClient();
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
@@ -169,7 +168,6 @@ export class FirebaseMcpServer {
       config: Config.load(options, true) || new Config({}, options),
       rc: loadRC(options),
       accountEmail,
-      emulatorHubClient: await this.getEmulatorHubClient(),
     };
     try {
       const res = await tool.fn(toolArgs, toolsCtx);

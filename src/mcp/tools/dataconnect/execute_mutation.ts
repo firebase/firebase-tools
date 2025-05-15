@@ -6,7 +6,7 @@ import * as dataplane from "../../../dataconnect/dataplaneClient.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { graphqlResponseToToolResponse, parseVariables } from "./converter.js";
 import { Client } from "../../../apiv2.js";
-import { getDataConnectEmulatorDetails } from "../../emulator/dataconnectEmulatorController.js";
+import { getDataConnectEmulatorClient } from "./emulator.js";
 
 export const execute_mutation = tool(
   {
@@ -46,7 +46,7 @@ export const execute_mutation = tool(
   },
   async (
     { operationName, serviceId, connectorId, variables: unparsedVariables, useEmulator },
-    { projectId, config, emulatorHubClient },
+    { projectId, config, host },
   ) => {
     const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
     let apiClient: Client;
@@ -69,18 +69,7 @@ export const execute_mutation = tool(
     const connectorPath = `${serviceInfo.serviceName}/connectors/${connectorId}`;
 
     if (useEmulator) {
-      const emulatorDetails = await getDataConnectEmulatorDetails(emulatorHubClient);
-      if (!emulatorDetails) {
-        return mcpError(
-          "DataConnect emulator requested but not found or not running. Please ensure the emulator is started and the project ('firebase.json') is correctly configured.",
-          "EMULATOR_NOT_FOUND",
-        );
-      }
-      apiClient = new Client({
-        urlPrefix: emulatorDetails.url,
-        apiVersion: dataplane.DATACONNECT_API_VERSION,
-        auth: false,
-      });
+      apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }
