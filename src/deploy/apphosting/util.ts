@@ -53,7 +53,7 @@ export async function createArchive(
 }
 
 function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
-  const absoluteFilePath = path.resolve(path.join(projectRoot, gitIgnorePath));
+  const absoluteFilePath = path.resolve(projectRoot, gitIgnorePath);
   if (!fs.existsSync(absoluteFilePath)) {
     return [];
   }
