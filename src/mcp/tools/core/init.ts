@@ -44,7 +44,7 @@ export const init = tool(
             .string()
             .optional()
             .describe(
-              "The security rules to use for Firestore Security Rules. Default to open rules that expires in 30 days.",
+              "The security rules to use for Firestore Security Rules. Default to open rules that expire in 30 days.",
             ),
         }),
         dataconnect: z.object({
