@@ -275,16 +275,12 @@
                 },
                 "runtime": {
                     "enum": [
-                        "nodejs10",
-                        "nodejs12",
-                        "nodejs14",
-                        "nodejs16",
-                        "nodejs18",
                         "nodejs20",
                         "nodejs22",
                         "python310",
                         "python311",
-                        "python312"
+                        "python312",
+                        "python313"
                     ],
                     "type": "string"
                 },
