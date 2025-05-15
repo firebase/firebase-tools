@@ -8,16 +8,17 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initialize the Firebase Products. It takes a feature map to describe each desired product.",
+      "Setup the Firebase workspace and initialize selected features." +
+      " It takes a feature map that describe each desired product. All the features are optional." +
+      " Provide only requested products.",
     inputSchema: z.object({
       // force: z
       //   .boolean()
       //   .default(false)
       //   .describe("Force the initialization without prompting for confirmation. Without force, it prompts if any existing files are overwritten."),
       features: z.object({
-        // TODO: Add all the features here.
         database: z.object({
-          rulesFilename: z
+          rules_filename: z
             .string()
             .optional()
             .default("database.rules.json")
@@ -28,25 +29,43 @@ export const init = tool(
             .default(DEFAULT_RULES)
             .describe("The security rules to use for Realtime Database Security Rules."),
         }),
+        firestore: z.object({
+          database_id: z
+            .string()
+            .optional()
+            .default("(default)")
+            .describe("The database ID to use for Firestore."),
+          rules_filename: z
+            .string()
+            .optional()
+            .default("firestore.rules")
+            .describe("The file to use for Firestore Security Rules."),
+          rules: z
+            .string()
+            .optional()
+            .describe(
+              "The security rules to use for Firestore Security Rules. Default to open rules that expire in 30 days.",
+            ),
+        }),
         dataconnect: z.object({
-          serviceId: z
+          service_id: z
             .string()
             .optional()
             .describe(
               "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
             ),
-          locationId: z
+          location_id: z
             .string()
             .optional()
             .default("us-central1")
             .describe("The GCP region ID to set up the Firebase Data Connect service."),
-          cloudSqlInstanceId: z
+          cloudsql_instance_id: z
             .string()
             .optional()
             .describe(
               "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
             ),
-          cloudSqlDatabase: z
+          cloudsql_database: z
             .string()
             .optional()
             .default("fdcdb")
@@ -66,26 +85,38 @@ export const init = tool(
   async ({ features }, { projectId, config, rc }) => {
     const featuresList: string[] = [];
     const featureInfo: SetupInfo = {};
+    if (features.database) {
+      featuresList.push("database");
+      featureInfo.database = {
+        rulesFilename: features.database.rules_filename,
+        rules: features.database.rules,
+        writeRules: true,
+      };
+    }
+    if (features.firestore) {
+      featuresList.push("firestore");
+      featureInfo.firestore = {
+        databaseId: features.firestore.database_id,
+        rulesFilename: features.firestore.rules_filename,
+        rules: features.firestore.rules || "",
+        writeRules: true,
+        indexesFilename: "",
+        indexes: "",
+        writeIndexes: true,
+      };
+    }
     if (features.dataconnect) {
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
-        serviceId: features.dataconnect.serviceId || "",
-        locationId: features.dataconnect.locationId || "",
-        cloudSqlInstanceId: features.dataconnect.cloudSqlInstanceId || "",
-        cloudSqlDatabase: features.dataconnect.cloudSqlDatabase || "",
+        serviceId: features.dataconnect.service_id || "",
+        locationId: features.dataconnect.location_id || "",
+        cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
+        cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
         connectors: [], // TODO populate with GiF,
         isNewInstance: false,
         isNewDatabase: false,
         schemaGql: [], // TODO populate with GiF
         shouldProvisionCSQL: false,
-      };
-    }
-    if (features.database) {
-      featuresList.push("database");
-      featureInfo.database = {
-        rulesFilename: features.database.rulesFilename,
-        rules: features.database.rules,
-        writeRules: true,
       };
     }
     const setup: Setup = {
@@ -97,6 +128,8 @@ export const init = tool(
     };
     // Set force to true to avoid prompting the user for confirmation.
     await actuate(setup, config, { force: true });
+    config.writeProjectFile("firebase.json", setup.config);
+    config.writeProjectFile(".firebaserc", setup.rcfile);
     return toContent(
       `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}`,
     );
