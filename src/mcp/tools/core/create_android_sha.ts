@@ -19,8 +19,8 @@ export const create_android_sha = tool(
     name: "create_android_sha",
     description: "Adds a SHA certificate hash to an existing Android app.",
     inputSchema: z.object({
-      appId: z.string().describe("The Android app ID to add the SHA certificate to."),
-      shaHash: z.string().describe("The SHA certificate hash to add (SHA-1 or SHA-256)."),
+      app_id: z.string().describe("The Android app ID to add the SHA certificate to."),
+      sha_hash: z.string().describe("The SHA certificate hash to add (SHA-1 or SHA-256)."),
     }),
     annotations: {
       title: "Add SHA Certificate to Android App",
@@ -32,17 +32,17 @@ export const create_android_sha = tool(
       requiresProject: true,
     },
   },
-  async ({ appId, shaHash }, { projectId }) => {
+  async ({ app_id, sha_hash }, { projectId }) => {
     // Add the SHA certificate
-    const certType = getCertHashType(shaHash);
-    const shaCertificate = await createAppAndroidSha(projectId!, appId, {
-      shaHash,
+    const certType = getCertHashType(sha_hash);
+    const shaCertificate = await createAppAndroidSha(projectId!, app_id, {
+      shaHash: sha_hash,
       certType,
     });
 
     return toContent({
       ...shaCertificate,
-      message: `Successfully added ${certType} certificate to Android app ${appId}`,
+      message: `Successfully added ${certType} certificate to Android app ${app_id}`,
     });
   },
 );
