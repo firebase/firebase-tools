@@ -1,5 +1,9 @@
 export { doSetup as account } from "./account";
-export { doSetup as database } from "./database";
+export {
+  askQuestions as databaseAskQuestions,
+  RequiredInfo as DatabaseInfo,
+  actuate as databaseActuate,
+} from "./database";
 export { doSetup as firestore } from "./firestore";
 export { doSetup as functions } from "./functions";
 export { doSetup as hosting } from "./hosting";
