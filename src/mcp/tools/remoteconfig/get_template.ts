@@ -8,7 +8,7 @@ export const get_rc_template = tool(
     name: "get_template",
     description: "Retrieves a remote config template for the project",
     inputSchema: z.object({
-      versionNumber: z.string().optional(),
+      version_number: z.string().optional(),
     }),
     annotations: {
       title: "Get remote config template",
@@ -19,7 +19,7 @@ export const get_rc_template = tool(
       requiresProject: true,
     },
   },
-  async ({ versionNumber }, { projectId }) => {
-    return toContent(await getTemplate(projectId!, versionNumber));
+  async ({ version_number }, { projectId }) => {
+    return toContent(await getTemplate(projectId!, version_number));
   },
 );

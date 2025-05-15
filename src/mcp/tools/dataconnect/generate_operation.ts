@@ -16,11 +16,11 @@ export const generate_operation = tool(
         .describe(
           "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users requst",
         ),
-      serviceId: z
+      service_id: z
         .string()
         .nullish()
         .describe(
-          "Optional: Uses the serviceId from the firebase.json file if nothing provided. The serviceId of the deployed Firebase resource.",
+          "Optional: Uses the service ID from the firebase.json file if nothing provided. The service ID of the deployed Firebase resource.",
         ),
     }),
     annotations: {
@@ -34,8 +34,8 @@ export const generate_operation = tool(
       // TODO: Create an endpoint to check for GiF activiation.
     },
   },
-  async ({ prompt, serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+  async ({ prompt, service_id }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
     const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
     return toContent(schema);
   },
