@@ -5,7 +5,7 @@ import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logBullet, logWarning } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context } from "./args";
 import { createArchive } from "./util";
 
@@ -30,7 +30,8 @@ export default async function (context: Context, options: Options): Promise<void
       // Unfortunately, requests for a non-existent bucket from the GCS API sometimes return 403 responses as well as 404s.
       // We must attempt to create a new bucket on both 403s and 404s.
       if (errStatus === 403 || errStatus === 404) {
-        logBullet(
+        logLabeledBullet(
+          "apphosting",
           `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${bucketName}...`,
         );
         try {
@@ -52,7 +53,8 @@ export default async function (context: Context, options: Options): Promise<void
           });
         } catch (err) {
           if (getErrStatus((err as FirebaseError).original) === 403) {
-            logWarning(
+            logLabeledWarning(
+              "apphosting",
               "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
                 "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
                 "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
@@ -75,7 +77,10 @@ export default async function (context: Context, options: Options): Promise<void
         `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
     }
-    logBullet(`Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`);
+    logLabeledBullet(
+      "apphosting",
+      `Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`,
+    );
     const { bucket, object } = await gcs.uploadObject(
       {
         file: zippedSourcePath,
@@ -83,7 +88,7 @@ export default async function (context: Context, options: Options): Promise<void
       },
       `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`,
     );
-    logBullet(`Source code uploaded at gs://${bucket}/${object}`);
+    logLabeledBullet("apphosting", `Source code uploaded at gs://${bucket}/${object}`);
     context.backendStorageUris.set(
       cfg.backendId,
       `gs://firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}/${path.basename(zippedSourcePath)}`,

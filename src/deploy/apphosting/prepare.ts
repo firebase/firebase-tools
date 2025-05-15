@@ -11,7 +11,7 @@ import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devC
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
-import { logBullet, logWarning } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context } from "./args";
 
 /**
@@ -57,14 +57,18 @@ export default async function (context: Context, options: Options): Promise<void
       (backend) => parseBackendName(backend.name).id === cfg.backendId,
     );
     const locations = filteredBackends.map((b) => parseBackendName(b.name).location);
-    logWarning(
+    logLabeledWarning(
+      "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
         "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
   if (foundBackends.length > 0) {
-    logBullet(`Found backend(s) ${foundBackends.map((cfg) => cfg.backendId).join(", ")}`);
+    logLabeledBullet(
+      "apphosting",
+      `Found backend(s) ${foundBackends.map((cfg) => cfg.backendId).join(", ")}`,
+    );
   }
   for (const cfg of foundBackends) {
     const filteredBackends = backends.filter(
@@ -90,11 +94,12 @@ export default async function (context: Context, options: Options): Promise<void
         cfg.alwaysDeployFromSource = confirmDeploy;
         const configPath = path.join(options.projectRoot || "", "firebase.json");
         options.config.writeProjectFile(configPath, options.config.src);
-        logBullet(
-          `Your deployment preferences have been saved to firebase.json. On future invocations of "firebase deploy", your local source will be deployed to my-backend. You can edit this setting in your firebase.json at any time.`,
+        logLabeledBullet(
+          "apphosting",
+          `Your deployment preferences have been saved to firebase.json. On future invocations of "firebase deploy", your local source will be deployed to ${cfg.backendId}. You can edit this setting in your firebase.json at any time.`,
         );
         if (!confirmDeploy) {
-          logWarning(`Skipping deployment of backend ${cfg.backendId}`);
+          logLabeledWarning("apphosting", `Skipping deployment of backend ${cfg.backendId}`);
           continue;
         }
       }
@@ -128,76 +133,11 @@ export default async function (context: Context, options: Options): Promise<void
           "Please run 'firebase apphosting:backends:create' to create the backend, then retry deployment.",
       );
     }
-    logBullet(`Creating a new backend ${cfg.backendId}...`);
+    logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
     const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
     context.backendConfigs.set(cfg.backendId, cfg);
     context.backendLocations.set(cfg.backendId, location);
   }
-
-  // if (process.env.SHORT_CIRCUIT) {
-  //   throw new FirebaseError("short circuit");
-  // }
-
-  // for (const cfg of configs) {
-  //   const filteredBackends = backends.filter(
-  //     (backend) => parseBackendName(backend.name).id === cfg.backendId,
-  //   );
-  //   let location: string;
-  //   if (filteredBackends.length === 0) {
-  //     if (options.force) {
-  //       throw new FirebaseError(
-  //         `Failed to deploy in non-interactive mode: backend ${cfg.backendId} does not exist yet, ` +
-  //           "and we cannot create one for you because you must choose a primary region for the backend. " +
-  //           "Please run 'firebase apphosting:backends:create' to create the backend, then retry deployment.",
-  //       );
-  //     }
-  //     logBullet(`No backend '${cfg.backendId}' found. Creating a new backend...`);
-  //     ({ location } = await doSetupSourceDeploy(projectId, cfg.backendId));
-  //   } else if (filteredBackends.length === 1) {
-  //     if (cfg.alwaysDeployFromSource === false) {
-  //       continue;
-  //     }
-  //     const backend = filteredBackends[0];
-  //     ({ location } = parseBackendName(backend.name));
-  //     // We prompt the user for confirmation if they are attempting to deploy from source
-  //     // when the backend already has a remote repo connected. We force deploy if the command
-  //     // is run with the --force flag.
-  //     if (cfg.alwaysDeployFromSource === undefined && backend.codebase?.repository) {
-  //       const { connectionName, id } = parseGitRepositoryLinkName(backend.codebase.repository);
-  //       const gitRepositoryLink = await getGitRepositoryLink(
-  //         projectId,
-  //         location,
-  //         connectionName,
-  //         id,
-  //       );
-
-  //       if (!options.force) {
-  //         const confirmDeploy = await confirm({
-  //           default: true,
-  //           message: `${cfg.backendId} is linked to the remote repository at ${gitRepositoryLink.cloneUri}. Are you sure you want to deploy your local source?`,
-  //         });
-  //         cfg.alwaysDeployFromSource = confirmDeploy;
-  //         const configPath = path.join(options.projectRoot || "", "firebase.json");
-  //         options.config.writeProjectFile(configPath, options.config.src);
-  //         logBullet(
-  //           `Your deployment preferences have been saved to firebase.json. On future invocations of "firebase deploy", your local source will be deployed to my-backend. You can edit this setting in your firebase.json at any time.`,
-  //         );
-  //         if (!confirmDeploy) {
-  //           logWarning(`Skipping deployment of backend ${cfg.backendId}`);
-  //           continue;
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     const locations = filteredBackends.map((b) => parseBackendName(b.name).location);
-  //     throw new FirebaseError(
-  //       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-  //         "Please delete and recreate any backends that share an ID with another backend.",
-  //     );
-  //   }
-  //   context.backendConfigs.set(cfg.backendId, cfg);
-  //   context.backendLocations.set(cfg.backendId, location);
-  // }
   return;
 }
 

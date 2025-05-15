@@ -1,10 +1,15 @@
 import * as ora from "ora";
+import { consoleOrigin } from "../../api";
 import { getBackend } from "../../apphosting/backend";
 import { orchestrateRollout } from "../../apphosting/rollout";
-import { logError } from "../../logError";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logSuccess, logWarning } from "../../utils";
+import {
+  logLabeledBullet,
+  logLabeledError,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../../utils";
 import { Context } from "./args";
 
 /**
@@ -20,7 +25,8 @@ export default async function (context: Context, options: Options): Promise<void
     const location = context.backendLocations.get(backendId);
     const storageUri = context.backendStorageUris.get(backendId);
     if (!config || !location || !storageUri) {
-      logWarning(
+      logLabeledWarning(
+        "apphosting",
         `Failed to find metadata for backend ${backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
       continue;
@@ -43,6 +49,10 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
+  logLabeledBullet(
+    "apphosting",
+    `You may also track the rollout(s) at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
+  );
   const rolloutsSpinner = ora(
     `Starting rollout(s) for backend(s) ${Array.from(context.backendConfigs.keys()).join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
@@ -51,11 +61,11 @@ export default async function (context: Context, options: Options): Promise<void
     const res = results[i];
     if (res.status === "fulfilled") {
       const backend = await getBackend(projectId, backendIds[i]);
-      logSuccess(`Rollout for backend ${backendIds[i]} complete!`);
-      logSuccess(`Your backend is now deployed at:\n\thttps://${backend.uri}`);
+      logLabeledSuccess("apphosting", `Rollout for backend ${backendIds[i]} complete!`);
+      logLabeledSuccess("apphosting", `Your backend is now deployed at:\n\thttps://${backend.uri}`);
     } else {
-      logWarning(`Rollout for backend ${backendIds[i]} failed.`);
-      logError(res.reason);
+      logLabeledWarning("apphosting", `Rollout for backend ${backendIds[i]} failed.`);
+      logLabeledError("apphosting", res.reason);
     }
   }
   rolloutsSpinner.stop();
