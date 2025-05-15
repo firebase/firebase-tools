@@ -29,7 +29,7 @@ const cmd = new Command("experimental:mcp").before(requireAuth);
 export class FirebaseMcpServer {
   private _ready: boolean = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
-  optionsRoot?: string;
+  startupRoot?: string;
   cachedProjectRoot?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
@@ -39,7 +39,7 @@ export class FirebaseMcpServer {
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
-    this.optionsRoot = options.projectRoot;
+    this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
     this.server.registerCapabilities({ tools: { listChanged: true } });
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
@@ -73,7 +73,7 @@ export class FirebaseMcpServer {
   }
 
   private get clientConfigKey() {
-    return `mcp.clientConfigs.${this.clientInfo?.name || "<unknown-client>"}${this.optionsRoot ? `:${this.optionsRoot}` : ""}`;
+    return `mcp.clientConfigs.${this.clientInfo?.name || "<unknown-client>"}:${this.startupRoot || process.cwd()}`;
   }
 
   getStoredClientConfig(): ClientConfig {
@@ -91,8 +91,7 @@ export class FirebaseMcpServer {
     await this.ready();
     if (this.cachedProjectRoot) return this.cachedProjectRoot;
     const storedRoot = this.getStoredClientConfig().projectRoot;
-    this.cachedProjectRoot =
-      storedRoot || this.optionsRoot || process.env.PROJECT_ROOT || process.cwd();
+    this.cachedProjectRoot = storedRoot || this.startupRoot || process.cwd();
     return this.cachedProjectRoot;
   }
 
