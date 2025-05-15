@@ -14,12 +14,8 @@ export async function listTopIssues(
   projectId: string,
   appId: string,
   issueCount: number,
-  lookbackDays: number,
 ): Promise<string> {
   try {
-    const now = new Date();
-    const pastDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
-
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${issueCount}`);
 
@@ -49,9 +45,9 @@ export async function listTopIssues(
 }
 
 function parseProjectId(appId: string): string | undefined {
-  const appIdParts = appId.split(':');
+  const appIdParts = appId.split(":");
     if (appIdParts.length > 1) {
       return appIdParts[1];
     }
-  return undefined
+  return undefined;
 }

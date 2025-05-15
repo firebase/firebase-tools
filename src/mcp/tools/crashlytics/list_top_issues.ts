@@ -13,10 +13,6 @@ export const list_top_issues = tool(
         .number()
         .optional()
         .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified."),
-      lookback_days: z
-        .number()
-        .optional()
-        .describe("Number of days looked back to fetch top issues. Defaults to 7 if unspecified."),
     }),
     annotations: {
       title: "List Top Crashlytics Issues.",
@@ -27,12 +23,11 @@ export const list_top_issues = tool(
       requiresProject: true,
     },
   },
-  async ({ app_id, issue_count, lookback_days }, { projectId }) => {
+  async ({ app_id, issue_count }, { projectId }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
 
     issue_count ??= 10;
-    lookback_days ??= 7;
 
-    return toContent(await listTopIssues(projectId!, app_id, issue_count, lookback_days));
+    return toContent(await listTopIssues(projectId!, app_id, issue_count));
   },
 );
