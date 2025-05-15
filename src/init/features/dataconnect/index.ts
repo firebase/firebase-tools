@@ -432,10 +432,11 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
       default: basename(process.cwd()),
     });
     if (
-      setup.projectId && await confirm({
+      setup.projectId &&
+      (await confirm({
         message: `Do you want Gemini to help generate a schema for your service?`,
         default: false,
-      })
+      }))
     ) {
       logBullet(
         `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
