@@ -4,7 +4,11 @@ export {
   RequiredInfo as DatabaseInfo,
   actuate as databaseActuate,
 } from "./database";
-export { doSetup as firestore } from "./firestore";
+export {
+  askQuestions as firestoreAskQuestions,
+  RequiredInfo as FirestoreInfo,
+  actuate as firestoreActuate,
+} from "./firestore";
 export { doSetup as functions } from "./functions";
 export { doSetup as hosting } from "./hosting";
 export { doSetup as storage } from "./storage";

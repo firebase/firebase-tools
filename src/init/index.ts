@@ -27,6 +27,7 @@ export interface Setup {
 
 export interface SetupInfo {
   database?: features.DatabaseInfo;
+  firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
 }
 
@@ -52,7 +53,11 @@ const featuresList: Feature[] = [
     askQuestions: features.databaseAskQuestions,
     actuate: features.databaseActuate,
   },
-  { name: "firestore", doSetup: features.firestore },
+  {
+    name: "firestore",
+    askQuestions: features.firestoreAskQuestions,
+    actuate: features.firestoreActuate,
+  },
   {
     name: "dataconnect",
     // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
@@ -78,7 +83,16 @@ const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    const f = lookupFeature(nextFeature);
+    const f = featureMap.get(nextFeature);
+    if (!f) {
+      const availableFeatures = Object.keys(features)
+        .filter((f) => f !== "project")
+        .join(", ");
+      throw new FirebaseError(
+        `${clc.bold(nextFeature)} is not a valid feature. Must be one of ${availableFeatures}`,
+      );
+    }
+
     logger.info(
       clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
     );

@@ -181,9 +181,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     info.rules = await getDBRules(instanceDetails);
   }
 
-  // Add 'database' section to config.
-  setup.config.database = { rules: rulesFilename };
-  // Add 'database' section to featureInfo.
+  // Populate featureInfo for the actuate step later.
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.database = info;
 }
@@ -193,7 +191,11 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   if (!info) {
     throw new FirebaseError("No database RequiredInfo found in setup actuate.");
   }
+  // Populate defaults and update `firebase.json` config.
+  info.rules = info.rules || DEFAULT_RULES;
   info.rulesFilename = info.rulesFilename || "database.rules.json";
+  setup.config.database = { rules: info.rulesFilename };
+
   if (info.writeRules) {
     if (info.rules === DEFAULT_RULES) {
       writeDBRules(info.rules, `Default rules for ${setup.projectId}`, info.rulesFilename, config);
