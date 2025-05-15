@@ -73,7 +73,7 @@ export class FirebaseMcpServer {
   }
 
   private get clientConfigKey() {
-    return `mcp.clientConfigs.${this.clientInfo?.name || "<unknown-client>"}`;
+    return `mcp.clientConfigs.${this.clientInfo?.name || "<unknown-client>"}${this.optionsRoot ? `:${this.optionsRoot}` : ""}`;
   }
 
   getStoredClientConfig(): ClientConfig {
@@ -91,10 +91,6 @@ export class FirebaseMcpServer {
     await this.ready();
     if (this.cachedProjectRoot) return this.cachedProjectRoot;
     const storedRoot = this.getStoredClientConfig().projectRoot;
-    if (storedRoot) {
-      this.cachedProjectRoot = storedRoot;
-      return storedRoot;
-    }
     this.cachedProjectRoot =
       storedRoot || this.optionsRoot || process.env.PROJECT_ROOT || process.cwd();
     return this.cachedProjectRoot;
