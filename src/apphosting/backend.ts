@@ -14,7 +14,7 @@ import {
   secretManagerOrigin,
 } from "../api";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
-import { addServiceAccountToRoles } from "../gcp/resourceManager";
+import { addServiceAccountToRoles, getIamPolicy } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
 import { input, confirm, select, checkbox, search, Choice } from "../prompt";
@@ -173,6 +173,30 @@ export async function doSetup(
 }
 
 /**
+ * Setup up a new App Hosting backend to deploy from source.
+ */
+export async function doSetupSourceDeploy(
+  projectId: string,
+  backendId: string,
+): Promise<{ backend: Backend; location: string }> {
+  const location = await promptLocation(
+    projectId,
+    "Select a primary region to host your backend:\n",
+  );
+  const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
+  const createBackendSpinner = ora("Creating your new backend...").start();
+  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+  return {
+    backend,
+    location,
+  };
+}
+
+/**
  * Check that all GCP APIs required for App Hosting are enabled.
  */
 export async function ensureRequiredApisEnabled(projectId: string): Promise<void> {
@@ -225,6 +249,7 @@ export async function createGitRepoLink(
 export async function ensureAppHostingComputeServiceAccount(
   projectId: string,
   serviceAccount: string | null,
+  deployFromSource = false,
 ): Promise<void> {
   const sa = serviceAccount || defaultComputeServiceAccountEmail(projectId);
   const name = `projects/${projectId}/serviceAccounts/${sa}`;
@@ -246,6 +271,29 @@ export async function ensureAppHostingComputeServiceAccount(
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
+      );
+    }
+  }
+  // N.B. To deploy from source, the App Hosting Compute Service Account must have
+  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
+  // not add the objectViewer role, which means all existing customers will need to
+  // add it before deploying from source.
+  if (deployFromSource) {
+    const policy = await getIamPolicy(projectId);
+    const objectViewerBinding = policy.bindings.find(
+      (binding) => binding.role === "roles/storage.objectViewer",
+    );
+    if (
+      !objectViewerBinding ||
+      !objectViewerBinding.members.includes(
+        `serviceAccount:${defaultComputeServiceAccountEmail(projectId)}`,
+      )
+    ) {
+      await addServiceAccountToRoles(
+        projectId,
+        defaultComputeServiceAccountEmail(projectId),
+        ["roles/storage.objectViewer"],
+        /* skipAccountLookup= */ true,
       );
     }
   }
@@ -340,6 +388,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "roles/firebaseapphosting.computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
       "roles/developerconnect.readTokenAccessor",
+      "roles/storage.objectViewer",
     ],
     /* skipAccountLookup= */ true,
   );
