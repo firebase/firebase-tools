@@ -8,7 +8,7 @@ export const list_users = tool(
     name: "list_users",
     description: "Retrieves all users in the project up to the specified limit.",
     inputSchema: z.object({
-      limit: z.number().nullish().describe("The number of users to return - defaults to 100"),
+      limit: z.number().optional().default(100).describe("The number of users to return"),
     }),
     annotations: {
       title: "Get users from the Firebase project.",
@@ -19,7 +19,7 @@ export const list_users = tool(
       requiresProject: true,
     },
   },
-  async ({ limit }, { projectId }) => {
+  async ({ limit } = {}, { projectId }) => {
     if (!limit) {
       limit = 100;
     }

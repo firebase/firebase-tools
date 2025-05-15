@@ -3,20 +3,15 @@ import { ServerFeature } from "../types.js";
 import { authTools } from "./auth/index.js";
 import { dataconnectTools } from "./dataconnect/index.js";
 import { firestoreTools } from "./firestore/index.js";
-import { directoryTools } from "./directory/index.js";
 import { coreTools } from "./core/index.js";
 import { storageTools } from "./storage/index.js";
 import { messagingTools } from "./messaging/index.js";
 import { remoteConfigTools } from "./remoteconfig/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
-export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
+export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
   // Core tools are always present.
   const toolDefs: ServerTool[] = addFeaturePrefix("firebase", coreTools);
-  if (!fixedRoot) {
-    // Present if the root is not fixed.
-    toolDefs.push(...directoryTools);
-  }
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
@@ -54,12 +49,12 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
  * This is used for generating documentation.
  */
 export function markdownDocsOfTools(): string {
-  const allTools = availableTools(false, []);
+  const allTools = availableTools([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
   for (const tool of allTools) {
-    let feature = tool.mcp?._meta?.feature || "directory";
+    let feature = tool.mcp?._meta?.feature || "";
     if (feature === "firebase") {
       feature = "core";
     }

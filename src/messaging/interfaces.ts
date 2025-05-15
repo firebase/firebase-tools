@@ -28,4 +28,6 @@ export interface Notification {
    * The notification body
    */
   body?: string;
+  /** URL of an image to include in the notification. */
+  image?: string;
 }

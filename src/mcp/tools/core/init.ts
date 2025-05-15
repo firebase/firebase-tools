@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
+import { DEFAULT_RULES } from "../../../init/features/database.js";
 import { actuate, Setup, SetupInfo } from "../../../init/index.js";
 
 export const init = tool(
@@ -15,6 +16,18 @@ export const init = tool(
       //   .describe("Force the initialization without prompting for confirmation. Without force, it prompts if any existing files are overwritten."),
       features: z.object({
         // TODO: Add all the features here.
+        database: z.object({
+          rulesFilename: z
+            .string()
+            .optional()
+            .default("database.rules.json")
+            .describe("The file to use for Realtime Database Security Rules."),
+          rules: z
+            .string()
+            .optional()
+            .default(DEFAULT_RULES)
+            .describe("The security rules to use for Realtime Database Security Rules."),
+        }),
         dataconnect: z.object({
           serviceId: z
             .string()
@@ -24,6 +37,7 @@ export const init = tool(
             ),
           locationId: z
             .string()
+            .optional()
             .default("us-central1")
             .describe("The GCP region ID to set up the Firebase Data Connect service."),
           cloudSqlInstanceId: z
@@ -34,6 +48,7 @@ export const init = tool(
             ),
           cloudSqlDatabase: z
             .string()
+            .optional()
             .default("fdcdb")
             .describe("The Postgres database ID to use in the Firebase Data Connect service."),
         }),
@@ -65,7 +80,14 @@ export const init = tool(
         shouldProvisionCSQL: false,
       };
     }
-
+    if (features.database) {
+      featuresList.push("database");
+      featureInfo.database = {
+        rulesFilename: features.database.rulesFilename,
+        rules: features.database.rules,
+        writeRules: true,
+      };
+    }
     const setup: Setup = {
       config: config?.src,
       rcfile: rc?.data,
