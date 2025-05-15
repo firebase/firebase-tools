@@ -15,23 +15,23 @@ export const query_collection = tool(
       //   .string()
       //   .nullish()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
-      collectionPath: z
+      collection_path: z
         .string()
         .describe(
           "A collection path (e.g. `collectionName/` or `parentCollection/parentDocument/collectionName`)",
         ),
       filters: z
         .object({
-          compareValue: z
+          compare_value: z
             .object({
-              stringValue: z.string().nullish().describe("The string value to compare against."),
-              booleanValue: z.string().nullish().describe("The boolean value to compare against."),
-              stringArrayValue: z
+              string_value: z.string().nullish().describe("The string value to compare against."),
+              boolean_value: z.string().nullish().describe("The boolean value to compare against."),
+              stringArray_value: z
                 .array(z.string())
                 .nullish()
                 .describe("The string value to compare against."),
-              integerValue: z.number().nullish().describe("The integer value to compare against."),
-              doubleValue: z.number().nullish().describe("The double value to compare against."),
+              integer_value: z.number().nullish().describe("The integer value to compare against."),
+              double_value: z.number().nullish().describe("The double value to compare against."),
             })
             .describe("One and only one value may be specified per filters object."),
           field: z.string().describe("the field searching against"),
@@ -75,14 +75,14 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collectionPath, filters, order, limit }, { projectId }) => {
+  async ({ collection_path, filters, order, limit }, { projectId }) => {
     // database ??= "(default)";
 
-    if (!collectionPath || !collectionPath.length)
+    if (!collection_path || !collection_path.length)
       return mcpError("Must supply at least one collection path.");
 
     const structuredQuery: StructuredQuery = {
-      from: [{ collectionId: collectionPath, allDescendants: false }],
+      from: [{ collectionId: collection_path, allDescendants: false }],
     };
     if (filters) {
       structuredQuery.where = {
@@ -90,15 +90,15 @@ export const query_collection = tool(
           op: "AND",
           filters: filters.map((f) => {
             if (
-              f.compareValue.booleanValue &&
-              f.compareValue.doubleValue &&
-              f.compareValue.integerValue &&
-              f.compareValue.stringArrayValue &&
-              f.compareValue.stringValue
+              f.compare_value.boolean_value &&
+              f.compare_value.double_value &&
+              f.compare_value.integer_value &&
+              f.compare_value.stringArray_value &&
+              f.compare_value.string_value
             ) {
               throw mcpError("One and only one value may be specified per filters object.");
             }
-            const out = Object.entries(f.compareValue).filter(([, value]) => {
+            const out = Object.entries(f.compare_value).filter(([, value]) => {
               return value !== null && value !== undefined;
             });
             return {
