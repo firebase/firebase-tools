@@ -12,7 +12,6 @@ export async function ensureApis(projectId: string): Promise<void> {
 export async function ensureSparkApis(projectId: string): Promise<void> {
   // These are the APIs that can be enabled without a billing account.
   await ensure(projectId, api.cloudSQLAdminOrigin(), prefix);
-  await ensure(projectId, api.cloudAiCompanionOrigin(), prefix);
 }
 
 export async function ensureGIFApis(projectId: string): Promise<void> {
