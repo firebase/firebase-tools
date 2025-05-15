@@ -13,7 +13,7 @@ export const execute_graphql = tool(
     description: "Executes an arbitrary GraphQL against a Data Connect service or its emulator.",
     inputSchema: z.object({
       query: z.string().describe("A GraphQL query or mutation to execute against the service"),
-      serviceId: z
+      service_id: z
         .string()
         .nullable()
         .describe(
@@ -25,7 +25,7 @@ export const execute_graphql = tool(
         .describe(
           "A stringified JSON object containing variables for the operation. MUST be valid JSON.",
         ),
-      useEmulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
+      use_emulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
       title: "Executes a arbitrary GraphQL query or mutation against a Data Connect service",
@@ -37,14 +37,14 @@ export const execute_graphql = tool(
     },
   },
   async (
-    { query, serviceId, variables: unparsedVariables, useEmulator },
+    { query, service_id, variables: unparsedVariables, use_emulator },
     { projectId, config, host },
   ) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
 
     let apiClient: Client;
 
-    if (useEmulator) {
+    if (use_emulator) {
       apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();

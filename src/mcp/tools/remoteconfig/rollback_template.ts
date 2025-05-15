@@ -8,7 +8,7 @@ export const rollback_rc_template = tool(
     name: "rollback_template",
     description: "Rollback to a specific version of Remote Config template for a project",
     inputSchema: z.object({
-      versionNumber: z.number().optional(),
+      version_number: z.number().optional(),
     }),
     annotations: {
       title: "Rollback remote config template",
@@ -19,10 +19,10 @@ export const rollback_rc_template = tool(
       requiresProject: true,
     },
   },
-  async ({ versionNumber }, { projectId }) => {
-    if (versionNumber === undefined) {
+  async ({ version_number }, { projectId }) => {
+    if (version_number === undefined) {
       return mcpError(`No version number specified in the rollback requests`);
     }
-    return toContent(await rollbackTemplate(projectId!, versionNumber!));
+    return toContent(await rollbackTemplate(projectId!, version_number!));
   },
 );

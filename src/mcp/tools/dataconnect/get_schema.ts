@@ -11,7 +11,7 @@ export const get_schema = tool(
     description:
       "List the Firebase Data Connect Schema in the project, which includes Cloud SQL data sources and the GraphQL Schema describing what tables are available.",
     inputSchema: z.object({
-      serviceId: z
+      service_id: z
         .string()
         .nullable()
         .describe(
@@ -27,8 +27,8 @@ export const get_schema = tool(
       requiresAuth: true,
     },
   },
-  async ({ serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+  async ({ service_id }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
     const schemas = await client.listSchemas(serviceInfo.serviceName, ["*"]);
     return toContent(schemas?.map(schemaToText).join("\n\n"));
   },

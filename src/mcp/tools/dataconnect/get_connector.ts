@@ -11,7 +11,7 @@ export const get_connector = tool(
     description:
       "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
-      serviceId: z
+      service_id: z
         .string()
         .nullable()
         .describe(
@@ -27,8 +27,8 @@ export const get_connector = tool(
       requiresAuth: true,
     },
   },
-  async ({ serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+  async ({ service_id }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
     const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
     return toContent(connectors.map(connectorToText).join("\n\n"));
   },

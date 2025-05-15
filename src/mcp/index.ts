@@ -32,7 +32,6 @@ export class FirebaseMcpServer {
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
-  fixedRoot?: boolean;
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
 
@@ -57,7 +56,6 @@ export class FirebaseMcpServer {
       (configstore.get(PROJECT_ROOT_KEY) as string) ??
       process.env.PROJECT_ROOT ??
       process.cwd();
-    if (options.projectRoot) this.fixedRoot = true;
     this.detectActiveFeatures();
   }
 
@@ -90,7 +88,6 @@ export class FirebaseMcpServer {
 
   get availableTools(): ServerTool[] {
     return availableTools(
-      !!this.fixedRoot,
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );
   }
