@@ -109,6 +109,8 @@ export interface WebviewToExtensionParamsMap {
   /** Clears data from a running data connect emulator */
   "fdc.clear-emulator-data": void;
 
+  "firebase.activate.gemini": void;
+
   // Initialize "result" tab.
   getDataConnectResults: void;
 
