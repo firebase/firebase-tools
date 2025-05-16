@@ -11,11 +11,13 @@ import { init } from "./init.js";
 import { get_environment } from "./get_environment.js";
 import { update_environment } from "./update_environment.js";
 // import { consult_assistant } from "./consult_assistant.js";
+import { list_projects } from "./list_projects.js";
 
 export const coreTools: ServerTool[] = [
   get_project,
   list_apps,
   get_admin_sdk_config,
+  list_projects,
   get_sdk_config,
   create_project,
   create_app,
