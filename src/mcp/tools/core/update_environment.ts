@@ -21,7 +21,7 @@ export const update_environment = tool(
         .string()
         .optional()
         .describe(
-          "Change the active project for the current project directory. Should be a Firbase project ID or configured project alias.",
+          "Change the active project for the current project directory. Should be a Firebase project ID or configured project alias.",
         ),
       active_user_account: z
         .string()
@@ -31,8 +31,8 @@ export const update_environment = tool(
         ),
     }),
     annotations: {
-      title: "Get Current Firebase Project",
-      readOnlyHint: true,
+      title: "Update Firebase Environment",
+      readOnlyHint: false,
     },
     _meta: {
       requiresAuth: false,

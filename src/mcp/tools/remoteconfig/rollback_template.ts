@@ -3,12 +3,14 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { rollbackTemplate } from "../../../remoteconfig/rollback.js";
 
-export const rollback_rc_template = tool(
+export const rollback_template = tool(
   {
     name: "rollback_template",
     description: "Rollback to a specific version of Remote Config template for a project",
     inputSchema: z.object({
-      version_number: z.number().optional(),
+      version_number: z
+        .number()
+        .describe("The version number to roll back to. This field is required."),
     }),
     annotations: {
       title: "Rollback remote config template",
