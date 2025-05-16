@@ -23,7 +23,7 @@ import { loadRC } from "../rc.js";
 import { EmulatorHubClient } from "../emulator/hubClient.js";
 import { existsSync } from "node:fs";
 
-const SERVER_VERSION = "0.0.1";
+const SERVER_VERSION = "0.1.0";
 
 const cmd = new Command("experimental:mcp").before(requireAuth);
 
