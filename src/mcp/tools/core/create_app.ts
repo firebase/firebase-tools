@@ -12,7 +12,12 @@ export const create_app = tool(
     name: "create_app",
     description: "Creates a new app in your Firebase project for Web, iOS, or Android.",
     inputSchema: z.object({
-      display_name: z.string().optional().describe("The user-friendly display name for your app."),
+      display_name: z
+        .string()
+        .optional()
+        .describe(
+          "The user-friendly display name for your app. If not provided, a default name may be generated.",
+        ),
       platform: z
         .enum(["web", "ios", "android"])
         .describe("The platform for which to create an app."),
@@ -23,22 +28,19 @@ export const create_app = tool(
             .describe("The package name for your Android app (e.g., com.example.myapp)."),
         })
         .optional()
-        .describe("Configuration for Android apps."),
+        .describe("Configuration for Android apps. Required if platform is 'android'."),
       ios_config: z
         .object({
           bundle_id: z
             .string()
             .describe("The bundle ID for your iOS app (e.g., com.example.myapp)."),
-          app_store_id: z
-            .string()
-            .optional()
-            .describe("The App Store ID for your iOS app (optional)."),
+          app_store_id: z.string().optional().describe("The App Store ID for your iOS app."),
         })
         .optional()
-        .describe("Configuration for iOS apps."),
+        .describe("Configuration for iOS apps. Required if platform is 'ios'."),
     }),
     annotations: {
-      title: "Create App",
+      title: "Create Firebase App",
       destructiveHint: false,
       readOnlyHint: false,
     },

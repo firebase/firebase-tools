@@ -27,7 +27,7 @@ async function checkCloudProject(projectId: string): Promise<ProjectInfo | undef
 export const create_project = tool(
   {
     name: "create_project",
-    description: "Creates a new Firebase project or returns an existing one.",
+    description: "Creates a new Firebase project.",
     inputSchema: z.object({
       project_id: z.string().describe("The project ID to create or use."),
       display_name: z
