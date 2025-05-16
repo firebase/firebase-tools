@@ -36,7 +36,7 @@ npx -y firebase-tools login
 
 ### Command Line Options
 
-- `--dir <absolute_dir_path>`: The absolute path of a directory containing `firebase.json` (or where you want to initialize `firebase.json`) to set a workspace context for the MCP server. If unspecified, thr working directory where the server is started is used. The `{get|update}_project_environment` can be used to interactively change the project directory.
+- `--dir <absolute_dir_path>`: The absolute path of a directory containing `firebase.json` (or where you want to initialize `firebase.json`) to set a workspace context for the MCP server. If unspecified, the working directory where the server is started is used. The `{get|update}_project_environment` can be used to interactively change the project directory.
 - `--only <feature1,feature2>`: A comma-separated list of feature groups to activate. Use this to limit the tools exposed to only features you are actively using.
 
 ## Tools
