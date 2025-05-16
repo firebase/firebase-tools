@@ -127,6 +127,8 @@ export const remoteConfigApiOrigin = () =>
   utils.envOverride("FIREBASE_REMOTE_CONFIG_URL", "https://firebaseremoteconfig.googleapis.com");
 export const messagingApiOrigin = () =>
   utils.envOverride("FIREBASE_MESSAGING_CONFIG_URL", "https://fcm.googleapis.com");
+export const crashlyticsApiOrigin = () =>
+  utils.envOverride("FIREBASE_CRASHLYTICS_URL", "https://firebasecrashlytics.googleapis.com");
 export const resourceManagerOrigin = () =>
   utils.envOverride("FIREBASE_RESOURCEMANAGER_URL", "https://cloudresourcemanager.googleapis.com");
 export const rulesOrigin = () =>
