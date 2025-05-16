@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { getFirebaseProjectPage } from "../../../management/projects.js";
-import { FirebaseProjectMetadata } from "../../../types/project/index.d.js";
 
 const PROJECT_LIST_PAGE_SIZE = 20;
 
