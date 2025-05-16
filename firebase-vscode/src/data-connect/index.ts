@@ -31,8 +31,10 @@ import { registerWebview } from "../webview";
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
-import { AnalyticsLogger } from "../analytics";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { emulators } from "../init/features";
+import { GCAToolClient } from "./ai-tools/gca-tool";
+import { GeminiToolController } from "./ai-tools/tool-controller";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -157,6 +159,23 @@ export function registerFdc(
     context,
   );
 
+  /** Gemini Related activations */
+  const toolController = new GeminiToolController(
+    analyticsLogger,
+    fdcService,
+    dataConnectConfigs,
+  );
+  const gcaToolClient = new GCAToolClient(context, toolController);
+
+  gcaToolClient.activate();
+
+  broker.on("firebase.activate.gemini", () => {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.TRY_GEMINI_CLICKED);
+    vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+  });
+
+  /** End Gemini activations */
+
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
@@ -231,6 +250,7 @@ export function registerFdc(
     registerFdcSdkGeneration(broker, analyticsLogger),
     registerTerminalTasks(broker, analyticsLogger),
     operationCodeLensProvider,
+
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
       // inside the test_projects folder.
@@ -256,6 +276,7 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    toolController,
     {
       dispose: () => {
         client.stop();
