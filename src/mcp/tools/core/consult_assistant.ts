@@ -14,7 +14,7 @@ export const consult_assistant = tool(
         .describe("A description of what the user is trying to do or learn with Firebase."),
     }),
     annotations: {
-      title: "Helps answer queries and provide information related to Firebase.",
+      title: "Consult Firebase Assistant",
       readOnlyHint: true,
     },
     _meta: {

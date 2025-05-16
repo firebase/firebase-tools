@@ -57,10 +57,13 @@ export const query_collection = tool(
         .object({
           orderBy: z.string().describe("the field to order by"),
           orderByDirection: z
-            .enum(["ASCENDING", "DESCENDING", "DIRECTION_UNSPECIFIED"])
+            .enum(["ASCENDING", "DESCENDING"])
             .describe("the direction to order values"),
         })
-        .nullish(),
+        .nullish()
+        .describe(
+          "Specifies the field and direction to order the results. If not provided, the order is undefined.",
+        ),
       limit: z
         .number()
         .describe("The maximum amount of records to return. Default is 10.")

@@ -8,69 +8,76 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Setup the Firebase workspace and initialize selected features." +
-      " It takes a feature map that describe each desired product. All the features are optional." +
-      " Provide only requested products.",
+      "Initializes selected Firebase features in the workspace. All features are optional; provide only the products you wish to set up. You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration.",
     inputSchema: z.object({
-      // force: z
-      //   .boolean()
-      //   .default(false)
-      //   .describe("Force the initialization without prompting for confirmation. Without force, it prompts if any existing files are overwritten."),
       features: z.object({
-        database: z.object({
-          rules_filename: z
-            .string()
-            .optional()
-            .default("database.rules.json")
-            .describe("The file to use for Realtime Database Security Rules."),
-          rules: z
-            .string()
-            .optional()
-            .default(DEFAULT_RULES)
-            .describe("The security rules to use for Realtime Database Security Rules."),
-        }),
-        firestore: z.object({
-          database_id: z
-            .string()
-            .optional()
-            .default("(default)")
-            .describe("The database ID to use for Firestore."),
-          rules_filename: z
-            .string()
-            .optional()
-            .default("firestore.rules")
-            .describe("The file to use for Firestore Security Rules."),
-          rules: z
-            .string()
-            .optional()
-            .describe(
-              "The security rules to use for Firestore Security Rules. Default to open rules that expire in 30 days.",
-            ),
-        }),
-        dataconnect: z.object({
-          service_id: z
-            .string()
-            .optional()
-            .describe(
-              "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
-            ),
-          location_id: z
-            .string()
-            .optional()
-            .default("us-central1")
-            .describe("The GCP region ID to set up the Firebase Data Connect service."),
-          cloudsql_instance_id: z
-            .string()
-            .optional()
-            .describe(
-              "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
-            ),
-          cloudsql_database: z
-            .string()
-            .optional()
-            .default("fdcdb")
-            .describe("The Postgres database ID to use in the Firebase Data Connect service."),
-        }),
+        database: z
+          .object({
+            rules_filename: z
+              .string()
+              .optional()
+              .default("database.rules.json")
+              .describe("The file to use for Realtime Database Security Rules."),
+            rules: z
+              .string()
+              .optional()
+              .default(DEFAULT_RULES)
+              .describe("The security rules to use for Realtime Database Security Rules."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Realtime Database in this project directory.",
+          ),
+        firestore: z
+          .object({
+            database_id: z
+              .string()
+              .optional()
+              .default("(default)")
+              .describe("The database ID to use for Firestore."),
+            rules_filename: z
+              .string()
+              .optional()
+              .default("firestore.rules")
+              .describe("The file to use for Firestore Security Rules."),
+            rules: z
+              .string()
+              .optional()
+              .describe(
+                "The security rules to use for Firestore Security Rules. Default to open rules that expire in 30 days.",
+              ),
+          })
+          .optional()
+          .describe("Provide this object to initialize Cloud Firestore in this project directory."),
+        dataconnect: z
+          .object({
+            service_id: z
+              .string()
+              .optional()
+              .describe(
+                "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
+              ),
+            location_id: z
+              .string()
+              .optional()
+              .default("us-central1")
+              .describe("The GCP region ID to set up the Firebase Data Connect service."),
+            cloudsql_instance_id: z
+              .string()
+              .optional()
+              .describe(
+                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
+              ),
+            cloudsql_database: z
+              .string()
+              .optional()
+              .default("fdcdb")
+              .describe("The Postgres database ID to use in the Firebase Data Connect service."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Data Connect in this project directory.",
+          ),
       }),
     }),
     annotations: {

@@ -36,7 +36,7 @@ export const execute_mutation = tool(
       use_emulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
-      title: "Executes a deployed Data Connect query or mutation",
+      title: "Execute Data Connect Connector Mutation",
       readOnlyHint: false,
     },
     _meta: {

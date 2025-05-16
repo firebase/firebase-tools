@@ -5,21 +5,23 @@ import { setCustomClaim } from "../../../gcp/auth.js";
 
 export const set_claim = tool(
   {
-    name: "set_claims",
+    name: "set_claim",
     description:
-      "Sets custom claims on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value. Specify ONLY ONE OF `value` or `json_value` parameters.",
+      "Sets a custom claim on a specific user's account. Use to create trusted values associated with a user e.g. marking them as an admin. Claims are limited in size and should be succinct in name and value. Specify ONLY ONE OF `value` or `json_value` parameters.",
     inputSchema: z.object({
       uid: z.string().describe("the UID of the user to update"),
       claim: z.string().describe("the name (key) of the claim to update, e.g. 'admin'"),
       value: z
         .union([z.string(), z.number(), z.boolean()])
         .optional()
-        .describe("set the value of the custom claim to the specified simple scalar value"),
+        .describe(
+          "Set the value of the custom claim to the specified simple scalar value. One of `value` or `json_value` must be provided.",
+        ),
       json_value: z
         .string()
         .optional()
         .describe(
-          "set the claim to a complex JSON value like an object or an array by providing stringified JSON. string must be parseable as valid JSON",
+          "Set the claim to a complex JSON value like an object or an array by providing stringified JSON. String must be parseable as valid JSON. One of `value` or `json_value` must be provided.",
         ),
     }),
     annotations: {
