@@ -8,13 +8,18 @@ export const get_object_download_url = tool(
     name: "get_object_download_url",
     description: "Retrieves the download URL for an object in Firebase Storage.",
     inputSchema: z.object({
-      bucket: z.string().nullish().describe("The bucket name in Firebase Storage."),
+      bucket: z
+        .string()
+        .nullish()
+        .describe(
+          "The bucket name in Firebase Storage. If not provided, defaults to the project's default bucket (e.g., `{projectid}.firebasestorage.app`).",
+        ),
       object_path: z
         .string()
         .describe("The path to the object in Firebase storage without the bucket name attached"),
     }),
     annotations: {
-      title: "Get the download url for an object in Firebase Storage.",
+      title: "Get Storage Object Download URL",
       readOnlyHint: true,
     },
     _meta: {

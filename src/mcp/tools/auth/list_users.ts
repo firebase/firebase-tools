@@ -8,10 +8,14 @@ export const list_users = tool(
     name: "list_users",
     description: "Retrieves all users in the project up to the specified limit.",
     inputSchema: z.object({
-      limit: z.number().optional().default(100).describe("The number of users to return"),
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("The number of users to return. Defaults to 100 if not supplied."),
     }),
     annotations: {
-      title: "Get users from the Firebase project.",
+      title: "List Firebase Users",
       readOnlyHint: true,
     },
     _meta: {
@@ -24,6 +28,13 @@ export const list_users = tool(
       limit = 100;
     }
 
-    return toContent(await listUsers(projectId!, limit));
+    const users = await listUsers(projectId!, limit);
+    const usersPruned = users.map((user) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, salt, ...prunedUser } = user;
+      return prunedUser;
+    });
+
+    return toContent(usersPruned);
   },
 );
