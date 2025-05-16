@@ -1,5 +1,11 @@
 ## NEXT
 
+- [Added] @data-connect tool callable from the Gemini Code Assist extension.
+
+## 1.3.1
+
+- Updated internal `firebase-tools` dependency to 14.2.1
+
 ## 1.3.0
 
 - [Fixed] Fixed an issue where adhoc operations would fail to execute

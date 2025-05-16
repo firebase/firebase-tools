@@ -7,7 +7,7 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
-import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
+import { ActiveRuntime } from "./deploy/functions/runtimes/supported/types";
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -167,7 +167,7 @@ export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 export type FunctionConfig = {
   source?: string;
   ignore?: string[];
-  runtime?: Exclude<Runtime, DecommissionedRuntime>;
+  runtime?: ActiveRuntime;
   codebase?: string;
 } & Deployable;
 
@@ -232,7 +232,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: number | string;
+    port?: number;
   };
   extensions?: {};
   eventarc?: {
@@ -264,6 +264,17 @@ export type DataConnectMultiple = DataConnectSingle[];
 
 export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
+export type AppHostingSingle = {
+  backendId: string;
+  rootDir: string;
+  ignore: string[];
+  alwaysDeployFromSource?: boolean;
+};
+
+export type AppHostingMultiple = AppHostingSingle[];
+
+export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
+
 export type FirebaseConfig = {
   /**
    * @TJS-format uri
@@ -278,4 +289,5 @@ export type FirebaseConfig = {
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
+  apphosting?: AppHostingConfig;
 };

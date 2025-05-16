@@ -5,6 +5,7 @@ import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";
 import { FirebaseError, isBillingError } from "./error";
+import { logger } from "./logger";
 
 export const POLL_SETTINGS = {
   pollInterval: 10000,
@@ -171,6 +172,21 @@ export async function ensure(
     utils.logLabeledWarning(prefix, `missing required API ${bold(hostname)}. Enabling now...`);
   }
   return enableApiWithRetries(projectId, hostname, prefix, silent);
+}
+
+export async function bestEffortEnsure(
+  projectId: string,
+  apiUri: string,
+  prefix: string,
+  silent = false,
+): Promise<void> {
+  try {
+    await ensure(projectId, apiUri, prefix, silent);
+  } catch (err: any) {
+    logger.debug(
+      `Unable to check that ${apiUri} is enabled on ${projectId}. Calls to it will fail if it is not enabled`,
+    );
+  }
 }
 
 /**

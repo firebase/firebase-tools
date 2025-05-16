@@ -6,7 +6,7 @@ import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { confirm, promptOnce } from "../prompt";
+import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -43,8 +43,7 @@ export async function writeToManifest(
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");
     if (allowOverwrite) {
-      const overwrite = await promptOnce({
-        type: "list",
+      const overwrite = await select({
         message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
         choices: [
           { name: "Overwrite", value: true },
@@ -64,7 +63,7 @@ export async function writeToManifest(
 
 export async function writeEmptyManifest(
   config: Config,
-  options: { nonInteractive: boolean; force: boolean },
+  options?: { nonInteractive: boolean; force: boolean },
 ): Promise<void> {
   if (!fs.existsSync(config.path("extensions"))) {
     fs.mkdirSync(config.path("extensions"));
@@ -76,8 +75,8 @@ export async function writeEmptyManifest(
     if (
       !(await confirm({
         message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite them?`,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
+        nonInteractive: options?.nonInteractive,
+        force: options?.force,
         default: false,
       }))
     ) {

@@ -23,6 +23,7 @@ export const VALID_DEPLOY_TARGETS = [
   "remoteconfig",
   "extensions",
   "dataconnect",
+  "apphosting",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],

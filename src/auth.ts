@@ -11,7 +11,7 @@ import { configstore } from "./configstore";
 import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { promptOnce } from "./prompt";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
@@ -103,6 +103,23 @@ export function getAllAccounts(): Account[] {
   res.push(...getAdditionalAccounts());
 
   return res;
+}
+
+/**
+ * Throw an error if the provided email is not a signed-in user.
+ */
+export function assertAccount(email: string, options?: { mcp?: boolean }) {
+  const allAccounts = getAllAccounts();
+  const accountExists = allAccounts.some((a) => a.user.email === email);
+  if (!accountExists) {
+    throw new FirebaseError(
+      `Account ${email} does not exist, ${
+        options?.mcp
+          ? `use the 'firebase_get_environment' tool to see available accounts or instruct the user to use the 'firebase login:add' terminal command to add a new account.`
+          : `run "${clc.bold("firebase login:list")} to see valid accounts`
+      }`,
+    );
+  }
 }
 
 /**
@@ -210,7 +227,19 @@ export function setProjectAccount(projectDir: string, email: string) {
 /**
  * Set the global default account.
  */
-export function setGlobalDefaultAccount(account: Account) {
+export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
+  let account: Account;
+  if (typeof accountOrEmail === "string") {
+    const accountFromEmail = getAllAccounts().find((acc) => acc.user.email === accountOrEmail)!;
+    if (!accountFromEmail)
+      throw new FirebaseError(
+        `Account '${accountOrEmail}' is not a signed-in user on this device.`,
+      );
+    account = accountFromEmail;
+  } else {
+    account = accountOrEmail;
+  }
+
   configstore.set("user", account.user);
   configstore.set("tokens", account.tokens);
 
@@ -429,10 +458,7 @@ async function loginRemotely(): Promise<UserCredentials> {
   logger.info("3. Paste or enter the authorization code below once you have it:");
   logger.info();
 
-  const code = await promptOnce({
-    type: "input",
-    message: "Enter authorization code:",
-  });
+  const code = await input({ message: "Enter authorization code:" });
 
   try {
     const tokens = await getTokensFromAuthorizationCode(

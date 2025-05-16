@@ -12,7 +12,7 @@ import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { prompt, Question } from "../prompt";
+import { input } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
@@ -37,12 +37,10 @@ const sqlKeywords = [
 
 async function promptForQuery(): Promise<string> {
   let query = "";
-  let line = "";
+  const line = "";
 
   do {
-    const question: Question = {
-      type: "input",
-      name: "line",
+    let line = await input({
       message: query ? "> " : "Enter your SQL query (or '.exit'):",
       transformer: (input: string) => {
         // Highlight SQL keywords
@@ -51,9 +49,8 @@ async function promptForQuery(): Promise<string> {
           .map((word) => (sqlKeywords.includes(word.toUpperCase()) ? clc.cyan(word) : word))
           .join(" ");
       },
-    };
-
-    ({ line } = await prompt({ nonInteractive: false }, [question]));
+      nonInteractive: false,
+    });
     line = line.trimEnd();
 
     if (line.toLowerCase() === ".exit") {
