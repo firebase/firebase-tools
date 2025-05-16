@@ -32,70 +32,70 @@ let choices: {
   checked: boolean;
   hidden?: boolean;
 }[] = [
-    {
-      value: "dataconnect",
-      name: "Data Connect: Set up a Firebase Data Connect service",
-      checked: false,
-    },
-    {
-      value: "firestore",
-      name: "Firestore: Configure security rules and indexes files for Firestore",
-      checked: false,
-    },
-    {
-      value: "functions",
-      name: "Functions: Configure a Cloud Functions directory and its files",
-      checked: false,
-    },
-    {
-      value: "apphosting",
-      name: "App Hosting: Enable web app deployments with App Hosting",
-      checked: false,
-      hidden: false,
-    },
-    {
-      value: "hosting",
-      name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
-      checked: false,
-    },
-    {
-      value: "storage",
-      name: "Storage: Configure a security rules file for Cloud Storage",
-      checked: false,
-    },
-    {
-      value: "emulators",
-      name: "Emulators: Set up local emulators for Firebase products",
-      checked: false,
-    },
-    {
-      value: "remoteconfig",
-      name: "Remote Config: Configure a template file for Remote Config",
-      checked: false,
-    },
-    {
-      value: "extensions",
-      name: "Extensions: Set up an empty Extensions manifest",
-      checked: false,
-    },
-    {
-      value: "database",
-      name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
-      checked: false,
-    },
-    {
-      value: "hosting:github",
-      name: "Hosting: Set up GitHub Action deploys",
-      checked: false,
-      hidden: true,
-    },
-    {
-      value: "dataconnect:sdk",
-      name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
-      checked: false,
-      hidden: true,
-    },
-  ];
+  {
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
+    checked: false,
+  },
+  {
+    value: "firestore",
+    name: "Firestore: Configure security rules and indexes files for Firestore",
+    checked: false,
+  },
+  {
+    value: "functions",
+    name: "Functions: Configure a Cloud Functions directory and its files",
+    checked: false,
+  },
+  {
+    value: "apphosting",
+    name: "App Hosting: Enable web app deployments with App Hosting",
+    checked: false,
+    hidden: false,
+  },
+  {
+    value: "hosting",
+    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    checked: false,
+  },
+  {
+    value: "storage",
+    name: "Storage: Configure a security rules file for Cloud Storage",
+    checked: false,
+  },
+  {
+    value: "emulators",
+    name: "Emulators: Set up local emulators for Firebase products",
+    checked: false,
+  },
+  {
+    value: "remoteconfig",
+    name: "Remote Config: Configure a template file for Remote Config",
+    checked: false,
+  },
+  {
+    value: "extensions",
+    name: "Extensions: Set up an empty Extensions manifest",
+    checked: false,
+  },
+  {
+    value: "database",
+    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    checked: false,
+  },
+  {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+    hidden: true,
+  },
+  {
+    value: "dataconnect:sdk",
+    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  },
+];
 
 if (isEnabled("genkit")) {
   choices = [
@@ -125,9 +125,9 @@ This command will create or update 'firebase.json' and '.firebaserc' configurati
 
 To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
 ${[...featureNames]
-    .sort()
-    .map((n) => `\n  - ${n}`)
-    .join("")}`;
+  .sort()
+  .map((n) => `\n  - ${n}`)
+  .join("")}`;
 
 export const command = new Command("init [feature]")
   .description("interactively configure the current directory as a Firebase project directory")
@@ -144,9 +144,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (feature && !featureNames.includes(feature)) {
     return utils.reject(
       clc.bold(feature) +
-      " is not a supported feature; must be one of " +
-      featureNames.join(", ") +
-      ".",
+        " is not a supported feature; must be one of " +
+        featureNames.join(", ") +
+        ".",
     );
   }
 
@@ -181,10 +181,10 @@ export async function initAction(feature: string, options: Options): Promise<voi
 
   logger.info(
     clc.yellow(clc.bold(BANNER_TEXT)) +
-    "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
-    clc.bold(config.projectDir) +
-    "\n" +
-    warningText,
+      "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
+      clc.bold(config.projectDir) +
+      "\n" +
+      warningText,
   );
 
   const setup: Setup = {
@@ -229,9 +229,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (!setup.features || setup.features?.length === 0) {
     throw new FirebaseError(
       "Must select at least one feature. Use " +
-      clc.bold(clc.underline("SPACEBAR")) +
-      " to select features, or specify a feature by running " +
-      clc.bold("firebase init [feature_name]"),
+        clc.bold(clc.underline("SPACEBAR")) +
+        " to select features, or specify a feature by running " +
+        clc.bold("firebase init [feature_name]"),
     );
   }
 
