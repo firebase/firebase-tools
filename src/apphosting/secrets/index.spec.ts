@@ -33,21 +33,21 @@ describe("secrets", () => {
   });
 
   describe("serviceAccountsForbackend", () => {
-    it("uses explicit account", () => {
+    it("uses explicit account", async () => {
       const backend = {
         serviceAccount: "sa",
       } as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
+      expect(await secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
         buildServiceAccount: "sa",
         runServiceAccount: "sa",
       });
     });
 
-    it("has a fallback for legacy SAs", () => {
+    it("has a fallback for legacy SAs", async () => {
       const backend = {} as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
+      expect(await secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
         buildServiceAccount: gcb.getDefaultServiceAccount("number"),
-        runServiceAccount: gce.getDefaultServiceAccount("number"),
+        runServiceAccount: await gce.getDefaultServiceAccount("number"),
       });
     });
   });
