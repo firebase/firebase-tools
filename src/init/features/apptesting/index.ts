@@ -14,13 +14,14 @@ export async function askQuestions(setup: Setup): Promise<void> {
   setup.featureInfo = {
     ...setup.featureInfo,
     apptesting: {
-      testDir: setup.featureInfo?.apptesting?.testDir ||
+      testDir:
+        setup.featureInfo?.apptesting?.testDir ||
         (await input({
           message: "What do you want to use as your test directory?",
           default: "tests",
-        }))
-    }
-  }
+        })),
+    },
+  };
 }
 
 export async function actuate(setup: Setup, config: Config): Promise<void> {

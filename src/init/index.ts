@@ -81,7 +81,11 @@ const featuresList: Feature[] = [
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
   { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
-  { name: "apptesting", askQuestions: features.apptestingAskQuestions, actuate: features.apptestingAcutate }
+  {
+    name: "apptesting",
+    askQuestions: features.apptestingAskQuestions,
+    actuate: features.apptestingAcutate,
+  },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
