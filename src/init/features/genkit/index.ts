@@ -641,24 +641,16 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
 }
 
 function renderConfig(pluginNames: string[], template: string, enableTelemetry: boolean): string {
-  const imports = pluginNames.map((pluginName) =>
-    generateImportStatement(pluginToInfo[pluginName].imports, pluginName),
-  );
-  if (enableTelemetry) {
-    imports.push(generateImportStatement("enableFirebaseTelemetry", "@genkit-ai/firebase"));
-  }
-  const telemetryBlock = enableTelemetry
-    ? "\n// Collect telemetry data to enable production monitoring.\n" +
-      "// See https://firebase.google.com/docs/genkit/observability/telemetry-collection.\n" +
-      "enableFirebaseTelemetry();\n"
-    : "";
+  const imports = pluginNames
+    .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName))
+    .join("\n");
   const plugins =
     pluginNames.map((pluginName) => `    ${pluginToInfo[pluginName].init},`).join("\n") ||
     "    /* Add your plugins here. */";
   return template
-    .replace("$GENKIT_CONFIG_IMPORTS", imports.join("\n"))
+    .replace("$GENKIT_CONFIG_IMPORTS", imports)
     .replace("$GENKIT_CONFIG_PLUGINS", plugins)
-    .replace("$GENKIT_ENABLE_TELEMETRY", telemetryBlock);
+    .replace("$GENKIT_ENABLE_TELEMETRY", enableTelemetry.toString());
 }
 
 function generateImportStatement(imports: string, name: string): string {
