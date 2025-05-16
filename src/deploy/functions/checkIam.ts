@@ -153,8 +153,10 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param projectNumber project number
  * @param existingPolicy the project level IAM policy
  */
-export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`;
+export async function obtainDefaultComputeServiceAgentBindings(
+  projectNumber: string,
+): Promise<iam.Binding[]> {
+  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],
@@ -199,7 +201,7 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...obtainDefaultComputeServiceAgentBindings(projectNumber));
+    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
   }
   if (requiredBindings.length === 0) {
     return;

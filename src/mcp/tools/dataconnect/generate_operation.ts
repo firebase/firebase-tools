@@ -14,7 +14,7 @@ export const generate_operation = tool(
       prompt: z
         .string()
         .describe(
-          "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users requst",
+          "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users request",
         ),
       service_id: z
         .string()
@@ -24,8 +24,7 @@ export const generate_operation = tool(
         ),
     }),
     annotations: {
-      title:
-        "Generate a Firebase Data Connect Operation on a deployed Firebase Data Connect Schema.",
+      title: "Generate Data Connect Operation",
       readOnlyHint: true,
     },
     _meta: {

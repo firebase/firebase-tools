@@ -12,7 +12,7 @@ export const generate_schema = tool(
       prompt: z.string().describe("A description of an app that you are interested in building"),
     }),
     annotations: {
-      title: "Generate a Firebase Data Connect Schema for a new Firebase project.",
+      title: "Generate Data Connect Schema",
       readOnlyHint: true,
     },
     _meta: {
