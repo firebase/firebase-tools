@@ -7,9 +7,9 @@ The Firebase MCP Server provides tools to interact with Firebase project resourc
 
 ## Usage
 
-The Firebase MCP server uses the Firebase CLI for authentication and project selection. You will usually want to start the server with a specific directory as an argument to operate against the project of your working directory.
+The Firebase MCP server uses the Firebase CLI for authentication and project selection. You will usually want to start the server with a specific target directory as an argument to serve as the "project folder" where your `firebase.json` is or will be.
 
-For clients that don't operate within a specific workspace, the Firebase MCP Server makes tools available to read and write a project directory.
+For global clients that don't operate within a specific workspace, the Firebase MCP Server makes tools available to read and write a project directory.
 
 ### Client Configuration
 
