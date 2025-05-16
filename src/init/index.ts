@@ -30,6 +30,7 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   storage?: features.StorageInfo;
+  apptesting?: features.ApptestingInfo;
 }
 
 interface Feature {
@@ -80,6 +81,7 @@ const featuresList: Feature[] = [
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
   { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
+  { name: "apptesting", askQuestions: features.apptestingAskQuestions, actuate: features.apptestingAcutate }
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
