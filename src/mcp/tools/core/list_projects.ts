@@ -4,7 +4,7 @@ import { toContent } from "../../util.js";
 import { getFirebaseProjectPage } from "../../../management/projects.js";
 import { FirebaseProjectMetadata } from "../../../types/project/index.d.js";
 
-const PROJECT_LIST_PAGE_SIZE = 10;
+const PROJECT_LIST_PAGE_SIZE = 20;
 
 export const list_projects = tool(
   {
@@ -15,7 +15,7 @@ export const list_projects = tool(
         .number()
         .min(1)
         .default(PROJECT_LIST_PAGE_SIZE)
-        .describe("the number of projects to list per page (defaults to 10)"),
+        .describe("the number of projects to list per page (defaults to 1000)"),
       page_token: z
         .string()
         .optional()
@@ -31,18 +31,24 @@ export const list_projects = tool(
     },
   },
   async ({ page_size, page_token }) => {
-    const projectPage = await getFirebaseProjectPage(page_size, page_token);
-    
-    let message = "";
-    if (projectPage.nextPageToken) {
-      message = `Here are ${projectPage.projects.length} Firebase projects.\n\n` +
-        `To list more projects, call this tool again with page_token: "${projectPage.nextPageToken}"`;
-    }
+    try {
+      const projectPage = await getFirebaseProjectPage(page_size, page_token);
 
-    return toContent({
-      message,
-      projects: projectPage.projects,
-      next_page_token: projectPage.nextPageToken,
-    });
+      return toContent(
+        {
+          projects: projectPage.projects,
+          next_page_token: projectPage.nextPageToken,
+        },
+        {
+          contentPrefix: `Here are ${projectPage.projects.length} Firebase projects${page_token ? " (continued)" : ""}:\n\n`,
+          contentSuffix: projectPage.nextPageToken
+            ? "\nThere are more projects available. To see the next page, call this tool again with the next_page_token shown above."
+            : "",
+        },
+      );
+    } catch (err: any) {
+      const originalMessage = err.original ? `: ${err.original.message}` : "";
+      throw new Error(`Failed to list Firebase projects${originalMessage}`);
+    }
   },
 );
