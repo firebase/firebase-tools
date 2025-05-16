@@ -439,7 +439,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -548,7 +548,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {
@@ -662,14 +662,18 @@ export class Fabricator {
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     // The Pub/Sub topic is already created
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(
+      endpoint,
+      this.appEngineLocation,
+      this.projectNumber,
+    );
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
   async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
