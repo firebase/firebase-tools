@@ -6,6 +6,7 @@ import { ensure } from "../../ensureApiEnabled";
 import * as planner from "./planner";
 import { needProjectId } from "../../projectUtils";
 import { computeOrigin } from "../../api";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
 
 const SERVICE_AGENT_ROLE = "roles/eventarc.eventReceiver";
 
@@ -28,7 +29,7 @@ export async function ensureNecessaryV2ApisAndRoles(options: any) {
 
 async function ensureComputeP4SARole(projectId: string): Promise<boolean> {
   const projectNumber = await getProjectNumber({ projectId });
-  const saEmail = `${projectNumber}-compute@developer.gserviceaccount.com`;
+  const saEmail = await getDefaultServiceAccount(projectNumber);
 
   let policy;
   try {

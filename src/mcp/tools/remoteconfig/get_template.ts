@@ -3,15 +3,20 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { getTemplate } from "../../../remoteconfig/get.js";
 
-export const get_rc_template = tool(
+export const get_template = tool(
   {
     name: "get_template",
     description: "Retrieves a remote config template for the project",
     inputSchema: z.object({
-      version_number: z.string().optional(),
+      version_number: z
+        .string()
+        .optional()
+        .describe(
+          "The version number of the template to retrieve. If not provided, retrieves the active template.",
+        ),
     }),
     annotations: {
-      title: "Get remote config template",
+      title: "Get Remote Config template",
       readOnlyHint: true,
     },
     _meta: {

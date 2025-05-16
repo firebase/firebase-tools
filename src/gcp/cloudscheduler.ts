@@ -224,11 +224,11 @@ export function topicNameForEndpoint(
 }
 
 /** Converts an Endpoint to a CloudScheduler v1 job */
-export function jobFromEndpoint(
+export async function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
   location: string,
   projectNumber: string,
-): Job {
+): Promise<Job> {
   const job: Partial<Job> = {};
   job.name = jobNameForEndpoint(endpoint, location);
   if (endpoint.platform === "gcfv1") {
@@ -245,7 +245,8 @@ export function jobFromEndpoint(
       uri: endpoint.uri!,
       httpMethod: "POST",
       oidcToken: {
-        serviceAccountEmail: endpoint.serviceAccount ?? gce.getDefaultServiceAccount(projectNumber),
+        serviceAccountEmail:
+          endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
       },
     };
   } else {

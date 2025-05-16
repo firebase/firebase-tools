@@ -9,7 +9,7 @@ export const get_schema = tool(
   {
     name: "get_schema",
     description:
-      "List the Firebase Data Connect Schema in the project, which includes Cloud SQL data sources and the GraphQL Schema describing what tables are available.",
+      "Retrieve information about the Firebase Data Connect Schema in the project, including Cloud SQL data sources and the GraphQL Schema describing the data model.",
     inputSchema: z.object({
       service_id: z
         .string()
@@ -19,7 +19,7 @@ export const get_schema = tool(
         ),
     }),
     annotations: {
-      title: "Obtain the Firebase Data Connect Schemas that's available in the backend",
+      title: "Get Data Connect Schemas",
       readOnlyHint: true,
     },
     _meta: {

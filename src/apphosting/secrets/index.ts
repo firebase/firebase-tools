@@ -42,10 +42,10 @@ export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
  * Finds the explicit service account used for a backend or, for legacy cases,
  * the defaults for GCB and compute.
  */
-export function serviceAccountsForBackend(
+export async function serviceAccountsForBackend(
   projectNumber: string,
   backend: apphosting.Backend,
-): ServiceAccounts {
+): Promise<ServiceAccounts> {
   if (backend.serviceAccount) {
     return {
       buildServiceAccount: backend.serviceAccount,
@@ -53,8 +53,8 @@ export function serviceAccountsForBackend(
     };
   }
   return {
-    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
-    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
+    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber), // TOOD: Look this up via API
+    runServiceAccount: await gce.getDefaultServiceAccount(projectNumber),
   };
 }
 

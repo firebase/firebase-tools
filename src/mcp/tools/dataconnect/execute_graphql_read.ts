@@ -29,7 +29,7 @@ export const execute_graphql_read = tool(
       use_emulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
-      title: "Executes a arbitrary GraphQL query against a Data Connect service",
+      title: "Execute Data Connect GraphQL Query",
       readOnlyHint: true,
     },
     _meta: {
