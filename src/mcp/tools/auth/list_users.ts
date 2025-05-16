@@ -30,9 +30,9 @@ export const list_users = tool(
 
     const users = await listUsers(projectId!, limit);
     const usersPruned = users.map((user) => {
-      // remove
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, salt, ...prunedUser } = user;
-      return user;
+      return prunedUser;
     });
 
     return toContent(usersPruned);
