@@ -5,9 +5,9 @@ import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { connectorToText } from "./converter.js";
 
-export const get_connector = tool(
+export const get_connectors = tool(
   {
-    name: "get_connector",
+    name: "get_connectors",
     description:
       "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
@@ -19,7 +19,7 @@ export const get_connector = tool(
         ),
     }),
     annotations: {
-      title: "Obtain the Firebase Data Connect Connectors that's available in the backend",
+      title: "Get Data Connect Connectors",
       readOnlyHint: true,
     },
     _meta: {
