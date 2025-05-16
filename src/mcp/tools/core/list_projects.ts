@@ -16,10 +16,7 @@ export const list_projects = tool(
         .min(1)
         .default(PROJECT_LIST_PAGE_SIZE)
         .describe("the number of projects to list per page (defaults to 1000)"),
-      page_token: z
-        .string()
-        .optional()
-        .describe("the page token to start listing from"),
+      page_token: z.string().optional().describe("the page token to start listing from"),
     }),
     annotations: {
       title: "List Firebase Projects",
