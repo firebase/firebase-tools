@@ -233,6 +233,10 @@ export function load(client: any): any {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
+  if (experiments.isEnabled("apptesting")) {
+    client.apptesting = {};
+    client.apptesting.execute = loadCommand("apptesting-execute");
+  }
 
   const t1 = process.hrtime.bigint();
   const diffMS = (t1 - t0) / BigInt(1e6);
