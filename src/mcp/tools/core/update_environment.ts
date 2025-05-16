@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
+import { mcpError, toContent } from "../../util.js";
 import { setNewActive } from "../../../commands/use.js";
 import { assertAccount, setProjectAccount } from "../../../auth.js";
+import { existsSync } from "node:fs";
 
 export const update_environment = tool(
   {
@@ -41,6 +42,10 @@ export const update_environment = tool(
   async ({ project_dir, active_project, active_user_account }, { config, rc, host }) => {
     let output = "";
     if (project_dir) {
+      if (!existsSync(project_dir))
+        return mcpError(
+          `Cannot update project directory to '${project_dir}' as it does not exist.`,
+        );
       host.setProjectRoot(project_dir);
       output += `- Updated project directory to '${project_dir}'\n`;
     }
