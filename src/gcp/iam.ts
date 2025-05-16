@@ -10,11 +10,6 @@ export function getDefaultCloudBuildServiceAgent(projectNumber: string): string 
   return `${projectNumber}@cloudbuild.gserviceaccount.com`;
 }
 
-/** Returns the default compute engine service agent */
-export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
-  return `${projectNumber}-compute@developer.gserviceaccount.com`;
-}
-
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
 export interface Binding {
