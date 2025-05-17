@@ -4,6 +4,7 @@ import { dump } from "js-yaml";
 import { platform } from "os";
 import { ServerFeature } from "./types";
 import {
+  apphostingOrigin,
   authManagementOrigin,
   dataconnectOrigin,
   firestoreOrigin,
@@ -11,6 +12,7 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
+  cloudRunApiOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 
@@ -87,6 +89,8 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   messaging: messagingApiOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
+  apphosting: apphostingOrigin(),
+  run: cloudRunApiOrigin(),
 };
 
 /**
