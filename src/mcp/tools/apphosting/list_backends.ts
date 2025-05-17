@@ -23,7 +23,9 @@ export const list_backends = tool(
         .string()
         .optional()
         .default("-")
-        .describe("Limit the listed backends to this region."),
+        .describe(
+          "Limit the listed backends to this region. By default, it will list all backends across all regions.",
+        ),
     }),
     annotations: {
       title: "List App Hosting backends.",
