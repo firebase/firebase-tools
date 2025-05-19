@@ -57,6 +57,10 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  runfunctions: {
+    shortDescription: "Functions created using the V2 API target Cloud Run Functions",
+    public: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
