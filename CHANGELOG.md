@@ -1,0 +1,1 @@
+- Address crash when starting the App Hosting emulator in certain applications (#8624)
