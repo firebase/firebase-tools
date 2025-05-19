@@ -65,8 +65,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: true,
   },
-
-  // Emulator experiments
+  runfunctions: {
+    shortDescription: "Functions created using the V2 API target Cloud Run Functions",
+    public: false,
+  },
+// Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
   },
