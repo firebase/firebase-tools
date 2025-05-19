@@ -234,25 +234,6 @@ type CreateFollow($uid: String!) {
 }
 ```
 
-### Aggregate queries
-
-Firebase Data Connect does not support aggregation queries. For example, there
-is no way to count the number of records, or average a set of values. In this
-context, the best you can do is return a list of fields for the user to
-aggregate themselves, or nothing at all.
-
-Some pseudo-aggregations are supported. For example, you can get the maximum or minimum
-value in a set by ordering and selecting the first items like the following:
-```graphql
-# This is an example, real-world fields and queries will be different.
-query topRatedMovie {
-  movie(first: {orderBy: [{rating: DESC}]}) {
-    title
-    rating
-  }
-}
-```
-
 ### Query explorer
 This query is going to be used in the Firebase Query Explorer view. Because of
 this, it's ideal to avoid using variables. Use hardcoded literals instead. For
