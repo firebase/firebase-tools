@@ -217,7 +217,9 @@ export async function number(opts: NumberOptions): Promise<number>;
 /**
  * Prompt a user for an optional number.
  */
-export async function number(opts: NumberOptions & { required: false }): Promise<number | undefined>;
+export async function number(
+  opts: NumberOptions & { required: false },
+): Promise<number | undefined>;
 
 export async function number(opts: string | NumberOptions): Promise<number | undefined> {
   if (typeof opts === "string") {
