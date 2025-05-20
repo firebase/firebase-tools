@@ -1,0 +1,1 @@
+- Fixed bug where functions packaged as ESM doesn't load on emulator for some versions of Node.js 22. (#8394)
