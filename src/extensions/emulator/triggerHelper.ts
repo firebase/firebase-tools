@@ -138,6 +138,11 @@ export function functionResourceToEmulatedTriggerDefintion(
             eventFilterPathPatterns[filter.attribute] = filter.value;
           }
         }
+        if (properties.eventTrigger.eventType.includes("google.cloud.firestore")) {
+          // Fall back to '(default)' if unset, to match https://github.com/firebase/firebase-functions/blob/e3f9772a530860f7469434a91d344e3faa371765/src/v2/providers/firestore.ts#L511
+          eventFilters["database"] = eventFilters["database"] ?? "(default)";
+          eventFilters["namespace"] = eventFilters["namespace"] ?? "(default)";
+        }
         etd.eventTrigger.eventFilters = eventFilters;
         etd.eventTrigger.eventFilterPathPatterns = eventFilterPathPatterns;
       }

@@ -1,10 +1,10 @@
-import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { EventDescriptor, ExtensionInstance } from "./types";
 import * as utils from "../utils";
 import * as clc from "colorette";
 import { logger } from "../logger";
 import { marked } from "marked";
+import { checkbox, select, confirm } from "../prompt";
 
 export interface InstanceEventsConfig {
   channel: string;
@@ -101,9 +101,7 @@ export async function askForAllowedEventTypes(
     value: e.type,
   }));
   while (!valid) {
-    response = await promptOnce({
-      name: "selectedEventTypesInput",
-      type: "checkbox",
+    response = await checkbox({
       default: preselectedTypes ?? [],
       message:
         `Please select the events [${eventTypes.length} types total] that this extension is permitted to emit. ` +
@@ -120,13 +118,8 @@ export async function askForAllowedEventTypes(
  * Asks the user if they want to enable events
  * @return A boolean indicating if they want to enable events
  */
-export async function askShouldCollectEventsConfig(): Promise<boolean> {
-  return promptOnce({
-    type: "confirm",
-    name: "shouldCollectEvents",
-    message: `Would you like to enable events?`,
-    default: false,
-  });
+export function askShouldCollectEventsConfig(): Promise<boolean> {
+  return confirm("Would you like to enable events?");
 }
 
 export const ALLOWED_EVENT_ARC_REGIONS = [
@@ -147,13 +140,11 @@ export async function askForEventArcLocation(preselectedLocation?: string): Prom
   let valid = false;
   let location = "";
   while (!valid) {
-    location = await promptOnce({
-      name: "input",
-      type: "list",
+    location = await select({
       default: preselectedLocation ?? EXTENSIONS_DEFAULT_EVENT_ARC_REGION,
       message:
         "Which location would you like the Eventarc channel to live in? We recommend using the default option. A channel location that differs from the extension's Cloud Functions location can incur egress cost.",
-      choices: ALLOWED_EVENT_ARC_REGIONS.map((e) => ({ checked: false, value: e })),
+      choices: ALLOWED_EVENT_ARC_REGIONS,
     });
     valid = ALLOWED_EVENT_ARC_REGIONS.includes(location);
     if (!valid) {

@@ -1,8 +1,9 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { FirebaseError, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
@@ -12,6 +13,7 @@ import * as ora from "ora";
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")
   .withForce()
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);
@@ -26,15 +28,12 @@ export const command = new Command("apphosting:backends:delete <backend>")
     utils.logWarning("You are about to permanently delete these backend(s):");
     printBackendsTable(backends);
 
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: "Are you sure?",
-      },
-      options,
-    );
+    const confirmDeletion = await confirm({
+      message: "Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmDeletion) {
       return;
     }

@@ -90,6 +90,31 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
   }
 }
 
+export async function listSchemas(
+  serviceName: string,
+  fields: string[] = [],
+): Promise<types.Schema[] | undefined> {
+  const schemas: types.Schema[] = [];
+  const getNextPage = async (pageToken = "") => {
+    const res = await dataconnectClient().get<{
+      schemas?: types.Schema[];
+      nextPageToken?: string;
+    }>(`${serviceName}/schemas`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+        fields: fields.join(","),
+      },
+    });
+    schemas.push(...(res.body.schemas || []));
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return schemas;
+}
+
 export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,

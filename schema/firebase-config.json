@@ -275,16 +275,12 @@
                 },
                 "runtime": {
                     "enum": [
-                        "nodejs10",
-                        "nodejs12",
-                        "nodejs14",
-                        "nodejs16",
-                        "nodejs18",
                         "nodejs20",
                         "nodejs22",
                         "python310",
                         "python311",
-                        "python312"
+                        "python312",
+                        "python313"
                     ],
                     "type": "string"
                 },
@@ -983,6 +979,65 @@
             "format": "uri",
             "type": "string"
         },
+        "apphosting": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "alwaysDeployFromSource": {
+                            "type": "boolean"
+                        },
+                        "backendId": {
+                            "type": "string"
+                        },
+                        "ignore": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "rootDir": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "backendId",
+                        "ignore",
+                        "rootDir"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "alwaysDeployFromSource": {
+                                "type": "boolean"
+                            },
+                            "backendId": {
+                                "type": "string"
+                            },
+                            "ignore": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "rootDir": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "backendId",
+                            "ignore",
+                            "rootDir"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        },
         "database": {
             "anyOf": [
                 {
@@ -1297,10 +1352,7 @@
                             "type": "string"
                         },
                         "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
+                            "type": "number"
                         }
                     },
                     "type": "object"

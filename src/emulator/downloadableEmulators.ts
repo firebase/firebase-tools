@@ -22,60 +22,38 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
+import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
-const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
-  database: {
-    version: "4.11.2",
-    expectedSize: 34495935,
-    expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
-  },
-  firestore: {
-    version: "1.19.8",
-    expectedSize: 63634791,
-    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
-  },
-  storage: {
-    version: "1.1.3",
-    expectedSize: 52892936,
-    expectedChecksum: "2ca11ec1193003bea89f806cc085fa25",
-  },
-  ui: experiments.isEnabled("emulatoruisnapshot")
-    ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
-    : {
-        version: "1.14.0",
-        expectedSize: 3615311,
-        expectedChecksum: "30763ff4a8b81e2c482f05b56799b5c0",
-      },
-  pubsub: {
-    version: "0.8.14",
-    expectedSize: 66786933,
-    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
-  },
-  dataconnect:
-    process.platform === "darwin" // macos
-      ? {
-          version: "2.0.0",
-          expectedSize: 26440448,
-          expectedChecksum: "64fd9ad182e59a46b9462757db6d5aac",
-        }
-      : process.platform === "win32" // windows
-        ? {
-            version: "2.0.0",
-            expectedSize: 26884096,
-            expectedChecksum: "92d654dfbb07fee4e1db2328ba6e00a7",
-          }
-        : {
-            version: "2.0.0", // linux
-            expectedSize: 26353816,
-            expectedChecksum: "29c7a57a00cb11f44f9b0ffb4710bbd2",
-          },
-};
+const EMULATOR_UPDATE_DETAILS: {
+  database: EmulatorUpdateDetails;
+  firestore: EmulatorUpdateDetails;
+  storage: EmulatorUpdateDetails;
+  pubsub: EmulatorUpdateDetails;
+  ui: {
+    main: EmulatorUpdateDetails;
+    snapshot: EmulatorUpdateDetails;
+  };
+  dataconnect: {
+    darwin: EmulatorUpdateDetails;
+    win32: EmulatorUpdateDetails;
+    linux: EmulatorUpdateDetails;
+  };
+} = emulatorUpdateDetails;
 
+const emulatorUiDetails = experiments.isEnabled("emulatoruisnapshot")
+  ? EMULATOR_UPDATE_DETAILS.ui.snapshot
+  : EMULATOR_UPDATE_DETAILS.ui.main;
+const dataconnectDetails =
+  process.platform === "darwin"
+    ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin
+    : process.platform === "win32"
+      ? EMULATOR_UPDATE_DETAILS.dataconnect.win32
+      : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(
@@ -120,20 +98,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   ui: {
-    version: EMULATOR_UPDATE_DETAILS.ui.version,
-    downloadPath: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`),
-    unzipDir: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`),
-    binaryPath: path.join(
-      CACHE_DIR,
-      `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
-      "server",
-      "server.mjs",
-    ),
+    version: emulatorUiDetails.version,
+    downloadPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}.zip`),
+    unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
+    binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`, "server", "server.mjs"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.ui.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.ui.expectedChecksum,
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${emulatorUiDetails.version}.zip`,
+      expectedSize: emulatorUiDetails.expectedSize,
+      expectedChecksum: emulatorUiDetails.expectedChecksum,
       skipCache: experiments.isEnabled("emulatoruisnapshot"),
       skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
       namePrefix: "ui",
@@ -162,23 +135,23 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   dataconnect: {
     downloadPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
+      `dataconnect-emulator-${dataconnectDetails.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
-    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
+    version: dataconnectDetails.version,
     binaryPath: path.join(
       CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
+      `dataconnect-emulator-${dataconnectDetails.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
         process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
+          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${dataconnectDetails.version}`
           : process.platform === "win32"
-            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
+            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${dataconnectDetails.version}`
+            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${dataconnectDetails.version}`,
+      expectedSize: dataconnectDetails.expectedSize,
+      expectedChecksum: dataconnectDetails.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
       auth: false,

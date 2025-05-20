@@ -16,10 +16,46 @@ export async function executeGraphQL(
   client: Client,
   servicePath: string,
   body: types.ExecuteGraphqlRequest,
-): Promise<ClientResponse<types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError>> {
+): Promise<ClientResponse<types.GraphqlResponse | types.GraphqlResponseError>> {
   const res = await client.post<
     types.ExecuteGraphqlRequest,
-    types.ExecuteGraphqlResponse | types.ExecuteGraphqlResponseError
+    types.GraphqlResponse | types.GraphqlResponseError
   >(`${servicePath}:executeGraphql`, body, { resolveOnHTTPError: true });
+  return res;
+}
+
+export async function executeGraphQLRead(
+  client: Client,
+  servicePath: string,
+  body: types.ExecuteGraphqlRequest,
+): Promise<ClientResponse<types.GraphqlResponse | types.GraphqlResponseError>> {
+  const res = await client.post<
+    types.ExecuteGraphqlRequest,
+    types.GraphqlResponse | types.GraphqlResponseError
+  >(`${servicePath}:executeGraphqlRead`, body, { resolveOnHTTPError: true });
+  return res;
+}
+
+export async function executeGraphQLQuery(
+  client: Client,
+  connectorPath: string,
+  body: types.ExecuteOperationRequest,
+): Promise<ClientResponse<types.GraphqlResponse | types.GraphqlResponseError>> {
+  const res = await client.post<
+    types.ExecuteOperationRequest,
+    types.GraphqlResponse | types.GraphqlResponseError
+  >(`${connectorPath}:executeQuery`, body, { resolveOnHTTPError: true });
+  return res;
+}
+
+export async function executeGraphQLMutation(
+  client: Client,
+  connectorPath: string,
+  body: types.ExecuteOperationRequest,
+): Promise<ClientResponse<types.GraphqlResponse | types.GraphqlResponseError>> {
+  const res = await client.post<
+    types.ExecuteOperationRequest,
+    types.GraphqlResponse | types.GraphqlResponseError
+  >(`${connectorPath}:executeMutation`, body, { resolveOnHTTPError: true });
   return res;
 }

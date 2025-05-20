@@ -29,8 +29,8 @@ import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer"
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
 import { Account } from "../types/auth";
-import { getCredentialsEnvironment } from "./env";
 import { ensure } from "../ensureApiEnabled";
+import { getCredentialPathAsync } from "../defaultCredentials";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -358,11 +358,15 @@ export class DataConnectEmulator implements EmulatorInstance {
     account?: Account,
     extraEnv: Record<string, string> = {},
   ): Promise<NodeJS.ProcessEnv> {
-    const credsEnv = await getCredentialsEnvironment(
-      account,
-      EmulatorLogger.forEmulator(Emulators.DATACONNECT),
-      "dataconnect",
-    );
+    const credsEnv: Record<string, string> = {};
+    if (account) {
+      // If Firebase CLI is logged in, always pass in the credentials to FDC emulator.
+      const defaultCredPath = await getCredentialPathAsync(account);
+      if (defaultCredPath) {
+        logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+        credsEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      }
+    }
     return { ...process.env, ...extraEnv, ...credsEnv };
   }
 }

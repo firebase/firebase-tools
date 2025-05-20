@@ -1,5 +1,4 @@
 import fetch from "node-fetch";
-import * as ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
 import { getGlobalDefaultAccount } from "./auth";
 
@@ -19,7 +18,10 @@ type cliEventNames =
   | "extensions_emulated"
   | "function_deploy"
   | "codebase_deploy"
-  | "function_deploy_group";
+  | "function_deploy_group"
+  | "mcp_tool_call"
+  | "mcp_list_tools"
+  | "mcp_client_connected";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -319,7 +321,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
   if (!usageEnabled() && propertyName !== "vscode") {
     if (validateOnly) {
-      logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
+      logger.debug("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
     return;
   }
@@ -352,7 +354,7 @@ function isDebugMode(): boolean {
   if (account?.user.email.endsWith("@google.com")) {
     try {
       require("../tsconfig.json");
-      logger.info(
+      logger.debug(
         `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`,
       );
       return true;
@@ -362,47 +364,4 @@ function isDebugMode(): boolean {
     }
   }
   return false;
-}
-
-// The Tracking ID for the Universal Analytics property for all of the CLI
-// including emulator-related commands (double-tracked for historical reasons)
-// but excluding Emulator UI.
-// TODO: Upgrade to GA4 before July 1, 2023. See:
-// https://support.google.com/analytics/answer/11583528
-const FIREBASE_ANALYTICS_UA = process.env.FIREBASE_ANALYTICS_UA || "UA-29174744-3";
-
-let visitor: ua.Visitor;
-
-function ensureUAVisitor(): void {
-  if (!visitor) {
-    // Identifier for the client (UUID) in the CLI UA.
-    let anonId = configstore.get("analytics-uuid") as string;
-    if (!anonId) {
-      anonId = uuidV4();
-      configstore.set("analytics-uuid", anonId);
-    }
-
-    visitor = ua(FIREBASE_ANALYTICS_UA, anonId, {
-      strictCidFormat: false,
-      https: true,
-    });
-
-    visitor.set("cd1", process.platform); // Platform
-    visitor.set("cd2", process.version); // NodeVersion
-    visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
-  }
-}
-
-export function track(action: string, label: string, duration = 0): Promise<void> {
-  ensureUAVisitor();
-  return new Promise((resolve) => {
-    if (usageEnabled() && configstore.get("tokens")) {
-      visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(() => {
-        // we could handle errors here, but we won't
-        resolve();
-      });
-    } else {
-      resolve();
-    }
-  });
 }

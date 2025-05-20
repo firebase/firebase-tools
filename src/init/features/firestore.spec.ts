@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
@@ -9,11 +8,20 @@ import * as rules from "./firestore/rules";
 import * as requirePermissions from "../../requirePermissions";
 import * as apiEnabled from "../../ensureApiEnabled";
 import * as checkDatabaseType from "../../firestore/checkDatabaseType";
+import { Config } from "../../config";
 
 describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let checkApiStub: sinon.SinonStub;
   let checkDbTypeStub: sinon.SinonStub;
+
+  const setup = {
+    config: {},
+    rcfile: { projects: {}, targets: {}, etags: {} },
+    projectId: "my-project-123",
+    projectLocation: "us-central1",
+  };
+  const config = new Config({}, {});
 
   beforeEach(() => {
     checkApiStub = sandbox.stub(apiEnabled, "check");
@@ -36,22 +44,17 @@ describe("firestore", () => {
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
 
-      const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
-
-      await firestore.doSetup(setup, {}, {});
+      await firestore.askQuestions(setup, config, {});
 
       expect(requirePermissionsStub).to.have.been.calledOnce;
       expect(initRulesStub).to.have.been.calledOnce;
       expect(initIndexesStub).to.have.been.calledOnce;
-      expect(_.get(setup, "config.firestore")).to.deep.equal({});
     });
 
     it("should error when the firestore API is not enabled", async () => {
       checkApiStub.returns(false);
 
-      const setup = { config: {}, projectId: "my-project-123" };
-
-      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.askQuestions(setup, config, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like you haven't used Cloud Firestore",
       );
@@ -61,9 +64,7 @@ describe("firestore", () => {
       checkApiStub.returns(true);
       checkDbTypeStub.returns("CLOUD_DATASTORE_COMPATIBILITY");
 
-      const setup = { config: {}, projectId: "my-project-123" };
-
-      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.askQuestions(setup, config, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode.",
       );

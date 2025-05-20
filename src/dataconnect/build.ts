@@ -1,8 +1,7 @@
 import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
-import * as experiments from "../experiments";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
 import { DeploymentMetadata, GraphqlError } from "./types";
@@ -15,13 +14,7 @@ export async function build(
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
   const args: DataConnectBuildArgs = { configDir, account };
-  if (experiments.isEnabled("fdcconnectorevolution") && options.projectId) {
-    const flags = process.env["DATA_CONNECT_PREVIEW"];
-    if (flags) {
-      process.env["DATA_CONNECT_PREVIEW"] = flags + ",conn_evolution";
-    } else {
-      process.env["DATA_CONNECT_PREVIEW"] = "conn_evolution";
-    }
+  if (options.projectId) {
     args.projectId = options.projectId;
   }
   const buildResult = await DataConnectEmulator.build(args);
@@ -73,9 +66,8 @@ export async function handleBuildErrors(
         "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to deploy these changes.",
       );
     } else if (!nonInteractive && !force && !dryRun) {
-      const result = await promptOnce({
+      const result = await select({
         message: "Would you like to proceed with these changes?",
-        type: "list",
         choices,
         default: "abort",
       });
@@ -92,9 +84,8 @@ export async function handleBuildErrors(
         prettifyTable(interactiveAcks),
     );
     if (!nonInteractive && !force && !dryRun) {
-      const result = await promptOnce({
+      const result = await select({
         message: "Would you like to proceed with these changes?",
-        type: "list",
         choices,
         default: "proceed",
       });

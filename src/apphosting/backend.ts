@@ -14,10 +14,10 @@ import {
   secretManagerOrigin,
 } from "../api";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
-import { addServiceAccountToRoles } from "../gcp/resourceManager";
+import { addServiceAccountToRoles, getIamPolicy } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { input, confirm, select, checkbox, search, Choice } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
@@ -27,6 +27,7 @@ import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
+import * as fuzzy from "fuzzy";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -75,14 +76,7 @@ export async function doSetup(
   webAppName: string | null,
   serviceAccount: string | null,
 ): Promise<void> {
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-    ensure(projectId, iamOrigin(), "apphosting", true),
-  ]);
+  await ensureRequiredApisEnabled(projectId);
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
@@ -101,9 +95,7 @@ export async function doSetup(
     location,
   );
 
-  const rootDir = await promptOnce({
-    name: "rootDir",
-    type: "input",
+  const rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your repository",
   });
@@ -115,12 +107,7 @@ export async function doSetup(
   logSuccess(`Repo linked successfully!\n`);
 
   logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Provide a name for your backend [1-30 characters]",
-  });
+  const backendId = await promptNewBackendId(projectId, location);
   logSuccess(`Name set to ${backendId}\n`);
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
@@ -133,8 +120,8 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    gitRepositoryLink,
     serviceAccount,
+    gitRepositoryLink,
     webApp?.id,
     rootDir,
   );
@@ -142,9 +129,7 @@ export async function doSetup(
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
-  const confirmRollout = await promptOnce({
-    type: "confirm",
-    name: "rollout",
+  const confirmRollout = await confirm({
     default: true,
     message: "Do you want to deploy now?",
   });
@@ -188,6 +173,44 @@ export async function doSetup(
 }
 
 /**
+ * Setup up a new App Hosting backend to deploy from source.
+ */
+export async function doSetupSourceDeploy(
+  projectId: string,
+  backendId: string,
+): Promise<{ backend: Backend; location: string }> {
+  const location = await promptLocation(
+    projectId,
+    "Select a primary region to host your backend:\n",
+  );
+  const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
+  const createBackendSpinner = ora("Creating your new backend...").start();
+  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+  return {
+    backend,
+    location,
+  };
+}
+
+/**
+ * Check that all GCP APIs required for App Hosting are enabled.
+ */
+export async function ensureRequiredApisEnabled(projectId: string): Promise<void> {
+  await Promise.all([
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
+  ]);
+}
+
+/**
  * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
  */
 export async function createGitRepoLink(
@@ -226,6 +249,7 @@ export async function createGitRepoLink(
 export async function ensureAppHostingComputeServiceAccount(
   projectId: string,
   serviceAccount: string | null,
+  deployFromSource = false,
 ): Promise<void> {
   const sa = serviceAccount || defaultComputeServiceAccountEmail(projectId);
   const name = `projects/${projectId}/serviceAccounts/${sa}`;
@@ -250,18 +274,41 @@ export async function ensureAppHostingComputeServiceAccount(
       );
     }
   }
+  // N.B. To deploy from source, the App Hosting Compute Service Account must have
+  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
+  // not add the objectViewer role, which means all existing customers will need to
+  // add it before deploying from source.
+  if (deployFromSource) {
+    const policy = await getIamPolicy(projectId);
+    const objectViewerBinding = policy.bindings.find(
+      (binding) => binding.role === "roles/storage.objectViewer",
+    );
+    if (
+      !objectViewerBinding ||
+      !objectViewerBinding.members.includes(
+        `serviceAccount:${defaultComputeServiceAccountEmail(projectId)}`,
+      )
+    ) {
+      await addServiceAccountToRoles(
+        projectId,
+        defaultComputeServiceAccountEmail(projectId),
+        ["roles/storage.objectViewer"],
+        /* skipAccountLookup= */ true,
+      );
+    }
+  }
 }
 
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNewBackendId(
-  projectId: string,
-  location: string,
-  prompt: any,
-): Promise<string> {
+export async function promptNewBackendId(projectId: string, location: string): Promise<string> {
   while (true) {
-    const backendId = await promptOnce(prompt);
+    const backendId = await input({
+      default: "my-web-app",
+      message: "Provide a name for your backend [1-30 characters]",
+      validate: (s) => s.length >= 1 && s.length <= 30,
+    });
     try {
       await apphosting.getBackend(projectId, location, backendId);
     } catch (err: unknown) {
@@ -289,18 +336,20 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: GitRepositoryLink,
   serviceAccount: string | null,
+  repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${repository.name}`,
-      rootDirectory: rootDir,
-    },
+    codebase: repository
+      ? {
+          repository: `${repository.name}`,
+          rootDirectory: rootDir,
+        }
+      : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
@@ -339,6 +388,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "roles/firebaseapphosting.computeRunner",
       "roles/firebase.sdkAdminServiceAgent",
       "roles/developerconnect.readTokenAccessor",
+      "roles/storage.objectViewer",
     ],
     /* skipAccountLookup= */ true,
   );
@@ -394,13 +444,11 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  const location = (await promptOnce({
-    name: "location",
-    type: "list",
+  const location = await select<string>({
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
-  })) as string;
+  });
 
   logSuccess(`Location set to ${location}.\n`);
 
@@ -422,6 +470,39 @@ export async function getBackendForLocation(
       original: getError(err),
     });
   }
+}
+
+/**
+ * Prompts users to select an existing backend.
+ * @param projectId the user's project ID
+ * @param promptMessage prompt message to display to the user
+ * @return the selected backend ID
+ */
+export async function promptExistingBackend(
+  projectId: string,
+  promptMessage: string,
+): Promise<string> {
+  const { backends } = await apphosting.listBackends(projectId, "-");
+  const backendId: string = await search({
+    message: promptMessage,
+    source: (input = ""): Promise<Choice<string>[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy
+            .filter(input, backends, {
+              extract: (backend) => apphosting.parseBackendName(backend.name).id,
+            })
+            .map((result) => {
+              return {
+                name: apphosting.parseBackendName(result.original.name).id,
+                value: apphosting.parseBackendName(result.original.name).id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+  return backendId;
 }
 
 /**
@@ -460,9 +541,7 @@ export async function chooseBackends(
     const { location, id } = apphosting.parseBackendName(backend.name);
     backendsByDisplay.set(`${id}(${location})`, backend);
   });
-  const chosenBackendDisplays = await promptOnce({
-    name: "backend",
-    type: "checkbox",
+  const chosenBackendDisplays = await checkbox<string>({
     message: chooseBackendPrompt,
     choices: Array.from(backendsByDisplay.keys(), (name) => {
       return {
@@ -519,9 +598,7 @@ export async function getBackendForAmbiguousLocation(
   backends.forEach((backend) =>
     backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
   );
-  const location = await promptOnce({
-    name: "location",
-    type: "list",
+  const location = await select<string>({
     message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],
   });

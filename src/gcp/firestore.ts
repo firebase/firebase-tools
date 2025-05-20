@@ -33,6 +33,49 @@ export interface Database {
   etag: string;
 }
 
+interface FieldFilter {
+  field: { fieldPath: string };
+  op:
+    | "OPERATOR_UNSPECIFIED"
+    | "LESS_THAN"
+    | "LESS_THAN_OR_EQUAL"
+    | "GREATER_THAN"
+    | "GREATER_THAN_OR_EQUAL"
+    | "EQUAL"
+    | "NOT_EQUAL"
+    | "ARRAY_CONTAINS"
+    | "ARRAY_CONTAINS_ANY"
+    | "IN"
+    | "NOT_IN";
+  value: FirestoreValue;
+}
+
+interface CompositeFilter {
+  op: "OR" | "AND";
+  filters: {
+    fieldFilter?: FieldFilter;
+    compositeFilter?: CompositeFilter;
+  }[];
+}
+
+export interface StructuredQuery {
+  from: { collectionId: string; allDescendants: boolean }[];
+  where?: {
+    compositeFilter?: CompositeFilter;
+    fieldFilter?: FieldFilter;
+  };
+  orderBy?: {
+    field: { fieldPath: string };
+    direction: "ASCENDING" | "DESCENDING" | "DIRECTION_UNSPECIFIED";
+  }[];
+  limit?: number;
+}
+
+interface RunQueryResponse {
+  document?: FirestoreDocument;
+  readTime?: string;
+}
+
 export enum DayOfWeek {
   MONDAY = "MONDAY",
   TUEDAY = "TUESDAY",
@@ -72,6 +115,28 @@ export interface Backup {
 export interface ListBackupsResponse {
   backups?: Backup[];
   unreachable?: string[];
+}
+
+// Based on https://cloud.google.com/firestore/docs/reference/rest/v1/Value
+export type FirestoreValue =
+  | { nullValue: null }
+  | { booleanValue: boolean }
+  | { integerValue: string } // Keep as string as per REST API, handle conversion in toJson
+  | { doubleValue: number }
+  | { timestampValue: string } // ISO 8601 format
+  | { stringValue: string }
+  | { bytesValue: string } // base64 encoded
+  | { referenceValue: string } // Full resource name string
+  | { geoPointValue: { latitude: number; longitude: number } }
+  | { arrayValue: { values?: FirestoreValue[] } }
+  | { mapValue: { fields?: Record<string, FirestoreValue> } };
+
+// Based on https://cloud.google.com/firestore/docs/reference/rest/v1/projects.databases.documents#Document
+export interface FirestoreDocument {
+  name: string; // Resource name: projects/{projectId}/databases/{databaseId}/documents/{document_path}
+  fields?: { [key: string]: FirestoreValue };
+  createTime: string; // Timestamp format
+  updateTime: string; // Timestamp format
 }
 
 /**
@@ -116,6 +181,73 @@ export function listCollectionIds(
   return apiClient.post<any, { collectionIds?: string[] }>(url, data).then((res) => {
     return res.body.collectionIds || [];
   });
+}
+
+/**
+ * Get multiple documents by path.
+ * @param {string} project the Google Cloud project ID.
+ * @param {string[]} paths The document paths to fetch.
+ * @return {Promise<{ documents: FirestoreDocument[]; missing: string[] }>} a promise for an array of firestore documents and missing documents in the request.
+ */
+export async function getDocuments(
+  project: string,
+  paths: string[],
+  allowEmulator?: boolean,
+): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const basePath = `projects/${project}/databases/(default)/documents`;
+  const url = `${basePath}:batchGet`;
+  const fullPaths = paths.map((p) => `${basePath}/${p}`);
+  const res = await apiClient.post<
+    { documents: string[] },
+    { found?: FirestoreDocument; missing?: string }[]
+  >(url, { documents: fullPaths });
+  const out: { documents: FirestoreDocument[]; missing: string[] } = { documents: [], missing: [] };
+  res.body.map((r) => (r.missing ? out.missing.push(r.missing) : out.documents.push(r.found!)));
+  return out;
+}
+
+/**
+ * Get documents based on a simple query to a collection.
+ * @param {string} project the Google Cloud project ID.
+ * @param {StructuredQuery} structuredQuery The structured query of the request including filters and ordering.
+ * @return {Promise<{ documents: FirestoreDocument[] }>} a promise for an array of retrieved firestore documents.
+ */
+export async function queryCollection(
+  project: string,
+  structuredQuery: StructuredQuery,
+  allowEmulator?: boolean,
+): Promise<{ documents: FirestoreDocument[] }> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const basePath = `projects/${project}/databases/(default)/documents`;
+  const url = `${basePath}:runQuery`;
+  try {
+    const res = await apiClient.post<
+      {
+        structuredQuery: StructuredQuery;
+        explainOptions: { analyze: boolean };
+        newTransaction: { readOnly: { readTime: string } };
+        // readTime: string;
+      },
+      RunQueryResponse[]
+    >(url, {
+      structuredQuery: structuredQuery,
+      explainOptions: { analyze: true },
+      newTransaction: { readOnly: { readTime: new Date().toISOString() } },
+      // readTime: new Date().toISOString(),
+    });
+    const out: { documents: FirestoreDocument[] } = { documents: [] };
+    res.body.map((r) => {
+      if (r.document) {
+        out.documents.push(r.document);
+      }
+    });
+    return out;
+  } catch (err: FirebaseError | unknown) {
+    // Used to get the URL to automatically build the composite index.
+    // Otherwise a generic 400 error is returned to the user without info.
+    throw JSON.stringify(err);
+  }
 }
 
 /**

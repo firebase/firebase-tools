@@ -129,10 +129,8 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-
-  fdcconnectorevolution: {
-    shortDescription: "Enable Data Connect connector evolution warnings.",
-    fullDescription: "Enable Data Connect connector evolution warnings.",
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
     default: true,
     public: false,
   },

@@ -196,10 +196,11 @@ async function setupArtifactCleanupPolicies(
         `${locationsWithErrors.join(", ")}.` +
         "This could result in a small monthly bill as container images accumulate over time.",
     );
-    throw new FirebaseError(
+    utils.logLabeledWarning(
+      "functions",
       `Functions successfully deployed but could not set up cleanup policy in ` +
-        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}.` +
-        `Pass the --force option to automatically set up a cleanup policy or` +
+        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
         "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
     );
   }

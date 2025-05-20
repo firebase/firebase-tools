@@ -223,14 +223,22 @@ export interface ExecuteGraphqlRequest {
   extensions?: { impersonate?: Impersonation };
 }
 
-export interface ExecuteGraphqlResponse {
+export interface GraphqlResponse {
   data: Record<string, any>;
   errors: any[];
 }
 
-export interface ExecuteGraphqlResponseError {
+export interface ExecuteOperationRequest {
+  operationName: string;
+  variables?: { [key: string]: string };
+}
+
+export interface GraphqlResponseError {
   error: { code: number; message: string; status: string; details: any[] };
 }
+
+export const isGraphQLResponse = (g: any): g is GraphqlResponse => !!g.data || !!g.errors;
+export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g.error;
 
 interface ImpersonationAuthenticated {
   authClaims: any;

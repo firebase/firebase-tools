@@ -17,9 +17,9 @@ import {
   setupSQLPermissions,
   getSchemaMetadata,
   SchemaSetupStatus,
-} from "../gcp/cloudsql/permissions_setup";
+} from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
-import { promptOnce, confirm } from "../prompt";
+import { select, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
 import { Options } from "../options";
@@ -27,7 +27,6 @@ import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-
 import * as errors from "./errors";
 
 async function setupSchemaIfNecessary(
@@ -49,7 +48,7 @@ async function setupSchemaIfNecessary(
       /* silent=*/ true,
     );
   } else {
-    logger.info(
+    logger.debug(
       `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
     );
   }
@@ -489,14 +488,9 @@ async function promptForSchemaMigration(
     const choices = [
       { name: executeChangePrompt, value: "all" },
       { name: "Abort changes", value: "none" },
-    ];
+    ] as const;
     const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
-    return await promptOnce({
-      message: message,
-      type: "list",
-      choices,
-      default: defaultValue,
-    });
+    return await select({ message, choices, default: defaultValue });
   }
   if (!validateOnly) {
     // `firebase deploy --nonInteractive` performs no migrations

@@ -58,8 +58,8 @@ describe("checkIam", () => {
   });
 
   describe("obtainDefaultComputeServiceAgentBindings", () => {
-    it("should obtain the bindings", () => {
-      const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
+    it("should obtain the bindings", async () => {
+      const bindings = await checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
 
       expect(bindings.length).to.equal(2);
       expect(bindings).to.include.deep.members([

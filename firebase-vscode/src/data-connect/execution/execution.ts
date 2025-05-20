@@ -26,6 +26,7 @@ import {
   DocumentNode,
   Kind,
   TypeNode,
+  parse,
 } from "graphql";
 import { DataConnectService } from "../service";
 import { DataConnectError, toSerializedError } from "../../../common/error";
@@ -34,6 +35,8 @@ import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { EmulatorsController } from "../../core/emulators";
+import { getConnectorGQLText } from "../file-utils";
+import { pluginLogger } from "../../logger-wrapper";
 
 interface TypedInput {
   varName: string;
@@ -180,25 +183,39 @@ export function registerExecution(
       }
     }
 
-    // build schema and verify operation
+    // build schema
     const introspect = await dataConnectService.introspect();
     if (!introspect.data) {
       executionError("Please check your compilation errors");
       return undefined;
     }
     const schema = buildClientSchema(introspect.data);
-    const validationErrors = validate(
-      schema,
-      operationDefinitionToDocument(ast),
-    );
 
-    if (validationErrors.length > 0) {
-      executionError(
-        "Schema validation errors: ",
-        JSON.stringify(validationErrors),
-      );
-      return undefined;
+    // get all gql files from connector and validate
+    const gqlText = await getConnectorGQLText(documentPath);
+
+    // Adhoc mutation
+    if (!gqlText) {
+      pluginLogger.info("Executing adhoc operation. Skipping validation.");
+    } else {
+      try {
+        const connectorDocumentNode = parse(gqlText);
+
+        const validationErrors = validate(schema, connectorDocumentNode);
+
+        if (validationErrors.length > 0) {
+          executionError(
+            `Schema validation errors:`,
+            JSON.stringify(validationErrors),
+          );
+          return;
+        }
+      } catch (error) {
+        executionError("Schema validation error", error as string);
+        return;
+      }
     }
+    
 
     // if execution args is empty, reset to {}
     if (!executionArgsJSON.value) {
@@ -257,10 +274,9 @@ export function registerExecution(
 
       const results = await dataConnectService.executeGraphQL({
         operationName: ast.name?.value,
-        // We send the whole unparsed document to guarantee
-        // that there are no formatting differences between the real document
-        // and the document that is sent to the emulator.
-        query: document,
+        // We send the compiled GQL from the whole connector to support fragments
+        // In the case of adhoc operation, just send the sole document
+        query: gqlText || document,
         variables: executionArgsJSON.value,
         path: documentPath,
         instance,
@@ -311,12 +327,13 @@ export function registerExecution(
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      (ast, location, instanceType: InstanceType) => {
+      async (ast, location, instanceType: InstanceType) => {
         analyticsLogger.logger.logUsage(
           instanceType === InstanceType.LOCAL
             ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
             : DATA_CONNECT_EVENT_NAME.RUN_PROD,
         );
+        await vscode.window.activeTextEditor?.document.save();
         executeOperation(ast, location, instanceType);
       },
     ),
@@ -336,7 +353,9 @@ export function registerExecution(
 }
 
 function executionError(message: string, error?: string) {
-  vscode.window.showErrorMessage(`Failed to execute operation. ${message}`);
+  vscode.window.showErrorMessage(
+    `Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`,
+  );
   throw new Error(error);
 }
 
