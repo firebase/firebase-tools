@@ -22,8 +22,8 @@ $GENKIT_CONFIG_PLUGINS
   ],
 });
 
-// Collect telemetry on your deployed app to be used in production monitoring.
-// See https://firebase.google.com/docs/genkit/observability/telemetry-collection.
+// The Firebase telemetry plugin exports a combination of metrics, traces, and logs to Google Cloud
+// Observability. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.
 const enableTelemetry = $GENKIT_ENABLE_TELEMETRY;
 if (enableTelemetry) {
   enableFirebaseTelemetry();
