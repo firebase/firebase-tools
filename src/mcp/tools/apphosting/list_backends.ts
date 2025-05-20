@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
 import {
   Backend,
   getTraffic,
@@ -37,7 +36,7 @@ export const list_backends = tool(
     },
   },
   async ({ location } = {}, { projectId }) => {
-    if (!projectId) return NO_PROJECT_ERROR;
+    projectId = projectId || "";
     if (!location) location = "-";
     const data: (Backend & { traffic: Traffic })[] = [];
     const backends = await listBackends(projectId, location);
@@ -45,6 +44,11 @@ export const list_backends = tool(
       const { location, id } = parseBackendName(backend.name);
       const traffic = await getTraffic(projectId, location, id);
       data.push({ ...backend, traffic: traffic });
+    }
+    if (!data.length) {
+      return toContent(
+        `No backends exist for project ${projectId}${location !== "-" ? ` in ${location}` : ""}.`,
+      );
     }
     return toContent(data);
   },
