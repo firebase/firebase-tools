@@ -29,35 +29,41 @@ export interface ProjectParentResource {
 /**
  * Prompt user to create a new project
  */
-export async function promptProjectCreation(): Promise<{ projectId: string; displayName: string }> {
-  const projectId = await prompt.input({
-    message:
-      "Please specify a unique project id " +
-      `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
-    validate: (projectId: string) => {
-      if (projectId.length < 6) {
-        return "Project ID must be at least 6 characters long";
-      } else if (projectId.length > 30) {
-        return "Project ID cannot be longer than 30 characters";
-      } else {
-        return true;
-      }
-    },
-  });
+export async function promptProjectCreation(
+  options: any,
+): Promise<{ projectId: string; displayName: string }> {
+  const projectId =
+    options.projectId ??
+    (await prompt.input({
+      message:
+        "Please specify a unique project id " +
+        `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
+      validate: (projectId: string) => {
+        if (projectId.length < 6) {
+          return "Project ID must be at least 6 characters long";
+        } else if (projectId.length > 30) {
+          return "Project ID cannot be longer than 30 characters";
+        } else {
+          return true;
+        }
+      },
+    }));
 
-  const displayName = await prompt.input({
-    default: projectId,
-    message: "What would you like to call your project? (defaults to your project ID)",
-    validate: (displayName: string) => {
-      if (displayName.length < 4) {
-        return "Project name must be at least 4 characters long";
-      } else if (displayName.length > 30) {
-        return "Project name cannot be longer than 30 characters";
-      } else {
-        return true;
-      }
-    },
-  });
+  const displayName =
+    options.displayName ??
+    (await prompt.input({
+      default: projectId,
+      message: "What would you like to call your project? (defaults to your project ID)",
+      validate: (displayName: string) => {
+        if (displayName.length < 4) {
+          return "Project name must be at least 4 characters long";
+        } else if (displayName.length > 30) {
+          return "Project name cannot be longer than 30 characters";
+        } else {
+          return true;
+        }
+      },
+    }));
 
   return { projectId, displayName };
 }

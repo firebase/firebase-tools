@@ -41,12 +41,12 @@ function toInitProjectInfo(projectMetaData: FirebaseProjectMetadata): InitProjec
   };
 }
 
-async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
+async function promptAndCreateNewProject(options: any): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
       `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
-  const { projectId, displayName } = await promptProjectCreation();
+  const { projectId, displayName } = await promptProjectCreation(options);
   // N.B. This shouldn't be possible because of the validator on the input field, but it
   // is being left around in case there's something I don't know.
   if (!projectId) {
@@ -82,7 +82,7 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
     case OPTION_USE_PROJECT:
       return getOrPromptProject(options);
     case OPTION_NEW_PROJECT:
-      return promptAndCreateNewProject();
+      return promptAndCreateNewProject(options);
     case OPTION_ADD_FIREBASE:
       return promptAndAddFirebaseToCloudProject();
     default:
