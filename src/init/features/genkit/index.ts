@@ -650,7 +650,7 @@ function renderConfig(pluginNames: string[], template: string, enableTelemetry: 
   return template
     .replace("$GENKIT_CONFIG_IMPORTS", imports)
     .replace("$GENKIT_CONFIG_PLUGINS", plugins)
-    .replace("$GENKIT_ENABLE_TELEMETRY", enableTelemetry.toString());
+    .replace("$TELEMETRY_COMMENT", enableTelemetry ? "" : "// ");
 }
 
 function generateImportStatement(imports: string, name: string): string {
