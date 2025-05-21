@@ -8,6 +8,8 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { saveEtags } from "../../extensions/etags";
 import { trackGA4 } from "../../track";
+import { releaseFabricator } from "./direct-deployment/fabricatorRelease";
+import * as experiments from "../../experiments";
 
 export async function release(context: Context, options: Options, payload: Payload) {
   if (
@@ -20,6 +22,25 @@ export async function release(context: Context, options: Options, payload: Paylo
   }
   const projectId = needProjectId(options);
 
+  // Check if direct deployment via Fabricator is enabled
+  const useDirectDeploy = experiments.isEnabled("extdirectdeploy");
+  
+  if (useDirectDeploy) {
+    // Use Fabricator-based deployment instead of Extensions API
+    await releaseFabricator(context, options, payload);
+  } else {
+    // Use traditional Extensions API deployment
+    await releaseTraditional(context, options, payload);
+  }
+}
+
+/**
+ * Traditional extension deployment using Extensions API.
+ * This is the existing implementation.
+ */
+async function releaseTraditional(context: Context, options: Options, payload: Payload) {
+  const projectId = needProjectId(options);
+  
   const errorHandler = new ErrorHandler();
   const deploymentQueue = new Queue<tasks.ExtensionDeploymentTask, void>({
     retries: 5,
@@ -54,6 +75,16 @@ export async function release(context: Context, options: Options, payload: Paylo
   deploymentQueue.close();
 
   await deploymentPromise;
+  
+  await completeRelease(context, options, payload, errorHandler);
+}
+
+/**
+ * Shared completion logic for both traditional and direct deployment.
+ */
+async function completeRelease(context: Context, options: Options, payload: Payload, errorHandler?: ErrorHandler) {
+  const projectId = needProjectId(options);
+  
   // extensionsStartTime should always be populated, but if not, fall back to something that won't break us.
   const duration = context.extensionsStartTime ? Date.now() - context.extensionsStartTime : 1;
   await trackGA4(
@@ -63,7 +94,7 @@ export async function release(context: Context, options: Options, payload: Paylo
       extension_instance_updated: payload.instancesToUpdate?.length ?? 0,
       extension_instance_configured: payload.instancesToConfigure?.length ?? 0,
       extension_instance_deleted: payload.instancesToDelete?.length ?? 0,
-      errors: errorHandler.errors.length ?? 0,
+      errors: errorHandler?.errors.length ?? 0,
       interactive: options.nonInteractive ? "false" : "true",
     },
     duration,
@@ -76,7 +107,7 @@ export async function release(context: Context, options: Options, payload: Paylo
 
   saveEtags(options.rc, projectId, have.concat(dynamicHave));
 
-  if (errorHandler.hasErrors()) {
+  if (errorHandler?.hasErrors()) {
     errorHandler.print();
     throw new FirebaseError(`Extensions deployment failed.`);
   }

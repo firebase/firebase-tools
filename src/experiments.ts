@@ -134,6 +134,15 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  extdirectdeploy: {
+    shortDescription: "Deploy extensions directly via Cloud Functions API",
+    fullDescription:
+      "Deploy extension updates and configurations directly via the Cloud Functions API " +
+      "instead of the Extensions API. This bypasses the Extensions API layer for " +
+      "potentially faster deployments and consistency with function deployment.",
+    public: true,
+    default: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
