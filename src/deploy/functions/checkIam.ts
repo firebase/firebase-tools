@@ -19,6 +19,11 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
 export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
+export const GENKIT_MONITORING_ROLES = [
+  "roles/monitoring.metricWriter",
+  "roles/cloudtrace.agent",
+  "roles/logging.logWriter",
+];
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -133,6 +138,14 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
   return services;
 }
 
+/** Checks whether the given backend is a Genkit callable function. */
+function isGenkitCallable(want: backend.Backend) {
+  return backend.someEndpoint(
+    want,
+    (e) => backend.isCallableTriggered(e) && e.callableTrigger.genkitAction !== undefined,
+  );
+}
+
 /**
  * Finds the required project level IAM bindings for the Pub/Sub service agent.
  * If the user enabled Pub/Sub on or before April 8, 2021, then we must enable the token creator role.
@@ -169,6 +182,25 @@ export async function obtainDefaultComputeServiceAgentBindings(
 }
 
 /**
+ * Genkit Monitoring requires that the service account running the function has
+ * permission to write telemetry data.
+ * @param projectNumber project number
+ */
+export async function obtainGenkitMonitoringServiceAgentBindings(
+  projectNumber: string,
+): Promise<iam.Binding[]> {
+  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
+  const bindings: iam.Binding[] = [];
+  for (const monitoringRole of GENKIT_MONITORING_ROLES) {
+    bindings.push({
+      role: monitoringRole,
+      members: [defaultComputeServiceAgent],
+    });
+  }
+  return bindings;
+}
+
+/**
  * Checks and sets the roles for specific resource service agents
  * @param projectId human readable project id
  * @param projectNumber project number
@@ -202,6 +234,9 @@ export async function ensureServiceAgentRoles(
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
     requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
+  }
+  if (isGenkitCallable(want)) {
+    requiredBindings.push(...(await obtainGenkitMonitoringServiceAgentBindings(projectNumber)));
   }
   if (requiredBindings.length === 0) {
     return;
