@@ -13,7 +13,7 @@ const client = new Client({
 
 await client.connect(
   new StdioClientTransport({
-    command: "firebase",
+    command: "../../lib/bin/firebase.js",
     args: [
       "experimental:mcp",
       "--only",
