@@ -220,9 +220,6 @@ export async function ensureServiceAgentRoles(
   const newServices = wantServices.filter(
     (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
-  if (newServices.length === 0) {
-    return;
-  }
 
   // obtain all the bindings we need to have active in the project
   const requiredBindingsPromises: Array<Promise<Array<iam.Binding>>> = [];
