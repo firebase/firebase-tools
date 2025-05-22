@@ -10,7 +10,7 @@ export const list_apps = tool(
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web"])
-        .nullish()
+        .optional()
         .describe("the specific platform to list (omit to list all platforms)"),
     }),
     annotations: {

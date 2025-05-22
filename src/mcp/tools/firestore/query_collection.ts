@@ -13,7 +13,7 @@ export const query_collection = tool(
       // TODO: Support configurable database
       // database: z
       //   .string()
-      //   .nullish()
+      //   .optional()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
       collection_path: z
         .string()
@@ -24,14 +24,20 @@ export const query_collection = tool(
         .object({
           compare_value: z
             .object({
-              string_value: z.string().nullish().describe("The string value to compare against."),
-              boolean_value: z.string().nullish().describe("The boolean value to compare against."),
+              string_value: z.string().optional().describe("The string value to compare against."),
+              boolean_value: z
+                .string()
+                .optional()
+                .describe("The boolean value to compare against."),
               string_array_value: z
                 .array(z.string())
-                .nullish()
+                .optional()
                 .describe("The string value to compare against."),
-              integer_value: z.number().nullish().describe("The integer value to compare against."),
-              double_value: z.number().nullish().describe("The double value to compare against."),
+              integer_value: z
+                .number()
+                .optional()
+                .describe("The integer value to compare against."),
+              double_value: z.number().optional().describe("The double value to compare against."),
             })
             .describe("One and only one value may be specified per filters object."),
           field: z.string().describe("the field searching against"),
@@ -60,14 +66,14 @@ export const query_collection = tool(
             .enum(["ASCENDING", "DESCENDING"])
             .describe("the direction to order values"),
         })
-        .nullish()
+        .optional()
         .describe(
           "Specifies the field and direction to order the results. If not provided, the order is undefined.",
         ),
       limit: z
         .number()
         .describe("The maximum amount of records to return. Default is 10.")
-        .nullish(),
+        .optional(),
     }),
     annotations: {
       title: "Query Firestore collection",
