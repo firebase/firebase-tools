@@ -1,10 +1,11 @@
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
-import { cloudloggingOrigin, runOrigin } from "../api";
+import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
 import { backoff } from "../throttler/throttler";
 import { logger } from "../logger";
+import { listEntries, LogEntry } from "./cloudlogging";
 
 const API_VERSION = "v1";
 
@@ -345,42 +346,6 @@ export async function setInvokerUpdate(
   await setIamPolicy(serviceName, policy, httpClient);
 }
 
-interface EntriesListRequest {
-  resourceNames: string[];
-  filter?: string;
-  orderBy?: string;
-  pageSize?: number;
-  pageToken?: string;
-}
-
-interface EntriesListResponse {
-  entries?: LogEntry[];
-  nextPageToken?: string;
-}
-
-interface LogEntry {
-  logName: string;
-  resource: unknown;
-  timestamp: string;
-  receiveTimestamp: string;
-  httpRequest?: unknown;
-
-  protoPayload?: unknown;
-  textPayload?: string;
-  jsonPayload?: unknown;
-
-  severity:
-    | "DEFAULT"
-    | "DEBUG"
-    | "INFO"
-    | "NOTICE"
-    | "WARNING"
-    | "ERROR"
-    | "CRITICAL"
-    | "ALERT"
-    | "EMERGENCY";
-}
-
 /**
  * Fetches recent logs for a given Cloud Run service using the Cloud Logging API.
  * @param projectId The Google Cloud project ID.
@@ -388,28 +353,17 @@ interface LogEntry {
  * @return A promise that resolves with the log entries.
  */
 export async function fetchServiceLogs(projectId: string, serviceId: string): Promise<LogEntry[]> {
-  const loggingClient = new Client({
-    urlPrefix: cloudloggingOrigin(),
-    apiVersion: "v2",
-  });
-
-  const requestBody: EntriesListRequest = {
-    resourceNames: [`projects/${projectId}`],
-    filter: `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}"`,
-    orderBy: "timestamp desc",
-    pageSize: 100,
-  };
+  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}"`;
+  const pageSize = 100;
+  const order = "desc";
 
   try {
-    const response = await loggingClient.post<EntriesListRequest, EntriesListResponse>(
-      "/entries:list",
-      requestBody,
-    );
-    return response.body.entries || [];
+    const entries = await listEntries(projectId, filter, pageSize, order);
+    return entries || [];
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
       original: err,
-      status: err?.context?.response?.statusCode,
+      status: (err as any)?.context?.response?.statusCode,
     });
   }
 }
