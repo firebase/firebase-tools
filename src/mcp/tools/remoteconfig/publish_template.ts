@@ -33,8 +33,6 @@ export const publish_template = tool(
     if (force === undefined) {
       return toContent(await publishTemplate(projectId, template as RemoteConfigTemplate));
     }
-    return toContent(
-      await publishTemplate(projectId, template as RemoteConfigTemplate, { force }),
-    );
+    return toContent(await publishTemplate(projectId, template as RemoteConfigTemplate, { force }));
   },
 );
