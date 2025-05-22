@@ -42,6 +42,11 @@ export interface Backend {
   uri: string;
   serviceAccount?: string;
   appId?: string;
+  managedResources?: ManagedResource[];
+}
+
+export interface ManagedResource {
+  runService: { service: string };
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
