@@ -196,7 +196,7 @@ export class FirebaseMcpServer {
     if (tool.mcp._meta?.requiresProject && !projectId) {
       return NO_PROJECT_ERROR;
     }
-    projectId = projectId || "<missing-project-id>";
+    projectId = projectId || "";
 
     const accountEmail = await this.getAuthenticatedUser();
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
