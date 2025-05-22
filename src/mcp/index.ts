@@ -184,17 +184,24 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
-    const projectId = await this.getProjectId();
-    const accountEmail = await this.getAuthenticatedUser();
     if (
       tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
       (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
-    )
+    ) {
       return mcpError(
         `The current project directory '${this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"}' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
       );
-    if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
-    if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
+    }
+    let projectId = await this.getProjectId();
+    if (tool.mcp._meta?.requiresProject && !projectId) {
+      return NO_PROJECT_ERROR;
+    }
+    projectId = projectId || "<missing-project-id>";
+
+    const accountEmail = await this.getAuthenticatedUser();
+    if (tool.mcp._meta?.requiresAuth && !accountEmail) {
+      return mcpAuthError();
+    }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
     const toolsCtx: ServerToolContext = {

@@ -28,7 +28,7 @@ export const get_connectors = tool(
     },
   },
   async ({ service_id }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
+    const serviceInfo = await pickService(projectId, config!, service_id || undefined);
     const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
     return toContent(connectors.map(connectorToText).join("\n\n"));
   },

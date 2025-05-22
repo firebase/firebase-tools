@@ -131,7 +131,7 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    const { documents } = await queryCollection(projectId!, structuredQuery);
+    const { documents } = await queryCollection(projectId, structuredQuery);
 
     const docs = documents.map(firestoreDocumentToJson);
 

@@ -31,10 +31,10 @@ export const publish_template = tool(
       return mcpError(`No template specified in the publish requests`);
     }
     if (force === undefined) {
-      return toContent(await publishTemplate(projectId!, template as RemoteConfigTemplate));
+      return toContent(await publishTemplate(projectId, template as RemoteConfigTemplate));
     }
     return toContent(
-      await publishTemplate(projectId!, template as RemoteConfigTemplate, { force }),
+      await publishTemplate(projectId, template as RemoteConfigTemplate, { force }),
     );
   },
 );

@@ -38,6 +38,6 @@ export const get_user = tool(
     if (email === undefined && phone_number === undefined && uid === undefined) {
       return mcpError(`No user identifier supplied in auth_get_user tool`);
     }
-    return toContent(await findUser(projectId!, email, phone_number, uid));
+    return toContent(await findUser(projectId, email, phone_number, uid));
   },
 );

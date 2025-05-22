@@ -48,7 +48,7 @@ export const send_message = tool(
       );
     }
     return toContent(
-      await sendFcmMessage(projectId!, { token: registration_token, topic, title, body }),
+      await sendFcmMessage(projectId, { token: registration_token, topic, title, body }),
     );
   },
 );

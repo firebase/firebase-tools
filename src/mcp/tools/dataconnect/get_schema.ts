@@ -28,7 +28,7 @@ export const get_schema = tool(
     },
   },
   async ({ service_id }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
+    const serviceInfo = await pickService(projectId, config!, service_id || undefined);
     const schemas = await client.listSchemas(serviceInfo.serviceName, ["*"]);
     return toContent(schemas?.map(schemaToText).join("\n\n"));
   },

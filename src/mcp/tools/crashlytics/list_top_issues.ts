@@ -33,6 +33,6 @@ export const list_top_issues = tool(
 
     issue_count ??= 10;
 
-    return toContent(await listTopIssues(projectId!, app_id, issue_count));
+    return toContent(await listTopIssues(projectId, app_id, issue_count));
   },
 );
