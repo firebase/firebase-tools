@@ -1,0 +1,1 @@
+- Fixed issue where `projects:create` didn't correctly parse the `projectId` and `displayName` input. (#8634)
