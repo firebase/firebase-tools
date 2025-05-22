@@ -13,7 +13,7 @@ export const get_documents = tool(
       // TODO: Support configurable database
       // database: z
       //   .string()
-      //   .nullish()
+      //   .optional()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
       paths: z
         .array(z.string())
