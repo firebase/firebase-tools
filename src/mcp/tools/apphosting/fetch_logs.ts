@@ -36,7 +36,6 @@ export const fetch_logs = tool(
     },
   },
   async ({ buildLogs, backendId, location } = {}, { projectId }) => {
-    projectId ||= "";
     location ||= "";
     if (!backendId) {
       return toContent(`backendId must be specified.`);

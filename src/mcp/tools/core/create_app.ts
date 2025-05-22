@@ -61,7 +61,7 @@ export const create_app = tool(
       switch (platform) {
         case "android":
           return toContent(
-            await createAndroidApp(projectId!, {
+            await createAndroidApp(projectId, {
               displayName: display_name,
               packageName: android_config!.package_name,
             }),
@@ -73,7 +73,7 @@ export const create_app = tool(
           );
         case "ios":
           return toContent(
-            await createIosApp(projectId!, {
+            await createIosApp(projectId, {
               displayName: display_name,
               bundleId: ios_config!.bundle_id,
               appStoreId: ios_config!.app_store_id,
@@ -86,7 +86,7 @@ export const create_app = tool(
           );
         case "web":
           return toContent(
-            await createWebApp(projectId!, {
+            await createWebApp(projectId, {
               displayName: display_name,
             }),
             {
