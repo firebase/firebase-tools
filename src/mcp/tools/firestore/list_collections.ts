@@ -13,7 +13,7 @@ export const list_collections = tool(
       // TODO: support multiple databases
       // database: z
       //   .string()
-      //   .nullish()
+      //   .optional()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
     }),
     annotations: {

@@ -1,1 +1,3 @@
-fix: users can again choose not to specify emulator UI port (#8626)
+- fix: users can again choose not to specify emulator UI port (#8626)
+- Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
+- Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
