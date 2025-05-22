@@ -353,24 +353,17 @@ export async function setInvokerUpdate(
  * @return A promise that resolves with the log entries.
  */
 export async function fetchServiceLogs(projectId: string, serviceId: string): Promise<LogEntry[]> {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const timestampFilter = `timestamp >= "${thirtyDaysAgo.toISOString()}"`;
-  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}" AND ${timestampFilter}`;
+  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}"`;
   const pageSize = 100;
   const order = "desc";
 
   try {
     const entries = await listEntries(projectId, filter, pageSize, order);
     return entries || [];
-  } catch (err: unknown) {
-    let status: number | undefined;
-    if (typeof err === 'object' && err !== null && 'context' in err && typeof err.context === 'object' && err.context !== null && 'response' in err.context && typeof err.context.response === 'object' && err.context.response !== null && 'statusCode' in err.context.response && typeof err.context.response.statusCode === 'number') {
-      status = err.context.response.statusCode;
-    }
+  } catch (err: any) {
     throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
-      original: err instanceof Error ? err : undefined,
-      status: status,
+      original: err,
+      status: (err as any)?.context?.response?.statusCode,
     });
   }
 }
