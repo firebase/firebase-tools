@@ -24,7 +24,7 @@ export const consult_assistant = tool(
     },
   },
   async ({ prompt }, { projectId }) => {
-    const schema = await chatWithFirebase(prompt, projectId!);
+    const schema = await chatWithFirebase(prompt, projectId);
     return toContent(schema);
   },
 );
