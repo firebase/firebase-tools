@@ -10,7 +10,7 @@ export const get_object_download_url = tool(
     inputSchema: z.object({
       bucket: z
         .string()
-        .nullish()
+        .optional()
         .describe(
           "The bucket name in Firebase Storage. If not provided, defaults to the project's default bucket (e.g., `{projectid}.firebasestorage.app`).",
         ),

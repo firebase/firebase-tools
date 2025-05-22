@@ -69,8 +69,10 @@ export function insertToBottomOfActiveFile(text: string) {
     return;
   }
   const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+  const escapedText = text.replace(/\$/g, "\\\$"); // escape $ symbols
+
   editor.insertSnippet(
-    new vscode.SnippetString(`\n\n${text}`),
+    new vscode.SnippetString(`\n\n${escapedText}`),
     lastLine.range.end,
   );
 }
