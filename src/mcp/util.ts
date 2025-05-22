@@ -12,7 +12,6 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
-  cloudRunApiOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 
@@ -90,7 +89,6 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
   apphosting: apphostingOrigin(),
-  run: cloudRunApiOrigin(),
 };
 
 /**
