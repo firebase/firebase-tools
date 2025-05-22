@@ -1,14 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import {
-  Backend,
-  getBackend,
-  getTraffic,
-  listBuilds,
-  parseBackendName,
-  Traffic,
-} from "../../../gcp/apphosting.js";
+import { Backend, getBackend, getTraffic, listBuilds, Traffic } from "../../../gcp/apphosting.js";
 import { last } from "../../../utils.js";
 import { FirebaseError } from "../../../error.js";
 import { fetchServiceLogs } from "../../../gcp/run.js";
@@ -49,13 +42,14 @@ export const fetch_logs = tool(
       return toContent(`backendId must be specified.`);
     }
     const backend = await getBackend(projectId, location, backendId);
-    // if (location === "-") location = parseBackendName(backend.name).location;
     const traffic = await getTraffic(projectId, location, backendId);
     const data: Backend & { traffic: Traffic } = { ...backend, traffic };
 
     if (buildLogs) {
       const builds = await listBuilds(projectId, location, backendId);
-      // builds.builds.sort((a, b) => a.c)
+      builds.builds.sort(
+        (a, b) => new Date(a.createTime).getTime() - new Date(b.createTime).getTime(),
+      );
       const build = last(builds.builds);
       const r = new RegExp(`region=${location}/([0-9a-f-]+)?`);
       const match = r.exec(build.buildLogsUri ?? "");
