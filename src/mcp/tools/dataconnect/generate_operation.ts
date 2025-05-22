@@ -18,7 +18,7 @@ export const generate_operation = tool(
         ),
       service_id: z
         .string()
-        .nullish()
+        .optional()
         .describe(
           "Optional: Uses the service ID from the firebase.json file if nothing provided. The service ID of the deployed Firebase resource.",
         ),
