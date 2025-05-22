@@ -17,7 +17,7 @@ await client.connect(
     args: [
       "experimental:mcp",
       "--only",
-      "firestore,dataconnect,messaging,remoteconfig,crashlytics,auth,storage",
+      "firestore,dataconnect,messaging,remoteconfig,crashlytics,auth,storage,apphosting,run",
     ],
   }),
 );
