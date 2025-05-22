@@ -3,7 +3,11 @@ import * as sinon from "sinon";
 
 import * as planner from "./planner";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as manifest from "../../extensions/manifest";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
+import * as refs from "../../extensions/refs";
 import { ExtensionInstance, Extension } from "../../extensions/types";
+import { FirebaseError } from "../../error";
 
 function extension(latest?: string, latestApproved?: string): Extension {
   return {
@@ -343,5 +347,260 @@ describe("Extensions Deployment Planner", () => {
         listInstancesStub.restore();
       });
     }
+  });
+
+  describe("want", () => {
+    let readInstanceParamStub: sinon.SinonStub;
+    let getFirebaseProjectParamsStub: sinon.SinonStub;
+    let listExtensionVersionsStub: sinon.SinonStub;
+
+    before(() => {
+      readInstanceParamStub = sinon.stub(manifest, "readInstanceParam");
+      getFirebaseProjectParamsStub = sinon.stub(extensionsHelper, "getFirebaseProjectParams");
+      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
+        extensionVersion("1.0.0")
+      ]);
+    });
+
+    after(() => {
+      readInstanceParamStub.restore();
+      getFirebaseProjectParamsStub.restore();
+      listExtensionVersionsStub.restore();
+    });
+
+    beforeEach(() => {
+      readInstanceParamStub.reset();
+      getFirebaseProjectParamsStub.reset();
+      listExtensionVersionsStub.reset();
+      listExtensionVersionsStub.resolves([extensionVersion("1.0.0")]);
+    });
+
+    describe("parameter resolution from .env files", () => {
+      it("should read parameters via readInstanceParam and partition correctly", async () => {
+        const mockParams = {
+          USER_PARAM: "user_value",
+          ANOTHER_PARAM: "another_value",
+          "firebaseextensions.v1beta.function/location": "us-central1",
+          "firebaseextensions.v1beta.function/memory": "256MB"
+        };
+
+        readInstanceParamStub.returns(mockParams);
+        getFirebaseProjectParamsStub.resolves({ PROJECT_ID: "test-proj" });
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: ["test-alias"],
+          projectDir: "/test/project",
+          extensions: {
+            "test-instance": "firebase/test-extension@1.0.0"
+          }
+        });
+
+        expect(result).to.have.length(1);
+        expect(result[0].instanceId).to.equal("test-instance");
+        expect(result[0].params).to.deep.equal({
+          USER_PARAM: "user_value",
+          ANOTHER_PARAM: "another_value"
+        });
+        expect(result[0].systemParams).to.deep.equal({
+          "firebaseextensions.v1beta.function/location": "us-central1",
+          "firebaseextensions.v1beta.function/memory": "256MB"
+        });
+      });
+
+      it("should handle Firebase project parameter substitution", async () => {
+        const mockParams = {
+          PROJECT_PARAM: "${PROJECT_ID}",
+          BUCKET_NAME: "${PROJECT_ID}-bucket"
+        };
+
+        readInstanceParamStub.returns(mockParams);
+        getFirebaseProjectParamsStub.resolves({ 
+          PROJECT_ID: "my-project",
+          PROJECT_NUMBER: "123456789"
+        });
+
+        const result = await planner.want({
+          projectId: "my-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: { "test": "firebase/test@1.0.0" }
+        });
+
+        expect(result[0].params).to.deep.equal({
+          PROJECT_PARAM: "my-project",
+          BUCKET_NAME: "my-project-bucket"
+        });
+      });
+
+      it("should handle emulator mode", async () => {
+        readInstanceParamStub.returns({});
+        getFirebaseProjectParamsStub.resolves({});
+
+        await planner.want({
+          projectId: "demo-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: { "test": "firebase/test@1.0.0" },
+          emulatorMode: true
+        });
+
+        expect(readInstanceParamStub).to.have.been.calledWith({
+          projectDir: "/test/project",
+          instanceId: "test",
+          projectId: "demo-project",
+          projectNumber: "123456789",
+          aliases: [],
+          checkLocal: true
+        });
+        expect(getFirebaseProjectParamsStub).to.have.been.calledWith("demo-project", true);
+      });
+    });
+
+    describe("special parameter handling", () => {
+      it("should handle ALLOWED_EVENT_TYPES and EVENTARC_CHANNEL correctly", async () => {
+        const mockParams = {
+          REGULAR_PARAM: "value",
+          ALLOWED_EVENT_TYPES: "google.firebase.auth.user.v1.created,google.firebase.auth.user.v1.deleted",
+          EVENTARC_CHANNEL: "projects/test/locations/us-central1/channels/firebase"
+        };
+
+        readInstanceParamStub.returns(mockParams);
+        getFirebaseProjectParamsStub.resolves({});
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: { "test": "firebase/test@1.0.0" }
+        });
+
+        expect(result[0].params).to.deep.equal({
+          REGULAR_PARAM: "value"
+        });
+        expect(result[0].allowedEventTypes).to.deep.equal([
+          "google.firebase.auth.user.v1.created",
+          "google.firebase.auth.user.v1.deleted"
+        ]);
+        expect(result[0].eventarcChannel).to.equal("projects/test/locations/us-central1/channels/firebase");
+      });
+
+      it("should handle empty ALLOWED_EVENT_TYPES as empty array", async () => {
+        const mockParams = {
+          ALLOWED_EVENT_TYPES: "",
+          EVENTARC_CHANNEL: "projects/test/locations/us-central1/channels/firebase"
+        };
+
+        readInstanceParamStub.returns(mockParams);
+        getFirebaseProjectParamsStub.resolves({});
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: { "test": "firebase/test@1.0.0" }
+        });
+
+        expect(result[0].allowedEventTypes).to.deep.equal([]);
+      });
+
+      it("should handle undefined ALLOWED_EVENT_TYPES", async () => {
+        const mockParams = { REGULAR_PARAM: "value" };
+
+        readInstanceParamStub.returns(mockParams);
+        getFirebaseProjectParamsStub.resolves({});
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: { "test": "firebase/test@1.0.0" }
+        });
+
+        expect(result[0].allowedEventTypes).to.be.undefined;
+        expect(result[0].eventarcChannel).to.be.undefined;
+      });
+    });
+
+    describe("extension reference handling", () => {
+      it("should handle published extension references", async () => {
+        readInstanceParamStub.returns({});
+        getFirebaseProjectParamsStub.resolves({});
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: {
+            "resize-images": "firebase/storage-resize-images@1.0.0"
+          }
+        });
+
+        expect(result[0].ref).to.deep.equal({
+          publisherId: "firebase",
+          extensionId: "storage-resize-images",
+          version: "1.0.0"  // Uses mocked version from listExtensionVersionsStub
+        });
+      });
+
+      it("should handle local extension paths", async () => {
+        readInstanceParamStub.returns({});
+        getFirebaseProjectParamsStub.resolves({});
+
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: {
+            "local-ext": "./extensions/my-extension"
+          }
+        });
+
+        expect(result[0].localPath).to.equal("./extensions/my-extension");
+        expect(result[0].ref).to.be.undefined;
+      });
+    });
+
+    describe("error handling", () => {
+      it("should handle missing .env file errors", async () => {
+        readInstanceParamStub.throws(new FirebaseError("No .env file found"));
+        getFirebaseProjectParamsStub.resolves({});
+
+        try {
+          await planner.want({
+            projectId: "test-project",
+            projectNumber: "123456789",
+            aliases: [],
+            projectDir: "/test/project",
+            extensions: { "missing-env": "firebase/test@1.0.0" }
+          });
+          expect.fail("Expected function to throw");
+        } catch (error) {
+          expect(error).to.be.instanceOf(FirebaseError);
+          expect((error as FirebaseError).message).to.include("Errors while reading 'extensions' in 'firebase.json'");
+          expect((error as FirebaseError).message).to.include("No .env file found");
+        }
+      });
+
+      it("should handle empty extensions configuration", async () => {
+        const result = await planner.want({
+          projectId: "test-project",
+          projectNumber: "123456789",
+          aliases: [],
+          projectDir: "/test/project",
+          extensions: {}
+        });
+
+        expect(result).to.deep.equal([]);
+      });
+    });
   });
 });
