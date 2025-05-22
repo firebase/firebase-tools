@@ -35,11 +35,10 @@ export const command = new Command("login")
 
     if (!options.reauth) {
       utils.logBullet(
-        "Firebase collects CLI integrates with Gemini in Firebase API to provide development assistant features.",
+        "Firebase collects CLI integrates with Gemini in Firebase API to provide development assistant features. Check out the terms of service https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions\n",
       );
-      utils.logBullet(
-        `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
-      );
+      const geminiUsage = await confirm("Enable Gemini in Firebase features?");
+      configstore.set("gemini", geminiUsage);
 
       utils.logBullet(
         "Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n",
