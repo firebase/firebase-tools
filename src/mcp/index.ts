@@ -186,6 +186,7 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
+    // Check if the current project directory exists.
     if (
       tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
       (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
@@ -194,19 +195,27 @@ export class FirebaseMcpServer {
         `The current project directory '${this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"}' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
       );
     }
+
+    // Check if the project ID is set.
     let projectId = await this.getProjectId();
     if (tool.mcp._meta?.requiresProject && !projectId) {
       return NO_PROJECT_ERROR;
     }
     projectId = projectId || "";
 
+    // Check if the user is logged in.
     const accountEmail = await this.getAuthenticatedUser();
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
       return mcpAuthError();
     }
-    if (tool.mcp._meta?.requiresGemini && !configstore.get("gemini")) return REQUIRE_GEMINI_API;
+
+    // Check if the tool requires Gemini in Firebase API.
+    if (tool.mcp._meta?.requiresGemini && !configstore.get("gemini")) {
+      return REQUIRE_GEMINI_API;
+    }
     if (tool.mcp._meta?.requiresGemini) {
-      await ensure(projectId!, api.cloudAiCompanionOrigin(), "");
+      await ensure(projectId, api.cloudAiCompanionOrigin(), "");
+    }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
     const toolsCtx: ServerToolContext = {
