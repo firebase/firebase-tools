@@ -22,7 +22,7 @@ export const disable_user = tool(
     },
   },
   async ({ uid, disabled }, { projectId }) => {
-    const res = await disableUser(projectId!, uid, disabled);
+    const res = await disableUser(projectId, uid, disabled);
     if (res) {
       return toContent(`User ${uid} as been ${disabled ? "disabled" : "enabled"}`);
     }

@@ -24,7 +24,7 @@ export const list_apps = tool(
   },
   async ({ platform }, { projectId }) => {
     const apps = await listFirebaseApps(
-      projectId!,
+      projectId,
       (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
     );
     return toContent(apps);

@@ -18,6 +18,6 @@ export const get_project = tool(
     },
   },
   async (_, { projectId }) => {
-    return toContent(await getProject(projectId!));
+    return toContent(await getProject(projectId));
   },
 );
