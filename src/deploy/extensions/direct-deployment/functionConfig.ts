@@ -28,7 +28,7 @@ export function convertExtensionFunctionToEndpoint(
   }
 
   const location = properties.properties?.location || "us-central1";
-  const entryPoint = properties.properties?.entryPoint || "handler";
+  const entryPoint = properties.properties?.entryPoint || functionId;  // Use function name as default entry point
   const id = generateExtensionFunctionId(instanceId, functionId);
   
   // Base configuration shared by all endpoint types
@@ -53,7 +53,17 @@ export function convertExtensionFunctionToEndpoint(
   };
 
   // Create endpoint with the appropriate trigger type
-  return createEndpointWithTrigger(baseConfig, properties);
+  const endpoint = createEndpointWithTrigger(baseConfig, properties);
+  
+  console.log(`[DEBUG] Function ${endpoint.id} trigger configuration:`, {
+    platform: endpoint.platform,
+    triggerType: backend.isHttpsTriggered(endpoint) ? 'https' : 
+                 backend.isTaskQueueTriggered(endpoint) ? 'taskQueue' :
+                 backend.isEventTriggered(endpoint) ? 'event' : 'unknown',
+    invoker: (endpoint as any).httpsTrigger?.invoker || (endpoint as any).taskQueueTrigger?.invoker
+  });
+  
+  return endpoint;
 }
 
 /**
@@ -63,6 +73,21 @@ function createEndpointWithTrigger(
   baseConfig: any,
   properties: FunctionResourceProperties
 ): backend.Endpoint {
+  console.log(`[DEBUG] Function ${baseConfig.id} properties:`, JSON.stringify(properties.properties, null, 2));
+  // Event trigger (e.g., Firebase Auth user deletion, Firestore events, etc.)
+  if (properties.properties?.eventTrigger) {
+    return {
+      ...baseConfig,
+      eventTrigger: {
+        eventType: properties.properties.eventTrigger.eventType,
+        eventFilters: {
+          resource: properties.properties.eventTrigger.resource,
+        },
+        retry: false, // Default to no retry for extension events
+      },
+    } as backend.EventTriggered & typeof baseConfig;
+  }
+
   // Schedule trigger
   if (properties.properties?.scheduleTrigger) {
     return {
@@ -81,7 +106,7 @@ function createEndpointWithTrigger(
       taskQueueTrigger: {
         rateLimits: properties.properties.taskQueueTrigger.rateLimits || null,
         retryConfig: properties.properties.taskQueueTrigger.retryConfig || null,
-        invoker: null, // Will be set by configureEndpointSecurity if needed
+        // Don't set invoker field at all for task queue functions (like existing extensions)
       },
     } as backend.TaskQueueTriggered & typeof baseConfig;
   }
@@ -90,7 +115,7 @@ function createEndpointWithTrigger(
   return {
     ...baseConfig,
     httpsTrigger: {
-      invoker: null, // Will be set by configureEndpointSecurity if needed
+      // Don't set invoker field at all (like existing extensions)
     },
   } as backend.HttpsTriggered & typeof baseConfig;
 }

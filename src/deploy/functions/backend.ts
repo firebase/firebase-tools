@@ -364,6 +364,8 @@ export type Endpoint = TargetIds &
     uri?: string;
     // sourceUploadUrl is available on GCFv1 only
     sourceUploadUrl?: string;
+    // sourceArchiveUrl is the gs:// URL of the deployed source archive (available on both GCFv1 and GCFv2)
+    sourceArchiveUrl?: string;
     // source is available on GCFv2 only
     source?: gcfV2.Source;
     // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS

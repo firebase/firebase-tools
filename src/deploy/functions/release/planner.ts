@@ -291,7 +291,17 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   // The new version is firebase-functions/https which defines onCallFlow
   const upgradingHttpsFunction =
     backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
-  if (wantType !== haveType && !upgradingHttpsFunction) {
+  
+  // Allow HTTP → Task Queue transition for extension functions during direct deployment
+  // This handles cases where the Extensions API incorrectly deployed a task queue function as HTTP
+  // (e.g., backfill functions that should be task queue but were deployed as HTTP triggers)
+  const extensionHttpToTaskQueueFix = 
+    backend.isHttpsTriggered(have) && 
+    backend.isTaskQueueTriggered(want) &&
+    (have.labels?.["deployment-tool"] === "firebase-extensions" ||
+     want.labels?.["deployment-tool"] === "firebase-extensions");
+    
+  if (wantType !== haveType && !upgradingHttpsFunction && !extensionHttpToTaskQueueFix) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want,

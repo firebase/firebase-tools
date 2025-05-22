@@ -549,7 +549,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "labels",
     "environmentVariables",
     "secretEnvironmentVariables",
-    "sourceUploadUrl",
   );
 
   proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
@@ -575,6 +574,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
+  // Copy sourceArchiveUrl for extension direct deployment
+  if (gcfFunction.sourceArchiveUrl) {
+    endpoint.sourceArchiveUrl = gcfFunction.sourceArchiveUrl;
   }
   proto.convertIfPresent(endpoint, gcfFunction, "state", "status", (status) => {
     if (status === "ACTIVE") {
@@ -613,11 +616,17 @@ export function functionFromEndpoint(
   }
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
     name: backend.functionName(endpoint),
-    sourceUploadUrl: sourceUploadUrl,
     entryPoint: endpoint.entryPoint,
     runtime: endpoint.runtime,
     dockerRegistry: "ARTIFACT_REGISTRY",
   };
+
+  // Use sourceArchiveUrl for gs:// URLs (existing archives), sourceUploadUrl for signed URLs
+  if (sourceUploadUrl.startsWith("gs://")) {
+    gcfFunction.sourceArchiveUrl = sourceUploadUrl;
+  } else {
+    gcfFunction.sourceUploadUrl = sourceUploadUrl;
+  }
 
   // N.B. It has the same effect to set labels to the empty object as it does to
   // set it to null, except the former is more effective for adding automatic

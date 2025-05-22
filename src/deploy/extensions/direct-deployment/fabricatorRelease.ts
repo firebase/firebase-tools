@@ -11,6 +11,54 @@ import { QueueExecutor } from "../../functions/release/executor";
 import * as backend from "../../functions/backend";
 import * as planner from "../../functions/release/planner";
 import * as args from "../../functions/args";
+import * as extensionsApi from "../../../extensions/extensionsApi";
+import * as refs from "../../../extensions/refs";
+import { DeploymentInstanceSpec } from "../planner";
+
+/**
+ * Checks if an extension instance needs updating by comparing current vs desired state.
+ * This optimization prevents unnecessary deployments when nothing has changed.
+ */
+async function shouldUpdateExtensionInstance(
+  projectId: string,
+  instanceSpec: DeploymentInstanceSpec
+): Promise<{ shouldUpdate: boolean; reason?: string }> {
+  try {
+    // Get current extension instance
+    const currentInstance = await extensionsApi.getInstance(projectId, instanceSpec.instanceId);
+    if (!currentInstance) {
+      return { shouldUpdate: true, reason: "Extension instance not found" };
+    }
+
+    // Note: We don't compare extension versions here because version upgrades
+    // are blocked in the source handler. Direct deployment only supports
+    // parameter changes and reconfigurations, not version upgrades.
+
+    // Compare parameters (convert both to comparable format)
+    const currentParams = currentInstance.config.params || {};
+    const desiredParams = instanceSpec.params || {};
+    
+    // Simple deep comparison for parameters
+    if (JSON.stringify(currentParams) !== JSON.stringify(desiredParams)) {
+      return { shouldUpdate: true, reason: "Extension parameters changed" };
+    }
+
+    // Compare system parameters
+    const currentSystemParams = currentInstance.config.systemParams || {};
+    const desiredSystemParams = instanceSpec.systemParams || {};
+    
+    if (JSON.stringify(currentSystemParams) !== JSON.stringify(desiredSystemParams)) {
+      return { shouldUpdate: true, reason: "Extension system parameters changed" };
+    }
+
+    return { shouldUpdate: false };
+
+  } catch (error) {
+    logger.debug(`Error checking if extension ${instanceSpec.instanceId} needs update: ${error}`);
+    // If we can't determine, err on the side of updating
+    return { shouldUpdate: true, reason: "Unable to determine current state" };
+  }
+}
 
 /**
  * Direct deployment of extensions using the function Fabricator instead of Extensions API.
@@ -43,14 +91,47 @@ export async function releaseFabricator(
   }
 
   // Collect instances to process
-  const instancesToProcess = [
+  const candidateInstances = [
     ...(payload.instancesToUpdate || []),
     ...(payload.instancesToConfigure || [])
   ];
 
-  if (instancesToProcess.length === 0) {
+  if (candidateInstances.length === 0) {
     logger.debug("No extension instances to process via direct deployment");
     return;
+  }
+
+  // Optimization: Filter out instances that don't need updating
+  logger.debug(`Checking if ${candidateInstances.length} extension instances need updates...`);
+  const instancesToProcess = [];
+  const skippedInstances = [];
+
+  for (const instance of candidateInstances) {
+    const { shouldUpdate, reason } = await shouldUpdateExtensionInstance(projectId, instance);
+    
+    console.log(`[DEBUG] Extension ${instance.instanceId}: shouldUpdate=${shouldUpdate}, reason=${reason}`);
+    
+    if (shouldUpdate) {
+      instancesToProcess.push(instance);
+      if (reason) {
+        logger.debug(`Extension ${instance.instanceId} needs update: ${reason}`);
+      }
+    } else {
+      skippedInstances.push(instance.instanceId);
+      logger.debug(`Extension ${instance.instanceId} is up-to-date, skipping`);
+    }
+  }
+
+  if (instancesToProcess.length === 0) {
+    logger.info("✅ All extension instances are up-to-date. No deployment needed.");
+    if (skippedInstances.length > 0) {
+      logger.info(`Skipped extensions: ${skippedInstances.join(', ')}`);
+    }
+    return;
+  }
+
+  if (skippedInstances.length > 0) {
+    logger.info(`⏭️  Skipping ${skippedInstances.length} up-to-date extensions: ${skippedInstances.join(', ')}`);
   }
 
   logger.info(`Converting ${instancesToProcess.length} extension instances to function endpoints`);
@@ -107,11 +188,15 @@ export async function releaseFabricator(
   
   const haveBackends: Record<string, backend.Backend> = {};
   for (const [codebaseId] of Object.entries(wantBackends)) {
-    // Filter existing backend to only include functions for this extension instance
+    // Filter existing backend to only include functions for this specific extension instance
+    // Extract instance ID from codebaseId (format: "ext-{instanceId}")
+    const instanceId = codebaseId.replace('ext-', '');
     const codebaseEndpoints = backend.allEndpoints(haveBackend)
-      .filter(e => e.codebase === codebaseId || extensionFunctionIds.includes(e.id));
+      .filter(e => e.id.startsWith(`ext-${instanceId}-`));
     
     haveBackends[codebaseId] = backend.of(...codebaseEndpoints);
+    
+    console.log(`[DEBUG] ${codebaseId} existing functions:`, codebaseEndpoints.map(e => e.id));
   }
 
   // Create deployment plan
@@ -140,9 +225,9 @@ export async function releaseFabricator(
     concurrency: 1 // Functions need to be deployed sequentially to avoid quota issues
   });
 
-  // Get extension sources - these use the pre-packaged sources from Extensions API
+  // Get extension sources - these use the archiveSourceUrl from existing functions
   logger.debug("Preparing extension sources...");
-  const sources = await createExtensionSources(instancesToProcess);
+  const sources = await createExtensionSources(instancesToProcess, projectId, haveBackend);
 
   const fabricator = new Fabricator({
     executor,
@@ -156,11 +241,22 @@ export async function releaseFabricator(
   let plan: planner.DeploymentPlan = {};
   for (const [codebaseId, deploymentPlan] of Object.entries(deploymentPlans)) {
     // Log the plan for debugging
-    logger.debug(`Deployment plan for ${codebaseId}:`, JSON.stringify({
+    const planSummary = {
       endpointsToCreate: Object.values(deploymentPlan).reduce((sum, changes) => sum + changes.endpointsToCreate.length, 0),
       endpointsToUpdate: Object.values(deploymentPlan).reduce((sum, changes) => sum + changes.endpointsToUpdate.length, 0),
       endpointsToDelete: Object.values(deploymentPlan).reduce((sum, changes) => sum + changes.endpointsToDelete.length, 0),
-    }));
+    };
+    
+    console.log(`[DEBUG] Deployment plan for ${codebaseId}:`, planSummary);
+    
+    // Log details about what's being deleted
+    Object.values(deploymentPlan).forEach(changes => {
+      if (changes.endpointsToDelete.length > 0) {
+        console.log(`[DEBUG] ${codebaseId} endpoints to delete:`, changes.endpointsToDelete.map(e => e.id));
+      }
+    });
+    
+    logger.debug(`Deployment plan for ${codebaseId}:`, JSON.stringify(planSummary));
     
     plan = {
       ...plan,

@@ -3,7 +3,8 @@ import { DeploymentInstanceSpec } from "../planner";
 import { ExtensionSpec, FUNCTIONS_RESOURCE_TYPE } from "../../../extensions/types";
 import { FirebaseError } from "../../../error";
 import { convertExtensionFunctionToEndpoint } from "./functionConfig";
-import { processExtensionParams, processSecretParams } from "./paramProcessing";
+import { processExtensionParams, processSecretParams, resolveExtensionParams } from "./paramProcessing";
+import { getFirebaseProjectParams } from "../../../extensions/extensionsHelper";
 import { logger } from "../../../logger";
 
 /**
@@ -29,18 +30,30 @@ export async function convertExtensionToFunctionEndpoints(
   
   logger.debug(`Converting extension ${instanceSpec.instanceId} to function endpoints`);
   
-  // Process parameters for this extension instance
+  // IMPORTANT: Resolve template parameters (${param:*}) in the extension spec first
+  // This replaces ${param:PROJECT_ID} with actual project ID, ${param:EXT_INSTANCE_ID} with instance ID, etc.
+  const resolvedExtensionSpec = await resolveExtensionParams(
+    extensionSpec,
+    instanceSpec.params,
+    projectId,
+    instanceSpec.instanceId
+  );
+  
+  // Get built-in Firebase parameters that extensions expect
+  const firebaseParams = await getFirebaseProjectParams(projectId);
+  
+  // Process parameters for this extension instance, including built-in Firebase params
   const processedParams = processExtensionParams(
     instanceSpec.params,
-    instanceSpec.systemParams,
+    { ...instanceSpec.systemParams, ...firebaseParams },
     projectId
   );
   
   // Process secret parameters
   const secretParams = processSecretParams(instanceSpec.params, projectId);
   
-  // Extract all function resources from the extension spec
-  const functionResources = extensionSpec.resources.filter(
+  // Extract all function resources from the resolved extension spec
+  const functionResources = resolvedExtensionSpec.resources.filter(
     resource => resource.type === FUNCTIONS_RESOURCE_TYPE || resource.type === "firebaseextensions.v1beta.v2function"
   );
   
@@ -58,12 +71,19 @@ export async function convertExtensionToFunctionEndpoints(
     const functionId = resource.name || `function${i + 1}`;
     
     try {
+      // Determine platform generation from resource type in extension spec
+      const platform: backend.FunctionsPlatform = 
+        resource.type === "firebaseextensions.v1beta.v2function" ? "gcfv2" : "gcfv1";
+      
+      logger.debug(`Function ${functionId}: using platform ${platform} (from resource type: ${resource.type})`);
+      
       const endpoint = convertExtensionFunctionToEndpoint(
         projectId,
         instanceSpec.instanceId,
         functionId,
         resource as any, // Type assertion needed since we support both v1 and v2 function types
-        processedParams
+        processedParams,
+        platform
       );
       
       // Add secret environment variables if any

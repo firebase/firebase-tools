@@ -1,5 +1,6 @@
 import { SecretEnvVar } from "../../functions/backend";
 import { FirebaseError } from "../../../error";
+import { getFirebaseProjectParams, substituteParams } from "../../../extensions/extensionsHelper";
 
 /**
  * Processes extension parameters for function deployment.
@@ -85,4 +86,40 @@ export function validateParams(
       { exit: 1 }
     );
   }
+}
+
+/**
+ * Resolves template parameters in extension specifications.
+ * This handles both user-defined parameters and built-in Firebase parameters.
+ * 
+ * @param spec Extension specification with potential ${param:*} templates
+ * @param userParams User-defined extension parameters
+ * @param projectId The Firebase project ID
+ * @param instanceId The extension instance ID for EXT_INSTANCE_ID parameter
+ * @returns Extension spec with resolved parameters
+ */
+export async function resolveExtensionParams<T>(
+  spec: T,
+  userParams: Record<string, string>,
+  projectId: string,
+  instanceId?: string
+): Promise<T> {
+  // Get built-in Firebase parameters (PROJECT_ID, DATABASE_URL, etc.)
+  const firebaseParams = await getFirebaseProjectParams(projectId);
+  
+  // Add extension-specific parameters
+  const extensionParams: Record<string, string> = {};
+  if (instanceId) {
+    extensionParams.EXT_INSTANCE_ID = instanceId;
+  }
+  
+  // Combine user parameters with built-in parameters and extension-specific params
+  const allParams = {
+    ...firebaseParams,
+    ...extensionParams,
+    ...userParams,
+  };
+  
+  // Use the existing substituteParams function to resolve templates
+  return substituteParams(spec, allParams);
 }
