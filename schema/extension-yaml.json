@@ -218,8 +218,11 @@
                   "description": "The name or pattern of the resource to trigger on"
                 },
                 "eventFilters": {
-                  "type": "string",
-                  "description": "Filters that further limit the events to listen to."
+                  "type": "array",
+                  "description": "Filters that further limit the events to listen to.",
+                  "items": {
+                    "$ref": "#/definitions/eventFilter"
+                  }
                 },
                 "channel": {
                   "type": "string",
@@ -325,6 +328,16 @@
         "description": {
           "type": "string",
           "description": "A description of the event"
+        }
+      }
+    },
+    "eventFilter": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "type": "string",
+          "description": "The event attribute to filter on",
+          "value": "The value to filter for"
         }
       }
     }
