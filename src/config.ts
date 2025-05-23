@@ -216,7 +216,7 @@ export class Config {
     }
   }
 
-  writeProjectFile(p: string, content: any) {
+  writeProjectFile(p: string, content: any): void {
     const path = this.path(p);
     fs.ensureFileSync(path);
     fs.writeFileSync(path, stringifyContent(content), "utf8");
@@ -228,7 +228,7 @@ export class Config {
         utils.logSuccess("Wrote project information to " + clc.bold(".firebaserc"));
         break;
       default:
-        utils.logSuccess("Wrote " + clc.bold(path));
+        utils.logSuccess("Wrote " + clc.bold(p));
         break;
     }
   }

@@ -153,9 +153,8 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     rules: DEFAULT_RULES,
     writeRules: true,
   };
-  let instanceDetails: DatabaseInstance | null = null;
   if (setup.projectId) {
-    instanceDetails = await initializeDatabaseInstance(setup.projectId);
+    const instanceDetails = await initializeDatabaseInstance(setup.projectId);
     if (instanceDetails) {
       info.rules = await getDBRules(instanceDetails);
       utils.logBullet(
