@@ -34,8 +34,8 @@ export const generate_operation = tool(
     },
   },
   async ({ prompt, service_id }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
-    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId);
     return toContent(schema);
   },
 );
