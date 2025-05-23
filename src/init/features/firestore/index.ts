@@ -7,9 +7,10 @@ import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
 import * as clc from "colorette";
-import { input } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
+import { messages } from "@electric-sql/pglite";
+import { input } from "@inquirer/prompts";
 
 export interface RequiredInfo {
   databaseId: string;
@@ -48,7 +49,11 @@ async function checkProjectSetup(setup: Setup, options: any, info: RequiredInfo)
   info.databaseId = info.databaseId || "(default)";
   let dbType = await checkDatabaseType(setup.projectId!, info.databaseId);
   if (dbType === "DATABASE_DOES_NOT_EXIST") {
-    info.databaseId = await selectDatabaseByPrompting();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    info.databaseId = input({
+      messages: "Please input the name of the Native Firestore database you would like to use:",
+      default: info.databaseId,
+    });
     dbType = await checkDatabaseType(setup.projectId!, info.databaseId);
   }
   if (dbType !== "FIRESTORE_NATIVE") {
