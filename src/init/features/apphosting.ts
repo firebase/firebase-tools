@@ -117,7 +117,6 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   });
 
   upsertAppHostingConfig(backendConfig, config);
-  utils.logBullet("Writing configuration info to firebase.json...");
   config.writeProjectFile("firebase.json", config.src);
 
   utils.logBullet("Writing default settings to " + clc.bold("apphosting.yaml") + "...");
