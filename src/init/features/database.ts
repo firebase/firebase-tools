@@ -2,7 +2,6 @@ import * as clc from "colorette";
 import { confirm, input, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
-import * as fsutils from "../../fsutils";
 import { Config } from "../../config";
 import {
   createInstance,
@@ -134,12 +133,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
  * @param setup information helpful for database setup
  * @param config legacy config parameter. not used for database setup.
  */
-export async function askQuestions(setup: Setup): Promise<void> {
-  let instanceDetails: DatabaseInstance | null = null;
-  if (setup.projectId) {
-    instanceDetails = await initializeDatabaseInstance(setup.projectId);
-  }
-
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   logger.info();
   logger.info(
     "Firebase Realtime Database Security Rules allow you to define how your data should be",
@@ -159,20 +153,17 @@ export async function askQuestions(setup: Setup): Promise<void> {
     rules: DEFAULT_RULES,
     writeRules: true,
   };
-  if (fsutils.fileExistsSync(rulesFilename)) {
-    const rulesDescription = instanceDetails
-      ? `the Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`
-      : "default rules";
-    const msg = `File ${clc.bold(
-      rulesFilename,
-    )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
-
-    info.writeRules = await confirm(msg);
+  let instanceDetails: DatabaseInstance | null = null;
+  if (setup.projectId) {
+    instanceDetails = await initializeDatabaseInstance(setup.projectId);
+    if (instanceDetails) {
+      info.rules = await getDBRules(instanceDetails);
+      utils.logBullet(
+        `Downloaded the existing Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`,
+      );
+    }
   }
-  if (info.writeRules && instanceDetails) {
-    info.rules = await getDBRules(instanceDetails);
-  }
-
+  info.writeRules = await config.confirmWriteProjectFile(rulesFilename, DEFAULT_RULES);
   // Populate featureInfo for the actuate step later.
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.database = info;

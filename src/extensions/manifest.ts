@@ -1,4 +1,3 @@
-import * as clc from "colorette";
 import * as path from "path";
 import * as fs from "fs-extra";
 
@@ -9,7 +8,6 @@ import { logger } from "../logger";
 import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
 import { isLocalPath } from "./extensionsHelper";
 import { ParamType } from "./types";
 

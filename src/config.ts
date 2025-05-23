@@ -17,7 +17,6 @@ import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 import { loadCJSON } from "./loadCJSON";
-import { b } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {

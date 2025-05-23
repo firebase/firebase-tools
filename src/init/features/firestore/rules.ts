@@ -1,8 +1,7 @@
 import * as clc from "colorette";
 
 import * as gcp from "../../../gcp";
-import * as fsutils from "../../../fsutils";
-import { confirm, input } from "../../../prompt";
+import { input } from "../../../prompt";
 import { logger } from "../../../logger";
 import * as utils from "../../../utils";
 import { readTemplateSync } from "../../../templates";
@@ -34,31 +33,25 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
       default: DEFAULT_RULES_FILE,
     }));
 
-  if (fsutils.fileExistsSync(info.rulesFilename)) {
-    const msg =
-      "File " +
-      clc.bold(info.rulesFilename) +
-      " already exists." +
-      " Do you want to overwrite it with the Firestore Rules from the Firebase Console?";
-    if (!(await confirm(msg))) {
-      info.writeRules = false;
-      return;
+  info.rules = getDefaultRules();
+  if (setup.projectId) {
+    const downloadedRules = await getRulesFromConsole(setup.projectId);
+    if (downloadedRules) {
+      info.rules = downloadedRules;
+      utils.logBullet(
+        `Downloaded the existing Firestore Security Rules for ${clc.bold(setup.projectId)} from the Firebase console`,
+      );
     }
   }
-
-  if (setup.projectId) {
-    info.rules = await getRulesFromConsole(setup.projectId);
-  }
+  info.writeRules = await config.confirmWriteProjectFile(info.rulesFilename, info.rules);
 }
 
-async function getRulesFromConsole(projectId: string): Promise<string> {
+async function getRulesFromConsole(projectId: string): Promise<string | null> {
   const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore");
   if (!name) {
-    logger.debug("No rulesets found, using default.");
-    return getDefaultRules();
+    return null;
   }
 
-  logger.debug("Found ruleset: " + name);
   const rules = await gcp.rules.getRulesetContent(name);
   if (rules.length <= 0) {
     return utils.reject("Ruleset has no files", { exit: 1 });
