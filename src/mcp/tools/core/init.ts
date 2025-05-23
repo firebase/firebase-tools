@@ -8,7 +8,7 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace. All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
