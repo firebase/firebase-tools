@@ -260,7 +260,7 @@ export class Config {
       message: "File " + clc.underline(path) + " already exists. Overwrite?",
       default: !!confirmByDefault,
     });
-    if (shouldWrite) {
+    if (!shouldWrite) {
       utils.logBullet("Skipping write of " + clc.bold(path));
       return false;
     }
