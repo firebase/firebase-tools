@@ -62,10 +62,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     version: EMULATOR_UPDATE_DETAILS.database.version,
     opts: {
+      ...EMULATOR_UPDATE_DETAILS.database,
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.database.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.database.expectedChecksum,
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -76,10 +74,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     version: EMULATOR_UPDATE_DETAILS.firestore.version,
     opts: {
+      ...EMULATOR_UPDATE_DETAILS.firestore,
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.firestore.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.firestore.expectedChecksum,
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -90,10 +86,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     version: EMULATOR_UPDATE_DETAILS.storage.version,
     opts: {
+      ...EMULATOR_UPDATE_DETAILS.storage,
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.storage.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.storage.expectedChecksum,
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
@@ -103,10 +97,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
     binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`, "server", "server.mjs"),
     opts: {
+      ...emulatorUiDetails,
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${emulatorUiDetails.version}.zip`,
-      expectedSize: emulatorUiDetails.expectedSize,
-      expectedChecksum: emulatorUiDetails.expectedChecksum,
       skipCache: experiments.isEnabled("emulatoruisnapshot"),
       skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
       namePrefix: "ui",
@@ -125,10 +117,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
     ),
     opts: {
+      ...EMULATOR_UPDATE_DETAILS.pubsub,
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.pubsub.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.pubsub.expectedChecksum,
       namePrefix: "pubsub-emulator",
     },
   },
@@ -143,15 +133,8 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       `dataconnect-emulator-${dataconnectDetails.version}${process.platform === "win32" ? ".exe" : ""}`,
     ),
     opts: {
+      ...dataconnectDetails,
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${dataconnectDetails.version}`
-          : process.platform === "win32"
-            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${dataconnectDetails.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${dataconnectDetails.version}`,
-      expectedSize: dataconnectDetails.expectedSize,
-      expectedChecksum: dataconnectDetails.expectedChecksum,
       skipChecksumAndSize: false,
       namePrefix: "dataconnect-emulator",
       auth: false,
