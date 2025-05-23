@@ -1,16 +1,13 @@
-import { logger } from "../../../logger";
-import * as apiEnabled from "../../../ensureApiEnabled";
-import { requirePermissions } from "../../../requirePermissions";
-import { checkDatabaseType } from "../../../firestore/checkDatabaseType";
 import * as rules from "./rules";
 import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
-import * as clc from "colorette";
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import { messages } from "@electric-sql/pglite";
-import { input } from "@inquirer/prompts";
+import * as fsi from "../../../firestore/api";
+import { select } from "../../../prompt";
+import { ensure } from "../../../ensureApiEnabled";
+import { firestoreOrigin } from "../../../api";
 
 export interface RequiredInfo {
   databaseId: string;
@@ -22,62 +19,7 @@ export interface RequiredInfo {
   writeIndexes: boolean;
 }
 
-/** Returns the Firestore databaseId. */
-async function checkProjectSetup(setup: Setup, options: any, info: RequiredInfo): Promise<void> {
-  const firestoreUnusedError = new FirebaseError(
-    `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold(
-      clc.underline(`https://console.firebase.google.com/project/${setup.projectId}/firestore`),
-    )} to create your Cloud Firestore database.`,
-    { exit: 1 },
-  );
-
-  // First check if the Firestore API is enabled. If it's not, then the developer needs
-  // to go set up Firestore in the console.
-  const isFirestoreEnabled = await apiEnabled.check(
-    setup.projectId!,
-    "firestore.googleapis.com",
-    "",
-    true,
-  );
-  if (!isFirestoreEnabled) {
-    throw firestoreUnusedError;
-  }
-
-  // Next, use the AppEngine Apps API to check the database type.
-  // This allows us to filter out projects that are not using Firestore in Native mode.
-  // Will also prompt user for databaseId if default does not exist.
-  info.databaseId = info.databaseId || "(default)";
-  let dbType = await checkDatabaseType(setup.projectId!, info.databaseId);
-  if (dbType === "DATABASE_DOES_NOT_EXIST") {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    info.databaseId = input({
-      messages: "Please input the name of the Native Firestore database you would like to use:",
-      default: info.databaseId,
-    });
-    dbType = await checkDatabaseType(setup.projectId!, info.databaseId);
-  }
-  if (dbType !== "FIRESTORE_NATIVE") {
-    logger.debug(`firestore database_type: ${dbType}`);
-    throw new FirebaseError(
-      `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
-      { exit: 1 },
-    );
-  }
-
-  await requirePermissions({ ...options, project: setup.projectId });
-}
-
-function selectDatabaseByPrompting(): Promise<string> {
-  return input("Please input the name of the Native Firestore database you would like to use:");
-}
-
-// Kept around for unit tests.
-export async function doSetup(setup: Setup, config: Config, options: any): Promise<void> {
-  await askQuestions(setup, config, options);
-  await actuate(setup, config);
-}
-
-export async function askQuestions(setup: Setup, config: Config, options: any): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   const firestore = !Array.isArray(setup.config.firestore) ? setup.config.firestore : undefined;
   const info: RequiredInfo = {
     databaseId: firestore?.database || "",
@@ -89,7 +31,36 @@ export async function askQuestions(setup: Setup, config: Config, options: any): 
     writeIndexes: true,
   };
   if (setup.projectId) {
-    await checkProjectSetup(setup, options, info);
+    await ensure(setup.projectId, firestoreOrigin(), "firestore");
+    // Next, use the AppEngine Apps API to check the database type.
+    // This allows us to filter out projects that are not using Firestore in Native mode.
+    // Will also prompt user for databaseId if default does not exist.
+    info.databaseId = info.databaseId || "(default)";
+    const api = new fsi.FirestoreApi();
+    const databases = await api.listDatabases(setup.projectId!);
+    console.log("databases", databases);
+    const nativeDatabaseNames = databases
+      .filter((db) => db.type === "FIRESTORE_NATIVE")
+      .map((db) => db.name.split("/")[3]);
+    if (nativeDatabaseNames.length === 0) {
+      if (databases.length > 0) {
+        // Has non-native Firestore databases
+        throw new FirebaseError(
+          `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
+          { exit: 1 },
+        );
+      }
+      // Create the default database later.
+      info.databaseId = "(default)";
+    } else if (nativeDatabaseNames.length === 1) {
+      info.databaseId = nativeDatabaseNames[0];
+    } else if (nativeDatabaseNames.length > 1) {
+      const choice = await select<string>({
+        message: "Please select the name of the Native Firestore database you would like to use:",
+        choices: nativeDatabaseNames,
+      });
+      info.databaseId = choice;
+    }
   }
 
   await rules.initRules(setup, config, info);

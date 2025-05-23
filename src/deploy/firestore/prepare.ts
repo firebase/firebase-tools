@@ -103,6 +103,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   }
 
   context.firestore = context.firestore || {};
+  context.firestore.databaseId = options.config.data.firestore.database;
   context.firestore.indexes = [];
   context.firestore.rules = [];
   const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
