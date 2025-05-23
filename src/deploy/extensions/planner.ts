@@ -10,13 +10,18 @@ import {
   substituteSecretParams,
 } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
-import { readInstanceParam } from "../../extensions/manifest";
 import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper";
 import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
-import { ExtensionVersion, Extension, ExtensionSpec } from "../../extensions/types";
+import { ExtensionVersion, Extension, ExtensionConfig, ExtensionSpec } from "../../extensions/types";
+import { readInstanceParam } from "../../extensions/manifest";
 import { partitionRecord } from "../../functional";
 import { getEventArcChannel } from "../../extensions/askUserForEventsConfig";
 import { DynamicExtension } from "../../extensions/runtimes/common";
+import { createExtensionBuild, backendToDeploymentInstanceSpec } from "./buildAdapter";
+import * as build from "../functions/build";
+import { FirebaseConfig } from "../functions/args";
+import { UserEnvsOpts } from "../../functions/env";
+import * as path from "path";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -250,6 +255,7 @@ export async function wantDynamic(args: {
  * @param args.extensions The extensions section of firebase.jsonm
  * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
  *                     If true, this will check {instanceId}.env.local for params and will respect `demo-` project rules.
+ * @param args.nonInteractive If true, do not prompt for missing parameters
  * @return an array of deployment instance specs to deploy.
  */
 export async function want(args: {
@@ -259,6 +265,7 @@ export async function want(args: {
   projectDir: string;
   extensions: Record<string, string>;
   emulatorMode?: boolean;
+  nonInteractive?: boolean;
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
@@ -269,52 +276,95 @@ export async function want(args: {
     try {
       const instanceId = e[0];
 
-      const rawParams = readInstanceParam({
-        projectDir: args.projectDir,
-        instanceId,
-        projectId: args.projectId,
-        projectNumber: args.projectNumber,
-        aliases: args.aliases,
-        checkLocal: args.emulatorMode,
-      });
-      const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
-      const subbedParams = substituteParams(rawParams, autoPopulatedParams);
-      const [systemParams, params] = partitionRecord(subbedParams, isSystemParam);
-
-      // ALLOWED_EVENT_TYPES can be undefined (user input not provided) or empty string (no events selected).
-      // If empty string, we want to pass an empty array. If it's undefined we want to pass through undefined.
-      const allowedEventTypes =
-        params.ALLOWED_EVENT_TYPES !== undefined
-          ? params.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
-          : undefined;
-      const eventarcChannel = params.EVENTARC_CHANNEL;
-
-      // Remove special params that are stored in the .env file but aren't actually params specified by the publisher.
-      // Currently, only environment variables needed for Events features are considered special params stored in .env files.
-      delete params["EVENTARC_CHANNEL"];
-      delete params["ALLOWED_EVENT_TYPES"];
+      let extensionSpec: ExtensionSpec;
+      let instanceSpec: Partial<DeploymentInstanceSpec>;
 
       if (isLocalPath(e[1])) {
-        instanceSpecs.push({
+        extensionSpec = await readExtensionYaml(e[1]);
+        extensionSpec.postinstallContent = await readPostinstall(e[1]);
+        instanceSpec = {
           instanceId,
           localPath: e[1],
-          params,
-          systemParams,
-          allowedEventTypes: allowedEventTypes,
-          eventarcChannel: eventarcChannel,
-        });
+          params: {}, // Will be populated by parameter resolution
+          systemParams: {} // Will be populated by parameter resolution
+        };
       } else {
         const ref = refs.parse(e[1]);
         ref.version = await resolveVersion(ref);
-        instanceSpecs.push({
+        const extensionVersion = await extensionsApi.getExtensionVersion(
+          refs.toExtensionVersionRef(ref)
+        );
+        extensionSpec = extensionVersion.spec;
+        instanceSpec = {
           instanceId,
           ref,
-          params,
-          systemParams,
-          allowedEventTypes: allowedEventTypes,
-          eventarcChannel: eventarcChannel,
-        });
+          params: {}, // Will be populated by parameter resolution
+          systemParams: {} // Will be populated by parameter resolution
+        };
       }
+
+      // Get existing instance config for smart defaults during prompting
+      let existingInstanceConfig: ExtensionConfig | undefined;
+      try {
+        const instances = await extensionsApi.listInstances(args.projectId);
+        const instance = instances.find(i => i.name.endsWith(`/${instanceId}`));
+        existingInstanceConfig = instance?.config;
+      } catch {
+        // Instance doesn't exist or no permissions
+      }
+
+      // 1. Load extension user environment variables
+      const userEnvs = readInstanceParam({
+        projectDir: args.projectDir,
+        instanceId: instanceId,
+        projectId: args.projectId,
+        projectNumber: args.projectNumber,
+        aliases: args.aliases,
+        checkLocal: args.emulatorMode
+      });
+
+      // 2. Create extension Build
+      const extensionBuild = createExtensionBuild(
+        instanceSpec as DeploymentInstanceSpec,
+        extensionSpec,
+        existingInstanceConfig
+      );
+
+      // 3. Create UserEnvsOpts for functions compatibility with extension-specific file override
+      const extensionEnvFile = path.join(
+        args.projectDir, 
+        "extensions", 
+        `${instanceId}.env.${args.projectId}`
+      );
+      
+      const userEnvOpt: UserEnvsOpts = {
+        functionsSource: path.join(args.projectDir, "extensions"),
+        projectId: args.projectId,
+        projectAlias: args.aliases[0], // Use first alias
+        isEmulator: args.emulatorMode,
+        envFileOverride: extensionEnvFile // Write to extension-specific file format
+      };
+
+      // 4. Use functions parameter resolution pipeline!
+      const { backend, envs } = await build.resolveBackend({
+        build: extensionBuild,
+        firebaseConfig: { projectId: args.projectId },
+        userEnvOpt,
+        userEnvs,
+        nonInteractive: args.nonInteractive ?? false, // Enable interactive prompting by default
+        isEmulator: args.emulatorMode
+      });
+
+      // 5. Convert back to extension format
+      const resolvedInstanceSpec = backendToDeploymentInstanceSpec(
+        backend,
+        envs,
+        instanceSpec as DeploymentInstanceSpec,
+        extensionSpec
+      );
+
+      instanceSpecs.push(resolvedInstanceSpec);
+
     } catch (err: unknown) {
       logger.debug(`Got error reading extensions entry ${e[0]} (${e[1]}): ${getErrMsg(err)}`);
       errors.push(err as FirebaseError);

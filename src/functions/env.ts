@@ -243,6 +243,7 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  envFileOverride?: string; // If provided, write to this specific file instead of auto-resolving
 }
 
 /**
@@ -269,16 +270,27 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const { functionsSource, projectId, projectAlias, isEmulator, envFileOverride } = envOpts;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  const targetEnvFile = envOpts.isEmulator
-    ? FUNCTIONS_EMULATOR_DOTENV
-    : `.env.${envOpts.projectId}`;
-  const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
-  if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+  let targetEnvFile: string;
+  let targetEnvFilePath: string;
+  
+  if (envFileOverride) {
+    // Use override file path directly
+    targetEnvFile = path.basename(envFileOverride);
+    targetEnvFilePath = envFileOverride;
+  } else {
+    // Use normal resolution logic
+    const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+    targetEnvFile = envOpts.isEmulator
+      ? FUNCTIONS_EMULATOR_DOTENV
+      : `.env.${envOpts.projectId}`;
+    targetEnvFilePath = path.join(functionsSource, targetEnvFile);
+  }
+  
+  if (!fs.existsSync(targetEnvFilePath)) {
+    fs.writeFileSync(targetEnvFilePath, "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
         `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
@@ -303,7 +315,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   for (const k of Object.keys(toWrite)) {
     lines += formatUserEnvForWrite(k, toWrite[k]);
   }
-  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
+  fs.appendFileSync(targetEnvFilePath, lines);
 }
 
 /**
