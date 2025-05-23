@@ -58,7 +58,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   database: {
     downloadPath: path.join(
       CACHE_DIR,
-      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
+      EMULATOR_UPDATE_DETAILS.database.downloadPathRelativeToCacheDir,
     ),
     version: EMULATOR_UPDATE_DETAILS.database.version,
     opts: {
@@ -70,7 +70,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   firestore: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
+      EMULATOR_UPDATE_DETAILS.firestore.downloadPathRelativeToCacheDir,
     ),
     version: EMULATOR_UPDATE_DETAILS.firestore.version,
     opts: {
@@ -82,7 +82,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   storage: {
     downloadPath: path.join(
       CACHE_DIR,
-      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
+      EMULATOR_UPDATE_DETAILS.storage.downloadPathRelativeToCacheDir,
     ),
     version: EMULATOR_UPDATE_DETAILS.storage.version,
     opts: {
@@ -93,9 +93,9 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   },
   ui: {
     version: emulatorUiDetails.version,
-    downloadPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}.zip`),
+    downloadPath: path.join(CACHE_DIR, emulatorUiDetails.downloadPathRelativeToCacheDir),
     unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
-    binaryPath: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`, "server", "server.mjs"),
+    binaryPath: path.join(CACHE_DIR, emulatorUiDetails.binaryPathRelativeToCacheDir!),
     opts: {
       ...emulatorUiDetails,
       cacheDir: CACHE_DIR,
@@ -107,15 +107,11 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   pubsub: {
     downloadPath: path.join(
       CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
+      EMULATOR_UPDATE_DETAILS.pubsub.downloadPathRelativeToCacheDir,
     ),
     version: EMULATOR_UPDATE_DETAILS.pubsub.version,
     unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
-    binaryPath: path.join(
-      CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`,
-      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
-    ),
+    binaryPath: path.join(CACHE_DIR, EMULATOR_UPDATE_DETAILS.pubsub.binaryPathRelativeToCacheDir!),
     opts: {
       ...EMULATOR_UPDATE_DETAILS.pubsub,
       cacheDir: CACHE_DIR,
@@ -123,15 +119,9 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   dataconnect: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `dataconnect-emulator-${dataconnectDetails.version}${process.platform === "win32" ? ".exe" : ""}`,
-    ),
+    downloadPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
     version: dataconnectDetails.version,
-    binaryPath: path.join(
-      CACHE_DIR,
-      `dataconnect-emulator-${dataconnectDetails.version}${process.platform === "win32" ? ".exe" : ""}`,
-    ),
+    binaryPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
     opts: {
       ...dataconnectDetails,
       cacheDir: CACHE_DIR,
