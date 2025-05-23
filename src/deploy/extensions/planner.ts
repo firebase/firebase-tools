@@ -12,14 +12,18 @@ import {
 import { logger } from "../../logger";
 import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper";
 import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
-import { ExtensionVersion, Extension, ExtensionConfig, ExtensionSpec } from "../../extensions/types";
+import {
+  ExtensionVersion,
+  Extension,
+  ExtensionConfig,
+  ExtensionSpec,
+} from "../../extensions/types";
 import { readInstanceParam } from "../../extensions/manifest";
 import { partitionRecord } from "../../functional";
 import { getEventArcChannel } from "../../extensions/askUserForEventsConfig";
 import { DynamicExtension } from "../../extensions/runtimes/common";
 import { createExtensionBuild, backendToDeploymentInstanceSpec } from "./buildAdapter";
 import * as build from "../functions/build";
-import { FirebaseConfig } from "../functions/args";
 import { UserEnvsOpts } from "../../functions/env";
 import * as path from "path";
 
@@ -286,63 +290,60 @@ export async function want(args: {
           instanceId,
           localPath: e[1],
           params: {}, // Will be populated by parameter resolution
-          systemParams: {} // Will be populated by parameter resolution
+          systemParams: {}, // Will be populated by parameter resolution
         };
       } else {
         const ref = refs.parse(e[1]);
         ref.version = await resolveVersion(ref);
         const extensionVersion = await extensionsApi.getExtensionVersion(
-          refs.toExtensionVersionRef(ref)
+          refs.toExtensionVersionRef(ref),
         );
         extensionSpec = extensionVersion.spec;
         instanceSpec = {
           instanceId,
           ref,
           params: {}, // Will be populated by parameter resolution
-          systemParams: {} // Will be populated by parameter resolution
+          systemParams: {}, // Will be populated by parameter resolution
         };
       }
 
-      // Get existing instance config for smart defaults during prompting
       let existingInstanceConfig: ExtensionConfig | undefined;
       try {
         const instances = await extensionsApi.listInstances(args.projectId);
-        const instance = instances.find(i => i.name.endsWith(`/${instanceId}`));
+        const instance = instances.find((i) => i.name.endsWith(`/${instanceId}`));
         existingInstanceConfig = instance?.config;
       } catch {
         // Instance doesn't exist or no permissions
+        // TODO: write better error
+        logger.warn("Unable to fetch existing extension config.");
       }
 
-      // 1. Load extension user environment variables
       const userEnvs = readInstanceParam({
         projectDir: args.projectDir,
         instanceId: instanceId,
         projectId: args.projectId,
         projectNumber: args.projectNumber,
         aliases: args.aliases,
-        checkLocal: args.emulatorMode
+        checkLocal: args.emulatorMode,
       });
 
-      // 2. Create extension Build
       const extensionBuild = createExtensionBuild(
         instanceSpec as DeploymentInstanceSpec,
         extensionSpec,
-        existingInstanceConfig
+        existingInstanceConfig,
       );
 
       // 3. Create UserEnvsOpts for functions compatibility with extension-specific file override
       const extensionEnvFile = path.join(
-        args.projectDir, 
-        "extensions", 
-        `${instanceId}.env.${args.projectId}`
+        args.projectDir,
+        "extensions",
+        `${instanceId}.env.${args.projectId}`,
       );
-      
+
       const userEnvOpt: UserEnvsOpts = {
+        envFileOverride: extensionEnvFile, // Write to extension specific .env file
         functionsSource: path.join(args.projectDir, "extensions"),
         projectId: args.projectId,
-        projectAlias: args.aliases[0], // Use first alias
-        isEmulator: args.emulatorMode,
-        envFileOverride: extensionEnvFile // Write to extension-specific file format
       };
 
       // 4. Use functions parameter resolution pipeline!
@@ -352,7 +353,7 @@ export async function want(args: {
         userEnvOpt,
         userEnvs,
         nonInteractive: args.nonInteractive ?? false, // Enable interactive prompting by default
-        isEmulator: args.emulatorMode
+        isEmulator: args.emulatorMode,
       });
 
       // 5. Convert back to extension format
@@ -360,11 +361,10 @@ export async function want(args: {
         backend,
         envs,
         instanceSpec as DeploymentInstanceSpec,
-        extensionSpec
+        extensionSpec,
       );
 
       instanceSpecs.push(resolvedInstanceSpec);
-
     } catch (err: unknown) {
       logger.debug(`Got error reading extensions entry ${e[0]} (${e[1]}): ${getErrMsg(err)}`);
       errors.push(err as FirebaseError);

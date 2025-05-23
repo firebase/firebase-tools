@@ -650,3 +650,8 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
   }
   assertExhaustive(endpoint);
 }
+
+/** A helper utility for flattening all endpoints in a backend since typing is a bit wonky. */
+export function allEndpoints(backend: Build): Endpoint[] {
+  return Object.values(backend.endpoints);
+}

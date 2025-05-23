@@ -1,20 +1,21 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
-import * as path from "path";
 
 import * as planner from "./planner";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as manifest from "../../extensions/manifest";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as refs from "../../extensions/refs";
 import * as specHelper from "../../extensions/emulator/specHelper";
-import { ExtensionInstance, Extension, ExtensionSpec, ParamType } from "../../extensions/types";
+import {
+  ExtensionInstance,
+  Extension,
+  ExtensionSpec,
+  ExtensionVersion,
+  ParamType,
+} from "../../extensions/types";
 import { FirebaseError } from "../../error";
-import * as env from "../../functions/env";
 import * as functionsConfig from "../../functionsConfig";
 import * as secretManager from "../../gcp/secretManager";
-import * as prompt from "../../prompt";
 
 function extension(latest?: string, latestApproved?: string): Extension {
   return {
@@ -37,9 +38,9 @@ function mockExtensionSpec(version?: string): ExtensionSpec {
         properties: {
           entryPoint: "testFunction",
           runtime: "nodejs20",
-          httpsTrigger: {}
-        }
-      }
+          httpsTrigger: {},
+        },
+      },
     ],
     sourceUrl: "https://google.com",
     params: [
@@ -48,7 +49,7 @@ function mockExtensionSpec(version?: string): ExtensionSpec {
         label: "User Parameter",
         description: "A test user parameter",
         type: ParamType.STRING,
-        required: true
+        required: true,
       },
       {
         param: "ANOTHER_PARAM",
@@ -56,8 +57,8 @@ function mockExtensionSpec(version?: string): ExtensionSpec {
         description: "Another test parameter",
         type: ParamType.STRING,
         required: false,
-        default: "default_value"
-      }
+        default: "default_value",
+      },
     ],
     systemParams: [
       {
@@ -66,16 +67,16 @@ function mockExtensionSpec(version?: string): ExtensionSpec {
         description: "Location for the function",
         type: ParamType.STRING,
         required: true,
-        default: "us-central1"
-      }
-    ]
+        default: "us-central1",
+      },
+    ],
   };
 }
 
-function extensionVersion(version?: string): any {
+function extensionVersion(version?: string): ExtensionVersion {
   return {
-    name: `publishers/test/extensions/test/versions/${version}`,
-    ref: `test/test@${version}`,
+    name: `publishers/test/extensions/test/versions/${version || ""}`,
+    ref: `test/test@${version || ""}`,
     state: "PUBLISHED",
     hash: "abc123",
     sourceDownloadUri: "https://google.com",
@@ -137,9 +138,9 @@ describe("Extensions Deployment Planner", () => {
     ];
 
     for (const c of cases) {
-      it(c.description, () => {
+      it(c.description, async () => {
         if (!c.err) {
-          expect(
+          await expect(
             planner.resolveVersion(
               {
                 publisherId: "test",
@@ -150,7 +151,7 @@ describe("Extensions Deployment Planner", () => {
             ),
           ).to.eventually.equal(c.out);
         } else {
-          expect(
+          await expect(
             planner.resolveVersion(
               {
                 publisherId: "test",
@@ -397,6 +398,9 @@ describe("Extensions Deployment Planner", () => {
   });
 
   describe("want", () => {
+    const sandbox = sinon.createSandbox();
+
+    let resolveVersionStub: sinon.SinonStub;
     let getExtensionVersionStub: sinon.SinonStub;
     let listInstancesStub: sinon.SinonStub;
     let readInstanceParamStub: sinon.SinonStub;
@@ -406,26 +410,20 @@ describe("Extensions Deployment Planner", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
 
     before(() => {
+      resolveVersionStub = sandbox.stub(planner, "resolveVersion");
       getExtensionVersionStub = sinon.stub(extensionsApi, "getExtensionVersion");
-      listInstancesStub = sinon.stub(extensionsApi, "listInstances");
       readInstanceParamStub = sinon.stub(manifest, "readInstanceParam");
       const build = require("../functions/build");
       resolveBackendStub = sinon.stub(build, "resolveBackend");
       readExtensionYamlStub = sinon.stub(specHelper, "readExtensionYaml");
       readPostinstallStub = sinon.stub(specHelper, "readPostinstall");
-      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
-        extensionVersion("1.0.0")
-      ]);
+      listExtensionVersionsStub = sinon
+        .stub(extensionsApi, "listExtensionVersions")
+        .resolves([extensionVersion("1.0.0")]);
     });
 
     after(() => {
-      getExtensionVersionStub.restore();
-      listInstancesStub.restore();
-      readInstanceParamStub.restore();
-      resolveBackendStub.restore();
-      readExtensionYamlStub.restore();
-      readPostinstallStub.restore();
-      listExtensionVersionsStub.restore();
+      sandbox.restore();
     });
 
     beforeEach(() => {
@@ -443,15 +441,15 @@ describe("Extensions Deployment Planner", () => {
       readExtensionYamlStub.resolves(mockExtensionSpec());
       readPostinstallStub.resolves("postinstall content");
       listExtensionVersionsStub.resolves([extensionVersion("1.0.0")]);
-      
+
       // Mock readInstanceParam to return user env vars
       readInstanceParamStub.returns({
         USER_PARAM: "user_value",
         ANOTHER_PARAM: "another_value",
         "firebaseextensions.v1beta.function/location": "us-central1",
-        "firebaseextensions.v1beta.function/memory": "256MB"
+        "firebaseextensions.v1beta.function/memory": "256MB",
       });
-      
+
       // Mock build.resolveBackend to simulate parameter resolution
       resolveBackendStub.resolves({
         backend: {},
@@ -459,33 +457,33 @@ describe("Extensions Deployment Planner", () => {
           USER_PARAM: { toString: () => "user_value" },
           ANOTHER_PARAM: { toString: () => "another_value" },
           "firebaseextensions.v1beta.function/location": { toString: () => "us-central1" },
-          "firebaseextensions.v1beta.function/memory": { toString: () => "256MB" }
-        }
+          "firebaseextensions.v1beta.function/memory": { toString: () => "256MB" },
+        },
       });
     });
 
     describe("parameter resolution using functions pipeline", () => {
       it("should resolve parameters using functions parameter resolution pipeline", async () => {
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: ["test-alias"],
           projectDir: "/test/project",
           extensions: {
-            "test-instance": "firebase/test-extension@1.0.0"
-          }
+            "test-instance": "firebase/test-extension@1.0.0",
+          },
         });
 
         expect(result).to.have.length(1);
         expect(result[0].instanceId).to.equal("test-instance");
         expect(result[0].params).to.deep.equal({
           USER_PARAM: "user_value",
-          ANOTHER_PARAM: "another_value"
+          ANOTHER_PARAM: "another_value",
         });
         expect(result[0].systemParams).to.deep.equal({
           "firebaseextensions.v1beta.function/location": "us-central1",
-          "firebaseextensions.v1beta.function/memory": "256MB"
+          "firebaseextensions.v1beta.function/memory": "256MB",
         });
 
         // Verify that the new parameter resolution pipeline was called
@@ -497,42 +495,42 @@ describe("Extensions Deployment Planner", () => {
         // Mock readInstanceParam to return params with substitution patterns
         readInstanceParamStub.returns({
           PROJECT_PARAM: "${PROJECT_ID}",
-          BUCKET_NAME: "${PROJECT_ID}-bucket"
+          BUCKET_NAME: "${PROJECT_ID}-bucket",
         });
-        
+
         // Mock build.resolveBackend to return substituted values
         resolveBackendStub.resolves({
           backend: {},
           envs: {
             PROJECT_PARAM: { toString: () => "my-project" },
-            BUCKET_NAME: { toString: () => "my-project-bucket" }
-          }
+            BUCKET_NAME: { toString: () => "my-project-bucket" },
+          },
         });
 
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "my-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: { "test": "firebase/test@1.0.0" }
+          extensions: { test: "firebase/test@1.0.0" },
         });
 
         expect(result[0].params).to.deep.equal({
           PROJECT_PARAM: "my-project",
-          BUCKET_NAME: "my-project-bucket"
+          BUCKET_NAME: "my-project-bucket",
         });
       });
 
       it("should handle emulator mode", async () => {
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "demo-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: { "test": "firebase/test@1.0.0" },
-          emulatorMode: true
+          extensions: { test: "firebase/test@1.0.0" },
+          emulatorMode: true,
         });
 
         expect(result).to.have.length(1);
@@ -542,8 +540,8 @@ describe("Extensions Deployment Planner", () => {
         expect(resolveBackendStub).to.have.been.calledWith(
           sinon.match({
             isEmulator: true,
-            userEnvOpt: sinon.match({ isEmulator: true })
-          })
+            userEnvOpt: sinon.match({ isEmulator: true }),
+          }),
         );
       });
     });
@@ -555,28 +553,35 @@ describe("Extensions Deployment Planner", () => {
           backend: {},
           envs: {
             REGULAR_PARAM: { toString: () => "value" },
-            ALLOWED_EVENT_TYPES: { toString: () => "google.firebase.auth.user.v1.created,google.firebase.auth.user.v1.deleted" },
-            EVENTARC_CHANNEL: { toString: () => "projects/test/locations/us-central1/channels/firebase" }
-          }
+            ALLOWED_EVENT_TYPES: {
+              toString: () =>
+                "google.firebase.auth.user.v1.created,google.firebase.auth.user.v1.deleted",
+            },
+            EVENTARC_CHANNEL: {
+              toString: () => "projects/test/locations/us-central1/channels/firebase",
+            },
+          },
         });
 
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: { "test": "firebase/test@1.0.0" }
+          extensions: { test: "firebase/test@1.0.0" },
         });
 
         expect(result[0].params).to.deep.equal({
-          REGULAR_PARAM: "value"
+          REGULAR_PARAM: "value",
         });
         expect(result[0].allowedEventTypes).to.deep.equal([
           "google.firebase.auth.user.v1.created",
-          "google.firebase.auth.user.v1.deleted"
+          "google.firebase.auth.user.v1.deleted",
         ]);
-        expect(result[0].eventarcChannel).to.equal("projects/test/locations/us-central1/channels/firebase");
+        expect(result[0].eventarcChannel).to.equal(
+          "projects/test/locations/us-central1/channels/firebase",
+        );
       });
 
       it("should handle empty ALLOWED_EVENT_TYPES as empty array", async () => {
@@ -585,17 +590,19 @@ describe("Extensions Deployment Planner", () => {
           backend: {},
           envs: {
             ALLOWED_EVENT_TYPES: { toString: () => "" },
-            EVENTARC_CHANNEL: { toString: () => "projects/test/locations/us-central1/channels/firebase" }
-          }
+            EVENTARC_CHANNEL: {
+              toString: () => "projects/test/locations/us-central1/channels/firebase",
+            },
+          },
         });
 
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: { "test": "firebase/test@1.0.0" }
+          extensions: { test: "firebase/test@1.0.0" },
         });
 
         expect(result[0].allowedEventTypes).to.deep.equal([]);
@@ -606,18 +613,18 @@ describe("Extensions Deployment Planner", () => {
         resolveBackendStub.resolves({
           backend: {},
           envs: {
-            REGULAR_PARAM: { toString: () => "value" }
+            REGULAR_PARAM: { toString: () => "value" },
             // No ALLOWED_EVENT_TYPES or EVENTARC_CHANNEL
-          }
+          },
         });
 
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: { "test": "firebase/test@1.0.0" }
+          extensions: { test: "firebase/test@1.0.0" },
         });
 
         expect(result[0].allowedEventTypes).to.be.undefined;
@@ -628,33 +635,33 @@ describe("Extensions Deployment Planner", () => {
     describe("extension reference handling", () => {
       it("should handle published extension references", async () => {
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
           extensions: {
-            "resize-images": "firebase/storage-resize-images@1.0.0"
-          }
+            "resize-images": "firebase/storage-resize-images@1.0.0",
+          },
         });
 
         expect(result[0].ref).to.deep.equal({
           publisherId: "firebase",
           extensionId: "storage-resize-images",
-          version: "1.0.0"  // Uses mocked version from listExtensionVersionsStub
+          version: "1.0.0", // Uses mocked version from listExtensionVersionsStub
         });
       });
 
       it("should handle local extension paths", async () => {
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
           extensions: {
-            "local-ext": "./extensions/my-extension"
-          }
+            "local-ext": "./extensions/my-extension",
+          },
         });
 
         expect(result[0].localPath).to.equal("./extensions/my-extension");
@@ -665,33 +672,39 @@ describe("Extensions Deployment Planner", () => {
     describe("error handling", () => {
       it("should handle parameter resolution errors", async () => {
         // Mock parameter resolution to throw an error
-        resolveBackendStub.rejects(new FirebaseError("Missing required parameter USER_PARAM", { exit: 1 }));
+        resolveBackendStub.rejects(
+          new FirebaseError("Missing required parameter USER_PARAM", { exit: 1 }),
+        );
 
         try {
           await planner.want({
-        nonInteractive: true,
+            nonInteractive: true,
             projectId: "test-project",
             projectNumber: "123456789",
             aliases: [],
             projectDir: "/test/project",
-            extensions: { "missing-param": "firebase/test@1.0.0" }
+            extensions: { "missing-param": "firebase/test@1.0.0" },
           });
           expect.fail("Expected function to throw");
         } catch (error) {
           expect(error).to.be.instanceOf(FirebaseError);
-          expect((error as FirebaseError).message).to.include("Errors while reading 'extensions' in 'firebase.json'");
-          expect((error as FirebaseError).message).to.include("Missing required parameter USER_PARAM");
+          expect((error as FirebaseError).message).to.include(
+            "Errors while reading 'extensions' in 'firebase.json'",
+          );
+          expect((error as FirebaseError).message).to.include(
+            "Missing required parameter USER_PARAM",
+          );
         }
       });
 
       it("should handle empty extensions configuration", async () => {
         const result = await planner.want({
-        nonInteractive: true,
+          nonInteractive: true,
           projectId: "test-project",
           projectNumber: "123456789",
           aliases: [],
           projectDir: "/test/project",
-          extensions: {}
+          extensions: {},
         });
 
         expect(result).to.deep.equal([]);
@@ -699,7 +712,7 @@ describe("Extensions Deployment Planner", () => {
     });
   });
 
-  describe("want - minimal mocking integration tests", () => {
+  describe("want", () => {
     let getExtensionVersionStub: sinon.SinonStub;
     let listInstancesStub: sinon.SinonStub;
     let readExtensionYamlStub: sinon.SinonStub;
@@ -727,7 +740,7 @@ describe("Extensions Deployment Planner", () => {
               entryPoint: "processPayment",
               runtime: "nodejs20",
               httpsTrigger: {},
-              availableMemoryMb: 256
+              availableMemoryMb: 256,
             },
             // Environment variables are defined at resource level in extension spec
             propertiesYaml: `
@@ -736,8 +749,8 @@ describe("Extensions Deployment Planner", () => {
                   API_ENDPOINT: \${param:API_KEY}/endpoint
                   WEBHOOK_URL: \${WEBHOOK_URL}
                   DEBUG_MODE: \${param:DEBUG_MODE}
-            `
-          }
+            `,
+          },
         ],
         sourceUrl: "https://example.com",
         params: [
@@ -746,14 +759,14 @@ describe("Extensions Deployment Planner", () => {
             label: "API Key",
             description: "Your API key",
             type: ParamType.STRING,
-            required: true
+            required: true,
           },
           {
-            param: "WEBHOOK_URL", 
+            param: "WEBHOOK_URL",
             label: "Webhook URL",
             description: "URL for webhooks",
             type: ParamType.STRING,
-            required: true
+            required: true,
           },
           {
             param: "DEBUG_MODE",
@@ -763,25 +776,25 @@ describe("Extensions Deployment Planner", () => {
             required: false,
             options: [
               { value: "true", label: "Enabled" },
-              { value: "false", label: "Disabled" }
-            ]
+              { value: "false", label: "Disabled" },
+            ],
           },
           {
             param: "SECRET_KEY",
             label: "Secret Key",
             description: "Secret key for encryption",
             type: ParamType.SECRET,
-            required: true
+            required: true,
           },
           {
             param: "BUCKET",
             label: "Storage Bucket",
             description: "Cloud Storage bucket",
             type: ParamType.SELECT_RESOURCE,
-            required: false
-          } as any
+            required: false,
+          } as any,
         ],
-        systemParams: []
+        systemParams: [],
       };
     }
 
@@ -793,19 +806,19 @@ describe("Extensions Deployment Planner", () => {
       readPostinstallStub = sinon.stub(specHelper, "readPostinstall");
       listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
       readInstanceParamStub = sinon.stub(manifest, "readInstanceParam");
-      
+
       // Mock file system operations
       existsSyncStub = sinon.stub(fs, "existsSync");
       readFileSyncStub = sinon.stub(fs, "readFileSync");
       mkdirSyncStub = sinon.stub(fs, "mkdirSync");
       writeFileSyncStub = sinon.stub(fs, "writeFileSync");
-      
+
       // Mock firebase config
       getFirebaseConfigStub = sinon.stub(functionsConfig, "getFirebaseConfig");
-      
+
       // Mock secret manager
       secretExistsStub = sinon.stub(secretManager, "secretExists");
-      
+
       // Mock prompts
       promptOnceStub = sinon.stub(prompt, "promptOnce");
     });
@@ -830,27 +843,27 @@ describe("Extensions Deployment Planner", () => {
     beforeEach(() => {
       // Reset all stubs
       sinon.resetHistory();
-      
+
       // Setup default stub behaviors
       listInstancesStub.resolves([]);
       readPostinstallStub.resolves("postinstall content");
       listExtensionVersionsStub.resolves([extensionVersion("1.0.0")]);
       getFirebaseConfigStub.resolves({ projectId: "test-project" });
       readInstanceParamStub.returns({}); // Default empty params
-      
+
       // Mock directory structure
       existsSyncStub.withArgs("/test/project/.env").returns(false);
       existsSyncStub.withArgs("/test/project/.env.test-project").returns(false);
       existsSyncStub.withArgs("/test/project/extensions").returns(true);
       existsSyncStub.returns(false); // Default for other paths
-      
+
       mkdirSyncStub.returns(undefined);
       writeFileSyncStub.returns(undefined);
-      
+
       // Mock secret manager - secrets exist and are accessible
       secretExistsStub.resolves(true);
       grantServiceAccountAccessStub.resolves();
-      
+
       // Mock prompts - provide default values
       promptOnceStub.callsFake((options: any) => {
         if (options.type === "list") {
@@ -864,7 +877,7 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = extensionSpecWithExpressions();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
@@ -873,13 +886,18 @@ describe("Extensions Deployment Planner", () => {
         API_KEY: "test-api-key-123",
         WEBHOOK_URL: "https://example.com/webhook",
         DEBUG_MODE: "true",
-        SECRET_KEY: "projects/test-project/secrets/test-secret/versions/latest"
+        SECRET_KEY: "projects/test-project/secrets/test-secret/versions/latest",
       });
 
       // Mock environment files
-      existsSyncStub.withArgs("/test/project/extensions/test-instance.env.test-project").returns(true);
-      readFileSyncStub.withArgs("/test/project/extensions/test-instance.env.test-project", "utf8")
-        .returns("API_KEY=test-api-key-123\nWEBHOOK_URL=https://example.com/webhook\nDEBUG_MODE=true");
+      existsSyncStub
+        .withArgs("/test/project/extensions/test-instance.env.test-project")
+        .returns(true);
+      readFileSyncStub
+        .withArgs("/test/project/extensions/test-instance.env.test-project", "utf8")
+        .returns(
+          "API_KEY=test-api-key-123\nWEBHOOK_URL=https://example.com/webhook\nDEBUG_MODE=true",
+        );
 
       const result = await planner.want({
         projectId: "test-project",
@@ -887,9 +905,9 @@ describe("Extensions Deployment Planner", () => {
         aliases: ["test-alias"],
         projectDir: "/test/project",
         extensions: {
-          "test-instance": "firebase/test-extension@1.0.0"
+          "test-instance": "firebase/test-extension@1.0.0",
         },
-        nonInteractive: true
+        nonInteractive: true,
       });
 
       // Verify the parameters were resolved
@@ -898,7 +916,7 @@ describe("Extensions Deployment Planner", () => {
       expect(result[0].params).to.deep.include({
         API_KEY: "test-api-key-123",
         WEBHOOK_URL: "https://example.com/webhook",
-        DEBUG_MODE: "true"
+        DEBUG_MODE: "true",
       });
     });
 
@@ -906,7 +924,7 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = extensionSpecWithExpressions();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
@@ -915,12 +933,15 @@ describe("Extensions Deployment Planner", () => {
         API_KEY: "my-key",
         WEBHOOK_URL: "https://webhook.test",
         DEBUG_MODE: "false",
-        SECRET_KEY: "projects/test-project/secrets/test-secret/versions/latest"
+        SECRET_KEY: "projects/test-project/secrets/test-secret/versions/latest",
       });
 
       // Provide environment values
-      existsSyncStub.withArgs("/test/project/extensions/converter-test.env.test-project").returns(true);
-      readFileSyncStub.withArgs("/test/project/extensions/converter-test.env.test-project", "utf8")
+      existsSyncStub
+        .withArgs("/test/project/extensions/converter-test.env.test-project")
+        .returns(true);
+      readFileSyncStub
+        .withArgs("/test/project/extensions/converter-test.env.test-project", "utf8")
         .returns("API_KEY=my-key\nWEBHOOK_URL=https://webhook.test\nDEBUG_MODE=false");
 
       const result = await planner.want({
@@ -930,8 +951,8 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "converter-test": "firebase/test-extension@1.0.0"
-        }
+          "converter-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       // The expressions should have been converted and resolved
@@ -944,7 +965,7 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = extensionSpecWithExpressions();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
@@ -952,13 +973,18 @@ describe("Extensions Deployment Planner", () => {
       readInstanceParamStub.returns({
         API_KEY: "required-key",
         WEBHOOK_URL: "https://required.test",
-        SECRET_KEY: "secret-value"
+        SECRET_KEY: "secret-value",
       });
 
       // Only provide required parameters
-      existsSyncStub.withArgs("/test/project/extensions/optional-test.env.test-project").returns(true);
-      readFileSyncStub.withArgs("/test/project/extensions/optional-test.env.test-project", "utf8")
-        .returns("API_KEY=required-key\nWEBHOOK_URL=https://required.test\nSECRET_KEY=secret-value");
+      existsSyncStub
+        .withArgs("/test/project/extensions/optional-test.env.test-project")
+        .returns(true);
+      readFileSyncStub
+        .withArgs("/test/project/extensions/optional-test.env.test-project", "utf8")
+        .returns(
+          "API_KEY=required-key\nWEBHOOK_URL=https://required.test\nSECRET_KEY=secret-value",
+        );
 
       const result = await planner.want({
         nonInteractive: true,
@@ -967,8 +993,8 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "optional-test": "firebase/test-extension@1.0.0"
-        }
+          "optional-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       // Optional parameters should have empty string defaults
@@ -981,17 +1007,19 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = mockExtensionSpec();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
       // Mock readInstanceParam - will be populated by interactive prompting
       readInstanceParamStub.returns({
-        USER_PARAM: "prompted-value"
+        USER_PARAM: "prompted-value",
       });
 
       // Mock user providing values interactively (no env file exists)
-      existsSyncStub.withArgs("/test/project/extensions/write-test.env.test-project").returns(false);
+      existsSyncStub
+        .withArgs("/test/project/extensions/write-test.env.test-project")
+        .returns(false);
 
       await planner.want({
         nonInteractive: true,
@@ -1000,14 +1028,14 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "write-test": "firebase/test-extension@1.0.0"
-        }
+          "write-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       // Should have written to the extension-specific env file
       expect(writeFileSyncStub).to.have.been.calledWith(
         "/test/project/extensions/write-test.env.test-project",
-        sinon.match.string
+        sinon.match.string,
       );
     });
 
@@ -1018,7 +1046,7 @@ describe("Extensions Deployment Planner", () => {
         SELECT_PARAM: "option2",
         MULTISELECT_PARAM: "a,c",
         SECRET_PARAM: "projects/test-project/secrets/my-secret/versions/latest",
-        RESOURCE_PARAM: "my-bucket"
+        RESOURCE_PARAM: "my-bucket",
       });
 
       const multiTypeSpec: ExtensionSpec = {
@@ -1028,7 +1056,7 @@ describe("Extensions Deployment Planner", () => {
             param: "STRING_PARAM",
             label: "String Parameter",
             type: ParamType.STRING,
-            required: true
+            required: true,
           },
           {
             param: "SELECT_PARAM",
@@ -1037,8 +1065,8 @@ describe("Extensions Deployment Planner", () => {
             required: true,
             options: [
               { value: "option1", label: "Option 1" },
-              { value: "option2", label: "Option 2" }
-            ]
+              { value: "option2", label: "Option 2" },
+            ],
           },
           {
             param: "MULTISELECT_PARAM",
@@ -1048,39 +1076,42 @@ describe("Extensions Deployment Planner", () => {
             options: [
               { value: "a", label: "A" },
               { value: "b", label: "B" },
-              { value: "c", label: "C" }
-            ]
+              { value: "c", label: "C" },
+            ],
           },
           {
             param: "SECRET_PARAM",
             label: "Secret Parameter",
             type: ParamType.SECRET,
-            required: true
+            required: true,
           },
           {
             param: "RESOURCE_PARAM",
             label: "Resource Parameter",
             type: ParamType.SELECT_RESOURCE,
-            required: true
-          } as any
-        ]
+            required: true,
+          } as any,
+        ],
       };
 
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: multiTypeSpec
+        spec: multiTypeSpec,
       });
       readExtensionYamlStub.resolves(multiTypeSpec);
 
       existsSyncStub.withArgs("/test/project/extensions/types-test.env.test-project").returns(true);
-      readFileSyncStub.withArgs("/test/project/extensions/types-test.env.test-project", "utf8")
-        .returns([
-          "STRING_PARAM=test-string",
-          "SELECT_PARAM=option2",
-          "MULTISELECT_PARAM=a,c",
-          "SECRET_PARAM=projects/test-project/secrets/my-secret/versions/latest",
-          "RESOURCE_PARAM=my-bucket"
-        ].join("\n"));
+      readFileSyncStub
+        .withArgs("/test/project/extensions/types-test.env.test-project", "utf8")
+        .returns(
+          [
+            "STRING_PARAM=test-string",
+            "SELECT_PARAM=option2",
+            "MULTISELECT_PARAM=a,c",
+            "SECRET_PARAM=projects/test-project/secrets/my-secret/versions/latest",
+            "RESOURCE_PARAM=my-bucket",
+          ].join("\n"),
+        );
 
       const result = await planner.want({
         nonInteractive: true,
@@ -1089,8 +1120,8 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "types-test": "firebase/test-extension@1.0.0"
-        }
+          "types-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       expect(result[0].params).to.deep.include({
@@ -1098,7 +1129,7 @@ describe("Extensions Deployment Planner", () => {
         SELECT_PARAM: "option2",
         MULTISELECT_PARAM: "a,c",
         SECRET_PARAM: "projects/test-project/secrets/my-secret/versions/latest",
-        RESOURCE_PARAM: "my-bucket"
+        RESOURCE_PARAM: "my-bucket",
       });
     });
 
@@ -1106,36 +1137,42 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = mockExtensionSpec();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
       // Mock readInstanceParam - should return the most specific values
       readInstanceParamStub.returns({
         USER_PARAM: "extension-project-value",
-        ANOTHER_PARAM: "extension-another"
+        ANOTHER_PARAM: "extension-another",
       });
 
       // Mock multiple env files with different values
       existsSyncStub.withArgs("/test/project/.env").returns(true);
       existsSyncStub.withArgs("/test/project/.env.test-project").returns(true);
       existsSyncStub.withArgs("/test/project/extensions/precedence-test.env").returns(true);
-      existsSyncStub.withArgs("/test/project/extensions/precedence-test.env.test-project").returns(true);
+      existsSyncStub
+        .withArgs("/test/project/extensions/precedence-test.env.test-project")
+        .returns(true);
 
       // Base .env file
-      readFileSyncStub.withArgs("/test/project/.env", "utf8")
+      readFileSyncStub
+        .withArgs("/test/project/.env", "utf8")
         .returns("USER_PARAM=base-value\nANOTHER_PARAM=base-another");
 
       // Project-specific .env file (higher precedence)
-      readFileSyncStub.withArgs("/test/project/.env.test-project", "utf8")
+      readFileSyncStub
+        .withArgs("/test/project/.env.test-project", "utf8")
         .returns("USER_PARAM=project-value");
 
       // Extension-specific env file (even higher precedence)
-      readFileSyncStub.withArgs("/test/project/extensions/precedence-test.env", "utf8")
+      readFileSyncStub
+        .withArgs("/test/project/extensions/precedence-test.env", "utf8")
         .returns("ANOTHER_PARAM=extension-another");
 
       // Extension + project specific env file (highest precedence)
-      readFileSyncStub.withArgs("/test/project/extensions/precedence-test.env.test-project", "utf8")
+      readFileSyncStub
+        .withArgs("/test/project/extensions/precedence-test.env.test-project", "utf8")
         .returns("USER_PARAM=extension-project-value");
 
       const result = await planner.want({
@@ -1145,8 +1182,8 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "precedence-test": "firebase/test-extension@1.0.0"
-        }
+          "precedence-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       // Should use the most specific values
@@ -1158,7 +1195,7 @@ describe("Extensions Deployment Planner", () => {
       const extensionSpec = mockExtensionSpec();
       getExtensionVersionStub.resolves({
         ...extensionVersion("1.0.0"),
-        spec: extensionSpec
+        spec: extensionSpec,
       });
       readExtensionYamlStub.resolves(extensionSpec);
 
@@ -1166,16 +1203,21 @@ describe("Extensions Deployment Planner", () => {
       readInstanceParamStub.returns({
         USER_PARAM: "user-value",
         "firebaseextensions.v1beta.function/location": "europe-west1",
-        "firebaseextensions.v1beta.function/memory": "512MB"
+        "firebaseextensions.v1beta.function/memory": "512MB",
       });
 
-      existsSyncStub.withArgs("/test/project/extensions/system-test.env.test-project").returns(true);
-      readFileSyncStub.withArgs("/test/project/extensions/system-test.env.test-project", "utf8")
-        .returns([
-          "USER_PARAM=user-value",
-          "firebaseextensions.v1beta.function/location=europe-west1",
-          "firebaseextensions.v1beta.function/memory=512MB"
-        ].join("\n"));
+      existsSyncStub
+        .withArgs("/test/project/extensions/system-test.env.test-project")
+        .returns(true);
+      readFileSyncStub
+        .withArgs("/test/project/extensions/system-test.env.test-project", "utf8")
+        .returns(
+          [
+            "USER_PARAM=user-value",
+            "firebaseextensions.v1beta.function/location=europe-west1",
+            "firebaseextensions.v1beta.function/memory=512MB",
+          ].join("\n"),
+        );
 
       const result = await planner.want({
         nonInteractive: true,
@@ -1184,14 +1226,14 @@ describe("Extensions Deployment Planner", () => {
         aliases: [],
         projectDir: "/test/project",
         extensions: {
-          "system-test": "firebase/test-extension@1.0.0"
-        }
+          "system-test": "firebase/test-extension@1.0.0",
+        },
       });
 
       expect(result[0].params.USER_PARAM).to.equal("user-value");
       expect(result[0].systemParams).to.deep.include({
         "firebaseextensions.v1beta.function/location": "europe-west1",
-        "firebaseextensions.v1beta.function/memory": "512MB"
+        "firebaseextensions.v1beta.function/memory": "512MB",
       });
     });
   });
