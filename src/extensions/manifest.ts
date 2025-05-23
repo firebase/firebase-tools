@@ -217,7 +217,6 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   }
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
-  utils.logSuccess("Wrote extensions to " + clc.bold("firebase.json") + "...");
 }
 
 async function writeEnvFiles(

@@ -51,18 +51,10 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   return await response.response.text();
 }
 
-function writeDBRules(
-  rules: string,
-  logMessagePrefix: string,
-  filename: string,
-  config: Config,
-): void {
+function writeDBRules(rules: string, filename: string, config: Config): void {
   config.writeProjectFile(filename, rules);
-  utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
   logger.info(
-    `Future modifications to ${clc.bold(
-      filename,
-    )} will update Realtime Database Security Rules when you run`,
+    `Future modifications to ${clc.bold(filename)} will update Realtime Database Security Rules when you run`,
   );
   logger.info(clc.bold("firebase deploy") + ".");
 }
@@ -198,9 +190,9 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
 
   if (info.writeRules) {
     if (info.rules === DEFAULT_RULES) {
-      writeDBRules(info.rules, `Default rules for ${setup.projectId}`, info.rulesFilename, config);
+      writeDBRules(info.rules, info.rulesFilename, config);
     } else {
-      writeDBRules(info.rules, `Database Rules for ${setup.projectId}`, info.rulesFilename, config);
+      writeDBRules(info.rules, info.rulesFilename, config);
     }
   } else {
     logger.info("Skipping overwrite of Realtime Database Security Rules.");
