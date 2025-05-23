@@ -6,39 +6,29 @@ import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { IndexContext } from "./prepare";
+import { FirestoreConfig } from "../../firebaseConfig";
 
-/**
- * Deploys Firestore Rules.
- * @param context The deploy context.
- */
 async function createDatabase(context: any, options: any): Promise<void> {
-  console.log(context);
-  // console.log(options);
-  // console.log(context.firestore);
-  // console.log(context.firestore.RulesDeploy);
-  const databaseId: string = context?.firestore?.databaseId;
+  let firestoreCfg: FirestoreConfig = options.config.data.firestore;
+  if (Array.isArray(firestoreCfg)) {
+    firestoreCfg = firestoreCfg[0];
+  }
   const api = new FirestoreApi();
   try {
-    const db = await api.getDatabase(options.projectId, databaseId);
-    console.log(db);
+    await api.getDatabase(options.projectId, firestoreCfg.database!);
   } catch (e: any) {
     if (e.status === 404) {
       // Database is not found. Let's create it.
-      console.log("Database not found");
       const createDatabaseReq: types.CreateDatabaseReq = {
         project: options.projectId,
-        databaseId: databaseId,
-        // TODO: Should we make Firestore locationID configurable in `firebase init`?
-        locationId: "nam5", // Multi-region in US. The default in Firebase Console.
+        databaseId: firestoreCfg.database!,
+        locationId: firestoreCfg.location!,
         type: types.DatabaseType.FIRESTORE_NATIVE,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
       };
-      console.log(createDatabaseReq);
-      const databaseResp: types.DatabaseResp = await api.createDatabase(createDatabaseReq);
-      console.log(databaseResp);
+      await api.createDatabase(createDatabaseReq);
     }
-    console.log(e);
   }
 }
 
@@ -93,7 +83,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
 }
 
 /**
- * Deploy indexes.
+ * Create the Firestore database, deploy its rules & indexes.
  * @param context The deploy context.
  * @param options The CLI options object.
  */

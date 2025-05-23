@@ -4,13 +4,14 @@ import { FirebaseError } from "../../../error";
 
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import * as fsi from "../../../firestore/api";
+import { FirestoreApi } from "../../../firestore/api";
 import { select } from "../../../prompt";
 import { ensure } from "../../../ensureApiEnabled";
 import { firestoreOrigin } from "../../../api";
 
 export interface RequiredInfo {
   databaseId: string;
+  locationId: string;
   rulesFilename: string;
   rules: string;
   writeRules: boolean;
@@ -23,6 +24,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
   const firestore = !Array.isArray(setup.config.firestore) ? setup.config.firestore : undefined;
   const info: RequiredInfo = {
     databaseId: firestore?.database || "",
+    locationId: firestore?.location || "",
     rulesFilename: firestore?.rules || "",
     rules: "",
     writeRules: true,
@@ -36,9 +38,8 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     // This allows us to filter out projects that are not using Firestore in Native mode.
     // Will also prompt user for databaseId if default does not exist.
     info.databaseId = info.databaseId || "(default)";
-    const api = new fsi.FirestoreApi();
+    const api = new FirestoreApi();
     const databases = await api.listDatabases(setup.projectId!);
-    console.log("databases", databases);
     const nativeDatabaseNames = databases
       .filter((db) => db.type === "FIRESTORE_NATIVE")
       .map((db) => db.name.split("/")[3]);
@@ -50,8 +51,14 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
           { exit: 1 },
         );
       }
-      // Create the default database later.
+      // Create the default database in deploy later.
       info.databaseId = "(default)";
+      const locations = await api.locations(setup.projectId!);
+      const choice = await select<string>({
+        message: "Please select the location of your Firestore database:",
+        choices: locations.map((location) => location.name.split("/")[3]),
+      });
+      info.locationId = choice;
     } else if (nativeDatabaseNames.length === 1) {
       info.databaseId = nativeDatabaseNames[0];
     } else if (nativeDatabaseNames.length > 1) {
@@ -78,12 +85,14 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   }
   // Populate defaults and update `firebase.json` config.
   info.databaseId = info.databaseId || "(default)";
+  info.locationId = info.locationId || "nam5";
   info.rules = info.rules || rules.getDefaultRules();
   info.rulesFilename = info.rulesFilename || rules.DEFAULT_RULES_FILE;
   info.indexes = info.indexes || indexes.INDEXES_TEMPLATE;
   info.indexesFilename = info.indexesFilename || indexes.DEFAULT_INDEXES_FILE;
   setup.config.firestore = {
     database: info.databaseId,
+    location: info.locationId,
     rules: info.rulesFilename,
     indexes: info.indexesFilename,
   };
