@@ -141,7 +141,7 @@ export const init = tool(
     config.writeProjectFile(".firebaserc", setup.rcfile);
     return toContent(
       `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}` +
-        " To deploy them, run please `firebase deploy` in command line.",
+        " To deploy them, you can run `firebase deploy` in command line.",
     );
   },
 );
