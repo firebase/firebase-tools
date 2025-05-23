@@ -323,7 +323,7 @@ export class Config {
 }
 
 function stringifyContent(content: any): string {
-  if (typeof content !== "string") {
+  if (typeof content === "string") {
     return content;
   }
   return JSON.stringify(content, null, 2) + "\n";

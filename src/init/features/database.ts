@@ -159,11 +159,11 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     if (instanceDetails) {
       info.rules = await getDBRules(instanceDetails);
       utils.logBullet(
-        `Downloaded the existing Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`,
+        `Downloaded the existing Realtime Database Security Rules of database ${clc.bold(instanceDetails.name)} from the Firebase console`,
       );
     }
   }
-  info.writeRules = await config.confirmWriteProjectFile(rulesFilename, DEFAULT_RULES);
+  info.writeRules = await config.confirmWriteProjectFile(rulesFilename, info.rules);
   // Populate featureInfo for the actuate step later.
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.database = info;

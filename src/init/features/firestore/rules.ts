@@ -38,11 +38,10 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
     const downloadedRules = await getRulesFromConsole(setup.projectId);
     if (downloadedRules) {
       info.rules = downloadedRules;
-      utils.logBullet(
-        `Downloaded the existing Firestore Security Rules for ${clc.bold(setup.projectId)} from the Firebase console`,
-      );
+      utils.logBullet(`Downloaded the existing Firestore Security Rules from the Firebase console`);
     }
   }
+
   info.writeRules = await config.confirmWriteProjectFile(info.rulesFilename, info.rules);
 }
 
