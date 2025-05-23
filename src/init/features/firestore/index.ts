@@ -47,7 +47,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       if (databases.length > 0) {
         // Has non-native Firestore databases
         throw new FirebaseError(
-          `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
+          `It looks like this project is using Cloud Firestore in ${databases[0].type}. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
           { exit: 1 },
         );
       }
@@ -57,16 +57,23 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       const choice = await select<string>({
         message: "Please select the location of your Firestore database:",
         choices: locations.map((location) => location.name.split("/")[3]),
+        default: "nam5",
       });
       info.locationId = choice;
     } else if (nativeDatabaseNames.length === 1) {
       info.databaseId = nativeDatabaseNames[0];
+      info.locationId = databases
+        .filter((db) => db.name.endsWith(`databases/${info.databaseId}`))
+        .map((db) => db.locationId)[0];
     } else if (nativeDatabaseNames.length > 1) {
       const choice = await select<string>({
         message: "Please select the name of the Native Firestore database you would like to use:",
         choices: nativeDatabaseNames,
       });
       info.databaseId = choice;
+      info.locationId = databases
+        .filter((db) => db.name.endsWith(`databases/${info.databaseId}`))
+        .map((db) => db.locationId)[0];
     }
   }
 

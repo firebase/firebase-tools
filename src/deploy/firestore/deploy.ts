@@ -7,6 +7,7 @@ import * as utils from "../../utils";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { IndexContext } from "./prepare";
 import { FirestoreConfig } from "../../firebaseConfig";
+import { sleep } from "../../utils";
 
 async function createDatabase(context: any, options: any): Promise<void> {
   let firestoreCfg: FirestoreConfig = options.config.data.firestore;
@@ -19,6 +20,10 @@ async function createDatabase(context: any, options: any): Promise<void> {
   } catch (e: any) {
     if (e.status === 404) {
       // Database is not found. Let's create it.
+      utils.logLabeledBullet(
+        "firetore",
+        `Creating the new Firestore database ${firestoreCfg.database}...`,
+      );
       const createDatabaseReq: types.CreateDatabaseReq = {
         project: options.projectId,
         databaseId: firestoreCfg.database!,
@@ -71,13 +76,22 @@ async function deployIndexes(context: any, options: any): Promise<void> {
       }
       const fieldOverrides = indexesRawSpec.fieldOverrides || [];
 
-      await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
-        utils.logSuccess(
-          `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-            indexesFileName,
-          )} successfully for ${databaseId} database`,
-        );
-      });
+      try {
+        await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId);
+      } catch (err: any) {
+        if (err.status !== 404) {
+          throw err;
+        }
+        // It might take a while for the database to be created.
+        await sleep(1000);
+        await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId);
+      }
+
+      utils.logSuccess(
+        `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+          indexesFileName,
+        )} successfully for ${databaseId} database`,
+      );
     }),
   );
 }
@@ -89,5 +103,6 @@ async function deployIndexes(context: any, options: any): Promise<void> {
  */
 export default async function (context: any, options: any): Promise<void> {
   await createDatabase(context, options);
-  await Promise.all([deployRules(context), deployIndexes(context, options)]);
+  await deployRules(context);
+  await deployIndexes(context, options);
 }
