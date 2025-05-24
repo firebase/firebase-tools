@@ -91,6 +91,9 @@
                 "indexes": {
                     "type": "string"
                 },
+                "location": {
+                    "type": "string"
+                },
                 "postdeploy": {
                     "anyOf": [
                         {

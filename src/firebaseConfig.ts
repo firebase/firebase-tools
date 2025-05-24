@@ -38,6 +38,7 @@ type DatabaseMultiple = ({
 
 type FirestoreSingle = {
   database?: string;
+  location?: string;
   rules?: string;
   indexes?: string;
 } & Deployable;
