@@ -3,3 +3,4 @@
 - Fixed crash when starting the App Hosting emulator in certain applications (#8624)
 - Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
 - Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
+- [added] Support `firebase init` + `firebase deploy` flow on a fresh new project without going to Console (#8653)
