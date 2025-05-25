@@ -14,3 +14,8 @@ ${cmd} login
 
 [ADC]: https://cloud.google.com/docs/authentication/application-default-credentials`);
 }
+
+export const REQUIRE_GEMINI_API = mcpError(
+  "This tool requires Gemini in Firebase API. To enable the features, run `firebase logout` and log in again to acknowledge its terms of service.",
+  "PRECONDITION_FAILED",
+);
