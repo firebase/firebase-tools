@@ -19,7 +19,7 @@ export function getRulesTool(productName: string, releaseName: string) {
       },
     },
     async (_, { projectId }) => {
-      const rulesetName = await getLatestRulesetName(projectId!, releaseName);
+      const rulesetName = await getLatestRulesetName(projectId, releaseName);
       if (!rulesetName)
         return mcpError(`No active Firestore rules were found in project '${projectId}'`);
       const rules = await getRulesetContent(rulesetName);

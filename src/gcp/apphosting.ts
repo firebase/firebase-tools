@@ -42,6 +42,11 @@ export interface Backend {
   uri: string;
   serviceAccount?: string;
   appId?: string;
+  managedResources?: ManagedResource[];
+}
+
+export interface ManagedResource {
+  runService: { service: string };
 }
 
 export type BackendOutputOnlyFields = "name" | "createTime" | "updateTime" | "uri";
@@ -330,6 +335,19 @@ export async function getBackend(
 ): Promise<Backend> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
   const res = await client.get<Backend>(name);
+  return res.body;
+}
+
+/**
+ * Gets traffic details.
+ */
+export async function getTraffic(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<Traffic> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`;
+  const res = await client.get<Traffic>(name);
   return res.body;
 }
 

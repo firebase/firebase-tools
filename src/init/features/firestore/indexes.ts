@@ -2,8 +2,8 @@ import * as clc from "colorette";
 
 import { FirebaseError } from "../../../error";
 import * as api from "../../../firestore/api";
-import * as fsutils from "../../../fsutils";
-import { confirm, input } from "../../../prompt";
+import { input } from "../../../prompt";
+import * as utils from "../../../utils";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
 import { RequiredInfo } from ".";
@@ -30,24 +30,22 @@ export async function initIndexes(setup: Setup, config: Config, info: RequiredIn
       default: DEFAULT_INDEXES_FILE,
     }));
 
-  if (fsutils.fileExistsSync(info.indexesFilename)) {
-    const msg =
-      "File " +
-      clc.bold(info.indexesFilename) +
-      " already exists." +
-      " Do you want to overwrite it with the Firestore Indexes from the Firebase Console?";
-    if (!(await confirm(msg))) {
-      info.writeIndexes = false;
-      return;
+  info.indexes = INDEXES_TEMPLATE;
+  if (setup.projectId) {
+    const downloadIndexes = await getIndexesFromConsole(setup.projectId, info.databaseId);
+    if (downloadIndexes) {
+      info.indexes = downloadIndexes;
+      utils.logBullet(`Downloaded the existing Firestore indexes from the Firebase console`);
     }
   }
 
-  if (setup.projectId) {
-    info.indexes = await getIndexesFromConsole(setup.projectId, info.databaseId);
-  }
+  info.writeRules = await config.confirmWriteProjectFile(info.indexesFilename, info.indexes);
 }
 
-async function getIndexesFromConsole(projectId: string, databaseId: string): Promise<string> {
+async function getIndexesFromConsole(
+  projectId: string,
+  databaseId: string,
+): Promise<string | null> {
   const indexesPromise = indexes.listIndexes(projectId, databaseId);
   const fieldOverridesPromise = indexes.listFieldOverrides(projectId, databaseId);
 
@@ -56,7 +54,7 @@ async function getIndexesFromConsole(projectId: string, databaseId: string): Pro
     return JSON.stringify(indexes.makeIndexSpec(res[0], res[1]), null, 2);
   } catch (e: any) {
     if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {
-      return INDEXES_TEMPLATE;
+      return null;
     }
 
     throw new FirebaseError("Error fetching Firestore indexes", {

@@ -1,0 +1,5 @@
+- Fixed issue in `init` where users were forced to specify emulator UI port (#8626)
+- Adds MCP tools for App Hosting (#8605)
+- Fixed crash when starting the App Hosting emulator in certain applications (#8624)
+- Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
+- Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)

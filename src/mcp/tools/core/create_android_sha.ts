@@ -35,7 +35,7 @@ export const create_android_sha = tool(
   async ({ app_id, sha_hash }, { projectId }) => {
     // Add the SHA certificate
     const certType = getCertHashType(sha_hash);
-    const shaCertificate = await createAppAndroidSha(projectId!, app_id, {
+    const shaCertificate = await createAppAndroidSha(projectId, app_id, {
       shaHash: sha_hash,
       certType,
     });

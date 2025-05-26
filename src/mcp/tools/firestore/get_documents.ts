@@ -13,7 +13,7 @@ export const get_documents = tool(
       // TODO: Support configurable database
       // database: z
       //   .string()
-      //   .nullish()
+      //   .optional()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
       paths: z
         .array(z.string())
@@ -34,7 +34,7 @@ export const get_documents = tool(
     // database ??= "(default)";
     if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
-    const { documents, missing } = await getDocuments(projectId!, paths);
+    const { documents, missing } = await getDocuments(projectId, paths);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }

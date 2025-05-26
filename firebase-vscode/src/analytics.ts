@@ -32,8 +32,13 @@ export enum DATA_CONNECT_EVENT_NAME {
   START_EMULATORS = "start_emulators",
   AUTO_COMPLETE = "auto_complete",
   SESSION_CHAR_COUNT = "session_char_count",
-  EMULATOR_EXPORT ="emulator_export",
+  EMULATOR_EXPORT = "emulator_export",
   SETUP_FIREBASE_BINARY = "setup_firebase_binary",
+  GEMINI_ERROR = "gemini_error",
+  GEMINI_OPERATION_CALL = "gemini_operation_call",
+  GEMINI_SCHEMA_CALL = "gemini_schema_call",
+  GEMINI_SUCCESS = "gemini_success",
+  TRY_GEMINI_CLICKED = "try_gemini_clicked",
 }
 
 export class AnalyticsLogger {
@@ -42,9 +47,9 @@ export class AnalyticsLogger {
   private sessionCharCount = 0; // Track total chars for the session
 
   constructor(context: vscode.ExtensionContext) {
-    this.logger = monospaceEnv.value.isMonospace ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context) : env.createTelemetryLogger(
-      new GA4TelemetrySender(pluginLogger),
-    );
+    this.logger = monospaceEnv.value.isMonospace
+      ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context)
+      : env.createTelemetryLogger(new GA4TelemetrySender(pluginLogger));
 
     let subscriptions: vscode.Disposable[] = [
       vscode.workspace.onDidChangeTextDocument(
@@ -149,13 +154,15 @@ export class AnalyticsLogger {
 }
 
 export class IDXLogger {
-  constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
+  constructor(
+    private sender: GA4TelemetrySender,
+    private context: vscode.ExtensionContext,
+  ) {}
   public logUsage(eventName: string, data?: any) {
     const packageJson = this.context.extension.packageJSON;
     data = {
       ...data,
-      extversion: packageJson.version,
-      extname: "idx",
+      ...getAnalyticsContext(this.context),
       isidx: "true",
     };
     this.sender.sendEventData(eventName, data);
@@ -205,6 +212,15 @@ class GA4TelemetrySender implements TelemetrySender {
     // n/a
     // TODO: Sanatize error messages for user data
   }
+}
+
+export function getAnalyticsContext(context: vscode.ExtensionContext) {
+  const packageJson = context.extension.packageJSON;
+
+  return {
+    extversion: packageJson.version,
+    extname: monospaceEnv.value.isMonospace ? "idx" : "vscode",
+  };
 }
 
 function addFirebaseBinaryMetadata(data?: Record<string, any> | undefined) {
