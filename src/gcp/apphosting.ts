@@ -435,7 +435,7 @@ interface ServingBehavior {
 
 type DomainType = "TYPE_UNSPECIFIED" | "DEFAULT" | "CUSTOM";
 
-interface Domain {
+export interface Domain {
   name: string;
   display_name?: string;
   create_time: string;
@@ -453,6 +453,12 @@ interface Domain {
   etag: string;
 }
 
+interface ListDomainsResponse {
+  domains: Domain[];
+  next_page_token?: string;
+  unreachable?: string[];
+}
+
 /**
  * Lists domains for a backend.
  */
@@ -460,10 +466,10 @@ export async function listDomains(
   projectId: string,
   location: string,
   backendId: string,
-): Promise<Domain> {
+): Promise<Domain[]> {
   const name = `projects/${projectId}/locations/${location}/backends/${backendId}/domains`;
-  const res = await client.get<Domain>(name);
-  return res.body;
+  const res = await client.get<ListDomainsResponse>(name, { queryParams: { pageSize: 100 } });
+  return Array.isArray(res.body.domains) ? res.body.domains : [];
 }
 
 /**

@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import {
   Backend,
+  Domain,
   getTraffic,
   listBackends,
   listDomains,
@@ -43,7 +44,7 @@ export const list_backends = tool(
   async ({ location } = {}, { projectId }) => {
     projectId = projectId || "";
     if (!location) location = "-";
-    const data: (Backend & { traffic: Traffic; domains: unknown })[] = [];
+    const data: (Backend & { traffic: Traffic; domains: Domain[] })[] = [];
     const backends = await listBackends(projectId, location);
     for (const backend of backends.backends) {
       const { location, id } = parseBackendName(backend.name);
