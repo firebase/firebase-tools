@@ -73,7 +73,9 @@ export async function doSetup(setup: Setup, config: Config, options: any): Promi
 }
 
 export async function askQuestions(setup: Setup, config: Config, options: any): Promise<void> {
-  const firestore = !Array.isArray(setup.config.firestore) ? setup.config.firestore : undefined;
+  const firestore = Array.isArray(setup.config.firestore)
+    ? setup.config.firestore[0]
+    : setup.config.firestore;
   const info: RequiredInfo = {
     databaseId: firestore?.database || "",
     rulesFilename: firestore?.rules || "",

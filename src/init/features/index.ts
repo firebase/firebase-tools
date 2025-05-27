@@ -11,7 +11,11 @@ export {
 } from "./firestore";
 export { doSetup as functions } from "./functions";
 export { doSetup as hosting } from "./hosting";
-export { doSetup as storage } from "./storage";
+export {
+  askQuestions as storageAskQuestions,
+  RequiredInfo as StorageInfo,
+  actuate as storageActuate,
+} from "./storage";
 export { doSetup as emulators } from "./emulators";
 export { doSetup as extensions } from "./extensions";
 // always runs, sets up .firebaserc

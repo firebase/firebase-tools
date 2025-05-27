@@ -3,8 +3,9 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { Config } from "../../config";
-import { doSetup } from "./storage";
+import { actuate } from "./storage";
 import * as prompt from "../../prompt";
+import { askQuestions } from "./database";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -24,14 +25,16 @@ describe("storage", () => {
     it("should set up the correct properties in the project", async () => {
       const setup = {
         config: {},
-        rcfile: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "my-project-123",
         projectLocation: "us-central",
       };
+      const config = new Config({}, {});
       promptStub.returns("storage.rules");
       askWriteProjectFileStub.resolves();
 
-      await doSetup(setup, new Config("/path/to/src", {}));
+      await askQuestions(setup, config);
+      await actuate(setup, config);
 
       expect(_.get(setup, "config.storage.rules")).to.deep.equal("storage.rules");
     });
