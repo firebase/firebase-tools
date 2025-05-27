@@ -44,21 +44,23 @@ export const list_backends = tool(
   async ({ location } = {}, { projectId }) => {
     projectId = projectId || "";
     if (!location) location = "-";
-    const data: (Backend & { traffic: Traffic; domains: Domain[] })[] = [];
+    let data: (Backend & { traffic: Traffic; domains: Domain[] })[] = [];
     const backends = await listBackends(projectId, location);
-    for (const backend of backends.backends) {
+    if (!backends.backends.length) {
+      return toContent(
+        `No backends exist for project ${projectId}${location !== "-" ? ` in ${location}` : ""}.`,
+      );
+    }
+
+    const promises = backends.backends.map(async (backend) => {
       const { location, id } = parseBackendName(backend.name);
       const [traffic, domains] = await Promise.all([
         getTraffic(projectId, location, id),
         listDomains(projectId, location, id),
       ]);
-      data.push({ ...backend, traffic: traffic, domains: domains });
-    }
-    if (!data.length) {
-      return toContent(
-        `No backends exist for project ${projectId}${location !== "-" ? ` in ${location}` : ""}.`,
-      );
-    }
+      return { ...backend, traffic: traffic, domains: domains };
+    });
+    data = await Promise.all(promises);
     return toContent(data);
   },
 );
