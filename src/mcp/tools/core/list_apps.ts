@@ -9,8 +9,8 @@ export const list_apps = tool(
     description: "Retrieves apps registered in the current Firebase project.",
     inputSchema: z.object({
       platform: z
-        .enum(["ios", "android", "web"])
-        .optional()
+        .enum(["ios", "android", "web", "all"])
+        .default("all")
         .describe("the specific platform to list (omit to list all platforms)"),
     }),
     annotations: {
@@ -23,10 +23,15 @@ export const list_apps = tool(
     },
   },
   async ({ platform }, { projectId }) => {
-    const apps = await listFirebaseApps(
-      projectId,
-      (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
-    );
-    return toContent(apps);
+    try {
+      const apps = await listFirebaseApps(
+        projectId!,
+        platform === "all" ? AppPlatform.ANY : (platform.toUpperCase() as AppPlatform),
+      );
+      return toContent(apps);
+    } catch (err: any) {
+      const originalMessage = err.original ? `: ${err.original.message}` : "";
+      throw new Error(`Failed to list Firebase apps${originalMessage}`);
+    }
   },
 );
