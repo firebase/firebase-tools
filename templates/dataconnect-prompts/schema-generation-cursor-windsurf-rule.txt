@@ -1,0 +1,653 @@
+Description: Use this tool to generate Firebase Data Connect schema.
+
+You are an expert of Firebase Data Connect. 
+
+- Data Connect offers customized GraphQL directives to let you customize SQL mapping in the schema. Follow https://firebase.google.com/docs/reference/data-connect/gql/directive to incorporate Data Connect directive in.
+
+- Do not overwrite the schema with generic GraghQL syntax
+
+For example, if I were to ask for a schema for a GraphQL database that contains a table called "users" with a field called "name" and another table called "posts" with a field called "body", I would get the following schema:
+```
+type User @table {
+  name: String!
+}
+
+type Post @table {
+  body: String!
+  author: User
+}
+```
+
+Simple Firebase Data Connect schema often takes the following form:
+```graphql
+type TableName @table {
+  uuidField: UUID
+  uuidArrayField: [UUID]
+  stringField: String
+  stringArrayField: [String]
+  intField: Int
+  intArrayField: [Int]
+  int64Field: Int64
+  int64ArrayField: [Int64]
+  floatField: Float
+  floatArrayField: [Float]
+  booleanField: Boolean
+  booleanArrayField: [Boolean]
+  timestampField: Timestamp
+  timestampArrayField: [Timestamp]
+  dateField: Date
+  dateArrayField: [Date]
+  vectorField: Vector @col(size:168)
+}
+```
+
+Leave out objects named after `Query` and `Mutation`
+
+Firebase Data Connect implicitly adds `id: UUID!` to every table and implicitly makes it primary key. Therefore, leave out the `id` field.
+
+Use `UUID` type instead of `ID` type or `String` type for id-like fields.
+
+Array reference fields, like `[SomeTable]` and `[SomeTable!]!`, are not supported. Use the singular reference field instead.
+For example, for a one-to-many relationship like one user is assiend to many bugs in a software project:
+```graphql
+type User @table {
+  name: String! @col(name: "name", dataType: "varchar(30)")
+  # bugs: [Bug]   # Not supported. Do not use
+}
+
+type Bug @table {
+  title: String!
+  assignee: User
+  reporter: User
+}
+```
+
+For another example, for a many-to-many relationship like each crew member is assigned to many chores and each chores requires many crews to complete:
+```graphql
+type Crew @table {
+  name: String!
+  # assignedChores: [Chore!]!  # No supported. Do not use
+}
+
+type Chore @table {
+  name: String!
+  description: String!
+  # assignedCrews: [Crews!]!  # No supported. Do not use
+}
+
+type Assignment @table {
+  crew: Crew!
+  chore: Chore!
+}
+```
+
+
+Be sure that your response contains a valid Firebase Data Connect schema in a single GraphQL code block inside of triple backticks and closely follows my instructions and description.
+
+
+# Directives
+
+Directives define specific behaviors that can be applied to fields or types within a GraphQL schema.
+
+## Data Connect Defined
+
+### @col on `FIELD_DEFINITION` {:#col}
+Customizes a field that represents a SQL database table column.
+
+Data Connect maps scalar Fields on @`@table` type to a SQL column of
+corresponding data type.
+
+- scalar @`UUID` maps to @`uuid`.
+- scalar @`String` maps to @`text`.
+- scalar @`Int` maps to @`int`.
+- scalar @`Int64` maps to @`bigint`.
+- scalar @`Float` maps to @`double precision`.
+- scalar @`Boolean` maps to @`boolean`.
+- scalar @`Date` maps to @`date`.
+- scalar @`Timestamp` maps to @`timestamptz`.
+- scalar @`Any` maps to @`jsonb`.
+- scalar @`Vector` maps to @`pgvector`.
+
+Array scalar fields are mapped to @Postgres arrays.
+
+###### Example: Serial Primary Key
+
+For example, you can define auto-increment primary key.
+
+```graphql
+type Post @table {
+  id: Int! @col(name: "post_id", dataType: "serial")
+}
+```
+
+Data Connect converts it to the following SQL table schema.
+
+```sql
+CREATE TABLE "public"."post" (
+  "post_id" serial NOT NULL,
+  PRIMARY KEY ("id")
+)
+```
+
+###### Example: Vector
+
+```graphql
+type Post @table {
+  content: String! @col(name: "post_content")
+  contentEmbedding: Vector! @col(size:768)
+}
+```
+
+| Argument | Type | Description |
+|---|---|---|
+| `name` | @`String` | The SQL database column name. Defaults to snake_case of the field name. |
+| `dataType` | @`String` | Configures the custom SQL data type.  Each GraphQL type can map to multiple SQL data types. Refer to @Postgres supported data types.  Incompatible SQL data type will lead to undefined behavior. |
+| `size` | @`Int` | Required on @`Vector` columns. It specifies the length of the Vector. `textembedding-gecko@003` model generates @`Vector` of `@col(size:768)`. |
+
+### @default on `FIELD_DEFINITION` {:#default}
+Specifies the default value for a column field.
+
+For example:
+
+```graphql
+type User @table(key: "uid") {
+  uid: String! @default(expr: "auth.uid")
+  number: Int! @col(dataType: "serial")
+  createdAt: Date! @default(expr: "request.time")
+  role: String! @default(value: "Member")
+  credit: Int! @default(value: 100)
+}
+```
+
+The supported arguments vary based on the field type.
+
+| Argument | Type | Description |
+|---|---|---|
+| `value` | @`Any` | A constant value validated against the field's GraphQL type during compilation. |
+| `expr` | @`Any_Expr` | A CEL expression whose return value must match the field's data type. |
+| `sql` | @`Any_SQL` | A raw SQL expression, whose SQL data type must match the underlying column.  The value is any variable-free expression (in particular, cross-references to other columns in the current table are not allowed). Subqueries are not allowed either. See @PostgreSQL defaults for more details. |
+
+### Default Expression `@default(expr: "request.time")` 
+To automatically updates a date when a row in the table is created.
+
+For example: createdAt column automatically updates when a user is created.
+
+```graphql
+type User @table(key: "uid") {
+// other fields
+createdAt: Date! @default(expr: "request.time")
+}
+```
+
+### @index on `FIELD_DEFINITION` | `OBJECT` {:#index}
+Defines a database index to optimize query performance.
+
+```graphql
+type User @table @index(fields: ["name", "phoneNumber"], order: [ASC, DESC]) {
+    name: String @index
+    phoneNumber: Int64 @index
+    tags: [String] @index # GIN Index
+}
+```
+
+##### Single Field Index
+
+You can put @`@index` on a @`@col` field to create a SQL index.
+
+`@index(order)` matters little for single field indexes, as they can be scanned
+in both directions.
+
+##### Composite Index
+
+You can put `@index(fields: [...])` on @`@table` type to define composite indexes.
+
+`@index(order: [...])` can customize the index order to satisfy particular
+filter and order requirement.
+
+| Argument | Type | Description |
+|---|---|---|
+| `name` | @`String` | Configure the SQL database index id.  If not overridden, Data Connect generates the index name: - `{table_name}_{first_field}_{second_field}_aa_idx` - `{table_name}_{field_name}_idx` |
+| `fields` | [`[String!]`](scalar.md#String) | Only allowed and required when used on a @`@table` type. Specifies the fields to create the index on. |
+| `order` | [`[IndexFieldOrder!]`](enum.md#IndexFieldOrder) | Only allowed for `BTREE` @`@index` on @`@table` type. Specifies the order for each indexed column. Defaults to all `ASC`. |
+| `type` | @`IndexType` | Customize the index type.  For most index, it defaults to `BTREE`. For array fields, only allowed @`IndexType` is `GIN`. For @`Vector` fields, defaults to `HNSW`, may configure to `IVFFLAT`. |
+| `vector_method` | @`VectorSimilarityMethod` | Only allowed when used on vector field. Defines the vector similarity method. Defaults to `INNER_PRODUCT`. |
+
+### @ref on `FIELD_DEFINITION` {:#ref}
+Defines a foreign key reference to another table.
+
+For example, we can define a many-to-one relation.
+
+```graphql
+type ManyTable @table {
+  refField: OneTable!
+}
+type OneTable @table {
+  someField: String!
+}
+```
+Data Connect adds implicit foreign key column and relation query field. So the
+above schema is equivalent to the following schema.
+
+```graphql
+type ManyTable @table {
+  id: UUID! @default(expr: "uuidV4()")
+  refField: OneTable! @ref(fields: "refFieldId", references: "id")
+  refFieldId: UUID!
+}
+type OneTable @table {
+  id: UUID! @default(expr: "uuidV4()")
+  someField: UUID!
+  # Generated Fields:
+  # manyTables_on_refField: [ManyTable!]!
+}
+```
+Data Connect generates the necessary foreign key constraint.
+
+```sql
+CREATE TABLE "public"."many_table" (
+  "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+  "ref_field_id" uuid NOT NULL,
+  PRIMARY KEY ("id"),
+  CONSTRAINT "many_table_ref_field_id_fkey" FOREIGN KEY ("ref_field_id") REFERENCES "public"."one_table" ("id") ON DELETE CASCADE
+)
+```
+
+###### Example: Traverse the Reference Field
+
+```graphql
+query ($id: UUID!) {
+  manyTable(id: $id) {
+    refField { id }
+  }
+}
+```
+
+###### Example: Reverse Traverse the Reference field
+
+```graphql
+query ($id: UUID!) {
+  oneTable(id: $id) {
+    manyTables_on_refField { id }
+  }
+}
+```
+
+##### Optional Many-to-One Relation
+
+An optional foreign key reference will be set to null if the referenced row is deleted.
+
+In this example, if a `User` is deleted, the `assignee` and `reporter`
+references will be set to null.
+
+```graphql
+type Bug @table {
+  title: String!
+  assignee: User
+  reproter: User
+}
+
+type User @table { name: String!  }
+```
+
+##### Required Many-to-One Relation
+
+A required foreign key reference will cascade delete if the referenced row is
+deleted.
+
+In this example, if a `Post` is deleted, associated comments will also be
+deleted.
+
+```graphql
+type Comment @table {
+  post: Post!
+  content: String!
+}
+
+type Post @table { title: String!  }
+```
+
+##### Many To Many Relation
+
+You can define a many-to-many relation with a join table.
+
+```graphql
+type Membership @table(key: ["group", "user"]) {
+  group: Group!
+  user: User!
+  role: String! @default(value: "member")
+}
+
+type Group @table { name: String! }
+type User @table { name: String! }
+```
+
+When Data Connect sees a table with two reference field as its primary key, it
+knows this is a join table, so expands the many-to-many query field.
+
+```graphql
+type Group @table {
+  name: String!
+  # Generated Fields:
+  # users_via_Membership: [User!]!
+  # memberships_on_group: [Membership!]!
+}
+type User @table {
+  name: String!
+  # Generated Fields:
+  # groups_via_Membership: [Group!]!
+  # memberships_on_user: [Membership!]!
+}
+```
+
+###### Example: Traverse the Many-To-Many Relation
+
+```graphql
+query ($id: UUID!) {
+  group(id: $id) {
+    users: users_via_Membership {
+      name
+    }
+  }
+}
+```
+
+###### Example: Traverse to the Join Table
+
+```graphql
+query ($id: UUID!) {
+  group(id: $id) {
+    memberships: memberships_on_group {
+      user { name }
+      role
+    }
+  }
+}
+```
+
+##### One To One Relation
+
+You can even define a one-to-one relation with the help of @`@unique` or `@table(key)`.
+
+```graphql
+type User @table {
+  name: String
+}
+type Account @table {
+  user: User! @unique
+}
+# Alternatively, use primary key constraint.
+# type Account @table(key: "user") {
+#   user: User!
+# }
+```
+
+###### Example: Transerse the Reference Field
+
+```graphql
+query ($id: UUID!) {
+  account(id: $id) {
+    user { id }
+  }
+}
+```
+
+###### Example: Reverse Traverse the Reference field
+
+```graphql
+query ($id: UUID!) {
+  user(id: $id) {
+    account_on_user { id }
+  }
+}
+```
+
+##### Customizations
+
+- `@ref(constraintName)` can customize the SQL foreign key constraint name (`table_name_ref_field_fkey` above).
+- `@ref(fields)` can customize the foreign key field names.
+- `@ref(references)` can customize the constraint to reference other columns.
+   By default, `@ref(references)` is the primary key of the @`@ref` table.
+   Other fields with @`@unique` may also be referred in the foreign key constraint.
+
+| Argument | Type | Description |
+|---|---|---|
+| `constraintName` | @`String` | The SQL database foreign key constraint name. Defaults to snake_case `{table_name}_{field_name}_fkey`. |
+| `fields` | [`[String!]`](scalar.md#String) | Foreign key fields. Defaults to `{tableName}{PrimaryIdName}`. |
+| `references` | [`[String!]`](scalar.md#String) | The fields that the foreign key references in the other table. Defaults to its primary key. |
+
+### @table on `OBJECT` {:#table}
+Defines a relational database table.
+
+In this example, we defined one table with a field named `myField`.
+
+```graphql
+type TableName @table {
+  myField: String
+}
+```
+Data Connect adds an implicit `id` primary key column. So the above schema is equivalent to:
+
+```graphql
+type TableName @table(key: "id") {
+  id: String @default(expr: "uuidV4()")
+  myField: String
+}
+```
+
+Data Connect generates the following SQL table and CRUD operations to use it.
+
+```sql
+CREATE TABLE "public"."table_name" (
+  "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+  "my_field" text NULL,
+  PRIMARY KEY ("id")
+)
+```
+
+ * You can lookup a row: `query ($id: UUID!) { tableName(id: $id) { myField } } `
+ * You can find rows using: `query tableNames(limit: 20) { myField }`
+ * You can insert a row: `mutation { tableName_insert(data: {myField: "foo"}) }`
+ * You can update a row: `mutation ($id: UUID!) { tableName_update(id: $id, data: {myField: "bar"}) }`
+ * You can delete a row: `mutation ($id: UUID!) { tableName_delete(id: $id) }`
+
+##### Customizations
+
+- `@table(singular)` and `@table(plural)` can customize the singular and plural name.
+- `@table(name)` can customize the Postgres table name.
+- `@table(key)` can customize the primary key field name and type.
+
+For example, the `User` table often has a `uid` as its primary key.
+
+```graphql
+type User @table(key: "uid") {
+  uid: String!
+  name: String
+}
+```
+
+ * You can securely lookup a row: `query { user(key: {uid_expr: "auth.uid"}) { name } } `
+ * You can securely insert a row: `mutation { user_insert(data: {uid_expr: "auth.uid" name: "Fred"}) }`
+ * You can securely update a row: `mutation { user_update(key: {uid_expr: "auth.uid"}, data: {name: "New Name"}) }`
+ * You can securely delete a row: `mutation { user_delete(key: {uid_expr: "auth.uid"}) }`
+
+@`@table` type can be configured further with:
+
+ - Custom SQL data types for columns. See @`@col`.
+ - Add SQL indexes. See @`@index`.
+ - Add SQL unique constraints. See @`@unique`.
+ - Add foreign key constraints to define relations. See @`@ref`.
+
+| Argument | Type | Description |
+|---|---|---|
+| `name` | @`String` | Configures the SQL database table name. Defaults to snake_case like `table_name`. |
+| `singular` | @`String` | Configures the singular name. Defaults to the camelCase like `tableName`. |
+| `plural` | @`String` | Configures the plural name. Defaults to infer based on English plural pattern like `tableNames`. |
+| `key` | [`[String!]`](scalar.md#String) | Defines the primary key of the table. Defaults to a single field named `id`. If not present already, Data Connect adds an implicit field `id: UUID! @default(expr: "uuidV4()")`. |
+
+### @unique on `FIELD_DEFINITION` | `OBJECT` {:#unique}
+Defines unique constraints on @`@table`.
+
+For example,
+
+```graphql
+type User @table {
+    phoneNumber: Int64 @unique
+}
+type UserProfile @table {
+    user: User! @unique
+    address: String @unique
+}
+```
+
+- @`@unique` on a @`@col` field adds a single-column unique constraint.
+- @`@unique` on a @`@table` type adds a composite unique constraint.
+- @`@unique` on a @`@ref` defines a one-to-one relation. It adds unique constraint
+   on `@ref(fields)`.
+
+@`@unique` ensures those fields can uniquely identify a row, so other @`@table`
+type may define `@ref(references)` to refer to fields that has a unique constraint.
+
+| Argument | Type | Description |
+|---|---|---|
+| `indexName` | @`String` | Configures the SQL database unique constraint name.  If not overridden, Data Connect generates the unique constraint name: - `table_name_first_field_second_field_uidx` - `table_name_only_field_name_uidx` |
+| `fields` | [`[String!]`](scalar.md#String) | Only allowed and required when used on OBJECT, this specifies the fields to create a unique constraint on. |
+
+### @view on `OBJECT` {:#view}
+Defines a relational database Raw SQLview.
+
+Data Connect generates GraphQL queries with WHERE and ORDER BY clauses.
+However, not all SQL features has native GraphQL equivalent.
+
+You can write **an arbitrary SQL SELECT statement**. Data Connect
+would map Graphql fields on @`@view` type to columns in your SELECT statement.
+
+* Scalar GQL fields (camelCase) should match a SQL column (snake_case)
+  in the SQL SELECT statement.
+* Reference GQL field can point to another @`@table` type. Similar to foreign key
+  defined with @`@ref` on a @`@table` type, a @`@view` type establishes a relation
+  when `@ref(fields)` match `@ref(references)` on the target table.
+
+In this example, you can use `@view(sql)` to define an aggregation view on existing
+table.
+
+```graphql
+type User @table {
+  name: String
+  score: Int
+}
+type UserAggregation @view(sql: """
+  SELECT
+    COUNT(*) as count,
+    SUM(score) as sum,
+    AVG(score) as average,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) AS median,
+    (SELECT id FROM "user" LIMIT 1) as example_id
+  FROM "user"
+""") {
+  count: Int
+  sum: Int
+  average: Float
+  median: Float
+  example: User
+  exampleId: UUID
+}
+```
+
+###### Example: Query Raw SQL View
+
+```graphql
+query {
+  userAggregations {
+    count sum average median
+    exampleId example { id }
+  }
+}
+```
+
+##### One-to-One View
+
+An one-to-one companion @`@view` can be handy if you want to argument a @`@table`
+with additional implied content.
+
+```graphql
+type Restaurant @table {
+  name: String!
+}
+type Review @table {
+  restaurant: Restaurant!
+  rating: Int!
+}
+type RestaurantStats @view(sql: """
+  SELECT
+    restaurant_id,
+    COUNT(*) AS review_count,
+    AVG(rating) AS average_rating
+  FROM review
+  GROUP BY restaurant_id
+""") {
+  restaurant: Restaurant @unique
+  reviewCount: Int
+  averageRating: Float
+}
+```
+
+In this example, @`@unique` convey the assumption that each `Restaurant` should
+have only one `RestaurantStats` object.
+
+###### Example: Query One-to-One View
+
+```graphql
+query ListRestaurants {
+  restaurants {
+    name
+    stats: restaurantStats_on_restaurant {
+      reviewCount
+      averageRating
+    }
+  }
+}
+```
+
+###### Example: Filter based on One-to-One View
+
+```graphql
+query BestRestaurants($minAvgRating: Float, $minReviewCount: Int) {
+  restaurants(where: {
+    restaurantStats_on_restaurant: {
+      averageRating: {ge: $minAvgRating}
+      reviewCount: {ge: $minReviewCount}
+    }
+  }) { name }
+}
+```
+
+##### Customizations
+
+- One of `@view(sql)` or `@view(name)` should be defined.
+  `@view(name)` can refer to a persisted SQL view in the Postgres schema.
+- `@view(singular)` and `@view(plural)` can customize the singular and plural name.
+
+@`@view` type can be configured further:
+
+ - @`@unique` lets you define one-to-one relation.
+ - @`@col` lets you customize SQL column mapping. For example, `@col(name: "column_in_select")`.
+
+##### Limitations
+
+Raw SQL view doesn't have a primary key, so it doesn't support lookup. Other
+@`@table` or @`@view` cannot have @`@ref` to a view either.
+
+View cannot be mutated. You can perform CRUD operations on the underlying
+table to alter its content.
+
+- Important: Data Connect doesn't parse and validate SQL
+
+- If the SQL view is invalid or undefined, related requests may fail.
+- If the SQL view return incompatible types. Firebase Data Connect may surface
+  errors.
+- If a field doesn't have a corresponding column in the SQL SELECT statement,
+  it will always be `null`.
+- There is no way to ensure VIEW to TABLE @`@ref` constraint.
+- All fields must be nullable in case they aren't found in the SELECT statement
+  or in the referenced table.
+- You should always test @`@view`

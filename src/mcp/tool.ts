@@ -4,10 +4,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { FirebaseMcpServer } from "./index";
 import { Config } from "../config";
 import { RC } from "../rc";
+import { cleanSchema } from "./util";
 
 export interface ServerToolContext {
-  projectId?: string;
-  accountEmail?: string | null;
+  projectId: string;
+  accountEmail: string | null;
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
@@ -44,7 +45,7 @@ export function tool<InputSchema extends ZodTypeAny>(
   fn: ServerTool<InputSchema>["fn"],
 ): ServerTool {
   return {
-    mcp: { ...options, inputSchema: zodToJsonSchema(options.inputSchema) },
+    mcp: { ...options, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
     fn,
   };
 }

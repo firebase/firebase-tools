@@ -18,7 +18,7 @@ export const list_services = tool(
     },
   },
   async (_, { projectId }) => {
-    const services = await client.listAllServices(projectId!);
+    const services = await client.listAllServices(projectId);
     return toContent(services, { format: "yaml" });
   },
 );

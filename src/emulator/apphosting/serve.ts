@@ -224,7 +224,7 @@ async function tripFirebasePostinstall(
     return;
   }
   const npmLsResults = JSON.parse(npmLs.stdout.toString().trim());
-  const dependenciesToSearch: Dependency[] = Object.values(npmLsResults.dependencies);
+  const dependenciesToSearch: Dependency[] = Object.values(npmLsResults.dependencies || {});
   const firebaseUtilPaths: string[] = [];
   for (const dependency of dependenciesToSearch) {
     if (
