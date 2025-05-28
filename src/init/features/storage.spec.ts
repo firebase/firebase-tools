@@ -3,9 +3,8 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { Config } from "../../config";
-import { actuate } from "./storage";
+import { askQuestions, actuate } from "./storage";
 import * as prompt from "../../prompt";
-import { askQuestions } from "./database";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
