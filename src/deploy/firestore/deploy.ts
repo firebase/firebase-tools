@@ -9,15 +9,22 @@ import { IndexContext } from "./prepare";
 import { FirestoreConfig } from "../../firebaseConfig";
 import { sleep } from "../../utils";
 import { Options } from "../../options";
+import { FirebaseError } from "../../error";
 
 async function createDatabase(context: any, options: Options): Promise<void> {
   let firestoreCfg: FirestoreConfig = options.config.data.firestore;
   if (Array.isArray(firestoreCfg)) {
     firestoreCfg = firestoreCfg[0];
   }
+  if (!options.projectId) {
+    throw new FirebaseError("Project ID is required to create a Firestore database.");
+  }
+  if (!firestoreCfg || !firestoreCfg.database) {
+    throw new FirebaseError("Firestore database configuration is missing in firebase.json.");
+  }
   const api = new FirestoreApi();
   try {
-    await api.getDatabase(options.projectId!, firestoreCfg.database!);
+    await api.getDatabase(options.projectId, firestoreCfg.database);
   } catch (e: any) {
     if (e.status === 404) {
       // Database is not found. Let's create it.
@@ -26,9 +33,9 @@ async function createDatabase(context: any, options: Options): Promise<void> {
         `Creating the new Firestore database ${firestoreCfg.database}...`,
       );
       const createDatabaseReq: types.CreateDatabaseReq = {
-        project: options.projectId!,
-        databaseId: firestoreCfg.database!,
-        locationId: firestoreCfg.location!,
+        project: options.projectId,
+        databaseId: firestoreCfg.database,
+        locationId: firestoreCfg.location || "nam5", // Default to 'nam5' if location is not specified
         type: types.DatabaseType.FIRESTORE_NATIVE,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
