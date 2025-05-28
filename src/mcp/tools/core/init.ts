@@ -89,7 +89,7 @@ export const init = tool(
               .string()
               .optional()
               .describe(
-                "The security rules to use for Firebase Storage Security Rules. Default to open rules that deny all access.",
+                "The security rules to use for Firebase Storage Security Rules. Default to closed rules that deny all access.",
               ),
           })
           .optional()
