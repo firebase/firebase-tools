@@ -54,6 +54,7 @@ import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
+import { getTypeScriptEntryPoint } from "../deploy/functions/runtimes/node";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
@@ -131,7 +132,7 @@ export interface FunctionsEmulatorArgs {
  * IPC connection info of a Function Runtime.
  */
 export class IPCConn {
-  constructor(readonly socketPath: string) {}
+  constructor(readonly socketPath: string) { }
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -147,7 +148,7 @@ export class TCPConn {
   constructor(
     readonly host: string,
     readonly port: number,
-  ) {}
+  ) { }
 
   httpReqOpts(): http.RequestOptions {
     return {
@@ -244,7 +245,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
         throw new FirebaseError(
           "Cannot debug on a single port with multiple codebases. " +
-            "Use --inspect-functions=true to assign dynamic ports to each codebase",
+          "Use --inspect-functions=true to assign dynamic ports to each codebase",
         );
       }
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
@@ -529,6 +530,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
         runtime: emulatableBackend.runtime,
+        isEmulator: true,
       };
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.language} source`);
@@ -1522,9 +1524,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         "ERROR",
         "functions",
         "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-          "Make sure the credential used for the Functions Emulator have access " +
-          `or provide override values in ${secretPath}:\n\t` +
-          errs.join("\n\t"),
+        "Make sure the credential used for the Functions Emulator have access " +
+        `or provide override values in ${secretPath}:\n\t` +
+        errs.join("\n\t"),
       );
     }
 
@@ -1566,7 +1568,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               "SUCCESS",
               "functions",
               `Using debug port ${port} for functions codebase ${backend.codebase}. ` +
-                "You may need to add manually add this port to your inspector.",
+              "You may need to add manually add this port to your inspector.",
             );
           }
         }
@@ -1586,8 +1588,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         "WARN_ONCE",
         "functions",
         "Detected yarn@2 with PnP. " +
-          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
-          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
+        "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+        "See https://yarnpkg.com/getting-started/migration#step-by-step for more information.",
       );
     }
 
@@ -1595,11 +1597,26 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!bin) {
       throw new Error(
         `No binary associated with ${backend.functionsDir}. ` +
-          "Make sure function runtime is configured correctly in firebase.json.",
+        "Make sure function runtime is configured correctly in firebase.json.",
       );
     }
 
     const socketPath = getTemporarySocketPath();
+    
+    // Check if we're using tsx and get TypeScript entry point
+    let functionsEntryPoint: string | undefined;
+    if (backend.bin && backend.bin.includes("tsx")) {
+      const tsEntryPoint = getTypeScriptEntryPoint(backend.functionsDir);
+      if (tsEntryPoint) {
+        functionsEntryPoint = tsEntryPoint;
+        this.logger.logLabeled(
+          "DEBUG",
+          "functions",
+          `Using TypeScript source from ${tsEntryPoint}`,
+        );
+      }
+    }
+    
     const childProcess = spawn(bin, args, {
       cwd: backend.functionsDir,
       env: {
@@ -1608,6 +1625,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         ...process.env,
         ...envs,
         PORT: socketPath,
+        // Pass the resolved entry point if we found one
+        ...(functionsEntryPoint ? { FUNCTIONS_ENTRY_POINT: functionsEntryPoint } : {}),
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });

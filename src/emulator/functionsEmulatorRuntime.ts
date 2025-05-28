@@ -906,15 +906,24 @@ async function initializeRuntime(): Promise<void> {
 
 async function loadTriggers(): Promise<any> {
   let triggerModule;
+  
+  // Check if we have an override entry point (e.g., for TypeScript with tsx)
+  const entryPoint = process.env.FUNCTIONS_ENTRY_POINT;
+  
   try {
-    triggerModule = require(process.cwd());
+    if (entryPoint) {
+      logDebug(`Loading functions from specified entry point: ${entryPoint}`);
+      triggerModule = require(entryPoint);
+    } else {
+      triggerModule = require(process.cwd());
+    }
   } catch (err: any) {
     if (err.code !== "ERR_REQUIRE_ESM") {
       // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
       await moduleResolutionDetective(err);
       throw err;
     }
-    const modulePath = require.resolve(process.cwd());
+    const modulePath = entryPoint || require.resolve(process.cwd());
     // Resolve module path to file:// URL. Required for windows support.
     const moduleURL = pathToFileURL(modulePath).href;
     triggerModule = await dynamicImport(moduleURL);
