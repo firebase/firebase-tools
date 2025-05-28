@@ -8,15 +8,16 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { IndexContext } from "./prepare";
 import { FirestoreConfig } from "../../firebaseConfig";
 import { sleep } from "../../utils";
+import { Options } from "../../options";
 
-async function createDatabase(context: any, options: any): Promise<void> {
+async function createDatabase(context: any, options: Options): Promise<void> {
   let firestoreCfg: FirestoreConfig = options.config.data.firestore;
   if (Array.isArray(firestoreCfg)) {
     firestoreCfg = firestoreCfg[0];
   }
   const api = new FirestoreApi();
   try {
-    await api.getDatabase(options.projectId, firestoreCfg.database!);
+    await api.getDatabase(options.projectId!, firestoreCfg.database!);
   } catch (e: any) {
     if (e.status === 404) {
       // Database is not found. Let's create it.
@@ -25,7 +26,7 @@ async function createDatabase(context: any, options: any): Promise<void> {
         `Creating the new Firestore database ${firestoreCfg.database}...`,
       );
       const createDatabaseReq: types.CreateDatabaseReq = {
-        project: options.projectId,
+        project: options.projectId!,
         databaseId: firestoreCfg.database!,
         locationId: firestoreCfg.location!,
         type: types.DatabaseType.FIRESTORE_NATIVE,
@@ -84,7 +85,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
         }
         // It might take a while for the database to be created.
         await sleep(1000);
-        await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId);
+        await firestoreIndexes.deploy(options!, indexes, fieldOverrides, databaseId);
       }
 
       utils.logSuccess(
@@ -101,7 +102,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
+export default async function (context: any, options: Options): Promise<void> {
   await createDatabase(context, options);
   await deployRules(context);
   await deployIndexes(context, options);

@@ -53,8 +53,8 @@ async function getIndexesFromConsole(
     const res = await Promise.all([indexesPromise, fieldOverridesPromise]);
     return JSON.stringify(indexes.makeIndexSpec(res[0], res[1]), null, 2);
   } catch (e: any) {
-    if (e.status === 404 || e.code === 403) {
-      return null; // Database is not found or API was just enabled
+    if (e.status === 404) {
+      return null; // Database is not found
     }
     if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {
       return null;
