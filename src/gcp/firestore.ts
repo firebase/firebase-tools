@@ -18,9 +18,8 @@ function getClient(allowEmulator?: boolean) {
       urlPrefix: firestoreOriginOrEmulator(),
     });
   }
-  return prodOnlyClient
+  return prodOnlyClient;
 }
-
 
 export interface Database {
   name: string;
@@ -155,7 +154,7 @@ export async function getDatabase(
   database: string,
   allowEmulator: boolean = false,
 ): Promise<Database> {
-  const apiClient = getClient(allowEmulator)
+  const apiClient = getClient(allowEmulator);
   const url = `projects/${project}/databases/${database}`;
   try {
     const resp = await apiClient.get<Database>(url);
