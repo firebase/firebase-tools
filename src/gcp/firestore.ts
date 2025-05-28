@@ -10,11 +10,17 @@ const prodOnlyClient = new Client({
   urlPrefix: firestoreOrigin(),
 });
 
-const emuOrProdClient = new Client({
-  auth: true,
-  apiVersion: "v1",
-  urlPrefix: firestoreOriginOrEmulator(),
-});
+function getClient(allowEmulator?: boolean) {
+  if (allowEmulator) {
+    return new Client({
+      auth: true,
+      apiVersion: "v1",
+      urlPrefix: firestoreOriginOrEmulator(),
+    });
+  }
+  return prodOnlyClient
+}
+
 
 export interface Database {
   name: string;
@@ -149,7 +155,7 @@ export async function getDatabase(
   database: string,
   allowEmulator: boolean = false,
 ): Promise<Database> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator)
   const url = `projects/${project}/databases/${database}`;
   try {
     const resp = await apiClient.get<Database>(url);
@@ -171,7 +177,7 @@ export function listCollectionIds(
   project: string,
   allowEmulator: boolean = false,
 ): Promise<string[]> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   const data = {
     // Maximum 32-bit integer
@@ -194,7 +200,7 @@ export async function getDocuments(
   paths: string[],
   allowEmulator?: boolean,
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   const basePath = `projects/${project}/databases/(default)/documents`;
   const url = `${basePath}:batchGet`;
   const fullPaths = paths.map((p) => `${basePath}/${p}`);
@@ -218,7 +224,7 @@ export async function queryCollection(
   structuredQuery: StructuredQuery,
   allowEmulator?: boolean,
 ): Promise<{ documents: FirestoreDocument[] }> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   const basePath = `projects/${project}/databases/(default)/documents`;
   const url = `${basePath}:runQuery`;
   try {
@@ -259,7 +265,7 @@ export async function queryCollection(
  * @return {Promise} a promise for the delete operation.
  */
 export async function deleteDocument(doc: any, allowEmulator: boolean = false): Promise<any> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   return apiClient.delete(doc.name);
 }
 
@@ -277,7 +283,7 @@ export async function deleteDocuments(
   docs: any[],
   allowEmulator: boolean = false,
 ): Promise<number> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   const url = "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {
@@ -309,7 +315,7 @@ export async function commitDocument(
   document: FirestoreDocument,
   allowEmulator: boolean = false,
 ): Promise<any[]> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(allowEmulator);
   const url = `projects/${project}/databases/(default)/documents:commit`;
 
   const writes = [
