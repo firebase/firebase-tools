@@ -83,11 +83,30 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Data Connect in this project directory.",
           ),
+        storage: z
+          .object({
+            rules_filename: z
+              .string()
+              .optional()
+              .default("storage.rules")
+              .describe("The file to use for Firebase Storage Security Rules."),
+            rules: z
+              .string()
+              .optional()
+              .describe(
+                "The security rules to use for Firebase Storage Security Rules. Default to closed rules that deny all access.",
+              ),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Storage in this project directory.",
+          ),
       }),
     }),
     annotations: {
       title: "Initialize Firebase Products",
       readOnlyHint: false,
+      idempotentHint: true,
     },
     _meta: {
       requiresProject: false, // Can start from scratch.

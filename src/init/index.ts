@@ -29,6 +29,7 @@ export interface SetupInfo {
   database?: features.DatabaseInfo;
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
+  storage?: features.StorageInfo;
 }
 
 interface Feature {
@@ -60,7 +61,6 @@ const featuresList: Feature[] = [
   },
   {
     name: "dataconnect",
-    // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
     askQuestions: features.dataconnectAskQuestions,
     actuate: features.dataconnectActuate,
     postSetup: features.dataconnectPostSetup,
@@ -68,7 +68,11 @@ const featuresList: Feature[] = [
   { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
   { name: "functions", doSetup: features.functions },
   { name: "hosting", doSetup: features.hosting },
-  { name: "storage", doSetup: features.storage },
+  {
+    name: "storage",
+    askQuestions: features.storageAskQuestions,
+    actuate: features.storageActuate,
+  },
   { name: "emulators", doSetup: features.emulators },
   { name: "extensions", doSetup: features.extensions },
   { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
