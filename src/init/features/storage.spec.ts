@@ -28,7 +28,7 @@ describe("storage", () => {
         projectId: "my-project-123",
         projectLocation: "us-central",
       };
-      const config = new Config({}, {});
+      const config = new Config({}, { projectDir: "test", cwd: "test" });
       promptStub.returns("storage.rules");
       askWriteProjectFileStub.resolves();
 
