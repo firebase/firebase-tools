@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { listCollectionIds } from "../../../gcp/firestore.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
+import { getFirestoreEmulatorHost } from "./emulator.js";
 
 export const list_collections = tool(
   {
@@ -15,6 +16,7 @@ export const list_collections = tool(
       //   .string()
       //   .nullish()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "List Firestore collections",
@@ -25,9 +27,15 @@ export const list_collections = tool(
       requiresProject: true,
     },
   },
-  async (_, { projectId }) => {
+  async ({ use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
     if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await listCollectionIds(projectId));
+
+    if (use_emulator) {
+      const emulatorHost = await getFirestoreEmulatorHost(await host.getEmulatorHubClient());
+      process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
+    }
+
+    return toContent(await listCollectionIds(projectId, use_emulator));
   },
 );

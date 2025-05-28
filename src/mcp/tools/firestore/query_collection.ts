@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { queryCollection, StructuredQuery } from "../../../gcp/firestore.js";
 import { convertInputToValue, firestoreDocumentToJson } from "./converter.js";
+import { getFirestoreEmulatorHost } from "./emulator.js";
 
 export const query_collection = tool(
   {
@@ -68,6 +69,7 @@ export const query_collection = tool(
         .number()
         .describe("The maximum amount of records to return. Default is 10.")
         .nullish(),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "Query Firestore collection",
@@ -78,11 +80,16 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit }, { projectId }) => {
+  async ({ collection_path, filters, order, limit, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)
       return mcpError("Must supply at least one collection path.");
+
+    if (use_emulator) {
+      const emulatorHost = await getFirestoreEmulatorHost(await host.getEmulatorHubClient());
+      process.env.FIRESTORE_EMULATOR_HOST = emulatorHost;
+    }
 
     const structuredQuery: StructuredQuery = {
       from: [{ collectionId: collection_path, allDescendants: false }],
@@ -125,7 +132,7 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    const { documents } = await queryCollection(projectId!, structuredQuery);
+    const { documents } = await queryCollection(projectId!, structuredQuery, /** allowEmulator= */ use_emulator);
 
     const docs = documents.map(firestoreDocumentToJson);
 
