@@ -294,6 +294,43 @@ export async function deleteDocuments(
 }
 
 /**
+ * Create or update a single Firestore document.
+ *
+ * For document format see:
+ * https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents#Document
+ * @param {string} project the Google Cloud project ID.
+ * @param {string} path The document path.
+ * @param {FirestoreDocument} document The document object to put.
+ * @return {Promise<FirestoreDocument>} a promise for the put operation.
+ */
+export async function commitDocument(
+  project: string,
+  path: string,
+  document: FirestoreDocument,
+  allowEmulator: boolean = false,
+): Promise<any[]> {
+  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const url = `projects/${project}/databases/(default)/documents:commit`;
+
+  const writes = [
+    {
+      update: {
+        name: `projects/${project}/databases/(default)/documents/${path}`,
+        fields: document.fields,
+      },
+    },
+  ];
+  const data = { writes };
+
+  const res = await apiClient.post<any, { writeResults: any[] }>(url, data, {
+    retries: 10,
+    retryCodes: [429, 409, 503],
+    retryMaxTimeout: 20 * 1000,
+  });
+  return res.body.writeResults[0];
+}
+
+/**
  * Create a backup schedule for the given Firestore database.
  * @param {string} project the Google Cloud project ID.
  * @param {string} databaseId the Firestore database ID.
