@@ -351,6 +351,127 @@ export async function getTraffic(
   return res.body;
 }
 
+interface RpcStatus {
+  code?: number;
+  message?: string;
+  details?: unknown[];
+}
+
+type CustomDomainState =
+  | "CUSTOM_DOMAIN_STATE_UNSPECIFIED"
+  | "HOST_STATE"
+  | "OWNERSHIP_STATE"
+  | "CERT_STATE";
+
+type HostState =
+  | "HOST_STATE_UNSPECIFIED"
+  | "HOST_UNHOSTED"
+  | "HOST_UNREACHABLE"
+  | "HOST_NON_FAH"
+  | "HOST_CONFLICT"
+  | "HOST_WRONG_SHARD"
+  | "HOST_ACTIVE";
+
+type OwnershipState =
+  | "OWNERSHIP_STATE_UNSPECIFIED"
+  | "OWNERSHIP_MISSING"
+  | "OWNERSHIP_UNREACHABLE"
+  | "OWNERSHIP_MISMATCH"
+  | "OWNERSHIP_CONFLICT"
+  | "OWNERSHIP_PENDING"
+  | "OWNERSHIP_ACTIVE";
+
+type CertState =
+  | "CERT_STATE_UNSPECIFIED"
+  | "CERT_PREPARING"
+  | "CERT_VALIDATING"
+  | "CERT_PROPAGATING"
+  | "CERT_ACTIVE"
+  | "CERT_EXPIRING_SOON"
+  | "CERT_EXPIRED";
+
+type DnsRecordType = "TYPE_UNSPECIFIED" | "A" | "CNAME" | "TXT" | "AAAA" | "CAA";
+
+type DnsRecordAction = "NONE" | "ADD" | "REMOVE";
+
+interface DnsRecord {
+  domain_name: string;
+  type: DnsRecordType;
+  rdata: string;
+  required_action: DnsRecordAction;
+  relevant_state: CustomDomainState[];
+}
+
+interface DnsRecordSet {
+  domain_name: string;
+  check_error?: RpcStatus;
+  records: DnsRecord[];
+}
+
+interface DnsUpdates {
+  domain_name: string;
+  discovered: DnsRecordSet[];
+  desired: DnsRecordSet[];
+  check_time: string;
+}
+
+interface CustomDomainStatus {
+  host_state: HostState;
+  ownership_state: OwnershipState;
+  cert_state: CertState;
+  required_dns_updates: DnsUpdates[];
+  issues: RpcStatus[];
+}
+
+interface Redirect {
+  uri: string;
+  status?: number;
+}
+
+interface ServingBehavior {
+  // oneof serving_behavior
+  redirect?: Redirect;
+}
+
+type DomainType = "TYPE_UNSPECIFIED" | "DEFAULT" | "CUSTOM";
+
+export interface Domain {
+  name: string;
+  display_name?: string;
+  create_time: string;
+  update_time: string;
+  type: DomainType;
+  disabled?: boolean;
+  serve?: ServingBehavior;
+  custom_domain_status?: CustomDomainStatus;
+  reconciling: boolean;
+  delete_time?: string;
+  purge_time?: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  uid: string;
+  etag: string;
+}
+
+interface ListDomainsResponse {
+  domains: Domain[];
+  next_page_token?: string;
+  unreachable?: string[];
+}
+
+/**
+ * Lists domains for a backend.
+ */
+export async function listDomains(
+  projectId: string,
+  location: string,
+  backendId: string,
+): Promise<Domain[]> {
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}/domains`;
+  const res = await client.get<ListDomainsResponse>(name, { queryParams: { pageSize: 100 } });
+  return Array.isArray(res.body.domains) ? res.body.domains : [];
+}
+
 /**
  * List all backends present in a project and location.
  */
