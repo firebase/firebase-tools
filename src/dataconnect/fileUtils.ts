@@ -101,14 +101,14 @@ export async function pickService(
   if (serviceCfgs.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json. " +
-        ` Do you want to run ${clc.bold("firebase init dataconnect")} to add a Data Connect service?`,
+        ` You can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service?`,
     );
   } else if (serviceCfgs.length === 1) {
     serviceInfo = await load(projectId, config, serviceCfgs[0].source);
     if (serviceId && serviceId !== serviceInfo.dataConnectYaml.serviceId) {
       throw new FirebaseError(
         `No service named ${serviceId} declared in firebase.json. Found ${serviceInfo.dataConnectYaml.serviceId}.` +
-          ` Do you want to run ${clc.bold("firebase init dataconnect")} to add more services?`,
+          ` You can run ${clc.bold("firebase init dataconnect")} to add more Data Connnect services.`,
       );
     }
     return serviceInfo;
@@ -124,7 +124,7 @@ export async function pickService(
     if (!maybe) {
       throw new FirebaseError(
         `No service named ${serviceId} declared in firebase.json. Found ${infos.map((i) => i.dataConnectYaml.serviceId).join(", ")}.` +
-          ` Do you want to run ${clc.bold("firebase init dataconnect")} to add a Data Connect service?`,
+          ` You can run ${clc.bold("firebase init dataconnect")} to add more Data Connect services.`,
       );
     }
     return maybe;
