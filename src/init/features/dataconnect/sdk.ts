@@ -26,8 +26,13 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet, promptForDirectory } from "../../../utils";
+import { logSuccess, logBullet, promptForDirectory, envOverride } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
+
+// connectorEnvVar is used by Firebase Console to specify which connector to setup.
+// It should be in the form <connectorId>.
+// It's common to provide both FDC_SERVICE and FDC_CONNECTOR environment variables
+const connectorEnvVar = () => envOverride("FDC_CONNECTOR", "");
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
@@ -49,11 +54,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
-  const connectorChoices: { name: string; value: ConnectorInfo }[] = serviceInfos
+  const connectorChoices: connectorChoice[] = serviceInfos
     .map((si) => {
       return si.connectorInfo.map((ci) => {
         return {
-          name: `${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
+          name: `${si.dataConnectYaml.location}/${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
           value: ci,
         };
       });
@@ -100,10 +105,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
-  const connectorInfo = await select<ConnectorInfo>({
-    message: "Which connector do you want set up a generated SDK for?",
-    choices: connectorChoices,
-  });
+  const connectorInfo = await chooseExistingConnector(connectorChoices);
 
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   const newConnectorYaml = await generateSdkYaml(
@@ -137,6 +139,29 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   connectorInfo.connectorYaml = newConnectorYaml;
   const displayIOSWarning = targetPlatform === Platform.IOS;
   return { connectorYamlContents, connectorInfo, displayIOSWarning };
+}
+
+interface connectorChoice {
+  name: string; // {location}/{serviceId}/{connectorId}
+  value: ConnectorInfo;
+}
+
+async function chooseExistingConnector(choices: connectorChoice[]): Promise<ConnectorInfo> {
+  if (choices.length === 1) {
+    // Only one connector available, use it.
+    return choices[0].value;
+  }
+  const nameFromEnvVar = connectorEnvVar();
+  const existingConnector = choices.find((c) => c.name === nameFromEnvVar);
+  if (existingConnector) {
+    // FDC_CONNECTOR env var match an existing connector.
+    logBullet(`Picking up the existing connector ${clc.bold(nameFromEnvVar)}.`);
+    return existingConnector.value;
+  }
+  return await select<ConnectorInfo>({
+    message: "Which connector do you want set up a generated SDK for?",
+    choices: choices,
+  });
 }
 
 export async function generateSdkYaml(
@@ -218,6 +243,8 @@ export async function actuate(sdkInfo: SDKInfo, config: Config) {
   await config.askWriteProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     sdkInfo.connectorYamlContents,
+    /* force=*/ false,
+    /* confirmByDefault=*/ true,
   );
 
   const account = getGlobalDefaultAccount();
