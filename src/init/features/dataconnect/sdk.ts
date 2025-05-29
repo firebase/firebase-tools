@@ -204,8 +204,8 @@ export async function generateSdkYaml(
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
       package: `@firebasegen/${pkg}`,
       // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
-      // Ot herwise, emulator would ignore it. Always add it here in case `package.json` is added later.
-      // TO DO: Explore other platforms that can be automatically installed. Dart? Android?
+      // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
+      // TODO: Explore other platforms that can be automatically installed. Dart? Android?
       packageJsonDir,
     };
     const packageJson = await resolvePackageJson(appDir);
@@ -237,9 +237,9 @@ export async function generateSdkYaml(
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`)),
       package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
     };
-    // ap p/src/main/kotlin and app/src/main/java are conventional for Android,
-    // bu t not required or enforced. If one of them is present (preferring the
-    // "k otlin" directory), use it. Otherwise, fall back to the dataconnect-generated dir.
+    // app/src/main/kotlin and app/src/main/java are conventional for Android,
+    // but not required or enforced. If one of them is present (preferring the
+    // "kotlin" directory), use it. Otherwise, fall back to the dataconnect-generated dir.
     for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
       const candidateDir = path.join(appDir, candidateSubdir);
       if (dirExistsSync(candidateDir)) {
@@ -258,8 +258,8 @@ export async function actuate(sdkInfo: SDKInfo, config: Config) {
   await config.askWriteProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     sdkInfo.connectorYamlContents,
-    /* fo rce=*/ false,
-    /* co nfirmByDefault=*/ true,
+    /* force=*/ false,
+    /* confirmByDefault=*/ true,
   );
 
   const account = getGlobalDefaultAccount();
@@ -291,7 +291,7 @@ function logInfoForFramework(framework: keyof SupportedFrameworks) {
       "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
     );
   } else if (framework === "angular") {
-    // TO DO(mtewani): Replace this with `ng add @angular/fire` when ready.
+    // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
     logBullet(
       "Run `npm i --save @angular/fire @tanstack-query-firebase/angular @tanstack/angular-query-experimental` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
     );
