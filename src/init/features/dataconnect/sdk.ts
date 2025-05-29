@@ -141,11 +141,6 @@ interface connectorChoice {
   value: ConnectorInfo;
 }
 
-// connectorEnvVar is used by Firebase Console to specify which connector to setup.
-// It should be in the form <location>/<serviceId>/<connectorId>.
-// We ignore it if this connector does not exist.
-// Firebase Console can provide either FDC_SERVICE or FDC_CONNECTOR environment variables based on its page.
-
 /**
  * Picks an existing connector from those present in the local workspace.
  *
