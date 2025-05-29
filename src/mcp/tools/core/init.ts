@@ -35,6 +35,11 @@ export const init = tool(
               .optional()
               .default("(default)")
               .describe("The database ID to use for Firestore."),
+            location_id: z
+              .string()
+              .optional()
+              .default("nam5")
+              .describe("The GCP region ID to set up the Firestore database."),
             rules_filename: z
               .string()
               .optional()
@@ -123,6 +128,7 @@ export const init = tool(
       featuresList.push("firestore");
       featureInfo.firestore = {
         databaseId: features.firestore.database_id,
+        locationId: features.firestore.location_id,
         rulesFilename: features.firestore.rules_filename,
         rules: features.firestore.rules || "",
         writeRules: true,
