@@ -10,6 +10,7 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project";
 import { bestEffortEnsure } from "../ensureApiEnabled";
+import { Options } from "../options";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -30,7 +31,7 @@ export interface ProjectParentResource {
  * Prompt user to create a new project
  */
 export async function promptProjectCreation(
-  options: any,
+  options: Options,
 ): Promise<{ projectId: string; displayName: string }> {
   const projectId =
     options.projectId ??
@@ -50,7 +51,7 @@ export async function promptProjectCreation(
     }));
 
   const displayName =
-    options.displayName ??
+    (options.displayName as string) ??
     (await prompt.input({
       default: projectId,
       message: "What would you like to call your project? (defaults to your project ID)",
@@ -143,7 +144,7 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
 /**
  * Get the user's desired project, prompting if necessary.
  */
-export async function getOrPromptProject(options: any): Promise<FirebaseProjectMetadata> {
+export async function getOrPromptProject(options: Options): Promise<FirebaseProjectMetadata> {
   if (options.project) {
     return await getFirebaseProject(options.project);
   }
