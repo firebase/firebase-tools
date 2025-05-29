@@ -411,7 +411,10 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
     architectHost.getBuilderNameForTarget(buildOrBrowserTarget),
   ]);
 
-  const buildOutputPath = typeof targetOptions?.outputPath === "string" ? targetOptions.outputPath : join("dist", buildOrBrowserTarget.project);
+  const buildOutputPath =
+    typeof targetOptions?.outputPath === "string"
+      ? targetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
 
   const outputPath = join(
     buildOutputPath,
@@ -438,7 +441,10 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
   }
   const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
 
-  const buildOutputPath = typeof browserTargetOptions?.outputPath === "string" ? browserTargetOptions.outputPath : join("dist", buildOrBrowserTarget.project);
+  const buildOutputPath =
+    typeof browserTargetOptions?.outputPath === "string"
+      ? browserTargetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
 
   const browserOutputPath = join(buildOutputPath, buildTarget ? "browser" : "")
     .split(sep)
@@ -475,7 +481,10 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
       message: `expected "JsonObject" but got "${typeof serverTargetOptions}"`,
     });
   }
-  const serverTargetOutputPath = typeof serverTargetOptions?.outputPath === "string" ? serverTargetOptions.outputPath : join("dist", buildOrServerTarget.project);
+  const serverTargetOutputPath =
+    typeof serverTargetOptions?.outputPath === "string"
+      ? serverTargetOptions.outputPath
+      : join("dist", buildOrServerTarget.project);
 
   const serverOutputPath = join(serverTargetOutputPath, buildTarget ? "server" : "")
     .split(sep)
