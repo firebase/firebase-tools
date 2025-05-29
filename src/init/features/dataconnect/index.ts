@@ -19,7 +19,7 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride } from "../../../utils";
+import { logBullet, logWarning, envOverride } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
@@ -29,11 +29,6 @@ const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yam
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
-
-// serviceEnvVar is used by Firebase Console to specify which service to import.
-// It should be in the form <location>/<serviceId>
-// It must be an existing service - if set to anything else, we'll ignore it.
-const serviceEnvVar = () => envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
 
 export interface RequiredInfo {
   serviceId: string;
@@ -318,23 +313,38 @@ interface serviceAndSchema {
   schema?: Schema;
 }
 
+/**
+ * Picks create new service or an existing service from the list of services.
+ *
+ * Firebase Console can provide `FDC_CONNECTOR` or `FDC_SERVICE` environment variable.
+ * If either is present, chooseExistingService try to match it with any existing service
+ * and short-circuit the prompt.
+ *
+ * `FDC_SERVICE` should have the format `<location>/<serviceId>`.
+ * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
+ * @param existing
+ */
 async function chooseExistingService(
   existing: serviceAndSchema[],
 ): Promise<serviceAndSchema | undefined> {
-  const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar().split("/");
-  const serviceFromEnvVar = existing.find((s) => {
-    const serviceName = parseServiceName(s.service.name);
-    return (
-      serviceName.serviceId === serviceIdFromEnvVar &&
-      serviceName.location === serviceLocationFromEnvVar
-    );
-  });
-  if (serviceFromEnvVar) {
-    // FDC_CONNECTOR or FDC_SERVICE env var match an existing service.
-    logBullet(
-      `Picking up the existing service ${clc.bold(serviceLocationFromEnvVar + "/" + serviceIdFromEnvVar)}.`,
-    );
-    return serviceFromEnvVar;
+  const serviceEnvVar = envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
+  if (serviceEnvVar) {
+    const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar.split("/");
+    const serviceFromEnvVar = existing.find((s) => {
+      const serviceName = parseServiceName(s.service.name);
+      return (
+        serviceName.serviceId === serviceIdFromEnvVar &&
+        serviceName.location === serviceLocationFromEnvVar
+      );
+    });
+    if (serviceFromEnvVar) {
+      // FDC_CONNECTOR or FDC_SERVICE env var match an existing service.
+      logBullet(
+        `Picking up the existing service ${clc.bold(serviceLocationFromEnvVar + "/" + serviceIdFromEnvVar)}.`,
+      );
+      return serviceFromEnvVar;
+    }
+    logWarning(`Unable to pick up an existing service based on FDC_SERVICE=${serviceEnvVar}.`);
   }
   const choices: Array<{ name: string; value: serviceAndSchema | undefined }> = existing.map(
     (s) => {
