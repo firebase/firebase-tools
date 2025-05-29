@@ -13,7 +13,7 @@ export const delete_document = tool(
       // TODO: Support configurable database
       // database: z
       //   .string()
-      //   .nullish()
+      //   .optional()
       //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
       path: z
         .string()
@@ -32,17 +32,17 @@ export const delete_document = tool(
   },
   async ({ path }, { projectId }) => {
     // database ??= "(default)";
-    const { documents, missing } = await getDocuments(projectId!, [path]);
+    const { documents, missing } = await getDocuments(projectId, [path]);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
-    const firestoreDelete = new FirestoreDelete(projectId!, path, { databaseId: "(default)" });
+    const firestoreDelete = new FirestoreDelete(projectId, path, { databaseId: "(default)" });
 
     await firestoreDelete.execute();
 
     const { documents: postDeleteDocuments, missing: postDeleteMissing } = await getDocuments(
-      projectId!,
+      projectId,
       [path],
     );
     if (postDeleteMissing.length > 0 && postDeleteDocuments.length === 0) {

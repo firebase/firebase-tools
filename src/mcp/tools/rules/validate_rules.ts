@@ -120,7 +120,7 @@ export function validateRulesTool(productName: string) {
         rulesSourceContent = "";
       }
 
-      const result = await testRuleset(projectId!, [
+      const result = await testRuleset(projectId, [
         // The name "firestore.rules" is a convention for testRuleset,
         // actual fileName from issues will be used in formatting.
         { name: "test.rules", content: rulesSourceContent },
