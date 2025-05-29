@@ -71,7 +71,8 @@ export async function diffSchema(
   let diffs: Diff[] = [];
 
   logLabeledBullet("dataconnect", `generating required schema changes...`);
-  // Make sure database is setup.
+
+  // Make sure database is setup. (this can be slow)
   await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
