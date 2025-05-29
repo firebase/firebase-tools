@@ -1,3 +1,4 @@
+- Improve log messages on skipped App Hosting source deploys. (#8674)
 - Fixed issue in `init` where users were forced to specify emulator UI port (#8626)
 - Added MCP tools for App Hosting (#8605)
 - Fixed crash when starting the App Hosting emulator in certain applications (#8624)

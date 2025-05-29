@@ -48,6 +48,7 @@ export default async function (context: Context, options: Options): Promise<void
   const foundBackends: AppHostingSingle[] = [];
   const notFoundBackends: AppHostingSingle[] = [];
   const ambiguousBackends: AppHostingSingle[] = [];
+  const skippedBackends: AppHostingSingle[] = [];
   for (const cfg of configs) {
     const filteredBackends = backends.filter(
       (backend) => parseBackendName(backend.name).id === cfg.backendId,
@@ -85,6 +86,7 @@ export default async function (context: Context, options: Options): Promise<void
       (backend) => parseBackendName(backend.name).id === cfg.backendId,
     );
     if (cfg.alwaysDeployFromSource === false) {
+      skippedBackends.push(cfg);
       continue;
     }
     const backend = filteredBackends[0];
@@ -106,10 +108,10 @@ export default async function (context: Context, options: Options): Promise<void
         options.config.writeProjectFile(configPath, options.config.src);
         logLabeledBullet(
           "apphosting",
-          `On future invocations of "firebase deploy", your local source will be deployed to ${cfg.backendId}. You can edit this setting in your firebase.json at any time.`,
+          `On future invocations of "firebase deploy", your local source will ${!confirmDeploy ? "not " : ""}be deployed to ${cfg.backendId}. You can edit this setting in your firebase.json at any time.`,
         );
         if (!confirmDeploy) {
-          logLabeledWarning("apphosting", `Skipping deployment of backend ${cfg.backendId}`);
+          skippedBackends.push(cfg);
           continue;
         }
       }
@@ -118,38 +120,44 @@ export default async function (context: Context, options: Options): Promise<void
     context.backendLocations.set(cfg.backendId, location);
   }
 
-  if (notFoundBackends.length === 0) {
-    return;
+  if (notFoundBackends.length > 0) {
+    if (options.force) {
+      logLabeledWarning(
+        "apphosting",
+        `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
+          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+          "then retry deployment.",
+      );
+      return;
+    }
+    const confirmCreate = await confirm({
+      default: true,
+      message: `Did not find backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}. Do you want to create them (you'll have the option to select which to create in the next step)?`,
+    });
+    if (confirmCreate) {
+      const selected = await checkbox<string>({
+        message: "Which backends do you want to create and deploy to?",
+        choices: notFoundBackends.map((cfg) => cfg.backendId),
+      });
+      const selectedBackends = selected.map((id) =>
+        notFoundBackends.find((backend) => backend.backendId === id),
+      ) as AppHostingSingle[];
+      for (const cfg of selectedBackends) {
+        logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
+        const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
+        context.backendConfigs.set(cfg.backendId, cfg);
+        context.backendLocations.set(cfg.backendId, location);
+      }
+    } else {
+      skippedBackends.push(...notFoundBackends);
+    }
   }
-  if (options.force) {
+  if (skippedBackends.length > 0) {
     logLabeledWarning(
       "apphosting",
-      `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-        "then retry deployment.",
+      `Skipping deployment of backend(s) ${skippedBackends.map((cfg) => cfg.backendId).join(", ")}.`,
     );
-    return;
-  }
-  const confirmCreate = await confirm({
-    default: true,
-    message: `Did not find backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}. Do you want to create them (you'll have the option to select which to create in the next step)?`,
-  });
-  if (!confirmCreate) {
-    return;
-  }
-  const selected = await checkbox<string>({
-    message: "Which backends do you want to create and deploy to?",
-    choices: notFoundBackends.map((cfg) => cfg.backendId),
-  });
-  const selectedBackends = selected.map((id) =>
-    notFoundBackends.find((backend) => backend.backendId === id),
-  ) as AppHostingSingle[];
-  for (const cfg of selectedBackends) {
-    logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
-    const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
-    context.backendConfigs.set(cfg.backendId, cfg);
-    context.backendLocations.set(cfg.backendId, location);
   }
   return;
 }

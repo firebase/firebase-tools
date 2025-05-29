@@ -183,10 +183,13 @@ export async function doSetupSourceDeploy(
     projectId,
     "Select a primary region to host your backend:\n",
   );
+  const webAppSpinner = ora("Creating a new web app...\n").start();
   const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
   if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
+  webAppSpinner.stop();
+
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
