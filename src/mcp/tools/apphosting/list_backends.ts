@@ -44,7 +44,6 @@ export const list_backends = tool(
   async ({ location } = {}, { projectId }) => {
     projectId = projectId || "";
     if (!location) location = "-";
-    let data: (Backend & { traffic: Traffic; domains: Domain[] })[] = [];
     const backends = await listBackends(projectId, location);
     if (!backends.backends.length) {
       return toContent(
@@ -60,7 +59,7 @@ export const list_backends = tool(
       ]);
       return { ...backend, traffic: traffic, domains: domains };
     });
-    data = await Promise.all(promises);
+    const data: (Backend & { traffic: Traffic; domains: Domain[] })[] = await Promise.all(promises);
     return toContent(data);
   },
 );
