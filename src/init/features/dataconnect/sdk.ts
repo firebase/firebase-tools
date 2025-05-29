@@ -165,7 +165,6 @@ async function chooseExistingConnector(choices: connectorChoice[]): Promise<Conn
   if (connectorEnvVar) {
     const existingConnector = choices.find((c) => c.name === connectorEnvVar);
     if (existingConnector) {
-      // FD C_CONNECTOR env var match an existing connector.
       logBullet(`Picking up the existing connector ${clc.bold(connectorEnvVar)}.`);
       return existingConnector.value;
     }

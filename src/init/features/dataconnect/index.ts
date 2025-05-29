@@ -338,7 +338,6 @@ async function chooseExistingService(
       );
     });
     if (serviceFromEnvVar) {
-      // FDC_CONNECTOR or FDC_SERVICE env var match an existing service.
       logBullet(
         `Picking up the existing service ${clc.bold(serviceLocationFromEnvVar + "/" + serviceIdFromEnvVar)}.`,
       );
