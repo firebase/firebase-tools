@@ -1621,7 +1621,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         ...process.env,
         ...envs,
         PORT: socketPath,
-        // Overried the entry point we have any
+        // Override the entry point if we have any
         ...(overrideFunctionSource ? { FUNCTIONS_SOURCE: overrideFunctionSource } : {}),
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
