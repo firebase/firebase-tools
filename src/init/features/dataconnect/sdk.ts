@@ -158,7 +158,7 @@ interface connectorChoice {
  */
 async function chooseExistingConnector(choices: connectorChoice[]): Promise<ConnectorInfo> {
   if (choices.length === 1) {
-    // On ly one connector available, use it.
+    // Only one connector available, use it.
     return choices[0].value;
   }
   const connectorEnvVar = envOverride("FDC_CONNECTOR", "");
