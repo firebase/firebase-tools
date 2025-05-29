@@ -41,10 +41,8 @@ export function getTypeScriptEntryPoint(functionsDir: string): string | null {
     const mainPath = require.resolve(functionsDir);
     // Transform compiled JS path to TypeScript source
     // e.g., /path/to/project/lib/index.js -> /path/to/project/src/index.ts
-    const tsSourcePath = mainPath
-      .replace(/\/lib\//, '/src/')
-      .replace(/\.js$/, '.ts');
-    
+    const tsSourcePath = mainPath.replace(/\/lib\//, "/src/").replace(/\.js$/, ".ts");
+
     // Check if TypeScript source exists
     if (fileExistsSync(tsSourcePath)) {
       return tsSourcePath;
@@ -52,7 +50,7 @@ export function getTypeScriptEntryPoint(functionsDir: string): string | null {
   } catch (e) {
     // Failed to resolve, return null
   }
-  
+
   return null;
 }
 
@@ -85,7 +83,13 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime, context.isEmulator);
+  return new Delegate(
+    context.projectId,
+    context.projectDir,
+    context.sourceDir,
+    runtime,
+    context.isEmulator,
+  );
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -138,8 +142,6 @@ export class Delegate {
     }
   }
 
-
-
   getNodeBinary(): string {
     const requestedVersion = semver.coerce(this.runtime);
     if (!requestedVersion) {
@@ -162,8 +164,8 @@ export class Delegate {
         logLabeledWarning(
           "functions",
           "TypeScript project detected but tsx is not installed. " +
-          "Consider running 'npm install --save-dev tsx' for automatic TypeScript compilation. " +
-          "Falling back to standard node runtime.",
+            "Consider running 'npm install --save-dev tsx' for automatic TypeScript compilation. " +
+            "Falling back to standard node runtime.",
         );
       }
     }

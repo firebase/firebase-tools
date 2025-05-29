@@ -906,10 +906,10 @@ async function initializeRuntime(): Promise<void> {
 
 async function loadTriggers(): Promise<any> {
   let triggerModule;
-  
+
   // Check if we have an override entry point (e.g., for TypeScript with tsx)
-  const entryPoint = process.env.FUNCTIONS_ENTRY_POINT;
-  
+  const entryPoint = process.env.FUNCTIONS_SOURCE;
+
   try {
     if (entryPoint) {
       logDebug(`Loading functions from specified entry point: ${entryPoint}`);
