@@ -26,13 +26,8 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet, promptForDirectory, envOverride } from "../../../utils";
+import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
-
-// connectorEnvVar is used by Firebase Console to specify which connector to setup.
-// It should be in the form <connectorId>.
-// It's common to provide both FDC_SERVICE and FDC_CONNECTOR environment variables
-const connectorEnvVar = () => envOverride("FDC_CONNECTOR", "");
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
 export type SDKInfo = {
@@ -146,17 +141,31 @@ interface connectorChoice {
   value: ConnectorInfo;
 }
 
+/**
+ * Picks an existing connector from those present in the local workspace.
+ *
+ * Firebase Console can provide `FDC_CONNECTOR` environment variable.
+ * If its is present, chooseExistingConnector try to match it with any existing connectors
+ * and short-circuit the prompt.
+ *
+ * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
+ * @param choices
+ */
 async function chooseExistingConnector(choices: connectorChoice[]): Promise<ConnectorInfo> {
   if (choices.length === 1) {
     // Only one connector available, use it.
     return choices[0].value;
   }
-  const nameFromEnvVar = connectorEnvVar();
-  const existingConnector = choices.find((c) => c.name === nameFromEnvVar);
-  if (existingConnector) {
-    // FDC_CONNECTOR env var match an existing connector.
-    logBullet(`Picking up the existing connector ${clc.bold(nameFromEnvVar)}.`);
-    return existingConnector.value;
+  const connectorEnvVar = envOverride("FDC_CONNECTOR", "");
+  if (connectorEnvVar) {
+    const existingConnector = choices.find((c) => c.name === connectorEnvVar);
+    if (existingConnector) {
+      logBullet(`Picking up the existing connector ${clc.bold(connectorEnvVar)}.`);
+      return existingConnector.value;
+    }
+    logWarning(
+      `Unable to pick up an existing connector based on FDC_CONNECTOR=${connectorEnvVar}.`,
+    );
   }
   return await select<ConnectorInfo>({
     message: "Which connector do you want set up a generated SDK for?",
