@@ -153,10 +153,12 @@ export default async function (context: Context, options: Options): Promise<void
       skippedBackends.push(...notFoundBackends);
     }
   }
-  logLabeledWarning(
-    "apphosting",
-    `Skipping deployment of backend(s) ${skippedBackends.map((cfg) => cfg.backendId).join(", ")}.`,
-  );
+  if (skippedBackends.length > 0) {
+    logLabeledWarning(
+      "apphosting",
+      `Skipping deployment of backend(s) ${skippedBackends.map((cfg) => cfg.backendId).join(", ")}.`,
+    );
+  }
   return;
 }
 
