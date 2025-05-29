@@ -61,6 +61,8 @@ export async function diffSchema(
   schema: Schema,
   schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
+
   const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
@@ -70,9 +72,7 @@ export async function diffSchema(
   );
   let diffs: Diff[] = [];
 
-  logLabeledBullet("dataconnect", `generating required schema changes...`);
-
-  // Make sure database is setup. (this can be slow)
+  // Make sure database is setup.
   await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
@@ -151,8 +151,9 @@ export async function migrateSchema(args: {
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly, schemaValidation } = args;
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
 
+  const { options, schema, validateOnly, schemaValidation } = args;
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
@@ -162,8 +163,6 @@ export async function migrateSchema(args: {
   );
   await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
-
-  logLabeledBullet("dataconnect", `generating required schema changes...`);
 
   // Make sure database is setup.
   await setupSchemaIfNecessary(instanceId, databaseId, options);
@@ -589,7 +588,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     }
     // TODO: make this prompt
     // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
-    logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
+    logLabeledBullet("dataconnect", `linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,
