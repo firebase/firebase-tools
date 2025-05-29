@@ -82,9 +82,15 @@ export async function diffSchema(
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
     if (validationMode === "STRICT") {
-      logLabeledSuccess("dataconnect", `database schema is up to date.`);
+      logLabeledSuccess(
+        "dataconnect",
+        `database schema of ${instanceId}:${databaseId} is up to date.`,
+      );
     } else {
-      logLabeledSuccess("dataconnect", `database schema is compatible.`);
+      logLabeledSuccess(
+        "dataconnect",
+        `database schema of ${instanceId}:${databaseId} is compatible.`,
+      );
     }
   } catch (err: any) {
     if (err?.status !== 400) {
@@ -168,8 +174,10 @@ export async function migrateSchema(args: {
 
   try {
     await upsertSchema(schema, validateOnly);
-    logLabeledBullet("dataconnect", `database schema is up to date.`);
-    logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
+    logLabeledBullet(
+      "dataconnect",
+      `database schema of ${instanceId}:${databaseId} is up to date.`,
+    );
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
