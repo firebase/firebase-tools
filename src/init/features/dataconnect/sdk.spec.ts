@@ -51,7 +51,7 @@ describe("init dataconnect:sdk", () => {
         await sdk.actuate(c.sdkInfo, emptyConfig);
         expect(generateStub.called).to.equal(c.shouldGenerate);
         expect(askProjectWriteFileStub.args).to.deep.equal([
-          ["dataconnect/connector/connector.yaml", CONNECTOR_YAML_CONTENTS],
+          ["dataconnect/connector/connector.yaml", CONNECTOR_YAML_CONTENTS, false, true],
         ]);
       });
     }

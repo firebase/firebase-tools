@@ -8,7 +8,9 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace. All features are optional; provide only the products you wish to set up. You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration.",
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
+      "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
       features: z.object({
         database: z
@@ -35,6 +37,11 @@ export const init = tool(
               .optional()
               .default("(default)")
               .describe("The database ID to use for Firestore."),
+            location_id: z
+              .string()
+              .optional()
+              .default("nam5")
+              .describe("The GCP region ID to set up the Firestore database."),
             rules_filename: z
               .string()
               .optional()
@@ -123,6 +130,7 @@ export const init = tool(
       featuresList.push("firestore");
       featureInfo.firestore = {
         databaseId: features.firestore.database_id,
+        locationId: features.firestore.location_id,
         rulesFilename: features.firestore.rules_filename,
         rules: features.firestore.rules || "",
         writeRules: true,
@@ -157,7 +165,8 @@ export const init = tool(
     config.writeProjectFile("firebase.json", setup.config);
     config.writeProjectFile(".firebaserc", setup.rcfile);
     return toContent(
-      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}`,
+      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}` +
+        " To deploy them, you can run `firebase deploy` in command line.",
     );
   },
 );
