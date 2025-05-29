@@ -50,6 +50,7 @@ export const command = new Command("login")
       configstore.set("usage", collectUsage);
 
       if (geminiUsage || collectUsage) {
+        logger.info();
         utils.logBullet(
           "To change your the preference at any time, run `firebase logout` and `firebase login` again.",
         );
