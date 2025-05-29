@@ -54,7 +54,7 @@ import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
-import { getTypeScriptEntryPoint } from "../deploy/functions/runtimes/node";
+import * as node from "../deploy/functions/runtimes/node";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
@@ -1606,7 +1606,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Check if we're using tsx and get TypeScript entry point
     let overrideFunctionSource: string | undefined;
     if (backend.bin && backend.bin.includes("tsx")) {
-      const tsEntryPoint = getTypeScriptEntryPoint(backend.functionsDir);
+      const tsEntryPoint = node.getTypeScriptEntryPoint(backend.functionsDir);
       if (tsEntryPoint) {
         overrideFunctionSource = tsEntryPoint;
         this.logger.logLabeled("DEBUG", "functions", `Using TypeScript source in ${tsEntryPoint}`);

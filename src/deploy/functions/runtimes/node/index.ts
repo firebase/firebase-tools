@@ -30,25 +30,23 @@ import { fileExistsSync } from "../../../../fsutils";
  * Used by the emulator to load TypeScript directly with tsx.
  */
 export function getTypeScriptEntryPoint(functionsDir: string): string | null {
-  // Check if this is a TypeScript project
   const tsconfigPath = path.join(functionsDir, "tsconfig.json");
   if (!fileExistsSync(tsconfigPath)) {
     return null;
   }
 
   try {
-    // Resolve the actual main file path
     const mainPath = require.resolve(functionsDir);
     // Transform compiled JS path to TypeScript source
     // e.g., /path/to/project/lib/index.js -> /path/to/project/src/index.ts
     const tsSourcePath = mainPath.replace(/\/lib\//, "/src/").replace(/\.js$/, ".ts");
 
-    // Check if TypeScript source exists
     if (fileExistsSync(tsSourcePath)) {
       return tsSourcePath;
     }
   } catch (e) {
-    // Failed to resolve, return null
+    logger.debug("Failed to resolve TS entrypoint", e);
+    // Fail-safe and fallback to assuming JS codebase.
   }
 
   return null;
@@ -133,13 +131,12 @@ export class Delegate {
 
   private getTsxPath(): string | null {
     try {
-      // Try to find tsx in the project's node_modules
       const tsxPath = require.resolve("tsx/cli", { paths: [this.sourceDir] });
       return tsxPath;
     } catch (e) {
-      // tsx not found
-      return null;
+      // tsx not found. fail-safe
     }
+    return null;
   }
 
   getNodeBinary(): string {
