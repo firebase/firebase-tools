@@ -91,8 +91,6 @@ export const functionsDefaultRegion = () =>
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
-export const cloudCompanionOrigin = () =>
-  utils.envOverride("CLOUD_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
 export const cloudschedulerOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDSCHEDULER_URL", "https://cloudscheduler.googleapis.com");
 export const cloudTasksOrigin = () =>

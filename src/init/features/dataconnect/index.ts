@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -19,10 +19,11 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, envOverride } from "../../../utils";
+import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
+import { extractCodeBlock, generateSchema } from "../../../gif/fdcExperience";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -108,8 +109,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       default: true,
     }));
   if (shouldConfigureBackend) {
-    // TODO: Prompt for app idea and use GiF backend to generate them.
-    info = await promptForService(info);
+    info = await promptForSchema(setup, info);
     info = await promptForCloudSQL(setup, info);
 
     info.shouldProvisionCSQL = !!(
@@ -433,12 +433,34 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   return info;
 }
 
-async function promptForService(info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (info.serviceId === "") {
     info.serviceId = await input({
       message: "What ID would you like to use for this service?",
       default: basename(process.cwd()),
     });
+    if (
+      setup.projectId &&
+      (await confirm({
+        message: `Do you want Gemini to help generate a schema for your service?`,
+        default: false,
+      }))
+    ) {
+      logBullet(
+        `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
+      );
+      await ensureGIFApis(setup.projectId);
+      const prompt = await input({
+        message: "Describe the app you are building:",
+        default: "movie rating app",
+      });
+      const schema = await promiseWithSpinner(
+        () => generateSchema(prompt, setup.projectId!),
+        "Generating the Data Connect Schema...",
+      );
+      info.schemaGql = [{ path: "schema.gql", content: extractCodeBlock(schema) }];
+      info.connectors = [emptyConnector];
+    }
   }
   return info;
 }
