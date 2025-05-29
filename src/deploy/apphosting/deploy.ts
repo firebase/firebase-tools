@@ -14,6 +14,9 @@ import { createArchive } from "./util";
  * build and deployment. Creates storage buckets if necessary.
  */
 export default async function (context: Context, options: Options): Promise<void> {
+  if (context.backendConfigs.size === 0) {
+    return;
+  }
   const projectId = needProjectId(options);
   options.projectNumber = await getProjectNumber(options);
   if (!context.backendConfigs) {

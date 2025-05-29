@@ -43,15 +43,17 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   // since IAM propagation delay will likely cause the first one to fail. However,
   // `firebase init apphosting` is a prerequisite to the `firebase deploy` command,
   // so we check and add the role here to give the IAM changes time to propagate.
+  const spinner = ora("Checking your App Hosting compute service account...").start();
   try {
     await ensureAppHostingComputeServiceAccount(
       projectId,
       /* serviceAccount= */ "",
       /* deployFromSource= */ true,
     );
+    spinner.succeed("App Hosting compute Service account is ready");
   } catch (err) {
     if ((err as FirebaseError).status === 400) {
-      utils.logWarning(
+      spinner.warn(
         "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
       );
     }
