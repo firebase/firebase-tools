@@ -157,6 +157,8 @@ export async function migrateSchema(args: {
   await setupIAMUsers(instanceId, databaseId, options);
   let diffs: Diff[] = [];
 
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
+
   // Make sure database is setup.
   await setupSchemaIfNecessary(instanceId, databaseId, options);
 
@@ -166,6 +168,7 @@ export async function migrateSchema(args: {
 
   try {
     await upsertSchema(schema, validateOnly);
+    logLabeledBullet("dataconnect", `database schema is up to date.`);
     logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
   } catch (err: any) {
     if (err?.status !== 400) {
