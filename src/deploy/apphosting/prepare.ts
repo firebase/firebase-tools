@@ -108,7 +108,7 @@ export default async function (context: Context, options: Options): Promise<void
         options.config.writeProjectFile(configPath, options.config.src);
         logLabeledBullet(
           "apphosting",
-          `On future invocations of "firebase deploy", your local source will be deployed to ${cfg.backendId}. You can edit this setting in your firebase.json at any time.`,
+          `On future invocations of "firebase deploy", your local source will ${!confirmDeploy ? "not " : ""}be deployed to ${cfg.backendId}. You can edit this setting in your firebase.json at any time.`,
         );
         if (!confirmDeploy) {
           skippedBackends.push(cfg);
