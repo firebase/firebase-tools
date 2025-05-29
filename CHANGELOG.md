@@ -6,4 +6,4 @@
 - Updated the Firebase Data Connect local toolkit to v2.6.2, which includes the following changes: (#8667)
   - Improved error messages of `auth.uid` in CEL expressions when unauthenticated.
   - Fixed a bug where ExecuteGraphql with vector embedding in emulator fails due to missing context.
-- Add support to Angular v20 to Firebase Hosting (#8672)
+- Add support for Angular v20 to Firebase Hosting (#8672)
