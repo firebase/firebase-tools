@@ -66,7 +66,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
   if (experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework = await confirm({
+      setup.hosting.useDiscoveredFramework ??= await confirm({
         message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
         default: true,
       });
@@ -82,7 +82,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
   }
 
   if (setup.hosting.useWebFrameworks) {
-    setup.hosting.source = await input({
+    setup.hosting.source ??= await input({
       message: "What folder would you like to use for your web application's root directory?",
       default: "hosting",
     });
@@ -92,7 +92,7 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
 
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework = await confirm({
+      setup.hosting.useDiscoveredFramework ??= await confirm({
         message: `Detected an existing ${name} codebase in ${setup.hosting.source}, should we use this?`,
         default: true,
       });

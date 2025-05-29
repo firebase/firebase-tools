@@ -33,6 +33,7 @@ export async function mcp(): Promise<void> {
     console.log(markdownDocsOfTools());
     return;
   }
+  process.env.IS_FIREBASE_MCP = "true";
   useFileLogger();
   const activeFeatures = (values.only || "")
     .split(",")
