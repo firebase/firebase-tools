@@ -34,7 +34,7 @@ export const command = new Command("projects:create [projectId]")
       }
       if (!options.nonInteractive) {
         // Inserts projectId and displayName
-        options = { ...options, ...(await promptProjectCreation()) };
+        options = { ...options, ...(await promptProjectCreation(options)) };
       }
       if (!options.projectId) {
         throw new FirebaseError("Project ID cannot be empty");

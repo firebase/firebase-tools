@@ -1,3 +1,4 @@
+- Fixed issue where `projects:create` didn't correctly parse the `projectId` and `displayName` input. (#8634)
 - Fixed issue in `init` where users were forced to specify emulator UI port (#8626)
 - Added MCP tools for App Hosting (#8605)
 - Fixed crash when starting the App Hosting emulator in certain applications (#8624)
