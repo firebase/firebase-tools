@@ -18,7 +18,7 @@ export const get_rules = tool(
     },
   },
   async (_, { projectId }) => {
-    const rulesetName = await getLatestRulesetName(projectId!, "firebase.storage");
+    const rulesetName = await getLatestRulesetName(projectId, "firebase.storage");
     if (!rulesetName)
       return mcpError(`No active Firebase Storage rules were found in project '${projectId}'`);
     const rules = await getRulesetContent(rulesetName);

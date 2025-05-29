@@ -25,6 +25,6 @@ export const get_template = tool(
     },
   },
   async ({ version_number }, { projectId }) => {
-    return toContent(await getTemplate(projectId!, version_number));
+    return toContent(await getTemplate(projectId, version_number));
   },
 );

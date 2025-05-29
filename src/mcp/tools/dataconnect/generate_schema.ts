@@ -22,7 +22,7 @@ export const generate_schema = tool(
     },
   },
   async ({ prompt }, { projectId }) => {
-    const schema = await generateSchema(prompt, projectId!);
+    const schema = await generateSchema(prompt, projectId);
     return toContent(schema);
   },
 );

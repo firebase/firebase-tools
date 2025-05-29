@@ -34,7 +34,7 @@ const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 // serviceEnvVar is used by Firebase Console to specify which service to import.
 // It should be in the form <location>/<serviceId>
 // It must be an existing service - if set to anything else, we'll ignore it.
-const serviceEnvVar = () => envOverride("FDC_SERVICE", "");
+const serviceEnvVar = () => envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
 
 export interface RequiredInfo {
   serviceId: string;
@@ -105,9 +105,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     hasBilling &&
     requiredConfigUnset &&
     (await confirm({
-      message: `Would you like to configure your backend resources now?`,
-      // For Blaze Projects, configure Cloud SQL by default.
-      // TODO: For Spark projects, allow them to configure Cloud SQL but deploy as unlinked Postgres.
+      message: `Would you like to configure your Cloud SQL datasource now?`,
       default: true,
     }));
   if (shouldConfigureBackend) {
@@ -275,37 +273,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
     }),
   );
   if (existingServicesAndSchemas.length) {
-    let choice: { service: Service; schema?: Schema } | undefined;
-    const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar().split("/");
-    const serviceFromEnvVar = existingServicesAndSchemas.find((s) => {
-      const serviceName = parseServiceName(s.service.name);
-      return (
-        serviceName.serviceId === serviceIdFromEnvVar &&
-        serviceName.location === serviceLocationFromEnvVar
-      );
-    });
-    if (serviceFromEnvVar) {
-      choice = serviceFromEnvVar;
-    } else {
-      interface Choice {
-        service: Service;
-        schema?: Schema;
-      }
-      const choices: Array<{ name: string; value: Choice | undefined }> =
-        existingServicesAndSchemas.map((s) => {
-          const serviceName = parseServiceName(s.service.name);
-          return {
-            name: `${serviceName.location}/${serviceName.serviceId}`,
-            value: s,
-          };
-        });
-      choices.push({ name: "Create a new service", value: undefined });
-      choice = await select<Choice | undefined>({
-        message:
-          "Your project already has existing services. Which would you like to set up local files for?",
-        choices,
-      });
-    }
+    const choice = await chooseExistingService(existingServicesAndSchemas);
     if (choice) {
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
@@ -343,6 +311,46 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
     }
   }
   return info;
+}
+
+interface serviceAndSchema {
+  service: Service;
+  schema?: Schema;
+}
+
+async function chooseExistingService(
+  existing: serviceAndSchema[],
+): Promise<serviceAndSchema | undefined> {
+  const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar().split("/");
+  const serviceFromEnvVar = existing.find((s) => {
+    const serviceName = parseServiceName(s.service.name);
+    return (
+      serviceName.serviceId === serviceIdFromEnvVar &&
+      serviceName.location === serviceLocationFromEnvVar
+    );
+  });
+  if (serviceFromEnvVar) {
+    // FDC_CONNECTOR or FDC_SERVICE env var match an existing service.
+    logBullet(
+      `Picking up the existing service ${clc.bold(serviceLocationFromEnvVar + "/" + serviceIdFromEnvVar)}.`,
+    );
+    return serviceFromEnvVar;
+  }
+  const choices: Array<{ name: string; value: serviceAndSchema | undefined }> = existing.map(
+    (s) => {
+      const serviceName = parseServiceName(s.service.name);
+      return {
+        name: `${serviceName.location}/${serviceName.serviceId}`,
+        value: s,
+      };
+    },
+  );
+  choices.push({ name: "Create a new service", value: undefined });
+  return await select<serviceAndSchema | undefined>({
+    message:
+      "Your project already has existing services. Which would you like to set up local files for?",
+    choices,
+  });
 }
 
 async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
