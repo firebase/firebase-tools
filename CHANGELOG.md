@@ -4,3 +4,6 @@
 - Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
 - Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
 - Added support for loading TypeScript functions using tsx in the Functions Emulator. (#8663)
+- Updated the Firebase Data Connect local toolkit to v2.6.2, which includes the following changes: (#8667)
+  - Improved error messages of `auth.uid` in CEL expressions when unauthenticated.
+  - Fixed a bug where ExecuteGraphql with vector embedding in emulator fails due to missing context.
