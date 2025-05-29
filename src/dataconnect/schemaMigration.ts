@@ -70,9 +70,7 @@ export async function diffSchema(
   );
   let diffs: Diff[] = [];
 
-  if (!schemaValidation) {
-    logLabeledBullet("dataconnect", `generating required schema changes...`);
-  }
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
   // Make sure database is setup.
   await setupSchemaIfNecessary(instanceId, databaseId, options);
 
@@ -83,9 +81,9 @@ export async function diffSchema(
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
     if (validationMode === "STRICT") {
-      logLabeledSuccess("dataconnect", `Database schema is up to date.`);
+      logLabeledSuccess("dataconnect", `database schema is up to date.`);
     } else {
-      logLabeledSuccess("dataconnect", `Database schema is compatible.`);
+      logLabeledSuccess("dataconnect", `database schema is compatible.`);
     }
   } catch (err: any) {
     if (err?.status !== 400) {
