@@ -35,6 +35,11 @@ export const init = tool(
               .optional()
               .default("(default)")
               .describe("The database ID to use for Firestore."),
+            location_id: z
+              .string()
+              .optional()
+              .default("nam5")
+              .describe("The GCP region ID to set up the Firestore database."),
             rules_filename: z
               .string()
               .optional()
@@ -78,11 +83,30 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Data Connect in this project directory.",
           ),
+        storage: z
+          .object({
+            rules_filename: z
+              .string()
+              .optional()
+              .default("storage.rules")
+              .describe("The file to use for Firebase Storage Security Rules."),
+            rules: z
+              .string()
+              .optional()
+              .describe(
+                "The security rules to use for Firebase Storage Security Rules. Default to closed rules that deny all access.",
+              ),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Storage in this project directory.",
+          ),
       }),
     }),
     annotations: {
       title: "Initialize Firebase Products",
       readOnlyHint: false,
+      idempotentHint: true,
     },
     _meta: {
       requiresProject: false, // Can start from scratch.
@@ -104,6 +128,7 @@ export const init = tool(
       featuresList.push("firestore");
       featureInfo.firestore = {
         databaseId: features.firestore.database_id,
+        locationId: features.firestore.location_id,
         rulesFilename: features.firestore.rules_filename,
         rules: features.firestore.rules || "",
         writeRules: true,

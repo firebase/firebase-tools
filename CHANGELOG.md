@@ -1,5 +1,10 @@
 - Fixed issue in `init` where users were forced to specify emulator UI port (#8626)
-- Adds MCP tools for App Hosting (#8605)
+- Added MCP tools for App Hosting (#8605)
 - Fixed crash when starting the App Hosting emulator in certain applications (#8624)
 - Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
-- Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
+- Updated typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
+- Updated the Firebase Data Connect local toolkit to v2.6.2, which includes the following changes: (#8667)
+  - Improved error messages of `auth.uid` in CEL expressions when unauthenticated.
+  - Fixed a bug where ExecuteGraphql with vector embedding in emulator fails due to missing context.
+- Improved `firebase init firestore` + `firebase deploy` flow on a fresh new project without going to Console (#8653)
+- Added support for Angular v20 to Firebase Hosting (#8672)
