@@ -7,7 +7,7 @@ import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
-import { Readable, Writable } from "node:stream";
+import { Readable, Writable, Duplex } from "node:stream";
 import * as fs from "fs";
 
 import {
@@ -108,7 +108,7 @@ export class PostgresServer {
       };
       if (this.importPath) {
         logger.debug(`Importing from ${this.importPath}`);
-        const rf = fs.readFileSync(this.importPath) as any;
+        const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
         const file = new File([rf], this.importPath);
         pgliteArgs.loadDataDir = file;
       }
@@ -223,8 +223,7 @@ export class PGliteExtendedQueryPatch {
  * upgrades available in Node.js environments.
  */
 export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
-  // Duplex.toWeb(socket);
-  const rs = Readable.toWeb(socket) as any;
+  const rs = Readable.toWeb(socket) as unknown as ReadableStream;
   const ws = Writable.toWeb(socket);
   const opts = options
     ? {
