@@ -266,7 +266,7 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
-export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
+export async function grantRoleToUserInSchema(options: Options, schema: Schema, revokeRole: boolean) {
   const role = options.role as string;
   const email = options.email as string;
 
@@ -280,7 +280,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
-      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
+      `Only users with 'roles/cloudsql.admin' can grant/revoke SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
     );
   }
 
@@ -300,12 +300,17 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   // Upsert new user account into the database.
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
+  let cmd = `GRANT "${fdcSqlRole}" TO "${user}"`
+  if (revokeRole) {
+    cmd = `REVOKE "${fdcSqlRole}" FROM "${user}"`
+  }
+
   // Grant the role to the user.
   await executeSqlCmdsAsSuperUser(
     options,
     instanceId,
     databaseId,
-    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** cmds= */ [cmd],
     /** silent= */ false,
   );
 }
