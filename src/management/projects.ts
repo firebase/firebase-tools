@@ -144,7 +144,9 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
 /**
  * Get the user's desired project, prompting if necessary.
  */
-export async function getOrPromptProject(options: Partial<Options>): Promise<FirebaseProjectMetadata> {
+export async function getOrPromptProject(
+  options: Partial<Options>,
+): Promise<FirebaseProjectMetadata> {
   if (options.project) {
     return await getFirebaseProject(options.project);
   }
