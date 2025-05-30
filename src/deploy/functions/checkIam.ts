@@ -138,11 +138,10 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
   return services;
 }
 
-/** Checks whether the given backend is a Genkit callable function. */
-function isGenkitCallable(want: backend.Backend) {
-  return backend.someEndpoint(
-    want,
-    (e) => backend.isCallableTriggered(e) && e.callableTrigger.genkitAction !== undefined,
+/** Checks whether the given endpoint is a Genkit callable function. */
+function isGenkitEndpoint(endpoint: backend.Endpoint) {
+  return (
+    backend.isCallableTriggered(endpoint) && endpoint.callableTrigger.genkitAction !== undefined
   );
 }
 
@@ -182,22 +181,49 @@ export async function obtainDefaultComputeServiceAgentBindings(
 }
 
 /**
- * Genkit Monitoring requires that the service account running the function has
- * permission to write telemetry data.
+ * Checks and sets the roles for any genkit deployed functions that are required
+ * for Firebase Genkit Monitoring.
+ * @param projectId human readable project id
  * @param projectNumber project number
+ * @param want backend that we want to deploy
+ * @param have backend that we have currently deployed
  */
-export async function obtainGenkitMonitoringServiceAgentBindings(
+export async function ensureGenkitMonitoringRoles(
+  projectId: string,
   projectNumber: string,
-): Promise<iam.Binding[]> {
-  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
-  const bindings: iam.Binding[] = [];
+  want: backend.Backend,
+  have: backend.Backend,
+  dryRun?: boolean,
+): Promise<void> {
+  const wantEndpoints = backend.allEndpoints(want).filter(isGenkitEndpoint);
+  const haveEndpoints = backend.allEndpoints(have).filter(isGenkitEndpoint);
+  const newEndpoints = wantEndpoints.filter(
+    (wantE) => !haveEndpoints.find((haveE) => haveE.id === wantE.id),
+  );
+
+  if (newEndpoints.length === 0) {
+    return;
+  }
+
+  const defaultComputeServiceAgent = await gce.getDefaultServiceAccount(projectNumber);
+  const serviceAccounts = newEndpoints
+    .map((endpoint) => endpoint.serviceAccount || defaultComputeServiceAgent)
+    .filter((value, index, self) => self.indexOf(value) === index)
+    .map((sa) => `serviceAccount:${sa}`);
+  const requiredBindings: iam.Binding[] = [];
   for (const monitoringRole of GENKIT_MONITORING_ROLES) {
-    bindings.push({
+    requiredBindings.push({
       role: monitoringRole,
-      members: [defaultComputeServiceAgent],
+      members: serviceAccounts,
     });
   }
-  return bindings;
+  await ensureBindings(
+    projectId,
+    projectNumber,
+    requiredBindings,
+    newEndpoints.map((endpoint) => endpoint.id),
+    dryRun,
+  );
 }
 
 /**
@@ -220,6 +246,9 @@ export async function ensureServiceAgentRoles(
   const newServices = wantServices.filter(
     (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
+  if (newServices.length === 0) {
+    return;
+  }
 
   // obtain all the bindings we need to have active in the project
   const requiredBindingsPromises: Array<Promise<Array<iam.Binding>>> = [];
@@ -232,13 +261,25 @@ export async function ensureServiceAgentRoles(
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
     requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
   }
-  if (isGenkitCallable(want)) {
-    requiredBindings.push(...(await obtainGenkitMonitoringServiceAgentBindings(projectNumber)));
-  }
   if (requiredBindings.length === 0) {
     return;
   }
+  await ensureBindings(
+    projectId,
+    projectNumber,
+    requiredBindings,
+    newServices.map((service) => service.api),
+    dryRun,
+  );
+}
 
+async function ensureBindings(
+  projectId: string,
+  projectNumber: string,
+  requiredBindings: iam.Binding[],
+  newServicesOrEndpoints: string[],
+  dryRun?: boolean,
+): Promise<void> {
   // get the full project iam policy
   let policy: iam.Policy;
   try {
@@ -247,8 +288,8 @@ export async function ensureServiceAgentRoles(
     iam.printManualIamConfig(requiredBindings, projectId, "functions");
     utils.logLabeledBullet(
       "functions",
-      "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
-        `${newServices.map((service) => service.api).join(", ")}` +
+      "Could not verify the necessary IAM configuration for the following newly-integrated services or endpoints: " +
+        `${newServicesOrEndpoints.join(", ")}` +
         ". Deployment may fail.",
       "warn",
     );
