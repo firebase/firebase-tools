@@ -139,7 +139,7 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
 }
 
 /** Checks whether the given endpoint is a Genkit callable function. */
-function isGenkitEndpoint(endpoint: backend.Endpoint) {
+function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
   return (
     backend.isCallableTriggered(endpoint) && endpoint.callableTrigger.genkitAction !== undefined
   );
