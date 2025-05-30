@@ -1,1 +1,0 @@
-- Fixed an issue where 'firestore.database' was accidentally treated as a required field. (#8678)
