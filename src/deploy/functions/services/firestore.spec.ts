@@ -23,7 +23,7 @@ describe("ensureFirestoreTriggerRegion", () => {
   let firestoreStub: sinon.SinonStub;
 
   beforeEach(() => {
-    clearCache(); // Clear the cache before each test
+    clearCache();
     firestoreStub = sinon
       .stub(firestore, "getDatabase")
       .throws("unexpected call to firestore.getDatabase");
@@ -92,13 +92,8 @@ describe("ensureFirestoreTriggerRegion", () => {
       },
     };
 
-    // Call concurrently
-    await Promise.all([
-      ensureFirestoreTriggerRegion(ep1),
-      ensureFirestoreTriggerRegion(ep2),
-    ]);
+    await Promise.all([ensureFirestoreTriggerRegion(ep1), ensureFirestoreTriggerRegion(ep2)]);
 
-    // Should only call API once despite two concurrent requests
     expect(firestoreStub).to.have.been.calledOnce;
     expect(ep1.eventTrigger.region).to.eq("nam5");
     expect(ep2.eventTrigger.region).to.eq("nam5");
@@ -106,8 +101,10 @@ describe("ensureFirestoreTriggerRegion", () => {
 
   it("should make separate API calls for different databases", async () => {
     firestoreStub.onFirstCall().resolves(databaseResp);
-    firestoreStub.onSecondCall().resolves({ ...databaseResp, name: "projects/123456789/databases/db2" });
-    
+    firestoreStub
+      .onSecondCall()
+      .resolves({ ...databaseResp, name: "projects/123456789/databases/db2" });
+
     const ep1: any = {
       project: projectNumber,
       eventTrigger: {
@@ -121,12 +118,8 @@ describe("ensureFirestoreTriggerRegion", () => {
       },
     };
 
-    await Promise.all([
-      ensureFirestoreTriggerRegion(ep1),
-      ensureFirestoreTriggerRegion(ep2),
-    ]);
+    await Promise.all([ensureFirestoreTriggerRegion(ep1), ensureFirestoreTriggerRegion(ep2)]);
 
-    // Should call API twice for different databases
     expect(firestoreStub).to.have.been.calledTwice;
   });
 });

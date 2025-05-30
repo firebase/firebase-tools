@@ -23,27 +23,27 @@ export function clearCache(): void {
  */
 async function getDatabase(project: string, databaseId: string): Promise<firestore.Database> {
   const key = `${project}/${databaseId}`;
-  
-  // Check if we already have the result
+
   if (dbCache.has(key)) {
     return dbCache.get(key)!;
   }
-  
-  // Check if there's already a pending request for this database
+
   if (dbPromiseCache.has(key)) {
     return dbPromiseCache.get(key)!;
   }
-  
-  // Create a new request and cache the promise
-  const dbPromise = firestore.getDatabase(project, databaseId, false).then((db) => {
-    dbCache.set(key, db);
-    dbPromiseCache.delete(key); // Clean up the promise cache
-    return db;
-  }).catch((error) => {
-    dbPromiseCache.delete(key); // Clean up on error
-    throw error;
-  });
-  
+
+  const dbPromise = firestore
+    .getDatabase(project, databaseId, false)
+    .then((db) => {
+      dbCache.set(key, db);
+      dbPromiseCache.delete(key);
+      return db;
+    })
+    .catch((error) => {
+      dbPromiseCache.delete(key);
+      throw error;
+    });
+
   dbPromiseCache.set(key, dbPromise);
   return dbPromise;
 }
