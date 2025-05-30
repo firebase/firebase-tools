@@ -14,6 +14,7 @@ import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { Options } from "../../options";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -41,7 +42,7 @@ function toInitProjectInfo(projectMetaData: FirebaseProjectMetadata): InitProjec
   };
 }
 
-async function promptAndCreateNewProject(options: any): Promise<FirebaseProjectMetadata> {
+async function promptAndCreateNewProject(options: Options): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
       `"firebase projects:create" instead, and return to this command when you've created the project.`,
