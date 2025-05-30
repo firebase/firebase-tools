@@ -3,21 +3,49 @@ import * as firestore from "../../../gcp/firestore";
 import { FirebaseError } from "../../../error";
 
 const dbCache = new Map<string, firestore.Database>();
+const dbPromiseCache = new Map<string, Promise<firestore.Database>>();
+
+/**
+ * Clear the database cache. Used for testing.
+ * @internal
+ */
+export function clearCache(): void {
+  dbCache.clear();
+  dbPromiseCache.clear();
+}
 
 /**
  * A memoized version of firestore.getDatabase that avoids repeated calls to the API.
+ * This implementation prevents concurrent calls for the same database.
  *
  * @param project the project ID
  * @param databaseId the database ID or "(default)"
  */
 async function getDatabase(project: string, databaseId: string): Promise<firestore.Database> {
   const key = `${project}/${databaseId}`;
+  
+  // Check if we already have the result
   if (dbCache.has(key)) {
     return dbCache.get(key)!;
   }
-  const db = await firestore.getDatabase(project, databaseId, false);
-  dbCache.set(key, db);
-  return db;
+  
+  // Check if there's already a pending request for this database
+  if (dbPromiseCache.has(key)) {
+    return dbPromiseCache.get(key)!;
+  }
+  
+  // Create a new request and cache the promise
+  const dbPromise = firestore.getDatabase(project, databaseId, false).then((db) => {
+    dbCache.set(key, db);
+    dbPromiseCache.delete(key); // Clean up the promise cache
+    return db;
+  }).catch((error) => {
+    dbPromiseCache.delete(key); // Clean up on error
+    throw error;
+  });
+  
+  dbPromiseCache.set(key, dbPromise);
+  return dbPromise;
 }
 
 /**
