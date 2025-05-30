@@ -34,7 +34,7 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles } from "./checkIam";
+import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import {
   configForCodebase,
@@ -259,6 +259,13 @@ export async function prepare(
   await backend.checkAvailability(context, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensureServiceAgentRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
+  await ensureGenkitMonitoringRoles(
     projectId,
     projectNumber,
     matchingBackend,
