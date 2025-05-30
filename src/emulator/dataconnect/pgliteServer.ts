@@ -7,7 +7,7 @@ import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
-import { Readable, Writable, Duplex } from "node:stream";
+import { Readable, Writable } from "node:stream";
 import * as fs from "fs";
 
 import {
