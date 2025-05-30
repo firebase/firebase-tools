@@ -1,0 +1,1 @@
+- Improved GetDatabase API call caching for Firestore function deployments. (#8681)
