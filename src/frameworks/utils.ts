@@ -16,7 +16,6 @@ import {
   FEATURE_REQUEST_URL,
   FILE_BUG_URL,
   MAILING_LIST_URL,
-  NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
 import { BUILD_TARGET_PURPOSE, PackageJson, RequestHandler } from "./interfaces";
@@ -287,7 +286,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       ...(omitDev ? ["--omit", "dev"] : []),
       ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
     ],
-    { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES },
+    { cwd, env },
   );
   if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());

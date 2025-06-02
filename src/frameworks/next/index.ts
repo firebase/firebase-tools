@@ -59,7 +59,7 @@ import {
   installEsbuild,
   findEsbuildPath,
 } from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
+import { NODE_VERSION, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -625,7 +625,6 @@ export async function ɵcodegenFunctionsDirectory(
         const dependencies: string[] = [];
         const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
           cwd: sourceDir,
-          timeout: NPM_COMMAND_TIMEOUT_MILLIES,
         });
         const pipeline = chain([
           npmLs.stdout,
