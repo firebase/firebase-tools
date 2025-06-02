@@ -1,1 +1,2 @@
 - Improved GetDatabase API call caching for Firestore function deployments. (#8681)
+- Increased timeout for linking CloudSQL instances to Data Connect.
