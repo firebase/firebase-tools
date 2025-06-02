@@ -24,8 +24,8 @@ export const SUGGESTED_PROMPTS = [
 const HELP_MESSAGE = `
 Welcome to the Data Connect Tool.
 Usage:
-  @data-connect /generate_schema <your prompt>\n
-  @data-connect /generate_operation <your prompt>
+  ${DATACONNECT_TOOL_ID} /generate_schema <your prompt>\n
+  ${DATACONNECT_TOOL_ID} /generate_operation <your prompt>
 `;
 
 export class GCAToolClient {
@@ -200,7 +200,7 @@ function isPromptValid(prompt: ChatPrompt): boolean {
   if (prompt.length < 2) {
     return false;
   }
-  if (prompt.getPromptParts()[0].getPrompt() !== "@data-connect") {
+  if (prompt.getPromptParts()[0].getPrompt() !== `@${DATACONNECT_TOOL_ID}`) {
     return false;
   }
 
@@ -222,7 +222,7 @@ function getCommand(prompt: ChatPrompt): Command {
 function getPrompt(prompt: ChatPrompt): string {
   if (
     prompt.length > 2 &&
-    prompt.getPromptParts()[0].getPrompt() === "@data-connect"
+    prompt.getPromptParts()[0].getPrompt() === `@${DATACONNECT_TOOL_ID}`
   ) {
     return prompt.getPromptParts()[2].getPrompt();
   }
