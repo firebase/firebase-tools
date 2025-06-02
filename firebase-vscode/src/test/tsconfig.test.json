@@ -2,7 +2,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2020",
-    "lib": ["es2020"],
+    "lib": ["es2020", "dom"],
     "strict": false /* enable all strict type-checking options */,
     "allowJs": true,
     "checkJs": false,
@@ -10,7 +10,6 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    //"moduleResolution": "node",
     "outDir": "../../dist/test",
     "rootDirs": ["../", "../../common/", "../../../src/"],
     "jsx": "react",
@@ -22,9 +21,6 @@
       "wdio-vscode-service"
     ]
   },
-  // "ts-node": {
-  //   "esm": true
-  // },
   "exclude": ["**/*.test.ts"],
   "include": ["../**/*", "../../common/**/*", "../../../src/types/**/*"]
 }
