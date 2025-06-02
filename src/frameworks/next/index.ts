@@ -97,7 +97,7 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/next
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getReactVersion(cwd: string): string | undefined {
-  return findDependency("react-dom", { cwd, omitDev: false })?.version;
+  return findDependency("react-dom", { cwd, omitDev: false, depth: 0 })?.version;
 }
 
 /**
