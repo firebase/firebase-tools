@@ -15,8 +15,8 @@ import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
 import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
-export const DATACONNECT_TOOL_ID = "data-connect";
-export const DATACONNECT_DISPLAY_NAME = "Data Connect";
+export const DATACONNECT_TOOL_ID = "Firebase Data Connect";
+export const DATACONNECT_DISPLAY_NAME = "Firebase Data Connect";
 export const SUGGESTED_PROMPTS = [
   "/generate_schema Create a schema for a pizza store",
   "/generate_operation Create a mutations for all my types",
@@ -33,7 +33,7 @@ export class GCAToolClient {
   private icon = vscode.Uri.joinPath(
     this.context.extensionUri,
     "resources",
-    "firebase_dataconnect_logo.svg",
+    "firebase_dataconnect_logo.png",
   );
   constructor(
     private context: ExtensionContext,
