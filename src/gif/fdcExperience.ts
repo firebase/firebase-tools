@@ -1,61 +1,19 @@
 import { Client } from "../apiv2";
 import { cloudCompanionOrigin } from "../api";
+import {
+  ChatExperienceResponse,
+  CloudAICompanionMessage,
+  CloudAICompanionRequest,
+  GenerateOperationResponse,
+  GenerateSchemaResponse,
+} from "./types";
 
 const apiClient = new Client({ urlPrefix: cloudCompanionOrigin(), auth: true });
-const schemaGeneratorExperience = "/appeco/firebase/fdc-schema-generator";
-const geminiInFirebaseChatExperience = "/appeco/firebase/firebase-chat/free";
-const operationGeneratorExperience = "/appeco/firebase/fdc-query-generator";
-
-export interface GenerateSchemaRequest {
-  input: { messages: { content: string; author: string }[] };
-  experienceContext: { experience: string };
-}
-
-export type ChatExperienceRequest = GenerateSchemaRequest;
-
-export interface GenerateSchemaResponse {
-  output: { messages: { content: string }[] };
-  displayContext: {
-    additionalContext: {
-      "@type": string;
-      firebaseFdcDisplayContext: { schemaSyntaxError: string };
-    };
-  };
-}
-
-export interface ChatExperienceResponse {
-  output: { messages: { content: string; author: string }[] };
-  outputDataContext: {
-    additionalContext: { "@type": string };
-    attributionContext: {
-      citationMetadata: {
-        citations: {
-          startIndex: number;
-          endIndex: number;
-          url: string;
-          title: string;
-          license: string;
-        }[];
-      };
-    };
-  };
-}
-
-export interface GenerateOperationRequest {
-  input: { messages: { content: string; author: string }[] };
-  experienceContext: { experience: string };
-  clientContext: {
-    additionalContext: {
-      "@type": string;
-      fdcInfo: { fdcServiceName: string; requiresQuery: boolean };
-    };
-  };
-}
-
-export interface GenerateOperationResponse {
-  output: { messages: { content: string; author: string }[] };
-  outputDataContext: { additionalcontext: { "@type:": string } };
-}
+const SCHEMA_GENERATOR_EXPERIENCE = "/appeco/firebase/fdc-schema-generator";
+const GEMINI_IN_FIREBASE_EXPERIENCE = "/appeco/firebase/firebase-chat/free";
+const OPERATION_GENERATION_EXPERIENCE = "/appeco/firebase/fdc-query-generator";
+const FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME =
+  "type.googleapis.com/google.cloud.cloudaicompanion.v1main.FirebaseChatRequestContext";
 
 /**
  * generateSchema generates a schema based on the users app design prompt.
@@ -63,13 +21,17 @@ export interface GenerateOperationResponse {
  * @param project project identifier.
  * @return graphQL schema for a Firebase Data Connect Project.
  */
-export async function generateSchema(prompt: string, project: string): Promise<string> {
-  const res = await apiClient.post<GenerateSchemaRequest, GenerateSchemaResponse>(
+export async function generateSchema(
+  prompt: string,
+  project: string,
+  chatHistory: CloudAICompanionMessage[] = [],
+): Promise<string> {
+  const res = await apiClient.post<CloudAICompanionRequest, GenerateSchemaResponse>(
     `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
     {
-      input: { messages: [{ content: prompt, author: "USER" }] },
+      input: { messages: [...chatHistory, { content: prompt, author: "USER" }] },
       experienceContext: {
-        experience: schemaGeneratorExperience,
+        experience: SCHEMA_GENERATOR_EXPERIENCE,
       },
     },
   );
@@ -85,13 +47,14 @@ export async function generateSchema(prompt: string, project: string): Promise<s
 export async function chatWithFirebase(
   prompt: string,
   project: string,
+  chatHistory: CloudAICompanionMessage[] = [],
 ): Promise<ChatExperienceResponse> {
-  const res = await apiClient.post<ChatExperienceRequest, ChatExperienceResponse>(
+  const res = await apiClient.post<CloudAICompanionRequest, ChatExperienceResponse>(
     `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
     {
-      input: { messages: [{ content: prompt, author: "USER" }] },
+      input: { messages: [...chatHistory, { content: prompt, author: "USER" }] },
       experienceContext: {
-        experience: geminiInFirebaseChatExperience,
+        experience: GEMINI_IN_FIREBASE_EXPERIENCE,
       },
     },
   );
@@ -109,18 +72,18 @@ export async function generateOperation(
   prompt: string,
   service: string,
   project: string,
+  chatHistory: CloudAICompanionMessage[] = [],
 ): Promise<string> {
-  const res = await apiClient.post<GenerateOperationRequest, GenerateOperationResponse>(
+  const res = await apiClient.post<CloudAICompanionRequest, GenerateOperationResponse>(
     `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
     {
-      input: { messages: [{ content: prompt, author: "USER" }] },
+      input: { messages: [...chatHistory, { content: prompt, author: "USER" }] },
       experienceContext: {
-        experience: operationGeneratorExperience,
+        experience: OPERATION_GENERATION_EXPERIENCE,
       },
       clientContext: {
         additionalContext: {
-          "@type":
-            "type.googleapis.com/google.cloud.cloudaicompanion.v1main.FirebaseChatRequestContext",
+          "@type": FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME,
           fdcInfo: { fdcServiceName: service, requiresQuery: true },
         },
       },
