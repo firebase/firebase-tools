@@ -196,25 +196,26 @@ export async function ensureGenkitMonitoringRoles(
   dryRun?: boolean,
 ): Promise<void> {
   const wantEndpoints = backend.allEndpoints(want).filter(isGenkitEndpoint);
-  const haveEndpoints = backend.allEndpoints(have).filter(isGenkitEndpoint);
-  const newEndpoints = wantEndpoints.filter(
-    (wantE) => !haveEndpoints.find((haveE) => haveE.id === wantE.id),
-  );
+  const newEndpoints = wantEndpoints.filter(backend.missingEndpoint(have));
 
   if (newEndpoints.length === 0) {
     return;
   }
 
-  const defaultComputeServiceAgent = await gce.getDefaultServiceAccount(projectNumber);
   const serviceAccounts = newEndpoints
-    .map((endpoint) => endpoint.serviceAccount || defaultComputeServiceAgent)
-    .filter((value, index, self) => self.indexOf(value) === index)
-    .map((sa) => `serviceAccount:${sa}`);
+    .map((endpoint) => endpoint.serviceAccount || "")
+    .filter((value, index, self) => self.indexOf(value) === index);
+  const defaultServiceAccountIndex = serviceAccounts.indexOf("");
+  if (defaultServiceAccountIndex) {
+    serviceAccounts[defaultServiceAccountIndex] = await gce.getDefaultServiceAccount(projectNumber);
+  }
+
+  const members = serviceAccounts.map((sa) => `serviceAccount:${sa}`);
   const requiredBindings: iam.Binding[] = [];
   for (const monitoringRole of GENKIT_MONITORING_ROLES) {
     requiredBindings.push({
       role: monitoringRole,
-      members: serviceAccounts,
+      members: members,
     });
   }
   await ensureBindings(
@@ -288,7 +289,7 @@ async function ensureBindings(
     iam.printManualIamConfig(requiredBindings, projectId, "functions");
     utils.logLabeledBullet(
       "functions",
-      "Could not verify the necessary IAM configuration for the following newly-integrated services or endpoints: " +
+      "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
         `${newServicesOrEndpoints.join(", ")}` +
         ". Deployment may fail.",
       "warn",

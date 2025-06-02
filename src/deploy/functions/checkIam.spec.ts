@@ -391,6 +391,7 @@ describe("checkIam", () => {
       expect(getIamStub).to.have.been.calledWith(projectNumber);
       expect(setIamStub).to.have.been.calledOnce;
     });
+
     it("should not update policy if it already has necessary bindings", async () => {
       const serviceAccount = `test-sa@${projectId}.iam.gserviceaccount.com`;
       const iamPolicy = {
