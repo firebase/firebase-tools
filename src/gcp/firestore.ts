@@ -1,4 +1,4 @@
-import { firestoreOrigin, firestoreOriginOrEmulator } from "../api";
+import { firestoreOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { Duration, assertOneOf, durationFromSeconds } from "./proto";

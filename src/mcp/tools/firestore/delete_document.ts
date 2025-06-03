@@ -45,13 +45,17 @@ export const delete_document = tool(
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
-    const firestoreDelete = new FirestoreDelete(projectId, path, { databaseId: "(default)" });
+    const firestoreDelete = new FirestoreDelete(projectId, path, {
+      databaseId: "(default)",
+      urlPrefix: emulatorUrl,
+    });
 
     await firestoreDelete.execute();
 
     const { documents: postDeleteDocuments, missing: postDeleteMissing } = await getDocuments(
       projectId,
       [path],
+      emulatorUrl,
     );
     if (postDeleteMissing.length > 0 && postDeleteDocuments.length === 0) {
       return toContent(`Successfully removed document located at : ${path}`);
