@@ -125,11 +125,11 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     logger.debug(`Using project from CLI flag: ${options.project}`);
     projectMetaData = await getFirebaseProject(options.project);
   } else {
-    const projectEnvVar = utils.envOverride("GCLOUD_PROJECT", "");
-    // If env var $GCLOUD_PROJECT is set, try to fetch that project.
+    const projectEnvVar = utils.envOverride("FIREBASE_PROJECT", "");
+    // If env var $FIREBASE_PROJECT is set, try to fetch that project.
     // This is used in some shell scripts e.g. under https://firebase.tools/.
     if (projectEnvVar) {
-      logger.debug(`Using project from $GCLOUD_PROJECT: ${projectEnvVar}`);
+      logger.debug(`Using project from $FIREBASE_PROJECT: ${projectEnvVar}`);
       projectMetaData = await getFirebaseProject(projectEnvVar);
     } else {
       projectMetaData = await projectChoicePrompt(options);
