@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { FirestoreDelete } from "../../../firestore/delete.js";
+import { getFirestoreEmulatorUrl } from "./emulator.js";
 
 export const delete_document = tool(
   {
@@ -20,6 +21,7 @@ export const delete_document = tool(
         .describe(
           "A document path (e.g. `collectionName/documentId` or `parentCollection/parentDocument/collectionName/documentId`)",
         ),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "Delete Firestore document",
@@ -30,9 +32,15 @@ export const delete_document = tool(
       requiresProject: true,
     },
   },
-  async ({ path }, { projectId }) => {
+  async ({ path, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
-    const { documents, missing } = await getDocuments(projectId, [path]);
+
+    let emulatorUrl: string | undefined;
+    if (use_emulator) {
+      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+    }
+
+    const { documents, missing } = await getDocuments(projectId!, [path], emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }

@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { firestoreDocumentToJson } from "./converter.js";
+import { getFirestoreEmulatorUrl } from "./emulator.js";
 
 export const get_documents = tool(
   {
@@ -20,6 +21,7 @@ export const get_documents = tool(
         .describe(
           "One or more document paths (e.g. `collectionName/documentId` or `parentCollection/parentDocument/collectionName/documentId`)",
         ),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "Get Firestore documents",
@@ -30,11 +32,15 @@ export const get_documents = tool(
       requiresProject: true,
     },
   },
-  async ({ paths }, { projectId }) => {
+  async ({ paths, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
     if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
-    const { documents, missing } = await getDocuments(projectId, paths);
+    let emulatorUrl: string | undefined;
+    if (use_emulator) {
+      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+    }
+    const { documents, missing } = await getDocuments(projectId, paths, emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
