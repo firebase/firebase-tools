@@ -163,7 +163,9 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
 export async function postSetup(setup: Setup, config: Config): Promise<void> {
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  if (cwdPlatformGuess !== Platform.NONE) {
+  // If a platform can be detected or a connector is chosen via env var, always
+  // setup SDK. FDC_CONNECTOR is used for scripts under https://firebase.tools/.
+  if (cwdPlatformGuess !== Platform.NONE || envOverride("FDC_CONNECTOR", "")) {
     await sdk.doSetup(setup, config);
   } else {
     logBullet(
