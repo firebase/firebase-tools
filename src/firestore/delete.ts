@@ -394,7 +394,7 @@ export class FirestoreDelete {
 
       numPendingDeletes++;
       firestore
-        .deleteDocuments(this.project, toDelete, true)
+        .deleteDocuments(this.project, toDelete, this.databaseId, true)
         .then((numDeleted) => {
           FirestoreDelete.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
@@ -526,7 +526,7 @@ export class FirestoreDelete {
    */
   public deleteDatabase(): Promise<any[]> {
     return firestore
-      .listCollectionIds(this.project, true)
+      .listCollectionIds(this.project, this.databaseId, true)
       .catch((err) => {
         logger.debug("deleteDatabase:listCollectionIds:error", err);
         return utils.reject("Unable to list collection IDs");

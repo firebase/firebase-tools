@@ -10,11 +10,10 @@ export const query_collection = tool(
     description:
       "Retrieves one or more Firestore documents from a collection is a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
     inputSchema: z.object({
-      // TODO: Support configurable database
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       collection_path: z
         .string()
         .describe(
@@ -84,7 +83,7 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit }, { projectId }) => {
+  async ({ collection_path, filters, order, limit, database }, { projectId }) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)
@@ -131,7 +130,7 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    const { documents } = await queryCollection(projectId, structuredQuery);
+    const { documents } = await queryCollection(projectId, structuredQuery, database);
 
     const docs = documents.map(firestoreDocumentToJson);
 
