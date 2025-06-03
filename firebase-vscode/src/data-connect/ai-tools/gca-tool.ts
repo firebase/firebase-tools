@@ -16,6 +16,7 @@ import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
 import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
 export const DATACONNECT_TOOL_ID = "Firebase Data Connect";
+const AT_DATACONNECT_TOOL_ID = `@${DATACONNECT_TOOL_ID}`;
 export const DATACONNECT_DISPLAY_NAME = "Firebase Data Connect";
 export const SUGGESTED_PROMPTS = [
   "/generate_schema Create a schema for a pizza store",
@@ -24,8 +25,8 @@ export const SUGGESTED_PROMPTS = [
 const HELP_MESSAGE = `
 Welcome to the Data Connect Tool.
 Usage:
-  @${DATACONNECT_TOOL_ID} /generate_schema <your prompt>\n
-  @${DATACONNECT_TOOL_ID} /generate_operation <your prompt>
+  ${AT_DATACONNECT_TOOL_ID} /generate_schema <your prompt>\n
+  ${AT_DATACONNECT_TOOL_ID} /generate_operation <your prompt>
 `;
 
 export class GCAToolClient {
@@ -196,21 +197,29 @@ function addCodeHandlers(responseStream: ChatResponseStream) {
 }
 
 // Basic validation function to ensure deterministic command
-function isPromptValid(prompt: ChatPrompt): boolean {
-  console.log(prompt.fullPrompt());
-
-  console.log(prompt.getPromptParts()[0].getPrompt());
-  if (prompt.length < 2) {
+function isPromptValid(chatPrompt: ChatPrompt): boolean {
+  let prompt = chatPrompt.fullPrompt();
+  if (!prompt.includes(AT_DATACONNECT_TOOL_ID)) {
     return false;
-  }
-  if (prompt.getPromptParts()[0].getPrompt() !== `@${DATACONNECT_TOOL_ID}`) {
-    return false;
-  }
-
-  return isCommandValid(
-    prompt.getPromptParts()[1].getPrompt().replace("/", ""),
-  );
+  };
+  prompt = prompt.replace(AT_DATACONNECT_TOOL_ID, "").trimStart();
+  const command = prompt.split(" ")[0];
+  return isCommandValid(command.replace("/", ""));
 }
+
+/** TEMP disabled since ChatPrompt cannot parse ToolID with spaces */
+// function isPromptValid(prompt: ChatPrompt): boolean {
+//   if (prompt.length < 2) {
+//     return false;
+//   }
+//   if (prompt.getPromptParts()[0].getPrompt() !== AT_DATACONNECT_TOOL_ID) {
+//     return false;
+//   }
+
+//   return isCommandValid(
+//     prompt.getPromptParts()[1].getPrompt().replace("/", ""),
+//   );
+// }
 
 function isCommandValid(command: string): boolean {
   return (Object.values(Command) as string[]).includes(command);
@@ -218,16 +227,23 @@ function isCommandValid(command: string): boolean {
 
 // get the /command without the /
 function getCommand(prompt: ChatPrompt): Command {
-  return prompt.getPromptParts()[1].getPrompt().replace("/", "") as Command;
+  if (prompt.length > 2) {
+    return prompt.getPromptParts()[1].getPrompt().replace("/", "") as Command;
+  }
+
+  // fallback if prompt parts doesn't work
+  return prompt.fullPrompt().replace(AT_DATACONNECT_TOOL_ID, "").trimStart().split(" ")[0] as Command;
 }
 
 // get the entire prompt without the @tool & /command
 function getPrompt(prompt: ChatPrompt): string {
   if (
     prompt.length > 2 &&
-    prompt.getPromptParts()[0].getPrompt() === `@${DATACONNECT_TOOL_ID}`
+    prompt.getPromptParts()[0].getPrompt() === AT_DATACONNECT_TOOL_ID
   ) {
     return prompt.getPromptParts()[2].getPrompt();
   }
-  return prompt.fullPrompt();
+
+  // fallback if prompt parts doesn't work
+  return prompt.fullPrompt().replace(AT_DATACONNECT_TOOL_ID, "").replace(/\/\w+/, "").trimStart();
 }
