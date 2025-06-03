@@ -169,10 +169,11 @@ export async function getDatabase(
  */
 export function listCollectionIds(
   project: string,
+  databaseId: string = "(default)",
   allowEmulator: boolean = false,
 ): Promise<string[]> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
+  const url = `projects/${project}/databases/${databaseId}/documents:listCollectionIds`;
   const data = {
     // Maximum 32-bit integer
     pageSize: 2147483647,
@@ -192,10 +193,11 @@ export function listCollectionIds(
 export async function getDocuments(
   project: string,
   paths: string[],
+  databaseId: string = "(default)",
   allowEmulator?: boolean,
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:batchGet`;
   const fullPaths = paths.map((p) => `${basePath}/${p}`);
   const res = await apiClient.post<
@@ -216,10 +218,11 @@ export async function getDocuments(
 export async function queryCollection(
   project: string,
   structuredQuery: StructuredQuery,
+  databaseId: string = "(default)",
   allowEmulator?: boolean,
 ): Promise<{ documents: FirestoreDocument[] }> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:runQuery`;
   try {
     const res = await apiClient.post<
@@ -275,10 +278,11 @@ export async function deleteDocument(doc: any, allowEmulator: boolean = false): 
 export async function deleteDocuments(
   project: string,
   docs: any[],
+  databaseId: string = "(default)",
   allowEmulator: boolean = false,
 ): Promise<number> {
   const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const url = "projects/" + project + "/databases/(default)/documents:commit";
+  const url = `projects/${project}/databases/${databaseId}/documents:commit`;
 
   const writes = docs.map((doc) => {
     return { delete: doc.name };
