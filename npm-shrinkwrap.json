@@ -1,15 +1,15 @@
 {
   "name": "firebase-tools",
-  "version": "14.4.0",
+  "version": "14.5.1",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "14.4.0",
+      "version": "14.5.1",
       "license": "MIT",
       "dependencies": {
-        "@electric-sql/pglite": "^0.2.16",
+        "@electric-sql/pglite": "^0.2.17",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
         "@google-cloud/pubsub": "^4.5.0",
         "@inquirer/prompts": "^7.4.0",
@@ -58,6 +58,7 @@
         "ora": "^5.4.1",
         "p-limit": "^3.0.1",
         "pg": "^8.11.3",
+        "pg-gateway": "^0.3.0-beta.4",
         "portfinder": "^1.0.32",
         "progress": "^2.0.3",
         "proxy-agent": "^6.3.0",
@@ -929,9 +930,10 @@
       }
     },
     "node_modules/@electric-sql/pglite": {
-      "version": "0.2.16",
-      "resolved": "https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.2.16.tgz",
-      "integrity": "sha512-dCSHpoOKuTxecaYhWDRp2yFTN3XWcMPMrBVl5yOR8VZEUprz4+R3iuU7BipmlsqBnBDO/6l9H/C2ZwJdunkWyw=="
+      "version": "0.2.17",
+      "resolved": "https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.2.17.tgz",
+      "integrity": "sha512-qEpKRT2oUaWDH6tjRxLHjdzMqRUGYDnGZlKrnL4dJ77JVMcP2Hpo3NYnOSPKdZdeec57B6QPprCUFg0picx5Pw==",
+      "license": "Apache-2.0"
     },
     "node_modules/@emmetio/abbreviation": {
       "version": "2.3.1",
@@ -16928,6 +16930,12 @@
       "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.6.4.tgz",
       "integrity": "sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA=="
     },
+    "node_modules/pg-gateway": {
+      "version": "0.3.0-beta.4",
+      "resolved": "https://registry.npmjs.org/pg-gateway/-/pg-gateway-0.3.0-beta.4.tgz",
+      "integrity": "sha512-CTjsM7Z+0Nx2/dyZ6r8zRsc3f9FScoD5UAOlfUx1Fdv/JOIWvRbF7gou6l6vP+uypXQVoYPgw8xZDXgMGvBa4Q==",
+      "license": "MIT"
+    },
     "node_modules/pg-int8": {
       "version": "1.0.1",
       "resolved": "https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz",
@@ -22395,9 +22403,9 @@
       }
     },
     "@electric-sql/pglite": {
-      "version": "0.2.16",
-      "resolved": "https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.2.16.tgz",
-      "integrity": "sha512-dCSHpoOKuTxecaYhWDRp2yFTN3XWcMPMrBVl5yOR8VZEUprz4+R3iuU7BipmlsqBnBDO/6l9H/C2ZwJdunkWyw=="
+      "version": "0.2.17",
+      "resolved": "https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.2.17.tgz",
+      "integrity": "sha512-qEpKRT2oUaWDH6tjRxLHjdzMqRUGYDnGZlKrnL4dJ77JVMcP2Hpo3NYnOSPKdZdeec57B6QPprCUFg0picx5Pw=="
     },
     "@emmetio/abbreviation": {
       "version": "2.3.1",
@@ -34240,6 +34248,11 @@
       "version": "2.6.4",
       "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.6.4.tgz",
       "integrity": "sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA=="
+    },
+    "pg-gateway": {
+      "version": "0.3.0-beta.4",
+      "resolved": "https://registry.npmjs.org/pg-gateway/-/pg-gateway-0.3.0-beta.4.tgz",
+      "integrity": "sha512-CTjsM7Z+0Nx2/dyZ6r8zRsc3f9FScoD5UAOlfUx1Fdv/JOIWvRbF7gou6l6vP+uypXQVoYPgw8xZDXgMGvBa4Q=="
     },
     "pg-int8": {
       "version": "1.0.1",

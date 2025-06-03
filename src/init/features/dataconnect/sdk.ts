@@ -26,7 +26,7 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet, promptForDirectory } from "../../../utils";
+import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
@@ -49,11 +49,11 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
   );
-  const connectorChoices: { name: string; value: ConnectorInfo }[] = serviceInfos
+  const connectorChoices: connectorChoice[] = serviceInfos
     .map((si) => {
       return si.connectorInfo.map((ci) => {
         return {
-          name: `${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
+          name: `${si.dataConnectYaml.location}/${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
           value: ci,
         };
       });
@@ -100,10 +100,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
-  const connectorInfo = await select<ConnectorInfo>({
-    message: "Which connector do you want set up a generated SDK for?",
-    choices: connectorChoices,
-  });
+  const connectorInfo = await chooseExistingConnector(connectorChoices);
 
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   const newConnectorYaml = await generateSdkYaml(
@@ -137,6 +134,43 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   connectorInfo.connectorYaml = newConnectorYaml;
   const displayIOSWarning = targetPlatform === Platform.IOS;
   return { connectorYamlContents, connectorInfo, displayIOSWarning };
+}
+
+interface connectorChoice {
+  name: string; // {location}/{serviceId}/{connectorId}
+  value: ConnectorInfo;
+}
+
+/**
+ * Picks an existing connector from those present in the local workspace.
+ *
+ * Firebase Console can provide `FDC_CONNECTOR` environment variable.
+ * If its is present, chooseExistingConnector try to match it with any existing connectors
+ * and short-circuit the prompt.
+ *
+ * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
+ * @param choices
+ */
+async function chooseExistingConnector(choices: connectorChoice[]): Promise<ConnectorInfo> {
+  if (choices.length === 1) {
+    // Only one connector available, use it.
+    return choices[0].value;
+  }
+  const connectorEnvVar = envOverride("FDC_CONNECTOR", "");
+  if (connectorEnvVar) {
+    const existingConnector = choices.find((c) => c.name === connectorEnvVar);
+    if (existingConnector) {
+      logBullet(`Picking up the existing connector ${clc.bold(connectorEnvVar)}.`);
+      return existingConnector.value;
+    }
+    logWarning(
+      `Unable to pick up an existing connector based on FDC_CONNECTOR=${connectorEnvVar}.`,
+    );
+  }
+  return await select<ConnectorInfo>({
+    message: "Which connector do you want set up a generated SDK for?",
+    choices: choices,
+  });
 }
 
 export async function generateSdkYaml(
@@ -218,6 +252,8 @@ export async function actuate(sdkInfo: SDKInfo, config: Config) {
   await config.askWriteProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     sdkInfo.connectorYamlContents,
+    /* force=*/ false,
+    /* confirmByDefault=*/ true,
   );
 
   const account = getGlobalDefaultAccount();

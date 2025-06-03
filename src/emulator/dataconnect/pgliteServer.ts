@@ -7,15 +7,16 @@ import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 // during module resolution.
 const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
+import { Readable, Writable } from "node:stream";
 import * as fs from "fs";
 
 import {
   getMessages,
-  type PostgresConnection,
+  PostgresConnection,
+  type PostgresConnectionOptions,
   FrontendMessageCode,
   BackendMessageCode,
-} from "./pg-gateway/index";
-import { fromNodeSocket } from "./pg-gateway/platforms/node";
+} from "pg-gateway";
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
 import { StringDecoder } from "node:string_decoder";
@@ -107,7 +108,7 @@ export class PostgresServer {
       };
       if (this.importPath) {
         logger.debug(`Importing from ${this.importPath}`);
-        const rf = fs.readFileSync(this.importPath);
+        const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
         const file = new File([rf], this.importPath);
         pgliteArgs.loadDataDir = file;
       }
@@ -210,4 +211,25 @@ export class PGliteExtendedQueryPatch {
       yield message;
     }
   }
+}
+
+/**
+ * Creates a `PostgresConnection` from a Node.js TCP/Unix `Socket`.
+ *
+ * `PostgresConnection` operates on web streams, so this helper
+ * converts a `Socket` to/from the respective web streams.
+ *
+ * Also implements `upgradeTls()`, which makes Postgres `SSLRequest`
+ * upgrades available in Node.js environments.
+ */
+export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
+  const rs = Readable.toWeb(socket) as unknown as ReadableStream;
+  const ws = Writable.toWeb(socket);
+  const opts = options
+    ? {
+        ...options,
+      }
+    : undefined;
+
+  return new PostgresConnection({ readable: rs, writable: ws }, opts);
 }

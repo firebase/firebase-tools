@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "14.4.0",
+  "version": "14.5.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -100,7 +100,7 @@
     ]
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.2.16",
+    "@electric-sql/pglite": "^0.2.17",
     "@google-cloud/cloud-sql-connector": "^1.3.3",
     "@google-cloud/pubsub": "^4.5.0",
     "@inquirer/prompts": "^7.4.0",
@@ -149,6 +149,7 @@
     "ora": "^5.4.1",
     "p-limit": "^3.0.1",
     "pg": "^8.11.3",
+    "pg-gateway": "^0.3.0-beta.4",
     "portfinder": "^1.0.32",
     "progress": "^2.0.3",
     "proxy-agent": "^6.3.0",

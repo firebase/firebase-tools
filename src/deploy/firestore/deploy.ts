@@ -19,8 +19,11 @@ async function createDatabase(context: any, options: Options): Promise<void> {
   if (!options.projectId) {
     throw new FirebaseError("Project ID is required to create a Firestore database.");
   }
-  if (!firestoreCfg || !firestoreCfg.database) {
-    throw new FirebaseError("Firestore database configuration is missing in firebase.json.");
+  if (!firestoreCfg) {
+    throw new FirebaseError("Firestore database configuration not found in firebase.json.");
+  }
+  if (!firestoreCfg.database) {
+    firestoreCfg.database = "(default)";
   }
   const api = new FirestoreApi();
   try {
