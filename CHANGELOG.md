@@ -4,3 +4,4 @@
 - Fixed issue where `firebase use --add` didn't correctly set the active project. (#8694)
 - Always setup Data Connect SDK when FDC_CONNECTOR env var is set.
 - `firebase init` now uses FIREBASE_PROJECT env var as the default project name.
+- Add emulator support to firestore MCP tools. (#8700)

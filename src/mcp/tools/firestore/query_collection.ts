@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { queryCollection, StructuredQuery } from "../../../gcp/firestore.js";
 import { convertInputToValue, firestoreDocumentToJson } from "./converter.js";
+import { getFirestoreEmulatorUrl } from "./emulator.js";
 
 export const query_collection = tool(
   {
@@ -74,6 +75,7 @@ export const query_collection = tool(
         .number()
         .describe("The maximum amount of records to return. Default is 10.")
         .optional(),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "Query Firestore collection",
@@ -84,7 +86,7 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit }, { projectId }) => {
+  async ({ collection_path, filters, order, limit, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)
@@ -131,7 +133,12 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    const { documents } = await queryCollection(projectId, structuredQuery);
+    let emulatorUrl: string | undefined;
+    if (use_emulator) {
+      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+    }
+
+    const { documents } = await queryCollection(projectId, structuredQuery, emulatorUrl);
 
     const docs = documents.map(firestoreDocumentToJson);
 
