@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { generateOperation } from "../../../gif/fdcExperience.js";
+import { generateOperation } from "../../../gemini/fdcExperience.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 
 export const generate_operation = tool(
