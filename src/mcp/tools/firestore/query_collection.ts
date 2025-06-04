@@ -11,11 +11,10 @@ export const query_collection = tool(
     description:
       "Retrieves one or more Firestore documents from a collection is a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
     inputSchema: z.object({
-      // TODO: Support configurable database
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       collection_path: z
         .string()
         .describe(
@@ -86,7 +85,10 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit, use_emulator }, { projectId, host }) => {
+  async (
+    { collection_path, filters, order, limit, database, use_emulator },
+    { projectId, host },
+  ) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)
@@ -138,7 +140,7 @@ export const query_collection = tool(
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
 
-    const { documents } = await queryCollection(projectId, structuredQuery, emulatorUrl);
+    const { documents } = await queryCollection(projectId, structuredQuery, database, emulatorUrl);
 
     const docs = documents.map(firestoreDocumentToJson);
 
