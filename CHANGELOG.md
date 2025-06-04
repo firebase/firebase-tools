@@ -2,6 +2,7 @@
 - Improved GetDatabase API call caching for Firestore function deployments. (#8681)
 - Increased timeout for linking CloudSQL instances to Data Connect.
 - Fixed issue where `firebase use --add` didn't correctly set the active project. (#8694)
+- Correctly support '--database' flag in `firestore:delete`. (#6753)
 - Always setup Data Connect SDK when FDC_CONNECTOR env var is set.
 - `firebase init` now uses FIREBASE_PROJECT env var as the default project name.
 - Add emulator support to firestore MCP tools. (#8700)

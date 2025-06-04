@@ -12,10 +12,10 @@ export const list_collections = tool(
       "Retrieves a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
       // TODO: support multiple databases
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
@@ -27,7 +27,7 @@ export const list_collections = tool(
       requiresProject: true,
     },
   },
-  async ({ use_emulator }, { projectId, host }) => {
+  async ({ database, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
     let emulatorUrl: string | undefined;
     if (use_emulator) {
@@ -35,6 +35,6 @@ export const list_collections = tool(
     }
 
     if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await listCollectionIds(projectId, emulatorUrl));
+    return toContent(await listCollectionIds(projectId, database, emulatorUrl));
   },
 );

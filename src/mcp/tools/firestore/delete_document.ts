@@ -11,11 +11,10 @@ export const delete_document = tool(
     description:
       "Deletes a Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
-      // TODO: Support configurable database
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       path: z
         .string()
         .describe(
@@ -32,21 +31,18 @@ export const delete_document = tool(
       requiresProject: true,
     },
   },
-  async ({ path, use_emulator }, { projectId, host }) => {
-    // database ??= "(default)";
-
+  async ({ path, database, use_emulator }, { projectId, host }) => {
     let emulatorUrl: string | undefined;
     if (use_emulator) {
       emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
     }
-
-    const { documents, missing } = await getDocuments(projectId!, [path], emulatorUrl);
+    const { documents, missing } = await getDocuments(projectId, [path], database, emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
     const firestoreDelete = new FirestoreDelete(projectId, path, {
-      databaseId: "(default)",
+      databaseId: database ?? "(default)",
       urlPrefix: emulatorUrl,
     });
 

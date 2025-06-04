@@ -172,9 +172,13 @@ export async function getDatabase(
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-export function listCollectionIds(project: string, emulatorUrl?: string): Promise<string[]> {
+export function listCollectionIds(
+  project: string,
+  databaseId: string = "(default)",
+  emulatorUrl?: string,
+): Promise<string[]> {
   const apiClient = getClient(emulatorUrl);
-  const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
+  const url = `projects/${project}/databases/${databaseId}/documents:listCollectionIds`;
   const data = {
     // Maximum 32-bit integer
     pageSize: 2147483647,
@@ -194,10 +198,11 @@ export function listCollectionIds(project: string, emulatorUrl?: string): Promis
 export async function getDocuments(
   project: string,
   paths: string[],
+  databaseId: string = "(default)",
   emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
   const apiClient = getClient(emulatorUrl);
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:batchGet`;
   const fullPaths = paths.map((p) => `${basePath}/${p}`);
   const res = await apiClient.post<
@@ -218,10 +223,11 @@ export async function getDocuments(
 export async function queryCollection(
   project: string,
   structuredQuery: StructuredQuery,
+  databaseId: string = "(default)",
   emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[] }> {
   const apiClient = getClient(emulatorUrl);
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:runQuery`;
   try {
     const res = await apiClient.post<
@@ -277,10 +283,11 @@ export async function deleteDocument(doc: any, emulatorUrl?: string): Promise<an
 export async function deleteDocuments(
   project: string,
   docs: any[],
+  databaseId: string = "(default)",
   emulatorUrl?: string,
 ): Promise<number> {
   const apiClient = getClient(emulatorUrl);
-  const url = "projects/" + project + "/databases/(default)/documents:commit";
+  const url = `projects/${project}/databases/${databaseId}/documents:commit`;
 
   const writes = docs.map((doc) => {
     return { delete: doc.name };
