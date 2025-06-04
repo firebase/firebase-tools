@@ -1,2 +1,2 @@
 - Improved GetDatabase API call caching for Firestore function deployments. (#8681)
-- Updated the Firebase Data Connect local toolkit to v2.6.3, which includes some cleanups and error message improvements: (#8667)
+- Updated the Firebase Data Connect local toolkit to v2.6.3, which includes some cleanups and error message improvements. (#8667)
