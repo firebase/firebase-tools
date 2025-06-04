@@ -1,0 +1,1 @@
+- Add emulator support to firebase storage MCP tools. (#8707)
