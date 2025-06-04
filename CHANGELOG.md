@@ -7,3 +7,4 @@
 - Add emulator support to firestore MCP tools. (#8700)
 - Increased npm timeout for web frameworks to 60s. (#8702)
 - Fallback to reading web framework dependencies version directly from node_modules package.json when the npm timeout is reached. (#8702)
+- Added support for loading TypeScript functions using tsx in the Functions Emulator. (#8663)

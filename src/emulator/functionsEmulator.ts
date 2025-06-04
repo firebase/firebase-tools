@@ -54,6 +54,7 @@ import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
+import * as node from "../deploy/functions/runtimes/node";
 import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
@@ -529,6 +530,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
         runtime: emulatableBackend.runtime,
+        isEmulator: true,
       };
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.language} source`);
@@ -1600,6 +1602,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const socketPath = getTemporarySocketPath();
+
+    // Check if we're using tsx and get TypeScript entry point
+    let overrideFunctionSource: string | undefined;
+    if (backend.bin && backend.bin.includes("tsx")) {
+      const tsEntryPoint = node.getTypeScriptEntryPoint(backend.functionsDir);
+      if (tsEntryPoint) {
+        overrideFunctionSource = tsEntryPoint;
+        this.logger.logLabeled("DEBUG", "functions", `Using TypeScript source in ${tsEntryPoint}`);
+      }
+    }
+
     const childProcess = spawn(bin, args, {
       cwd: backend.functionsDir,
       env: {
@@ -1608,6 +1621,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         ...process.env,
         ...envs,
         PORT: socketPath,
+        // Override the entry point if we have any
+        ...(overrideFunctionSource ? { FUNCTIONS_SOURCE: overrideFunctionSource } : {}),
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });

@@ -67,6 +67,8 @@ export interface DelegateContext {
   // Absolute path of the source directory.
   sourceDir: string;
   runtime?: supported.Runtime;
+  // Whether this delegate is being created for the emulator
+  isEmulator?: boolean;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

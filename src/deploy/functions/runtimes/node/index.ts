@@ -25,6 +25,33 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
 
+/**
+ * Get the TypeScript source entry point for a functions directory.
+ * Used by the emulator to load TypeScript directly with tsx.
+ */
+export function getTypeScriptEntryPoint(functionsDir: string): string | null {
+  const tsconfigPath = path.join(functionsDir, "tsconfig.json");
+  if (!fileExistsSync(tsconfigPath)) {
+    return null;
+  }
+
+  try {
+    const mainPath = require.resolve(functionsDir);
+    // Transform compiled JS path to TypeScript source
+    // e.g., /path/to/project/lib/index.js -> /path/to/project/src/index.ts
+    const tsSourcePath = mainPath.replace(/\/lib\//, "/src/").replace(/\.js$/, ".ts");
+
+    if (fileExistsSync(tsSourcePath)) {
+      return tsSourcePath;
+    }
+  } catch (e) {
+    logger.debug("Failed to resolve TS entrypoint", e);
+    // Fail-safe and fallback to assuming JS codebase.
+  }
+
+  return null;
+}
+
 // The versions of the Firebase Functions SDK that added support for the container contract.
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
@@ -54,7 +81,13 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
+  return new Delegate(
+    context.projectId,
+    context.projectDir,
+    context.sourceDir,
+    runtime,
+    context.isEmulator,
+  );
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -69,6 +102,7 @@ export class Delegate {
     private readonly projectDir: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime,
+    private readonly isEmulator: boolean = false,
   ) {}
 
   // Using a caching interface because we (may/will) eventually depend on the SDK version
@@ -90,6 +124,21 @@ export class Delegate {
     return this._bin;
   }
 
+  private isTypeScriptProject(): boolean {
+    const tsconfigPath = path.join(this.sourceDir, "tsconfig.json");
+    return fileExistsSync(tsconfigPath);
+  }
+
+  private getTsxPath(): string | null {
+    try {
+      const tsxPath = require.resolve("tsx/cli", { paths: [this.sourceDir] });
+      return tsxPath;
+    } catch (e) {
+      // tsx not found. fail-safe
+    }
+    return null;
+  }
+
   getNodeBinary(): string {
     const requestedVersion = semver.coerce(this.runtime);
     if (!requestedVersion) {
@@ -98,6 +147,25 @@ export class Delegate {
       );
     }
     const hostVersion = process.versions.node;
+
+    // Check if this is a TypeScript project and tsx is available (only in emulator)
+    if (this.isEmulator && this.isTypeScriptProject()) {
+      const tsxPath = this.getTsxPath();
+      if (tsxPath) {
+        logLabeledSuccess(
+          "functions",
+          "TypeScript project detected. Using tsx for automatic TypeScript compilation.",
+        );
+        return tsxPath;
+      } else {
+        logLabeledWarning(
+          "functions",
+          "TypeScript project detected but tsx is not installed. " +
+            "Consider running 'npm install --save-dev tsx' for automatic TypeScript compilation. " +
+            "Falling back to standard node runtime.",
+        );
+      }
+    }
 
     const localNodePath = path.join(this.sourceDir, "node_modules/node");
     const localNodeVersion = versioning.findModuleVersion("node", localNodePath);
