@@ -293,26 +293,26 @@ const pluginToInfo: Record<string, PluginInfo> = {
     imports: "vertexAI",
     modelImportComment: `
 // Import models from the Vertex AI plugin. The Vertex AI API provides access to
-// several generative models. Here, we import Gemini 1.5 Flash.`.trimStart(),
+// several generative models. Here, we import Gemini 2.0 Flash.`.trimStart(),
     init: `
     // Load the Vertex AI plugin. You can optionally specify your project ID
     // by passing in a config object; if you don't, the Vertex AI plugin uses
     // the value from the GCLOUD_PROJECT environment variable.
     vertexAI({location: "us-central1"})`.trimStart(),
-    model: "gemini15Flash",
+    model: "gemini20Flash",
   },
   "@genkit-ai/googleai": {
     imports: "googleAI",
     modelImportComment: `
 // Import models from the Google AI plugin. The Google AI API provides access to
-// several generative models. Here, we import Gemini 1.5 Flash.`.trimStart(),
+// several generative models. Here, we import Gemini 2.0 Flash.`.trimStart(),
     init: `
     // Load the Google AI plugin. You can optionally specify your API key
     // by passing in a config object; if you don't, the Google AI plugin uses
     // the value from the GOOGLE_GENAI_API_KEY environment variable, which is
     // the recommended practice.
     googleAI()`.trimStart(),
-    model: "gemini15Flash",
+    model: "gemini20Flash",
   },
 };
 
