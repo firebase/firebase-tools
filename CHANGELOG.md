@@ -5,3 +5,5 @@
 - Always setup Data Connect SDK when FDC_CONNECTOR env var is set.
 - `firebase init` now uses FIREBASE_PROJECT env var as the default project name.
 - Add emulator support to firestore MCP tools. (#8700)
+- Increased npm timeout for web frameworks to 60s. (#8702)
+- Fallback to reading web framework dependencies version directly from node_modules package.json when the npm timeout is reached. (#8702)
