@@ -1,2 +1,11 @@
+- Fixed issue where `projects:create` didn't correctly parse the `projectId` and `displayName` input. (#8634)
 - Improved GetDatabase API call caching for Firestore function deployments. (#8681)
+- Increased timeout for linking CloudSQL instances to Data Connect.
+- Fixed issue where `firebase use --add` didn't correctly set the active project. (#8694)
+- Correctly support '--database' flag in `firestore:delete`. (#6753)
+- Always setup Data Connect SDK when FDC_CONNECTOR env var is set.
+- `firebase init` now uses FIREBASE_PROJECT env var as the default project name.
+- Add emulator support to firestore MCP tools. (#8700)
+- Increased npm timeout for web frameworks to 60s. (#8702)
+- Fallback to reading web framework dependencies version directly from node_modules package.json when the npm timeout is reached. (#8702)
 - Updated the Firebase Data Connect local toolkit to v2.6.3, which includes some cleanups and error message improvements. (#8667)
