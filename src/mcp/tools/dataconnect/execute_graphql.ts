@@ -45,7 +45,7 @@ export const execute_graphql = tool(
     let apiClient: Client;
 
     if (use_emulator) {
-      apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
+      apiClient = await getDataConnectEmulatorClient(host);
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }

@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { listCollectionIds } from "../../../gcp/firestore.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const list_collections = tool(
   {
@@ -31,7 +31,7 @@ export const list_collections = tool(
     // database ??= "(default)";
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
 
     if (!projectId) return NO_PROJECT_ERROR;

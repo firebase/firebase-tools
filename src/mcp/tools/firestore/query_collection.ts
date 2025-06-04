@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { queryCollection, StructuredQuery } from "../../../gcp/firestore.js";
 import { convertInputToValue, firestoreDocumentToJson } from "./converter.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const query_collection = tool(
   {
@@ -135,7 +135,7 @@ export const query_collection = tool(
 
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
 
     const { documents } = await queryCollection(projectId, structuredQuery, emulatorUrl);
