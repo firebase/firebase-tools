@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
 import { listCollectionIds } from "../../../gcp/firestore.js";
 import { NO_PROJECT_ERROR } from "../../errors.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const list_collections = tool(
   {
@@ -12,10 +12,10 @@ export const list_collections = tool(
       "Retrieves a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
       // TODO: support multiple databases
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
@@ -27,14 +27,14 @@ export const list_collections = tool(
       requiresProject: true,
     },
   },
-  async ({ use_emulator }, { projectId, host }) => {
+  async ({ database, use_emulator }, { projectId, host }) => {
     // database ??= "(default)";
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
 
     if (!projectId) return NO_PROJECT_ERROR;
-    return toContent(await listCollectionIds(projectId, emulatorUrl));
+    return toContent(await listCollectionIds(projectId, database, emulatorUrl));
   },
 );

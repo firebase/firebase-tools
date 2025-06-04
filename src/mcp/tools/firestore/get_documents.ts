@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { firestoreDocumentToJson } from "./converter.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const get_documents = tool(
   {
@@ -11,11 +11,10 @@ export const get_documents = tool(
     description:
       "Retrieves one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
-      // TODO: Support configurable database
-      // database: z
-      //   .string()
-      //   .optional()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       paths: z
         .array(z.string())
         .describe(
@@ -32,15 +31,14 @@ export const get_documents = tool(
       requiresProject: true,
     },
   },
-  async ({ paths, use_emulator }, { projectId, host }) => {
-    // database ??= "(default)";
+  async ({ paths, database, use_emulator }, { projectId, host }) => {
     if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
-    const { documents, missing } = await getDocuments(projectId, paths, emulatorUrl);
+    const { documents, missing } = await getDocuments(projectId, paths, database, emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
