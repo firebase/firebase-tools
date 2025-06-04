@@ -17,7 +17,9 @@ export interface FirebaseRulesValidator {
     bucketId: string,
     method: RulesetOperationMethod,
     variableOverrides: RulesVariableOverrides,
-    authorization?: string
+    projectId: string,
+    authorization?: string,
+    delimiter?: string,
   ): Promise<boolean>;
 }
 
@@ -33,7 +35,7 @@ export type RulesetProvider = (resource: string) => StorageRulesetInstance | und
  * Returns a validator that pulls a Ruleset from a {@link RulesetProvider} on each run.
  */
 export function getFirebaseRulesValidator(
-  rulesetProvider: RulesetProvider
+  rulesetProvider: RulesetProvider,
 ): FirebaseRulesValidator {
   return {
     validate: async (
@@ -41,14 +43,18 @@ export function getFirebaseRulesValidator(
       bucketId: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
-      authorization?: string
+      projectId: string,
+      authorization?: string,
+      delimiter?: string,
     ) => {
       return await isPermitted({
         ruleset: rulesetProvider(bucketId),
         file: variableOverrides,
         path,
         method,
+        projectId,
         authorization,
+        delimiter,
       });
     },
   };
@@ -60,18 +66,21 @@ export function getFirebaseRulesValidator(
  */
 export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
   return {
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     validate: (
       _path: string,
       _bucketId: string,
       _method: RulesetOperationMethod,
       _variableOverrides: RulesVariableOverrides,
-      _authorization?: string
+      _authorization?: string,
+      delimiter?: string,
     ) => {
       // TODO(tonyjhuang): This should check for valid admin credentials some day.
       // Unfortunately today, there's no easy way to set up the GCS SDK to pass
       // "Bearer owner" along with requests so this is a placeholder.
       return Promise.resolve(true);
     },
+    /* eslint-enable @typescript-eslint/no-unused-vars */
   };
 }
 
@@ -92,12 +101,14 @@ export async function isPermitted(opts: {
   };
   path: string;
   method: RulesetOperationMethod;
+  projectId: string;
   authorization?: string;
+  delimiter?: string;
 }): Promise<boolean> {
   if (!opts.ruleset) {
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "WARN",
-      `Can not process SDK request with no loaded ruleset`
+      `Can not process SDK request with no loaded ruleset`,
     );
     return false;
   }
@@ -111,7 +122,9 @@ export async function isPermitted(opts: {
     method: opts.method,
     path: opts.path,
     file: opts.file,
+    projectId: opts.projectId,
     token: opts.authorization ? opts.authorization.split(" ")[1] : undefined,
+    delimiter: opts.delimiter,
   });
 
   if (issues.exist()) {

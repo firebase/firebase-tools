@@ -1,26 +1,18 @@
-import * as _ from "lodash";
-import { promptOnce } from "../prompt";
-import { ParamOption } from "./extensionsApi";
+import {
+  ParamOption,
+  Resource,
+  FUNCTIONS_RESOURCE_TYPE,
+  FUNCTIONS_V2_RESOURCE_TYPE,
+} from "./types";
 import { RegistryEntry } from "./resolveSource";
+import { Runtime } from "../deploy/functions/runtimes/supported";
+import { Choice } from "../prompt";
 
-// Modified version of the once function from prompt, to return as a joined string.
-export async function onceWithJoin(question: any): Promise<string> {
-  const response = await promptOnce(question);
-  if (Array.isArray(response)) {
-    return response.join(",");
-  }
-  return response;
-}
-
-interface ListItem {
-  name?: string; // User friendly display name for the option
-  value: string; // Value of the option
-  checked: boolean; // Whether the option should be checked by default
-}
-
-// Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
-export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
-  return options.map((option: ParamOption): ListItem => {
+/**
+ * Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
+ */
+export function convertExtensionOptionToLabeledList(options: ParamOption[]): Choice<string>[] {
+  return options.map((option: ParamOption): Choice<string> => {
     return {
       checked: false,
       name: option.label,
@@ -29,11 +21,13 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
   });
 }
 
-// Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
+/**
+ * Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
+ */
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
-}): ListItem[] {
-  const l = _.map(officialExts, (entry: RegistryEntry, key: string) => {
+}): Choice<string>[] {
+  const l = Object.entries(officialExts).map(([key, entry]) => {
     return {
       checked: false,
       value: `${entry.publisher}/${key}`,
@@ -67,4 +61,20 @@ export function formatTimestamp(timestamp: string): string {
   }
   const withoutMs = timestamp.split(".")[0];
   return withoutMs.replace("T", " ");
+}
+
+/**
+ * Returns the runtime for the resource. The resource may be v1 or v2 function,
+ * etc, and this utility will do its best to identify the runtime specified for
+ * this resource.
+ */
+export function getResourceRuntime(resource: Resource): Runtime | undefined {
+  switch (resource.type) {
+    case FUNCTIONS_RESOURCE_TYPE:
+      return resource.properties?.runtime;
+    case FUNCTIONS_V2_RESOURCE_TYPE:
+      return resource.properties?.buildConfig?.runtime;
+    default:
+      return undefined;
+  }
 }

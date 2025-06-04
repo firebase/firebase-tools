@@ -9,7 +9,7 @@
  * - projectId defaults to `functions-integration-test`
  */
 
-var clc = require("cli-color");
+var clc = require("colorette");
 var exec = require("child_process").exec;
 var execSync = require("child_process").execSync;
 var expect = require("chai").expect;
@@ -18,7 +18,6 @@ var tmp = require("tmp");
 
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
-var { configstore } = require("../lib/configstore");
 
 var projectId = process.argv[2] || "functions-integration-test";
 var localFirebase = __dirname + "/../lib/bin/firebase.js";
@@ -29,7 +28,6 @@ var preTest = function () {
   var dir = tmp.dirSync({ prefix: "cfgtest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   execSync(`${localFirebase} functions:config:unset foo --project=${projectId}`, { cwd: tmpDir });
   console.log("Done pretest prep.");
@@ -48,7 +46,7 @@ var set = function (expression) {
       function (err) {
         expect(err).to.be.null;
         resolve();
-      }
+      },
     );
   });
 };
@@ -61,7 +59,7 @@ var unset = function (key) {
       function (err) {
         expect(err).to.be.null;
         resolve();
-      }
+      },
     );
   });
 };
@@ -74,7 +72,7 @@ var getAndCompare = function (expected) {
       function (err, stdout) {
         expect(JSON.parse(stdout)).to.deep.equal(expected);
         resolve();
-      }
+      },
     );
   });
 };

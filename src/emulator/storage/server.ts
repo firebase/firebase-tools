@@ -15,15 +15,26 @@ import { SourceFile } from "./rules/types";
  */
 export function createApp(
   defaultProjectId: string,
-  emulator: StorageEmulator
+  emulator: StorageEmulator,
 ): Promise<express.Express> {
   const { storageLayer } = emulator;
   const app = express();
 
   EmulatorLogger.forEmulator(Emulators.STORAGE).log(
     "DEBUG",
-    `Temp file directory for storage emulator: ${storageLayer.dirPath}`
+    `Temp file directory for storage emulator: ${storageLayer.dirPath}`,
   );
+
+  // Return access-control-allow-private-network header if requested
+  // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+  // Aligns with https://wicg.github.io/private-network-access/#headers
+  // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
+  app.use("/", (req, res, next) => {
+    if (req.headers["access-control-request-private-network"]) {
+      res.setHeader("access-control-allow-private-network", "true");
+    }
+    next();
+  });
 
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
@@ -33,8 +44,8 @@ export function createApp(
       exposedHeaders: [
         "content-type",
         "x-firebase-storage-version",
+        "X-Goog-Upload-Size-Received",
         "x-goog-upload-url",
-        "x-goog-upload-status",
         "x-goog-upload-command",
         "x-gupload-uploadid",
         "x-goog-upload-header-content-length",
@@ -44,7 +55,7 @@ export function createApp(
         "x-goog-upload-chunk-granularity",
         "x-goog-upload-control-url",
       ],
-    })
+    }),
   );
 
   app.use(bodyParser.raw({ limit: "130mb", type: "application/x-www-form-urlencoded" }));
@@ -53,17 +64,18 @@ export function createApp(
   app.use(
     express.json({
       type: ["application/json"],
-    })
+    }),
   );
 
   app.post("/internal/export", async (req, res) => {
-    const path = req.body.path;
+    const initiatedBy: string = req.body.initiatedBy || "unknown";
+    const path: string = req.body.path;
     if (!path) {
       res.status(400).send("Export request body must include 'path'.");
       return;
     }
 
-    await storageLayer.export(path);
+    await storageLayer.export(path, { initiatedBy });
     res.sendStatus(200);
   });
 
@@ -110,7 +122,7 @@ export function createApp(
         const file = files[0];
         if (!isRulesFile(file)) {
           throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name' and 'content'"
+            "Each member of 'rules.files' array must contain 'name' and 'content'",
           );
         }
         return { name: file.name, content: file.content };
@@ -120,7 +132,7 @@ export function createApp(
       for (const file of files) {
         if (!isRulesFile(file) || !file.resource) {
           throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+            "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'",
           );
         }
         rules.push({ resource: file.resource, rules: { name: file.name, content: file.content } });

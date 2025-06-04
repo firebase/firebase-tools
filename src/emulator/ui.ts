@@ -1,57 +1,108 @@
-import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
+import * as express from "express";
+import * as path from "path";
+import { Emulators, ListenSpec } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
+import { EmulatorLogger } from "./emulatorLogger";
 import { Constants } from "./constants";
+import { AnalyticsSession, emulatorSession } from "../track";
+import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
+import { ALL_EXPERIMENTS, ExperimentName, isEnabled } from "../experiments";
+import { EmulatorHub, GetEmulatorsResponse } from "./hub";
 
 export interface EmulatorUIOptions {
-  port: number;
-  host: string;
+  listen: ListenSpec[];
   projectId: string;
-  auto_download?: boolean;
 }
 
-export class EmulatorUI implements EmulatorInstance {
-  constructor(private args: EmulatorUIOptions) {}
+// Response shape for /api/config endpoint. Contains info about which emulators are running and where.
+interface EmulatorConfigInfo extends GetEmulatorsResponse {
+  projectId: string;
+  experiments: string[];
+  analytics?: AnalyticsSession;
+}
 
-  start(): Promise<void> {
+export class EmulatorUI extends ExpressBasedEmulator {
+  constructor(private args: EmulatorUIOptions) {
+    super({
+      listen: args.listen,
+    });
+  }
+
+  override async start(): Promise<void> {
+    await super.start();
+  }
+
+  protected override async createExpressApp(): Promise<express.Express> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
       throw new FirebaseError(
         `Cannot start ${Constants.description(Emulators.UI)} without ${Constants.description(
-          Emulators.HUB
-        )}!`
+          Emulators.HUB,
+        )}!`,
       );
     }
-    const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
-    const { auto_download, host, port, projectId } = this.args;
-    const env: NodeJS.ProcessEnv = {
-      HOST: host.toString(),
-      PORT: port.toString(),
-      GCLOUD_PROJECT: projectId,
-      [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
-    };
+    const hub = EmulatorRegistry.get(Emulators.HUB);
+    const app = await super.createExpressApp();
+    const { projectId } = this.args;
+    const enabledExperiments: Array<ExperimentName> = (
+      Object.keys(ALL_EXPERIMENTS) as Array<ExperimentName>
+    ).filter((experimentName) => isEnabled(experimentName));
+    const emulatorGaSession = emulatorSession();
 
-    return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
+    await downloadableEmulators.downloadIfNecessary(Emulators.UI);
+    const downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.UI);
+    const webDir = path.join(downloadDetails.unzipDir!, "client");
+
+    // Exposes the host and port of various emulators to facilitate accessing
+    // them using client SDKs. For features that involve multiple emulators or
+    // hard to accomplish using client SDKs, consider adding an API below
+    app.get(
+      "/api/config",
+      this.jsonHandler(() => {
+        const emulatorInfos = (hub! as EmulatorHub).getRunningEmulatorsMapping();
+        const json: EmulatorConfigInfo = {
+          projectId,
+          experiments: enabledExperiments ?? [],
+          analytics: emulatorGaSession,
+          ...emulatorInfos,
+        };
+        return Promise.resolve(json);
+      }),
+    );
+
+    app.use(express.static(webDir));
+    // Required for the router to work properly.
+    app.get("*", (_, res) => {
+      res.sendFile(path.join(webDir, "index.html"));
+    });
+
+    return app;
   }
 
   connect(): Promise<void> {
     return Promise.resolve();
   }
 
-  stop(): Promise<void> {
-    return downloadableEmulators.stop(Emulators.UI);
-  }
-
-  getInfo(): EmulatorInfo {
-    return {
-      name: this.getName(),
-      host: this.args.host,
-      port: this.args.port,
-      pid: downloadableEmulators.getPID(Emulators.UI),
-    };
-  }
-
   getName(): Emulators {
     return Emulators.UI;
+  }
+
+  jsonHandler(handler: (req: express.Request) => Promise<object>): express.Handler {
+    return (req, res) => {
+      handler(req).then(
+        (body) => {
+          res.status(200).json(body);
+        },
+        (err) => {
+          EmulatorLogger.forEmulator(Emulators.UI).log("ERROR", err);
+          res.status(500).json({
+            message: err.message,
+            stack: err.stack,
+            raw: err,
+          });
+        },
+      );
+    };
   }
 }

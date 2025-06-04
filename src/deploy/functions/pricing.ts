@@ -132,12 +132,12 @@ const MB_TO_GHZ = {
 
 /** Whether we have information in our price sheet to calculate the minInstance cost. */
 export function canCalculateMinInstanceCost(endpoint: backend.Endpoint): boolean {
-  if (!endpoint.minInstances) {
+  if (endpoint.minInstances === undefined || endpoint.minInstances === null) {
     return true;
   }
 
   if (endpoint.platform === "gcfv1") {
-    if (!MB_TO_GHZ[endpoint.availableMemoryMb || 256]) {
+    if (!MB_TO_GHZ[endpoint.availableMemoryMb || backend.DEFAULT_MEMORY]) {
       return false;
     }
 
@@ -172,11 +172,11 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   };
 
   for (const endpoint of endpoints) {
-    if (!endpoint.minInstances) {
+    if (endpoint.minInstances === undefined || endpoint.minInstances === null) {
       continue;
     }
 
-    const ramMb = endpoint.availableMemoryMb || 256;
+    const ramMb = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
     const ramGb = ramMb / 1024;
     if (endpoint.platform === "gcfv1") {
       const cpu = MB_TO_GHZ[ramMb];

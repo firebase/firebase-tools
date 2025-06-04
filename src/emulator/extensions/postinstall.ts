@@ -6,33 +6,33 @@ import { Emulators } from "../types";
  * @param postinstall The postinstall instructions to check for console links.
  */
 export function replaceConsoleLinks(postinstall: string): string {
-  const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-  const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
+  const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
+  const uiUrl = uiRunning ? EmulatorRegistry.url(Emulators.UI).toString() : "unknown";
   let subbedPostinstall = postinstall;
   const linkReplacements = new Map<RegExp, string>([
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/storage[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/${Emulators.STORAGE}`,
+      `${uiUrl}${Emulators.STORAGE}`,
     ], // Storage console links
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/firestore[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/${Emulators.FIRESTORE}`,
+      `${uiUrl}${Emulators.FIRESTORE}`,
     ], // Firestore console links
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/database[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/${Emulators.DATABASE}`,
+      `${uiUrl}${Emulators.DATABASE}`,
     ], // RTDB console links
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/authentication[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/${Emulators.AUTH}`,
+      `${uiUrl}${Emulators.AUTH}`,
     ], // Auth console links
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/functions[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/logs`, // There is no functions page in the UI, so redirect to logs.
+      `${uiUrl}logs`, // There is no functions page in the UI, so redirect to logs.
     ], // Functions console links
     [
       /(http[s]?:\/\/)?console\.firebase\.google\.com\/(u\/[0-9]\/)?project\/[A-Za-z0-9-]+\/extensions[A-Za-z0-9\/-]*(?=[\)\]\s])/,
-      `${uiUrl}/${Emulators.EXTENSIONS}`,
+      `${uiUrl}${Emulators.EXTENSIONS}`,
     ], // Extensions console links
   ]);
   for (const [consoleLinkRegex, replacement] of linkReplacements) {

@@ -12,12 +12,14 @@ import * as v2events from "../../../functions/events/v2";
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
   deleteAndRecreate?: backend.Endpoint;
+  unsafe?: boolean;
 }
 
 export interface Changeset {
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
+  endpointsToSkip: backend.Endpoint[];
 }
 
 export type DeploymentPlan = Record<string, Changeset>;
@@ -35,13 +37,13 @@ export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
-  deleteAll?: boolean
+  deleteAll?: boolean,
 ): Record<string, Changeset> {
   const toCreate = utils.groupBy(
     Object.keys(want)
       .filter((id) => !have[id])
       .map((id) => want[id]),
-    keyFn
+    keyFn,
   );
 
   const toDelete = utils.groupBy(
@@ -49,14 +51,38 @@ export function calculateChangesets(
       .filter((id) => !want[id])
       .filter((id) => deleteAll || isFirebaseManaged(have[id].labels || {}))
       .map((id) => have[id]),
-    keyFn
+    keyFn,
   );
+
+  // If the hashes are matching, that means the local function is the same as the server copy.
+  const toSkipPredicate = (id: string): boolean =>
+    !!(
+      !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
+      have[id].hash &&
+      want[id].hash &&
+      want[id].hash === have[id].hash
+    );
+
+  const toSkipEndpointsMap = Object.keys(want)
+    .filter((id) => have[id])
+    .filter((id) => toSkipPredicate(id))
+    .reduce((memo: Record<string, backend.Endpoint>, id) => {
+      memo[id] = want[id];
+      return memo;
+    }, {});
+
+  const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
+  if (Object.keys(toSkip).length) {
+    utils.logLabeledBullet("functions", "Skipping the deploy of unchanged functions.");
+  }
 
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
+      .filter((id) => !toSkipEndpointsMap[id])
       .map((id) => calculateUpdate(want[id], have[id])),
-    (eu: EndpointUpdate) => keyFn(eu.endpoint)
+    (eu: EndpointUpdate) => keyFn(eu.endpoint),
   );
 
   const result: Record<string, Changeset> = {};
@@ -64,12 +90,14 @@ export function calculateChangesets(
     ...Object.keys(toCreate),
     ...Object.keys(toDelete),
     ...Object.keys(toUpdate),
+    ...Object.keys(toSkip),
   ]);
   for (const key of keys) {
     result[key] = {
       endpointsToCreate: toCreate[key] || [],
       endpointsToUpdate: toUpdate[key] || [],
       endpointsToDelete: toDelete[key] || [],
+      endpointsToSkip: toSkip[key] || [],
     };
   }
   return result;
@@ -86,6 +114,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
   const update: EndpointUpdate = {
     endpoint: want,
+    unsafe: checkForUnsafeUpdate(want, have),
   };
   const needsDelete =
     changedTriggerRegion(want, have) ||
@@ -120,7 +149,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       wantBackend.endpoints[region] || {},
       haveBackend.endpoints[region] || {},
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
-      deleteAll
+      deleteAll,
     );
     deployment = { ...deployment, ...changesets };
   }
@@ -131,16 +160,16 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       "You are updating one or more functions to Google Cloud Functions v2, " +
         "which introduces support for concurrent execution. New functions " +
         "default to 80 concurrent executions, but existing functions keep the " +
-        "old default of 1. You can change this with the 'concurrency' option."
+        "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
   return deployment;
 }
 
-/** Whether a user upgraded any endpionts to GCFv2 without setting concurrency. */
+/** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */
 export function upgradedToGCFv2WithoutSettingConcurrency(
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): boolean {
   return backend.someEndpoint(want, (endpoint) => {
     // If there is not an existing v1 function
@@ -161,7 +190,7 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
 }
 
 /**
- * Whether a trigger chagned regions. This can happen if, for example,
+ * Whether a trigger changed regions. This can happen if, for example,
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
@@ -200,13 +229,13 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-  return have.eventTrigger.eventFilters.topic !== want.eventTrigger.eventFilters.topic;
+  return have.eventTrigger.eventFilters!.topic !== want.eventTrigger.eventFilters!.topic;
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
 export function upgradedScheduleFromV1ToV2(
   want: backend.Endpoint,
-  have: backend.Endpoint
+  have: backend.Endpoint,
 ): boolean {
   if (have.platform !== "gcfv1") {
     return false;
@@ -223,6 +252,16 @@ export function upgradedScheduleFromV1ToV2(
   }
 
   return true;
+}
+
+/** Whether a function update is considered unsafe to perform automatically by the CLI */
+export function checkForUnsafeUpdate(want: backend.Endpoint, have: backend.Endpoint): boolean {
+  return (
+    backend.isEventTriggered(want) &&
+    backend.isEventTriggered(have) &&
+    want.eventTrigger.eventType ===
+      v2events.CONVERTABLE_EVENTS[have.eventTrigger.eventType as v2events.Event]
+  );
 }
 
 /** Throws if there is an illegal update to a function. */
@@ -247,16 +286,21 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType !== haveType) {
+
+  // Originally, @genkit-ai/firebase/functions defined onFlow which created an HTTPS trigger that implemented the streaming callable protocol for the Flow.
+  // The new version is firebase-functions/https which defines onCallFlow
+  const upgradingHttpsFunction =
+    backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
+  if (wantType !== haveType && !upgradingHttpsFunction) {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        want
-      )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
+        want,
+      )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`,
     );
   }
   if (want.platform === "gcfv1" && have.platform === "gcfv2") {
     throw new FirebaseError(
-      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
+      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
     );
   }
 
@@ -274,9 +318,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
   if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
-      `[${getFunctionLabel(
-        have
-      )}] Upgrading from GCFv1 to GCFv2 is not yet supported. Please delete your old function or wait for this feature to be ready.`
+      `[${getFunctionLabel(have)}] Upgrading from 1st Gen to 2nd Gen is not yet supported. ` +
+        "See https://firebase.google.com/docs/functions/2nd-gen-upgrade before migrating to 2nd Gen.",
     );
   }
 }

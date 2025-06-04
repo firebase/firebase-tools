@@ -1,58 +1,56 @@
-import * as clc from "cli-color";
-import Table = require("cli-table");
-import * as _ from "lodash";
+import * as clc from "colorette";
+import * as Table from "cli-table3";
 
 import { Command } from "../command";
-import { logPrefix } from "../extensions/extensionsHelper";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as extensionsUtils from "../extensions/utils";
-import { listExtensions } from "../extensions/extensionsApi";
+import { FirebaseError, getErrMsg } from "../error";
+import { last, logLabeledBullet } from "../utils";
+import { listExtensions } from "../extensions/publisherApi";
 import { logger } from "../logger";
+import { logPrefix, unpackExtensionState } from "../extensions/extensionsHelper";
 import { requireAuth } from "../requireAuth";
 
 /**
- * List all published extensions associated with this publisher ID.
+ * List all extensions uploaded under publisher ID.
  */
-export default new Command("ext:dev:list <publisherId>")
-  .description("list all published extensions associated with this publisher ID")
+export const command = new Command("ext:dev:list <publisherId>")
+  .description("list all extensions uploaded under publisher ID")
   .before(requireAuth)
   .action(async (publisherId: string) => {
     let extensions;
     try {
       extensions = await listExtensions(publisherId);
-    } catch (err: any) {
-      throw new FirebaseError(err);
+    } catch (err: unknown) {
+      throw new FirebaseError(getErrMsg(err));
     }
 
     if (extensions.length < 1) {
       throw new FirebaseError(
-        `There are no published extensions associated with publisher ID ${clc.bold(
-          publisherId
+        `There are no extensions uploaded under publisher ID ${clc.bold(
+          publisherId,
         )}. This could happen for two reasons:\n` +
           "  - The publisher ID doesn't exist or could be misspelled\n" +
-          "  - This publisher has not published any extensions\n\n" +
-          "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
+          "  - This publisher has not uploaded any extensions\n\n" +
+          "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again.",
       );
     }
 
     const table = new Table({
-      head: ["Extension ID", "Version", "Published"],
+      head: ["Extension ID", "State", "Latest Version", "Version in Extensions Hub"],
       style: { head: ["yellow"] },
     });
-    // Order extensions newest to oldest.
-    const sorted = _.sortBy(extensions, "createTime", "asc").reverse();
+    const sorted = extensions.sort((a, b) => a.ref.localeCompare(b.ref));
     sorted.forEach((extension) => {
       table.push([
-        _.last(extension.ref.split("/")),
-        extension.latestVersion,
-        extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : "",
+        last(extension.ref.split("/")),
+        unpackExtensionState(extension),
+        extension.latestVersion ?? "-",
+        extension.latestApprovedVersion ?? "-",
       ]);
     });
 
-    utils.logLabeledBullet(
+    logLabeledBullet(
       logPrefix,
-      `list of published extensions for publisher ${clc.bold(publisherId)}:`
+      `list of uploaded extensions for publisher ${clc.bold(publisherId)}:`,
     );
     logger.info(table.toString());
     return { extensions: sorted };

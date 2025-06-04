@@ -12,14 +12,15 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.2",
-    "npm": "^6.10.2",
+    "npm": "^8.19.0",
     "shelljs": "^0.8.3",
     "shx": "^0.3.2",
     "user-home": "^2.0.0"
   },
   "pkg": {
     "scripts": [
-      "node_modules/npm/src/**/*.js"
+      "node_modules/npm/lib/*.js",
+      "node_modules/npm/lib/**/*.js"
     ],
     "assets": [
       "node_modules/.bin/**",
@@ -29,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "pkg": "^5.7.0",
+    "@yao-pkg/pkg": "~6.4.1",
     "prettier": "^1.15.3"
   }
 }

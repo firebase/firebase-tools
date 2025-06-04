@@ -1,7 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
-
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import {
@@ -14,11 +10,7 @@ import { logLabeledWarning } from "../utils";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
-
-export default new Command("ext:uninstall <extensionInstanceId>")
+export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("--local", "deprecated")
   .withForce()
@@ -30,10 +22,9 @@ export default new Command("ext:uninstall <extensionInstanceId>")
     if (options.local) {
       logLabeledWarning(
         logPrefix,
-        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.",
       );
     }
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
-    manifest.showPostDeprecationNotice();
   });

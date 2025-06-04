@@ -1,0 +1,38 @@
+:root {
+  --container-padding: 20px;
+  --vscode-line-height: 140%;
+}
+
+body {
+  margin: 0;
+  padding: 0 var(--container-padding);
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size);
+  line-height: var(--vscode-line-height);
+  font-weight: var(--vscode-font-weight);
+  font-family: var(--vscode-font-family);
+  background-color: var(--vscode-editor-background);
+}
+
+ol,
+ul {
+  padding-left: var(--container-padding);
+}
+
+*:focus {
+  outline-color: var(--vscode-focusBorder) !important;
+}
+
+a {
+  color: var(--vscode-textLink-foreground);
+}
+
+a:hover,
+a:active {
+  color: var(--vscode-textLink-activeForeground);
+}
+
+code {
+  font-size: var(--vscode-editor-font-size);
+  font-family: var(--vscode-editor-font-family);
+}

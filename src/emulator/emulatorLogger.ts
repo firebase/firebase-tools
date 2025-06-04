@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as utils from "../utils";
 import { logger } from "../logger";
@@ -32,6 +32,7 @@ export enum Verbosity {
   DEBUG = 0,
   INFO = 1,
   QUIET = 2,
+  SILENT = 3,
 }
 export type ExtensionLogInfo = {
   ref?: string;
@@ -39,13 +40,20 @@ export type ExtensionLogInfo = {
 };
 
 export class EmulatorLogger {
-  static verbosity: Verbosity = Verbosity.DEBUG;
+  private static verbosity: Verbosity = Verbosity.DEBUG;
   static warnOnceCache = new Set<string>();
 
-  constructor(private data: LogData = {}) {}
+  constructor(
+    public readonly name: string,
+    private data: LogData = {},
+  ) {}
+
+  static setVerbosity(verbosity: Verbosity) {
+    EmulatorLogger.verbosity = verbosity;
+  }
 
   static forEmulator(emulator: Emulators) {
-    return new EmulatorLogger({
+    return new EmulatorLogger(emulator, {
       metadata: {
         emulator: {
           name: emulator,
@@ -55,10 +63,10 @@ export class EmulatorLogger {
   }
 
   static forFunction(functionName: string, extensionLogInfo?: ExtensionLogInfo): EmulatorLogger {
-    return new EmulatorLogger({
+    return new EmulatorLogger(Emulators.FUNCTIONS, {
       metadata: {
         emulator: {
-          name: "functions",
+          name: Emulators.FUNCTIONS,
         },
         function: {
           name: functionName,
@@ -69,10 +77,10 @@ export class EmulatorLogger {
   }
 
   static forExtension(extensionLogInfo: ExtensionLogInfo): EmulatorLogger {
-    return new EmulatorLogger({
+    return new EmulatorLogger(Emulators.EXTENSIONS, {
       metadata: {
         emulator: {
-          name: "extensions",
+          name: Emulators.EXTENSIONS,
         },
         extension: extensionLogInfo,
       },
@@ -185,26 +193,26 @@ export class EmulatorLogger {
       case "googleapis-network-access":
         this.log(
           "WARN",
-          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`,
         );
         break;
       case "unidentified-network-access":
         this.log(
           "WARN",
-          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
+          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`,
         );
         break;
       case "functions-config-missing-value":
         this.log(
           "WARN_ONCE",
-          `It looks like you're trying to access functions.config().${systemLog.data.key} but there is no value there. You can learn more about setting up config here: https://firebase.google.com/docs/functions/local-emulator`
+          `It looks like you're trying to access functions.config().${systemLog.data.key} but there is no value there. You can learn more about setting up config here: https://firebase.google.com/docs/functions/local-emulator`,
         );
         break;
       case "non-default-admin-app-used":
         this.log(
           "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
-            `- This instance will *not* be mocked and will access production resources.`
+            `- This instance will *not* be mocked and will access production resources.`,
         );
         break;
       case "missing-module":
@@ -216,27 +224,27 @@ export class EmulatorLogger {
             systemLog.data.isDev ? "development dependency" : "dependency"
           }. To fix this, run "npm install ${systemLog.data.isDev ? "--save-dev" : "--save"} ${
             systemLog.data.name
-          }" in your functions directory.`
+          }" in your functions directory.`,
         );
         break;
       case "uninstalled-module":
         this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
-You probably need to run "npm install" in your functions directory.`
+You probably need to run "npm install" in your functions directory.`,
         );
         break;
       case "out-of-date-module":
         this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion} so your version is too old. \
-You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`,
         );
         break;
       case "missing-package-json":
         this.log(
           "WARN",
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
+          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`,
         );
         break;
       case "function-code-resolution-failed":
@@ -247,12 +255,12 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         }
         if (systemLog.data.isPotentially.typescript) {
           helper.push(
-            "   - It appears your code is written in Typescript, which must be compiled before emulation."
+            "   - It appears your code is written in Typescript, which must be compiled before emulation.",
           );
         }
         if (systemLog.data.isPotentially.uncompiled) {
           helper.push(
-            `   - You may be able to run "npm run build" in your functions directory to resolve this.`
+            `   - You may be able to run "npm run build" in your functions directory to resolve this.`,
           );
         }
         utils.logWarning(helper.join("\n"), "warn", this.data);
@@ -274,7 +282,14 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
    * @param text
    * @param data
    */
-  logLabeled(type: LogType, label: string, text: string): void {
+  logLabeled(type: LogType, text: string): void;
+  logLabeled(type: LogType, label: string, text: string): void;
+  logLabeled(type: LogType, labelOrText: string, text?: string): void {
+    let label = labelOrText;
+    if (text === undefined) {
+      text = label;
+      label = this.name;
+    }
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`[${label}] ${text}`);
       return;
@@ -293,6 +308,9 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         logger.debug(`[${label}] ${text}`);
         break;
       case "BULLET":
+        utils.logLabeledBullet(label, text, "info", mergedData);
+        break;
+      case "INFO":
         utils.logLabeledBullet(label, text, "info", mergedData);
         break;
       case "SUCCESS":

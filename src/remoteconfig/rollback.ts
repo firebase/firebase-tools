@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import { RemoteConfigTemplate } from "./interfaces";
 
 const apiClient = new Client({
-  urlPrefix: remoteConfigApiOrigin,
+  urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 
@@ -17,7 +17,7 @@ const TIMEOUT = 30000;
  */
 export async function rollbackTemplate(
   projectId: string,
-  versionNumber?: number
+  versionNumber?: number,
 ): Promise<RemoteConfigTemplate> {
   const params = new URLSearchParams();
   params.set("versionNumber", `${versionNumber}`);

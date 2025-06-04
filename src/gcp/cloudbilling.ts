@@ -1,9 +1,10 @@
 import { cloudbillingOrigin } from "../api";
 import { Client } from "../apiv2";
+import { Setup } from "../init";
 import * as utils from "../utils";
 
 const API_VERSION = "v1";
-const client = new Client({ urlPrefix: cloudbillingOrigin, apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: cloudbillingOrigin(), apiVersion: API_VERSION });
 
 export interface BillingAccount {
   name: string;
@@ -11,6 +12,23 @@ export interface BillingAccount {
   displayName: string;
   masterBillingAccount: string;
 }
+
+/**
+ * Returns whether or not project has billing enabled.
+ * Cache the result in the init Setup metadata.
+ * @param setup
+ */
+export async function isBillingEnabled(setup: Setup): Promise<boolean> {
+  if (setup.isBillingEnabled !== undefined) {
+    return setup.isBillingEnabled;
+  }
+  if (!setup.projectId) {
+    return false;
+  }
+  setup.isBillingEnabled = await checkBillingEnabled(setup.projectId);
+  return setup.isBillingEnabled;
+}
+
 /**
  * Returns whether or not project has billing enabled.
  * @param projectId
@@ -18,7 +36,7 @@ export interface BillingAccount {
 export async function checkBillingEnabled(projectId: string): Promise<boolean> {
   const res = await client.get<{ billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
@@ -30,14 +48,14 @@ export async function checkBillingEnabled(projectId: string): Promise<boolean> {
  */
 export async function setBillingAccount(
   projectId: string,
-  billingAccountName: string
+  billingAccountName: string,
 ): Promise<boolean> {
   const res = await client.put<{ billingAccountName: string }, { billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
     {
       billingAccountName: billingAccountName,
     },
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
@@ -49,7 +67,7 @@ export async function setBillingAccount(
 export async function listBillingAccounts(): Promise<BillingAccount[]> {
   const res = await client.get<{ billingAccounts: BillingAccount[] }>(
     utils.endpoint(["billingAccounts"]),
-    { retryCodes: [500, 503] }
+    { retryCodes: [500, 503] },
   );
   return res.body.billingAccounts || [];
 }

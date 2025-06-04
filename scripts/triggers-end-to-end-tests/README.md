@@ -8,16 +8,16 @@ introduced in the following PRs:
 
 # Running Instructions
 
-Install dependencies:
+From the firebase-tools folder, install dependencies:
 
 ```
-cd firebase-tools/scripts/triggers-end-to-end-tests && npm install
+$ (cd scripts/triggers-end-to-end-tests && npm install)
 ```
 
 Run the test:
 
 ```
-$ cd firebase-tools/scripts/triggers-end-to-end-tests && npm test
+$ FBTOOLS_TARGET_PROJECT=demo-test npm run test:triggers-end-to-end
 ```
 
 This end-to-end test uses the mocha testing framework.

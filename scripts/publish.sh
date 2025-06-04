@@ -42,13 +42,6 @@ trap - ERR
 trap "echo 'Missing jq.'; exit 1" ERR
 which jq &> /dev/null
 trap - ERR
-echo "Checked for commands."
-
-echo "Checking for Twitter credentials..."
-trap "echo 'Missing Twitter credentials.'; exit 1" ERR
-test -f "${WDIR}/scripts/twitter.json"
-trap - ERR
-echo "Checked for Twitter credentials..."
 
 echo "Checking for logged-in npm user..."
 trap "echo 'Please login to npm using \`npm login --registry https://wombat-dressing-room.appspot.com\`'; exit 1" ERR
@@ -96,13 +89,13 @@ cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
-npm publish
+npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
 echo "Published to npm."
 
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md 
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."
@@ -112,9 +105,3 @@ echo "Pushed to GitHub."
 echo "Publishing release notes..."
 hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
 echo "Published release notes."
-
-echo "Making the tweet..."
-npm install --no-save twitter@1.7.1
-cp -v "${WDIR}/scripts/twitter.json" "${TEMPDIR}/${REPOSITORY_NAME}/scripts/"
-node ./scripts/tweet.js ${NEW_VERSION}
-echo "Made the tweet."

@@ -1,5 +1,5 @@
-import { bold } from "cli-color";
-import Table = require("cli-table");
+import { bold } from "colorette";
+import * as Table from "cli-table3";
 
 import { Command } from "../command";
 import { Site, listSites } from "../hosting/api";
@@ -9,12 +9,12 @@ import { logger } from "../logger";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 
-export default new Command("hosting:sites:list")
+export const command = new Command("hosting:sites:list")
   .description("list Firebase Hosting sites")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(
     async (
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ sites: Site[] }> => {
       const projectId = needProjectId(options);
       const sites = await listSites(projectId);
@@ -30,5 +30,5 @@ export default new Command("hosting:sites:list")
       logger.info(table.toString());
 
       return { sites };
-    }
+    },
   );

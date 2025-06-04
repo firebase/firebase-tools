@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
+  <metadata xmlns:calibre="http://calibre.kovidgoyal.net/2009/metadata" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:opf="http://www.idpf.org/2007/opf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <dc:contributor opf:role="bkp">calibre (3.15.0) [https://calibre-ebook.com]</dc:contributor>
+    <dc:date>2006-03-06T20:06:33+00:00</dc:date>
+    <dc:identifier id="uuid_id" opf:scheme="uuid">8ee1add8-e31f-4b26-8059-e939a3190706</dc:identifier>
+    <dc:language>en</dc:language>
+    <dc:creator opf:file-as="Unknown" opf:role="aut">Author text</dc:creator>
+    <dc:title>Title text</dc:title>
+    <meta name="calibre:timestamp" content="2018-03-27T14:29:52.175726+00:00"/>
+  </metadata>
+  <manifest>
+    <item href="index.html" id="id1" media-type="application/xhtml+xml"/>
+    <item href="page_styles.css" id="page_css" media-type="text/css"/>
+    <item href="stylesheet.css" id="css" media-type="text/css"/>
+    <item href="toc.ncx" id="ncx" media-type="application/x-dtbncx+xml"/>
+  </manifest>
+  <spine toc="ncx">
+    <itemref idref="id1"/>
+  </spine>
+  <guide/>
+</package>

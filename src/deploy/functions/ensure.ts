@@ -1,18 +1,18 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { previews } from "../../previews";
-import { getFirebaseProject } from "../../management/projects";
+import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
+import { getProject, ProjectInfo } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import { track } from "../../track";
+import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
-const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
+
+const metadataCallCache: Map<string, Promise<ProjectInfo>> = new Map();
 
 /**
  *  By default:
@@ -20,17 +20,21 @@ const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
  *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
  */
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
-  const metadata = await getFirebaseProject(e.project);
+  let metadataCall = metadataCallCache.get(e.project);
+  if (!metadataCall) {
+    metadataCall = getProject(e.project);
+    metadataCallCache.set(e.project, metadataCall);
+  }
+  const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
   } else if (e.platform === "gcfv2") {
-    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+    return await getDefaultServiceAccount(metadata.projectNumber);
   }
   assertExhaustive(e.platform);
 }
 
 function nodeBillingError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
 
@@ -39,14 +43,13 @@ https://console.firebase.google.com/project/${projectId}/usage/details
 For additional information about this requirement, see Firebase FAQs:
 
 ${FAQ_URL}`,
-    { exit: 1 }
+    { exit: 1 },
   );
 }
 
 function nodePermissionError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_permission_error");
   return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${clc.bold(
-    projectId
+    projectId,
   )}.
 
 Please ask a project owner to visit the following URL to enable Cloud Build:
@@ -70,7 +73,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  */
 export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
-    await ensure(projectId, CLOUD_BUILD_API, "functions");
+    await ensure(projectId, cloudbuildOrigin(), "functions");
   } catch (e: any) {
     if (isBillingError(e)) {
       throw nodeBillingError(projectId);
@@ -82,30 +85,16 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
   }
 }
 
-// We previously force-enabled AR. We want to wait on this to see if we can give
-// an upgrade warning in the future. If it already is enabled though we want to
-// remember this and still use the cleaner if necessary.
-export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (!previews.artifactregistry) {
-    return ensureApiEnabled.check(
-      projectId,
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-  }
-  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
-  return true;
-}
-
 /**
  * Returns a mapping of all secrets declared in a stack to the bound service accounts.
  */
 async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
-    for (const s of e.secretEnvironmentVariables! || []) {
+    // BUG BUG BUG? Test whether we've resolved e.serviceAccount to be project-relative
+    // by this point.
+    const sa = e.serviceAccount || ((await module.exports.defaultServiceAccount(e)) as string);
+    for (const s of e.secretEnvironmentVariables || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
       secretsToSa[s.secret] = serviceAccounts;
@@ -123,21 +112,36 @@ async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<stri
 export async function secretAccess(
   projectId: string,
   wantBackend: backend.Backend,
-  haveBackend: backend.Backend
+  haveBackend: backend.Backend,
+  dryRun?: boolean,
 ) {
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
     );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor"
-    );
+    if (dryRun) {
+      const check = await checkServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+      if (check.length) {
+        logLabeledBullet(
+          "functions",
+          `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
+        );
+      }
+    } else {
+      await ensureServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+    }
     logLabeledSuccess(
       "functions",
-      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
     );
   };
 

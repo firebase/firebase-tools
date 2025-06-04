@@ -1,0 +1,43 @@
+name: Functions deploy test
+
+# Allow workflow to be triggered manually.
+#   https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+on:
+  workflow_dispatch:
+#  schedule:
+#    # Run the action every 2 hours.
+#    # * is a special character in YAML so you have to quote this string
+#    - cron: "0 */2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  # Limit at most 1 runs
+  group: functions-deploy-${{ github.ref }}
+
+env:
+  CI: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - uses: google-github-actions/auth@v0
+        with:
+          credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
+          create_credentials_file: true
+
+      - run: npm ci
+
+      - name: "Test function deploy"
+        run: npm run test:functions-deploy
+
+      - name: Print debug logs
+        if: failure()
+        run: find . -type f -name "*debug.log" | xargs cat

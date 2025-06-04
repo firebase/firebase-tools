@@ -17,7 +17,7 @@ const TOKENS = {
     {
       user_id: "mock-user",
     },
-    "mock-secret"
+    "mock-secret",
   ),
 };
 
@@ -116,8 +116,8 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/num_check/filename.jpg",
           file: {},
-        }
-      )
+        },
+      ),
     ).to.be.false;
   });
 
@@ -140,8 +140,8 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/num_check/filename.jpg",
           file: {},
-        }
-      )
+        },
+      ),
     ).to.be.true;
   });
 
@@ -164,8 +164,8 @@ describe("Storage Rules Runtime", function () {
               method: RulesetOperationMethod.GET,
               path: "/b/BUCKET_NAME/o/sizes/md",
               file: {},
-            }
-          )
+            },
+          ),
         ).to.be.true;
       });
 
@@ -186,7 +186,7 @@ describe("Storage Rules Runtime", function () {
             method: RulesetOperationMethod.GET,
             path: "/b/BUCKET_NAME/o/sizes/md",
             file: {},
-          })
+          }),
         ).to.be.true;
         // Authenticated writes are not allowed
         expect(
@@ -195,7 +195,7 @@ describe("Storage Rules Runtime", function () {
             method: RulesetOperationMethod.WRITE,
             path: "/b/BUCKET_NAME/o/sizes/md",
             file: {},
-          })
+          }),
         ).to.be.false;
         // Unautheticated reads are not allowed
         expect(
@@ -203,7 +203,7 @@ describe("Storage Rules Runtime", function () {
             method: RulesetOperationMethod.GET,
             path: "/b/BUCKET_NAME/o/sizes/md",
             file: {},
-          })
+          }),
         ).to.be.false;
         // Unautheticated writes are not allowed
         expect(
@@ -211,7 +211,7 @@ describe("Storage Rules Runtime", function () {
             method: RulesetOperationMethod.WRITE,
             path: "/b/BUCKET_NAME/o/sizes/md",
             file: {},
-          })
+          }),
         ).to.be.false;
       });
     });
@@ -221,8 +221,15 @@ describe("Storage Rules Runtime", function () {
         rules_version = '2';
         service firebase.storage {
           match /b/{bucket}/o {
-            match /sizes/{size} {
-              allow read,write: if request.path[1] == "xl";
+            match /{allPaths=**} {
+              // Test that request.path is relative to the service (firebase.storage) 
+              allow read: if request.path[0] == "b" &&
+                request.path[1] == "BUCKET_NAME" &&
+                request.path[2] == "o" &&
+                request.path[3] == "dir" &&
+                request.path[4] == "subdir" &&
+                request.path[5] == "image.png" &&
+                request.path == path("/b/BUCKET_NAME/o/dir/subdir/image.png");
             }
           }
         }`;
@@ -231,17 +238,17 @@ describe("Storage Rules Runtime", function () {
         await testIfPermitted(runtime, rulesContent, {
           token: TOKENS.signedInUser,
           method: RulesetOperationMethod.GET,
-          path: "/b/BUCKET_NAME/o/sizes/md",
+          path: "/b/BUCKET_NAME/o/dir/subdir/disallowed.png",
           file: {},
-        })
+        }),
       ).to.be.false;
       expect(
         await testIfPermitted(runtime, rulesContent, {
           token: TOKENS.signedInUser,
           method: RulesetOperationMethod.GET,
-          path: "/b/BUCKET_NAME/o/sizes/xl",
+          path: "/b/BUCKET_NAME/o/dir/subdir/image.png",
           file: {},
-        })
+        }),
       ).to.be.true;
     });
 
@@ -262,7 +269,7 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.WRITE,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { after: createFakeResourceMetadata({ size: 500 * 1024 /* 500 KiB */ }) },
-        })
+        }),
       ).to.be.true;
       expect(
         await testIfPermitted(runtime, rulesContent, {
@@ -270,7 +277,7 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.WRITE,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { after: createFakeResourceMetadata({ size: 10 * 1024 * 1024 /* 10 MiB */ }) },
-        })
+        }),
       ).to.be.false;
     });
   });
@@ -294,7 +301,7 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { before: createFakeResourceMetadata({ size: 500 * 1024 /* 500 KiB */ }) },
-        })
+        }),
       ).to.be.true;
 
       expect(
@@ -303,7 +310,7 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { before: createFakeResourceMetadata({ size: 10 * 1024 * 1024 /* 10 MiB */ }) },
-        })
+        }),
       ).to.be.false;
     });
 
@@ -326,7 +333,7 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { before: metadata1, after: metadata1 },
-        })
+        }),
       ).to.be.true;
       expect(
         await testIfPermitted(runtime, rulesContent, {
@@ -334,8 +341,40 @@ describe("Storage Rules Runtime", function () {
           method: RulesetOperationMethod.GET,
           path: "/b/BUCKET_NAME/o/files/goat",
           file: { before: metadata1, after: metadata2 },
-        })
+        }),
       ).to.be.false;
+    });
+  });
+
+  describe("features", () => {
+    describe("ternary", () => {
+      it("should support ternary operators", async () => {
+        const rulesContent = `
+        rules_version = '2';
+        service firebase.storage {
+          match /b/{bucket}/o {
+            match /{file} {
+              allow read: if request.path[3] == "test" ? true : false;
+            }
+          }
+        }`;
+
+        expect(
+          await testIfPermitted(runtime, rulesContent, {
+            method: RulesetOperationMethod.GET,
+            path: "/b/BUCKET_NAME/o/test",
+            file: {},
+          }),
+        ).to.be.true;
+
+        expect(
+          await testIfPermitted(runtime, rulesContent, {
+            method: RulesetOperationMethod.GET,
+            path: "/b/BUCKET_NAME/o/someRandomFile",
+            file: {},
+          }),
+        ).to.be.false;
+      });
     });
   });
 });
@@ -343,8 +382,8 @@ describe("Storage Rules Runtime", function () {
 async function testIfPermitted(
   runtime: StorageRulesRuntime,
   rulesetContent: string,
-  verificationOpts: RulesetVerificationOpts,
-  runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
+  verificationOpts: Omit<RulesetVerificationOpts, "projectId">,
+  runtimeVariableOverrides: { [s: string]: ExpressionValue } = {},
 ) {
   const loadResult = await runtime.loadRuleset({
     files: [
@@ -360,8 +399,8 @@ async function testIfPermitted(
   }
 
   const { permitted, issues } = await loadResult.ruleset.verify(
-    verificationOpts,
-    runtimeVariableOverrides
+    { ...verificationOpts, projectId: "demo-project-id" },
+    runtimeVariableOverrides,
   );
 
   if (permitted === undefined) {

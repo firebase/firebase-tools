@@ -1,17 +1,17 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { logger } from "../logger";
 import { configstore } from "../configstore";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
+import { User, Tokens } from "../types/auth";
 
-module.exports = new Command("login")
+export const command = new Command("login")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
@@ -21,12 +21,12 @@ module.exports = new Command("login")
         "Cannot run login in non-interactive mode. See " +
           clc.bold("login:ci") +
           " to generate a token for use in non-interactive environments.",
-        { exit: 1 }
+        { exit: 1 },
       );
     }
 
-    const user = options.user as auth.User | undefined;
-    const tokens = options.tokens as auth.Tokens | undefined;
+    const user = options.user as User | undefined;
+    const tokens = options.tokens as Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));
@@ -35,17 +35,24 @@ module.exports = new Command("login")
 
     if (!options.reauth) {
       utils.logBullet(
-        "Firebase optionally collects CLI usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
+        "Firebase CLI integrates with Gemini in Firebase API to provide assistant features. Learn more about using Gemini in Firebase and how we train our models: https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions",
       );
-      const collectUsage = await promptOnce({
-        type: "confirm",
-        name: "collectUsage",
-        message: "Allow Firebase to collect CLI usage and error reporting information?",
-      });
+      const geminiUsage = await confirm("Enable Gemini in Firebase features?");
+      configstore.set("gemini", geminiUsage);
+
+      logger.info();
+      utils.logBullet(
+        "Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.",
+      );
+      const collectUsage = await confirm(
+        "Allow Firebase to collect CLI and Emulator Suite usage and error reporting information?",
+      );
       configstore.set("usage", collectUsage);
-      if (collectUsage) {
+
+      if (geminiUsage || collectUsage) {
+        logger.info();
         utils.logBullet(
-          "To change your data collection preference at any time, run `firebase logout` and log in again."
+          "To change your the preference at any time, run `firebase logout` and `firebase login` again.",
         );
       }
     }
@@ -55,7 +62,7 @@ module.exports = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"));
+    const result = await auth.loginGoogle(useLocalhost, user?.email);
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time
@@ -70,7 +77,7 @@ module.exports = new Command("login")
       // Shouldn't really happen, but the JWT library that parses our results may
       // return a string
       logger.debug(
-        "Unexpected string for UserCredentials.user. Maybe an auth response JWT didn't parse right?"
+        "Unexpected string for UserCredentials.user. Maybe an auth response JWT didn't parse right?",
       );
       utils.logSuccess("Success! Logged in");
     }

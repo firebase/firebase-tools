@@ -5,14 +5,16 @@ import { Binding, getServiceAccount, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
-const apiClient = new Client({ urlPrefix: resourceManagerOrigin, apiVersion: API_VERSION });
+const apiClient = new Client({ urlPrefix: resourceManagerOrigin(), apiVersion: API_VERSION });
 
 // Roles listed at https://firebase.google.com/docs/projects/iam/roles-predefined-product
 export const firebaseRoles = {
   apiKeysViewer: "roles/serviceusage.apiKeysViewer",
   authAdmin: "roles/firebaseauth.admin",
+  functionsDeveloper: "roles/cloudfunctions.developer",
   hostingAdmin: "roles/firebasehosting.admin",
   runViewer: "roles/run.viewer",
+  serviceUsageConsumer: "roles/serviceusage.serviceUsageConsumer",
 };
 
 /**
@@ -23,7 +25,7 @@ export const firebaseRoles = {
  */
 export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
   const response = await apiClient.post<void, Policy>(
-    `/projects/${projectIdOrNumber}:getIamPolicy`
+    `/projects/${projectIdOrNumber}:getIamPolicy`,
   );
   return response.body;
 }
@@ -39,14 +41,14 @@ export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
 export async function setIamPolicy(
   projectIdOrNumber: string,
   newPolicy: Policy,
-  updateMask = ""
+  updateMask = "",
 ): Promise<Policy> {
   const response = await apiClient.post<{ policy: Policy; updateMask: string }, Policy>(
     `/projects/${projectIdOrNumber}:setIamPolicy`,
     {
       policy: newPolicy,
       updateMask: updateMask,
-    }
+    },
   );
   return response.body;
 }
@@ -61,10 +63,13 @@ export async function setIamPolicy(
 export async function addServiceAccountToRoles(
   projectId: string,
   serviceAccountName: string,
-  roles: string[]
+  roles: string[],
+  skipAccountLookup = false,
 ): Promise<Policy> {
   const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
-    getServiceAccount(projectId, serviceAccountName),
+    skipAccountLookup
+      ? Promise.resolve({ name: serviceAccountName })
+      : getServiceAccount(projectId, serviceAccountName),
     getIamPolicy(projectId),
   ]);
 
@@ -76,7 +81,7 @@ export async function addServiceAccountToRoles(
   roles.forEach((roleName) => {
     let bindingIndex = findIndex(
       projectPolicy.bindings,
-      (binding: Binding) => binding.role === roleName
+      (binding: Binding) => binding.role === roleName,
     );
 
     // create a new binding if the role doesn't exist in the policy yet
@@ -97,4 +102,37 @@ export async function addServiceAccountToRoles(
   });
 
   return setIamPolicy(projectId, projectPolicy, "bindings");
+}
+
+export async function serviceAccountHasRoles(
+  projectId: string,
+  serviceAccountName: string,
+  roles: string[],
+  skipAccountLookup = false,
+): Promise<boolean> {
+  const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
+    skipAccountLookup
+      ? Promise.resolve({ name: serviceAccountName })
+      : getServiceAccount(projectId, serviceAccountName),
+    getIamPolicy(projectId),
+  ]);
+
+  // The way the service account name is formatted in the Policy object
+  // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
+  // serviceAccount:my-project-id@appspot.gserviceaccount.com
+  const memberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
+
+  for (const roleName of roles) {
+    const binding = projectPolicy.bindings.find((b: Binding) => b.role === roleName);
+    if (!binding) {
+      return false;
+    }
+
+    // No need to update if service account already has role
+    if (!binding.members.includes(memberName)) {
+      return false;
+    }
+  }
+
+  return true;
 }

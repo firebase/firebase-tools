@@ -14,11 +14,11 @@ import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { FirebaseError } from "../error";
 import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance";
 
-export default new Command("database:instances:create <instanceName>")
-  .description("create a realtime database instance")
+export const command = new Command("database:instances:create <instanceName>")
+  .description("create a Realtime Database instance")
   .option(
     "-l, --location <location>",
-    "(optional) location for the database instance, defaults to us-central1"
+    "(optional) location for the database instance, defaults to us-central1",
   )
   .before(requirePermissions, ["firebasedatabase.instances.create"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
@@ -34,7 +34,7 @@ export default new Command("database:instances:create <instanceName>")
       projectId,
       instanceName,
       location,
-      DatabaseInstanceType.USER_DATABASE
+      DatabaseInstanceType.USER_DATABASE,
     );
     logger.info(`created database instance ${instance.name}`);
     return instance;

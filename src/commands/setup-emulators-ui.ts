@@ -4,8 +4,8 @@ import { Emulators } from "../emulator/types";
 
 const NAME = Emulators.UI;
 
-export default new Command(`setup:emulators:${NAME}`)
-  .description(`downloads the ${NAME} emulator`)
+export const command = new Command(`setup:emulators:${NAME}`)
+  .description(`download the ${NAME} emulator`)
   .action(() => {
     return downloadEmulator(NAME);
   });

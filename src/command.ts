@@ -1,18 +1,19 @@
-import { bold } from "cli-color";
+import * as clc from "colorette";
 import { CommanderStatic } from "commander";
-import { first, last, get, size, head, keys, values } from "lodash";
+import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers } from "./utils";
-import { loadRC, RC } from "./rc";
+import { getInheritedOption, withTimeout } from "./utils";
+import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import { track } from "./track";
-import clc = require("cli-color");
+import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
+import { Options } from "./options";
+import { useConsoleLoggers } from "./logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -37,6 +38,7 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
+  private aliases: string[] = [];
   private actionFn: ActionFunction = (): void => {
     // noop by default, unless overwritten by `.action(fn)`.
   };
@@ -59,6 +61,16 @@ export class Command {
    */
   description(t: string): Command {
     this.descriptionText = t;
+    return this;
+  }
+
+  /**
+   * Sets an alias for a command.
+   * @param aliases an alternativre name for the command. Users will be able to call the command via this name.
+   * @return the command, for chaining.
+   */
+  alias(alias: string): Command {
+    this.aliases.push(alias);
     return this;
   }
 
@@ -126,7 +138,7 @@ export class Command {
   }
 
   /**
-   * Registers the command with the client. This is used to inisially set up
+   * Registers the command with the client. This is used to initially set up
    * all the commands and wraps their functionality with analytics and error
    * handling.
    * @param client the client object (from src/index.js).
@@ -138,6 +150,9 @@ export class Command {
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
     }
+    if (this.aliases) {
+      cmd.aliases(this.aliases);
+    }
     this.options.forEach((args) => {
       const flags = args.shift();
       cmd.option(flags, ...args);
@@ -145,6 +160,7 @@ export class Command {
 
     if (this.helpText) {
       cmd.on("--help", () => {
+        console.log(); // Seperates the help text from global options.
         console.log(this.helpText);
       });
     }
@@ -157,7 +173,7 @@ export class Command {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cmd.action((...args: any[]) => {
       const runner = this.runner();
-      const start = new Date().getTime();
+      const start = process.uptime();
       const options = last(args);
       // We do not want to provide more arguments to the action functions than
       // we are able to - we're not sure what the ripple effects are. Our
@@ -173,47 +189,99 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
-            { exit: 1 }
-          )
+            `Too many arguments. Run ${clc.bold(
+              "firebase help " + this.name,
+            )} for usage instructions`,
+            { exit: 1 },
+          ),
         );
         return;
       }
 
+      const isEmulator = this.name.includes("emulator") || this.name === "serve";
+      if (isEmulator) {
+        void trackEmulator("command_start", { command_name: this.name });
+      }
+
       runner(...args)
-        .then((result) => {
+        .then(async (result) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "success",
-                  result: result,
-                },
-                null,
-                2
-              )
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "success",
+                    result: result,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
+          }
+          const duration = Math.floor((process.uptime() - start) * 1000);
+          const trackSuccess = trackGA4("command_execution", {
+            command_name: this.name,
+            result: "success",
+            duration,
+            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+          });
+          if (!isEmulator) {
+            await withTimeout(5000, trackSuccess);
+          } else {
+            await withTimeout(
+              5000,
+              Promise.all([
+                trackSuccess,
+                trackEmulator("command_success", {
+                  command_name: this.name,
+                  duration,
+                }),
+              ]),
             );
           }
-          const duration = new Date().getTime() - start;
-          void track(this.name, "success", duration).then(() => process.exit());
+          process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
-            console.log(
-              JSON.stringify(
-                {
-                  status: "error",
-                  error: err.message,
-                },
-                null,
-                2
-              )
-            );
+            await new Promise((resolve) => {
+              process.stdout.write(
+                JSON.stringify(
+                  {
+                    status: "error",
+                    error: err.message,
+                  },
+                  null,
+                  2,
+                ),
+                resolve,
+              );
+            });
           }
-          const duration = Date.now() - start;
-          const errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
+          const duration = Math.floor((process.uptime() - start) * 1000);
+          await withTimeout(
+            5000,
+            Promise.all([
+              trackGA4(
+                "command_execution",
+                {
+                  command_name: this.name,
+                  result: "error",
+                  interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+                },
+                duration,
+              ),
+              isEmulator
+                ? trackEmulator("command_error", {
+                    command_name: this.name,
+                    duration,
+                    error_type: err.exit === 1 ? "user" : "unexpected",
+                  })
+                : Promise.resolve(),
+            ]),
+          );
 
-          await Promise.all([track(this.name, "error", duration), track(errorEvent, "", duration)]);
           client.errorOut(err);
         });
     });
@@ -224,7 +292,7 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async prepare(options: any): Promise<void> {
+  public async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
@@ -243,8 +311,8 @@ export class Command {
 
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
-    } else {
-      setupLoggers();
+    } else if (!options.isMCP) {
+      useConsoleLoggers();
     }
 
     if (getInheritedOption(options, "config")) {
@@ -282,25 +350,33 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: any): void {
+  private applyRC(options: Options): void {
     const rc = loadRC(options);
     options.rc = rc;
-
-    options.project =
-      options.project || (configstore.get("activeProjects") || {})[options.projectRoot];
+    const activeProject = options.projectRoot
+      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
+      : undefined;
+    options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
       options.project = options.config.defaults.project;
     }
 
     const aliases = rc.projects;
-    const rcProject = get(aliases, options.project);
+    const rcProject = options.project ? aliases[options.project] : undefined;
     if (rcProject) {
+      // Look up aliases
       options.projectAlias = options.project;
       options.project = rcProject;
     } else if (!options.project && size(aliases) === 1) {
+      // If there's only a single alias, use that.
+      // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
       options.projectAlias = head(keys(aliases));
       options.project = head(values(aliases));
+    } else if (!options.project && aliases["default"]) {
+      // If there's an alias named 'default', default to that.
+      options.projectAlias = "default";
+      options.project = aliases["default"];
     }
   }
 
@@ -311,7 +387,7 @@ export class Command {
   }): Promise<void> {
     if (options.project?.match(/^\d+$/)) {
       await requireAuth(options);
-      const { projectId, projectNumber } = await getFirebaseProject(options.project);
+      const { projectId, projectNumber } = await getProject(options.project);
       options.projectId = projectId;
       options.projectNumber = projectNumber;
     } else {
@@ -325,7 +401,7 @@ export class Command {
    * @return an async function that executes the command.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  runner(): (...a: any[]) => Promise<void> {
+  runner(): (...a: any[]) => Promise<any> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none
@@ -366,7 +442,10 @@ export function validateProjectId(project: string): void {
   if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
-  track("Project ID Check", "invalid");
+  trackGA4("error", {
+    error_type: "Error (User)",
+    details: "Invalid project ID",
+  });
   const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.

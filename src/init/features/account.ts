@@ -5,16 +5,16 @@ import {
   loginAdditionalAccount,
   setActiveAccount,
   findAccountByEmail,
-  Account,
   setProjectAccount,
 } from "../../auth";
-import { promptOnce } from "../../prompt";
+import { Account } from "../../types/auth";
 import { FirebaseError } from "../../error";
+import { select } from "../../prompt";
 
 async function promptForAccount() {
   logger.info();
   logger.info(
-    `Which account do you want to use for this project? Choose an account or add a new one now`
+    `Which account do you want to use for this project? Choose an account or add a new one now`,
   );
   logger.info();
 
@@ -31,9 +31,7 @@ async function promptForAccount() {
     value: "__add__",
   });
 
-  const emailChoice: string = await promptOnce({
-    type: "list",
-    name: "email",
+  const emailChoice: string = await select<string>({
     message: "Please select an option:",
     choices,
   });

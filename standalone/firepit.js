@@ -184,7 +184,6 @@ let runtimeBinsPath = path.join(homePath, ".cache", "firebase", "runtime");
 const npmArgs = [
   `--script-shell=${runtimeBinsPath}/shell${isWindows ? ".bat" : ""}`,
   `--globalconfig=${path.join(runtimeBinsPath, "npmrc")}`,
-  `--userconfig=${path.join(runtimeBinsPath, "npmrc")}`,
   `--scripts-prepend-node-path=auto`
 ];
 

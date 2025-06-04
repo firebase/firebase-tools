@@ -9,7 +9,13 @@ import { bulkCheckProductsProvisioned } from "../../extensions/provisioningHelpe
 import { handleSecretParams } from "./secrets";
 import { checkBilling } from "./validate";
 
-export async function deploy(context: Context, options: Options, payload: Payload) {
+/**
+ * Deploys extensions
+ * @param context The deploy context
+ * @param options The deploy options
+ * @param payload The deploy payload
+ */
+export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
   const projectId = needProjectId(options);
   // First, check that billing is enabled
   await checkBilling(projectId, options.nonInteractive);
@@ -21,8 +27,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
     ...(payload.instancesToConfigure ?? []),
   ]);
 
-  // Then, check if the secrets used exist, and prompt to create them if not.
-  await handleSecretParams(payload, context.have!, options.nonInteractive);
+  if (context.have) {
+    // Then, check if the secrets used exist, and prompt to create them if not.
+    await handleSecretParams(payload, context.have, options.nonInteractive);
+  }
 
   // Then, run validateOnly calls.
   const errorHandler = new ErrorHandler();
@@ -49,7 +57,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
     const task = tasks.configureExtensionInstanceTask(
       projectId,
       configure,
-      /* validateOnly=*/ true
+      /* validateOnly=*/ true,
     );
     void validationQueue.run(task);
   }
@@ -59,13 +67,12 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
   validationQueue.process();
   validationQueue.close();
-
   await validationPromise;
 
   if (errorHandler.hasErrors()) {
     errorHandler.print();
     throw new FirebaseError(
-      `Extensions deployment failed validation. No changes have been made to the Extension instances on ${projectId}`
+      `Extensions deployment failed validation. No changes have been made to the Extension instances on ${projectId}`,
     );
   }
 }

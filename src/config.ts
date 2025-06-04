@@ -3,7 +3,7 @@
 import { FirebaseConfig } from "./firebaseConfig";
 
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 const cjson = require("cjson");
@@ -11,12 +11,12 @@ const cjson = require("cjson");
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
 import * as fsutils from "./fsutils";
-import { promptOnce } from "./prompt";
+import { confirm } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
-const loadCJSON = require("./loadCJSON");
+import { loadCJSON } from "./loadCJSON";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
@@ -32,6 +32,8 @@ export class Config {
     "hosting",
     "storage",
     "remoteconfig",
+    "dataconnect",
+    "apphosting",
   ];
 
   public options: any;
@@ -57,13 +59,13 @@ export class Config {
         clc.bold('"firebase"') +
           " key in firebase.json is deprecated. Run " +
           clc.bold("firebase use --add") +
-          " instead"
+          " instead",
       );
     }
 
-    // Move the deprecated top-level "rules" ket into the "database" object
-    if (_.has(this._src, "rules")) {
-      _.set(this._src, "database.rules", this._src.rules);
+    // Move the deprecated top-level "rules" key into the "database" object
+    if (this._src?.rules) {
+      this._src.database = { ...this._src.database, rules: this._src.rules };
     }
 
     // If a top-level key contains a string path pointing to a suported file
@@ -76,17 +78,30 @@ export class Config {
       }
     });
 
-    // Inject default functions config and source if missing.
-    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-      if (Array.isArray(this.get("functions"))) {
-        if (!this.get("functions.[0].source")) {
-          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
-        }
-      } else {
-        if (!this.get("functions.source")) {
-          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions source if missing.
+    if (this.get("functions")) {
+      if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+        if (Array.isArray(this.get("functions"))) {
+          if (!this.get("functions.[0].source")) {
+            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
+        } else {
+          if (!this.get("functions.source")) {
+            this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          }
         }
       }
+    }
+
+    if (
+      this._src.dataconnect?.location ||
+      (Array.isArray(this._src.dataconnect) && this._src.dataconnect.some((c: any) => c?.location))
+    ) {
+      utils.logLabeledWarning(
+        "dataconnect",
+        "'location' has been moved from 'firebase.json' to 'dataconnect.yaml'. " +
+          "Please remove 'dataconnect.location' from 'firebase.json' and add it as top level field to 'dataconnect.yaml' instead ",
+      );
     }
   }
 
@@ -97,7 +112,7 @@ export class Config {
       // if e.g. rules.json has {"rules": {}} use that
       const segments = target.split(".");
       const lastSegment = segments[segments.length - 1];
-      if (Object.keys(out).length === 1 && _.has(out, lastSegment)) {
+      if (Object.keys(out).length === 1 && out[lastSegment]) {
         out = out[lastSegment];
       }
       return out;
@@ -144,7 +159,7 @@ export class Config {
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
-          { exit: 1 }
+          { exit: 1 },
         );
     }
   }
@@ -167,11 +182,14 @@ export class Config {
     return _.set(this.data, key, value);
   }
 
-  has(key: string) {
+  has(key: string): boolean {
     return _.has(this.data, key);
   }
 
   path(pathName: string) {
+    if (path.isAbsolute(pathName)) {
+      return pathName;
+    }
     const outPath = path.normalize(path.join(this.projectDir, pathName));
     if (path.relative(this.projectDir, outPath).includes("..")) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
@@ -179,7 +197,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any) {
+  readProjectFile(p: string, options: any = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");
@@ -198,13 +216,21 @@ export class Config {
     }
   }
 
-  writeProjectFile(p: string, content: any) {
-    if (typeof content !== "string") {
-      content = JSON.stringify(content, null, 2) + "\n";
+  writeProjectFile(p: string, content: any): void {
+    const path = this.path(p);
+    fs.ensureFileSync(path);
+    fs.writeFileSync(path, stringifyContent(content), "utf8");
+    switch (p) {
+      case "firebase.json":
+        utils.logSuccess("Wrote configuration info to " + clc.bold("firebase.json"));
+        break;
+      case ".firebaserc":
+        utils.logSuccess("Wrote project information to " + clc.bold(".firebaserc"));
+        break;
+      default:
+        utils.logSuccess("Wrote " + clc.bold(p));
+        break;
     }
-
-    fs.ensureFileSync(this.path(p));
-    fs.writeFileSync(this.path(p), content, "utf8");
   }
 
   projectFileExists(p: string): boolean {
@@ -215,30 +241,48 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
-  askWriteProjectFile(p: string, content: any, force?: boolean) {
-    const writeTo = this.path(p);
-    let next;
-    if (fsutils.fileExistsSync(writeTo) && !force) {
-      next = promptOnce({
-        type: "confirm",
-        message: "File " + clc.underline(p) + " already exists. Overwrite?",
-        default: false,
-      });
-    } else {
-      next = Promise.resolve(true);
+  async confirmWriteProjectFile(
+    path: string,
+    content: any,
+    confirmByDefault?: boolean,
+  ): Promise<boolean> {
+    const writeTo = this.path(path);
+    if (!fsutils.fileExistsSync(writeTo)) {
+      return true;
     }
-
-    return next.then((result: boolean) => {
-      if (result) {
-        this.writeProjectFile(p, content);
-        utils.logSuccess("Wrote " + clc.bold(p));
-      } else {
-        utils.logBullet("Skipping write of " + clc.bold(p));
-      }
+    const existingContent = fsutils.readFile(writeTo);
+    const newContent = stringifyContent(content);
+    if (existingContent === newContent) {
+      utils.logBullet(clc.bold(path) + " is unchanged");
+      return false;
+    }
+    const shouldWrite = await confirm({
+      message: "File " + clc.underline(path) + " already exists. Overwrite?",
+      default: !!confirmByDefault,
     });
+    if (!shouldWrite) {
+      utils.logBullet("Skipping write of " + clc.bold(path));
+      return false;
+    }
+    return true;
   }
 
-  public static load(options: any, allowMissing?: boolean) {
+  async askWriteProjectFile(
+    path: string,
+    content: any,
+    force?: boolean,
+    confirmByDefault?: boolean,
+  ): Promise<void> {
+    if (!force) {
+      const shouldWrite = await this.confirmWriteProjectFile(path, content, confirmByDefault);
+      if (!shouldWrite) {
+        return;
+      }
+    }
+    this.writeProjectFile(path, content);
+  }
+
+  public static load(options: any, allowMissing?: boolean): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
@@ -273,6 +317,14 @@ export class Config {
 
     throw new FirebaseError("Not in a Firebase app directory (could not locate firebase.json)", {
       exit: 1,
+      status: 404,
     });
   }
+}
+
+function stringifyContent(content: any): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  return JSON.stringify(content, null, 2) + "\n";
 }

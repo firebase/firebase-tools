@@ -1,0 +1,10 @@
+{
+  "name": "dist",
+  "version": "0.0.1",
+  "dependencies": {
+    "firebase-functions": "^5.1.0"
+  },
+  "engines": {
+    "node": "20"
+  }
+}

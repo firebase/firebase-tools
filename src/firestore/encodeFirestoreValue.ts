@@ -11,23 +11,23 @@ function isPlainObject(input: any): boolean {
 }
 
 function encodeHelper(val: any): any {
-  if (_.isString(val)) {
+  if (typeof val === "string") {
     return { stringValue: val };
   }
-  if (_.isBoolean(val)) {
+  if (val === !!val) {
     return { booleanValue: val };
   }
-  if (_.isInteger(val)) {
+  if (Number.isInteger(val)) {
     return { integerValue: val };
   }
   // Integers are handled above, the remaining numbers are treated as doubles
-  if (_.isNumber(val)) {
+  if (typeof val === "number") {
     return { doubleValue: val };
   }
-  if (_.isDate(val)) {
+  if (val instanceof Date && !Number.isNaN(val)) {
     return { timestampValue: val.toISOString() };
   }
-  if (_.isArray(val)) {
+  if (Array.isArray(val)) {
     const encodedElements = [];
     for (const v of val) {
       const enc = encodeHelper(v);
@@ -39,7 +39,7 @@ function encodeHelper(val: any): any {
       arrayValue: { values: encodedElements },
     };
   }
-  if (_.isNull(val)) {
+  if (val === null) {
     return { nullValue: "NULL_VALUE" };
   }
   if (val instanceof Buffer || val instanceof Uint8Array) {
@@ -52,10 +52,16 @@ function encodeHelper(val: any): any {
   }
   throw new FirebaseError(
     `Cannot encode ${val} to a Firestore Value. ` +
-      "The emulator does not yet support Firestore document reference values or geo points."
+      "The emulator does not yet support Firestore document reference values or geo points.",
   );
 }
 
-export function encodeFirestoreValue(data: any): { [key: string]: any } {
-  return _.mapValues(data, encodeHelper);
+export function encodeFirestoreValue(data: any): Record<string, any> {
+  return Object.entries(data).reduce(
+    (acc, [key, val]) => {
+      acc[key] = encodeHelper(val);
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
 }

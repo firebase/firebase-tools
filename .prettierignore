@@ -2,3 +2,10 @@
 /node_modules
 /lib/**/*
 /CONTRIBUTING.md
+/scripts/frameworks-tests/vite-project/**
+/scripts/webframeworks-deploy-tests/angular/**
+/scripts/webframeworks-deploy-tests/nextjs/**
+/src/frameworks/docs/**
+
+# Intentionally invalid YAML file:
+/src/test/fixtures/extension-yamls/invalid/extension.yaml

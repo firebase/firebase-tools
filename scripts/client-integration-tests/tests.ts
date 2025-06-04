@@ -98,7 +98,7 @@ describe("database:set|get|remove", () => {
 
     await client.database.set(
       path,
-      Object.assign({ data: JSON.stringify(data), force: true }, opts)
+      Object.assign({ data: JSON.stringify(data), force: true }, opts),
     );
 
     // Have to read to a file in order to get data.

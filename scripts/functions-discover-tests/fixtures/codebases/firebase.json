@@ -1,0 +1,24 @@
+{
+  "functions": [
+    {
+      "source": "v1",
+      "codebase": "v1",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    },
+    {
+      "source": "v2",
+      "codebase": "v2",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ]
+}

@@ -165,3 +165,7 @@ exports.storageBucketMetadataReaction = functions.storage
     console.log("Object", JSON.stringify(object));
     return true;
   });
+
+exports.onReq = functions.https.onRequest((req, res) => {
+  res.send("onReq");
+});

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -6,10 +6,10 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
-import * as functionsConfigClone from "../functionsConfigClone";
+import { functionsConfigClone } from "../functionsConfigClone";
 import * as utils from "../utils";
 
-export default new Command("functions:config:clone")
+export const command = new Command("functions:config:clone")
   .description("clone environment config from another project")
   .option("--from <projectId>", "the project from which to clone configuration")
   .option("--only <keys>", "a comma-separated list of keys to clone")
@@ -31,7 +31,7 @@ export default new Command("functions:config:clone")
     const projectId = needProjectId(options);
     if (!options.from) {
       throw new FirebaseError(
-        `Must specify a source project in ${clc.bold("--from <projectId>")} option.`
+        `Must specify a source project in ${clc.bold("--from <projectId>")} option.`,
       );
     } else if (options.from === projectId) {
       throw new FirebaseError("From project and destination can't be the same project.");
@@ -49,11 +49,11 @@ export default new Command("functions:config:clone")
 
     await functionsConfigClone(options.from, projectId, only, except);
     utils.logSuccess(
-      `Cloned functions config from ${clc.bold(options.from)} into ${clc.bold(projectId)}`
+      `Cloned functions config from ${clc.bold(options.from)} into ${clc.bold(projectId)}`,
     );
     logger.info(
       `\nPlease deploy your functions for the change to take effect by running ${clc.bold(
-        "firebase deploy --only functions"
-      )}\n`
+        "firebase deploy --only functions",
+      )}\n`,
     );
   });

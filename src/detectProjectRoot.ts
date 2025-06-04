@@ -7,7 +7,10 @@ export function detectProjectRoot(options: { cwd?: string; configPath?: string }
   if (options.configPath) {
     const fullPath = resolve(projectRootDir, options.configPath);
     if (!fileExistsSync(fullPath)) {
-      throw new FirebaseError(`Could not load config file ${options.configPath}.`, { exit: 1 });
+      throw new FirebaseError(`Could not load config file ${options.configPath}.`, {
+        exit: 1,
+        status: 404,
+      });
     }
 
     return dirname(fullPath);

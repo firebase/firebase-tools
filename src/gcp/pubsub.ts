@@ -1,12 +1,11 @@
 import { Client } from "../apiv2";
 import { pubsubOrigin } from "../api";
-import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 
 const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: pubsubOrigin,
+  urlPrefix: pubsubOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });

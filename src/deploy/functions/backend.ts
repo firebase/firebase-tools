@@ -1,29 +1,28 @@
-import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as run from "../../gcp/run";
 import * as utils from "../../utils";
-import * as runtimes from "./runtimes";
+import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray, zip } from "../../functional";
+import { assertExhaustive, flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
-  retryCount?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoffDuration?: proto.Duration;
-  maxBackoffDuration?: proto.Duration;
-  maxDoublings?: number;
+  retryCount?: number | null;
+  maxRetrySeconds?: number | null;
+  minBackoffSeconds?: number | null;
+  maxBackoffSeconds?: number | null;
+  maxDoublings?: number | null;
 }
 
 export interface ScheduleTrigger {
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
-  // we just infer identifiers from function labels.
+  // we just infer identifiers from function labels. OTOH, schedule cannot
+  // be null, because there is no default to set it to.
   schedule?: string;
-  timeZone?: string;
-  retryConfig?: ScheduleRetryConfig;
+  timeZone?: string | null;
+  retryConfig?: ScheduleRetryConfig | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -33,7 +32,7 @@ export interface ScheduleTriggered {
 
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
-  invoker?: string[];
+  invoker?: string[] | null;
 }
 
 /** Something that has an HTTPS trigger */
@@ -42,7 +41,9 @@ export interface HttpsTriggered {
 }
 
 /** API agnostic version of a Firebase callable function. */
-export type CallableTrigger = Record<string, never>;
+export type CallableTrigger = {
+  genkitAction?: string;
+};
 
 /** Something that has a callable trigger */
 export interface CallableTriggered {
@@ -73,7 +74,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey, string>;
+  eventFilters?: Record<EventFilterKey, string>;
 
   /**
    * Additional path-pattern filters for narrowing down which events to receive.
@@ -87,7 +88,7 @@ export interface EventTrigger {
    * The region of a trigger, which may not be the same region as the function.
    * Cross-regional triggers are not permitted, i.e. triggers that are in a
    * single-region location that is different from the function's region.
-   * When omitted, the region defults to the function's region.
+   * When omitted, the region defaults to the function's region.
    */
   region?: string;
 
@@ -95,7 +96,7 @@ export interface EventTrigger {
    * Which service account EventArc should use to emit a function.
    * This field is ignored for v1 and defaults to the
    */
-  serviceAccountEmail?: string;
+  serviceAccount?: string | null;
 
   /**
    * The name of the channel where the function receive events.
@@ -110,22 +111,22 @@ export interface EventTriggered {
 }
 
 export interface TaskQueueRateLimits {
-  maxConcurrentDispatches?: number;
-  maxDispatchesPerSecond?: number;
+  maxConcurrentDispatches?: number | null;
+  maxDispatchesPerSecond?: number | null;
 }
 
 export interface TaskQueueRetryConfig {
-  maxAttempts?: number;
-  maxRetrySeconds?: number;
-  maxBackoffSeconds?: number;
-  maxDoublings?: number;
-  minBackoffSeconds?: number;
+  maxAttempts?: number | null;
+  maxRetrySeconds?: number | null;
+  maxBackoffSeconds?: number | null;
+  maxDoublings?: number | null;
+  minBackoffSeconds?: number | null;
 }
 
 export interface TaskQueueTrigger {
-  rateLimits?: TaskQueueRateLimits;
-  retryConfig?: TaskQueueRetryConfig;
-  invoker?: string[];
+  rateLimits?: TaskQueueRateLimits | null;
+  retryConfig?: TaskQueueRetryConfig | null;
+  invoker?: string[] | null;
 }
 
 export interface TaskQueueTriggered {
@@ -136,6 +137,7 @@ export interface BlockingTrigger {
   eventType: string;
   options?: Record<string, unknown>;
 }
+
 export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
 }
@@ -154,9 +156,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
     return endpoint.blockingTrigger.eventType;
-  } else {
-    throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
+  assertExhaustive(endpoint);
 }
 
 // TODO(inlined): Enum types should be singularly named
@@ -169,9 +170,21 @@ export const AllIngressSettings: IngressSettings[] = [
   "ALLOW_INTERNAL_AND_GCLB",
 ];
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
-export const AllMemoryOptions: MemoryOptions[] = [
-  128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
-];
+const allMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+
+/**
+ * Is a given number a valid MemoryOption?
+ */
+export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
+  return allMemoryOptions.includes(mem as MemoryOptions);
+}
+
+/**
+ * Is a given string a valid VpcEgressSettings?
+ */
+export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
+  return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
+}
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -204,8 +217,8 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -223,8 +236,8 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -270,21 +283,21 @@ export function secretVersionName(s: SecretEnvVar): string {
 }
 
 export interface ServiceConfiguration {
-  concurrency?: number;
-  labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  availableMemoryMb?: MemoryOptions;
-  cpu?: number | "gcf_gen1";
-  timeoutSeconds?: number;
-  maxInstances?: number;
-  minInstances?: number;
+  concurrency?: number | null;
+  labels?: Record<string, string> | null;
+  environmentVariables?: Record<string, string> | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  availableMemoryMb?: MemoryOptions | null;
+  cpu?: number | "gcf_gen1" | null;
+  timeoutSeconds?: number | null;
+  maxInstances?: number | null;
+  minInstances?: number | null;
   vpc?: {
     connector: string;
-    egressSettings?: VpcEgressSettings;
-  };
-  ingressSettings?: IngressSettings;
-  serviceAccountEmail?: "default" | string;
+    egressSettings?: VpcEgressSettings | null;
+  } | null;
+  ingressSettings?: IngressSettings | null;
+  serviceAccount?: string | null;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
@@ -328,6 +341,8 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
+export type EndpointState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -339,21 +354,38 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
-    runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
+    runtime: Runtime;
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
     // from function labels.
     codebase?: string;
-    // URI is available on GCFv1 for HTTPS triggers and
-    // on GCFv2 always
+    // URI is available on GCFv1 for HTTPS triggers and on GCFv2 always
     uri?: string;
+    // sourceUploadUrl is available on GCFv1 only
     sourceUploadUrl?: string;
+    // source is available on GCFv2 only
+    source?: gcfV2.Source;
     // TODO(colerogers): yank this field and set securityLevel to SECURE_ALWAYS
     // in functionFromEndpoint during a breaking change release.
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
     // GCFv1 can be http or https and GCFv2 is always https
     securityLevel?: gcf.SecurityLevel;
+
+    // "Hash" is a value derived from function labels that is used to check if there are any changes
+    // between the serverside and local copies of the function.
+    hash?: string;
+
+    // Marked as true if a user specifically called this function or codebase with the --only flag.
+    targetedByOnly?: boolean;
+
+    // Output only. For v2 functions, this is the run service ID.
+    // This may eventually be different than id because GCF is going to start
+    // doing name translations
+    runServiceId?: string;
+
+    // State of the endpoint.
+    state?: EndpointState;
   };
 
 export interface RequiredAPI {
@@ -394,7 +426,7 @@ export function of(...endpoints: Endpoint[]): Backend {
   for (const endpoint of endpoints) {
     bkend.endpoints[endpoint.region] = bkend.endpoints[endpoint.region] || {};
     if (bkend.endpoints[endpoint.region][endpoint.id]) {
-      throw new Error("Trying to create a backend with the same endpiont twice");
+      throw new Error("Trying to create a backend with the same endpoint twice");
     }
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
@@ -461,7 +493,7 @@ export function functionName(cloudFunction: TargetIds): string {
 /**
  * The naming pattern used to create a Pub/Sub Topic or Scheduler Job ID for a given scheduled function.
  * This pattern is hard-coded and assumed throughout tooling, both in the Firebase Console and in the CLI.
- * For e.g., we automatically assume a schedule and topic with this name exists when we list funcitons and
+ * For e.g., we automatically assume a schedule and topic with this name exists when we list functions and
  * see a label that it has an attached schedule. This saves us from making extra API calls.
  * DANGER: We use the pattern defined here to deploy and delete schedules,
  * and to display scheduled functions in the Firebase console
@@ -470,18 +502,6 @@ export function functionName(cloudFunction: TargetIds): string {
  */
 export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
-}
-
-interface PrivateContextFields {
-  existingBackend: Backend;
-  loadedExistingBackend?: boolean;
-
-  // NOTE(inlined): Will this need to become a more nuanced data structure
-  // if we support GCFv1, v2, and Run?
-  unreachableRegions: {
-    gcfV1: string[];
-    gcfV2: string[];
-  };
 }
 
 /**
@@ -497,14 +517,14 @@ interface PrivateContextFields {
  * @return The backend
  */
 export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
-  const ctx = context as Context & PrivateContextFields;
-  if (!ctx.loadedExistingBackend || forceRefresh) {
-    await loadExistingBackend(ctx);
+  if (!context.loadedExistingBackend || forceRefresh) {
+    await loadExistingBackend(context);
   }
-  return ctx.existingBackend;
+  // loadExisting guarantees the validity of existingBackend and unreachableRegions
+  return context.existingBackend!;
 }
 
-async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise<void> {
+async function loadExistingBackend(ctx: Context): Promise<void> {
   ctx.loadedExistingBackend = true;
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
@@ -527,20 +547,8 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-    const runResults = await Promise.all(
-      gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
-    );
-    for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
-      // I don't know why but code complete knows apiFunction is a gcfv2.CloudFunction
-      // and the compiler thinks it's type {}.
-      const endpoint = gcfV2.endpointFromFunction(apiFunction as any);
-      endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
-      // N.B. We don't generally do anything with multiple containers, but we
-      // might have to figure out WTF to do here if we're updating multiple containers
-      // and our only reference point is the image. Hopefully by then we'll be
-      // on the next gen infrastructure and have state we can refer back to.
-      endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
-
+    for (const apiFunction of gcfV2Results.functions) {
+      const endpoint = gcfV2.endpointFromFunction(apiFunction);
       ctx.existingBackend.endpoints[endpoint.region] =
         ctx.existingBackend.endpoints[endpoint.region] || {};
       ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
@@ -563,9 +571,8 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
-  const ctx = context as Context & PrivateContextFields;
-  if (!ctx.loadedExistingBackend) {
-    await loadExistingBackend(ctx);
+  if (!context.loadedExistingBackend) {
+    await loadExistingBackend(context);
   }
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
@@ -577,43 +584,43 @@ export async function checkAvailability(context: Context, want: Backend): Promis
     }
   }
 
-  const neededUnreachableV1 = ctx.unreachableRegions.gcfV1.filter((region) =>
-    gcfV1Regions.has(region)
+  const neededUnreachableV1 = context.unreachableRegions?.gcfV1.filter((region) =>
+    gcfV1Regions.has(region),
   );
-  const neededUnreachableV2 = ctx.unreachableRegions.gcfV2.filter((region) =>
-    gcfV2Regions.has(region)
+  const neededUnreachableV2 = context.unreachableRegions?.gcfV2.filter((region) =>
+    gcfV2Regions.has(region),
   );
-  if (neededUnreachableV1.length) {
+  if (neededUnreachableV1?.length) {
     throw new FirebaseError(
       "The following Cloud Functions regions are currently unreachable:\n\t" +
         neededUnreachableV1.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
-  if (neededUnreachableV2.length) {
+  if (neededUnreachableV2?.length) {
     throw new FirebaseError(
       "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
         neededUnreachableV2.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment."
+        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
-  if (ctx.unreachableRegions.gcfV1.length) {
+  if (context.unreachableRegions?.gcfV1.length) {
     utils.logLabeledWarning(
       "functions",
       "The following Cloud Functions regions are currently unreachable:\n" +
-        ctx.unreachableRegions.gcfV1.join("\n") +
-        "\nCloud Functions in these regions won't be deleted."
+        context.unreachableRegions.gcfV1.join("\n") +
+        "\nCloud Functions in these regions won't be deleted.",
     );
   }
 
-  if (ctx.unreachableRegions.gcfV2.length) {
+  if (context.unreachableRegions?.gcfV2.length) {
     utils.logLabeledWarning(
       "functions",
       "The following Cloud Functions V2 regions are currently unreachable:\n" +
-        ctx.unreachableRegions.gcfV2.join("\n") +
-        "\nCloud Functions in these regions won't be deleted."
+        context.unreachableRegions.gcfV2.join("\n") +
+        "\nCloud Functions in these regions won't be deleted.",
     );
   }
 }
@@ -628,7 +635,7 @@ export function allEndpoints(backend: Backend): Endpoint[] {
 /** A helper utility for checking whether an endpoint matches a predicate. */
 export function someEndpoint(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): boolean {
   for (const endpoints of Object.values(backend.endpoints)) {
     if (Object.values<Endpoint>(endpoints).some(predicate)) {
@@ -641,7 +648,7 @@ export function someEndpoint(
 /** A helper utility for finding an endpoint that matches the predicate. */
 export function findEndpoint(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): Endpoint | undefined {
   for (const endpoints of Object.values(backend.endpoints)) {
     const endpoint = Object.values<Endpoint>(endpoints).find(predicate);
@@ -652,7 +659,7 @@ export function findEndpoint(
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */
 export function matchingBackend(
   backend: Backend,
-  predicate: (endpoint: Endpoint) => boolean
+  predicate: (endpoint: Endpoint) => boolean,
 ): Backend {
   const filtered: Backend = {
     ...backend,
@@ -696,7 +703,7 @@ export const missingEndpoint =
  */
 export function compareFunctions(
   left: TargetIds & { platform: FunctionsPlatform },
-  right: TargetIds & { platform: FunctionsPlatform }
+  right: TargetIds & { platform: FunctionsPlatform },
 ): number {
   if (left.platform !== right.platform) {
     return right.platform < left.platform ? -1 : 1;

@@ -1,0 +1,10 @@
+{
+  "name": "esm",
+  "type": "module",
+  "dependencies": {
+    "firebase-functions": "^5.1.0"
+  },
+  "engines": {
+    "node": "20"
+  }
+}

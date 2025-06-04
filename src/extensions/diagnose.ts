@@ -2,8 +2,8 @@ import { logPrefix } from "./extensionsHelper";
 import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import * as resourceManager from "../gcp/resourceManager";
+import { confirm } from "../prompt";
 import { listInstances } from "./extensionsApi";
-import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
@@ -17,7 +17,7 @@ export async function diagnose(projectId: string): Promise<boolean> {
   const projectNumber = await getProjectNumber({ projectId });
   const firexSaProjectId = utils.envOverride(
     "FIREBASE_EXTENSIONS_SA_PROJECT_ID",
-    "gcp-sa-firebasemods"
+    "gcp-sa-firebasemods",
   );
 
   const saEmail = `service-${projectNumber}@${firexSaProjectId}.iam.gserviceaccount.com`;
@@ -36,7 +36,7 @@ export async function diagnose(projectId: string): Promise<boolean> {
       throw new FirebaseError(
         "Unable to get project IAM policy, permission denied (403). Please " +
           "make sure you have sufficient project privileges or if this is a brand new project " +
-          "try again in a few minutes."
+          "try again in a few minutes.",
       );
     }
     throw e;
@@ -44,7 +44,7 @@ export async function diagnose(projectId: string): Promise<boolean> {
 
   if (
     policy.bindings.find(
-      (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail)
+      (b) => b.role === SERVICE_AGENT_ROLE && b.members.includes("serviceAccount:" + saEmail),
     )
   ) {
     utils.logLabeledSuccess(logPrefix, "Project IAM policy OK");
@@ -52,14 +52,12 @@ export async function diagnose(projectId: string): Promise<boolean> {
   } else {
     utils.logWarning(
       "Firebase Extensions Service Agent is missing a required IAM role " +
-        "`Firebase Extensions API Service Agent`."
+        "`Firebase Extensions API Service Agent`.",
     );
-    const fix = await promptOnce({
-      type: "confirm",
-      message:
-        "Would you like to fix the issue by updating IAM policy to include Firebase " +
+    const fix = await confirm(
+      "Would you like to fix the issue by updating IAM policy to include Firebase " +
         "Extensions Service Agent with role `Firebase Extensions API Service Agent`",
-    });
+    );
     if (fix) {
       policy.bindings.push({
         role: SERVICE_AGENT_ROLE,

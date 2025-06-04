@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "strict": true /* enable all strict type-checking options */,
+    "allowJs": true,
+    "checkJs": false,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react",
+    "outDir": "dist",
+    "module": "ES2022",
+    "target": "ES2017",
+    "lib": ["ES2020", "DOM"],
+    "moduleResolution": "node",
+    "rootDirs": ["src", "../src", "common"],
+    "types": [
+      "node",
+      "@wdio/mocha-framework",
+      "@wdio/globals/types",
+      "@types/mocha"
+    ]
+  },
+  "ts-node": {
+    "esm": true
+  },
+  "include": ["src/**/*", "common/**/*", "../src/types/**/*"]
+}

@@ -1,5 +1,5 @@
 import * as chokidar from "chokidar";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
@@ -10,8 +10,8 @@ import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import * as parseBoltRules from "../parseBoltRules";
-import { Client } from "../apiv2";
+import { parseBoltRules } from "../parseBoltRules";
+import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,6 +21,7 @@ export interface DatabaseEmulatorArgs {
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
+  single_project_mode?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
@@ -43,13 +44,13 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "WARN_ONCE",
             "database",
-            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled."
+            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled.",
           );
           continue;
         }
 
         this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
-        this.rulesWatcher.on("change", async (event, stats) => {
+        this.rulesWatcher.on("change", async () => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
           // Adding a small delay prevents that at very little cost.
@@ -58,7 +59,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "BULLET",
             "database",
-            `Change detected, updating rules for ${c.instance}...`
+            `Change detected, updating rules for ${c.instance}...`,
           );
 
           try {
@@ -90,7 +91,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled("WARN", "database", rulesError);
           this.logger.logLabeled("WARN", "database", "Failed to update rules");
           throw new FirebaseError(
-            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`,
           );
         }
       }
@@ -102,7 +103,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.DATABASE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
@@ -131,7 +132,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const req = http.request(
         {
           method: "PUT",
-          host,
+          host: connectableHostname(host),
           port,
           path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
           headers: {
@@ -151,7 +152,7 @@ export class DatabaseEmulator implements EmulatorInstance {
               })
               .on("end", reject);
           }
-        }
+        },
       );
 
       req.on("error", reject);
@@ -168,13 +169,8 @@ export class DatabaseEmulator implements EmulatorInstance {
         ? parseBoltRules(rulesPath).toString()
         : fs.readFileSync(rulesPath, "utf8");
 
-    const info = this.getInfo();
     try {
-      const client = new Client({
-        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-        auth: false,
-      });
-      await client.put(`/.settings/rules.json`, content, {
+      await EmulatorRegistry.client(Emulators.DATABASE).put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
         queryParams: { ns: instance },
       });

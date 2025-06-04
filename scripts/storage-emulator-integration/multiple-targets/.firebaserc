@@ -1,0 +1,17 @@
+{
+  "projects": {},
+  "targets": {
+    "fake-project-id": {
+      "storage": {
+        "allowNone": [
+          "fake-project-id.appspot.com"
+        ],
+        "allowAll": [
+          "fake-project-id-2.appspot.com"
+        ]
+      }
+    }
+  },
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
+}

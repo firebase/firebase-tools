@@ -7,8 +7,8 @@ import AbortController from "abort-controller";
 import { Client } from "./apiv2";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
 import { logger } from "./logger";
-import * as ProfileReport from "./profileReport";
-import * as responseToError from "./responseToError";
+import { ProfileReport, ProfileReportOptions } from "./profileReport";
+import { responseToError } from "./responseToError";
 import * as utils from "./utils";
 
 tmp.setGracefulCleanup();
@@ -42,7 +42,7 @@ export async function profiler(options: any): Promise<unknown> {
     spinner.stop();
     controller.abort();
     const dataFile = options.input || tmpFile;
-    const reportOptions = {
+    const reportOptions: ProfileReportOptions = {
       format: outputFormat,
       isFile: fileOut,
       isInput: !!options.input,

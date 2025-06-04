@@ -12,7 +12,7 @@ import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
  */
 export function registerHandlers(
   app: express.Express,
-  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState
+  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState,
 ): void {
   app.get(`/emulator/action`, (req, res) => {
     const { mode, oobCode, continueUrl, apiKey, tenantId } = req.query as Record<
@@ -143,6 +143,32 @@ export function registerHandlers(
           }
         }
       }
+      case "verifyAndChangeEmail": {
+        try {
+          const { newEmail } = setAccountInfoImpl(state, { oobCode });
+          if (continueUrl) {
+            return res.redirect(303, continueUrl);
+          } else {
+            return res.status(200).json({
+              authEmulator: { success: `The email has been successfully changed.`, newEmail },
+            });
+          }
+        } catch (e: any) {
+          if (
+            e instanceof NotImplementedError ||
+            (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
+          ) {
+            return res.status(400).json({
+              authEmulator: {
+                error: `Your request to change your email has expired or the link has already been used.`,
+                instructions: `Try changing your email again.`,
+              },
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
       case "signIn": {
         if (!continueUrl) {
           return res.status(400).json({
@@ -172,7 +198,7 @@ export function registerHandlers(
     res.set("Content-Type", "text/html; charset=utf-8");
     const apiKey = req.query.apiKey as string | undefined;
     const providerId = req.query.providerId as string | undefined;
-    const tenantId = req.query.tenantId as string | undefined;
+    const tenantId = (req.query.tenantId || req.query.tid) as string | undefined;
     if (!apiKey || !providerId) {
       return res.status(400).json({
         authEmulator: {
@@ -186,9 +212,9 @@ export function registerHandlers(
     const options = providerInfos
       .map(
         (
-          info
+          info,
         ) => `<li class="js-reuse-account mdc-list-item mdc-ripple-upgraded" tabindex="0" data-id-token="${encodeURIComponent(
-          createFakeClaims(info)
+          createFakeClaims(info),
         )}">
           <span class="mdc-list-item__ripple"></span>
           ${
@@ -204,7 +230,7 @@ export function registerHandlers(
           <span class="mdc-list-item__secondary-text fallback-secondary-text" id="reuse-email">${
             info.email || ""
           }</span>
-      </li>`
+      </li>`,
       )
       .join("\n");
 
@@ -291,7 +317,7 @@ export function registerHandlers(
   }
 </script>
 <script src="https://apis.google.com/js/api.js"></script>
-`
+`,
     );
   });
 }

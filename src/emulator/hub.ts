@@ -1,41 +1,44 @@
-import * as cors from "cors";
 import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
-import * as bodyParser from "body-parser";
 
 import * as utils from "../utils";
 import { logger } from "../logger";
-import { Constants } from "./constants";
-import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
+import { Emulators, EmulatorInfo, ListenSpec } from "./types";
 import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
+import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
+import { PortName } from "./portUtils";
+import { DataConnectEmulator } from "./dataconnectEmulator";
+import { isVSCodeExtension } from "../vsCodeUtils";
+import { maybeUsePortForwarding } from "./env";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
 
 export interface Locator {
   version: string;
-  host: string;
-  port: number;
+  // Ways of reaching the hub as URL prefix, such as http://127.0.0.1:4000
+  origins: string[];
 }
 
 export interface EmulatorHubArgs {
   projectId: string;
-  port?: number;
-  host?: string;
+  listen: ListenSpec[];
+  listenForEmulator: Record<PortName, ListenSpec[]>;
 }
 
-export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
+export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
-export class EmulatorHub implements EmulatorInstance {
+export class EmulatorHub extends ExpressBasedEmulator {
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
   static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
+  static PATH_CLEAR_DATA_CONNECT = "/dataconnect/clearData";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
@@ -51,7 +54,8 @@ export class EmulatorHub implements EmulatorInstance {
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
 
-    if (locator.version !== this.CLI_VERSION) {
+    // TODO: In case the locator file format is changed, handle issues with format incompatability
+    if (!isVSCodeExtension() && locator.version !== this.CLI_VERSION) {
       logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
       return undefined;
     }
@@ -65,37 +69,57 @@ export class EmulatorHub implements EmulatorInstance {
     return path.join(dir, filename);
   }
 
-  private hub: express.Express;
-  private destroyServer?: () => Promise<void>;
-
   constructor(private args: EmulatorHubArgs) {
-    this.hub = express();
-    // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
-    // Safe since all Hub APIs are cookieless.
-    this.hub.use(cors({ origin: true }));
-    this.hub.use(bodyParser.json());
+    super({
+      listen: args.listen,
+    });
+  }
 
-    this.hub.get("/", (req, res) => {
-      res.json(this.getLocator());
+  override async start(): Promise<void> {
+    await super.start();
+    await this.writeLocatorFile();
+  }
+
+  getRunningEmulatorsMapping(): GetEmulatorsResponse {
+    const emulators: GetEmulatorsResponse = {};
+    for (const info of EmulatorRegistry.listRunningWithInfo()) {
+      emulators[info.name] = maybeUsePortForwarding({
+        listen: this.args.listenForEmulator[info.name],
+        ...info,
+      });
+    }
+    return emulators;
+  }
+
+  protected override async createExpressApp(): Promise<express.Express> {
+    const app = await super.createExpressApp();
+    app.get("/", (req, res) => {
+      res.json({
+        ...this.getLocator(),
+        // For backward compatibility:
+        host: utils.connectableHostname(this.args.listen[0].address),
+        port: this.args.listen[0].port,
+      });
     });
 
-    this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
-      const body: GetEmulatorsResponse = {};
-      for (const emulator of EmulatorRegistry.listRunning()) {
-        const info = EmulatorRegistry.getInfo(emulator);
-        body[emulator] = info!;
+    app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
+      res.json(this.getRunningEmulatorsMapping());
+    });
+
+    app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Export cannot be triggered by external callers.`,
+        });
       }
-      res.json(body);
-    });
-
-    this.hub.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
-      const exportPath = req.body.path;
-      utils.logLabeledBullet(
-        "emulators",
-        `Received export request. Exporting data to ${exportPath}.`
-      );
+      const path: string = req.body.path;
+      const initiatedBy: string = req.body.initiatedBy || "unknown";
+      utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
       try {
-        await new HubExport(this.args.projectId, exportPath).exportAll();
+        await new HubExport(this.args.projectId, {
+          path,
+          initiatedBy,
+        }).exportAll();
         utils.logLabeledSuccess("emulators", "Export complete.");
         res.status(200).send({
           message: "OK",
@@ -109,10 +133,10 @@ export class EmulatorHub implements EmulatorInstance {
       }
     });
 
-    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
+    app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -126,10 +150,10 @@ export class EmulatorHub implements EmulatorInstance {
       res.status(200).json({ enabled: false });
     });
 
-    this.hub.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
+    app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -142,35 +166,31 @@ export class EmulatorHub implements EmulatorInstance {
       await emu.reloadTriggers();
       res.status(200).json({ enabled: true });
     });
-  }
 
-  async start(): Promise<void> {
-    const { host, port } = this.getInfo();
-    const server = this.hub.listen(port, host);
-    this.destroyServer = utils.createDestroyer(server);
-    await this.writeLocatorFile();
-  }
+    app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Clear Data Connect cannot be triggered by external callers.`,
+        });
+      }
+      utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
 
-  async connect(): Promise<void> {
-    // No-op
+      const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+      if (!instance) {
+        res.status(400).json({ error: "The Data Connect emulator is not running." });
+        return;
+      }
+
+      await instance.clearData();
+      res.status(200).json({ success: true });
+    });
+
+    return app;
   }
 
   async stop(): Promise<void> {
-    if (this.destroyServer) {
-      await this.destroyServer();
-    }
+    await super.stop();
     await this.deleteLocatorFile();
-  }
-
-  getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.HUB);
-    const port = this.args.port || Constants.getDefaultPort(Emulators.HUB);
-
-    return {
-      name: this.getName(),
-      host,
-      port,
-    };
   }
 
   getName(): Emulators {
@@ -178,12 +198,18 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   private getLocator(): Locator {
-    const { host, port } = this.getInfo();
     const version = pkg.version;
+    const origins: string[] = [];
+    for (const spec of this.args.listen) {
+      if (spec.family === "IPv6") {
+        origins.push(`http://[${utils.connectableHostname(spec.address)}]:${spec.port}`);
+      } else {
+        origins.push(`http://${utils.connectableHostname(spec.address)}:${spec.port}`);
+      }
+    }
     return {
       version,
-      host,
-      port,
+      origins,
     };
   }
 
@@ -195,7 +221,7 @@ export class EmulatorHub implements EmulatorInstance {
     if (fs.existsSync(locatorPath)) {
       utils.logLabeledWarning(
         "emulators",
-        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
     }
 
@@ -215,7 +241,8 @@ export class EmulatorHub implements EmulatorInstance {
     const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
     return new Promise((resolve, reject) => {
       fs.unlink(locatorPath, (e) => {
-        if (e) {
+        // If the file is already deleted, no need to throw.
+        if (e && e.code !== "ENOENT") {
           reject(e);
         } else {
           resolve();

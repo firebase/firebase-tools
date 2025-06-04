@@ -1,8 +1,9 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 
 import { Client } from "./apiv2";
 import { configstore } from "./configstore";
+import { logger } from "./logger";
 import { realtimeOrigin } from "./api";
 import * as utils from "./utils";
 
@@ -26,7 +27,7 @@ export function fetchMOTD(): void {
         ", need at least",
         clc.bold(motd.minVersion) + ")\n\nRun",
         clc.bold("npm install -g firebase-tools"),
-        "to upgrade."
+        "to upgrade.",
       );
       process.exit(1);
     }
@@ -41,12 +42,19 @@ export function fetchMOTD(): void {
       }
     }
   } else {
-    const origin = utils.addSubdomain(realtimeOrigin, "firebase-public");
+    const origin = utils.addSubdomain(realtimeOrigin(), "firebase-public");
     const c = new Client({ urlPrefix: origin, auth: false });
-    c.get("/cli.json").then((res) => {
-      motd = Object.assign({}, res.body);
-      configstore.set("motd", motd);
-      configstore.set("motd.fetched", Date.now());
-    });
+    c.get("/cli.json")
+      .then((res) => {
+        motd = Object.assign({}, res.body);
+        configstore.set("motd", motd);
+        configstore.set("motd.fetched", Date.now());
+      })
+      .catch((err) => {
+        utils.logWarning(
+          "Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection.",
+        );
+        logger.debug(`Failed to fetch MOTD ${err}`);
+      });
   }
 }

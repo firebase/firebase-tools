@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as os from "os";
 
@@ -16,11 +16,11 @@ interface exportOptions {
   batchSize: number;
 }
 
-export default new Command("auth:export [dataFile]")
-  .description("Export accounts from your Firebase project into a data file")
+export const command = new Command("auth:export [dataFile]")
+  .description("export accounts from your Firebase project into a data file")
   .option(
     "--format <format>",
-    "Format of exported data (csv, json). Ignored if <dataFile> has format extension."
+    "Format of exported data (csv, json). Ignored if <dataFile> has format extension.",
   )
   .before(requirePermissions, ["firebaseauth.users.get"])
   .action((dataFile, options) => {

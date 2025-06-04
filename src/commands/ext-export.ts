@@ -1,6 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
+import { saveEtags } from "../extensions/etags";
 import {
   displayExportInfo,
   parameterizeProject,
@@ -14,12 +15,12 @@ import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 
-module.exports = new Command("ext:export")
+export const command = new Command("ext:export")
   .description(
-    "export all Extension instances installed on a project to a local Firebase directory"
+    "export all Extension instances installed on a project to a local Firebase directory",
   )
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
@@ -31,11 +32,12 @@ module.exports = new Command("ext:export")
     // Look up the instances that already exist,
     // set any secrets to latest version,
     // and strip project IDs from the param values.
+    // Note that this does not, nor should it include instances defined via SDK.
     const have = await Promise.all(await planner.have(projectId));
 
     if (have.length === 0) {
       logger.info(
-        `No extension instances installed on ${projectId}, so there is nothing to export.`
+        `No extension instances installed on ${projectId}, so there is nothing to export.`,
       );
       return;
     }
@@ -46,7 +48,7 @@ module.exports = new Command("ext:export")
       withRef.map(async (i) => {
         const subbed = await setSecretParamsToLatest(i);
         return parameterizeProject(projectId, projectNumber, subbed);
-      })
+      }),
     );
 
     displayExportInfo(withRefSubbed, withoutRef);
@@ -54,9 +56,8 @@ module.exports = new Command("ext:export")
     if (
       !options.nonInteractive &&
       !options.force &&
-      !(await promptOnce({
+      !(await confirm({
         message: "Do you wish to add these Extension instances to firebase.json?",
-        type: "confirm",
         default: true,
       }))
     ) {
@@ -87,6 +88,8 @@ module.exports = new Command("ext:export")
         nonInteractive: options.nonInteractive,
         force: options.force,
       },
-      true /** allowOverwrite */
+      true /** allowOverwrite */,
     );
+
+    saveEtags(options.rc, projectId, have);
   });

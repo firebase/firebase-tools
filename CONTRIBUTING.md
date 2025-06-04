@@ -148,15 +148,10 @@ are unavailable to Pull Requests coming from forks of the repository.
 | path            | description                                               |
 | --------------- | --------------------------------------------------------- |
 | `src`           | Contains shared/support code for the commands             |
-| `src/bin`       | Contains the runnable script. You shouldn't need to touch |
-:                 : this content.                                             :
-| `src/commands`  | Contains code for the commands, organized by              |
-:                 : one-file-per-command with dashes.                         :
-| `src/templates` | Contains static files needed for various reasons          |
-:                 : (inittemplates, login success HTML, etc.)                 :
-| `src/test`      | Contains tests. Mirrors the top-level directory structure |
-:                 : (i.e., `src/test/commands` contains command tests and     :
-:                 : `src/test/gcp` contains `gcp` tests)                      :
+| `src/bin`       | Contains the runnable script. You shouldn't need to touch this content. |
+| `src/commands`  | Contains code for the commands, organized by one-file-per-command with dashes. |
+| `src/test`      | Contains test helpers. Actual tests (`*.spec.ts`) should be colocated with source files. |
+| `templates`     | Contains static files needed for various reasons (init templates, login success HTML, etc.) |
 
 ## Building CLI commands
 
@@ -176,7 +171,7 @@ colons with dashes where appropriate. Populate the file with this basic content:
 import { Command } from "../command";
 
 // `export default` is used for consistency in command files.
-export default new Command("your:command")
+export const command = new Command("your:command")
   .description("a one-line description of your command")
   // .option("-e, --example <requiredValue>", "describe the option briefly")
   // .before(requireConfig) // add any necessary filters and require them above
@@ -222,7 +217,7 @@ provide, the `Command.help` method accepts a long-form string to display for the
 
 #### Load the command
 
-Next, go to `command/index.js`, then add a line to load the command, for
+Next, go to `commands/index.ts`, then add a line to load the command, for
 example:
 
 ```javascript
@@ -277,14 +272,14 @@ logger.info("This text will be displayed to the end user.");
 logger.debug("This text will only show up in firebase-debug.log or running with --debug.");
 ```
 
-In addition, the [cli-color](https://www.npmjs.com/package/cli-color) Node.js
+In addition, the [colorette](https://www.npmjs.com/package/colorette) Node.js
 library should be used for color/formatting of the output:
 
 ```typescript
-import * as clc "cli-color";
+import { green, bold, underline } from "colorette";
 
 // Generally, prefer template strings (using `backticks`), but this is a formatting example:
-const out = "Formatting is " + clc.bold.underline("fun") + " and " + clc.green("easy") + ".";
+const out = "Formatting is " + bold(underline("fun")) + " and " + green("easy") + ".";
 ```
 
 Colors will automatically be stripped from environments that do not support
@@ -306,14 +301,14 @@ file), throw a `FirebaseError` with a friendly error message. The original error
 may be provided as well. Here's an example:
 
 ```typescript
-import * as clc from "cli-color";
+import { bold } from "colorette";
 import { FirebaseError } from "../error";
 
-async function myFunc(options: any): void {
+async function myFunc(projectId: string): void {
   try {
-    return await somethingThatMayFail(options.projectId);
+    return await somethingThatMayFail(projectId);
   } catch (err: any) {
-    throw FirebaseError(`Project ${clc.bold(projectId)} caused an issue.', { original: err });
+    throw FirebaseError(`Project ${bold(projectId)} caused an issue.', { original: err });
   }
 }
 ```

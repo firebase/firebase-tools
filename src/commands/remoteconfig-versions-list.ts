@@ -6,12 +6,11 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
 import { datetimeString } from "../utils";
-
-import Table = require("cli-table");
+import * as Table from "cli-table3";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-function pushTableContents(table: Table, version: Version): number {
+function pushTableContents(table: Table.Table, version: Version): number {
   return table.push([
     version.updateUser?.email,
     version.versionNumber,
@@ -19,20 +18,20 @@ function pushTableContents(table: Table, version: Version): number {
   ]);
 }
 
-module.exports = new Command("remoteconfig:versions:list")
+export const command = new Command("remoteconfig:versions:list")
   .description(
-    "get a list of Remote Config template versions that have been published for a Firebase project"
+    "get a list of Remote Config template versions that have been published for a Firebase project",
   )
   .option(
     "--limit <maxResults>",
-    "limit the number of versions being returned. Pass '0' to fetch all versions."
+    "limit the number of versions being returned. Pass '0' to fetch all versions",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
     const versionsList: ListVersionsResult = await rcVersion.getVersions(
       needProjectId(options),
-      options.limit
+      options.limit,
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     for (let item = 0; item < versionsList.versions.length; item++) {

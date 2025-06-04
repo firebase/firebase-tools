@@ -11,7 +11,7 @@ import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as responseToError from "../responseToError";
+import { responseToError } from "../responseToError";
 import * as utils from "../utils";
 
 /**
@@ -26,7 +26,7 @@ function applyStringOpts(
   dest: { [key: string]: string },
   src: { [key: string]: string },
   keys: string[],
-  jsonKeys: string[]
+  jsonKeys: string[],
 ): void {
   for (const key of keys) {
     if (src[key]) {
@@ -47,7 +47,7 @@ function applyStringOpts(
   }
 }
 
-export default new Command("database:get <path>")
+export const command = new Command("database:get <path>")
   .description("fetch and print JSON data at the specified path")
   .option("-o, --output <filename>", "save output to the specified file")
   .option("--pretty", "pretty print response")
@@ -63,7 +63,7 @@ export default new Command("database:get <path>")
   .option("--equal-to <val>", "restrict results to <val> (based on specified ordering)")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireDatabaseInstance)
@@ -97,7 +97,7 @@ export default new Command("database:get <path>")
       query,
       options,
       ["limitToFirst", "limitToLast"],
-      ["orderBy", "startAt", "endAt", "equalTo"]
+      ["orderBy", "startAt", "endAt", "equalTo"],
     );
 
     const urlObj = new url.URL(dbUrl);

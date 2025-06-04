@@ -4,7 +4,7 @@ This file provides your users an overview of your extension. All content is opti
 Include any important functional details as well as a brief description for any additional setup required by the user (both pre- and post-installation).
 
 Learn more about writing a PREINSTALL.md file in the docs:
-https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-preinstall
+https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-preinstall
 -->
 
 Use this extension to send a friendly greeting.

@@ -6,16 +6,17 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
  * Releases Firebase Storage rules.
  * @param context The deploy context.
  * @param options The CLI options object.
+ * @return the list of buckets deployed.
  */
-export default async function (context: any, options: any): Promise<void> {
-  const rules = get(context, "storage.rules", []);
+export default async function (context: any, options: any): Promise<string[]> {
+  const rulesConfigsToDeploy: any[] = get(context, "storage.rulesConfigsToDeploy", []);
   const rulesDeploy: RulesDeploy = get(context, "storage.rulesDeploy");
-  if (!rules.length || !rulesDeploy) {
-    return;
+  if (!rulesConfigsToDeploy.length || !rulesDeploy) {
+    return [];
   }
 
   const toRelease: Array<{ bucket: string; rules: any }> = [];
-  for (const ruleConfig of rules) {
+  for (const ruleConfig of rulesConfigsToDeploy) {
     if (ruleConfig.target) {
       options.rc.target(options.project, "storage", ruleConfig.target).forEach((bucket: string) => {
         toRelease.push({ bucket: bucket, rules: ruleConfig.rules });
@@ -26,12 +27,10 @@ export default async function (context: any, options: any): Promise<void> {
   }
 
   await Promise.all(
-    toRelease.map((release) => {
-      return rulesDeploy.release(
-        release.rules,
-        RulesetServiceType.FIREBASE_STORAGE,
-        release.bucket
-      );
-    })
+    toRelease.map((r) => {
+      return rulesDeploy.release(r.rules, RulesetServiceType.FIREBASE_STORAGE, r.bucket);
+    }),
   );
+
+  return toRelease.map((r) => r.bucket);
 }

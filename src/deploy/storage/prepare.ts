@@ -1,37 +1,65 @@
 import * as _ from "lodash";
 
-import gcp = require("../../gcp");
+import * as gcp from "../../gcp";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { Options } from "../../options";
+import { FirebaseError } from "../../error";
+import { DeployOptions } from "..";
 
 /**
  * Prepares for a Firebase Storage deployment.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: Options): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   let rulesConfig = options.config.get("storage");
   if (!rulesConfig) {
     return;
   }
 
-  _.set(context, "storage.rules", rulesConfig);
-
-  const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
-  _.set(context, "storage.rulesDeploy", rulesDeploy);
-
-  if (_.isPlainObject(rulesConfig)) {
-    const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
-    rulesConfig = [_.assign(rulesConfig, { bucket: defaultBucket })];
-    _.set(context, "storage.rules", rulesConfig);
+  const onlyTargets = new Set<string>();
+  let allStorage = !options.only;
+  if (options.only) {
+    const split = options.only.split(",");
+    if (split.includes("storage")) {
+      allStorage = true;
+    } else {
+      for (const value of split) {
+        if (value.startsWith("storage:")) {
+          onlyTargets.add(value.split(":")[1]);
+        }
+      }
+    }
   }
 
-  rulesConfig.forEach((ruleConfig: any) => {
-    if (ruleConfig.target) {
-      (options.rc as any).requireTarget(context.projectId, "storage", ruleConfig.target);
+  const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
+  const rulesConfigsToDeploy: any[] = [];
+
+  if (!Array.isArray(rulesConfig) && options.project) {
+    const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
+    rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
+  }
+
+  for (const ruleConfig of rulesConfig) {
+    const target: string = ruleConfig.target;
+    if (target) {
+      options.rc.requireTarget(context.projectId, "storage", target);
     }
-    rulesDeploy.addFile(ruleConfig.rules);
-  });
+    if (allStorage || onlyTargets.has(target)) {
+      rulesDeploy.addFile(ruleConfig.rules); // Add the rules to the deploy object.
+      rulesConfigsToDeploy.push(ruleConfig); // Copy the rule config into our list of configs to deploy.
+      onlyTargets.delete(target); // Remove the target from our only list.
+    }
+  }
+
+  if (!allStorage && onlyTargets.size !== 0) {
+    throw new FirebaseError(
+      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`,
+    );
+  }
+
+  _.set(context, "storage.rules", rulesConfig);
+  _.set(context, "storage.rulesConfigsToDeploy", rulesConfigsToDeploy);
+  _.set(context, "storage.rulesDeploy", rulesDeploy);
 
   await rulesDeploy.compile();
 }

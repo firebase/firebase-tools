@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -14,8 +14,8 @@ function getCertHashType(shaHash: string): string {
   return ShaCertificateType.SHA_CERTIFICATE_TYPE_UNSPECIFIED.toString();
 }
 
-module.exports = new Command("apps:android:sha:create <appId> <shaHash>")
-  .description("add a SHA certificate hash for a given app id.")
+export const command = new Command("apps:android:sha:create <appId> <shaHash>")
+  .description("add a SHA certificate hash for a given app id")
   .before(requireAuth)
   .action(
     async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {
@@ -28,10 +28,10 @@ module.exports = new Command("apps:android:sha:create <appId> <shaHash>")
             certType: getCertHashType(shaHash),
           }),
         `Creating Android SHA certificate ${clc.bold(
-          options.shaHash
-        )}with Android app Id ${clc.bold(appId)}`
+          options.shaHash,
+        )}with Android app Id ${clc.bold(appId)}`,
       );
 
       return shaCertificate;
-    }
+    },
   );

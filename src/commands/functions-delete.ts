@@ -1,15 +1,14 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as functionsConfig from "../functionsConfig";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
-import * as ensure from "../ensureApiEnabled";
 import * as helper from "../deploy/functions/functionsDeployHelper";
 import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
@@ -18,13 +17,14 @@ import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
 import * as containerCleaner from "../deploy/functions/containerCleaner";
+import { getProjectNumber } from "../getProjectNumber";
 
-export default new Command("functions:delete [filters...]")
+export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
   .option(
     "--region <region>",
     "Specify region of the function to be deleted. " +
-      "If omitted, functions from all regions whose names match the filters will be deleted. "
+      "If omitted, functions from all regions whose names match the filters will be deleted. ",
   )
   .withForce()
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
@@ -35,7 +35,7 @@ export default new Command("functions:delete [filters...]")
 
     const context: args.Context = {
       projectId: needProjectId(options),
-      filters: filters.map((f) => ({ idChunks: f.split(".") })),
+      filters: filters.map((f) => ({ idChunks: f.split(/[-.]/) })),
     };
 
     const [config, existingBackend] = await Promise.all([
@@ -62,24 +62,21 @@ export default new Command("functions:delete [filters...]")
     if (allEpToDelete.length === 0) {
       throw new FirebaseError(
         `The specified filters do not match any existing functions in project ${clc.bold(
-          context.projectId
-        )}.`
+          context.projectId,
+        )}.`,
       );
     }
 
     const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message:
-          "You are about to delete the following Cloud Functions:\n" +
-          deleteList +
-          "\n  Are you sure?",
-      },
-      options
-    );
+    const confirmDeletion = await confirm({
+      message:
+        "You are about to delete the following Cloud Functions:\n" +
+        deleteList +
+        "\n  Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmDeletion) {
       throw new FirebaseError("Command aborted.");
     }
@@ -97,6 +94,8 @@ export default new Command("functions:delete [filters...]")
         appEngineLocation,
         executor: new executor.QueueExecutor({}),
         sources: {},
+        projectNumber:
+          options.projectNumber || (await getProjectNumber({ projectId: context.projectId })),
       });
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);
@@ -109,15 +108,5 @@ export default new Command("functions:delete [filters...]")
     }
 
     // Clean up image caches too
-    const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
-    const arEnabled = await ensure.check(
-      needProjectId(options),
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-    if (!arEnabled) {
-      opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
-    }
-    await containerCleaner.cleanupBuildImages([], allEpToDelete, opts);
+    await containerCleaner.cleanupBuildImages([], allEpToDelete);
   });

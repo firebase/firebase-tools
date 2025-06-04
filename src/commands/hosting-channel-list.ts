@@ -1,5 +1,5 @@
-import { bold } from "cli-color";
-import Table = require("cli-table");
+import { bold } from "colorette";
+import * as Table from "cli-table3";
 
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
@@ -12,7 +12,7 @@ import { requireHostingSite } from "../requireHostingSite";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
-export default new Command("hosting:channel:list")
+export const command = new Command("hosting:channel:list")
   .description("list all Firebase Hosting channels for your project")
   .option("--site <siteName>", "list channels for the specified site")
   .before(requireConfig)
@@ -21,7 +21,7 @@ export default new Command("hosting:channel:list")
   .before(requireHostingSite)
   .action(
     async (
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ channels: Channel[] }> => {
       const projectId = needProjectId(options);
       const siteId = options.site;
@@ -44,5 +44,5 @@ export default new Command("hosting:channel:list")
       logger.info(table.toString());
 
       return { channels };
-    }
+    },
   );

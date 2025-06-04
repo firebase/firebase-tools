@@ -49,7 +49,7 @@ export interface ThrottlerStats {
 interface TaskData<T, R> {
   task: T;
   retryCount: number;
-  wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
+  wait?: { resolve: (value: R) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
   isTimedOut: boolean;
@@ -215,7 +215,7 @@ export abstract class Throttler<T, R> {
   private addHelper(
     task: T,
     timeoutMillis?: number,
-    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
+    wait?: { resolve: (result: R) => void; reject: (err: Error) => void },
   ): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");

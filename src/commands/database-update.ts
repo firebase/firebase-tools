@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { Client } from "../apiv2";
@@ -8,21 +8,22 @@ import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:update <path> [infile]")
-  .description("update some of the keys for the defined path in your Firebase")
+export const command = new Command("database:update <path> [infile]")
+  .description("update some of the keys for the defined path in your Realtime Database")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -33,15 +34,12 @@ export default new Command("database:update <path> [infile]")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const url = utils.getDatabaseUrl(origin, options.instance, path);
-    const confirmed = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
-      },
-      options
-    );
+    const confirmed = await confirm({
+      message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmed) {
       throw new FirebaseError("Command aborted.");
     }
@@ -51,6 +49,9 @@ export default new Command("database:update <path> [infile]")
       (infile && fs.createReadStream(infile)) ||
       process.stdin;
     const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      jsonUrl.searchParams.set("disableTriggers", "true");
+    }
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -62,8 +63,9 @@ export default new Command("database:update <path> [infile]")
         method: "PATCH",
         path: jsonUrl.pathname,
         body: inStream,
+        queryParams: jsonUrl.searchParams,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError("Unexpected error while setting data");
     }
 
@@ -71,6 +73,6 @@ export default new Command("database:update <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path),
     );
   });

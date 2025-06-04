@@ -1,9 +1,8 @@
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { RC } from "./rc";
 
-import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as clc from "colorette";
+import { marked } from "marked";
 
 const { FirebaseError } = require("./error");
 
@@ -58,8 +57,8 @@ export function needProjectId({
         clc.bold("firebase projects:list") +
         ".\n" +
         marked(
-          "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases"
-        )
+          "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases",
+        ),
     );
   }
 
@@ -71,7 +70,7 @@ export function needProjectId({
     "No project active, but project aliases are available.\n\nRun " +
       clc.bold("firebase use <alias>") +
       " with one of these options:\n\n" +
-      aliasList
+      aliasList,
   );
 }
 
@@ -87,7 +86,7 @@ export async function needProjectNumber(options: any): Promise<string> {
     return options.projectNumber;
   }
   const projectId = needProjectId(options);
-  const metadata = await getFirebaseProject(projectId);
+  const metadata = await getProject(projectId);
   options.projectNumber = metadata.projectNumber;
   return options.projectNumber;
 }

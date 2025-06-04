@@ -7,7 +7,7 @@ export default class RetriesExhaustedError extends TaskError {
       `retries exhausted after ${totalRetries + 1} attempts, with error: ${lastTrialError.message}`,
       {
         original: lastTrialError,
-      }
+      },
     );
   }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.0.0",
+    "firebase-functions": "^4.1.0"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "private": true
+}

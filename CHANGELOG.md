@@ -1,1 +1,9 @@
-- Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
+- Fixed issue where `projects:create` didn't correctly parse the `projectId` and `displayName` input. (#8634)
+- Improved GetDatabase API call caching for Firestore function deployments. (#8681)
+- Increased timeout for linking CloudSQL instances to Data Connect.
+- Fixed issue where `firebase use --add` didn't correctly set the active project. (#8694)
+- Always setup Data Connect SDK when FDC_CONNECTOR env var is set.
+- `firebase init` now uses FIREBASE_PROJECT env var as the default project name.
+- Add emulator support to firestore MCP tools. (#8700)
+- Increased npm timeout for web frameworks to 60s. (#8702)
+- Fallback to reading web framework dependencies version directly from node_modules package.json when the npm timeout is reached. (#8702)

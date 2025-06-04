@@ -1,10 +1,19 @@
-import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
+import {
+  ALL_EMULATORS,
+  EmulatorInstance,
+  Emulators,
+  EmulatorInfo,
+  DownloadableEmulatorDetails,
+  DownloadableEmulators,
+} from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import * as express from "express";
-
+import { connectableHostname } from "../utils";
+import { Client, ClientOptions } from "../apiv2";
+import { get as getDownloadableEmulatorDetails } from "./downloadableEmulators";
 /**
  * Static registry for running emulators to discover each other.
  *
@@ -23,10 +32,10 @@ export class EmulatorRegistry {
 
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
-    // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
+    // No need to wait for the Extensions emulator to block its port, since it runs on the Functions emulator.
     if (instance.getName() !== Emulators.EXTENSIONS) {
       const info = instance.getInfo();
-      await portUtils.waitForPortClosed(info.port, info.host);
+      await portUtils.waitForPortUsed(info.port, connectableHostname(info.host), info.timeout);
     }
   }
 
@@ -34,15 +43,23 @@ export class EmulatorRegistry {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
       name,
-      `Stopping ${Constants.description(name)}`
+      `Stopping ${Constants.description(name)}`,
     );
     const instance = this.get(name);
     if (!instance) {
       return;
     }
 
-    await instance.stop();
-    this.clear(instance.getName());
+    try {
+      await instance.stop();
+      this.clear(instance.getName());
+    } catch (e: any) {
+      EmulatorLogger.forEmulator(name).logLabeled(
+        "WARN",
+        name,
+        `Error stopping ${Constants.description(name)}`,
+      );
+    }
   }
 
   static async stopAll(): Promise<void> {
@@ -62,6 +79,12 @@ export class EmulatorRegistry {
       // Hosting is next because it can trigger functions.
       hosting: 2,
 
+      /** App Hosting should be shut down next. Users should not be interacting
+       * with their app while its being shut down as the app may using the
+       * background trigger emulators below.
+       */
+      apphosting: 2.1,
+
       // All background trigger emulators are equal here, so we choose
       // an order for consistency.
       database: 3.0,
@@ -69,6 +92,9 @@ export class EmulatorRegistry {
       pubsub: 3.2,
       auth: 3.3,
       storage: 3.5,
+      eventarc: 3.6,
+      dataconnect: 3.7,
+      tasks: 3.8,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
@@ -82,15 +108,7 @@ export class EmulatorRegistry {
     });
 
     for (const name of emulatorsToStop) {
-      try {
-        await this.stop(name);
-      } catch (e: any) {
-        EmulatorLogger.forEmulator(name).logLabeled(
-          "WARN",
-          name,
-          `Error stopping ${Constants.description(name)}`
-        );
-      }
+      await this.stop(name);
     }
   }
 
@@ -121,37 +139,29 @@ export class EmulatorRegistry {
    * Get information about an emulator. Use `url` instead for creating URLs.
    */
   static getInfo(emulator: Emulators): EmulatorInfo | undefined {
-    // For Extensions, return the info for the Functions Emulator.
-    const instance = this.INSTANCES.get(
-      emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
-    );
-    if (!instance) {
+    const info = EmulatorRegistry.get(emulator)?.getInfo();
+    if (!info) {
       return undefined;
     }
-
-    return instance.getInfo();
+    return {
+      ...info,
+      host: connectableHostname(info.host),
+    };
   }
 
-  /**
-   * Get the host:port string for emulator. Use `url` instead for creating URLs.
-   */
-  static getInfoHostString(info: EmulatorInfo): string {
-    const { host, port } = info;
-
-    // Quote IPv6 addresses
-    if (host.includes(":")) {
-      return `[${host}]:${port}`;
-    } else {
-      return `${host}:${port}`;
-    }
+  static getDetails(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
+    return getDownloadableEmulatorDetails(emulator);
   }
 
   /**
    * Return a URL object with the emulator protocol, host, and port populated.
+   *
+   * Need to make an API request? Use `.client` instead.
+   *
    * @param emulator for retrieving host and port from the registry
    * @param req if provided, will prefer reflecting back protocol+host+port from
    *            the express request (if header available) instead of registry
-   * @returns a WHATWG URL object with .host set to the emulator host + port
+   * @return a WHATWG URL object with .host set to the emulator host + port
    */
   static url(emulator: Emulators, req?: express.Request): URL {
     // WHATWG URL API has no way to create from parts, so let's use a minimal
@@ -174,25 +184,25 @@ export class EmulatorRegistry {
     // another host, e.g. in Dockers or behind reverse proxies.
     const info = EmulatorRegistry.getInfo(emulator);
     if (info) {
-      // If listening to all IPv4/6 addresses, use loopback addresses instead.
-      // All-zero addresses are invalid and not tolerated by some browsers / OS.
-      // See: https://github.com/firebase/firebase-tools-ui/issues/286
-      if (info.host === "0.0.0.0") {
-        url.hostname = "127.0.0.1";
-      } else if (info.host === "::") {
-        url.hostname = "[::1]";
-      } else if (info.host.includes(":")) {
+      if (info.host.includes(":")) {
         url.hostname = `[${info.host}]`; // IPv6 addresses need to be quoted.
       } else {
         url.hostname = info.host;
       }
       url.port = info.port.toString();
     } else {
-      // This can probably only happen during testing, but let's warn anyway.
-      console.warn(`Cannot determine host and port of ${emulator}`);
+      throw new Error(`Cannot determine host and port of ${emulator}`);
     }
 
     return url;
+  }
+
+  static client(emulator: Emulators, options: Omit<ClientOptions, "urlPrefix"> = {}): Client {
+    return new Client({
+      urlPrefix: EmulatorRegistry.url(emulator).toString(),
+      auth: false,
+      ...options,
+    });
   }
 
   private static INSTANCES: Map<Emulators, EmulatorInstance> = new Map();
