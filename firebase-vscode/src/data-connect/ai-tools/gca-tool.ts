@@ -15,7 +15,7 @@ import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
 import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
-export const DATACONNECT_TOOL_ID = "Firebase Data Connect";
+export const DATACONNECT_TOOL_ID = "FirebaseDataConnect";
 const AT_DATACONNECT_TOOL_ID = `@${DATACONNECT_TOOL_ID}`;
 export const DATACONNECT_DISPLAY_NAME = "Firebase Data Connect";
 export const SUGGESTED_PROMPTS = [
@@ -197,29 +197,18 @@ function addCodeHandlers(responseStream: ChatResponseStream) {
 }
 
 // Basic validation function to ensure deterministic command
-function isPromptValid(chatPrompt: ChatPrompt): boolean {
-  let prompt = chatPrompt.fullPrompt();
-  if (!prompt.includes(AT_DATACONNECT_TOOL_ID)) {
+function isPromptValid(prompt: ChatPrompt): boolean {
+  if (prompt.length < 2) {
     return false;
-  };
-  prompt = prompt.replace(AT_DATACONNECT_TOOL_ID, "").trimStart();
-  const command = prompt.split(" ")[0];
-  return isCommandValid(command.replace("/", ""));
+  }
+  if (prompt.getPromptParts()[0].getPrompt() !== AT_DATACONNECT_TOOL_ID) {
+    return false;
+  }
+
+  return isCommandValid(
+    prompt.getPromptParts()[1].getPrompt().replace("/", ""),
+  );
 }
-
-/** TEMP disabled since ChatPrompt cannot parse ToolID with spaces */
-// function isPromptValid(prompt: ChatPrompt): boolean {
-//   if (prompt.length < 2) {
-//     return false;
-//   }
-//   if (prompt.getPromptParts()[0].getPrompt() !== AT_DATACONNECT_TOOL_ID) {
-//     return false;
-//   }
-
-//   return isCommandValid(
-//     prompt.getPromptParts()[1].getPrompt().replace("/", ""),
-//   );
-// }
 
 function isCommandValid(command: string): boolean {
   return (Object.values(Command) as string[]).includes(command);

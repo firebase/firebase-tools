@@ -175,7 +175,7 @@ function DataConnect() {
           broker.send("firebase.activate.gemini");
         }}
       >
-        Try Gemini with @Firebase Data Connect
+        Try Gemini with @FirebaseDataConnect
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
