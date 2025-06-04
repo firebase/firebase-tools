@@ -85,7 +85,10 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit, database, use_emulator }, { projectId, host }) => {
+  async (
+    { collection_path, filters, order, limit, database, use_emulator },
+    { projectId, host },
+  ) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)

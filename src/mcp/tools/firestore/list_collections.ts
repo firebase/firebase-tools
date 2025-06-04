@@ -16,7 +16,7 @@ export const list_collections = tool(
         .string()
         .optional()
         .describe("Database id to use. Defaults to `(default)` if unspecified."),
-        use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "List Firestore collections",

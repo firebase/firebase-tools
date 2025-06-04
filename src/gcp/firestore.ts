@@ -175,7 +175,7 @@ export async function getDatabase(
 export function listCollectionIds(
   project: string,
   databaseId: string = "(default)",
-  emulatorUrl?: string
+  emulatorUrl?: string,
 ): Promise<string[]> {
   const apiClient = getClient(emulatorUrl);
   const url = `projects/${project}/databases/${databaseId}/documents:listCollectionIds`;
