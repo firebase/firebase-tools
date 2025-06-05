@@ -152,6 +152,29 @@ export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId"
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  // Sniff for runtime validation errors and log a more user-friendly warning.
+  // The errors will take this form for v1 functions:
+  //    `Failed to create 1st Gen function projects/p/locations/l/functions/f: 
+  //     runtime: Runtime validation errors: [error_code: INVALID_RUNTIME\n
+  //     message: \"Runtime \\\"nodejs22\\\" is not supported on GCF Gen1\"\n]`
+  if ((err?.message as string).includes("Runtime validation errors")) {
+    // Regex to capture the content of the 'message' field.
+    const regex = /message: "((?:\\.|[^"\\])*)"/
+    const match = (err.message as string).match(regex);
+    if (match && match[1]) {
+      // The captured string may still contain escaped quotes (e.g., \\").
+      // This replaces them with a standard double quote.
+      const capturedMessage = match[1].replace(/\\"/g, '"');
+      utils.logWarning(
+        clc.bold(clc.yellow("functions:")) + " " + capturedMessage + " for function " + funcName,
+      );
+    } else {
+      utils.logWarning(
+        clc.bold(clc.yellow("functions:")) +
+        " invalid runtime detected, please see https://cloud.google.com/functions/docs/runtime-support for the latest supported runtimes.",
+      );
+    }
+  }
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold(

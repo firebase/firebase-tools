@@ -250,6 +250,30 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
+  // Sniff for runtime validation errors and log a more user-friendly warning.
+  // The errors will take this form for v2 functions:
+  //    `Failed to create 2nd Gen function projects/p/locations/l/functions/f: 
+  //     runtime: Runtime validation errors: [error_code: INVALID_RUNTIME\n
+  //     message: \"Runtime \\\"nodejs22\\\" is not supported on GCF Gen2\"\n]`
+  if (err?.message?.includes("Runtime validation errors")) {
+    // Regex to capture the content of the 'message' field.
+    const regex = /message: "((?:\\.|[^"\\])*)"/
+    const match = (err.message as string).match(regex);
+    if (match && match[1]) {
+      // The captured string may still contain escaped quotes (e.g., \\").
+      // This replaces them with a standard double quote.
+      const capturedMessage = match[1].replace(/\\"/g, '"');
+      utils.logLabeledWarning(
+        "functions",
+        capturedMessage + " for function " + func.name,
+      );
+    } else {
+      utils.logLabeledWarning(
+        "functions",
+        "Invalid runtime detected, please see https://cloud.google.com/functions/docs/runtime-support for the latest supported runtimes.",
+      );
+    }
+  }
   if (err?.message?.includes("maxScale may not exceed")) {
     const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
     utils.logLabeledWarning(
