@@ -1,1 +1,1 @@
-- Improved GetDatabase API call caching for Firestore function deployments. (#8681)
+- Add emulator support to firebase storage MCP tools. (#8707)

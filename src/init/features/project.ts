@@ -14,6 +14,7 @@ import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { Options } from "../../options";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -41,12 +42,12 @@ function toInitProjectInfo(projectMetaData: FirebaseProjectMetadata): InitProjec
   };
 }
 
-async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
+async function promptAndCreateNewProject(options: Options): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
       `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
-  const { projectId, displayName } = await promptProjectCreation();
+  const { projectId, displayName } = await promptProjectCreation(options);
   // N.B. This shouldn't be possible because of the validator on the input field, but it
   // is being left around in case there's something I don't know.
   if (!projectId) {
@@ -82,7 +83,7 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
     case OPTION_USE_PROJECT:
       return getOrPromptProject(options);
     case OPTION_NEW_PROJECT:
-      return promptAndCreateNewProject();
+      return promptAndCreateNewProject(options);
     case OPTION_ADD_FIREBASE:
       return promptAndAddFirebaseToCloudProject();
     default:
@@ -120,14 +121,22 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   }
 
   let projectMetaData;
-  // If the user presented a project with `--project`, try to fetch that project.
   if (options.project) {
+    // If the user presented a project with `--project`, try to fetch that project.
     logger.debug(`Using project from CLI flag: ${options.project}`);
     projectMetaData = await getFirebaseProject(options.project);
   } else {
-    projectMetaData = await projectChoicePrompt(options);
-    if (!projectMetaData) {
-      return;
+    const projectEnvVar = utils.envOverride("FIREBASE_PROJECT", "");
+    // If env var $FIREBASE_PROJECT is set, try to fetch that project.
+    // This is used in some shell scripts e.g. under https://firebase.tools/.
+    if (projectEnvVar) {
+      logger.debug(`Using project from $FIREBASE_PROJECT: ${projectEnvVar}`);
+      projectMetaData = await getFirebaseProject(projectEnvVar);
+    } else {
+      projectMetaData = await projectChoicePrompt(options);
+      if (!projectMetaData) {
+        return;
+      }
     }
   }
 

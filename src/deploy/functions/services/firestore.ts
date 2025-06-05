@@ -33,7 +33,7 @@ async function getDatabase(project: string, databaseId: string): Promise<firesto
   }
 
   const dbPromise = firestore
-    .getDatabase(project, databaseId, false)
+    .getDatabase(project, databaseId)
     .then((db) => {
       dbCache.set(key, db);
       dbPromiseCache.delete(key);
