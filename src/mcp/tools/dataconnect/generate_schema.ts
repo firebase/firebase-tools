@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { generateSchema } from "../../../gif/fdcExperience.js";
+import { generateSchema } from "../../../gemini/fdcExperience.js";
 
 export const generate_schema = tool(
   {
