@@ -49,10 +49,12 @@ export const FieldFilter = z.object({
   value: z.union([Value, ArrayValue]),
 });
 
-export const Filter = z.object({
-  unaryFilter: UnaryFilter.optional(),
-  fieldFilter: FieldFilter.optional(),
-}).describe("Only one filter field can be set per filter object.");
+export const Filter = z
+  .object({
+    unaryFilter: UnaryFilter.optional(),
+    fieldFilter: FieldFilter.optional(),
+  })
+  .describe("Only one filter field can be set per filter object.");
 
 // Recursive types are not supported so we define the composite filter separately.
 export const CompositeFilter = z.object({
