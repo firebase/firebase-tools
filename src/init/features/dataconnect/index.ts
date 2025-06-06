@@ -453,7 +453,7 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
     if (
       setup.projectId &&
       (await confirm({
-        message: `Do you want Gemini to help generate a schema for your service?`,
+        message: `Do you want Gemini in Firebase to help generate a schema for your service?`,
         default: false,
       }))
     ) {
