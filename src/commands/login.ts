@@ -35,11 +35,7 @@ export const command = new Command("login")
 
     if (!options.reauth) {
       utils.logBullet(
-<<<<<<< HEAD
-        "Firebase collects CLI integrates with Gemini in Firebase API to provide assistant features. Check out the terms of service https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions",
-=======
         "Firebase CLI integrates with Gemini in Firebase API to provide assistant features. Learn more about using Gemini in Firebase and how we train our models: https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions",
->>>>>>> origin/master
       );
       const geminiUsage = await confirm("Enable Gemini in Firebase features?");
       configstore.set("gemini", geminiUsage);
@@ -54,10 +50,7 @@ export const command = new Command("login")
       configstore.set("usage", collectUsage);
 
       if (geminiUsage || collectUsage) {
-<<<<<<< HEAD
-=======
         logger.info();
->>>>>>> origin/master
         utils.logBullet(
           "To change your the preference at any time, run `firebase logout` and `firebase login` again.",
         );
