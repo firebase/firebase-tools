@@ -13,11 +13,13 @@ const apiClient = new Client({
 export async function listTopIssues(
   projectId: string,
   appId: string,
+  issueType: string,
   issueCount: number,
 ): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${issueCount}`);
+    queryParams.set("filter.issue.error_types", `${issueType}`);
 
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {

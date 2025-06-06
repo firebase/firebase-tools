@@ -202,6 +202,17 @@ export async function initAction(feature: string, options: Options): Promise<voi
         "Which Firebase features do you want to set up for this directory? " +
         "Press Space to select features, then Enter to confirm your choices.",
       choices: choices.filter((c) => !c.hidden),
+      validate: (choices) => {
+        if (choices.length === 0) {
+          return (
+            "Must select at least one feature. Use " +
+            clc.bold(clc.underline("SPACEBAR")) +
+            " to select features, or specify a feature by running " +
+            clc.bold("firebase init [feature_name]")
+          );
+        }
+        return true;
+      },
     });
   }
   if (!setup.features || setup.features?.length === 0) {

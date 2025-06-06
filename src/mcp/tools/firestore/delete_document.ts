@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { FirestoreDelete } from "../../../firestore/delete.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const delete_document = tool(
   {
@@ -34,7 +34,7 @@ export const delete_document = tool(
   async ({ path, database, use_emulator }, { projectId, host }) => {
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
     const { documents, missing } = await getDocuments(projectId, [path], database, emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {

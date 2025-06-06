@@ -3,7 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { getDocuments } from "../../../gcp/firestore.js";
 import { firestoreDocumentToJson } from "./converter.js";
-import { getFirestoreEmulatorUrl } from "./emulator.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const get_documents = tool(
   {
@@ -36,7 +36,7 @@ export const get_documents = tool(
 
     let emulatorUrl: string | undefined;
     if (use_emulator) {
-      emulatorUrl = await getFirestoreEmulatorUrl(await host.getEmulatorHubClient());
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
     const { documents, missing } = await getDocuments(projectId, paths, database, emulatorUrl);
     if (missing.length > 0 && documents && documents.length === 0) {

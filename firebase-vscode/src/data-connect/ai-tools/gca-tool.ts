@@ -15,8 +15,9 @@ import { ExtensionContext } from "vscode";
 import { Chat, Command } from "./types";
 import { GeminiToolController } from "./tool-controller";
 import { ChatMessage } from "../../dataconnect/cloudAICompanionTypes";
-export const DATACONNECT_TOOL_ID = "data-connect";
-export const DATACONNECT_DISPLAY_NAME = "Data Connect";
+export const DATACONNECT_TOOL_ID = "FirebaseDataConnect";
+const AT_DATACONNECT_TOOL_ID = `@${DATACONNECT_TOOL_ID}`;
+export const DATACONNECT_DISPLAY_NAME = "Firebase Data Connect";
 export const SUGGESTED_PROMPTS = [
   "/generate_schema Create a schema for a pizza store",
   "/generate_operation Create a mutations for all my types",
@@ -24,8 +25,8 @@ export const SUGGESTED_PROMPTS = [
 const HELP_MESSAGE = `
 Welcome to the Data Connect Tool.
 Usage:
-  @data-connect /generate_schema <your prompt>\n
-  @data-connect /generate_operation <your prompt>
+  ${AT_DATACONNECT_TOOL_ID} /generate_schema <your prompt>\n
+  ${AT_DATACONNECT_TOOL_ID} /generate_operation <your prompt>
 `;
 
 export class GCAToolClient {
@@ -33,7 +34,7 @@ export class GCAToolClient {
   private icon = vscode.Uri.joinPath(
     this.context.extensionUri,
     "resources",
-    "firebase_dataconnect_logo.svg",
+    "firebase_dataconnect_logo.png",
   );
   constructor(
     private context: ExtensionContext,
@@ -200,7 +201,7 @@ function isPromptValid(prompt: ChatPrompt): boolean {
   if (prompt.length < 2) {
     return false;
   }
-  if (prompt.getPromptParts()[0].getPrompt() !== "@data-connect") {
+  if (prompt.getPromptParts()[0].getPrompt() !== AT_DATACONNECT_TOOL_ID) {
     return false;
   }
 
@@ -215,16 +216,23 @@ function isCommandValid(command: string): boolean {
 
 // get the /command without the /
 function getCommand(prompt: ChatPrompt): Command {
-  return prompt.getPromptParts()[1].getPrompt().replace("/", "") as Command;
+  if (prompt.length > 2) {
+    return prompt.getPromptParts()[1].getPrompt().replace("/", "") as Command;
+  }
+
+  // fallback if prompt parts doesn't work
+  return prompt.fullPrompt().replace(AT_DATACONNECT_TOOL_ID, "").trimStart().split(" ")[0] as Command;
 }
 
 // get the entire prompt without the @tool & /command
 function getPrompt(prompt: ChatPrompt): string {
   if (
     prompt.length > 2 &&
-    prompt.getPromptParts()[0].getPrompt() === "@data-connect"
+    prompt.getPromptParts()[0].getPrompt() === AT_DATACONNECT_TOOL_ID
   ) {
     return prompt.getPromptParts()[2].getPrompt();
   }
-  return prompt.fullPrompt();
+
+  // fallback if prompt parts doesn't work
+  return prompt.fullPrompt().replace(AT_DATACONNECT_TOOL_ID, "").replace(/\/\w+/, "").trimStart();
 }
