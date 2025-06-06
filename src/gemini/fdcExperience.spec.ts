@@ -49,7 +49,6 @@ describe("extractCodeBlock", () => {
     type Query {
       hello: String
     }
-
     schema {
       query: Query
     }
@@ -58,7 +57,6 @@ describe("extractCodeBlock", () => {
     const expected = `type Query {
       hello: String
     }
-
     schema {
       query: Query
     }`;

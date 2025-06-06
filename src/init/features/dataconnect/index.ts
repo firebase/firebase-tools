@@ -19,15 +19,11 @@ import { Schema, Service, File, Platform } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-<<<<<<< HEAD
-import { logBullet, envOverride, promiseWithSpinner } from "../../../utils";
-=======
-import { logBullet, logWarning, envOverride } from "../../../utils";
->>>>>>> origin/master
+import { logBullet, logWarning, envOverride, promiseWithSpinner } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-import { extractCodeBlock, generateSchema } from "../../../gif/fdcExperience";
+import { extractCodeBlock, generateSchema } from "../../../gemini/fdcExperience";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
