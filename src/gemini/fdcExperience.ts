@@ -1,5 +1,5 @@
 import { Client } from "../apiv2";
-import { cloudCompanionOrigin } from "../api";
+import { cloudAiCompanionOrigin } from "../api";
 import {
   ChatExperienceResponse,
   CloudAICompanionMessage,
@@ -7,8 +7,9 @@ import {
   GenerateOperationResponse,
   GenerateSchemaResponse,
 } from "./types";
+import { FirebaseError } from "../error";
 
-const apiClient = new Client({ urlPrefix: cloudCompanionOrigin(), auth: true });
+const apiClient = new Client({ urlPrefix: cloudAiCompanionOrigin(), auth: true });
 const SCHEMA_GENERATOR_EXPERIENCE = "/appeco/firebase/fdc-schema-generator";
 const GEMINI_IN_FIREBASE_EXPERIENCE = "/appeco/firebase/firebase-chat/free";
 const OPERATION_GENERATION_EXPERIENCE = "/appeco/firebase/fdc-query-generator";
@@ -90,4 +91,18 @@ export async function generateOperation(
     },
   );
   return res.body.output.messages[0].content;
+}
+
+/**
+ * extractCodeBlock extracts the code block from the generated response.
+ * @param text the generated response from the service.
+ * @return the code block from the generated response.
+ */
+export function extractCodeBlock(text: string): string {
+  const regex = /```(?:[a-z]+\n)?([\s\S]*?)```/m;
+  const match = text.match(regex);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  throw new FirebaseError(`No code block found in the generated response: ${text}`);
 }
