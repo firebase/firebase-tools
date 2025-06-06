@@ -17,6 +17,7 @@ import {
   HASH_LABEL,
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
+import { captureRuntimeValidationError } from "./cloudfunctions";
 
 export const API_VERSION = "v2";
 
@@ -250,6 +251,11 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
+  // Sniff for runtime validation errors and log a more user-friendly warning.
+  if (err?.message?.includes("Runtime validation errors")) {
+    const capturedMessage = captureRuntimeValidationError(err.message);
+    utils.logLabeledWarning("functions", capturedMessage + " for function " + func.name);
+  }
   if (err?.message?.includes("maxScale may not exceed")) {
     const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
     utils.logLabeledWarning(

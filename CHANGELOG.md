@@ -1,1 +1,2 @@
 - Add emulator support to firebase storage MCP tools. (#8707)
+- Add user-friendly warning for runtime errors from the GCF API. (#8713)

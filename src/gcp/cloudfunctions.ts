@@ -146,12 +146,40 @@ export interface CloudFunction {
 export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";
 
 /**
+ * Returns the captured user-friendly message from a runtime validation error.
+ * @param errMessage Message from the runtime validation error.
+ */
+export function captureRuntimeValidationError(errMessage: string): string {
+  // Regex to capture the content of the 'message' field.
+  // The error messages will take this form:
+  //    `Failed to create 1st Gen function projects/p/locations/l/functions/f:
+  //     runtime: Runtime validation errors: [error_code: INVALID_RUNTIME\n
+  //     message: \"Runtime \\\"nodejs22\\\" is not supported on GCF Gen1\"\n]`
+  const regex = /message: "((?:\\.|[^"\\])*)"/;
+  const match = errMessage.match(regex);
+  if (match && match[1]) {
+    // The captured string may still contain escaped quotes (e.g., \\").
+    // This replaces them with a standard double quote.
+    const capturedMessage = match[1].replace(/\\"/g, '"');
+    return capturedMessage;
+  }
+  return "invalid runtime detected, please see https://cloud.google.com/functions/docs/runtime-support for the latest supported runtimes";
+}
+
+/**
  * Logs an error from a failed function deployment.
  * @param funcName Name of the function that was unsuccessfully deployed.
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  // Sniff for runtime validation errors and log a more user-friendly warning.
+  if ((err?.message as string).includes("Runtime validation errors")) {
+    const capturedMessage = captureRuntimeValidationError(err.message);
+    utils.logWarning(
+      clc.bold(clc.yellow("functions:")) + " " + capturedMessage + " for function " + funcName,
+    );
+  }
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold(
