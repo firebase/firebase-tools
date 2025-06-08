@@ -1,12 +1,15 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
+import * as tmp from "tmp";
+import { rmSync } from "node:fs";
 
 import { Config } from "../../config";
 import { askQuestions, actuate } from "./storage";
 import * as prompt from "../../prompt";
 
 describe("storage", () => {
+  const tempdir = tmp.dirSync();
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let askWriteProjectFileStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
@@ -18,6 +21,7 @@ describe("storage", () => {
 
   afterEach(() => {
     sandbox.restore();
+    rmSync(tempdir.name, { recursive: true });
   });
 
   describe("doSetup", () => {
@@ -28,7 +32,7 @@ describe("storage", () => {
         projectId: "my-project-123",
         projectLocation: "us-central",
       };
-      const config = new Config({}, { projectDir: "test", cwd: "test" });
+      const config = new Config({}, { projectDir: tempdir.name, cwd: tempdir.name });
       promptStub.returns("storage.rules");
       askWriteProjectFileStub.resolves();
 
