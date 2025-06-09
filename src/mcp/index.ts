@@ -16,14 +16,14 @@ import { Command } from "../command.js";
 import { requireAuth } from "../requireAuth.js";
 import { Options } from "../options.js";
 import { getProjectId } from "../projectUtils.js";
-import { mcpAuthError, NO_PROJECT_ERROR, REQUIRE_GEMINI_API } from "./errors.js";
+import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors.js";
 import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 import { loadRC } from "../rc.js";
 import { EmulatorHubClient } from "../emulator/hubClient.js";
 import { Emulators } from "../emulator/types.js";
 import { existsSync } from "node:fs";
-import { ensure } from "../ensureApiEnabled.js";
+import { ensure, check } from "../ensureApiEnabled.js";
 import * as api from "../api.js";
 
 const SERVER_VERSION = "0.1.0";
@@ -232,11 +232,14 @@ export class FirebaseMcpServer {
     }
 
     // Check if the tool requires Gemini in Firebase API.
-    if (tool.mcp._meta?.requiresGemini && !configstore.get("gemini")) {
-      return REQUIRE_GEMINI_API;
-    }
     if (tool.mcp._meta?.requiresGemini) {
-      await ensure(projectId, api.cloudAiCompanionOrigin(), "");
+      if (configstore.get("gemini")) {
+        await ensure(projectId, api.cloudAiCompanionOrigin(), "");
+      } else {
+        if (!(await check(projectId, api.cloudAiCompanionOrigin(), ""))) {
+          return mcpGeminiError(projectId);
+        }
+      }
     }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };

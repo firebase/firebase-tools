@@ -15,7 +15,10 @@ ${cmd} login
 [ADC]: https://cloud.google.com/docs/authentication/application-default-credentials`);
 }
 
-export const REQUIRE_GEMINI_API = mcpError(
-  "This tool requires Gemini in Firebase API. To enable the features, run `firebase logout` and log in again to acknowledge its terms of service.",
-  "PRECONDITION_FAILED",
-);
+export function mcpGeminiError(projectId: string) {
+  const consoleUrl = `https://firebase.corp.google.com/project/${projectId}/overview`;
+  return mcpError(
+    `This tool requires Gemini in Firebase API. Visit Firebase Console to enable Gemini in Firebase API ${consoleUrl} and try again.`,
+    "PRECONDITION_FAILED",
+  );
+};
