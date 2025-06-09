@@ -1,5 +1,6 @@
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../error";
 import {
@@ -98,9 +99,19 @@ export async function pickService(
   const serviceCfgs = readFirebaseJson(config);
   let serviceInfo: ServiceInfo;
   if (serviceCfgs.length === 0) {
-    throw new FirebaseError("No Data Connect services found in firebase.json.");
+    throw new FirebaseError(
+      "No Data Connect services found in firebase.json." +
+        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+    );
   } else if (serviceCfgs.length === 1) {
     serviceInfo = await load(projectId, config, serviceCfgs[0].source);
+    if (serviceId && serviceId !== serviceInfo.dataConnectYaml.serviceId) {
+      throw new FirebaseError(
+        `No service named ${serviceId} declared in firebase.json. Found ${serviceInfo.dataConnectYaml.serviceId}.` +
+          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
+      );
+    }
+    return serviceInfo;
   } else {
     if (!serviceId) {
       throw new FirebaseError(
@@ -111,11 +122,13 @@ export async function pickService(
     // TODO: handle cases where there are services with the same ID in 2 locations.
     const maybe = infos.find((i) => i.dataConnectYaml.serviceId === serviceId);
     if (!maybe) {
-      throw new FirebaseError(`No service named ${serviceId} declared in firebase.json.`);
+      throw new FirebaseError(
+        `No service named ${serviceId} declared in firebase.json. Found ${infos.map((i) => i.dataConnectYaml.serviceId).join(", ")}.` +
+          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
+      );
     }
-    serviceInfo = maybe;
+    return maybe;
   }
-  return serviceInfo;
 }
 
 // case insensitive exact match indicators for supported app platforms

@@ -16,8 +16,10 @@ import { Context } from "./args";
  * Orchestrates rollouts for the backends targeted for deployment.
  */
 export default async function (context: Context, options: Options): Promise<void> {
+  if (context.backendConfigs.size === 0) {
+    return;
+  }
   const projectId = needProjectId(options);
-
   const rollouts = [];
   const backendIds = [];
   for (const backendId of context.backendConfigs.keys()) {

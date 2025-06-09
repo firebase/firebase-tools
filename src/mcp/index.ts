@@ -21,6 +21,7 @@ import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 import { loadRC } from "../rc.js";
 import { EmulatorHubClient } from "../emulator/hubClient.js";
+import { Emulators } from "../emulator/types.js";
 import { existsSync } from "node:fs";
 import { ensure } from "../ensureApiEnabled.js";
 import * as api from "../api.js";
@@ -123,6 +124,27 @@ export class FirebaseMcpServer {
     }
     this.emulatorHubClient = new EmulatorHubClient(projectId);
     return this.emulatorHubClient;
+  }
+
+  async getEmulatorUrl(emulatorType: Emulators): Promise<string> {
+    const hubClient = await this.getEmulatorHubClient();
+    if (!hubClient) {
+      throw Error(
+        "Emulator Hub not found or is not running. You can start the emulator by running `firebase emulators:start` in your firebase project directory.",
+      );
+    }
+
+    const emulators = await hubClient.getEmulators();
+    const emulatorInfo = emulators[emulatorType];
+    if (!emulatorInfo) {
+      throw Error(
+        "No Firestore Emulator found running. Make sure your project firebase.json file includes firestore and then rerun emulator using `firebase emulators:start` from your project directory.",
+      );
+    }
+
+    const host = emulatorInfo.host.includes(":") ? `[${emulatorInfo.host}]` : emulatorInfo.host;
+
+    return `http://${host}:${emulatorInfo.port}`;
   }
 
   get availableTools(): ServerTool[] {

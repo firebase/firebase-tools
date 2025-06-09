@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { chatWithFirebase } from "../../../gif/fdcExperience.js";
+import { chatWithFirebase } from "../../../gemini/fdcExperience.js";
 
 export const consult_assistant = tool(
   {

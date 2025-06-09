@@ -61,6 +61,8 @@ export async function diffSchema(
   schema: Schema,
   schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
+
   const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
@@ -78,14 +80,17 @@ export async function diffSchema(
   setSchemaValidationMode(schema, validationMode);
 
   try {
-    if (!schemaValidation) {
-      logLabeledBullet("dataconnect", `generating required schema changes...`);
-    }
     await upsertSchema(schema, /** validateOnly=*/ true);
     if (validationMode === "STRICT") {
-      logLabeledSuccess("dataconnect", `Database schema is up to date.`);
+      logLabeledSuccess(
+        "dataconnect",
+        `database schema of ${instanceId}:${databaseId} is up to date.`,
+      );
     } else {
-      logLabeledSuccess("dataconnect", `Database schema is compatible.`);
+      logLabeledSuccess(
+        "dataconnect",
+        `database schema of ${instanceId}:${databaseId} is compatible.`,
+      );
     }
   } catch (err: any) {
     if (err?.status !== 400) {
@@ -146,8 +151,9 @@ export async function migrateSchema(args: {
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly, schemaValidation } = args;
+  logLabeledBullet("dataconnect", `generating required schema changes...`);
 
+  const { options, schema, validateOnly, schemaValidation } = args;
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
@@ -167,7 +173,10 @@ export async function migrateSchema(args: {
 
   try {
     await upsertSchema(schema, validateOnly);
-    logger.debug(`Database schema was up to date for ${instanceId}:${databaseId}`);
+    logLabeledBullet(
+      "dataconnect",
+      `database schema of ${instanceId}:${databaseId} is up to date.`,
+    );
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
@@ -579,7 +588,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     }
     // TODO: make this prompt
     // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
-    logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
+    logLabeledBullet("dataconnect", `linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
       name: `${serviceName}/schemas/${SCHEMA_ID}`,

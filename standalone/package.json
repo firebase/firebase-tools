@@ -30,7 +30,7 @@
     ]
   },
   "devDependencies": {
-    "@yao-pkg/pkg": "^6.3.0",
+    "@yao-pkg/pkg": "~6.4.1",
     "prettier": "^1.15.3"
   }
 }

@@ -1,4 +1,4 @@
-- Adds MCP tools for App Hosting (#8605)
-- Fixed crash when starting the App Hosting emulator in certain applications (#8624)
-- Fixed issue where, with `webframeworks` enabled, `firebase init hosting` re-prompts users for source. (#8587)
-- Update typescript version in functions template to avoid build issue with @google-cloud/storage depedency (#8194)
+- Add emulator support to firebase storage MCP tools. (#8707)
+- Removed overeager error catch in `functions:list`.
+- Add validation during `firebase init` feature selection. (#5232)
+- Fixed an issue where the extensions emulator did not work with `demo-` projects. (#8720)
