@@ -156,7 +156,12 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
-  if (!Constants.isDemoProject(options.project)) {
+  // We generally should not check for auth if you are using a demo project since prod calls to a fake project will fail.
+  // However, extensions makes 'publishers/*' calls that require auth, so we'll requireAuth if you are using extensions.
+  if (
+    !Constants.isDemoProject(options.project) ||
+    controller.shouldStart(optionsWithConfig, Emulators.EXTENSIONS)
+  ) {
     try {
       await requireAuth(options);
     } catch (e: any) {
