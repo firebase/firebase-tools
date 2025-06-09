@@ -1,2 +1,3 @@
 - Add emulator support to firebase storage MCP tools. (#8707)
 - Removed overeager error catch in `functions:list`.
+- Fixed an issue where the extensiosn emulator did not work with `demo-` projects. (#8720)
