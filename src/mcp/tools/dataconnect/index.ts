@@ -11,8 +11,8 @@ import { execute_mutation } from "./execute_mutation.js";
 
 export const dataconnectTools: ServerTool[] = [
   list_services,
-  // generate_schema,
-  // generate_operation,
+  generate_schema,
+  generate_operation,
   get_schema,
   get_connectors,
   execute_graphql,
