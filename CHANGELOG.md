@@ -1,3 +1,4 @@
 - Add emulator support to firebase storage MCP tools. (#8707)
 - Removed overeager error catch in `functions:list`.
 - Add validation during `firebase init` feature selection. (#5232)
+- Fixed issue where `--export-on-exit` fails if the target directory does not exist. (#4688)
