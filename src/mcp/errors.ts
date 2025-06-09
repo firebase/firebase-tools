@@ -21,4 +21,4 @@ export function mcpGeminiError(projectId: string) {
     `This tool requires Gemini in Firebase API. Visit Firebase Console to enable Gemini in Firebase API ${consoleUrl} and try again.`,
     "PRECONDITION_FAILED",
   );
-};
+}
