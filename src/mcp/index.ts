@@ -175,7 +175,7 @@ export class FirebaseMcpServer {
   async getAuthenticatedUser(): Promise<string | null> {
     try {
       const email = await requireAuth(await this.resolveOptions());
-      return email ?? "Application default credentials";
+      return email ?? "Application Default Credentials";
     } catch (e) {
       return null;
     }
