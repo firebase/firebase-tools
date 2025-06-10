@@ -69,7 +69,7 @@ export const execute_query = tool(
     const connectorPath = `${serviceInfo.serviceName}/connectors/${connector_id}`;
 
     if (use_emulator) {
-      apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
+      apiClient = await getDataConnectEmulatorClient(host);
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }

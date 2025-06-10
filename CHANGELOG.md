@@ -1,4 +1,5 @@
-- Fixed issue where `projects:create` didn't correctly parse the `projectId` and `displayName` input. (#8634)
-- Improved GetDatabase API call caching for Firestore function deployments. (#8681)
-- Increased timeout for linking CloudSQL instances to Data Connect.
-- Fixed issue where `firebase use --add` didn't correctly set the active project. (#8694)
+- Add emulator support to firebase storage MCP tools. (#8707)
+- Removed overeager error catch in `functions:list`.
+- Add validation during `firebase init` feature selection. (#5232)
+- Fixed an issue where the extensions emulator did not work with `demo-` projects. (#8720)
+- Fixed issue where `--export-on-exit` fails if the target directory does not exist. (#4688)
