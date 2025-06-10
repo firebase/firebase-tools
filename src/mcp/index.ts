@@ -221,8 +221,12 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     const accountEmail = await this.getAuthenticatedUser();
-    if (tool.mcp._meta?.requiresAuth && !accountEmail) {
-      return mcpAuthError();
+    if (tool.mcp._meta?.requiresAuth) {
+      try {
+        await requireAuth(await this.resolveOptions());
+      } catch (e: any) {
+        return mcpAuthError();
+      }
     }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
