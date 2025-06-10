@@ -174,7 +174,8 @@ export class FirebaseMcpServer {
 
   async getAuthenticatedUser(): Promise<string | null> {
     try {
-      return await requireAuth(await this.resolveOptions());
+      const email = await requireAuth(await this.resolveOptions());
+      return email ?? "Application default credentials";
     } catch (e) {
       return null;
     }
@@ -221,12 +222,8 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     const accountEmail = await this.getAuthenticatedUser();
-    if (tool.mcp._meta?.requiresAuth) {
-      try {
-        await requireAuth(await this.resolveOptions());
-      } catch (e: any) {
-        return mcpAuthError();
-      }
+    if (tool.mcp._meta?.requiresAuth && !accountEmail) {
+      return mcpAuthError();
     }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
