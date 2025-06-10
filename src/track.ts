@@ -9,6 +9,7 @@ const pkg = require("../package.json");
 type cliEventNames =
   | "command_execution"
   | "product_deploy"
+  | "product_init"
   | "error"
   | "login"
   | "api_enabled"
@@ -75,6 +76,9 @@ const GA4_USER_PROPS = {
   },
   firepit_version: {
     value: process.env.FIREPIT_VERSION || "none",
+  },
+  is_firebase_studio: {
+    value: process.env.MONOSPACE_ENV ?? "false",
   },
 };
 
