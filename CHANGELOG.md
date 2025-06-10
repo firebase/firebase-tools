@@ -3,3 +3,4 @@
 - Add validation during `firebase init` feature selection. (#5232)
 - Fixed an issue where the extensions emulator did not work with `demo-` projects. (#8720)
 - Fixed issue where `--export-on-exit` fails if the target directory does not exist. (#4688)
+- Fixed issue where the Firebase MCP server could not use application default credentials. (#8671)
