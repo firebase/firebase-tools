@@ -9,6 +9,7 @@ export class ExecutionPanel {
   readonly history: HistoryView;
 
   async open(): Promise<void> {
+    await browser.keys("F1");
     await this.workbench.executeCommand(
       "data-connect-execution-configuration.focus",
     );
