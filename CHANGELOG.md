@@ -4,3 +4,6 @@
 - Fixed an issue where the extensions emulator did not work with `demo-` projects. (#8720)
 - Fixed issue where `--export-on-exit` fails if the target directory does not exist. (#4688)
 - Fixed issue where the Firebase MCP server could not use application default credentials. (#8671)
+- Updated the Firebase Data Connect local toolkit to v2.7.0, which includes the following changes: (#8743)
+  - Fixed an issue where unwanted link dependencies are added to `package.json` when multiple package managers are used in a web project.
+  - Added linter warnings for naming convention violations & missing join table `@table(key)`.
