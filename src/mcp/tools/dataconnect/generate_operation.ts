@@ -30,7 +30,7 @@ export const generate_operation = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      requiresGemini: true,
     },
   },
   async ({ prompt, service_id }, { projectId, config }) => {

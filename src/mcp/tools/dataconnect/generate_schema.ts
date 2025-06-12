@@ -18,7 +18,7 @@ export const generate_schema = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      requiresGemini: true,
     },
   },
   async ({ prompt }, { projectId }) => {
