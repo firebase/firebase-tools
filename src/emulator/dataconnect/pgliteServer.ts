@@ -15,11 +15,9 @@ import {
   PostgresConnection,
   type PostgresConnectionOptions,
   FrontendMessageCode,
-  BackendMessageCode,
 } from "pg-gateway";
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
-import { StringDecoder } from "node:string_decoder";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -46,26 +44,28 @@ export class PostgresServer {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
-      let connection: PostgresConnection;
-      let patch: PGlitePatch;
-
-      const onMessage = async (
-        data: Uint8Array,
-        { isAuthenticated }: { isAuthenticated: boolean },
-      ) => {
-        if (!isAuthenticated) {
-          return;
-        }
-        // The patch handles all messages.
-        return patch.onMessage(data);
-      };
-
-      connection = await fromNodeSocket(socket, {
-        serverVersion: "16.3 (PGlite 0.2.0)",
+      const connection: PostgresConnection = await fromNodeSocket(socket, {
+        serverVersion: "16.3 (PGlite 0.3.3)",
         auth: { method: "trust" },
-        onMessage,
+
+        async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
+          // Only forward messages to PGlite after authentication
+          if (!isAuthenticated) {
+            return;
+          }
+          const db = await getDb();
+          if (data[0] === FrontendMessageCode.Terminate) {
+            // When the frontend terminates a connection, throw out all prepared statements
+            // because the next client won't know about them (and may create overlapping statements)
+            await db.query("DEALLOCATE ALL");
+          }
+          const response = await db.execProtocolRaw(data);
+
+          for await (const message of getMessages(response)) {
+            yield message;
+          }
+        },
       });
-      patch = new PGlitePatch(connection, getDb);
 
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
@@ -110,7 +110,6 @@ export class PostgresServer {
         pgliteArgs.loadDataDir = file;
       }
       this.db = await this.forceCreateDB(pgliteArgs);
-      await this.db.waitReady;
     }
     return this.db;
   }
@@ -129,16 +128,18 @@ export class PostgresServer {
 
   async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
     try {
-      const db = await PGlite.create(pgliteArgs);
+      const db = new PGlite(pgliteArgs);
+      await db.waitReady;
       return db;
     } catch (err: unknown) {
       if (pgliteArgs.dataDir && hasMessage(err) && /Database already exists/.test(err.message)) {
         // Clear out the current pglite data
         fs.rmSync(pgliteArgs.dataDir, { force: true, recursive: true });
-        const db = await PGlite.create(pgliteArgs);
+        const db = new PGlite(pgliteArgs);
+        await db.waitReady;
         return db;
       }
-      logger.debug(`Error from pglite: ${err}`);
+      logger.warn(`Error from pglite: ${err}`);
       throw new FirebaseError("Unexpected error starting up Postgres.");
     }
   }
@@ -160,80 +161,6 @@ export class PostgresServer {
   }
 }
 
-// HACK: PGlite has a bug where it sends too many ReadyForQuery messages
-// during the extended query protocol. This causes clients to get confused
-// and disconnect.
-// This patch filters out the extra messages and manages transaction state.
-// See: https://github.com/electric-sql/pglite/pull/294
-export class PGlitePatch {
-  isExtendedQuery = false;
-  eqpErrored = false;
-  private transactionStatus: "idle" | "transaction" | "error" = "idle";
-  constructor(
-    private connection: PostgresConnection,
-    private getDb: () => Promise<PGlite>,
-  ) {}
-
-  async onMessage(data: Uint8Array) {
-    const pipelineStartMessages: number[] = [
-      FrontendMessageCode.Parse,
-      FrontendMessageCode.Bind,
-      FrontendMessageCode.Close,
-    ];
-    const decoder = new StringDecoder();
-    const decoded = decoder.write(data as any as Buffer);
-    logger.debug(decoded);
-    if (pipelineStartMessages.includes(data[0])) {
-      this.isExtendedQuery = true;
-    }
-
-    // 'Sync' indicates the end of an extended query
-    if (data[0] === FrontendMessageCode.Sync) {
-      this.isExtendedQuery = false;
-      this.eqpErrored = false;
-
-      // Manually inject 'ReadyForQuery' message at the end
-      return this.connection.createReadyForQuery(this.transactionStatus);
-    }
-
-    const db = await this.getDb();
-    if (data[0] === FrontendMessageCode.Terminate) {
-      await db.query("DEALLOCATE ALL");
-    }
-
-    const result = await db.execProtocolRaw(data);
-    return this.filter(result);
-  }
-
-  private async *filter(response: Uint8Array) {
-    for await (const message of getMessages(response)) {
-      // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
-      // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
-      if (this.eqpErrored) {
-        continue;
-      }
-      if (this.isExtendedQuery && message[0] === BackendMessageCode.ErrorMessage) {
-        this.eqpErrored = true;
-        this.transactionStatus = "error";
-      }
-      // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
-      if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
-        const newStatus = String.fromCharCode(message[5]) as "I" | "T" | "E";
-        const statusMap = {
-          I: "idle",
-          T: "transaction",
-          E: "error",
-        };
-        this.transactionStatus = statusMap[newStatus] as "idle" | "transaction" | "error";
-        logger.debug(
-          "Filtered out a ReadyForQuery, but captured transaction status " + this.transactionStatus,
-        );
-        continue;
-      }
-      yield message;
-    }
-  }
-}
 
 /**
  * Creates a `PostgresConnection` from a Node.js TCP/Unix `Socket`.
