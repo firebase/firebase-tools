@@ -2,7 +2,6 @@
 
 import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
 import { PGlite as pglite2, PGliteOptions as pgliteOpts2 } from "pglite-02";
-import { pgDump } from "@electric-sql/pglite-tools/pg_dump";
 
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
@@ -23,7 +22,6 @@ import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
 
 import * as path from 'path';
-
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
 DECLARE _clear text;
@@ -188,6 +186,10 @@ export class PostgresServer {
       debug: this.debug,
     }
     const oldDb = await pglite2.create(oldArgs);
+    const res = await oldDb.exec("SELECT pg_catalog.set_config('search_path', '', false);");
+    console.log(res);
+    const pgDump = (await dynamicImport("@electric-sql/pglite-tools/pg_dump")).pgDump;
+    console.log(pgDump);
     const dump = await pgDump({ pg: oldDb, args:["--verbose", "--verbose"] });
     return await dump.text();
   }
