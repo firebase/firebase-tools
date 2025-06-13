@@ -1,6 +1,9 @@
 // https://github.com/supabase-community/pg-gateway
 
 import { DebugLevel, PGlite, PGliteOptions } from "@electric-sql/pglite";
+import { PGlite as pglite2, PGliteOptions as pgliteOpts2 } from "pglite-02";
+import { pgDump } from "@electric-sql/pglite-tools/pg_dump";
+
 // Unfortunately, we need to dynamically import the Postgres extensions.
 // They are only available as ESM, and if we import them normally,
 // our tsconfig will convert them to requires, which will cause errors
@@ -19,6 +22,8 @@ import {
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
 
+import * as path from 'path';
+
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
 DECLARE _clear text;
@@ -31,6 +36,8 @@ BEGIN
   EXECUTE COALESCE(_clear, 'select now()');
 END
 $do$;`;
+
+const currentPostgresVersion = 17;
 
 export class PostgresServer {
   private dataDirectory?: string;
@@ -45,7 +52,7 @@ export class PostgresServer {
 
     const server = net.createServer(async (socket) => {
       const connection: PostgresConnection = await fromNodeSocket(socket, {
-        serverVersion: "16.3 (PGlite 0.3.3)",
+        serverVersion: "17.4 (PGlite 0.3.3)",
         auth: { method: "trust" },
 
         async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
@@ -87,31 +94,44 @@ export class PostgresServer {
 
   async getDb(): Promise<PGlite> {
     if (!this.db) {
-      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
-      if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
-        fs.mkdirSync(this.dataDirectory, { recursive: true });
-      }
-      // Not all schemas will need vector installed, but we don't have an good way
-      // to swap extensions after starting PGLite, so we always include it.
-      const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
-      const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
       const pgliteArgs: PGliteOptions = {
         debug: this.debug,
-        extensions: {
-          vector,
-          uuidOssp,
-        },
+        extensions: await this.getExtensions(),
         dataDir: this.dataDirectory,
       };
+      let migrationSql: string = "";
+      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+      if (this.dataDirectory) {
+        const dataDirVersion = checkDataDirPGVersion(this.dataDirectory)
+        if (dataDirVersion && dataDirVersion !== `${currentPostgresVersion}`) {
+          console.log('Dumping migration sql');
+          migrationSql  = await this.migrateOldDataDir(pgliteArgs);
+          console.log(migrationSql)
+        }
+
+        if (!fs.existsSync(this.dataDirectory)) {
+          fs.mkdirSync(this.dataDirectory, { recursive: true });
+        }
+      }
+      
       if (this.importPath) {
         logger.debug(`Importing from ${this.importPath}`);
-        const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
-        const file = new File([rf], this.importPath);
-        pgliteArgs.loadDataDir = file;
+        pgliteArgs.loadDataDir = importHelper(this.importPath);
       }
       this.db = await this.forceCreateDB(pgliteArgs);
+      if (migrationSql) {
+        await this.db.exec(migrationSql);
+      }
     }
     return this.db;
+  }
+
+  private async getExtensions() {
+    // Not all schemas will need vector installed, but we don't have an good way
+    // to swap extensions after starting PGLite, so we always include it.
+    const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
+    const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
+    return { vector, uuidOssp }
   }
 
   public async clearDb(): Promise<void> {
@@ -154,10 +174,28 @@ export class PostgresServer {
     return;
   }
 
+  private async migrateOldDataDir(args: PGliteOptions): Promise<string> {
+    if (!args.dataDir) {
+      throw new FirebaseError('Tried to migrate nonexistant data directory')
+    }
+    logger.info("Detected a Postgres 16 data directory from an older version of firebase-tools. Migrating to Postgres 17.")
+    const tempPath = `${args.dataDir}.old`;
+    fs.cpSync(args.dataDir, tempPath, {recursive: true});
+    fs.rmSync(args.dataDir, {recursive: true, force: true});
+    const oldArgs: pgliteOpts2 = {
+      extensions: args.extensions,
+      dataDir: tempPath,
+      debug: this.debug,
+    }
+    const oldDb = await pglite2.create(oldArgs);
+    const dump = await pgDump({ pg: oldDb, args:["--verbose", "--verbose"] });
+    return await dump.text();
+  }
+
   constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
     this.dataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
-    this.debug = args.debug ? 5 : 0;
+    this.debug = args.debug ? 1 : 0;
   }
 }
 
@@ -181,4 +219,19 @@ export async function fromNodeSocket(socket: net.Socket, options?: PostgresConne
     : undefined;
 
   return new PostgresConnection({ readable: rs, writable: ws }, opts);
+}
+
+
+function checkDataDirPGVersion(dataDir: string): string | undefined {
+  const versionFile = path.join(dataDir, "PG_VERSION");
+  if (!fs.existsSync(versionFile)) {
+    return
+  }
+  const version = fs.readFileSync(versionFile, "utf-8");
+  return version;
+}
+
+function importHelper(importPath: string) {
+  const rf = fs.readFileSync(importPath) as unknown as BlobPart;
+  return new File([rf], importPath);
 }
