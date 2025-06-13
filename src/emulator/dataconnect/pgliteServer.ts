@@ -9,6 +9,7 @@ const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
 import { Readable, Writable } from "node:stream";
 import * as fs from "fs";
+import * as path from "node:path";
 
 import {
   getMessages,
@@ -45,7 +46,7 @@ export class PostgresServer {
 
     const server = net.createServer(async (socket) => {
       const connection: PostgresConnection = await fromNodeSocket(socket, {
-        serverVersion: "16.3 (PGlite 0.3.3)",
+        serverVersion: "17.4 (PGlite 0.3.3)",
         auth: { method: "trust" },
 
         async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
@@ -126,7 +127,75 @@ export class PostgresServer {
     fs.writeFileSync(exportPath, new Uint8Array(arrayBuff));
   }
 
+  private async migrateDb(pgliteArgs: PGliteOptions): Promise<PGlite> {
+    if (!pgliteArgs.dataDir) {
+      throw new FirebaseError("Cannot migrate database without a data directory.");
+    }
+    const dataDir = pgliteArgs.dataDir;
+
+    // 1. Import old PGlite and pgDump
+    const { PGlite: PGlite02 } = await dynamicImport("pglite-2");
+    const pgDump = (await dynamicImport("@electric-sql/pglite-tools/pg_dump")).pgDump;
+
+    // 2. Open old DB with old PGlite
+    logger.info("Opening old database with pglite v0.2.x to start migration...");
+    const old_vector = (await dynamicImport("pglite-2/vector")).vector;
+    const old_uuidOssp = (await dynamicImport("pglite-2/contrib/uuid_ossp")).uuid_ossp;
+    const old_extensions = { vector: old_vector, uuidOssp: old_uuidOssp };
+    const oldDb = new PGlite02({ dataDir, extensions: old_extensions });
+    await oldDb.waitReady;
+
+    const oldVersion = await (oldDb as PGlite).query<{ version: string }>("SELECT version();");
+    logger.info(`Old database version: ${oldVersion.rows[0].version}`);
+    if (!oldVersion.rows[0].version.includes("PostgreSQL 16")) {
+      await oldDb.close();
+      throw new FirebaseError("Migration started, but DB version is not PostgreSQL 16.");
+    }
+
+    // 3. Dump data
+    logger.info("Dumping data from old database...");
+    const dumpDir = await oldDb.dumpDataDir("none");
+    const tempOldDb = await PGlite02.create({
+      loadDataDir: dumpDir,
+      extensions: old_extensions,
+    });
+
+    const dumpResult = await pgDump({ pg: tempOldDb, args:["--verbose", "--verbose"]  });
+    await tempOldDb.close();
+    await oldDb.close();
+
+    // 4. Nuke old data directory
+    logger.info("Removing old database directory...");
+    fs.rmSync(dataDir, { force: true, recursive: true });
+
+    // 5. Create new DB with new PGlite
+    logger.info("Creating new database with pglite v0.3.x...");
+    const newDb = new PGlite(pgliteArgs);
+    await newDb.waitReady;
+
+    // 6. Import data
+    logger.info("Importing data into new database...");
+    const dumpText = await dumpResult.text();
+    await newDb.exec(dumpText);
+    await newDb.exec("SET SEARCH_PATH = public;");
+
+    logger.info("Postgres database migration successful.");
+    return newDb;
+  }
+
   async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
+    if (pgliteArgs.dataDir && fs.existsSync(pgliteArgs.dataDir)) {
+      const versionFilePath = path.join(pgliteArgs.dataDir, "PG_VERSION");
+      if (fs.existsSync(versionFilePath)) {
+        const version = fs.readFileSync(versionFilePath, "utf-8").trim();
+        logger.debug(`Found Postgres version file with version: ${version}`);
+        if (version === "16") {
+          logger.info("Postgres version 16 detected. Attempting to migrate...");
+          return this.migrateDb(pgliteArgs);
+        }
+      }
+    }
+
     try {
       const db = new PGlite(pgliteArgs);
       await db.waitReady;
@@ -160,7 +229,6 @@ export class PostgresServer {
     this.debug = args.debug ? 5 : 0;
   }
 }
-
 
 /**
  * Creates a `PostgresConnection` from a Node.js TCP/Unix `Socket`.
