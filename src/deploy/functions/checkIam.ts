@@ -206,11 +206,11 @@ export async function ensureGenkitMonitoringRoles(
     .map((endpoint) => endpoint.serviceAccount || "")
     .filter((value, index, self) => self.indexOf(value) === index);
   const defaultServiceAccountIndex = serviceAccounts.indexOf("");
-  if (defaultServiceAccountIndex) {
+  if (defaultServiceAccountIndex !== -1) {
     serviceAccounts[defaultServiceAccountIndex] = await gce.getDefaultServiceAccount(projectNumber);
   }
 
-  const members = serviceAccounts.map((sa) => `serviceAccount:${sa}`);
+  const members = serviceAccounts.filter((sa) => !!sa).map((sa) => `serviceAccount:${sa}`);
   const requiredBindings: iam.Binding[] = [];
   for (const monitoringRole of GENKIT_MONITORING_ROLES) {
     requiredBindings.push({
