@@ -19,6 +19,7 @@ import {
 } from "pg-gateway";
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
+import { moveAll } from "../../fsutils";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -34,7 +35,7 @@ END
 $do$;`;
 
 export class PostgresServer {
-  private dataDirectory?: string;
+  private baseDataDirectory?: string;
   private importPath?: string;
   private debug: DebugLevel;
 
@@ -88,24 +89,7 @@ export class PostgresServer {
 
   async getDb(): Promise<PGlite> {
     if (!this.db) {
-      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
-      if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
-        fs.mkdirSync(this.dataDirectory, { recursive: true });
-      }
-      // Not all schemas will need vector installed, but we don't have an good way
-      // to swap extensions after starting PGLite, so we always include it.
-      const pgliteArgs: PGliteOptions = {
-        debug: this.debug,
-        extensions: await this.getExtensions(),
-        dataDir: this.dataDirectory,
-      };
-      if (this.importPath) {
-        logger.debug(`Importing from ${this.importPath}`);
-        const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
-        const file = new File([rf], this.importPath);
-        pgliteArgs.loadDataDir = file;
-      }
-      this.db = await this.forceCreateDB(pgliteArgs);
+      this.db = await this.forceCreateDB();
     }
     return this.db;
   }
@@ -129,10 +113,9 @@ export class PostgresServer {
   }
 
   private async migrateDb(pgliteArgs: PGliteOptions): Promise<PGlite> {
-    if (!pgliteArgs.dataDir) {
+    if (!this.baseDataDirectory) {
       throw new FirebaseError("Cannot migrate database without a data directory.");
     }
-    const dataDir = pgliteArgs.dataDir;
 
     // 1. Import old PGlite and pgDump
     const { PGlite: PGlite02 } = await dynamicImport("pglite-2");
@@ -142,7 +125,8 @@ export class PostgresServer {
 
     logger.info("Opening database with Postgres 16...");
     const extensions = await this.getExtensions();
-    const oldDb = new PGlite02({ dataDir, extensions });
+    const dataDir = this.baseDataDirectory;
+    const oldDb = new PGlite02({ ...pgliteArgs, dataDir });
     await oldDb.waitReady;
 
     const oldVersion = await (oldDb as PGlite).query<{ version: string }>("SELECT version();");
@@ -164,13 +148,18 @@ export class PostgresServer {
     await tempOldDb.close();
     await oldDb.close();
 
-    // 4. Nuke old data directory
-    logger.info("Removing old database directory...");
-    fs.rmSync(dataDir, { force: true, recursive: true });
+    // 4. Move old dataDir to pg16 directory
+    logger.info(`Moving old database directory to ${this.baseDataDirectory}/pg16...`);
+    const pg16Dir = this.getVersionedDataDir(16)!;
+    moveAll(this.baseDataDirectory, pg16Dir);
+    logger.info(
+      "If you need to use an older version of the Firebase CLI, you can restore from that directory.",
+    );
 
     // 5. Create new DB with new PGlite
     logger.info("Creating new database with Postgres 17...");
-    const newDb = new PGlite(pgliteArgs);
+    const pg17Dir = this.getVersionedDataDir(17)!;
+    const newDb = new PGlite({ ...pgliteArgs, dataDir: pg17Dir });
     await newDb.waitReady;
 
     // 6. Import data
@@ -183,9 +172,39 @@ export class PostgresServer {
     return newDb;
   }
 
-  async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
-    if (pgliteArgs.dataDir && fs.existsSync(pgliteArgs.dataDir)) {
-      const versionFilePath = path.join(pgliteArgs.dataDir, "PG_VERSION");
+  // When we upgrade Postgres versions, we need to migrate old data. To make this simpler,
+  // we started using versioned subdirectories of the dataDir.
+  // Note that we did not do this originally, so PG16 data is often found in the baseDataDir
+  private getVersionedDataDir(version: number): string | undefined {
+    if (!this.baseDataDirectory) {
+      return;
+    }
+    return path.join(this.baseDataDirectory, `pg${version}`);
+  }
+
+  async forceCreateDB(): Promise<PGlite> {
+    const baseArgs: PGliteOptions = {
+      debug: this.debug,
+      extensions: await this.getExtensions(),
+    };
+
+    const pg17Dir = this.getVersionedDataDir(17);
+    // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+    if (pg17Dir && !fs.existsSync(pg17Dir)) {
+      fs.mkdirSync(pg17Dir, { recursive: true });
+    }
+
+    if (this.importPath) {
+      logger.debug(`Importing from ${this.importPath}`);
+      const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
+      const file = new File([rf], this.importPath);
+      baseArgs.loadDataDir = file;
+    }
+
+    // Detect and handle migration from older versions. Originally, we did not do versioned subdirectories,
+    // so we just check the base directory here
+    if (this.baseDataDirectory && fs.existsSync(this.baseDataDirectory)) {
+      const versionFilePath = path.join(this.baseDataDirectory, "PG_VERSION");
       if (fs.existsSync(versionFilePath)) {
         const version = fs.readFileSync(versionFilePath, "utf-8").trim();
         logger.debug(`Found Postgres version file with version: ${version}`);
@@ -193,20 +212,20 @@ export class PostgresServer {
           logger.info(
             "Detected a Postgres 16 data directory from an older version of firebase-tools. Migrating to Postgres 17...",
           );
-          return this.migrateDb(pgliteArgs);
+          return this.migrateDb(baseArgs);
         }
       }
     }
 
     try {
-      const db = new PGlite(pgliteArgs);
+      const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
       await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pgliteArgs.dataDir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
         // Clear out the current pglite data
-        fs.rmSync(pgliteArgs.dataDir, { force: true, recursive: true });
-        const db = new PGlite(pgliteArgs);
+        fs.rmSync(pg17Dir, { force: true, recursive: true });
+        const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
         await db.waitReady;
         return db;
       }
@@ -226,7 +245,7 @@ export class PostgresServer {
   }
 
   constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
-    this.dataDirectory = args.dataDirectory;
+    this.baseDataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
     this.debug = args.debug ? 5 : 0;
   }
