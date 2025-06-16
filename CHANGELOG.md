@@ -1,6 +1,1 @@
-- Add emulator support to firebase storage MCP tools. (#8707)
-- Removed overeager error catch in `functions:list`.
-- Add validation during `firebase init` feature selection. (#5232)
-- Fixed an issue where the extensions emulator did not work with `demo-` projects. (#8720)
-- Fixed issue where `--export-on-exit` fails if the target directory does not exist. (#4688)
-- Updated the Data Connect emulator to pglite 0.3.x and Postgres 17, which fixes a nubmer of crashes related to wire protocol inconsistencies. (#8679, #8658)
+- Updated the Data Connect emulator to use pglite 0.3.x and Postgres 17, which fixes some crashes related to wire protocol inconsistencies. (#8679, #8658)

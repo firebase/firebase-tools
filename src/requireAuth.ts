@@ -77,7 +77,9 @@ export async function refreshAuth(): Promise<Tokens> {
 }
 
 /**
- * Ensures that there is an authenticated user.
+ * Ensures that the user can make authenticated calls. Returns the email if the user is logged in,
+ * returns null if the user has Applciation Default Credentials set up, and errors out
+ * if the user is not authenticated
  * @param options CLI options.
  */
 export async function requireAuth(options: any): Promise<string | null> {
