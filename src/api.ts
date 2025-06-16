@@ -12,10 +12,10 @@ export const authProxyOrigin = () =>
 export const clientId = () =>
   utils.envOverride(
     "FIREBASE_CLIENT_ID",
-    "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+    "1027195595844-i29a039ogpesm6930gcv4q654t5glnpt.apps.googleusercontent.com",
   );
 export const clientSecret = () =>
-  utils.envOverride("FIREBASE_CLIENT_SECRET", "j9iVZfS8kkCEFUPaAeJV0sAi");
+  utils.envOverride("FIREBASE_CLIENT_SECRET", "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");
 export const cloudbillingOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBILLING_URL", "https://cloudbilling.googleapis.com");
 export const cloudloggingOrigin = () =>
@@ -169,6 +169,9 @@ export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 export const cloudAiCompanionOrigin = () =>
   utils.envOverride("CLOUD_AI_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
+
+export const appTestingOrigin = () =>
+  utils.envOverride("FIREBASE_APP_TESTING_URL", "https://autopush-firebaseapptesting.sandbox.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {
