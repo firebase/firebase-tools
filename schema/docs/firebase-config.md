@@ -1,3 +1,3001 @@
+
+
+# 
+
+
+
+<table>
+<tbody>
+<tr><th>$id</th><td>firebase.json</td></tr>
+<tr><th>$schema</th><td>http://json-schema.org/draft-07/schema#</td></tr>
+</tbody>
+</table>
+
+## Properties
+
+<table class="jssd-properties-table"><thead><tr><th colspan="2">Name</th><th>Type</th></tr></thead><tbody><tr><td colspan="2"><a href="#$schema">$schema</a></td><td>String</td></tr><tr><td rowspan="2">apphosting</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td rowspan="2">database</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td rowspan="2">dataconnect</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td colspan="2"><a href="#emulators">emulators</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#extensions">extensions</a></td><td>Object</td></tr><tr><td rowspan="2">firestore</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td rowspan="2">functions</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td rowspan="2">hosting</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr><tr><td colspan="2"><a href="#remoteconfig">remoteconfig</a></td><td>Object</td></tr><tr><td rowspan="2">storage</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tbody></table>
+
+
+
+<hr />
+
+
+## $schema
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    <tr>
+      <th>Format</th>
+      <td colspan="2">uri</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+## apphosting
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### apphosting.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### apphosting.0.alwaysDeployFromSource
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.0.backendId
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.0.ignore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.0.rootDir
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### apphosting.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### apphosting.1.alwaysDeployFromSource
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.1.backendId
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.1.ignore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### apphosting.1.rootDir
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+
+## database
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### database.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### database.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### database.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### database.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### database.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### database.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### database.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### database.0.rules
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### database.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+## dataconnect
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### dataconnect.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### dataconnect.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### dataconnect.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### dataconnect.0.source
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### dataconnect.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.1.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.1.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### dataconnect.1.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### dataconnect.1.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### dataconnect.1.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### dataconnect.1.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### dataconnect.1.source
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+
+## emulators
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+### Properties
+  <table class="jssd-properties-table"><thead><tr><th colspan="2">Name</th><th>Type</th></tr></thead><tbody><tr><td colspan="2"><a href="#emulatorsapphosting">apphosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsauth">auth</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdatabase">database</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdataconnect">dataconnect</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorseventarc">eventarc</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsextensions">extensions</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsfirestore">firestore</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsfunctions">functions</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshosting">hosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshub">hub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorslogging">logging</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorspubsub">pubsub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorssingleprojectmode">singleProjectMode</a></td><td>Boolean</td></tr><tr><td colspan="2"><a href="#emulatorsstorage">storage</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorstasks">tasks</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsui">ui</a></td><td>Object</td></tr></tbody></table>
+
+
+### emulators.apphosting
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.apphosting.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.apphosting.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.apphosting.rootDirectory
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.apphosting.startCommand
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.apphosting.startCommandOverride
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.auth
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.auth.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.auth.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.database
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.database.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.database.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.dataconnect
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.dataconnect.dataDir
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.dataconnect.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.dataconnect.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.dataconnect.postgresHost
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.dataconnect.postgresPort
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.eventarc
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.eventarc.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.eventarc.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.extensions
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.firestore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.firestore.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.firestore.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.firestore.websocketPort
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.functions
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.functions.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.functions.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.hosting
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.hosting.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.hosting.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.hub
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.hub.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.hub.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.logging
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.logging.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.logging.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.pubsub
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.pubsub.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.pubsub.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.singleProjectMode
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.storage
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.storage.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.storage.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.tasks
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.tasks.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.tasks.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### emulators.ui
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### emulators.ui.enabled
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.ui.host
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### emulators.ui.port
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+
+## extensions
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+## firestore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### firestore.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### firestore.0.database
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### firestore.0.indexes
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### firestore.0.location
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### firestore.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### firestore.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### firestore.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### firestore.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### firestore.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### firestore.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### firestore.0.rules
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### firestore.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+## functions
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.0.codebase
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.0.ignore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### functions.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### functions.0.runtime
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>nodejs20</li><li>nodejs22</li><li>python310</li><li>python311</li><li>python312</li><li>python313</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### functions.0.source
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### functions.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.1.codebase
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.1.ignore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.1.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.1.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.1.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### functions.1.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### functions.1.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### functions.1.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### functions.1.runtime
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>nodejs20</li><li>nodejs22</li><li>python310</li><li>python311</li><li>python312</li><li>python313</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### functions.1.source
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+
+## hosting
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.appAssociation
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>AUTO</li><li>NONE</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.cleanUrls
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.frameworksBackend.concurrency
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Number of requests a function can serve at once.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.cors
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If true, allows CORS on requests to this function.
+If this is a &#x60;string&#x60; or &#x60;RegExp&#x60;, allows requests from domains that match the provided value.
+If this is an &#x60;Array&#x60;, allows requests from domains matching at least one entry of the array.
+Defaults to true for {@link https.CallableFunction} and false otherwise.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">[string, boolean]</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.cpu
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Fractional number of CPUs to allocate to a function.</td>
+    </tr>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>String</td></tr><tr><td>Number</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.frameworksBackend.cpu.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Const</th>
+      <td colspan="2">gcf_gen1</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.cpu.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.0.frameworksBackend.enforceAppCheck
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Determines whether Firebase AppCheck is enforced. Defaults to false.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.ingressSettings
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Ingress settings which control where this function can be called from.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>ALLOW_ALL</li><li>ALLOW_INTERNAL_AND_GCLB</li><li>ALLOW_INTERNAL_ONLY</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.invoker
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Invoker to set access control on https functions.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Const</th>
+      <td colspan="2">public</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.labels
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">User labels to set on the function.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.maxInstances
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Max number of instances to be running in parallel.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.memory
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Amount of memory to allocate to a function.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>128MiB</li><li>16GiB</li><li>1GiB</li><li>256MiB</li><li>2GiB</li><li>32GiB</li><li>4GiB</li><li>512MiB</li><li>8GiB</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.minInstances
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Min number of actual instances to be running at a given time.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.omit
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If true, do not deploy or emulate this function.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.preserveExternalChanges
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Controls whether function configuration modified outside of function source is preserved. Defaults to false.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.region
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">HTTP functions can override global options and can specify multiple regions to deploy to.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.secrets
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.serviceAccount
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Specific service account for the function to run as.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.timeoutSeconds
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Timeout for the function in seconds, possible values are 0 to 540.
+HTTPS functions can specify a higher timeout.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">Number</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.vpcConnector
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Connect cloud function to specified VPC connector.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.frameworksBackend.vpcConnectorEgressSettings
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Egress settings for VPC connector.</td>
+    </tr>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Enum</th>
+      <td colspan="2"><ul><li>ALL_TRAFFIC</li><li>PRIVATE_RANGES_ONLY</li></ul></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.0.headers
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.i18n
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.i18n.root
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.0.ignore
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### hosting.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.0.public
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.redirects
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.rewrites
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.site
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.source
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.target
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### hosting.0.trailingSlash
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Boolean</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### hosting.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+## remoteconfig
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+### Properties
+  <table class="jssd-properties-table"><thead><tr><th colspan="2">Name</th><th>Type</th></tr></thead><tbody><tr><td rowspan="2">postdeploy</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr><tr><td rowspan="2">predeploy</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr><tr><td colspan="2"><a href="#remoteconfigtemplate">template</a></td><td>String</td></tr></tbody></table>
+
+
+### remoteconfig.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### remoteconfig.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### remoteconfig.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### remoteconfig.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### remoteconfig.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### remoteconfig.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### remoteconfig.template
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">Yes</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+## storage
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
+    <tr>
+      <th>Required</th>
+      <td colspan="2">No</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Object</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.0.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.0.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.0.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### storage.0.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.0.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.0.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### storage.0.rules
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.0.target
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### storage.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.1.bucket
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.1.postdeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.1.postdeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.1.postdeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### storage.1.predeploy
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
+    
+  </tbody>
+</table>
+
+
+
+### storage.1.predeploy.0
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">Array</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.1.predeploy.1
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+### storage.1.rules
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+### storage.1.target
+
+
+<table class="jssd-property-table">
+  <tbody>
+    <tr><th>Type</th><td colspan="2">String</td></tr>
+    
+  </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+<hr />
+
+## Schema
+```
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "firebase.json",
@@ -1761,4 +4759,6 @@
     },
     "type": "object"
 }
+```
+
 
