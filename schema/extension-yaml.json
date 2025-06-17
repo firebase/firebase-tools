@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "extension.yaml",
+  "description": "extension.yaml declares the resources and configurable parameters for a Firebase Extension.",
   "additionalProperties": false,
   "definitions": {
     "author": {
