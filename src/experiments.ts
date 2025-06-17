@@ -58,7 +58,7 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   runfunctions: {
-    shortDescription: "Functions created using the V2 API target Cloud Run Functions",
+    shortDescription: "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
 

@@ -359,6 +359,10 @@ export async function updateEndpointSecret(
       operationResourceName: op.name,
     });
     return gcfV2.endpointFromFunction(cfn);
+  } else if (endpoint.platform === "run") {
+    // This may be tricky because the image has been deleted. How does this work
+    // with GCF?
+    throw new FirebaseError("Updating Cloud Run functions is not yet implemented.");
   } else {
     assertExhaustive(endpoint.platform);
   }
