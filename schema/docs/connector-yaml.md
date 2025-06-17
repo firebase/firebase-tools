@@ -8,12 +8,12 @@
 
 **Description:** connector.yaml is how you configure a connector for your Firebase Data Connect service.
 
-<details>
-<summary>
-<strong> <a name="connectorId"></a>1. [Optional] Property root > connectorId</strong>  
+| Property                       | Pattern | Type   | Deprecated | Definition | Title/Description                              |
+| ------------------------------ | ------- | ------ | ---------- | ---------- | ---------------------------------------------- |
+| - [connectorId](#connectorId ) | No      | string | No         | -          | The ID of the Firebase Data Connect connector. |
+| - [generate](#generate )       | No      | object | No         | -          | -                                              |
 
-</summary>
-<blockquote>
+## <a name="connectorId"></a>1. Property `root > connectorId`
 
 |              |          |
 | ------------ | -------- |
@@ -22,15 +22,7 @@
 
 **Description:** The ID of the Firebase Data Connect connector.
 
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate"></a>2. [Optional] Property root > generate</strong>  
-
-</summary>
-<blockquote>
+## <a name="generate"></a>2. Property `root > generate`
 
 |                           |             |
 | ------------------------- | ----------- |
@@ -38,12 +30,15 @@
 | **Required**              | No          |
 | **Additional properties** | Not allowed |
 
-<details>
-<summary>
-<strong> <a name="generate_javascriptSdk"></a>2.1. [Optional] Property root > generate > javascriptSdk</strong>  
+| Property                                    | Pattern | Type        | Deprecated | Definition | Title/Description                            |
+| ------------------------------------------- | ------- | ----------- | ---------- | ---------- | -------------------------------------------- |
+| - [javascriptSdk](#generate_javascriptSdk ) | No      | Combination | No         | -          | Configuration for a generated Javascript SDK |
+| - [dartSdk](#generate_dartSdk )             | No      | Combination | No         | -          | Configuration for a generated Dart SDK       |
+| - [kotlinSdk](#generate_kotlinSdk )         | No      | Combination | No         | -          | Configuration for a generated Kotlin SDK     |
+| - [swiftSdk](#generate_swiftSdk )           | No      | Combination | No         | -          | Configuration for a generated Swift SDK      |
+| - [llmTools](#generate_llmTools )           | No      | Combination | No         | -          | -                                            |
 
-</summary>
-<blockquote>
+### <a name="generate_javascriptSdk"></a>2.1. Property `root > generate > javascriptSdk`
 
 |                           |                  |
 | ------------------------- | ---------------- |
@@ -53,14 +48,10 @@
 
 **Description:** Configuration for a generated Javascript SDK
 
-<blockquote>
-
 | One of(Option)                                    |
 | ------------------------------------------------- |
 | [javascriptSdk](#generate_javascriptSdk_oneOf_i0) |
 | [item 1](#generate_javascriptSdk_oneOf_i1)        |
-
-<blockquote>
 
 #### <a name="generate_javascriptSdk_oneOf_i0"></a>2.1.1. Property `root > generate > javascriptSdk > oneOf > javascriptSdk`
 
@@ -71,12 +62,14 @@
 | **Additional properties** | Any type allowed            |
 | **Defined in**            | #/definitions/javascriptSdk |
 
-<details>
-<summary>
-<strong> <a name="generate_javascriptSdk_oneOf_i0_outputDir"></a>2.1.1.1. [Optional] Property root > generate > javascriptSdk > oneOf > item 0 > outputDir</strong>  
+| Property                                                             | Pattern | Type   | Deprecated | Definition | Title/Description                                                                |
+| -------------------------------------------------------------------- | ------- | ------ | ---------- | ---------- | -------------------------------------------------------------------------------- |
+| - [outputDir](#generate_javascriptSdk_oneOf_i0_outputDir )           | No      | string | No         | -          | Path to the directory where generated files should be written to.                |
+| - [package](#generate_javascriptSdk_oneOf_i0_package )               | No      | string | No         | -          | The package name to use for the generated code.                                  |
+| - [packageJSONDir](#generate_javascriptSdk_oneOf_i0_packageJSONDir ) | No      | string | No         | -          | The directory containining the package.json to install the generated package in. |
+| - [](#generate_javascriptSdk_oneOf_i0_additionalProperties )         | No      | object | No         | -          | -                                                                                |
 
-</summary>
-<blockquote>
+##### <a name="generate_javascriptSdk_oneOf_i0_outputDir"></a>2.1.1.1. Property `root > generate > javascriptSdk > oneOf > item 0 > outputDir`
 
 |              |          |
 | ------------ | -------- |
@@ -85,15 +78,7 @@
 
 **Description:** Path to the directory where generated files should be written to.
 
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_javascriptSdk_oneOf_i0_package"></a>2.1.1.2. [Optional] Property root > generate > javascriptSdk > oneOf > item 0 > package</strong>  
-
-</summary>
-<blockquote>
+##### <a name="generate_javascriptSdk_oneOf_i0_package"></a>2.1.1.2. Property `root > generate > javascriptSdk > oneOf > item 0 > package`
 
 |              |          |
 | ------------ | -------- |
@@ -102,15 +87,7 @@
 
 **Description:** The package name to use for the generated code.
 
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_javascriptSdk_oneOf_i0_packageJSONDir"></a>2.1.1.3. [Optional] Property root > generate > javascriptSdk > oneOf > item 0 > packageJSONDir</strong>  
-
-</summary>
-<blockquote>
+##### <a name="generate_javascriptSdk_oneOf_i0_packageJSONDir"></a>2.1.1.3. Property `root > generate > javascriptSdk > oneOf > item 0 > packageJSONDir`
 
 |              |          |
 | ------------ | -------- |
@@ -118,12 +95,6 @@
 | **Required** | No       |
 
 **Description:** The directory containining the package.json to install the generated package in.
-
-</blockquote>
-</details>
-
-</blockquote>
-<blockquote>
 
 #### <a name="generate_javascriptSdk_oneOf_i1"></a>2.1.2. Property `root > generate > javascriptSdk > oneOf > item 1`
 
@@ -144,7 +115,7 @@
 | ------------------------------------------------------- | ----------- |
 | [javascriptSdk](#generate_javascriptSdk_oneOf_i1_items) | -           |
 
-##### <a name="autogenerated_heading_2"></a>2.1.2.1. root > generate > javascriptSdk > oneOf > item 1 > javascriptSdk
+##### <a name="generate_javascriptSdk_oneOf_i1_items"></a>2.1.2.1. root > generate > javascriptSdk > oneOf > item 1 > javascriptSdk
 
 |                           |                                                                     |
 | ------------------------- | ------------------------------------------------------------------- |
@@ -153,19 +124,7 @@
 | **Additional properties** | Any type allowed                                                    |
 | **Same definition as**    | [generate_javascriptSdk_oneOf_i0](#generate_javascriptSdk_oneOf_i0) |
 
-</blockquote>
-
-</blockquote>
-
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_dartSdk"></a>2.2. [Optional] Property root > generate > dartSdk</strong>  
-
-</summary>
-<blockquote>
+### <a name="generate_dartSdk"></a>2.2. Property `root > generate > dartSdk`
 
 |                           |                  |
 | ------------------------- | ---------------- |
@@ -175,14 +134,10 @@
 
 **Description:** Configuration for a generated Dart SDK
 
-<blockquote>
-
 | One of(Option)                        |
 | ------------------------------------- |
 | [dartSdk](#generate_dartSdk_oneOf_i0) |
 | [item 1](#generate_dartSdk_oneOf_i1)  |
-
-<blockquote>
 
 #### <a name="generate_dartSdk_oneOf_i0"></a>2.2.1. Property `root > generate > dartSdk > oneOf > dartSdk`
 
@@ -193,12 +148,13 @@
 | **Additional properties** | Any type allowed      |
 | **Defined in**            | #/definitions/dartSdk |
 
-<details>
-<summary>
-<strong> <a name="generate_dartSdk_oneOf_i0_outputDir"></a>2.2.1.1. [Optional] Property root > generate > dartSdk > oneOf > item 0 > outputDir</strong>  
+| Property                                               | Pattern | Type   | Deprecated | Definition | Title/Description                                                 |
+| ------------------------------------------------------ | ------- | ------ | ---------- | ---------- | ----------------------------------------------------------------- |
+| - [outputDir](#generate_dartSdk_oneOf_i0_outputDir )   | No      | string | No         | -          | Path to the directory where generated files should be written to. |
+| - [package](#generate_dartSdk_oneOf_i0_package )       | No      | string | No         | -          | The package name to use for the generated code.                   |
+| - [](#generate_dartSdk_oneOf_i0_additionalProperties ) | No      | object | No         | -          | -                                                                 |
 
-</summary>
-<blockquote>
+##### <a name="generate_dartSdk_oneOf_i0_outputDir"></a>2.2.1.1. Property `root > generate > dartSdk > oneOf > item 0 > outputDir`
 
 |              |          |
 | ------------ | -------- |
@@ -207,15 +163,7 @@
 
 **Description:** Path to the directory where generated files should be written to.
 
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_dartSdk_oneOf_i0_package"></a>2.2.1.2. [Optional] Property root > generate > dartSdk > oneOf > item 0 > package</strong>  
-
-</summary>
-<blockquote>
+##### <a name="generate_dartSdk_oneOf_i0_package"></a>2.2.1.2. Property `root > generate > dartSdk > oneOf > item 0 > package`
 
 |              |          |
 | ------------ | -------- |
@@ -223,12 +171,6 @@
 | **Required** | No       |
 
 **Description:** The package name to use for the generated code.
-
-</blockquote>
-</details>
-
-</blockquote>
-<blockquote>
 
 #### <a name="generate_dartSdk_oneOf_i1"></a>2.2.2. Property `root > generate > dartSdk > oneOf > item 1`
 
@@ -249,7 +191,7 @@
 | ------------------------------------------- | ----------- |
 | [dartSdk](#generate_dartSdk_oneOf_i1_items) | -           |
 
-##### <a name="autogenerated_heading_3"></a>2.2.2.1. root > generate > dartSdk > oneOf > item 1 > dartSdk
+##### <a name="generate_dartSdk_oneOf_i1_items"></a>2.2.2.1. root > generate > dartSdk > oneOf > item 1 > dartSdk
 
 |                           |                                                         |
 | ------------------------- | ------------------------------------------------------- |
@@ -258,19 +200,7 @@
 | **Additional properties** | Any type allowed                                        |
 | **Same definition as**    | [generate_dartSdk_oneOf_i0](#generate_dartSdk_oneOf_i0) |
 
-</blockquote>
-
-</blockquote>
-
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_kotlinSdk"></a>2.3. [Optional] Property root > generate > kotlinSdk</strong>  
-
-</summary>
-<blockquote>
+### <a name="generate_kotlinSdk"></a>2.3. Property `root > generate > kotlinSdk`
 
 |                           |                  |
 | ------------------------- | ---------------- |
@@ -280,14 +210,10 @@
 
 **Description:** Configuration for a generated Kotlin SDK
 
-<blockquote>
-
 | One of(Option)                            |
 | ----------------------------------------- |
 | [kotlinSdk](#generate_kotlinSdk_oneOf_i0) |
 | [item 1](#generate_kotlinSdk_oneOf_i1)    |
-
-<blockquote>
 
 #### <a name="generate_kotlinSdk_oneOf_i0"></a>2.3.1. Property `root > generate > kotlinSdk > oneOf > kotlinSdk`
 
@@ -298,12 +224,13 @@
 | **Additional properties** | Any type allowed        |
 | **Defined in**            | #/definitions/kotlinSdk |
 
-<details>
-<summary>
-<strong> <a name="generate_kotlinSdk_oneOf_i0_outputDir"></a>2.3.1.1. [Optional] Property root > generate > kotlinSdk > oneOf > item 0 > outputDir</strong>  
+| Property                                                 | Pattern | Type   | Deprecated | Definition | Title/Description                                                 |
+| -------------------------------------------------------- | ------- | ------ | ---------- | ---------- | ----------------------------------------------------------------- |
+| - [outputDir](#generate_kotlinSdk_oneOf_i0_outputDir )   | No      | string | No         | -          | Path to the directory where generated files should be written to. |
+| - [package](#generate_kotlinSdk_oneOf_i0_package )       | No      | string | No         | -          | The package name to use for the generated code.                   |
+| - [](#generate_kotlinSdk_oneOf_i0_additionalProperties ) | No      | object | No         | -          | -                                                                 |
 
-</summary>
-<blockquote>
+##### <a name="generate_kotlinSdk_oneOf_i0_outputDir"></a>2.3.1.1. Property `root > generate > kotlinSdk > oneOf > item 0 > outputDir`
 
 |              |          |
 | ------------ | -------- |
@@ -312,15 +239,7 @@
 
 **Description:** Path to the directory where generated files should be written to.
 
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_kotlinSdk_oneOf_i0_package"></a>2.3.1.2. [Optional] Property root > generate > kotlinSdk > oneOf > item 0 > package</strong>  
-
-</summary>
-<blockquote>
+##### <a name="generate_kotlinSdk_oneOf_i0_package"></a>2.3.1.2. Property `root > generate > kotlinSdk > oneOf > item 0 > package`
 
 |              |          |
 | ------------ | -------- |
@@ -328,12 +247,6 @@
 | **Required** | No       |
 
 **Description:** The package name to use for the generated code.
-
-</blockquote>
-</details>
-
-</blockquote>
-<blockquote>
 
 #### <a name="generate_kotlinSdk_oneOf_i1"></a>2.3.2. Property `root > generate > kotlinSdk > oneOf > item 1`
 
@@ -354,7 +267,7 @@
 | ----------------------------------------------- | ----------- |
 | [kotlinSdk](#generate_kotlinSdk_oneOf_i1_items) | -           |
 
-##### <a name="autogenerated_heading_4"></a>2.3.2.1. root > generate > kotlinSdk > oneOf > item 1 > kotlinSdk
+##### <a name="generate_kotlinSdk_oneOf_i1_items"></a>2.3.2.1. root > generate > kotlinSdk > oneOf > item 1 > kotlinSdk
 
 |                           |                                                             |
 | ------------------------- | ----------------------------------------------------------- |
@@ -363,19 +276,7 @@
 | **Additional properties** | Any type allowed                                            |
 | **Same definition as**    | [generate_kotlinSdk_oneOf_i0](#generate_kotlinSdk_oneOf_i0) |
 
-</blockquote>
-
-</blockquote>
-
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_swiftSdk"></a>2.4. [Optional] Property root > generate > swiftSdk</strong>  
-
-</summary>
-<blockquote>
+### <a name="generate_swiftSdk"></a>2.4. Property `root > generate > swiftSdk`
 
 |                           |                  |
 | ------------------------- | ---------------- |
@@ -385,14 +286,10 @@
 
 **Description:** Configuration for a generated Swift SDK
 
-<blockquote>
-
 | One of(Option)                          |
 | --------------------------------------- |
 | [swiftSdk](#generate_swiftSdk_oneOf_i0) |
 | [item 1](#generate_swiftSdk_oneOf_i1)   |
-
-<blockquote>
 
 #### <a name="generate_swiftSdk_oneOf_i0"></a>2.4.1. Property `root > generate > swiftSdk > oneOf > swiftSdk`
 
@@ -403,12 +300,12 @@
 | **Additional properties** | Any type allowed       |
 | **Defined in**            | #/definitions/swiftSdk |
 
-<details>
-<summary>
-<strong> <a name="generate_swiftSdk_oneOf_i0_outputDir"></a>2.4.1.1. [Optional] Property root > generate > swiftSdk > oneOf > item 0 > outputDir</strong>  
+| Property                                                | Pattern | Type   | Deprecated | Definition | Title/Description                                                 |
+| ------------------------------------------------------- | ------- | ------ | ---------- | ---------- | ----------------------------------------------------------------- |
+| - [outputDir](#generate_swiftSdk_oneOf_i0_outputDir )   | No      | string | No         | -          | Path to the directory where generated files should be written to. |
+| - [](#generate_swiftSdk_oneOf_i0_additionalProperties ) | No      | object | No         | -          | -                                                                 |
 
-</summary>
-<blockquote>
+##### <a name="generate_swiftSdk_oneOf_i0_outputDir"></a>2.4.1.1. Property `root > generate > swiftSdk > oneOf > item 0 > outputDir`
 
 |              |          |
 | ------------ | -------- |
@@ -416,12 +313,6 @@
 | **Required** | No       |
 
 **Description:** Path to the directory where generated files should be written to.
-
-</blockquote>
-</details>
-
-</blockquote>
-<blockquote>
 
 #### <a name="generate_swiftSdk_oneOf_i1"></a>2.4.2. Property `root > generate > swiftSdk > oneOf > item 1`
 
@@ -442,7 +333,7 @@
 | --------------------------------------------- | ----------- |
 | [swiftSdk](#generate_swiftSdk_oneOf_i1_items) | -           |
 
-##### <a name="autogenerated_heading_5"></a>2.4.2.1. root > generate > swiftSdk > oneOf > item 1 > swiftSdk
+##### <a name="generate_swiftSdk_oneOf_i1_items"></a>2.4.2.1. root > generate > swiftSdk > oneOf > item 1 > swiftSdk
 
 |                           |                                                           |
 | ------------------------- | --------------------------------------------------------- |
@@ -451,19 +342,7 @@
 | **Additional properties** | Any type allowed                                          |
 | **Same definition as**    | [generate_swiftSdk_oneOf_i0](#generate_swiftSdk_oneOf_i0) |
 
-</blockquote>
-
-</blockquote>
-
-</blockquote>
-</details>
-
-<details>
-<summary>
-<strong> <a name="generate_llmTools"></a>2.5. [Optional] Property root > generate > llmTools</strong>  
-
-</summary>
-<blockquote>
+### <a name="generate_llmTools"></a>2.5. Property `root > generate > llmTools`
 
 |                           |                  |
 | ------------------------- | ---------------- |
@@ -471,14 +350,10 @@
 | **Required**              | No               |
 | **Additional properties** | Any type allowed |
 
-<blockquote>
-
 | One of(Option)                          |
 | --------------------------------------- |
 | [llmTools](#generate_llmTools_oneOf_i0) |
 | [item 1](#generate_llmTools_oneOf_i1)   |
-
-<blockquote>
 
 #### <a name="generate_llmTools_oneOf_i0"></a>2.5.1. Property `root > generate > llmTools > oneOf > llmTools`
 
@@ -489,12 +364,12 @@
 | **Additional properties** | Any type allowed       |
 | **Defined in**            | #/definitions/llmTools |
 
-<details>
-<summary>
-<strong> <a name="generate_llmTools_oneOf_i0_outputFile"></a>2.5.1.1. [Optional] Property root > generate > llmTools > oneOf > item 0 > outputFile</strong>  
+| Property                                                | Pattern | Type   | Deprecated | Definition | Title/Description                                                  |
+| ------------------------------------------------------- | ------- | ------ | ---------- | ---------- | ------------------------------------------------------------------ |
+| - [outputFile](#generate_llmTools_oneOf_i0_outputFile ) | No      | string | No         | -          | Path where the JSON LLM tool definitions file should be generated. |
+| - [](#generate_llmTools_oneOf_i0_additionalProperties ) | No      | object | No         | -          | -                                                                  |
 
-</summary>
-<blockquote>
+##### <a name="generate_llmTools_oneOf_i0_outputFile"></a>2.5.1.1. Property `root > generate > llmTools > oneOf > item 0 > outputFile`
 
 |              |          |
 | ------------ | -------- |
@@ -502,12 +377,6 @@
 | **Required** | No       |
 
 **Description:** Path where the JSON LLM tool definitions file should be generated.
-
-</blockquote>
-</details>
-
-</blockquote>
-<blockquote>
 
 #### <a name="generate_llmTools_oneOf_i1"></a>2.5.2. Property `root > generate > llmTools > oneOf > item 1`
 
@@ -528,7 +397,7 @@
 | --------------------------------------------- | ----------- |
 | [llmTools](#generate_llmTools_oneOf_i1_items) | -           |
 
-##### <a name="autogenerated_heading_6"></a>2.5.2.1. root > generate > llmTools > oneOf > item 1 > llmTools
+##### <a name="generate_llmTools_oneOf_i1_items"></a>2.5.2.1. root > generate > llmTools > oneOf > item 1 > llmTools
 
 |                           |                                                           |
 | ------------------------- | --------------------------------------------------------- |
@@ -537,15 +406,5 @@
 | **Additional properties** | Any type allowed                                          |
 | **Same definition as**    | [generate_llmTools_oneOf_i0](#generate_llmTools_oneOf_i0) |
 
-</blockquote>
-
-</blockquote>
-
-</blockquote>
-</details>
-
-</blockquote>
-</details>
-
 ----------------------------------------------------------------------------------------------------------------------------
-Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:11:22 -0700
+Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:38:46 -0700
