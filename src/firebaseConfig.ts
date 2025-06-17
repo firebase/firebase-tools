@@ -153,7 +153,7 @@ export type FunctionsRewrite = {
   function: {
     /** The ID of the Cloud Function to rewrite to. */
     functionId: string;
-    //* * The region of the Cloud Function to rewrite to. */
+    /** The region of the Cloud Function to rewrite to. */
     region?: string;
     /**
      * If true, the rewrite will be pinned to the currently running version of the Cloud Function.
@@ -168,7 +168,7 @@ export type RunRewrite = {
   run: {
     /** The ID of the Cloud Run service to rewrite to. */
     serviceId: string;
-    //* * The region of the Cloud Run service to rewrite to. */
+    /** The region of the Cloud Run service to rewrite to. */
     region?: string;
     /** If true, the rewrite will be pinned to the currently running revision of the Cloud Run service. */
     pinTag?: boolean;
@@ -522,7 +522,9 @@ export type ExtensionsConfig = Record<string, string>;
  * A single Data Connect deployment configs
  */
 export type DataConnectSingle = {
-  // The directory containing dataconnect.yaml for this service
+  /** 
+   * The directory containing dataconnect.yaml for this service
+   */
   source: string;
 } & Deployable;
 
@@ -537,12 +539,16 @@ export type DataConnectMultiple = DataConnectSingle[];
 export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
 /**
- * A single App Hosting deployment configs
+ * A single App Hosting deployment config
  */
 export type AppHostingSingle = {
-  // The ID of the backend that should be deployed.
+  /** 
+   * The ID of the backend that should be deployed. 
+   */
   backendId: string;
-  // The root directory of your app. This directory will be archived and uploaded during dpeloyment.
+  /** 
+   * The root directory of your app. This directory will be archived and uploaded during dpeloyment.
+   */
   rootDir: string;
   /**
    * A list of file paths to exclude from the archive that is uploaded for this backend.
