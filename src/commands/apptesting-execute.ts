@@ -5,7 +5,12 @@ import { logger } from "../logger";
 import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
-import { executeTests } from "../apptesting/invokeTests";
+import { executeTests, pollInvocationStatus } from "../apptesting/invokeTests";
+import { TestInvocation } from "../apptesting/types";
+import { FirebaseError } from "../error";
+import { marked } from "marked";
+import { needProjectId } from "../projectUtils";
+import { consoleUrl } from "../utils";
 
 export const command = new Command("apptesting:execute <target>")
   .description(
@@ -27,38 +32,43 @@ export const command = new Command("apptesting:execute <target>")
     const testDir = options.config.src.apptesting?.testDir || "tests";
     const tests = parseTestFiles(testDir, options.testFilePattern, options.testNamePattern);
     logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
-    // logger.info(await marked("View progress and resuts in the [Firebase Console](https://console.firebase.google.com/project/fb-web-testing-agent-customer/apptesting/execution/7sdj3-asdf23-das23d-23da3radsf)"))
 
-    //const testResults: TestResults = Object.fromEntries(tests.map((t) => [t.id, "running"]));
-    await executeTests(options.app, target, tests);
-    // const spinner = ora(getOutput(testResults));
-    // spinner.succeed();
+    const invocationOperation = await executeTests(options.app, target, tests);
+    const invocationId = invocationOperation.metadata?.name?.split('/').pop()
+    const projectId = needProjectId(options);
+    const url = consoleUrl(projectId, `apptesting/${options.app}/invocation/${invocationId}`);
+    logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`))
+
+    if (options.testsNonBlocking) {
+      logger.info("Not waiting for results");
+      return;
+    }
+
+    if (!invocationOperation.metadata) {
+      throw new FirebaseError("Invocation details unavailable");
+    }
+
+    const spinner = ora(getOutput(invocationOperation.metadata));
+    spinner.start();
+    await pollInvocationStatus(invocationOperation.name, (operation) => {
+      if (!operation.response) {
+        logger.info("invocation details unavailable");
+        return;
+      }
+      spinner.text = getOutput(operation.response);
+    });
+    spinner.succeed();
   });
 
-// async function executeTest() {
-//   return new Promise((resolve) => {
-//     setTimeout(resolve, Math.random() * 50000);
-//   });
-// }
-
-// type TestStatus = "running" | "pass" | "fail";
-// type TestResults = Record<string, TestStatus>;
-
-// function getOutput(testResults: TestResults) {
-//   const counts = { running: 0, pass: 0, fail: 0 };
-//   const failed = [];
-//   for (const [testId, status] of Object.entries(testResults)) {
-//     counts[status]++;
-//     failed.push(testId);
-//   }
-//   if (!counts.fail && !counts.running) {
-//     return "All tests passed";
-//   }
-//   return [
-//     counts.running ? `${counts.running} tests still running...` : undefined,
-//     counts.pass ? `✔ ${counts.pass} tests passing` : undefined,
-//     counts.fail ? `✖ ${counts.fail} tests failing` : undefined,
-//   ]
-//     .filter((a) => a)
-//     .join("\n");
-// }
+function getOutput(invocation: TestInvocation) {
+  if (!invocation.failedExecutions && !invocation.runningExecutions) {
+    return "All tests passed";
+  }
+  return [
+    invocation.runningExecutions ? `${invocation.runningExecutions} tests still running...` : undefined,
+    invocation.succeededExecutions ? `✔ ${invocation.succeededExecutions} tests passing` : undefined,
+    invocation.failedExecutions ? `✖ ${invocation.failedExecutions} tests failing` : undefined,
+  ]
+    .filter((a) => a)
+    .join("\n");
+}
