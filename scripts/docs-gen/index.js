@@ -1,7 +1,7 @@
 const JsonSchemaStaticDocs = require("json-schema-static-docs");
 
 (async () => {
-  let jsonSchemaStaticDocs = new JsonSchemaStaticDocs({
+  const jsonSchemaStaticDocs = new JsonSchemaStaticDocs({
     inputPath: "../../schema",
     outputPath: "../../schema/docs",
     ajvOptions: {

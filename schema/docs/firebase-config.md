@@ -2298,6 +2298,10 @@ Files outside of this directory will not be included and should not be reference
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a single Firebase Hosting site.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -2339,6 +2343,10 @@ Files outside of this directory will not be included and should not be reference
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Options for this sites web frameworks backend.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -2613,6 +2621,10 @@ Defaults to true for {@link https.CallableFunction} and false otherwise.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of secrets used in this app.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2699,6 +2711,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of extra headers to send when serving specific paths on this site.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2712,6 +2728,12 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Internationalization config for this site.
+See https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites
+for instructions on how to enable interntionalization for your site.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -2724,6 +2746,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The directory containing internationalization rewrites.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2738,6 +2764,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of paths or globs within the source directory that should not be included in the uploaded archive.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2837,6 +2867,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Whether this site should publically available.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2850,6 +2884,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of redirects for this site.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2863,6 +2901,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list o rewrites for this site.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2876,6 +2918,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The site to deploy.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2889,6 +2935,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Path to the directory containing this site&#x27;s source code. This will be archived and uploaded during deployment.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2902,6 +2952,11 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The deploy target to deploy.
+See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2929,6 +2984,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a list of Firebase Hosting sites.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -3059,6 +3118,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A path to a CJSON file containing a Remote Config template.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -3216,6 +3279,11 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The deploy target to these Storage rules to.
+See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -3366,6 +3434,11 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The deploy target to these Storage rules to.
+See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -3612,6 +3685,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "string"
                 },
                 "secrets": {
+                    "description": "A list of secrets used in this app.",
                     "items": {
                         "type": "string"
                     },
@@ -3707,6 +3781,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "headers": {
@@ -3714,9 +3789,11 @@ HTTPS functions can specify a higher timeout.</td>
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -3743,9 +3820,11 @@ HTTPS functions can specify a higher timeout.</td>
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -3758,6 +3837,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "array"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -3775,9 +3855,11 @@ HTTPS functions can specify a higher timeout.</td>
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -3790,6 +3872,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "array"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -3799,7 +3882,8 @@ HTTPS functions can specify a higher timeout.</td>
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "Extra headers that should be sent when serving this path."
         },
         "HostingRedirects": {
             "anyOf": [
@@ -3807,12 +3891,19 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -3826,12 +3917,19 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -3845,12 +3943,19 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -3860,7 +3965,8 @@ HTTPS functions can specify a higher timeout.</td>
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "URL redirects for a hosting site. Use these to prevent broken links when moving pages."
         },
         "HostingRewrites": {
             "anyOf": [
@@ -3871,6 +3977,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -3887,6 +3994,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "region": {
@@ -3906,9 +4014,11 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -3921,6 +4031,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "object"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -3934,13 +4045,14 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "run": {
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
-                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -3970,6 +4082,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "boolean"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -3986,6 +4099,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -4005,6 +4119,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -4021,9 +4136,11 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -4036,6 +4153,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "object"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -4052,7 +4170,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
-                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -4069,6 +4187,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "object"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -4085,6 +4204,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "boolean"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -4101,6 +4221,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -4117,6 +4238,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "region": {
@@ -4136,9 +4258,11 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -4151,6 +4275,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "object"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -4164,13 +4289,14 @@ HTTPS functions can specify a higher timeout.</td>
                     "additionalProperties": false,
                     "properties": {
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "run": {
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
-                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
@@ -4200,6 +4326,7 @@ HTTPS functions can specify a higher timeout.</td>
                             "type": "boolean"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -4209,10 +4336,12 @@ HTTPS functions can specify a higher timeout.</td>
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "Defines a Hosting rewrite. Rewrites allow you to redirect URLs to a different path, Cloud function or Cloud Run service."
         },
         "HostingSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firebase Hosting site.",
             "properties": {
                 "appAssociation": {
                     "enum": [
@@ -4225,9 +4354,11 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "boolean"
                 },
                 "frameworksBackend": {
-                    "$ref": "#/definitions/FrameworksBackendOptions"
+                    "$ref": "#/definitions/FrameworksBackendOptions",
+                    "description": "Options for this sites web frameworks backend."
                 },
                 "headers": {
+                    "description": "A list of extra headers to send when serving specific paths on this site.",
                     "items": {
                         "$ref": "#/definitions/HostingHeaders"
                     },
@@ -4235,8 +4366,10 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "i18n": {
                     "additionalProperties": false,
+                    "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                     "properties": {
                         "root": {
+                            "description": "The directory containing internationalization rewrites.",
                             "type": "string"
                         }
                     },
@@ -4246,6 +4379,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "object"
                 },
                 "ignore": {
+                    "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                     "items": {
                         "type": "string"
                     },
@@ -4280,27 +4414,33 @@ HTTPS functions can specify a higher timeout.</td>
                     "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "public": {
+                    "description": "Whether this site should publically available.",
                     "type": "string"
                 },
                 "redirects": {
+                    "description": "A list of redirects for this site.",
                     "items": {
                         "$ref": "#/definitions/HostingRedirects"
                     },
                     "type": "array"
                 },
                 "rewrites": {
+                    "description": "A list o rewrites for this site.",
                     "items": {
                         "$ref": "#/definitions/HostingRewrites"
                     },
                     "type": "array"
                 },
                 "site": {
+                    "description": "The site to deploy.",
                     "type": "string"
                 },
                 "source": {
+                    "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                     "type": "string"
                 },
                 "target": {
+                    "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                     "type": "string"
                 },
                 "trailingSlash": {
@@ -4315,6 +4455,7 @@ HTTPS functions can specify a higher timeout.</td>
         },
         "RemoteConfigConfig": {
             "additionalProperties": false,
+            "description": "A Remote Config template to deploy.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -4345,6 +4486,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "template": {
+                    "description": "A path to a CJSON file containing a Remote Config template.",
                     "type": "string"
                 }
             },
@@ -4390,6 +4532,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "string"
                 },
                 "target": {
+                    "description": "The deploy target to these Storage rules to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                     "type": "string"
                 }
             },
@@ -4903,6 +5046,7 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target these rules and indexes should be deployed to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     }
                                 },
@@ -4955,6 +5099,7 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target these rules and indexes should be deployed to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     }
                                 },
@@ -4987,9 +5132,11 @@ HTTPS functions can specify a higher timeout.</td>
         "hosting": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/HostingSingle"
+                    "$ref": "#/definitions/HostingSingle",
+                    "description": "Deployment options for a single Firebase Hosting site."
                 },
                 {
+                    "description": "Deployment options for a list of Firebase Hosting sites.",
                     "items": {
                         "anyOf": [
                             {
@@ -5006,9 +5153,11 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/FrameworksBackendOptions"
+                                        "$ref": "#/definitions/FrameworksBackendOptions",
+                                        "description": "Options for this sites web frameworks backend."
                                     },
                                     "headers": {
+                                        "description": "A list of extra headers to send when serving specific paths on this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingHeaders"
                                         },
@@ -5016,8 +5165,10 @@ HTTPS functions can specify a higher timeout.</td>
                                     },
                                     "i18n": {
                                         "additionalProperties": false,
+                                        "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                                         "properties": {
                                             "root": {
+                                                "description": "The directory containing internationalization rewrites.",
                                                 "type": "string"
                                             }
                                         },
@@ -5027,6 +5178,7 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "object"
                                     },
                                     "ignore": {
+                                        "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                                         "items": {
                                             "type": "string"
                                         },
@@ -5061,27 +5213,33 @@ HTTPS functions can specify a higher timeout.</td>
                                         "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
+                                        "description": "Whether this site should publically available.",
                                         "type": "string"
                                     },
                                     "redirects": {
+                                        "description": "A list of redirects for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
+                                        "description": "A list o rewrites for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
                                     "site": {
+                                        "description": "The site to deploy",
                                         "type": "string"
                                     },
                                     "source": {
+                                        "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     },
                                     "trailingSlash": {
@@ -5107,9 +5265,11 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/FrameworksBackendOptions"
+                                        "$ref": "#/definitions/FrameworksBackendOptions",
+                                        "description": "Options for this sites web frameworks backend."
                                     },
                                     "headers": {
+                                        "description": "A list of extra headers to send when serving specific paths on this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingHeaders"
                                         },
@@ -5117,8 +5277,10 @@ HTTPS functions can specify a higher timeout.</td>
                                     },
                                     "i18n": {
                                         "additionalProperties": false,
+                                        "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                                         "properties": {
                                             "root": {
+                                                "description": "The directory containing internationalization rewrites.",
                                                 "type": "string"
                                             }
                                         },
@@ -5128,6 +5290,7 @@ HTTPS functions can specify a higher timeout.</td>
                                         "type": "object"
                                     },
                                     "ignore": {
+                                        "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                                         "items": {
                                             "type": "string"
                                         },
@@ -5162,27 +5325,33 @@ HTTPS functions can specify a higher timeout.</td>
                                         "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
+                                        "description": "Whether this site should publically available.",
                                         "type": "string"
                                     },
                                     "redirects": {
+                                        "description": "A list of redirects for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
+                                        "description": "A list o rewrites for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
                                     "site": {
+                                        "description": "The site to deploy",
                                         "type": "string"
                                     },
                                     "source": {
+                                        "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     },
                                     "trailingSlash": {
@@ -5253,6 +5422,7 @@ HTTPS functions can specify a higher timeout.</td>
                                 "type": "string"
                             },
                             "target": {
+                                "description": "The deploy target to these Storage rules to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                 "type": "string"
                             }
                         },

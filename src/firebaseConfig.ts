@@ -1,7 +1,9 @@
 //
 // NOTE:
 // The contents of this file are used to generate the JSON Schema documents in
-// the schema/ directory. After changing this file you will need to run
+// the schema/ directory.
+// Comments in /** */ this file become the description in the JSON schema - please treat them as public documentation.
+// After changing this file you will need to run
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
@@ -52,7 +54,6 @@ type DatabaseMultiple = ({
    */
   rules: string;
 } & RequireAtLeastOne<{
-
   /**
    * The instance that this rules files is for.
    */
@@ -70,8 +71,8 @@ type FirestoreSingle = {
    */
   database?: string;
   /**
-  * The region of the Firestore database to deploy. Required when 'database' is set.
-  */
+   * The region of the Firestore database to deploy. Required when 'database' is set.
+   */
   location?: string;
   /**
    * Path to the firestore rules file
@@ -100,23 +101,63 @@ type FirestoreMultiple = ({
    * The ID of the Firestore database to deploy. Required when deploying multiple Firestore databases.
    */
   database: string;
+  /**
+   * The deploy target these rules and indexes should be deployed to.
+   * See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.
+   */
   target: string;
 }> &
   Deployable)[];
 
-export type HostingSource = { glob: string } | { source: string } | { regex: string };
+export type HostingSource =
+  | {
+      /** A glob pattern describing the paths that this setting should apply to. */
+      glob: string;
+    }
+  | {
+      /** A file path that this setting should apply to.*/
+      source: string;
+    }
+  | {
+      /** A regex pattern that matches the paths that this setting should apply to. **/
+      regex: string;
+    };
 
+/**
+ * URL redirects for a hosting site. Use these to prevent broken links when moving pages.
+ */
 export type HostingRedirects = HostingSource & {
+  /**
+   * The destination to redirect to.
+   */
   destination: string;
-  type?: number;
+  /**
+   * The type of redirect.
+   * Use 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)
+   */
+  type?: 301 | 302;
 };
 
+/**
+ * A simple rewrite from one path to another.
+ */
 export type DestinationRewrite = { destination: string };
+/**
+ * DEPRECATED: A Hosting rewrite to a Cloud Function.
+ */
 export type LegacyFunctionsRewrite = { function: string; region?: string };
+/**
+ * A Hosting rewrite to a Cloud Function.
+ */
 export type FunctionsRewrite = {
   function: {
+    /** The ID of the Cloud Function to rewrite to. */
     functionId: string;
+    //* * The region of the Cloud Function to rewrite to. */
     region?: string;
+    /**
+     * If true, the rewrite will be pinned to the currently running version of the Cloud Function.
+     * */
     pinTag?: boolean;
   };
 };
@@ -127,13 +168,20 @@ export type RunRewrite = {
   run: {
     /** The ID of the Cloud Run service to rewrite to. */
     serviceId: string;
-    //** The region of the Cloud Run service to rewrite to. */
+    //* * The region of the Cloud Run service to rewrite to. */
     region?: string;
-    /** If true, traffic will be pinned to the currently running version of the Cloud Run service. */
+    /** If true, the rewrite will be pinned to the currently running revision of the Cloud Run service. */
     pinTag?: boolean;
   };
 };
+
+/**
+ * DEPRECATED: A Hosting rewrite ot a Firebase Dynamic Link.
+ */
 export type DynamicLinksRewrite = { dynamicLinks: boolean };
+/**
+ * Defines a Hosting rewrite. Rewrites allow you to redirect URLs to a different path, Cloud function or Cloud Run service.
+ */
 export type HostingRewrites = HostingSource &
   (
     | DestinationRewrite
@@ -143,9 +191,18 @@ export type HostingRewrites = HostingSource &
     | DynamicLinksRewrite
   );
 
+/**
+ * Extra headers that should be sent when serving this path.
+ */
 export type HostingHeaders = HostingSource & {
   headers: {
+    /**
+     * The header to set.
+     */
     key: string;
+    /**
+     * The value to set this header to.
+     */
     value: string;
   }[];
 };
@@ -165,6 +222,7 @@ interface FrameworksBackendOptions extends HttpsOptions {
   vpcConnectorEgressSettings?: VpcEgressSetting;
   serviceAccount?: string;
   ingressSettings?: IngressSetting;
+  /** A list of secrets used in this app. */
   secrets?: string[];
   // Only allow a single region to be specified
   region?: string;
@@ -173,36 +231,78 @@ interface FrameworksBackendOptions extends HttpsOptions {
 }
 
 export type HostingBase = {
+  /**
+   * Whether this site should publically available.
+   */
   public?: string;
+  /**
+   * Path to the directory containing this site's source code. This will be archived and uploaded during deployment.
+   */
   source?: string;
+  /**
+   * A list of paths or globs within the source directory that should not be included in the uploaded archive.
+   */
   ignore?: string[];
   appAssociation?: "AUTO" | "NONE";
   cleanUrls?: boolean;
   trailingSlash?: boolean;
+  /**
+   * A list of redirects for this site.
+   */
   redirects?: HostingRedirects[];
+  /**
+   * A list o rewrites for this site.
+   */
   rewrites?: HostingRewrites[];
+  /**
+   * A list of extra headers to send when serving specific paths on this site.
+   */
   headers?: HostingHeaders[];
+  /**
+   * Internationalization config for this site.
+   * See https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites
+   * for instructions on how to enable interntionalization for your site.
+   */
   i18n?: {
+    /**
+     * The directory containing internationalization rewrites.
+     */
     root: string;
   };
+  /**
+   * Options for this sites web frameworks backend.
+   */
   frameworksBackend?: FrameworksBackendOptions;
 };
 
+/**
+ * Deployment options for a single Firebase Hosting site.
+ */
 export type HostingSingle = HostingBase & {
+  /**
+   * The site to deploy.
+   */
   site?: string;
+  /**
+   * The deploy target to deploy.
+   * See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.
+   */
   target?: string;
 } & Deployable;
 
-// N.B. You would expect that a HostingMultiple is a HostingSingle[], but not
-// quite. When you only have one hosting object you can omit both `site` and
-// `target` because the default site will be looked up and provided for you.
-// When you have a list of hosting targets, though, we require all configs
-// to specify which site is being targeted.
-// If you can assume we've resolved targets, you probably want to use
-// HostingResolved, which says you must have site and may have target.
+/**
+ * Deployment options for a list of Firebase Hosting sites.
+ */
 export type HostingMultiple = (HostingBase &
   RequireAtLeastOne<{
+    /**
+     * The site to deploy
+     */
     site: string;
+    /**
+     * The deploy target to deploy.
+     * See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.
+     */
     target: string;
   }> &
   Deployable)[];
@@ -215,6 +315,10 @@ type StorageSingle = {
    * Path to the rules files for this Firebase Storage bucket.
    */
   rules: string;
+  /**
+   * The deploy target to these Storage rules to.
+   * See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.
+   */
   target?: string;
 } & Deployable;
 
@@ -230,6 +334,10 @@ type StorageMultiple = ({
    * The Firebase Storage bucket that this config is for.
    */
   bucket: string;
+  /**
+   * The deploy target to these Storage rules to.
+   * See https://firebase.google.com/docs/cli/targets to learn more about deploy targets.
+   */
   target?: string;
 } & Deployable)[];
 
@@ -280,12 +388,18 @@ export type HostingConfig = HostingSingle | HostingMultiple;
  */
 export type StorageConfig = StorageSingle | StorageMultiple;
 
+/**
+ * A Remote Config template to deploy.
+ */
 export type RemoteConfigConfig = {
+  /**
+   * A path to a CJSON file containing a Remote Config template.
+   */
   template: string;
 } & Deployable;
 
 /**
- * Configures the host and port an emulator will be served. If omitted, the emulator suite will 
+ * Configures the host and port an emulator will be served. If omitted, the emulator suite will
  * automatically discover available ports.
  */
 type EmulatorServingConfig = {
@@ -293,11 +407,11 @@ type EmulatorServingConfig = {
    * The host that this emulator will serve on.
    */
   host?: string;
-    /**
+  /**
    * The port that this emulator will serve on.
    */
   port?: number;
-}
+};
 
 /**
  * Hosts, ports, and configuration options for the Firebase Emulator suite.
@@ -308,24 +422,23 @@ export type EmulatorsConfig = {
    */
   auth?: EmulatorServingConfig;
   /**
-  * Config for the Realtime Database emulator
-  */
+   * Config for the Realtime Database emulator
+   */
   database?: EmulatorServingConfig;
   /**
-  * Config for the Firestore emulator
-  */
+   * Config for the Firestore emulator
+   */
   firestore?: EmulatorServingConfig & {
     websocketPort?: number;
   };
   /**
-  * Config for the Firebase Hosting emulator
-  */
+   * Config for the Firebase Hosting emulator
+   */
   hosting?: EmulatorServingConfig;
   /**
-  * Config for the App Hosting emulator
-  */
+   * Config for the App Hosting emulator
+   */
   apphosting?: EmulatorServingConfig & {
-
     /** The command that will be run to start your app when emulating your App Hosting backend */
     startCommand?: string;
     /**
@@ -336,24 +449,24 @@ export type EmulatorsConfig = {
     rootDirectory?: string;
   };
   /**
-  * Config for the Pub/Sub emulator
-  */
-  pubsub?:  EmulatorServingConfig;
+   * Config for the Pub/Sub emulator
+   */
+  pubsub?: EmulatorServingConfig;
   /**
-  * Config for the Firebase Storage emulator
-  */
-  storage?:  EmulatorServingConfig;
+   * Config for the Firebase Storage emulator
+   */
+  storage?: EmulatorServingConfig;
   /**
-  * Config for the logging emulator.
-  */
+   * Config for the logging emulator.
+   */
   logging?: EmulatorServingConfig;
   /**
-  * Config for the emulator suite hub.
-  */
+   * Config for the emulator suite hub.
+   */
   hub?: EmulatorServingConfig;
   /**
-  * Config for the Emulator UI.
-  */
+   * Config for the Emulator UI.
+   */
   ui?: EmulatorServingConfig & {
     /**
      * If false, the Emulator UI will not be served.
@@ -365,24 +478,24 @@ export type EmulatorsConfig = {
    */
   extensions?: {};
   /**
-  * Config for the EventArc emulator.
-  */
+   * Config for the EventArc emulator.
+   */
   eventarc?: EmulatorServingConfig;
   /**
    * If true, the Emulator Suite will only allow a single project to be used at a time.
    */
   singleProjectMode?: boolean;
   /**
-  * Config for the Data Connect emulator.
-  */
+   * Config for the Data Connect emulator.
+   */
   dataconnect?: EmulatorServingConfig & {
     /**
      * Host for the Postgres database that backs the Data Connect emulator.
      */
     postgresHost?: string;
     /**
-    * Port for the Postgres database that backs the Data Connect emulator.
-    */
+     * Port for the Postgres database that backs the Data Connect emulator.
+     */
     postgresPort?: number;
     /**
      * The directory to persist emulator data to. If set, data will be saved between runs automatically.
@@ -391,8 +504,8 @@ export type EmulatorsConfig = {
     dataDir?: string;
   };
   /**
-  * Config for the Cloud Tasks emulator.
-  */
+   * Config for the Cloud Tasks emulator.
+   */
   tasks?: EmulatorServingConfig;
 };
 
@@ -400,7 +513,7 @@ export type EmulatorsConfig = {
  * The Firebase Extensions that should be deployed to this project.
  * This is a map of instance ID to extension reference (<publisherId>/<extensionId>@<version>)- ie:
  * "my-firestore-export": "firebase/firestore-bigquery-export@1.2.3"
- * 
+ *
  * Version can also be a semver range.
  */
 export type ExtensionsConfig = Record<string, string>;
