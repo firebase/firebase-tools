@@ -26,6 +26,9 @@ import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
+import { confirm } from "../prompt";
+import { startChat } from "../gemini/chat";
+import { attachMemoryLogger, getLogs } from "../gemini/logger";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -148,11 +151,28 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
-  await chain(predeploys, context, options, payload);
-  await chain(prepares, context, options, payload);
-  await chain(deploys, context, options, payload);
-  await chain(releases, context, options, payload);
-  await chain(postdeploys, context, options, payload);
+  attachMemoryLogger();
+  try {
+    await chain(predeploys, context, options, payload);
+    await chain(prepares, context, options, payload);
+    await chain(deploys, context, options, payload);
+    await chain(releases, context, options, payload);
+    await chain(postdeploys, context, options, payload);
+  } catch (err: any) {
+    if (process.env.GEMINI_API_KEY) {
+      const choice = await confirm({
+        message:
+          "Deployment failed. Would you like to start a Gemini chat session to help debug?",
+        default: true,
+      });
+      if (choice) {
+        const logs = getLogs();
+        await startChat(err, logs);
+        return { hosting: undefined };
+      }
+    }
+    throw err;
+  }
 
   const duration = Date.now() - startTime;
   const analyticsParams: AnalyticsParams = {
