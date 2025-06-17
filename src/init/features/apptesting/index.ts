@@ -10,6 +10,7 @@ export interface RequiredInfo {
   testDir: string;
 }
 
+// Prompts the developer about the App Testing service they want to init.
 export async function askQuestions(setup: Setup): Promise<void> {
   setup.featureInfo = {
     ...setup.featureInfo,
@@ -24,6 +25,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
   };
 }
 
+// Writes App Testing product specific configuration info. 
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const info = setup.featureInfo?.apptesting;
   if (!info) {

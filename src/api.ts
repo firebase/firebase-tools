@@ -12,10 +12,10 @@ export const authProxyOrigin = () =>
 export const clientId = () =>
   utils.envOverride(
     "FIREBASE_CLIENT_ID",
-    "1027195595844-i29a039ogpesm6930gcv4q654t5glnpt.apps.googleusercontent.com",
+    "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
   );
 export const clientSecret = () =>
-  utils.envOverride("FIREBASE_CLIENT_SECRET", "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");
+  utils.envOverride("FIREBASE_CLIENT_SECRET", "j9iVZfS8kkCEFUPaAeJV0sAi");
 export const cloudbillingOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBILLING_URL", "https://cloudbilling.googleapis.com");
 export const cloudloggingOrigin = () =>
