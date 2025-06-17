@@ -27,6 +27,14 @@ export interface InvokedTestCases {
   testCaseInvocations: TestCaseInvocation[]
 }
 
+export interface TestInvocation {
+  name?: string;
+  createTime?: string;
+  runningExecutions: number;
+  succeededExecutions: number;
+  failedExecutions: number;
+}
+
 export interface TestCaseInvocation {
   name?: string;
   testCase: TestCase;
