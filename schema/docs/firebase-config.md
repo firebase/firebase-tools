@@ -1,12 +1,13 @@
 
 
-# 
+# Information about the resources in your Firebase project.
+This used for declarative deployments via &#x60;firebase deploy&#x60; and local emulation via &#x60;firebase emulators:start&#x60;
 
 
 
 <table>
 <tbody>
-<tr><th>$id</th><td>firebase.json</td></tr>
+
 <tr><th>$schema</th><td>http://json-schema.org/draft-07/schema#</td></tr>
 </tbody>
 </table>
@@ -25,6 +26,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Unused. Included in schema so that the schema can be applied to single files.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -45,6 +50,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The App Hosting backend(s) that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -61,6 +70,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A single App Hosting deployment configs</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -73,6 +86,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If true, this backend will only be deployed from local source, not from source control.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Boolean</td></tr>
     
   </tbody>
@@ -99,6 +116,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of file paths to exclude from the archive that is uploaded for this backend.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -126,6 +147,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of App Hosting deployment configs</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -138,6 +163,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If true, this backend will only be deployed from local source, not from source control.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Boolean</td></tr>
     
   </tbody>
@@ -164,6 +193,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of file paths to exclude from the archive that is uploaded for this backend.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -192,6 +225,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Realtime Database rules that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -208,6 +245,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a single Realtime Database instance.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -220,6 +261,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -259,6 +304,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -298,6 +347,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The rules files for this Realtime Database instance.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -312,6 +365,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a list of Realtime Database instancs.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -326,6 +383,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Data Connect service(s) that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -342,6 +403,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A single Data Connect deployment configs</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -354,6 +419,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -393,6 +462,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -446,6 +519,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A list of Data Connect deployment configs</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -458,6 +535,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -497,6 +578,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -551,6 +636,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Hosts, ports, and configuration options for the Firebase Emulator suite.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -561,7 +650,7 @@
 </table>
 
 ### Properties
-  <table class="jssd-properties-table"><thead><tr><th colspan="2">Name</th><th>Type</th></tr></thead><tbody><tr><td colspan="2"><a href="#emulatorsapphosting">apphosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsauth">auth</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdatabase">database</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdataconnect">dataconnect</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorseventarc">eventarc</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsextensions">extensions</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsfirestore">firestore</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsfunctions">functions</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshosting">hosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshub">hub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorslogging">logging</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorspubsub">pubsub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorssingleprojectmode">singleProjectMode</a></td><td>Boolean</td></tr><tr><td colspan="2"><a href="#emulatorsstorage">storage</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorstasks">tasks</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsui">ui</a></td><td>Object</td></tr></tbody></table>
+  <table class="jssd-properties-table"><thead><tr><th colspan="2">Name</th><th>Type</th></tr></thead><tbody><tr><td colspan="2"><a href="#emulatorsapphosting">apphosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsauth">auth</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdatabase">database</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsdataconnect">dataconnect</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorseventarc">eventarc</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsextensions">extensions</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsfirestore">firestore</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshosting">hosting</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorshub">hub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorslogging">logging</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorspubsub">pubsub</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorssingleprojectmode">singleProjectMode</a></td><td>Boolean</td></tr><tr><td colspan="2"><a href="#emulatorsstorage">storage</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorstasks">tasks</a></td><td>Object</td></tr><tr><td colspan="2"><a href="#emulatorsui">ui</a></td><td>Object</td></tr></tbody></table>
 
 
 ### emulators.apphosting
@@ -569,6 +658,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the App Hosting emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -585,6 +678,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -602,6 +699,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -619,6 +720,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The root directory of your app. The start command will ran from this directory.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -636,6 +741,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The command that will be run to start your app when emulating your App Hosting backend</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -671,6 +780,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Auth emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -687,6 +800,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -704,6 +821,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -722,6 +843,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Realtime Database emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -738,6 +863,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -755,6 +884,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -773,6 +906,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Data Connect emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -789,6 +926,11 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The directory to persist emulator data to. If set, data will be saved between runs automatically.
+If the --import flag is used, the current data will be overwritten by the imported data.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -806,6 +948,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -823,6 +969,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -840,6 +990,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Host for the Postgres database that backs the Data Connect emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -857,6 +1011,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Port for the Postgres database that backs the Data Connect emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -875,6 +1033,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the EventArc emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -891,6 +1053,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -908,6 +1074,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -926,6 +1096,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Placeholder - the Extensions emulator has no configuration options.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -943,6 +1117,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Firestore emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -959,6 +1137,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -976,6 +1158,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1006,62 +1192,15 @@
 
 
 
-### emulators.functions
-
-
-<table class="jssd-property-table">
-  <tbody>
-    <tr><th>Type</th><td colspan="2">Object</td></tr>
-    <tr>
-      <th>Required</th>
-      <td colspan="2">No</td>
-    </tr>
-    
-  </tbody>
-</table>
-
-
-
-### emulators.functions.host
-
-
-<table class="jssd-property-table">
-  <tbody>
-    <tr><th>Type</th><td colspan="2">String</td></tr>
-    <tr>
-      <th>Required</th>
-      <td colspan="2">No</td>
-    </tr>
-    
-  </tbody>
-</table>
-
-
-
-
-### emulators.functions.port
-
-
-<table class="jssd-property-table">
-  <tbody>
-    <tr><th>Type</th><td colspan="2">Number</td></tr>
-    <tr>
-      <th>Required</th>
-      <td colspan="2">No</td>
-    </tr>
-    
-  </tbody>
-</table>
-
-
-
-
-
 ### emulators.hosting
 
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Firebase Hosting emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1078,6 +1217,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1095,6 +1238,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1113,6 +1260,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the emulator suite hub.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1129,6 +1280,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1146,6 +1301,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1164,6 +1323,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the logging emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1180,6 +1343,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1197,6 +1364,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1215,6 +1386,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Pub/Sub emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1231,6 +1406,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1248,6 +1427,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1266,6 +1449,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If true, the Emulator Suite will only allow a single project to be used at a time.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Boolean</td></tr>
     <tr>
       <th>Required</th>
@@ -1283,6 +1470,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Firebase Storage emulator</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1299,6 +1490,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1316,6 +1511,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1334,6 +1533,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Cloud Tasks emulator.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1350,6 +1553,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1367,6 +1574,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1385,6 +1596,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Config for the Emulator UI.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1401,6 +1616,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">If false, the Emulator UI will not be served.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Boolean</td></tr>
     <tr>
       <th>Required</th>
@@ -1418,6 +1637,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The host that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Required</th>
@@ -1435,6 +1658,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The port that this emulator will serve on.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Number</td></tr>
     <tr>
       <th>Required</th>
@@ -1454,6 +1681,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Firebase Extension(s) that should be deployed or emulated.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -1471,6 +1702,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Firestore rules and indexes that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -1487,6 +1722,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a single Firestore database.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -1499,6 +1738,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The id of the Firestore database to deploy. If omitted, defaults to &#x27;(default)&#x27;</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1512,6 +1755,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Path to the firestore indexes file</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1525,6 +1772,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The region of the Firestore database to deploy. Required when &#x27;database&#x27; is set.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1538,6 +1789,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1577,6 +1832,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1616,6 +1875,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Path to the firestore rules file</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1630,6 +1893,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a list of Firestore databases.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -1644,6 +1911,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Cloud Functions for Firebase that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -1672,6 +1943,11 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The codebase that these functions are part of. You can use codebases to control which functions are deployed
+ ie: &#x60;firebase deploy --only functions:my-codebase&#x60;</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1685,6 +1961,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Files in the source directory that should not be uploaed during dpeloyment.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -1698,6 +1978,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1737,6 +2021,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1776,6 +2064,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The runtime these functions should use.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Enum</th>
@@ -1792,6 +2084,12 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The directory containing your functions source code.
+This directory will be archived and uploaded during deployment.
+Files outside of this directory will not be included and should not be referenced from your functions code.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1818,6 +2116,11 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The codebase that these functions are part of. You can use codebases to control which functions are deployed
+ ie: &#x60;firebase deploy --only functions:my-codebase&#x60;</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1831,6 +2134,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Files in the source directory that should not be uploaed during dpeloyment.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -1844,6 +2151,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1883,6 +2194,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -1922,6 +2237,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The runtime these functions should use.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     <tr>
       <th>Enum</th>
@@ -1938,6 +2257,12 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The directory containing your functions source code.
+This directory will be archived and uploaded during deployment.
+Files outside of this directory will not be included and should not be referenced from your functions code.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -1953,6 +2278,10 @@
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Firebase Hosting site(s) that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -2422,6 +2751,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2461,6 +2794,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2606,6 +2943,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Remote Config template(s) used by this project.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     <tr>
       <th>Required</th>
@@ -2624,6 +2965,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -2667,6 +3012,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -2728,6 +3077,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Firebase Storage rules that should be deployed or emulated.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Object</td></tr><tr><td>Array</td></tr></tr>
     <tr>
       <th>Required</th>
@@ -2744,6 +3097,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for a single Firebase storage bucket.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Object</td></tr>
     
   </tbody>
@@ -2756,6 +3113,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2795,6 +3156,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2834,6 +3199,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Path to the rules files for this Firebase Storage bucket.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2861,6 +3230,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Deployment options for multiple Firebase storage buckets.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">Array</td></tr>
     
   </tbody>
@@ -2873,6 +3246,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">The Firebase Storage bucket that this config is for.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2886,6 +3263,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran after this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2925,6 +3306,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">A script or list of scripts that will be ran before this product is deployed.</td>
+    </tr>
     <tr><tr><td rowspan="2">Type</td><td rowspan="2">Any of:</td><td>Array</td></tr><tr><td>String</td></tr></tr>
     
   </tbody>
@@ -2964,6 +3349,10 @@ HTTPS functions can specify a higher timeout.</td>
 
 <table class="jssd-property-table">
   <tbody>
+    <tr>
+      <th>Description</th>
+      <td colspan="2">Path to the rules files for this Firebase Storage bucket.</td>
+    </tr>
     <tr><th>Type</th><td colspan="2">String</td></tr>
     
   </tbody>
@@ -2998,11 +3387,11 @@ HTTPS functions can specify a higher timeout.</td>
 ```
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "firebase.json",
     "additionalProperties": false,
     "definitions": {
         "DataConnectSingle": {
             "additionalProperties": false,
+            "description": "A single Data Connect deployment configs",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -3015,7 +3404,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3028,7 +3418,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "source": {
                     "type": "string"
@@ -3041,6 +3432,7 @@ HTTPS functions can specify a higher timeout.</td>
         },
         "DatabaseSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Realtime Database instance.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -3053,7 +3445,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3066,9 +3459,11 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "The rules files for this Realtime Database instance.",
                     "type": "string"
                 }
             },
@@ -3079,18 +3474,23 @@ HTTPS functions can specify a higher timeout.</td>
         },
         "ExtensionsConfig": {
             "additionalProperties": false,
+            "description": "The Firebase Extensions that should be deployed to this project.\nThis is a map of instance ID to extension reference (<publisherId>/<extensionId>@<version>)- ie:\n\"my-firestore-export\": \"firebase/firestore-bigquery-export@1.2.3\"\n\nVersion can also be a semver range.",
             "type": "object"
         },
         "FirestoreSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firestore database.",
             "properties": {
                 "database": {
+                    "description": "The id of the Firestore database to deploy. If omitted, defaults to '(default)'",
                     "type": "string"
                 },
                 "indexes": {
+                    "description": "Path to the firestore indexes file",
                     "type": "string"
                 },
                 "location": {
+                    "description": "The region of the Firestore database to deploy. Required when 'database' is set.",
                     "type": "string"
                 },
                 "postdeploy": {
@@ -3104,7 +3504,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3117,9 +3518,11 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "Path to the firestore rules file",
                     "type": "string"
                 }
             },
@@ -3241,9 +3644,11 @@ HTTPS functions can specify a higher timeout.</td>
             "additionalProperties": false,
             "properties": {
                 "codebase": {
+                    "description": "The codebase that these functions are part of. You can use codebases to control which functions are deployed\n ie: `firebase deploy --only functions:my-codebase`",
                     "type": "string"
                 },
                 "ignore": {
+                    "description": "Files in the source directory that should not be uploaed during dpeloyment.",
                     "items": {
                         "type": "string"
                     },
@@ -3260,7 +3665,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3273,9 +3679,11 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "runtime": {
+                    "description": "The runtime these functions should use.",
                     "enum": [
                         "nodejs20",
                         "nodejs22",
@@ -3287,6 +3695,7 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "string"
                 },
                 "source": {
+                    "description": "The directory containing your functions source code.\nThis directory will be archived and uploaded during deployment.\nFiles outside of this directory will not be included and should not be referenced from your functions code.",
                     "type": "string"
                 }
             },
@@ -3531,12 +3940,14 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -3641,12 +4052,14 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -3757,12 +4170,14 @@ HTTPS functions can specify a higher timeout.</td>
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, traffic will be pinned to the currently running version of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -3847,7 +4262,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3860,7 +4276,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "public": {
                     "type": "string"
@@ -3910,7 +4327,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3923,7 +4341,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "template": {
                     "type": "string"
@@ -3936,6 +4355,7 @@ HTTPS functions can specify a higher timeout.</td>
         },
         "StorageSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firebase storage bucket.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -3948,7 +4368,8 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -3961,9 +4382,11 @@ HTTPS functions can specify a higher timeout.</td>
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "Path to the rules files for this Firebase Storage bucket.",
                     "type": "string"
                 },
                 "target": {
@@ -3976,8 +4399,10 @@ HTTPS functions can specify a higher timeout.</td>
             "type": "object"
         }
     },
+    "description": "Information about the resources in your Firebase project.\nThis used for declarative deployments via `firebase deploy` and local emulation via `firebase emulators:start`",
     "properties": {
         "$schema": {
+            "description": "Unused. Included in schema so that the schema can be applied to single files.",
             "format": "uri",
             "type": "string"
         },
@@ -3985,14 +4410,17 @@ HTTPS functions can specify a higher timeout.</td>
             "anyOf": [
                 {
                     "additionalProperties": false,
+                    "description": "A single App Hosting deployment configs",
                     "properties": {
                         "alwaysDeployFromSource": {
+                            "description": "If true, this backend will only be deployed from local source, not from source control.",
                             "type": "boolean"
                         },
                         "backendId": {
                             "type": "string"
                         },
                         "ignore": {
+                            "description": "A list of file paths to exclude from the archive that is uploaded for this backend.",
                             "items": {
                                 "type": "string"
                             },
@@ -4010,16 +4438,20 @@ HTTPS functions can specify a higher timeout.</td>
                     "type": "object"
                 },
                 {
+                    "description": "A list of App Hosting deployment configs",
                     "items": {
                         "additionalProperties": false,
+                        "description": "A single App Hosting deployment configs",
                         "properties": {
                             "alwaysDeployFromSource": {
+                                "description": "If true, this backend will only be deployed from local source, not from source control.",
                                 "type": "boolean"
                             },
                             "backendId": {
                                 "type": "string"
                             },
                             "ignore": {
+                                "description": "A list of file paths to exclude from the archive that is uploaded for this backend.",
                                 "items": {
                                     "type": "string"
                                 },
@@ -4038,20 +4470,24 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The App Hosting backend(s) that should be deployed or emulated."
         },
         "database": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/DatabaseSingle"
+                    "$ref": "#/definitions/DatabaseSingle",
+                    "description": "Deployment options for a single Realtime Database instance."
                 },
                 {
+                    "description": "Deployment options for a list of Realtime Database instancs.",
                     "items": {
                         "anyOf": [
                             {
                                 "additionalProperties": false,
                                 "properties": {
                                     "instance": {
+                                        "description": "The instance that this rules files is for.",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -4065,7 +4501,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4078,9 +4515,11 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "The rules files for this Realtime Database instance.",
                                         "type": "string"
                                     },
                                     "target": {
@@ -4097,6 +4536,7 @@ HTTPS functions can specify a higher timeout.</td>
                                 "additionalProperties": false,
                                 "properties": {
                                     "instance": {
+                                        "description": "The instance that this rules files is for.",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -4110,7 +4550,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4123,9 +4564,11 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "The rules files for this Realtime Database instance.",
                                         "type": "string"
                                     },
                                     "target": {
@@ -4142,37 +4585,47 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Realtime Database rules that should be deployed or emulated."
         },
         "dataconnect": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/DataConnectSingle"
+                    "$ref": "#/definitions/DataConnectSingle",
+                    "description": "A single Data Connect deployment configs"
                 },
                 {
+                    "description": "A list of Data Connect deployment configs",
                     "items": {
                         "$ref": "#/definitions/DataConnectSingle"
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Data Connect service(s) that should be deployed or emulated."
         },
         "emulators": {
             "additionalProperties": false,
+            "description": "Hosts, ports, and configuration options for the Firebase Emulator suite.",
             "properties": {
                 "apphosting": {
                     "additionalProperties": false,
+                    "description": "Config for the App Hosting emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "rootDirectory": {
+                            "description": "The root directory of your app. The start command will ran from this directory.",
                             "type": "string"
                         },
                         "startCommand": {
+                            "description": "The command that will be run to start your app when emulating your App Hosting backend",
                             "type": "string"
                         },
                         "startCommandOverride": {
@@ -4183,11 +4636,14 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "auth": {
                     "additionalProperties": false,
+                    "description": "Config for the Auth emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4195,11 +4651,14 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "database": {
                     "additionalProperties": false,
+                    "description": "Config for the Realtime Database emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4207,20 +4666,26 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "dataconnect": {
                     "additionalProperties": false,
+                    "description": "Config for the Data Connect emulator.",
                     "properties": {
                         "dataDir": {
+                            "description": "The directory to persist emulator data to. If set, data will be saved between runs automatically.\nIf the --import flag is used, the current data will be overwritten by the imported data.",
                             "type": "string"
                         },
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "postgresHost": {
+                            "description": "Host for the Postgres database that backs the Data Connect emulator.",
                             "type": "string"
                         },
                         "postgresPort": {
+                            "description": "Port for the Postgres database that backs the Data Connect emulator.",
                             "type": "number"
                         }
                     },
@@ -4228,27 +4693,34 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "eventarc": {
                     "additionalProperties": false,
+                    "description": "Config for the EventArc emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
                     "type": "object"
                 },
                 "extensions": {
+                    "description": "Placeholder - the Extensions emulator has no configuration options.",
                     "properties": {},
                     "type": "object"
                 },
                 "firestore": {
                     "additionalProperties": false,
+                    "description": "Config for the Firestore emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "websocketPort": {
@@ -4257,25 +4729,16 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "object"
                 },
-                "functions": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
                 "hosting": {
                     "additionalProperties": false,
+                    "description": "Config for the Firebase Hosting emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4283,11 +4746,14 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "hub": {
                     "additionalProperties": false,
+                    "description": "Config for the emulator suite hub.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4295,11 +4761,14 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "logging": {
                     "additionalProperties": false,
+                    "description": "Config for the logging emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4307,26 +4776,33 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "pubsub": {
                     "additionalProperties": false,
+                    "description": "Config for the Pub/Sub emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
                     "type": "object"
                 },
                 "singleProjectMode": {
+                    "description": "If true, the Emulator Suite will only allow a single project to be used at a time.",
                     "type": "boolean"
                 },
                 "storage": {
                     "additionalProperties": false,
+                    "description": "Config for the Firebase Storage emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4334,11 +4810,14 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "tasks": {
                     "additionalProperties": false,
+                    "description": "Config for the Cloud Tasks emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4346,14 +4825,18 @@ HTTPS functions can specify a higher timeout.</td>
                 },
                 "ui": {
                     "additionalProperties": false,
+                    "description": "Config for the Emulator UI.",
                     "properties": {
                         "enabled": {
+                            "description": "If false, the Emulator UI will not be served.",
                             "type": "boolean"
                         },
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -4363,23 +4846,28 @@ HTTPS functions can specify a higher timeout.</td>
             "type": "object"
         },
         "extensions": {
-            "$ref": "#/definitions/ExtensionsConfig"
+            "$ref": "#/definitions/ExtensionsConfig",
+            "description": "The Firebase Extension(s) that should be deployed or emulated."
         },
         "firestore": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/FirestoreSingle"
+                    "$ref": "#/definitions/FirestoreSingle",
+                    "description": "Deployment options for a single Firestore database."
                 },
                 {
+                    "description": "Deployment options for a list of Firestore databases.",
                     "items": {
                         "anyOf": [
                             {
                                 "additionalProperties": false,
                                 "properties": {
                                     "database": {
+                                        "description": "The ID of the Firestore database to deploy. Required when deploying multiple Firestore databases.",
                                         "type": "string"
                                     },
                                     "indexes": {
+                                        "description": "Path to the firestore indexes file for this database",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -4393,7 +4881,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4406,9 +4895,11 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "Path to the firestore rules file for this database",
                                         "type": "string"
                                     },
                                     "target": {
@@ -4424,9 +4915,11 @@ HTTPS functions can specify a higher timeout.</td>
                                 "additionalProperties": false,
                                 "properties": {
                                     "database": {
+                                        "description": "The ID of the Firestore database to deploy. Required when deploying multiple Firestore databases.",
                                         "type": "string"
                                     },
                                     "indexes": {
+                                        "description": "Path to the firestore indexes file for this database",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -4440,7 +4933,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4453,9 +4947,11 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "Path to the firestore rules file for this database",
                                         "type": "string"
                                     },
                                     "target": {
@@ -4471,7 +4967,8 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firestore rules and indexes that should be deployed or emulated."
         },
         "functions": {
             "anyOf": [
@@ -4484,7 +4981,8 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Cloud Functions for Firebase that should be deployed or emulated."
         },
         "hosting": {
             "anyOf": [
@@ -4545,7 +5043,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4558,7 +5057,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
                                         "type": "string"
@@ -4644,7 +5144,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -4657,7 +5158,8 @@ HTTPS functions can specify a higher timeout.</td>
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
                                         "type": "string"
@@ -4696,21 +5198,26 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firebase Hosting site(s) that should be deployed or emulated."
         },
         "remoteconfig": {
-            "$ref": "#/definitions/RemoteConfigConfig"
+            "$ref": "#/definitions/RemoteConfigConfig",
+            "description": "The Remote Config template(s) used by this project."
         },
         "storage": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/StorageSingle"
+                    "$ref": "#/definitions/StorageSingle",
+                    "description": "Deployment options for a single Firebase storage bucket."
                 },
                 {
+                    "description": "Deployment options for multiple Firebase storage buckets.",
                     "items": {
                         "additionalProperties": false,
                         "properties": {
                             "bucket": {
+                                "description": "The Firebase Storage bucket that this config is for.",
                                 "type": "string"
                             },
                             "postdeploy": {
@@ -4724,7 +5231,8 @@ HTTPS functions can specify a higher timeout.</td>
                                     {
                                         "type": "string"
                                     }
-                                ]
+                                ],
+                                "description": "A script or list of scripts that will be ran after this product is deployed."
                             },
                             "predeploy": {
                                 "anyOf": [
@@ -4737,9 +5245,11 @@ HTTPS functions can specify a higher timeout.</td>
                                     {
                                         "type": "string"
                                     }
-                                ]
+                                ],
+                                "description": "A script or list of scripts that will be ran before this product is deployed."
                             },
                             "rules": {
+                                "description": "Path to the rules files for this Firebase Storage bucket.",
                                 "type": "string"
                             },
                             "target": {
@@ -4754,7 +5264,8 @@ HTTPS functions can specify a higher timeout.</td>
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firebase Storage rules that should be deployed or emulated."
         }
     },
     "type": "object"
