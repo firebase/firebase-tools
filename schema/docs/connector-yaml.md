@@ -1,37 +1,5 @@
 # Schema Docs
 
-- [1. Property `root > connectorId`](#connectorId)
-- [2. Property `root > generate`](#generate)
-  - [2.1. Property `root > generate > javascriptSdk`](#generate_javascriptSdk)
-    - [2.1.1. Property `root > generate > javascriptSdk > oneOf > javascriptSdk`](#generate_javascriptSdk_oneOf_i0)
-      - [2.1.1.1. Property `root > generate > javascriptSdk > oneOf > item 0 > outputDir`](#generate_javascriptSdk_oneOf_i0_outputDir)
-      - [2.1.1.2. Property `root > generate > javascriptSdk > oneOf > item 0 > package`](#generate_javascriptSdk_oneOf_i0_package)
-      - [2.1.1.3. Property `root > generate > javascriptSdk > oneOf > item 0 > packageJSONDir`](#generate_javascriptSdk_oneOf_i0_packageJSONDir)
-    - [2.1.2. Property `root > generate > javascriptSdk > oneOf > item 1`](#generate_javascriptSdk_oneOf_i1)
-      - [2.1.2.1. root > generate > javascriptSdk > oneOf > item 1 > javascriptSdk](#generate_javascriptSdk_oneOf_i1_items)
-  - [2.2. Property `root > generate > dartSdk`](#generate_dartSdk)
-    - [2.2.1. Property `root > generate > dartSdk > oneOf > dartSdk`](#generate_dartSdk_oneOf_i0)
-      - [2.2.1.1. Property `root > generate > dartSdk > oneOf > item 0 > outputDir`](#generate_dartSdk_oneOf_i0_outputDir)
-      - [2.2.1.2. Property `root > generate > dartSdk > oneOf > item 0 > package`](#generate_dartSdk_oneOf_i0_package)
-    - [2.2.2. Property `root > generate > dartSdk > oneOf > item 1`](#generate_dartSdk_oneOf_i1)
-      - [2.2.2.1. root > generate > dartSdk > oneOf > item 1 > dartSdk](#generate_dartSdk_oneOf_i1_items)
-  - [2.3. Property `root > generate > kotlinSdk`](#generate_kotlinSdk)
-    - [2.3.1. Property `root > generate > kotlinSdk > oneOf > kotlinSdk`](#generate_kotlinSdk_oneOf_i0)
-      - [2.3.1.1. Property `root > generate > kotlinSdk > oneOf > item 0 > outputDir`](#generate_kotlinSdk_oneOf_i0_outputDir)
-      - [2.3.1.2. Property `root > generate > kotlinSdk > oneOf > item 0 > package`](#generate_kotlinSdk_oneOf_i0_package)
-    - [2.3.2. Property `root > generate > kotlinSdk > oneOf > item 1`](#generate_kotlinSdk_oneOf_i1)
-      - [2.3.2.1. root > generate > kotlinSdk > oneOf > item 1 > kotlinSdk](#generate_kotlinSdk_oneOf_i1_items)
-  - [2.4. Property `root > generate > swiftSdk`](#generate_swiftSdk)
-    - [2.4.1. Property `root > generate > swiftSdk > oneOf > swiftSdk`](#generate_swiftSdk_oneOf_i0)
-      - [2.4.1.1. Property `root > generate > swiftSdk > oneOf > item 0 > outputDir`](#generate_swiftSdk_oneOf_i0_outputDir)
-    - [2.4.2. Property `root > generate > swiftSdk > oneOf > item 1`](#generate_swiftSdk_oneOf_i1)
-      - [2.4.2.1. root > generate > swiftSdk > oneOf > item 1 > swiftSdk](#generate_swiftSdk_oneOf_i1_items)
-  - [2.5. Property `root > generate > llmTools`](#generate_llmTools)
-    - [2.5.1. Property `root > generate > llmTools > oneOf > llmTools`](#generate_llmTools_oneOf_i0)
-      - [2.5.1.1. Property `root > generate > llmTools > oneOf > item 0 > outputFile`](#generate_llmTools_oneOf_i0_outputFile)
-    - [2.5.2. Property `root > generate > llmTools > oneOf > item 1`](#generate_llmTools_oneOf_i1)
-      - [2.5.2.1. root > generate > llmTools > oneOf > item 1 > llmTools](#generate_llmTools_oneOf_i1_items)
-
 |                           |             |
 | ------------------------- | ----------- |
 | **Type**                  | `object`    |
@@ -439,4 +407,4 @@
 | **Same definition as**    | [generate_llmTools_oneOf_i0](#generate_llmTools_oneOf_i0) |
 
 ----------------------------------------------------------------------------------------------------------------------------
-Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:03:18 -0700
+Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:09:43 -0700

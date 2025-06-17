@@ -1,19 +1,5 @@
 # Schema Docs
 
-- [1. Property `root > specVersion`](#specVersion)
-- [2. Property `root > serviceId`](#serviceId)
-- [3. Property `root > location`](#location)
-- [4. Property `root > connectorDirs`](#connectorDirs)
-  - [4.1. root > connectorDirs > connectorDirs items](#connectorDirs_items)
-- [5. Property `root > schema`](#schema)
-  - [5.1. Property `root > schema > source`](#schema_source)
-  - [5.2. Property `root > schema > datasource`](#schema_datasource)
-    - [5.2.1. Property `root > schema > datasource > postgresql`](#schema_datasource_postgresql)
-      - [5.2.1.1. Property `root > schema > datasource > postgresql > database`](#schema_datasource_postgresql_database)
-      - [5.2.1.2. Property `root > schema > datasource > postgresql > cloudSql`](#schema_datasource_postgresql_cloudSql)
-        - [5.2.1.2.1. Property `root > schema > datasource > postgresql > cloudSql > instanceId`](#schema_datasource_postgresql_cloudSql_instanceId)
-        - [5.2.1.2.2. Property `root > schema > datasource > postgresql > cloudSql > schemaValidation`](#schema_datasource_postgresql_cloudSql_schemaValidation)
-
 |                           |             |
 | ------------------------- | ----------- |
 | **Type**                  | `object`    |
@@ -180,4 +166,4 @@ Must be one of:
 * "STRICT"
 
 ----------------------------------------------------------------------------------------------------------------------------
-Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:03:18 -0700
+Generated using [json-schema-for-humans](https://github.com/coveooss/json-schema-for-humans) on 2025-06-17 at 07:09:43 -0700
