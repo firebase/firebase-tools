@@ -162,6 +162,8 @@ export async function prepare(
         // going to need to have a transform to create a service ID (which has a
         // more restrictive character set). We'll need to reimplement that here.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+      } else if (endpoint.platform === "run") {
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);
       }
