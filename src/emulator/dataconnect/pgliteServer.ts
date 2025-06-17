@@ -9,17 +9,17 @@ const { dynamicImport } = require(true && "../../dynamicImport");
 import * as net from "node:net";
 import { Readable, Writable } from "node:stream";
 import * as fs from "fs";
+import * as path from "node:path";
 
 import {
   getMessages,
   PostgresConnection,
   type PostgresConnectionOptions,
   FrontendMessageCode,
-  BackendMessageCode,
 } from "pg-gateway";
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
-import { StringDecoder } from "node:string_decoder";
+import { moveAll } from "../../fsutils";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -35,7 +35,7 @@ END
 $do$;`;
 
 export class PostgresServer {
-  private dataDirectory?: string;
+  private baseDataDirectory?: string;
   private importPath?: string;
   private debug: DebugLevel;
 
@@ -46,11 +46,11 @@ export class PostgresServer {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
-      const connection: PostgresConnection = await fromNodeSocket(socket, {
-        serverVersion: "16.3 (PGlite 0.2.0)",
+      await fromNodeSocket(socket, {
+        serverVersion: "17.4 (PGlite 0.3.3)",
         auth: { method: "trust" },
 
-        async onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
+        async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
           // Only forward messages to PGlite after authentication
           if (!isAuthenticated) {
             return;
@@ -61,14 +61,13 @@ export class PostgresServer {
             // because the next client won't know about them (and may create overlapping statements)
             await db.query("DEALLOCATE ALL");
           }
-          const result = await db.execProtocolRaw(data);
-          // Extended query patch removes the extra Ready for Query messages that
-          // pglite wrongly sends.
-          return extendedQueryPatch.filterResponse(data, result);
+          const response = await db.execProtocolRaw(data);
+
+          for await (const message of getMessages(response)) {
+            yield message;
+          }
         },
       });
-
-      const extendedQueryPatch: PGliteExtendedQueryPatch = new PGliteExtendedQueryPatch(connection);
 
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
@@ -90,32 +89,15 @@ export class PostgresServer {
 
   async getDb(): Promise<PGlite> {
     if (!this.db) {
-      // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
-      if (this.dataDirectory && !fs.existsSync(this.dataDirectory)) {
-        fs.mkdirSync(this.dataDirectory, { recursive: true });
-      }
-      // Not all schemas will need vector installed, but we don't have an good way
-      // to swap extensions after starting PGLite, so we always include it.
-      const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
-      const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
-      const pgliteArgs: PGliteOptions = {
-        debug: this.debug,
-        extensions: {
-          vector,
-          uuidOssp,
-        },
-        dataDir: this.dataDirectory,
-      };
-      if (this.importPath) {
-        logger.debug(`Importing from ${this.importPath}`);
-        const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
-        const file = new File([rf], this.importPath);
-        pgliteArgs.loadDataDir = file;
-      }
-      this.db = await this.forceCreateDB(pgliteArgs);
-      await this.db.waitReady;
+      this.db = await this.forceCreateDB();
     }
     return this.db;
+  }
+
+  private async getExtensions() {
+    const vector = (await dynamicImport("@electric-sql/pglite/vector")).vector;
+    const uuidOssp = (await dynamicImport("@electric-sql/pglite/contrib/uuid_ossp")).uuid_ossp;
+    return { vector, uuidOssp };
   }
 
   public async clearDb(): Promise<void> {
@@ -130,18 +112,124 @@ export class PostgresServer {
     fs.writeFileSync(exportPath, new Uint8Array(arrayBuff));
   }
 
-  async forceCreateDB(pgliteArgs: PGliteOptions): Promise<PGlite> {
+  private async migrateDb(pgliteArgs: PGliteOptions): Promise<PGlite> {
+    if (!this.baseDataDirectory) {
+      throw new FirebaseError("Cannot migrate database without a data directory.");
+    }
+
+    // 1. Import old PGlite and pgDump
+    const { PGlite: PGlite02 } = await dynamicImport("pglite-2");
+    const pgDump = (await dynamicImport("@electric-sql/pglite-tools/pg_dump")).pgDump;
+
+    // 2. Open old DB with old PGlite
+
+    logger.info("Opening database with Postgres 16...");
+    const extensions = await this.getExtensions();
+    const dataDir = this.baseDataDirectory;
+    const oldDb = new PGlite02({ ...pgliteArgs, dataDir });
+    await oldDb.waitReady;
+
+    const oldVersion = await (oldDb as PGlite).query<{ version: string }>("SELECT version();");
+    logger.debug(`Old database version: ${oldVersion.rows[0].version}`);
+    if (!oldVersion.rows[0].version.includes("PostgreSQL 16")) {
+      await oldDb.close();
+      throw new FirebaseError("Migration started, but DB version is not PostgreSQL 16.");
+    }
+
+    // 3. Dump data
+    logger.info("Dumping data from old database...");
+    const dumpDir = await oldDb.dumpDataDir("none");
+    const tempOldDb = await PGlite02.create({
+      loadDataDir: dumpDir,
+      extensions,
+    });
+
+    const dumpResult = await pgDump({ pg: tempOldDb, args: ["--verbose", "--verbose"] });
+    await tempOldDb.close();
+    await oldDb.close();
+
+    // 4. Move old dataDir to pg16 directory
+    logger.info(`Moving old database directory to ${this.baseDataDirectory}/pg16...`);
+    const pg16Dir = this.getVersionedDataDir(16)!;
+    moveAll(this.baseDataDirectory, pg16Dir);
+    logger.info(
+      "If you need to use an older version of the Firebase CLI, you can restore from that directory.",
+    );
+
+    // 5. Create new DB with new PGlite
+    logger.info("Creating new database with Postgres 17...");
+    const pg17Dir = this.getVersionedDataDir(17)!;
+    const newDb = new PGlite({ ...pgliteArgs, dataDir: pg17Dir });
+    await newDb.waitReady;
+
+    // 6. Import data
+    logger.info("Importing data into new database...");
+    const dumpText = await dumpResult.text();
+    await newDb.exec(dumpText);
+    await newDb.exec("SET SEARCH_PATH = public;");
+
+    logger.info("Postgres database migration successful.");
+    return newDb;
+  }
+
+  // When we upgrade Postgres versions, we need to migrate old data. To make this simpler,
+  // we started using versioned subdirectories of the dataDir.
+  // Note that we did not do this originally, so PG16 data is often found in the baseDataDir
+  private getVersionedDataDir(version: number): string | undefined {
+    if (!this.baseDataDirectory) {
+      return;
+    }
+    return path.join(this.baseDataDirectory, `pg${version}`);
+  }
+
+  async forceCreateDB(): Promise<PGlite> {
+    const baseArgs: PGliteOptions = {
+      debug: this.debug,
+      extensions: await this.getExtensions(),
+    };
+
+    const pg17Dir = this.getVersionedDataDir(17);
+    // First, ensure that the data directory exists - PGLite tries to do this but doesn't do so recursively
+    if (pg17Dir && !fs.existsSync(pg17Dir)) {
+      fs.mkdirSync(pg17Dir, { recursive: true });
+    }
+
+    if (this.importPath) {
+      logger.debug(`Importing from ${this.importPath}`);
+      const rf = fs.readFileSync(this.importPath) as unknown as BlobPart;
+      const file = new File([rf], this.importPath);
+      baseArgs.loadDataDir = file;
+    }
+
+    // Detect and handle migration from older versions. Originally, we did not do versioned subdirectories,
+    // so we just check the base directory here
+    if (this.baseDataDirectory && fs.existsSync(this.baseDataDirectory)) {
+      const versionFilePath = path.join(this.baseDataDirectory, "PG_VERSION");
+      if (fs.existsSync(versionFilePath)) {
+        const version = fs.readFileSync(versionFilePath, "utf-8").trim();
+        logger.debug(`Found Postgres version file with version: ${version}`);
+        if (version === "16") {
+          logger.info(
+            "Detected a Postgres 16 data directory from an older version of firebase-tools. Migrating to Postgres 17...",
+          );
+          return this.migrateDb(baseArgs);
+        }
+      }
+    }
+
     try {
-      const db = await PGlite.create(pgliteArgs);
+      const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
+      await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pgliteArgs.dataDir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
         // Clear out the current pglite data
-        fs.rmSync(pgliteArgs.dataDir, { force: true, recursive: true });
-        const db = await PGlite.create(pgliteArgs);
+        fs.rmSync(pg17Dir, { force: true, recursive: true });
+        const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
+        await db.waitReady;
         return db;
       }
-      logger.debug(`Error from pglite: ${err}`);
+      logger.warn(`Error from pglite: ${err}`);
       throw new FirebaseError("Unexpected error starting up Postgres.");
     }
   }
@@ -157,59 +245,9 @@ export class PostgresServer {
   }
 
   constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
-    this.dataDirectory = args.dataDirectory;
+    this.baseDataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
     this.debug = args.debug ? 5 : 0;
-  }
-}
-
-// TODO: Remove this code once https://github.com/electric-sql/pglite/pull/294 is released in PGLite
-export class PGliteExtendedQueryPatch {
-  isExtendedQuery = false;
-  eqpErrored = false;
-
-  constructor(public connection: PostgresConnection) {}
-
-  async *filterResponse(message: Uint8Array, response: Uint8Array) {
-    // 'Parse' indicates the start of an extended query
-    const pipelineStartMessages: number[] = [
-      FrontendMessageCode.Parse,
-      FrontendMessageCode.Bind,
-      FrontendMessageCode.Close,
-    ];
-    const decoder = new StringDecoder();
-    const decoded = decoder.write(message as any as Buffer);
-    logger.debug(decoded);
-    if (pipelineStartMessages.includes(message[0])) {
-      this.isExtendedQuery = true;
-    }
-
-    // 'Sync' indicates the end of an extended query
-    if (message[0] === FrontendMessageCode.Sync) {
-      this.isExtendedQuery = false;
-      this.eqpErrored = false;
-
-      // Manually inject 'ReadyForQuery' message at the end
-      return this.connection.createReadyForQuery();
-    }
-
-    // A PGlite response can contain multiple messages
-    for await (const message of getMessages(response)) {
-      // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
-      // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
-      if (this.eqpErrored) {
-        continue;
-      }
-      if (this.isExtendedQuery && message[0] === BackendMessageCode.ErrorMessage) {
-        this.eqpErrored = true;
-      }
-      // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
-      if (this.isExtendedQuery && message[0] === BackendMessageCode.ReadyForQuery) {
-        logger.debug("Filtered out a ReadyForQuery.");
-        continue;
-      }
-      yield message;
-    }
   }
 }
 

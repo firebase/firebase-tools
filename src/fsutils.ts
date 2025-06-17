@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
+import * as path from "path";
 import { FirebaseError } from "./error";
+import { moveSync } from "fs-extra";
 
 export function fileExistsSync(path: string): boolean {
   try {
@@ -36,5 +38,18 @@ export function listFiles(path: string): string[] {
       throw new FirebaseError(`Directory not found: ${path}`);
     }
     throw e;
+  }
+}
+
+// Move all files and directories inside srcDir to destDir
+export function moveAll(srcDir: string, destDir: string) {
+  if (!existsSync(destDir)) {
+    mkdirSync(destDir, { recursive: true });
+  }
+  const files = listFiles(srcDir);
+  for (const f of files) {
+    const srcPath = path.join(srcDir, f);
+    if (srcPath === destDir) continue;
+    moveSync(srcPath, path.join(destDir, f));
   }
 }
