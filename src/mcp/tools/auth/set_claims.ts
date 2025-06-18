@@ -42,6 +42,6 @@ export const set_claim = tool(
         return mcpError(`Provided \`json_value\` was not valid JSON: ${json_value}`);
       }
     }
-    return toContent(await setCustomClaim(projectId!, uid, { [claim]: value }, { merge: true }));
+    return toContent(await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true }));
   },
 );

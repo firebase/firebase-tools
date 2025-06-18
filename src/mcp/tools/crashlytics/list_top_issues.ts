@@ -18,6 +18,12 @@ export const list_top_issues = tool(
         .number()
         .optional()
         .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified."),
+      issue_type: z
+        .enum(["FATAL", "NON-FATAL", "ANR"])
+        .optional()
+        .describe(
+          "Types of issues that can be fetched comma-separated. Defaults to `FATAL` (Crashes). Other values include NON-FATAL (Non-fatal issues), ANR (Application not responding).",
+        ),
     }),
     annotations: {
       title: "List Top Crashlytics Issues.",
@@ -28,11 +34,12 @@ export const list_top_issues = tool(
       requiresProject: true,
     },
   },
-  async ({ app_id, issue_count }, { projectId }) => {
+  async ({ app_id, issue_type, issue_count }, { projectId }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
 
+    issue_type ??= "FATAL";
     issue_count ??= 10;
 
-    return toContent(await listTopIssues(projectId!, app_id, issue_count));
+    return toContent(await listTopIssues(projectId, app_id, issue_type, issue_count));
   },
 );

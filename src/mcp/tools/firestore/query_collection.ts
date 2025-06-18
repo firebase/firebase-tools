@@ -3,6 +3,7 @@ import { tool } from "../../tool.js";
 import { mcpError, toContent } from "../../util.js";
 import { queryCollection, StructuredQuery } from "../../../gcp/firestore.js";
 import { convertInputToValue, firestoreDocumentToJson } from "./converter.js";
+import { Emulators } from "../../../emulator/types.js";
 
 export const query_collection = tool(
   {
@@ -10,11 +11,10 @@ export const query_collection = tool(
     description:
       "Retrieves one or more Firestore documents from a collection is a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
     inputSchema: z.object({
-      // TODO: Support configurable database
-      // database: z
-      //   .string()
-      //   .nullish()
-      //   .describe("Database id to use. Defaults to `(default)` if unspecified."),
+      database: z
+        .string()
+        .optional()
+        .describe("Database id to use. Defaults to `(default)` if unspecified."),
       collection_path: z
         .string()
         .describe(
@@ -24,14 +24,20 @@ export const query_collection = tool(
         .object({
           compare_value: z
             .object({
-              string_value: z.string().nullish().describe("The string value to compare against."),
-              boolean_value: z.string().nullish().describe("The boolean value to compare against."),
+              string_value: z.string().optional().describe("The string value to compare against."),
+              boolean_value: z
+                .string()
+                .optional()
+                .describe("The boolean value to compare against."),
               string_array_value: z
                 .array(z.string())
-                .nullish()
+                .optional()
                 .describe("The string value to compare against."),
-              integer_value: z.number().nullish().describe("The integer value to compare against."),
-              double_value: z.number().nullish().describe("The double value to compare against."),
+              integer_value: z
+                .number()
+                .optional()
+                .describe("The integer value to compare against."),
+              double_value: z.number().optional().describe("The double value to compare against."),
             })
             .describe("One and only one value may be specified per filters object."),
           field: z.string().describe("the field searching against"),
@@ -60,14 +66,15 @@ export const query_collection = tool(
             .enum(["ASCENDING", "DESCENDING"])
             .describe("the direction to order values"),
         })
-        .nullish()
+        .optional()
         .describe(
           "Specifies the field and direction to order the results. If not provided, the order is undefined.",
         ),
       limit: z
         .number()
         .describe("The maximum amount of records to return. Default is 10.")
-        .nullish(),
+        .optional(),
+      use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
       title: "Query Firestore collection",
@@ -78,7 +85,10 @@ export const query_collection = tool(
       requiresProject: true,
     },
   },
-  async ({ collection_path, filters, order, limit }, { projectId }) => {
+  async (
+    { collection_path, filters, order, limit, database, use_emulator },
+    { projectId, host },
+  ) => {
     // database ??= "(default)";
 
     if (!collection_path || !collection_path.length)
@@ -125,7 +135,12 @@ export const query_collection = tool(
     }
     structuredQuery.limit = limit ? limit : 10;
 
-    const { documents } = await queryCollection(projectId!, structuredQuery);
+    let emulatorUrl: string | undefined;
+    if (use_emulator) {
+      emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
+    }
+
+    const { documents } = await queryCollection(projectId, structuredQuery, database, emulatorUrl);
 
     const docs = documents.map(firestoreDocumentToJson);
 

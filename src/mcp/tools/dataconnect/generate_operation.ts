@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { generateOperation } from "../../../gif/fdcExperience.js";
+import { generateOperation } from "../../../gemini/fdcExperience.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 
 export const generate_operation = tool(
@@ -18,7 +18,7 @@ export const generate_operation = tool(
         ),
       service_id: z
         .string()
-        .nullish()
+        .optional()
         .describe(
           "Optional: Uses the service ID from the firebase.json file if nothing provided. The service ID of the deployed Firebase resource.",
         ),
@@ -34,8 +34,8 @@ export const generate_operation = tool(
     },
   },
   async ({ prompt, service_id }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, service_id || undefined);
-    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId);
     return toContent(schema);
   },
 );

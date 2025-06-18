@@ -48,7 +48,7 @@ export const execute_query = tool(
     { operationName, service_id, connector_id, variables: unparsedVariables, use_emulator },
     { projectId, config, host },
   ) => {
-    const serviceInfo = await pickService(projectId!, config, service_id || undefined);
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
     let apiClient: Client;
 
     if (!connector_id) {
@@ -69,7 +69,7 @@ export const execute_query = tool(
     const connectorPath = `${serviceInfo.serviceName}/connectors/${connector_id}`;
 
     if (use_emulator) {
-      apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
+      apiClient = await getDataConnectEmulatorClient(host);
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }

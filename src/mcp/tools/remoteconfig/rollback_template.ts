@@ -25,6 +25,6 @@ export const rollback_template = tool(
     if (version_number === undefined) {
       return mcpError(`No version number specified in the rollback requests`);
     }
-    return toContent(await rollbackTemplate(projectId!, version_number!));
+    return toContent(await rollbackTemplate(projectId, version_number!));
   },
 );

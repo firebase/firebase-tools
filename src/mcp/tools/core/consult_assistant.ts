@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { chatWithFirebase } from "../../../gif/fdcExperience.js";
+import { chatWithFirebase } from "../../../gemini/fdcExperience.js";
 
 export const consult_assistant = tool(
   {
@@ -24,7 +24,7 @@ export const consult_assistant = tool(
     },
   },
   async ({ prompt }, { projectId }) => {
-    const schema = await chatWithFirebase(prompt, projectId!);
+    const schema = await chatWithFirebase(prompt, projectId);
     return toContent(schema);
   },
 );

@@ -1,4 +1,4 @@
-import { firestoreOrigin, firestoreOriginOrEmulator } from "../api";
+import { firestoreOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { Duration, assertOneOf, durationFromSeconds } from "./proto";
@@ -10,11 +10,16 @@ const prodOnlyClient = new Client({
   urlPrefix: firestoreOrigin(),
 });
 
-const emuOrProdClient = new Client({
-  auth: true,
-  apiVersion: "v1",
-  urlPrefix: firestoreOriginOrEmulator(),
-});
+function getClient(emulatorUrl?: string) {
+  if (emulatorUrl) {
+    return new Client({
+      auth: true,
+      apiVersion: "v1",
+      urlPrefix: emulatorUrl,
+    });
+  }
+  return prodOnlyClient;
+}
 
 export interface Database {
   name: string;
@@ -147,9 +152,9 @@ export interface FirestoreDocument {
 export async function getDatabase(
   project: string,
   database: string,
-  allowEmulator: boolean = false,
+  emulatorUrl?: string,
 ): Promise<Database> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+  const apiClient = getClient(emulatorUrl);
   const url = `projects/${project}/databases/${database}`;
   try {
     const resp = await apiClient.get<Database>(url);
@@ -169,10 +174,11 @@ export async function getDatabase(
  */
 export function listCollectionIds(
   project: string,
-  allowEmulator: boolean = false,
+  databaseId: string = "(default)",
+  emulatorUrl?: string,
 ): Promise<string[]> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const url = "projects/" + project + "/databases/(default)/documents:listCollectionIds";
+  const apiClient = getClient(emulatorUrl);
+  const url = `projects/${project}/databases/${databaseId}/documents:listCollectionIds`;
   const data = {
     // Maximum 32-bit integer
     pageSize: 2147483647,
@@ -192,10 +198,11 @@ export function listCollectionIds(
 export async function getDocuments(
   project: string,
   paths: string[],
-  allowEmulator?: boolean,
+  databaseId: string = "(default)",
+  emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const apiClient = getClient(emulatorUrl);
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:batchGet`;
   const fullPaths = paths.map((p) => `${basePath}/${p}`);
   const res = await apiClient.post<
@@ -216,10 +223,11 @@ export async function getDocuments(
 export async function queryCollection(
   project: string,
   structuredQuery: StructuredQuery,
-  allowEmulator?: boolean,
+  databaseId: string = "(default)",
+  emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[] }> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const basePath = `projects/${project}/databases/(default)/documents`;
+  const apiClient = getClient(emulatorUrl);
+  const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:runQuery`;
   try {
     const res = await apiClient.post<
@@ -258,8 +266,8 @@ export async function queryCollection(
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-export async function deleteDocument(doc: any, allowEmulator: boolean = false): Promise<any> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
+export async function deleteDocument(doc: any, emulatorUrl?: string): Promise<any> {
+  const apiClient = getClient(emulatorUrl);
   return apiClient.delete(doc.name);
 }
 
@@ -275,10 +283,11 @@ export async function deleteDocument(doc: any, allowEmulator: boolean = false): 
 export async function deleteDocuments(
   project: string,
   docs: any[],
-  allowEmulator: boolean = false,
+  databaseId: string = "(default)",
+  emulatorUrl?: string,
 ): Promise<number> {
-  const apiClient = allowEmulator ? emuOrProdClient : prodOnlyClient;
-  const url = "projects/" + project + "/databases/(default)/documents:commit";
+  const apiClient = getClient(emulatorUrl);
+  const url = `projects/${project}/databases/${databaseId}/documents:commit`;
 
   const writes = docs.map((doc) => {
     return { delete: doc.name };

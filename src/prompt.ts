@@ -214,7 +214,14 @@ export async function number(message: string): Promise<number>;
  */
 export async function number(opts: NumberOptions): Promise<number>;
 
-export async function number(opts: string | NumberOptions): Promise<number> {
+/**
+ * Prompt a user for an optional number.
+ */
+export async function number(
+  opts: NumberOptions & { required: false },
+): Promise<number | undefined>;
+
+export async function number(opts: string | NumberOptions): Promise<number | undefined> {
   if (typeof opts === "string") {
     opts = { message: opts };
   } else {
@@ -224,7 +231,7 @@ export async function number(opts: string | NumberOptions): Promise<number> {
     }
   }
 
-  return (await inquirer.number({ ...opts, required: true }))!;
+  return await inquirer.number({ required: true, ...opts });
 }
 
 /**

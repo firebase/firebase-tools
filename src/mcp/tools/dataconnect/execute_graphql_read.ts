@@ -41,11 +41,11 @@ export const execute_graphql_read = tool(
     { query, service_id, variables: unparsedVariables, use_emulator },
     { projectId, config, host },
   ) => {
-    const serviceInfo = await pickService(projectId!, config, service_id || undefined);
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
 
     let apiClient: Client;
     if (use_emulator) {
-      apiClient = await getDataConnectEmulatorClient(await host.getEmulatorHubClient());
+      apiClient = await getDataConnectEmulatorClient(host);
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }

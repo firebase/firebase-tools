@@ -8,6 +8,7 @@ import { storageTools } from "./storage/index.js";
 import { messagingTools } from "./messaging/index.js";
 import { remoteConfigTools } from "./remoteconfig/index.js";
 import { crashlyticsTools } from "./crashlytics/index.js";
+import { appHostingTools } from "./apphosting/index.js";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
@@ -30,6 +31,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   messaging: addFeaturePrefix("messaging", messagingTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
+  apphosting: addFeaturePrefix("apphosting", appHostingTools),
 };
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {

@@ -6,6 +6,7 @@ export const SERVER_FEATURES = [
   "messaging",
   "remoteconfig",
   "crashlytics",
+  "apphosting",
 ] as const;
 export type ServerFeature = (typeof SERVER_FEATURES)[number];
 

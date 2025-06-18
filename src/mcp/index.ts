@@ -21,6 +21,7 @@ import { trackGA4 } from "../track.js";
 import { Config } from "../config.js";
 import { loadRC } from "../rc.js";
 import { EmulatorHubClient } from "../emulator/hubClient.js";
+import { Emulators } from "../emulator/types.js";
 import { existsSync } from "node:fs";
 
 const SERVER_VERSION = "0.1.0";
@@ -123,6 +124,27 @@ export class FirebaseMcpServer {
     return this.emulatorHubClient;
   }
 
+  async getEmulatorUrl(emulatorType: Emulators): Promise<string> {
+    const hubClient = await this.getEmulatorHubClient();
+    if (!hubClient) {
+      throw Error(
+        "Emulator Hub not found or is not running. You can start the emulator by running `firebase emulators:start` in your firebase project directory.",
+      );
+    }
+
+    const emulators = await hubClient.getEmulators();
+    const emulatorInfo = emulators[emulatorType];
+    if (!emulatorInfo) {
+      throw Error(
+        "No Firestore Emulator found running. Make sure your project firebase.json file includes firestore and then rerun emulator using `firebase emulators:start` from your project directory.",
+      );
+    }
+
+    const host = emulatorInfo.host.includes(":") ? `[${emulatorInfo.host}]` : emulatorInfo.host;
+
+    return `http://${host}:${emulatorInfo.port}`;
+  }
+
   get availableTools(): ServerTool[] {
     return availableTools(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
@@ -152,7 +174,8 @@ export class FirebaseMcpServer {
 
   async getAuthenticatedUser(): Promise<string | null> {
     try {
-      return await requireAuth(await this.resolveOptions());
+      const email = await requireAuth(await this.resolveOptions());
+      return email ?? "Application Default Credentials";
     } catch (e) {
       return null;
     }
@@ -184,17 +207,24 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
-    const projectId = await this.getProjectId();
-    const accountEmail = await this.getAuthenticatedUser();
     if (
       tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
       (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
-    )
+    ) {
       return mcpError(
         `The current project directory '${this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"}' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
       );
-    if (tool.mcp._meta?.requiresAuth && !accountEmail) return mcpAuthError();
-    if (tool.mcp._meta?.requiresProject && !projectId) return NO_PROJECT_ERROR;
+    }
+    let projectId = await this.getProjectId();
+    if (tool.mcp._meta?.requiresProject && !projectId) {
+      return NO_PROJECT_ERROR;
+    }
+    projectId = projectId || "";
+
+    const accountEmail = await this.getAuthenticatedUser();
+    if (tool.mcp._meta?.requiresAuth && !accountEmail) {
+      return mcpAuthError();
+    }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
     const toolsCtx: ServerToolContext = {
