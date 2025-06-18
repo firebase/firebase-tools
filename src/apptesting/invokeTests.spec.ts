@@ -6,10 +6,6 @@ import { FirebaseError } from "../error";
 import { Browser } from "./types";
 
 describe("invokeTests", () => {
-  afterEach(() => {
-    // sinon.verifyAndRestore();
-  });
-
   describe("invokeTests", () => {
     const projectNumber = "123456789";
     const appId = `1:${projectNumber}:ios:abc123def456`;
