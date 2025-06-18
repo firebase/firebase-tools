@@ -221,7 +221,10 @@ export function enableApiURI(projectId: string, apiName: string): string {
 
 const API_ENABLEMENT_CACHE_KEY = "apiEnablementCache";
 function checkAPIEnablementCache(projectId: string, apiName: string): boolean {
-  const cache = configstore.get(API_ENABLEMENT_CACHE_KEY) as Record<string, Record<string, boolean>>;
+  const cache = configstore.get(API_ENABLEMENT_CACHE_KEY) as Record<
+    string,
+    Record<string, boolean>
+  >;
   return !!cache?.[projectId]?.[apiName];
 }
 
