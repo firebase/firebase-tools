@@ -29,12 +29,14 @@ export const command = new Command("apptesting:execute <target>")
   .before(requireAuth)
   .before(requireConfig)
   .action(async (target: string, options: any) => {
+    if (!options.app) {
+      throw new FirebaseError("App is required")
+    }
     const testDir = options.config.src.apptesting?.testDir || "tests";
     const tests = parseTestFiles(testDir, options.testFilePattern, options.testNamePattern);
 
     if (!tests.length) {
-      logger.error("No tests found");
-      return;
+      throw new FirebaseError("No tests found");
     }
 
     logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
