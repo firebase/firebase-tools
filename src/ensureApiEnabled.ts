@@ -226,7 +226,7 @@ function checkAPIEnablementCache(projectId: string, apiName: string): boolean {
 function cacheEnabledAPI(projectId: string, apiName: string) {
   const cache = (configstore.get("apiEnablementCache") || {}) as Record<
     string,
-    Record<string, boolean>
+    Record<string, true>
   >;
   if (!cache[projectId]) {
     cache[projectId] = {};
