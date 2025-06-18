@@ -13,7 +13,7 @@ export interface TestDef {
 
 export enum Browser {
   BROWSER_UNSPECIFIED,
-  CHROME
+  CHROME,
 }
 
 export interface TestConfig {
@@ -23,8 +23,8 @@ export interface TestConfig {
 export interface InvokedTestCases {
   testInvocation: {
     name?: string;
-  }
-  testCaseInvocations: TestCaseInvocation[]
+  };
+  testCaseInvocations: TestCaseInvocation[];
 }
 
 export interface TestInvocation {
@@ -38,7 +38,7 @@ export interface TestInvocation {
 export interface TestCaseInvocation {
   name?: string;
   testCase: TestCase;
-  testExecution:  TestExecution[];
+  testExecution: TestExecution[];
 }
 
 export interface TestExecution {
@@ -47,7 +47,7 @@ export interface TestExecution {
 }
 
 export interface ExecutionConfig {
-  browser: Browser
+  browser: Browser;
 }
 
 export enum CompletionReason {
@@ -57,11 +57,11 @@ export enum CompletionReason {
   NO_ACTIONS_REQUIRED,
   GOAL_INCONCLUSIVE,
   TEST_CANCELLED,
-  GOAL_SUCCEEDED
+  GOAL_SUCCEEDED,
 }
 
 export interface TestExecutionResult {
-  completionReason: CompletionReason
+  completionReason: CompletionReason;
 }
 
 export interface TestCase {
@@ -74,5 +74,5 @@ export interface AiInstructions {
 }
 
 export interface InvokeTestCasesRequest {
-  resource: InvokedTestCases
+  resource: InvokedTestCases;
 }
