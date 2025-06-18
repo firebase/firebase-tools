@@ -1,2 +1,3 @@
 - Updated the Data Connect emulator to use pglite 0.3.x and Postgres 17, which fixes some crashes related to wire protocol inconsistencies. (#8679, #8658)
 - Fixed an issue where the IAM enablement for GenKit monitoring would try to change an invalid service account. (#8756)
+- Added a max instance default to function templates and comments educating users on cost controls. (#8772)
