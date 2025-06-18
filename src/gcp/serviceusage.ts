@@ -67,5 +67,6 @@ export async function generateServiceIdentityAndPoll(
   await poller.pollOperation<void>({
     ...serviceUsagePollerOptions,
     operationResourceName: op.name,
+    headers: { "x-goog-quota-user": `projects/${projectNumber}` },
   });
 }
