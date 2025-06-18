@@ -31,10 +31,9 @@ export function parseTestFiles(dir: string, filePattern?: string, namePattern?: 
             continue;
           }
           for (const rawTestDef of parsedFile.tests) {
+            if (!nameFilterFn(rawTestDef.testName)) continue;
             const testDef = toTestDef(rawTestDef, path, defaultConfig);
-            if (nameFilterFn(testDef.testName)) {
-              results.push(testDef);
-            }
+            results.push(testDef);
           }
         } catch (ex) {
           logger.info(`Unable to parse test file ${path}. Ignoring.`);
@@ -51,7 +50,7 @@ export function parseTestFiles(dir: string, filePattern?: string, namePattern?: 
 function toTestDef(testDef: any, path: string, defaultConfig: any): TestDef {
   const steps = testDef.steps || [];
   return {
-    id: path + testDef.testName,
+    id: `${path}#${testDef.testName}`,
     testName: testDef.testName,
     testConfig: {
       browsers: testDef.testConfig?.browsers || defaultConfig?.browsers,
