@@ -1,5 +1,3 @@
-import { Resource } from "../extensions/types";
-
 // AvailableMemory suffixes and their byte count.
 type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
 const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
@@ -37,20 +35,22 @@ export function mebibytes(memory: string): number {
   return bytes / (1 << 20);
 }
 
-export interface EnvVarSource {
-  secretKeyRef: {
-    secret: string;
-    version: "latest" | number;
+export interface PlaintextEnvVar {
+  name: string;
+  value: string;
+}
+
+export interface SecretEnvVar {
+  name: string;
+  valueSource: {
+    secretKeyRef: {
+      secret: string; // Secret name
+      version?: string; // Optional version, defaults to latest
+    };
   };
 }
 
-export type EnvVar = {
-  name: string;
-} & ({
-  value: string;
-} | {
-  valueSource: EnvVarSource;
-});
+export type EnvVar = PlaintextEnvVar | SecretEnvVar;
 
 export type ResourceType = "cpu" | "memory" | "nvidia.com/gpu";
 
@@ -63,7 +63,7 @@ export interface Container {
   workingDir?: string;
   resources: {
     limits: Record<ResourceType, string>;
-  }
+  };
   cpuIdle?: boolean;
   startupCpuBoost?: boolean;
 }

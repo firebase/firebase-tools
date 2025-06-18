@@ -67,7 +67,6 @@ export type WireEndpoint = build.Triggered &
     serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
-    // Run is an automatic upgrade from "v2"; we don't use it on the wire.
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
   };
