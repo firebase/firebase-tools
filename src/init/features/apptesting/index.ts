@@ -25,7 +25,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
   };
 }
 
-// Writes App Testing product specific configuration info. 
+// Writes App Testing product specific configuration info.
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const info = setup.featureInfo?.apptesting;
   if (!info) {

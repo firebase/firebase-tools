@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
-import { executeTests, pollInvocationStatus } from "../apptesting/invokeTests";
+import { invokeTests, pollInvocationStatus } from "../apptesting/invokeTests";
 import { TestInvocation } from "../apptesting/types";
 import { FirebaseError } from "../error";
 import { marked } from "marked";
@@ -31,13 +31,19 @@ export const command = new Command("apptesting:execute <target>")
   .action(async (target: string, options: any) => {
     const testDir = options.config.src.apptesting?.testDir || "tests";
     const tests = parseTestFiles(testDir, options.testFilePattern, options.testNamePattern);
+
+    if (!tests.length) {
+      logger.error("No tests found");
+      return;
+    }
+
     logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
 
-    const invocationOperation = await executeTests(options.app, target, tests);
-    const invocationId = invocationOperation.metadata?.name?.split('/').pop()
+    const invocationOperation = await invokeTests(options.app, target, tests);
+    const invocationId = invocationOperation.metadata?.name?.split("/").pop();
     const projectId = needProjectId(options);
     const url = consoleUrl(projectId, `apptesting/${options.app}/invocation/${invocationId}`);
-    logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`))
+    logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`));
 
     if (options.testsNonBlocking) {
       logger.info("Not waiting for results");
@@ -55,7 +61,7 @@ export const command = new Command("apptesting:execute <target>")
         logger.info("invocation details unavailable");
         return;
       }
-      spinner.text = getOutput(operation.response);
+      spinner.text = getOutput(operation.metadata as TestInvocation);
     });
     spinner.succeed();
   });
@@ -65,8 +71,12 @@ function getOutput(invocation: TestInvocation) {
     return "All tests passed";
   }
   return [
-    invocation.runningExecutions ? `${invocation.runningExecutions} tests still running...` : undefined,
-    invocation.succeededExecutions ? `✔ ${invocation.succeededExecutions} tests passing` : undefined,
+    invocation.runningExecutions
+      ? `${invocation.runningExecutions} tests still running...`
+      : undefined,
+    invocation.succeededExecutions
+      ? `✔ ${invocation.succeededExecutions} tests passing`
+      : undefined,
     invocation.failedExecutions ? `✖ ${invocation.failedExecutions} tests failing` : undefined,
   ]
     .filter((a) => a)
