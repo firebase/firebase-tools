@@ -225,7 +225,7 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   v2CpuBill -= V2_FREE_TIER.vCpu * V2_RATES.vCpu[1];
   v2CpuBill = Math.max(v2CpuBill, 0);
 
-  let runMemoryBill = 
+  let runMemoryBill =
     usage["run"][1].ram * V2_RATES.memoryGb[1] + usage["run"][2].ram * V2_RATES.memoryGb[2];
   runMemoryBill -= V2_FREE_TIER.memoryGb * V2_RATES.memoryGb[1];
   runMemoryBill = Math.max(runMemoryBill, 0);

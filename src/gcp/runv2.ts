@@ -8,88 +8,67 @@ import * as proto from "./proto";
 import { assertImplements, RecursiveKeyOf } from "../metaprogramming";
 import { LongRunningOperation, pollOperation } from "../operation-poller";
 import * as backend from "../deploy/functions/backend";
-import {
-  CODEBASE_LABEL,
-} from "../functions/constants";
-import { v } from "@electric-sql/pglite/dist/pglite-DqRPKYWs";
-import { mebibytes } from "./k8s";
+import { CODEBASE_LABEL } from "../functions/constants";
+import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
 import { logger } from "..";
 import { partition } from "../functional";
 
-
 export const API_VERSION = "v2";
 
-
 const client = new Client({
-    urlPrefix: runOrigin(),
-    auth: true,
-    apiVersion: API_VERSION,
+  urlPrefix: runOrigin(),
+  auth: true,
+  apiVersion: API_VERSION,
 });
 
-interface PlaintextEnvVar {
-    name: string;
-    value: string;
-}
-interface SecretEnvVar {
-    name: string;
-    valueSource: {
-        secretKeyRef: {
-            secret: string; // Secret name
-            version?: string; // Optional version, defaults to latest
-        };
-    };
-}
-
-export type EnvVar = PlaintextEnvVar | SecretEnvVar;
-
 export interface Container {
-    name: string;
-    image: string;
-    command?: string[];
-    args?: string[];
-    env?: EnvVar[];
-    resources?: {
-        limits?: {
-            cpu?: string; // e.g. "1", "2", "4"
-            memory?: string; // e.g. "256Mi", "512Mi", "1Gi"
-            ["nvidia.com/gpu"]?: string;
-        };
-        startupCpuBoost?: boolean; // If true, the container will get a CPU boost during startup.
+  name: string;
+  image: string;
+  command?: string[];
+  args?: string[];
+  env?: EnvVar[];
+  resources?: {
+    limits?: {
+      cpu?: string; // e.g. "1", "2", "4"
+      memory?: string; // e.g. "256Mi", "512Mi", "1Gi"
+      ["nvidia.com/gpu"]?: string;
     };
-    // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
+    startupCpuBoost?: boolean; // If true, the container will get a CPU boost during startup.
+  };
+  // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
 export interface RevisionTemplate {
-    revision?: string;
-    labels?: Record<string, string>;
-    annotations?: Record<string, string>;
-    scaling?: {
-        // N.B. Intentionally omitting revision min/max instance; we should
-        // never use them.
-        overflowScaling?: boolean;
-    };
-    vpcAccess?: {
-        connector?: string;
-        egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
-        networkinterfaces?: Array<{
-            network?: string;
-            subnetwork?: string;
-            tags?: string[];
-        }>;
-    };
-    timeout?: proto.Duration;
-    serviceAccount?: string;
-    containers?: Container[];
-    containerConcurrency?: number;
+  revision?: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  scaling?: {
+    // N.B. Intentionally omitting revision min/max instance; we should
+    // never use them.
+    overflowScaling?: boolean;
+  };
+  vpcAccess?: {
+    connector?: string;
+    egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
+    networkinterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }>;
+  };
+  timeout?: proto.Duration;
+  serviceAccount?: string;
+  containers?: Container[];
+  containerConcurrency?: number;
 }
 
 export interface BuildConfig {
-    name: string;
-    sourceLocation: string;
-    functionTarget?: string;
-    enableAutomaticUpdates?: boolean;
-    environmentVariables?: Record<string, string>;
-    serviceAccount?: string;
+  name: string;
+  sourceLocation: string;
+  functionTarget?: string;
+  enableAutomaticUpdates?: boolean;
+  environmentVariables?: Record<string, string>;
+  serviceAccount?: string;
 }
 
 // NOTE: This is a minmal copy of Cloud Run needed for our current API usage.
@@ -98,122 +77,126 @@ export interface BuildConfig {
 // fields that are optional in input types but we always set them (e.g. empty record)
 // in output APIs.
 export interface Service {
-    name: string;
-    description?: string;
-    generation: number;
-    labels?: Record<string, string>;
-    annotations?: Record<string, string>;
-    tags?: Record<string, string>;
-    createTime: string;
-    updateTime: string;
-    creator: string;
-    lastModifier: string;
-    launchStage?: string;
+  name: string;
+  description?: string;
+  generation: number;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  tags?: Record<string, string>;
+  createTime: string;
+  updateTime: string;
+  creator: string;
+  lastModifier: string;
+  launchStage?: string;
 
-    // In the proto definition, but not what we use to actually track this it seems?
-    client?: string;
-    clientVersion?: string;
+  // In the proto definition, but not what we use to actually track this it seems?
+  client?: string;
+  clientVersion?: string;
 
-    etag: string;
-    template: RevisionTemplate;
-    invokerIamDisabled?: boolean;
-    // Is this redundant with the Build API?
-    buildConfig?: BuildConfig;
-};
+  etag: string;
+  template: RevisionTemplate;
+  invokerIamDisabled?: boolean;
+  // Is this redundant with the Build API?
+  buildConfig?: BuildConfig;
+}
 
 export type ServiceOutputFields =
-    "generation" |
-    "createTime" |
-    "updateTime" |
-    "creator" |
-    "lastModifier" |
-    "etag";
+  | "generation"
+  | "createTime"
+  | "updateTime"
+  | "creator"
+  | "lastModifier"
+  | "etag";
 
 assertImplements<ServiceOutputFields, RecursiveKeyOf<Service>>();
 
 export interface StorageSource {
-    bucket: string;
-    object: string;
-    generation?: string;
+  bucket: string;
+  object: string;
+  generation?: string;
 }
 
 export interface BuildpacksBuild {
-    // Deprecated, presumedly in favor of baseImage?
-    runtime?: string;
-    functionTarget?: string;
-    cacheImageUrl?: string;
-    baseImage?: string;
+  // Deprecated, presumedly in favor of baseImage?
+  runtime?: string;
+  functionTarget?: string;
+  cacheImageUrl?: string;
+  baseImage?: string;
 
-    // NOTE: build-time environment variables, which are not currently used.
-    environmentVariables?: Record<string, string>;
+  // NOTE: build-time environment variables, which are not currently used.
+  environmentVariables?: Record<string, string>;
 
-    enableAutomaticUpdates?: boolean;
-    projectDescriptor?: string;
+  enableAutomaticUpdates?: boolean;
+  projectDescriptor?: string;
 }
 
 export interface Build {
-    runtime?: string;
-    functionTarget?: string;
-    storageSource: StorageSource;
-    imageUri: string;
-    buildpacksBuild: BuildpacksBuild;
+  runtime?: string;
+  functionTarget?: string;
+  storageSource: StorageSource;
+  imageUri: string;
+  buildpacksBuild: BuildpacksBuild;
 }
 
 export interface SubmitBuildResponse {
-    buildOperation: string;
-    baseImageUri?: string;
-    baseImageWarning?: string;
+  buildOperation: string;
+  baseImageUri?: string;
+  baseImageWarning?: string;
 }
 
-export async function submitBuild(projectId: string, location: string, build: Build): Promise<void> {
-    const res = await client.post<Build, SubmitBuildResponse>(
-        `/projects/${projectId}/locations/${location}/builds`,
-        build,
-    );
-    if (res.status !== 200) {
-        throw new FirebaseError(
-            `Failed to submit build: ${res.status} ${res.body}`,
-        );
-    }
-    await pollOperation({
-        apiOrigin: cloudbuildOrigin(),
-        apiVersion: "v1",
-        operationResourceName: res.body.buildOperation,
-    });
+export async function submitBuild(
+  projectId: string,
+  location: string,
+  build: Build,
+): Promise<void> {
+  const res = await client.post<Build, SubmitBuildResponse>(
+    `/projects/${projectId}/locations/${location}/builds`,
+    build,
+  );
+  if (res.status !== 200) {
+    throw new FirebaseError(`Failed to submit build: ${res.status} ${res.body}`);
+  }
+  await pollOperation({
+    apiOrigin: cloudbuildOrigin(),
+    apiVersion: "v1",
+    operationResourceName: res.body.buildOperation,
+  });
 }
 
-export async function updateService(
-    service: Omit<Service, ServiceOutputFields>): Promise<Service> {
-    const fieldMask = proto.fieldMasks(
-        service,
-        /* doNotRecurseIn...*/"labels", "annotations", "tags");
-    // Always update revision name to ensure null generates a new unique revision name.
-    fieldMask.push("template.revision");
-    const res = await client.post<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
-        service.name,
-        service,
-        {
-            queryParams: {
-                updateMask: fieldMask.join(","),
-            },
-        }
-    );
-    const svc = await pollOperation<Service>({
-        apiOrigin: runOrigin(),
-        apiVersion: API_VERSION,
-        operationResourceName: res.body.name,
-    });
-    return svc;
+export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
+  const fieldMask = proto.fieldMasks(
+    service,
+    /* doNotRecurseIn...*/ "labels",
+    "annotations",
+    "tags",
+  );
+  // Always update revision name to ensure null generates a new unique revision name.
+  fieldMask.push("template.revision");
+  const res = await client.post<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
+    service.name,
+    service,
+    {
+      queryParams: {
+        updateMask: fieldMask.join(","),
+      },
+    },
+  );
+  const svc = await pollOperation<Service>({
+    apiOrigin: runOrigin(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
+  return svc;
 }
 
 // TODO: Replace with real version:
 function functionNameToServiceName(id: string): string {
-    return id.toLowerCase().replace(/_/g, "-");
+  return id.toLowerCase().replace(/_/g, "-");
 }
 
 /**
  * The following is the YAML of a v2 function's Run service labels & annotations:
- * 
+ *
  * labels:
  *   goog-drz-cloudfunctions-location: us-central1
  *   goog-drz-cloudfunctions-id: ejectrequest
@@ -239,7 +222,7 @@ function functionNameToServiceName(id: string): string {
  *   run.googleapis.com/ingress-status: all
  *   cloudfunctions.googleapis.com/function-id: ejectRequest
  *   run.googleapis.com/urls: '["https://ejectrequest-92611791981.us-central1.run.app","https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest","https://ejectrequest-uvb3o4q2mq-uc.a.run.app"]'
- * 
+ *
  * After ejection it is:
  * labels:
  *   goog-drz-cloudfunctions-location: us-central1
@@ -266,7 +249,7 @@ function functionNameToServiceName(id: string): string {
  *   run.googleapis.com/ingress: all
  *   run.googleapis.com/ingress-status: all
  *   run.googleapis.com/urls: '["https://ejectrequest-92611791981.us-central1.run.app","https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest","https://ejectrequest-uvb3o4q2mq-uc.a.run.app"]'
- * 
+ *
  * This sample was taken from an https function, but we should assume that all labels we use in GCF translate to Run
  * and preserve them to keep the Console similar for GCF 2nd gen vs Cloud Run functions when reading.
  * Notable differences from the Functions interface though is that "goog-managed-by" should be firebase-functions and
@@ -281,9 +264,9 @@ export const CLIENT_NAME_LABEL = "goog-managed-by";
 export const CLIENT_NAME_ANNOTATION = "run.googleapis.com/client-name";
 export const CPU_BOOST_ANNOTATION = "run.googleapis.com/startup-cpu-boost";
 export const TRIGGER_TYPE_ANNOTATION = "cloudfunctions.googleapis.com/trigger-type";
-export const FUNCTION_TARGET_ANNOTATION = "run.googleapis.com/build-function-target" // e.g. '{"worker":"triggerTest"}'
+export const FUNCTION_TARGET_ANNOTATION = "run.googleapis.com/build-function-target"; // e.g. '{"worker":"triggerTest"}'
 export const FUNCTION_ID_ANNOTATION = "cloudfunctions.googleapis.com/function-id"; // e.g. "triggerTest"
-export const BASE_IMAGE_ANNOTATION = "run.googleapis.com/base-images"; //: '{"worker":"us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22"}'
+export const BASE_IMAGE_ANNOTATION = "run.googleapis.com/base-images"; // : '{"worker":"us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22"}'
 export const MAX_INSTANCES_ANNOTATION = "autoscaling.knative.dev/maxScale";
 export const MIN_INSTANCES_ANNOTATION = "autoscaling.knative.dev/minScale";
 export const DEFAULT_FUNCTION_CONTAINER_NAME = "worker";
@@ -293,117 +276,136 @@ export const DEFAULT_FUNCTION_CONTAINER_NAME = "worker";
 // values from the dependent services? But serviceFromEndpoint currently
 // only returns the service and not the dependent resources, which we will
 // need for updates.
-export function endpointFromService(service: Service): backend.Endpoint {
-    const [/*projects*/,project, /*locations*/,location,/*services*/, svcId] = service.name.split("/"); 
-    const id = service.annotations?.[FUNCTION_ID_ANNOTATION] || service.annotations?.[FUNCTION_TARGET_ANNOTATION] || svcId;
-    const memory = mebibytes( service.template.containers![0]!.resources!.limits!.memory!);
-    if (!backend.isValidMemoryOption(memory)) {
-        logger.debug("Converting a service to an endpoint with an invalid memory option", memory);
-    }
-    const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
-    const endpoint: backend.Endpoint = {
-        platform: service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ? "gcfv2" : "run",
-        id,
-        project,
-        labels: service.labels || {},
-        region: location,
-        runtime: service.labels?.[RUNTIME_LABEL] as Runtime || latest("nodejs"),
-        availableMemoryMb: memory as backend.MemoryOptions,
-        cpu: cpu,
-        entryPoint: service.annotations?.[FUNCTION_TARGET_ANNOTATION] || service.annotations?.[FUNCTION_ID_ANNOTATION] || id,
+export function endpointFromService(service: Omit<Service, ServiceOutputFields>): backend.Endpoint {
+  const [, /* projects*/ project /* locations*/, , location /* services*/, , svcId] =
+    service.name.split("/");
+  const id =
+    service.annotations?.[FUNCTION_ID_ANNOTATION] ||
+    service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
+    svcId;
+  const memory = mebibytes(service.template.containers![0]!.resources!.limits!.memory!);
+  if (!backend.isValidMemoryOption(memory)) {
+    logger.debug("Converting a service to an endpoint with an invalid memory option", memory);
+  }
+  const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
+  const endpoint: backend.Endpoint = {
+    platform: service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ? "gcfv2" : "run",
+    id,
+    project,
+    labels: service.labels || {},
+    region: location,
+    runtime: (service.labels?.[RUNTIME_LABEL] as Runtime) || latest("nodejs"),
+    availableMemoryMb: memory as backend.MemoryOptions,
+    cpu: cpu,
+    entryPoint:
+      service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
+      service.annotations?.[FUNCTION_ID_ANNOTATION] ||
+      id,
 
-        // TODO: trigger types.
-        httpsTrigger: {},
+    // TODO: trigger types.
+    httpsTrigger: {},
+  };
+  proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
+  proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
+  if (service.annotations?.[MIN_INSTANCES_ANNOTATION]) {
+    endpoint.minInstances = Number(service.annotations[MIN_INSTANCES_ANNOTATION]);
+  }
+  if (service.annotations?.[MAX_INSTANCES_ANNOTATION]) {
+    endpoint.maxInstances = Number(service.annotations[MAX_INSTANCES_ANNOTATION]);
+  }
+
+  const [env, secretEnv] = partition(
+    service.template.containers![0]!.env || [],
+    (e) => "value" in e,
+  ) as [PlaintextEnvVar[], SecretEnvVar[]];
+  endpoint.environmentVariables = env.reduce<Record<string, string>>((acc, e) => {
+    acc[e.name] = e.value;
+    return acc;
+  }, {});
+  endpoint.secretEnvironmentVariables = secretEnv.map((e) => {
+    const [, /* projects*/ projectId /* secrets*/, , secret] =
+      e.valueSource.secretKeyRef.secret.split("/");
+    return {
+      key: e.name,
+      projectId,
+      secret,
+      version: e.valueSource.secretKeyRef.version || "latest",
     };
-    proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
-    proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL)
-    if (service.annotations?.[MIN_INSTANCES_ANNOTATION]) {
-        endpoint.minInstances = Number(service.annotations[MIN_INSTANCES_ANNOTATION]);
-    }
-    if (service.annotations?.[MAX_INSTANCES_ANNOTATION]) {
-        endpoint.maxInstances = Number(service.annotations[MAX_INSTANCES_ANNOTATION]);
-    }
-
-    const [env, secretEnv] = partition(
-        service.template.containers![0]!.env || [],
-        (e) => "value" in e,
-    ) as [PlaintextEnvVar[], SecretEnvVar[]];
-    endpoint.environmentVariables = env.reduce<Record<string, string>>((acc, e) => { acc[e.name] = e.value; return acc; }, {});
-    endpoint.secretEnvironmentVariables = secretEnv.map((e) => {
-        const [/*projects*/, projectId, /*secrets*/, secret] = e.valueSource.secretKeyRef.secret.split("/");
-        return {
-            key: e.name,
-            projectId,
-            secret,
-            version: e.valueSource.secretKeyRef.version || "latest",
-        };
-    });
-    return endpoint;
+  });
+  return endpoint;
 }
 
-export function serviceFromEndpoint(endpoint: backend.Endpoint, image: string): Omit<Service, ServiceOutputFields> {
-    const labels: Record<string, string> = {
-        ...endpoint.labels,
-        [RUNTIME_LABEL]: endpoint.runtime,
-        [CLIENT_NAME_LABEL]: "firebase-functions",
-    }
+export function serviceFromEndpoint(
+  endpoint: backend.Endpoint,
+  image: string,
+): Omit<Service, ServiceOutputFields> {
+  const labels: Record<string, string> = {
+    ...endpoint.labels,
+    [RUNTIME_LABEL]: endpoint.runtime,
+    [CLIENT_NAME_LABEL]: "firebase-functions",
+  };
 
-    // A bit of a hack, but other code assumes the Functions method of indicating deployment tool and
-    // injects this as a label. To avoid thinking that this is actually meaningful in the CRF world,
-    // we delete it here.
-    delete labels["deployment-tool"]; 
+  // A bit of a hack, but other code assumes the Functions method of indicating deployment tool and
+  // injects this as a label. To avoid thinking that this is actually meaningful in the CRF world,
+  // we delete it here.
+  delete labels["deployment-tool"];
 
-    // TODO: hash
-    if (endpoint.codebase) {
-        labels[CODEBASE_LABEL] = endpoint.codebase;
-    }
+  // TODO: hash
+  if (endpoint.codebase) {
+    labels[CODEBASE_LABEL] = endpoint.codebase;
+  }
 
-    const annotations: Record<string, string> = {
-        [CLIENT_NAME_ANNOTATION]: "cli-firebase",
-        [FUNCTION_TARGET_ANNOTATION]: endpoint.id,
-        [FUNCTION_ID_ANNOTATION]: endpoint.id,
-        [CPU_BOOST_ANNOTATION]: "true",
-        // TODO: Add run.googleapis.com/base-images: {'worker': <image>} for the runtime and set
-        // template.runtimeClassName: run.googleapis.com/linux-base-image-update
-    }
-    if (endpoint.minInstances) {
-        annotations[MIN_INSTANCES_ANNOTATION] = String(endpoint.minInstances);
-    }
-    if (endpoint.maxInstances) {
-        annotations[MAX_INSTANCES_ANNOTATION] = String(endpoint.maxInstances);
-    }
-    const template: RevisionTemplate = {
-        containers: [{
-            name: "worker",
-            image,
-            env: [
-                ...Object.entries(endpoint.environmentVariables || {}).map(([name, value]) => ({name, value})),
-                ...(endpoint.secretEnvironmentVariables || []).map((secret) => ({
-                    name: secret.key,
-                    valueSource: {
-                        secretKeyRef: {
-                            secret: secret.secret,
-                            version: secret.version,
-                        },
-                    }
-                })),
-            ],
-            resources: {
-                limits: {
-                    cpu: String(endpoint.cpu as Number || 1),
-                    memory: `${endpoint.availableMemoryMb || 256}Mi`,
-                },
-                startupCpuBoost: true,
-            }
-        }],
-        containerConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
-    };
-    proto.renameIfPresent(template, endpoint, "containerConcurrency", "concurrency");
-    // TODO: other trigger types, service accounts, concurrency, etc.
-    return {
-        name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(endpoint.id)}`,
-        labels,
-        annotations,
-        template,
-    };
+  const annotations: Record<string, string> = {
+    [CLIENT_NAME_ANNOTATION]: "cli-firebase",
+    [FUNCTION_TARGET_ANNOTATION]: endpoint.id,
+    [FUNCTION_ID_ANNOTATION]: endpoint.id,
+    [CPU_BOOST_ANNOTATION]: "true",
+    // TODO: Add run.googleapis.com/base-images: {'worker': <image>} for the runtime and set
+    // template.runtimeClassName: run.googleapis.com/linux-base-image-update
+  };
+  if (endpoint.minInstances) {
+    annotations[MIN_INSTANCES_ANNOTATION] = String(endpoint.minInstances);
+  }
+  if (endpoint.maxInstances) {
+    annotations[MAX_INSTANCES_ANNOTATION] = String(endpoint.maxInstances);
+  }
+  const template: RevisionTemplate = {
+    containers: [
+      {
+        name: "worker",
+        image,
+        env: [
+          ...Object.entries(endpoint.environmentVariables || {}).map(([name, value]) => ({
+            name,
+            value,
+          })),
+          ...(endpoint.secretEnvironmentVariables || []).map((secret) => ({
+            name: secret.key,
+            valueSource: {
+              secretKeyRef: {
+                secret: secret.secret,
+                version: secret.version,
+              },
+            },
+          })),
+        ],
+        resources: {
+          limits: {
+            cpu: String((endpoint.cpu as Number) || 1),
+            memory: `${endpoint.availableMemoryMb || 256}Mi`,
+          },
+          startupCpuBoost: true,
+        },
+      },
+    ],
+    containerConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
+  };
+  proto.renameIfPresent(template, endpoint, "containerConcurrency", "concurrency");
+  // TODO: other trigger types, service accounts, concurrency, etc.
+  return {
+    name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(endpoint.id)}`,
+    labels,
+    annotations,
+    template,
+  };
 }

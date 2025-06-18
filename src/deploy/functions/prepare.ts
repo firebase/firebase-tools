@@ -154,12 +154,11 @@ export async function prepare(
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
         // more restrictive character set). We'll need to reimplement that here.
-        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
-      } else if (endpoint.platform === "run") {
+        // BUG BUG BUG. This has happened and we need to fix it.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);

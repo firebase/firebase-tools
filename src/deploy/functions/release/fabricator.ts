@@ -184,7 +184,9 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
     } else if (endpoint.platform === "run") {
-      throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", { exit: 1 })
+      throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -209,7 +211,7 @@ export class Fabricator {
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
     } else if (update.endpoint.platform === "run") {
-      throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 })
+      throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 });
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -631,7 +633,9 @@ export class Fabricator {
   // by the GCF API. This includes schedules, task queues, and blocking function triggers.
   async setTrigger(endpoint: backend.Endpoint): Promise<void> {
     if (endpoint.platform === "run") {
-      throw new FirebaseError("Setting triggers for Cloud Run functions is not supported yet.", { exit: 1 });
+      throw new FirebaseError("Setting triggers for Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
     }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
@@ -651,7 +655,9 @@ export class Fabricator {
 
   async deleteTrigger(endpoint: backend.Endpoint): Promise<void> {
     if (endpoint.platform === "run") {
-      throw new FirebaseError("Deleting triggers for Cloud Run functions is not supported yet.", { exit: 1 });
+      throw new FirebaseError("Deleting triggers for Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
     }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {

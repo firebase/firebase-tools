@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as runv2 from "./runv2";
 import * as backend from "../deploy/functions/backend";
-import { latest, Runtime } from "../deploy/functions/runtimes/supported";
+import { latest } from "../deploy/functions/runtimes/supported";
 import { CODEBASE_LABEL } from "../functions/constants";
 
 describe("runv2", () => {
@@ -23,44 +23,7 @@ describe("runv2", () => {
     cpu: 1,
   };
 
-  const RUN_SERVICE_V2_OUTPUT_BASE: runv2.Service = {
-    name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
-    generation: 1,
-    labels: {
-      [runv2.RUNTIME_LABEL]: latest("nodejs"),
-      [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
-    },
-    annotations: {
-      [runv2.CLIENT_NAME_ANNOTATION]: "cli-firebase",
-      [runv2.FUNCTION_TARGET_ANNOTATION]: FUNCTION_ID,
-      [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID,
-      [runv2.CPU_BOOST_ANNOTATION]: "true",
-    },
-    template: {
-      containers: [
-        {
-          name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
-          image: IMAGE_URI,
-          env: [],
-          resources: {
-            limits: {
-              cpu: "1",
-              memory: "256Mi",
-            },
-            startupCpuBoost: true,
-          },
-        },
-      ],
-      containerConcurrency: backend.DEFAULT_CONCURRENCY, // Default for CPU >= 1
-    },
-    createTime: new Date().toISOString(),
-    updateTime: new Date().toISOString(),
-    creator: "test@example.com",
-    lastModifier: "test@example.com",
-    etag: "test-etag",
-  };
-
-  const RUN_SERVICE_V2_INPUT_BASE: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+  const BASE_RUN_SERVICE: Omit<runv2.Service, runv2.ServiceOutputFields> = {
     name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
     labels: {
       [runv2.RUNTIME_LABEL]: latest("nodejs"),
@@ -98,7 +61,7 @@ describe("runv2", () => {
         httpsTrigger: {},
       };
 
-      expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(RUN_SERVICE_V2_INPUT_BASE);
+      expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(BASE_RUN_SERVICE);
     });
 
     it("should handle different codebase", () => {
@@ -108,10 +71,10 @@ describe("runv2", () => {
         httpsTrigger: {},
       };
       const expectedServiceInput: Omit<runv2.Service, runv2.ServiceOutputFields> = {
-        ...RUN_SERVICE_V2_INPUT_BASE,
+        ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         labels: {
-          ...RUN_SERVICE_V2_INPUT_BASE.labels,
+          ...BASE_RUN_SERVICE.labels,
           [CODEBASE_LABEL]: "my-codebase",
         },
       };
@@ -126,7 +89,7 @@ describe("runv2", () => {
       };
       const expectedServiceInput = JSON.parse(
         JSON.stringify({
-          ...RUN_SERVICE_V2_INPUT_BASE,
+          ...BASE_RUN_SERVICE,
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
@@ -145,7 +108,7 @@ describe("runv2", () => {
       };
       const expectedServiceInput = JSON.parse(
         JSON.stringify({
-          ...RUN_SERVICE_V2_INPUT_BASE,
+          ...BASE_RUN_SERVICE,
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
@@ -167,7 +130,7 @@ describe("runv2", () => {
       };
       const expectedServiceInput = JSON.parse(
         JSON.stringify({
-          ...RUN_SERVICE_V2_INPUT_BASE,
+          ...BASE_RUN_SERVICE,
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
@@ -185,7 +148,7 @@ describe("runv2", () => {
       };
       const expectedServiceInput = JSON.parse(
         JSON.stringify({
-          ...RUN_SERVICE_V2_INPUT_BASE,
+          ...BASE_RUN_SERVICE,
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
@@ -203,7 +166,7 @@ describe("runv2", () => {
       };
       const expectedServiceInput = JSON.parse(
         JSON.stringify({
-          ...RUN_SERVICE_V2_INPUT_BASE,
+          ...BASE_RUN_SERVICE,
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
@@ -227,8 +190,8 @@ describe("runv2", () => {
 
   describe("endpointFromService", () => {
     it("should copy a minimal service", () => {
-      const service: runv2.Service = {
-        ...RUN_SERVICE_V2_OUTPUT_BASE,
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
         labels: {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
@@ -274,8 +237,8 @@ describe("runv2", () => {
     });
 
     it("should detect a service that's GCF managed", () => {
-      const service: runv2.Service = {
-        ...RUN_SERVICE_V2_OUTPUT_BASE,
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
         labels: {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
@@ -323,8 +286,8 @@ describe("runv2", () => {
     });
 
     it("should derive id from FUNCTION_TARGET_ANNOTATION if FUNCTION_ID_ANNOTATION is missing", () => {
-      const service: runv2.Service = {
-        ...RUN_SERVICE_V2_OUTPUT_BASE,
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
         labels: {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
@@ -348,8 +311,8 @@ describe("runv2", () => {
     });
 
     it("should derive id from service name part if FUNCTION_ID_ANNOTATION and FUNCTION_TARGET_ANNOTATION are missing", () => {
-      const service: runv2.Service = {
-        ...RUN_SERVICE_V2_OUTPUT_BASE,
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
         labels: {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
@@ -373,7 +336,7 @@ describe("runv2", () => {
     });
 
     it("should copy env vars and secrets", () => {
-      const service: runv2.Service = JSON.parse(JSON.stringify(RUN_SERVICE_V2_OUTPUT_BASE));
+      const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containers![0].env = [
         { name: "FOO", value: "bar" },
         {
@@ -395,7 +358,7 @@ describe("runv2", () => {
     });
 
     it("should copy concurrency, min/max instances", () => {
-      const service: runv2.Service = JSON.parse(JSON.stringify(RUN_SERVICE_V2_OUTPUT_BASE));
+      const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containerConcurrency = 10;
       service.annotations![runv2.MIN_INSTANCES_ANNOTATION] = "2";
       service.annotations![runv2.MAX_INSTANCES_ANNOTATION] = "5";
