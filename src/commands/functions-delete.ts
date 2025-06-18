@@ -24,7 +24,7 @@ export const command = new Command("functions:delete [filters...]")
   .option(
     "--region <region>",
     "Specify region of the function to be deleted. " +
-      "If omitted, functions from all regions whose names match the filters will be deleted. ",
+    "If omitted, functions from all regions whose names match the filters will be deleted. ",
   )
   .withForce()
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
@@ -106,7 +106,4 @@ export const command = new Command("functions:delete [filters...]")
         exit: 1,
       });
     }
-
-    // Clean up image caches too
-    await containerCleaner.cleanupBuildImages([], allEpToDelete);
   });
