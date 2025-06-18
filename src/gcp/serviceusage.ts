@@ -34,6 +34,8 @@ export async function generateServiceIdentity(
   try {
     const res = await apiClient.post<unknown, unknown>(
       `projects/${projectNumber}/services/${service}:generateServiceIdentity`,
+      /* body=*/ {},
+      { headers: { "x-goog-quota-user": `projects/${projectNumber}` } },
     );
     return res.body as LongRunningOperation<unknown>;
   } catch (err: unknown) {
