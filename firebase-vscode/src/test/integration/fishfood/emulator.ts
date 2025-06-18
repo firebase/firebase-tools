@@ -31,18 +31,23 @@ firebaseSuite("Emulator", async function () {
       expect(current).toContain("dataconnect :9399");
 
       // Test 1: clear data button
+      console.log("Running test: clear data button");
       await sidebar.clearEmulatorData();
+      
       const text = await terminal.getTerminalText();
       expect(
         text.includes("Clearing data from Data Connect data sources"),
       ).toBeTruthy();
 
       // Test 2: export data button
+      console.log("Running test: export button");
+
       await sidebar.exportEmulatorData();
       const exportNotification = await notifications.getExportNotification();
       expect(exportNotification).toExist();
 
       // Test 3: edit the schema to cause a migration error
+      console.log("Running test: migration error");
       const editor = new EditorView(workbench);
       await editor.openFile(schemaPath);
 

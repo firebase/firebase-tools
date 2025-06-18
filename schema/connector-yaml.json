@@ -90,6 +90,18 @@
           ],
           "description": "Configuration for a generated Javascript SDK"
         },
+        "dartSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/dartSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dartSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Dart SDK"
+        },
         "kotlinSdk": {
           "oneOf": [
             { "$ref": "#/definitions/kotlinSdk" },

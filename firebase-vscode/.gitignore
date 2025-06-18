@@ -6,3 +6,4 @@ resources/dist
 .wdio-vscode-service
 logs
 !*.tgz
+prebuilt-extensions

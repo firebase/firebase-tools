@@ -2,9 +2,12 @@ import * as clc from "colorette";
 import { existsSync } from "fs";
 import * as ora from "ora";
 import * as path from "path";
+import { Setup } from "..";
 import { webApps } from "../../apphosting/app";
 import {
   createBackend,
+  ensureAppHostingComputeServiceAccount,
+  ensureRequiredApisEnabled,
   promptExistingBackend,
   promptLocation,
   promptNewBackendId,
@@ -12,20 +15,51 @@ import {
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
+import { ensureApiEnabled } from "../../gcp/apphosting";
+import { isBillingEnabled } from "../../gcp/cloudbilling";
+import { input, select } from "../../prompt";
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
-import { input, select } from "../../prompt";
 
 const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.yaml");
 
 /**
  * Set up an apphosting.yaml file for a new App Hosting project.
  */
-export async function doSetup(setup: any, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config): Promise<void> {
   const projectId = setup.projectId as string;
-  await checkBillingEnabled(projectId);
+  if (!(await isBillingEnabled(setup))) {
+    throw new FirebaseError(
+      `Firebase App Hosting requires billing to be enabled on your project. To upgrade, visit the following URL: https://console.firebase.google.com/project/${projectId}/usage/details`,
+    );
+  }
+  await ensureApiEnabled({ projectId });
+  await ensureRequiredApisEnabled(projectId);
+  // N.B. Deploying a backend from source requires the App Hosting compute service
+  // account to have the storage.objectViewer IAM role.
+  //
+  // We don't want to update the IAM permissions right before attempting to deploy,
+  // since IAM propagation delay will likely cause the first one to fail. However,
+  // `firebase init apphosting` is a prerequisite to the `firebase deploy` command,
+  // so we check and add the role here to give the IAM changes time to propagate.
+  const spinner = ora("Checking your App Hosting compute service account...").start();
+  try {
+    await ensureAppHostingComputeServiceAccount(
+      projectId,
+      /* serviceAccount= */ "",
+      /* deployFromSource= */ true,
+    );
+    spinner.succeed("App Hosting compute Service account is ready");
+  } catch (err) {
+    if ((err as FirebaseError).status === 400) {
+      spinner.warn(
+        "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
+      );
+    }
+    throw err;
+  }
+
   utils.logBullet(
     "This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup.",
   );
@@ -85,7 +119,6 @@ export async function doSetup(setup: any, config: Config): Promise<void> {
   });
 
   upsertAppHostingConfig(backendConfig, config);
-  utils.logBullet("Writing configuration info to firebase.json...");
   config.writeProjectFile("firebase.json", config.src);
 
   utils.logBullet("Writing default settings to " + clc.bold("apphosting.yaml") + "...");

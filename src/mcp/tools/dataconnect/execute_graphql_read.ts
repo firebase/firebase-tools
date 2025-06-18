@@ -1,17 +1,20 @@
 import { z } from "zod";
 
 import { tool } from "../../tool.js";
-import * as client from "../../../dataconnect/dataplaneClient.js";
+import * as dataplane from "../../../dataconnect/dataplaneClient.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { graphqlResponseToToolResponse, parseVariables } from "./converter.js";
+import { Client } from "../../../apiv2.js";
+import { getDataConnectEmulatorClient } from "./emulator.js";
 
 export const execute_graphql_read = tool(
   {
     name: "execute_graphql_read",
-    description: "Executes an arbitrary GraphQL against a Data Connect service. Cannot write data.",
+    description:
+      "Executes an arbitrary GraphQL query against a Data Connect service or its emulator. Cannot write data.",
     inputSchema: z.object({
       query: z.string().describe("A GraphQL query to execute against the service"),
-      serviceId: z
+      service_id: z
         .string()
         .nullable()
         .describe(
@@ -23,9 +26,10 @@ export const execute_graphql_read = tool(
         .describe(
           "A stringified JSON object containing variables for the operation. MUST be valid JSON.",
         ),
+      use_emulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
     }),
     annotations: {
-      title: "Executes a arbitrary GraphQL query against a Data Connect service",
+      title: "Execute Data Connect GraphQL Query",
       readOnlyHint: true,
     },
     _meta: {
@@ -33,13 +37,24 @@ export const execute_graphql_read = tool(
       requiresAuth: true,
     },
   },
-  async ({ query, serviceId, variables: unparsedVariables }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
-    const response = await client.executeGraphQLRead(
-      client.dataconnectDataplaneClient(),
-      serviceInfo.serviceName,
-      { name: "", query, variables: parseVariables(unparsedVariables) },
-    );
+  async (
+    { query, service_id, variables: unparsedVariables, use_emulator },
+    { projectId, config, host },
+  ) => {
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+
+    let apiClient: Client;
+    if (use_emulator) {
+      apiClient = await getDataConnectEmulatorClient(host);
+    } else {
+      apiClient = dataplane.dataconnectDataplaneClient();
+    }
+
+    const response = await dataplane.executeGraphQLRead(apiClient, serviceInfo.serviceName, {
+      name: "",
+      query,
+      variables: parseVariables(unparsedVariables),
+    });
     return graphqlResponseToToolResponse(response.body);
   },
 );

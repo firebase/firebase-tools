@@ -18,6 +18,7 @@ import {
   eventarcOrigin,
   pubsubOrigin,
   storageOrigin,
+  secretManagerOrigin,
 } from "../../api";
 import { Options } from "../../options";
 import {
@@ -33,7 +34,7 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles } from "./checkIam";
+import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import {
   configForCodebase,
@@ -206,6 +207,7 @@ export async function prepare(
         `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
     }
+
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
       const packagedSource = await prepareFunctionsUpload(sourceDir, config);
       source.functionsSourceV2 = packagedSource?.pathToSource;
@@ -242,33 +244,8 @@ export async function prepare(
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
+  await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend);
   await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
-
-  // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
-  // require cloudscheudler and, in v1, require pub/sub), or can eventually come from
-  // explicit dependencies.
-  await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
-      return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
-    }),
-  );
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-    // Note: Some of these are premium APIs that require billing to be enabled.
-    // We'd eventually have to add special error handling for billing APIs, but
-    // enableCloudBuild is called above and has this special casing already.
-    const V2_APIS = [cloudRunApiOrigin(), eventarcOrigin(), pubsubOrigin(), storageOrigin()];
-    const enablements = V2_APIS.map((api) => {
-      return ensureApiEnabled.ensure(context.projectId, api, "functions");
-    });
-    await Promise.all(enablements);
-    // Need to manually kick off the p4sa activation of services
-    // that we use with IAM roles assignment.
-    const services = ["pubsub.googleapis.com", "eventarc.googleapis.com"];
-    const generateServiceAccounts = services.map((service) => {
-      return generateServiceIdentity(projectNumber, service, "functions");
-    });
-    await Promise.all(generateServiceAccounts);
-  }
 
   // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
@@ -283,6 +260,13 @@ export async function prepare(
   await backend.checkAvailability(context, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensureServiceAgentRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
+  await ensureGenkitMonitoringRoles(
     projectId,
     projectNumber,
     matchingBackend,
@@ -532,5 +516,50 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
     if (!(await prompt.confirm({ message, nonInteractive: options.nonInteractive }))) {
       throw new FirebaseError("Aborted");
     }
+  }
+}
+
+// Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+// require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
+export async function ensureAllRequiredAPIsEnabled(
+  projectNumber: string,
+  wantBackend: backend.Backend,
+): Promise<void> {
+  await Promise.all(
+    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
+      return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
+    }),
+  );
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+    // Note: Some of these are premium APIs that require billing to be enabled.
+    // We'd eventually have to add special error handling for billing APIs, but
+    // enableCloudBuild is called above and has this special casing already.
+    const V2_APIS = [cloudRunApiOrigin(), eventarcOrigin(), pubsubOrigin(), storageOrigin()];
+    const enablements = V2_APIS.map((api) => {
+      return ensureApiEnabled.ensure(projectNumber, api, "functions");
+    });
+    await Promise.all(enablements);
+    // Need to manually kick off the p4sa activation of services
+    // that we use with IAM roles assignment.
+    const services = ["pubsub.googleapis.com", "eventarc.googleapis.com"];
+    const generateServiceAccounts = services.map((service) => {
+      return generateServiceIdentity(projectNumber, service, "functions");
+    });
+    await Promise.all(generateServiceAccounts);
+  }
+
+  // If function is making use of secrets, go ahead and enable Secret Manager API.
+  if (
+    backend.someEndpoint(
+      wantBackend,
+      (e) => !!(e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0),
+    )
+  ) {
+    await ensureApiEnabled.ensure(
+      projectNumber,
+      secretManagerOrigin(),
+      "functions",
+      /* silent=*/ false,
+    );
   }
 }

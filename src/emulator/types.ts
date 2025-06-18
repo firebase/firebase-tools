@@ -185,6 +185,10 @@ export interface EmulatorUpdateDetails {
   version: string;
   expectedSize: number;
   expectedChecksum: string;
+  expectedChecksumSHA256: string; // TODO: Use this for validation within the CLI as well.
+  remoteUrl: string;
+  downloadPathRelativeToCacheDir: string;
+  binaryPathRelativeToCacheDir?: string;
 }
 
 export interface EmulatorDownloadDetails {

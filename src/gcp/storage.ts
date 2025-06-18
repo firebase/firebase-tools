@@ -401,19 +401,29 @@ export async function getServiceAccount(projectId: string): Promise<StorageServi
  * @param objectPath a path within the bucket where the obejct resides.
  * @return the string HTTP path to download the object.
  */
-export async function getDownloadUrl(bucketName: string, objectPath: string): Promise<string> {
+export async function getDownloadUrl(
+  bucketName: string,
+  objectPath: string,
+  emulatorUrl?: string,
+): Promise<string> {
   try {
-    const localAPIClient = new Client({ urlPrefix: firebaseStorageOrigin() });
+    const origin = emulatorUrl || firebaseStorageOrigin();
+    const localAPIClient = new Client({ urlPrefix: origin });
     const response = await localAPIClient.get<FirebaseMetadata>(
       `/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}`,
     );
+
+    if (emulatorUrl) {
+      return `${origin}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media`;
+    }
+
     if (!response.body.downloadTokens) {
       throw new Error(
-        "no download tokens exist for ${objectPath}, please visit the Firebase console to make one",
+        `no download tokens exist for ${objectPath}, please visit the Firebase console to make one`,
       );
     }
     const [token] = response.body.downloadTokens.split(",");
-    return `${firebaseStorageOrigin()}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+    return `${origin}/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
   } catch (err: any) {
     logger.error(err);
     throw new FirebaseError(

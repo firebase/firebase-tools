@@ -9,7 +9,7 @@ export const list_services = tool(
     description: "List the Firebase Data Connect services available in the current project.",
     inputSchema: z.object({}),
     annotations: {
-      title: "List the Firebase Data Connect Services that's available in the backend",
+      title: "List Data Connect Services",
       readOnlyHint: true,
     },
     _meta: {
@@ -18,7 +18,7 @@ export const list_services = tool(
     },
   },
   async (_, { projectId }) => {
-    const services = await client.listAllServices(projectId!);
+    const services = await client.listAllServices(projectId);
     return toContent(services, { format: "yaml" });
   },
 );

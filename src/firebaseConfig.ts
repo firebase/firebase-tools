@@ -7,7 +7,7 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
-import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
+import { ActiveRuntime } from "./deploy/functions/runtimes/supported/types";
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -38,6 +38,7 @@ type DatabaseMultiple = ({
 
 type FirestoreSingle = {
   database?: string;
+  location?: string;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -167,7 +168,7 @@ export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 export type FunctionConfig = {
   source?: string;
   ignore?: string[];
-  runtime?: Exclude<Runtime, DecommissionedRuntime>;
+  runtime?: ActiveRuntime;
   codebase?: string;
 } & Deployable;
 

@@ -36,7 +36,7 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param options CLI options.
  * @param authScopes scopes to be obtained.
  */
-async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
+async function autoAuth(options: Options, authScopes: string[]): Promise<null | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
@@ -65,7 +65,7 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<void | 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
   }
-  return clientEmail;
+  return clientEmail || null;
 }
 
 export async function refreshAuth(): Promise<Tokens> {
@@ -77,10 +77,12 @@ export async function refreshAuth(): Promise<Tokens> {
 }
 
 /**
- * Ensures that there is an authenticated user.
+ * Ensures that the user can make authenticated calls. Returns the email if the user is logged in,
+ * returns null if the user has Applciation Default Credentials set up, and errors out
+ * if the user is not authenticated
  * @param options CLI options.
  */
-export async function requireAuth(options: any): Promise<string | void> {
+export async function requireAuth(options: any): Promise<string | null> {
   lastOptions = options;
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
@@ -117,7 +119,7 @@ export async function requireAuth(options: any): Promise<string | void> {
 
   if (tokenOpt) {
     setRefreshToken(tokenOpt);
-    return;
+    return null;
   }
 
   if (!user || !tokens) {

@@ -14,41 +14,81 @@ export interface Setup {
   rcfile: RCData;
   features?: string[];
   featureArg?: boolean;
+  featureInfo?: SetupInfo;
+
+  /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
   projectLocation?: string;
+  isBillingEnabled?: boolean;
+
   hosting?: Record<string, any>;
+}
+
+export interface SetupInfo {
+  database?: features.DatabaseInfo;
+  firestore?: features.FirestoreInfo;
+  dataconnect?: features.DataconnectInfo;
+  storage?: features.StorageInfo;
 }
 
 interface Feature {
   name: string;
-  doSetup: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+  displayName?: string;
+  // OLD WAY: A single setup function to ask questions and actuate the setup.
+  doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+
+  // NEW WAY: Split the init into phases:
+  // 1. askQuestions: Ask the user questions and update `setup.featureInfo` with the answers.
+  askQuestions?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+  // 2. actuate: Use the answers in `setup.featureInfo` to actuate the setup.
+  actuate?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
+  // 3. [optional] Additional follow-up steps to run after the setup is completed.
+  postSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 }
 
 const featuresList: Feature[] = [
   { name: "account", doSetup: features.account },
-  { name: "database", doSetup: features.database },
-  { name: "firestore", doSetup: features.firestore },
-  { name: "dataconnect", doSetup: features.dataconnect },
+  {
+    name: "database",
+    askQuestions: features.databaseAskQuestions,
+    actuate: features.databaseActuate,
+  },
+  {
+    name: "firestore",
+    askQuestions: features.firestoreAskQuestions,
+    actuate: features.firestoreActuate,
+  },
+  {
+    name: "dataconnect",
+    askQuestions: features.dataconnectAskQuestions,
+    actuate: features.dataconnectActuate,
+    postSetup: features.dataconnectPostSetup,
+  },
   { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
   { name: "functions", doSetup: features.functions },
   { name: "hosting", doSetup: features.hosting },
-  { name: "storage", doSetup: features.storage },
+  {
+    name: "storage",
+    askQuestions: features.storageAskQuestions,
+    actuate: features.storageActuate,
+  },
   { name: "emulators", doSetup: features.emulators },
   { name: "extensions", doSetup: features.extensions },
   { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
   { name: "remoteconfig", doSetup: features.remoteconfig },
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
-  { name: "apphosting", doSetup: features.apphosting },
+  { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
 ];
 
-const featureFns = new Map(featuresList.map((feature) => [feature.name, feature.doSetup]));
+const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
-export async function init(setup: Setup, config: any, options: any): Promise<any> {
+export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    if (!featureFns.has(nextFeature)) {
+    const f = featureMap.get(nextFeature);
+    if (!f) {
       const availableFeatures = Object.keys(features)
         .filter((f) => f !== "project")
         .join(", ");
@@ -57,14 +97,55 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       );
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
+    logger.info(
+      clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
+    );
 
-    const fn = featureFns.get(nextFeature);
-    if (!fn) {
-      // We've already checked that the function exists, so this really should never happen.
-      throw new FirebaseError(`We've lost the function to init ${nextFeature}`, { exit: 2 });
+    if (f.doSetup) {
+      await f.doSetup(setup, config, options);
+    } else {
+      if (f.askQuestions) {
+        await f.askQuestions(setup, config, options);
+      }
+      if (f.actuate) {
+        await f.actuate(setup, config, options);
+      }
     }
-    await fn(setup, config, options);
+    if (f.postSetup) {
+      await f.postSetup(setup, config, options);
+    }
     return init(setup, config, options);
   }
+}
+
+export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
+  const nextFeature = setup.features?.shift();
+  if (nextFeature) {
+    const f = lookupFeature(nextFeature);
+    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
+
+    if (f.doSetup) {
+      throw new FirebaseError(
+        `The feature ${nextFeature} does not support actuate yet. Please run ${clc.bold("firebase init " + nextFeature)} instead.`,
+      );
+    } else {
+      if (f.actuate) {
+        await f.actuate(setup, config, options);
+      }
+    }
+    return actuate(setup, config, options);
+  }
+}
+
+function lookupFeature(feature: string): Feature {
+  const f = featureMap.get(feature);
+  if (!f) {
+    const availableFeatures = Object.keys(features)
+      .filter((f) => f !== "project")
+      .join(", ");
+    throw new FirebaseError(
+      `${clc.bold(feature)} is not a valid feature. Must be one of ${availableFeatures}`,
+    );
+  }
+  return f;
 }

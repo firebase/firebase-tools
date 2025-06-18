@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool.js";
 import { toContent } from "../../util.js";
-import { chatWithFirebase } from "../../../gif/fdcExperience.js";
+import { chatWithFirebase } from "../../../gemini/fdcExperience.js";
 
 export const consult_assistant = tool(
   {
@@ -14,7 +14,7 @@ export const consult_assistant = tool(
         .describe("A description of what the user is trying to do or learn with Firebase."),
     }),
     annotations: {
-      title: "Helps answer queries and provide information related to Firebase.",
+      title: "Consult Firebase Assistant",
       readOnlyHint: true,
     },
     _meta: {
@@ -24,7 +24,7 @@ export const consult_assistant = tool(
     },
   },
   async ({ prompt }, { projectId }) => {
-    const schema = await chatWithFirebase(prompt, projectId!);
+    const schema = await chatWithFirebase(prompt, projectId);
     return toContent(schema);
   },
 );

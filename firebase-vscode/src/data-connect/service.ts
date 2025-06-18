@@ -1,4 +1,5 @@
 import fetch, { Response } from "node-fetch";
+import { ExtensionContext } from "vscode";
 import {
   ExecutionResult,
   IntrospectionQuery,
@@ -9,7 +10,7 @@ import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { dataConnectConfigs } from "../data-connect/config";
+import { dataConnectConfigs, VSCODE_ENV_VARS } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
 import {
@@ -18,12 +19,23 @@ import {
   executeGraphQL,
   DATACONNECT_API_VERSION,
 } from "../../../src/dataconnect/dataplaneClient";
+
+import {
+  cloudAICompationClient,
+  callCloudAICompanion,
+} from "../../../src/dataconnect/cloudAiCompanionClient";
+
 import {
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
+import {
+  CloudAICompanionResponse,
+  CallCloudAiCompanionRequest,
+  ChatMessage,
+} from "../dataconnect/cloudAICompanionTypes";
 import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
@@ -37,15 +49,15 @@ export class DataConnectService {
     private authService: AuthService,
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
-  ) { }
+    private context: ExtensionContext,
+  ) {}
 
-  async servicePath(
-    path: string
-  ): Promise<string | undefined> {
+  async servicePath(path: string): Promise<string | undefined> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)?.value.serviceId;
+      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)
+        ?.value.serviceId;
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
 
     if (serviceId === undefined || projectId === undefined) {
@@ -82,13 +94,10 @@ export class DataConnectService {
     return response.text();
   }
   private async handleProdResponse(
-    response: ClientResponse<
-      GraphqlResponse | GraphqlResponseError
-    >,
+    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<GraphqlResponseError>;
+      const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Prod Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
@@ -98,13 +107,10 @@ export class DataConnectService {
   }
 
   private async handleEmulatorResponse(
-    response: ClientResponse<
-      GraphqlResponse | GraphqlResponseError
-    >,
+    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
     if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse =
-        response as ClientResponse<GraphqlResponseError>;
+      const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
         `Emulator Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
       );
@@ -117,7 +123,7 @@ export class DataConnectService {
    *
    * If the JSON is invalid, will throw.
    */
-  private _serializeBody(body: { variables?: string;[key: string]: unknown }) {
+  private _serializeBody(body: { variables?: string; [key: string]: unknown }) {
     if (!body.variables || body.variables.trim().length === 0) {
       body.variables = undefined;
       return JSON.stringify(body);
@@ -190,7 +196,7 @@ export class DataConnectService {
       });
       const resp = await fetch(
         (await this.dataConnectToolkit.getFDCToolkitURL()) +
-        `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
+          `/v1/projects/p/locations/l/services/${serviceId}:executeGraphqlRead`,
         {
           method: "POST",
           headers: {
@@ -236,7 +242,9 @@ export class DataConnectService {
     });
     if (params.instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
-      pluginLogger.info(`ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`);
+      pluginLogger.info(
+        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`,
+      );
       const resp = await executeGraphQL(client, servicePath, prodBody);
       return this.handleProdResponse(resp);
     } else {
@@ -258,6 +266,32 @@ export class DataConnectService {
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
   }
+
+  // Start cloud section
+
+  async generateOperation(
+    path: string /** currently unused; instead reading the first service config */,
+    naturalLanguageQuery: string,
+    type: "schema" | "operation",
+    chatHistory: ChatMessage[],
+  ): Promise<CloudAICompanionResponse | undefined> {
+    const client = cloudAICompationClient();
+    const servicePath = await this.servicePath(
+      dataConnectConfigs.value?.tryReadValue?.values[0].path as string,
+    );
+
+    if (!servicePath) {
+      return undefined;
+    }
+
+    const request: CallCloudAiCompanionRequest = {
+      servicePath,
+      naturalLanguageQuery,
+      chatHistory,
+    };
+    const resp = await callCloudAICompanion(client, request, type);
+    return resp;
+  }
 }
 
 function parseVariableString(variables: string): Record<string, any> {
@@ -268,7 +302,7 @@ function parseVariableString(variables: string): Record<string, any> {
     return JSON.parse(variables);
   } catch (e: any) {
     throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane."
+      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
     );
   }
 }

@@ -10,6 +10,7 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project";
 import { bestEffortEnsure } from "../ensureApiEnabled";
+import { Options } from "../options";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -26,35 +27,44 @@ export interface ProjectParentResource {
   type: ProjectParentResourceType;
 }
 
-export async function promptProjectCreation(): Promise<{ projectId: string; displayName: string }> {
-  const projectId = await prompt.input({
-    message:
-      "Please specify a unique project id " +
-      `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
-    validate: (projectId: string) => {
-      if (projectId.length < 6) {
-        return "Project ID must be at least 6 characters long";
-      } else if (projectId.length > 30) {
-        return "Project ID cannot be longer than 30 characters";
-      } else {
-        return true;
-      }
-    },
-  });
+/**
+ * Prompt user to create a new project
+ */
+export async function promptProjectCreation(
+  options: Options,
+): Promise<{ projectId: string; displayName: string }> {
+  const projectId =
+    options.projectId ??
+    (await prompt.input({
+      message:
+        "Please specify a unique project id " +
+        `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
+      validate: (projectId: string) => {
+        if (projectId.length < 6) {
+          return "Project ID must be at least 6 characters long";
+        } else if (projectId.length > 30) {
+          return "Project ID cannot be longer than 30 characters";
+        } else {
+          return true;
+        }
+      },
+    }));
 
-  const displayName = await prompt.input({
-    default: projectId,
-    message: "What would you like to call your project? (defaults to your project ID)",
-    validate: (displayName: string) => {
-      if (displayName.length < 4) {
-        return "Project name must be at least 4 characters long";
-      } else if (displayName.length > 30) {
-        return "Project name cannot be longer than 30 characters";
-      } else {
-        return true;
-      }
-    },
-  });
+  const displayName =
+    (options.displayName as string) ??
+    (await prompt.input({
+      default: projectId,
+      message: "What would you like to call your project? (defaults to your project ID)",
+      validate: (displayName: string) => {
+        if (displayName.length < 4) {
+          return "Project name must be at least 4 characters long";
+        } else if (displayName.length > 30) {
+          return "Project name cannot be longer than 30 characters";
+        } else {
+          return true;
+        }
+      },
+    }));
 
   return { projectId, displayName };
 }
@@ -70,6 +80,9 @@ const resourceManagerClient = new Client({
   apiVersion: "v1",
 });
 
+/**
+ * Create a new Google Cloud Platform project and add Firebase resources to it
+ */
 export async function createFirebaseProjectAndLog(
   projectId: string,
   options: { displayName?: string; parentResource?: ProjectParentResource },
@@ -87,6 +100,9 @@ export async function createFirebaseProjectAndLog(
   return addFirebaseToCloudProjectAndLog(projectId);
 }
 
+/**
+ * Add Firebase resources to a Google Cloud Platform project
+ */
 export async function addFirebaseToCloudProjectAndLog(
   projectId: string,
 ): Promise<FirebaseProjectMetadata> {
@@ -128,7 +144,9 @@ function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
 /**
  * Get the user's desired project, prompting if necessary.
  */
-export async function getOrPromptProject(options: any): Promise<FirebaseProjectMetadata> {
+export async function getOrPromptProject(
+  options: Partial<Options>,
+): Promise<FirebaseProjectMetadata> {
   if (options.project) {
     return await getFirebaseProject(options.project);
   }
@@ -472,4 +490,37 @@ export async function getProject(projectId: string): Promise<ProjectInfo> {
   await bestEffortEnsure(projectId, api.resourceManagerOrigin(), "firebase", true);
   const response = await resourceManagerClient.get<ProjectInfo>(`/projects/${projectId}`);
   return response.body;
+}
+
+/**
+ * Checks if Firebase services are enabled for a Google Cloud Platform project.
+ * @param projectId The project ID to check
+ * @return A promise that resolves to the Firebase project metadata if enabled, undefined otherwise
+ */
+export async function checkFirebaseEnabledForCloudProject(
+  projectId: string,
+): Promise<FirebaseProjectMetadata | undefined> {
+  try {
+    const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
+      method: "GET",
+      path: `/projects/${projectId}`,
+      timeout: TIMEOUT_MILLIS,
+    });
+    return res.body;
+  } catch (err: any) {
+    if (getErrStatus(err) === 404) {
+      // 404 means Firebase is not enabled for this project
+      return undefined;
+    }
+    let message = err.message;
+    if (err.original) {
+      message += ` (original: ${err.original.message})`;
+    }
+    logger.debug(message);
+    throw new FirebaseError(
+      `Failed to check if Firebase is enabled for project ${projectId}. ` +
+        "Please make sure the project exists and your account has permission to access it.",
+      { exit: 2, original: err },
+    );
+  }
 }

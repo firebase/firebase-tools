@@ -9,6 +9,7 @@ const pkg = require("../package.json");
 type cliEventNames =
   | "command_execution"
   | "product_deploy"
+  | "product_init"
   | "error"
   | "login"
   | "api_enabled"
@@ -20,7 +21,8 @@ type cliEventNames =
   | "codebase_deploy"
   | "function_deploy_group"
   | "mcp_tool_call"
-  | "mcp_list_tools";
+  | "mcp_list_tools"
+  | "mcp_client_connected";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -55,7 +57,9 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return !!process.env.IS_FIREBASE_CLI && !!configstore.get("usage");
+  return (
+    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
+  );
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
@@ -72,6 +76,9 @@ const GA4_USER_PROPS = {
   },
   firepit_version: {
     value: process.env.FIREPIT_VERSION || "none",
+  },
+  is_firebase_studio: {
+    value: process.env.MONOSPACE_ENV ?? "false",
   },
 };
 

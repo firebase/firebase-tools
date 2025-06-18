@@ -1,5 +1,17 @@
 ## NEXT
 
+- [Changed] Graphql Syntax Highlighter is now an extension dependency
+
+## 1.4.1
+
+- Update internal `firebase-tools` dependency to 14.6.0
+- [Changed] Updated Gemini Tool name to @FirebaseDataConnect
+
+## 1.4.0
+
+- Update internal `firebase-tools` dependency to 14.4.0
+- [Added] @data-connect tool callable from the Gemini Code Assist extension.
+
 ## 1.3.1
 
 - Updated internal `firebase-tools` dependency to 14.2.1

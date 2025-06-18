@@ -293,26 +293,26 @@ const pluginToInfo: Record<string, PluginInfo> = {
     imports: "vertexAI",
     modelImportComment: `
 // Import models from the Vertex AI plugin. The Vertex AI API provides access to
-// several generative models. Here, we import Gemini 1.5 Flash.`.trimStart(),
+// several generative models. Here, we import Gemini 2.0 Flash.`.trimStart(),
     init: `
     // Load the Vertex AI plugin. You can optionally specify your project ID
     // by passing in a config object; if you don't, the Vertex AI plugin uses
     // the value from the GCLOUD_PROJECT environment variable.
     vertexAI({location: "us-central1"})`.trimStart(),
-    model: "gemini15Flash",
+    model: "gemini20Flash",
   },
   "@genkit-ai/googleai": {
     imports: "googleAI",
     modelImportComment: `
 // Import models from the Google AI plugin. The Google AI API provides access to
-// several generative models. Here, we import Gemini 1.5 Flash.`.trimStart(),
+// several generative models. Here, we import Gemini 2.0 Flash.`.trimStart(),
     init: `
     // Load the Google AI plugin. You can optionally specify your API key
     // by passing in a config object; if you don't, the Google AI plugin uses
     // the value from the GOOGLE_GENAI_API_KEY environment variable, which is
     // the recommended practice.
     googleAI()`.trimStart(),
-    model: "gemini15Flash",
+    model: "gemini20Flash",
   },
 };
 
@@ -382,7 +382,23 @@ export async function genkitSetup(
       default: true,
     }))
   ) {
-    generateSampleFile(modelOptions[model].plugin, plugins, projectDir, genkitInfo.templateVersion);
+    logger.info(
+      "Telemetry data can be used to monitor and gain insights into your AI features. There may be a cost associated with using this feature. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.",
+    );
+    const enableTelemetry =
+      options.nonInteractive ||
+      (await confirm({
+        message: "Would like you to enable telemetry collection?",
+        default: true,
+      }));
+
+    generateSampleFile(
+      modelOptions[model].plugin,
+      plugins,
+      projectDir,
+      genkitInfo.templateVersion,
+      enableTelemetry,
+    );
   }
 }
 
@@ -507,6 +523,7 @@ function generateSampleFile(
   configPlugins: string[],
   projectDir: string,
   templateVersion: string,
+  enableTelemetry: boolean,
 ): void {
   let modelImport = "";
   if (modelPlugin && pluginToInfo[modelPlugin].model) {
@@ -534,6 +551,7 @@ function generateSampleFile(
           ? pluginToInfo[modelPlugin].model || pluginToInfo[modelPlugin].modelStr || ""
           : "'' /* TODO: Set a model. */",
       ),
+    enableTelemetry,
   );
   logLabeledBullet("genkit", "Generating sample file");
   try {
@@ -622,7 +640,7 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
   }
 }
 
-function renderConfig(pluginNames: string[], template: string): string {
+function renderConfig(pluginNames: string[], template: string, enableTelemetry: boolean): string {
   const imports = pluginNames
     .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName))
     .join("\n");
@@ -631,7 +649,8 @@ function renderConfig(pluginNames: string[], template: string): string {
     "    /* Add your plugins here. */";
   return template
     .replace("$GENKIT_CONFIG_IMPORTS", imports)
-    .replace("$GENKIT_CONFIG_PLUGINS", plugins);
+    .replace("$GENKIT_CONFIG_PLUGINS", plugins)
+    .replaceAll("$TELEMETRY_COMMENT", enableTelemetry ? "" : "// ");
 }
 
 function generateImportStatement(imports: string, name: string): string {

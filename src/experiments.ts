@@ -136,7 +136,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   mcp: {
     shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
-    default: false,
+    default: true,
     public: false,
   },
 });

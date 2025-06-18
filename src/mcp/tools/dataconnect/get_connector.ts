@@ -5,13 +5,13 @@ import * as client from "../../../dataconnect/client.js";
 import { pickService } from "../../../dataconnect/fileUtils.js";
 import { connectorToText } from "./converter.js";
 
-export const get_connector = tool(
+export const get_connectors = tool(
   {
-    name: "get_connector",
+    name: "get_connectors",
     description:
       "Get the Firebase Data Connect Connectors in the project, which includes the pre-defined GraphQL queries accessible to client SDKs.",
     inputSchema: z.object({
-      serviceId: z
+      service_id: z
         .string()
         .nullable()
         .describe(
@@ -19,7 +19,7 @@ export const get_connector = tool(
         ),
     }),
     annotations: {
-      title: "Obtain the Firebase Data Connect Connectors that's available in the backend",
+      title: "Get Data Connect Connectors",
       readOnlyHint: true,
     },
     _meta: {
@@ -27,8 +27,8 @@ export const get_connector = tool(
       requiresAuth: true,
     },
   },
-  async ({ serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
+  async ({ service_id }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
     const connectors = await client.listConnectors(serviceInfo.serviceName, ["*"]);
     return toContent(connectors.map(connectorToText).join("\n\n"));
   },

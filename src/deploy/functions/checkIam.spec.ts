@@ -58,8 +58,8 @@ describe("checkIam", () => {
   });
 
   describe("obtainDefaultComputeServiceAgentBindings", () => {
-    it("should obtain the bindings", () => {
-      const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
+    it("should obtain the bindings", async () => {
+      const bindings = await checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
 
       expect(bindings.length).to.equal(2);
       expect(bindings).to.include.deep.members([
@@ -241,6 +241,364 @@ describe("checkIam", () => {
       expect(getIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+    });
+  });
+
+  describe("ensureGenkitMonitoringRoles", () => {
+    it("should return early if we do not have new endpoints", async () => {
+      const fn1: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "genkitFn1",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const fn2: backend.Endpoint = {
+        id: "genkitFn2",
+        platform: "gcfv2",
+        entryPoint: "genkitFn2",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const wantFn: backend.Endpoint = {
+        id: "wantGenkitFnFn",
+        entryPoint: "wantGenkitFn",
+        platform: "gcfv2",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn),
+        backend.of(fn1, fn2, wantFn),
+      );
+
+      expect(getIamStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should return early if none of the new endpoints are genkit", async () => {
+      const fn1: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "genkitFn1",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const fn2: backend.Endpoint = {
+        id: "genkitFn2",
+        platform: "gcfv2",
+        entryPoint: "genkitFn2",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const wantFn1: backend.Endpoint = {
+        id: "wantFn1",
+        entryPoint: "wantFn1",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+      const wantFn2: backend.Endpoint = {
+        id: "wantFn2",
+        entryPoint: "wantFn2",
+        platform: "gcfv2",
+        callableTrigger: {},
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn1, wantFn2),
+        backend.of(fn1, fn2),
+      );
+
+      expect(getIamStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should return early if we fail to get the IAM policy", async () => {
+      getIamStub.rejects("Failed to get the IAM policy");
+      const wantFn: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "wantFn",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await expect(
+        checkIam.ensureGenkitMonitoringRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty(),
+        ),
+      ).to.not.be.rejected;
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should error if we fail to set the IAM policy", async () => {
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      });
+      const wantFn: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "wantFn",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await expect(
+        checkIam.ensureGenkitMonitoringRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty(),
+        ),
+      ).to.be.rejectedWith(
+        "We failed to modify the IAM policy for the project. The functions " +
+          "deployment requires specific roles to be granted to service agents," +
+          " otherwise the deployment will fail.",
+      );
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.have.been.calledOnce;
+    });
+
+    it("should not update policy if it already has necessary bindings", async () => {
+      const serviceAccount = `test-sa@${projectId}.iam.gserviceaccount.com`;
+      const iamPolicy = {
+        etag: "etag",
+        version: 3,
+        bindings: [
+          BINDING,
+          {
+            role: "roles/monitoring.metricWriter",
+            members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+          },
+          {
+            role: "roles/cloudtrace.agent",
+            members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+          },
+          {
+            role: "roles/logging.logWriter",
+            members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+          },
+        ],
+      };
+      getIamStub.resolves(iamPolicy);
+      const wantFn: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "wantFn",
+        serviceAccount: serviceAccount,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn),
+        backend.empty(),
+      );
+
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should update policy if any bindings are missing", async () => {
+      const serviceAccount = `test-sa@${projectId}.iam.gserviceaccount.com`;
+      const initialPolicy = {
+        etag: "etag",
+        version: 3,
+        bindings: [
+          BINDING,
+          {
+            role: "roles/monitoring.metricWriter",
+            members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+          },
+          {
+            role: "roles/logging.logWriter",
+            members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+          },
+        ],
+      };
+      getIamStub.resolves(initialPolicy);
+      setIamStub.resolves({});
+      const wantFn: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "wantFn",
+        serviceAccount: serviceAccount,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn),
+        backend.empty(),
+      );
+
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith(
+        projectNumber,
+        {
+          etag: "etag",
+          version: 3,
+          bindings: [
+            BINDING,
+            {
+              role: "roles/monitoring.metricWriter",
+              members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+            },
+            {
+              role: "roles/logging.logWriter",
+              members: [`serviceAccount:${serviceAccount}`, "anotheruser"],
+            },
+            // Should include this missing binding
+            {
+              role: "roles/cloudtrace.agent",
+              members: [`serviceAccount:${serviceAccount}`],
+            },
+          ],
+        },
+        "bindings",
+      );
+    });
+
+    it("should update policy for all missing roles and service accounts", async () => {
+      const serviceAccount1 = `test-sa-1@${projectId}.iam.gserviceaccount.com`;
+      const serviceAccount2 = `test-sa-2@${projectId}.iam.gserviceaccount.com`;
+      const defaultServiceAccount = `${projectNumber}-compute@developer.gserviceaccount.com`;
+      const initialPolicy = {
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      };
+      getIamStub.resolves(initialPolicy);
+      setIamStub.resolves({});
+      const fn1: backend.Endpoint = {
+        id: "genkitFn1",
+        platform: "gcfv2",
+        entryPoint: "wantFn1",
+        serviceAccount: serviceAccount1,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const fn2: backend.Endpoint = {
+        id: "genkitFn2",
+        platform: "gcfv2",
+        entryPoint: "wantFn2",
+        serviceAccount: serviceAccount1,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const fn3: backend.Endpoint = {
+        id: "genkitFn3",
+        platform: "gcfv2",
+        entryPoint: "wantFn3",
+        serviceAccount: serviceAccount2,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const fn4: backend.Endpoint = {
+        id: "genkitFnWithDefaultServiceAccount",
+        platform: "gcfv2",
+        entryPoint: "wantFn",
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(fn1, fn2, fn3, fn4),
+        backend.empty(),
+      );
+
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.have.been.calledOnce;
+      expect(setIamStub).to.have.been.calledWith(
+        projectNumber,
+        {
+          etag: "etag",
+          version: 3,
+          bindings: [
+            BINDING,
+            {
+              role: "roles/monitoring.metricWriter",
+              members: [
+                `serviceAccount:${serviceAccount1}`,
+                `serviceAccount:${serviceAccount2}`,
+                `serviceAccount:${defaultServiceAccount}`,
+              ],
+            },
+            {
+              role: "roles/cloudtrace.agent",
+              members: [
+                `serviceAccount:${serviceAccount1}`,
+                `serviceAccount:${serviceAccount2}`,
+                `serviceAccount:${defaultServiceAccount}`,
+              ],
+            },
+            {
+              role: "roles/logging.logWriter",
+              members: [
+                `serviceAccount:${serviceAccount1}`,
+                `serviceAccount:${serviceAccount2}`,
+                `serviceAccount:${defaultServiceAccount}`,
+              ],
+            },
+          ],
+        },
+        "bindings",
+      );
     });
   });
 

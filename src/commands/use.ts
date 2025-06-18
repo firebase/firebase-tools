@@ -9,6 +9,7 @@ import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
+import { RC } from "../rc";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {
@@ -32,10 +33,15 @@ function verifyMessage(name: string): string {
 }
 
 // firebase use [alias_or_project]
-async function setNewActive(projectOrAlias: string, aliasOpt: string | undefined, options: any) {
+export async function setNewActive(
+  projectOrAlias: string,
+  aliasOpt: string | undefined,
+  rc: RC,
+  projectRoot: string,
+) {
   let project: ProjectInfo | undefined;
-  const hasAlias = options.rc.hasProjectAlias(projectOrAlias);
-  const resolvedProject = options.rc.resolveAlias(projectOrAlias);
+  const hasAlias = rc.hasProjectAlias(projectOrAlias);
+  const resolvedProject = rc.resolveAlias(projectOrAlias);
   validateProjectId(resolvedProject);
   try {
     project = await getProject(resolvedProject);
@@ -50,7 +56,7 @@ async function setNewActive(projectOrAlias: string, aliasOpt: string | undefined
         `Cannot create alias ${clc.bold(aliasOpt)}, ${verifyMessage(projectOrAlias)}`,
       );
     }
-    options.rc.addProjectAlias(aliasOpt, projectOrAlias);
+    rc.addProjectAlias(aliasOpt, projectOrAlias);
     logger.info("Created alias", clc.bold(aliasOpt), "for", resolvedProject + ".");
   }
 
@@ -63,11 +69,11 @@ async function setNewActive(projectOrAlias: string, aliasOpt: string | undefined
       );
     }
 
-    utils.makeActiveProject(options.projectRoot, projectOrAlias);
+    utils.makeActiveProject(projectRoot, projectOrAlias);
     logger.info("Now using alias", clc.bold(projectOrAlias), "(" + resolvedProject + ")");
   } else if (project) {
     // exact project id specified
-    utils.makeActiveProject(options.projectRoot, projectOrAlias);
+    utils.makeActiveProject(projectRoot, projectOrAlias);
     logger.info("Now using project", clc.bold(projectOrAlias));
   } else {
     // no alias or project recognized
@@ -76,7 +82,7 @@ async function setNewActive(projectOrAlias: string, aliasOpt: string | undefined
 }
 
 // firebase use --unalias [alias]
-function unalias(alias: string, options: Options) {
+function unalias(alias: string, options: UseOptions) {
   if (options.rc.hasProjectAlias(alias)) {
     options.rc.removeProjectAlias(alias);
     logger.info("Removed alias", clc.bold(alias));
@@ -86,7 +92,7 @@ function unalias(alias: string, options: Options) {
 }
 
 // firebase use --add
-async function addAlias(options: Options) {
+async function addAlias(options: UseOptions) {
   if (options.nonInteractive) {
     return utils.reject(
       "Cannot run " +
@@ -97,7 +103,6 @@ async function addAlias(options: Options) {
     );
   }
   const projects = await listFirebaseProjects();
-  const results: { project?: string; alias?: string } = {};
   const project = await select({
     message: "Which project do you want to add?",
     choices: projects.map((p) => p.projectId).sort(),
@@ -108,6 +113,10 @@ async function addAlias(options: Options) {
       return input && input.length > 0;
     },
   });
+  const results: { project: string; alias: string } = {
+    project,
+    alias,
+  };
   options.rc.addProjectAlias(alias, project);
   utils.makeActiveProject(options.projectRoot!, results.alias);
   logger.info();
@@ -116,7 +125,7 @@ async function addAlias(options: Options) {
 }
 
 // firebase use --clear
-function clearAlias(options: Options) {
+function clearAlias(options: UseOptions) {
   utils.makeActiveProject(options.projectRoot!, undefined);
   delete options.projectAlias;
   delete options.project;
@@ -126,7 +135,7 @@ function clearAlias(options: Options) {
 }
 
 // firebase use
-async function genericUse(options: Options) {
+async function genericUse(options: UseOptions) {
   if (options.nonInteractive || !process.stdout.isTTY) {
     if (options.project) {
       logger.info(options.project);
@@ -154,6 +163,7 @@ async function genericUse(options: Options) {
   return options.project;
 }
 
+type UseOptions = Options & { alias?: string; unalias?: string; add?: boolean; clear?: boolean };
 export const command = new Command("use [alias_or_project_id]")
   .description("set an active Firebase project for your working directory")
   .option("--add", "create a new project alias interactively")
@@ -161,7 +171,7 @@ export const command = new Command("use [alias_or_project_id]")
   .option("--unalias <name>", "remove an already created project alias")
   .option("--clear", "clear the active project selection")
   .before(requireAuth)
-  .action((newActive, options) => {
+  .action((newActive, options: UseOptions) => {
     // HACK: Commander.js silently swallows an option called alias >_<
     let aliasOpt: string | undefined;
     const i = process.argv.indexOf("--alias");
@@ -180,7 +190,7 @@ export const command = new Command("use [alias_or_project_id]")
     }
 
     if (newActive) {
-      return setNewActive(newActive, aliasOpt, options);
+      return setNewActive(newActive, aliasOpt, options.rc, options.projectRoot);
     }
     if (options.unalias) {
       return unalias(options.unalias, options);

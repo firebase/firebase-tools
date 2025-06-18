@@ -19,7 +19,7 @@ export const set_sms_region_policy = tool(
         .describe("the country codes to allow or deny based on ISO 3166"),
     }),
     annotations: {
-      title: "Set the SMS Region Policy on your Firebase Project",
+      title: "Set SMS Region Policy",
       idempotentHint: true,
       destructiveHint: true,
     },
@@ -33,8 +33,8 @@ export const set_sms_region_policy = tool(
       return code.toUpperCase();
     });
     if (policy_type === "ALLOW") {
-      return toContent(await setAllowSmsRegionPolicy(projectId!, country_codes));
+      return toContent(await setAllowSmsRegionPolicy(projectId, country_codes));
     }
-    return toContent(await setDenySmsRegionPolicy(projectId!, country_codes));
+    return toContent(await setDenySmsRegionPolicy(projectId, country_codes));
   },
 );

@@ -8,12 +8,25 @@ export const get_user = tool(
     name: "get_user",
     description: "Retrieves a user based on an email address, phone number, or UID.",
     inputSchema: z.object({
-      email: z.string().optional(),
-      phoneNumber: z.string().optional(),
-      uid: z.string().optional(),
+      email: z
+        .string()
+        .optional()
+        .describe(
+          "The user's email address. At least one of email, phone_number, or uid must be provided.",
+        ),
+      phone_number: z
+        .string()
+        .optional()
+        .describe(
+          "The user's phone number. At least one of email, phone_number, or uid must be provided.",
+        ),
+      uid: z
+        .string()
+        .optional()
+        .describe("The user's UID. At least one of email, phone_number, or uid must be provided."),
     }),
     annotations: {
-      title: "Get information about 1 user.",
+      title: "Get Firebase Auth User",
       readOnlyHint: true,
     },
     _meta: {
@@ -21,10 +34,10 @@ export const get_user = tool(
       requiresProject: true,
     },
   },
-  async ({ email, phoneNumber, uid }, { projectId }) => {
-    if (email === undefined && phoneNumber === undefined && uid === undefined) {
+  async ({ email, phone_number, uid }, { projectId }) => {
+    if (email === undefined && phone_number === undefined && uid === undefined) {
       return mcpError(`No user identifier supplied in auth_get_user tool`);
     }
-    return toContent(await findUser(projectId!, email, phoneNumber, uid));
+    return toContent(await findUser(projectId, email, phone_number, uid));
   },
 );
