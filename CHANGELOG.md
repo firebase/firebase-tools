@@ -6,3 +6,4 @@
 - Updated the Firebase Data Connect local toolkit to v2.7.1, which includes the following changes
   - Kotlin codegen: Add a default value for the block\_ parameter to execute() so that it is not necessary to specify empty {} for operations with optional variables and none are specified.
   - Web SDK READMEs will link to other web framework READMEs for better discoverability.
+- Added validation to check if project ID exists during project creation. (#5233)

@@ -54,7 +54,9 @@ export async function promptProjectCreation(
             return `Project ID is taken or unavailable. Try ${clc.bold(suggestedProjectId)}.`;
           }
         } catch (error: any) {
-          logger.debug(`Unable to check if project ID ${projectId} is available`);
+          logger.debug(
+            `Couldn't check if project ID ${projectId} is available. Original error: ${error}`,
+          );
         }
 
         return true;
