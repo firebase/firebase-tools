@@ -35,7 +35,8 @@ export const command = new Command("login")
 
     if (!options.reauth) {
       utils.logBullet(
-        "Firebase CLI integrates with Gemini in Firebase API to provide assistant features. Learn more about using Gemini in Firebase and how we train our models: https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions",
+        "The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. " +
+          "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
       );
       const geminiUsage = await confirm("Enable Gemini in Firebase features?");
       configstore.set("gemini", geminiUsage);
