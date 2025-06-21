@@ -14,3 +14,11 @@ ${cmd} login
 
 [ADC]: https://cloud.google.com/docs/authentication/application-default-credentials`);
 }
+
+export function mcpGeminiError(projectId: string) {
+  const consoleUrl = `https://firebase.corp.google.com/project/${projectId}/overview`;
+  return mcpError(
+    `This tool requires Gemini in Firebase API. Visit Firebase Console to enable Gemini in Firebase API ${consoleUrl} and try again.`,
+    "PRECONDITION_FAILED",
+  );
+}
