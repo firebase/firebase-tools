@@ -183,6 +183,10 @@ export class Fabricator {
       await this.createV1Function(endpoint, scraperV1);
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
+    } else if (endpoint.platform === "run") {
+      throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -206,6 +210,8 @@ export class Fabricator {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
+    } else if (update.endpoint.platform === "run") {
+      throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 });
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -216,10 +222,13 @@ export class Fabricator {
   async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
     await this.deleteTrigger(endpoint);
     if (endpoint.platform === "gcfv1") {
-      await this.deleteV1Function(endpoint);
-    } else {
-      await this.deleteV2Function(endpoint);
+      return this.deleteV1Function(endpoint);
+    } else if (endpoint.platform === "gcfv2") {
+      return this.deleteV2Function(endpoint);
+    } else if (endpoint.platform === "run") {
+      throw new FirebaseError("Deleting Cloud Run functions is not supported yet.", { exit: 1 });
     }
+    assertExhaustive(endpoint.platform);
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -623,6 +632,11 @@ export class Fabricator {
   // Set/Delete trigger is responsible for wiring up a function with any trigger not owned
   // by the GCF API. This includes schedules, task queues, and blocking function triggers.
   async setTrigger(endpoint: backend.Endpoint): Promise<void> {
+    if (endpoint.platform === "run") {
+      throw new FirebaseError("Setting triggers for Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
+    }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
@@ -640,6 +654,11 @@ export class Fabricator {
   }
 
   async deleteTrigger(endpoint: backend.Endpoint): Promise<void> {
+    if (endpoint.platform === "run") {
+      throw new FirebaseError("Deleting triggers for Cloud Run functions is not supported yet.", {
+        exit: 1,
+      });
+    }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.deleteScheduleV1(endpoint);
