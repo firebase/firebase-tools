@@ -1,2 +1,1 @@
-- Add emulator support to firebase storage MCP tools. (#8707)
 - `firebase init dataconnect` is now integrated with Gemini in Firebase API to generate Schema based on description. (#8596)

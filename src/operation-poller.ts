@@ -23,6 +23,7 @@ export interface OperationPollerOptions {
   masterTimeout?: number;
   onPoll?: (operation: OperationResult<any>) => any;
   doneFn?: (op: any) => boolean;
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
@@ -80,7 +81,9 @@ export class OperationPoller<T> {
     return async () => {
       let res;
       try {
-        res = await apiClient.get<OperationResult<T>>(options.operationResourceName);
+        res = await apiClient.get<OperationResult<T>>(options.operationResourceName, {
+          headers: options.headers,
+        });
       } catch (err: any) {
         // Responses with 500 or 503 status code are treated as retriable errors.
         if (err.status === 500 || err.status === 503) {
