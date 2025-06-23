@@ -54,28 +54,28 @@
   },
   "dataconnect": {
     "darwin": {
-      "version": "2.7.0",
-      "expectedSize": 27542272,
-      "expectedChecksum": "8b68e45ccae2d2cf35bea368e7ce379c",
-      "expectedChecksumSHA256": "6dce6ea23c39e4e44dbaa6db7181c9d7761dd1098589a627fa5aa0fb4a07ccd7",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v2.7.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.0"
+      "version": "2.7.1",
+      "expectedSize": 27607808,
+      "expectedChecksum": "3cf0b4dcb96639f1b7ddf3e2052ea28f",
+      "expectedChecksumSHA256": "76b6db1f87e14e3c39035301ae199bec0458a2e7534a1db962276a92fa99c215",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v2.7.1",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.1"
     },
     "win32": {
-      "version": "2.7.0",
-      "expectedSize": 28001280,
-      "expectedChecksum": "03ef2fd3ed2f7263539f1a9d7b748ee6",
-      "expectedChecksumSHA256": "3462f15ddc5d11371774de8f19b54468eb75eefac5f3a5623334f42154f06bc8",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v2.7.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.0.exe"
+      "version": "2.7.1",
+      "expectedSize": 28067328,
+      "expectedChecksum": "8dacedaecac242199dfcf3f6c023f89a",
+      "expectedChecksumSHA256": "fc098efa9aed9b1ac7d35b90da47608190f3a5562f37444012785a9793d743a0",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v2.7.1",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.1.exe"
     },
     "linux": {
-      "version": "2.7.0",
-      "expectedSize": 27451544,
-      "expectedChecksum": "8b73f21f1bdf168a5f2c3137c30abc7b",
-      "expectedChecksumSHA256": "e2d03d1d0524f8053b34376c8ad6ea1fdfb8bc48568e80a35c2e3e510754c121",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.7.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.0"
+      "version": "2.7.1",
+      "expectedSize": 27521176,
+      "expectedChecksum": "3c03d85c2d1de80a2f2ba13fe3b5a3ff",
+      "expectedChecksumSHA256": "94c35ab64bd8d206e7843513848e7375cd8f9b6a06d013b1ec541ac831cda8a8",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.7.1",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.7.1"
     }
   }
 }
