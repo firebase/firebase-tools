@@ -1,1 +1,0 @@
-- Updated the Data Connect emulator to use pglite 0.3.x and Postgres 17, which fixes some crashes related to wire protocol inconsistencies. (#8679, #8658)
