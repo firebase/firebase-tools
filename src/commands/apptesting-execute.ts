@@ -30,7 +30,7 @@ export const command = new Command("apptesting:execute <target>")
   .before(requireConfig)
   .action(async (target: string, options: any) => {
     if (!options.app) {
-      throw new FirebaseError("App is required")
+      throw new FirebaseError("App is required");
     }
     const testDir = options.config.src.apptesting?.testDir || "tests";
     const tests = parseTestFiles(testDir, options.testFilePattern, options.testNamePattern);
