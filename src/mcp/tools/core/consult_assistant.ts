@@ -20,7 +20,7 @@ export const consult_assistant = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activation.
+      requiresGemini: true,
     },
   },
   async ({ prompt }, { projectId }) => {
