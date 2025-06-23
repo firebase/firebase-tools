@@ -24,6 +24,7 @@ import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { extractCodeBlock, generateSchema } from "../../../gemini/fdcExperience";
+import { configstore } from "../../../configstore";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -450,27 +451,32 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
       message: "What ID would you like to use for this service?",
       default: basename(process.cwd()),
     });
-    if (
-      setup.projectId &&
-      (await confirm({
-        message: `Do you want Gemini in Firebase to help generate a schema for your service?`,
-        default: false,
-      }))
-    ) {
-      logBullet(
-        `Check out the terms of service of Gemini in Firebase https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions`,
-      );
-      await ensureGIFApis(setup.projectId);
-      const prompt = await input({
-        message: "Describe the app you are building:",
-        default: "movie rating app",
-      });
-      const schema = await promiseWithSpinner(
-        () => generateSchema(prompt, setup.projectId!),
-        "Generating the Data Connect Schema...",
-      );
-      info.schemaGql = [{ path: "schema.gql", content: extractCodeBlock(schema) }];
-      info.connectors = [emptyConnector];
+    if (setup.projectId) {
+      if (!configstore.get("gemini")) {
+        logBullet(
+          "The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. " +
+            "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
+        );
+      }
+      if (
+        await confirm({
+          message: `Do you want Gemini in Firebase to help generate a schema for your service?`,
+          default: false,
+        })
+      ) {
+        configstore.set("gemini", true);
+        await ensureGIFApis(setup.projectId);
+        const prompt = await input({
+          message: "Describe the app you are building:",
+          default: "movie rating app",
+        });
+        const schema = await promiseWithSpinner(
+          () => generateSchema(prompt, setup.projectId!),
+          "Generating the Data Connect Schema...",
+        );
+        info.schemaGql = [{ path: "schema.gql", content: extractCodeBlock(schema) }];
+        info.connectors = [emptyConnector];
+      }
     }
   }
   return info;
