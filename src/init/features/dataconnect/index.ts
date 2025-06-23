@@ -454,8 +454,7 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
     if (setup.projectId) {
       if (!configstore.get("gemini")) {
         logBullet(
-          "The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. " +
-            "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
+          "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
       if (
