@@ -45,6 +45,7 @@ function buildInvokeTestCasesRequest(
           testExecution,
           testCase: {
             startUri,
+            displayName: testDef.testName,
             instructions: { steps: testDef.steps },
           },
         };

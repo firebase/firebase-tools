@@ -13,7 +13,7 @@ export function parseTestFiles(dir: string, filePattern?: string, namePattern?: 
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
 
-  function parseTestFilesRecursive(dir: string): any[] {
+  function parseTestFilesRecursive(dir: string): TestDef[] {
     const items = listFiles(dir);
     const results = [];
     for (const item of items) {

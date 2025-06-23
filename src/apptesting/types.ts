@@ -66,6 +66,7 @@ export interface TestExecutionResult {
 
 export interface TestCase {
   startUri: string;
+  displayName: string;
   instructions: AiInstructions;
 }
 
