@@ -89,6 +89,21 @@ export class Command {
     return this;
   }
 
+  // TODO: refactor this to be a private method and ensure all commands that need it call it.
+  // TODO: add a test for this.
+  /**
+   * Adds the --ephemeral flag to the command.
+   * @return The command, for chaining.
+   */
+  withEphemeral(): Command {
+    this.option(
+      "--ephemeral",
+      "ignore emulators.dataDir and start with a clean state",
+      false, // Default value if the flag is not present
+    );
+    return this;
+  }
+
   /**
    * Sets up --force flag for the command.
    *

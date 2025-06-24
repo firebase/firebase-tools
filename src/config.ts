@@ -103,6 +103,36 @@ export class Config {
           "Please remove 'dataconnect.location' from 'firebase.json' and add it as top level field to 'dataconnect.yaml' instead ",
       );
     }
+
+    // Handle emulators.dataDir and emulators.dataconnect.dataDir
+    const emulatorsDataDir = _.get(this.data, "emulators.dataDir");
+    const dataconnectDataDir = _.get(this.data, "emulators.dataconnect.dataDir");
+
+    if (emulatorsDataDir && dataconnectDataDir) {
+      utils.logWarning(
+        "emulators.dataconnect.dataDir is deprecated and will be ignored. Use emulators.dataDir instead.",
+      );
+      // emulators.dataDir takes precedence, remove dataconnect.dataDir from internal representation
+      if (_.has(this.data, "emulators.dataconnect.dataDir")) {
+        delete this.data.emulators.dataconnect.dataDir;
+      }
+      if (_.has(this._src, "emulators.dataconnect.dataDir")) {
+        delete this._src.emulators.dataconnect.dataDir;
+      }
+    } else if (dataconnectDataDir) {
+      utils.logWarning(
+        "emulators.dataconnect.dataDir is deprecated. Please move your dataDir setting to emulators.dataDir.",
+      );
+      // Use dataconnect.dataDir if emulators.dataDir is not set
+      _.set(this.data, "emulators.dataDir", dataconnectDataDir);
+      // Remove dataconnect.dataDir from internal representation after copying its value
+      if (_.has(this.data, "emulators.dataconnect.dataDir")) {
+        delete this.data.emulators.dataconnect.dataDir;
+      }
+      if (_.has(this._src, "emulators.dataconnect.dataDir")) {
+        delete this._src.emulators.dataconnect.dataDir;
+      }
+    }
   }
 
   materialize(target: string) {

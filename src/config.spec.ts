@@ -6,8 +6,21 @@ import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-c
 import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
 import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
 
+import * as sinon from "sinon";
+import * as utils from "./utils";
+
 describe("Config", () => {
-  describe("#load", () => {
+  let logWarningStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    logWarningStub = sinon.stub(utils, "logWarning");
+  });
+
+  afterEach(() => {
+    logWarningStub.restore();
+  });
+
+  describe("#constructor", () => {
     it("should load a cjson file when configPath is specified", () => {
       const cwd = __dirname;
       const config = Config.load({
@@ -18,6 +31,39 @@ describe("Config", () => {
       if (config) {
         expect(config.get("database.rules")).to.eq("config/security-rules.json");
       }
+    });
+
+    it("should handle emulators.dataDir and emulators.dataconnect.dataDir correctly", () => {
+      // Scenario 1: Only emulators.dataDir is present
+      let config = new Config({ emulators: { dataDir: "global_data" } }, {});
+      expect(config.get("emulators.dataDir")).to.equal("global_data");
+      expect(logWarningStub.called).to.be.false;
+
+      // Scenario 2: Only emulators.dataconnect.dataDir is present
+      logWarningStub.resetHistory();
+      config = new Config({ emulators: { dataconnect: { dataDir: "dc_data" } } }, {});
+      expect(config.get("emulators.dataDir")).to.equal("dc_data");
+      expect(config.get("emulators.dataconnect.dataDir")).to.be.undefined;
+      expect(logWarningStub.calledOnceWith("emulators.dataconnect.dataDir is deprecated. Please move your dataDir setting to emulators.dataDir.")).to.be.true;
+
+      // Scenario 3: Both are present
+      logWarningStub.resetHistory();
+      config = new Config({ emulators: { dataDir: "global_data", dataconnect: { dataDir: "dc_data" } } }, {});
+      expect(config.get("emulators.dataDir")).to.equal("global_data");
+      expect(config.get("emulators.dataconnect.dataDir")).to.be.undefined;
+      expect(logWarningStub.calledOnceWith("emulators.dataconnect.dataDir is deprecated and will be ignored. Use emulators.dataDir instead.")).to.be.true;
+
+      // Scenario 4: Neither is present
+      logWarningStub.resetHistory();
+      config = new Config({ emulators: {} }, {});
+      expect(config.get("emulators.dataDir")).to.be.undefined;
+      expect(logWarningStub.called).to.be.false;
+
+      // Scenario 5: emulators object is not present
+      logWarningStub.resetHistory();
+      config = new Config({}, {});
+      expect(config.get("emulators.dataDir")).to.be.undefined;
+      expect(logWarningStub.called).to.be.false;
     });
   });
 
