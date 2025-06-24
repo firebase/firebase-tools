@@ -42,9 +42,9 @@ export const command = new Command("apptesting:execute <target>")
     logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
 
     const invocationOperation = await invokeTests(options.app, target, tests);
-    const invocationId = invocationOperation.metadata?.name?.split("/").pop();
+    const invocationId = invocationOperation.name?.split("/").pop();
     const projectId = needProjectId(options);
-    const url = consoleUrl(projectId, `apptesting/${options.app}/invocation/${invocationId}`);
+    const url = consoleUrl(projectId, `/apptesting/${options.app}/invocation/${invocationId}`);
     logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`));
 
     if (options.testsNonBlocking) {
