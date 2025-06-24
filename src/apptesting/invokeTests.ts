@@ -1,28 +1,18 @@
 import { Client } from "../apiv2";
 import { appTestingOrigin } from "../api";
-import {
-  Browser,
-  ExecutionConfig,
-  InvokeTestCasesRequest,
-  TestDef,
-  TestExecution,
-  TestInvocation,
-} from "./types";
+import { InvokeTestCasesRequest, TestCaseInvocation, TestInvocation } from "./types";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 
 const apiClient = new Client({ urlPrefix: appTestingOrigin(), apiVersion: "v1alpha" });
 
-export async function invokeTests(appId: string, startUri: string, testDefs: TestDef[]) {
+export async function invokeTests(appId: string, startUri: string, testDefs: TestCaseInvocation[]) {
   const appResource = `projects/${appId.split(":")[1]}/apps/${appId}`;
   try {
     const invocationResponse = await apiClient.post<
       InvokeTestCasesRequest,
       operationPoller.LongRunningOperation<TestInvocation>
-    >(
-      `${appResource}/testInvocations:invokeTestCases`,
-      buildInvokeTestCasesRequest(startUri, testDefs),
-    );
+    >(`${appResource}/testInvocations:invokeTestCases`, buildInvokeTestCasesRequest(testDefs));
     return invocationResponse.body;
   } catch (err: unknown) {
     throw new FirebaseError("Test invocation failed");
@@ -30,26 +20,12 @@ export async function invokeTests(appId: string, startUri: string, testDefs: Tes
 }
 
 function buildInvokeTestCasesRequest(
-  startUri: string,
-  testDefs: TestDef[],
+  testCaseInvocations: TestCaseInvocation[],
 ): InvokeTestCasesRequest {
   return {
     resource: {
       testInvocation: {},
-      testCaseInvocations: testDefs.map((testDef) => {
-        const executionConfigs: ExecutionConfig[] = testDef.testConfig?.browsers?.map(
-          (browser) => ({ browser }),
-        ) || [{ browser: Browser.CHROME }];
-        const testExecution: TestExecution[] = executionConfigs.map((config) => ({ config }));
-        return {
-          testExecution,
-          testCase: {
-            startUri,
-            displayName: testDef.testName,
-            instructions: { steps: testDef.steps },
-          },
-        };
-      }),
+      testCaseInvocations,
     },
   };
 }

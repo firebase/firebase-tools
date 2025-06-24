@@ -1,29 +1,34 @@
-import { dirExistsSync, fileExistsSync, listFiles, readFile } from "../fsutils";
+import { dirExistsSync, fileExistsSync, listFiles } from "../fsutils";
 import { join } from "path";
-import { parse } from "yaml";
 import { logger } from "../logger";
-import { TestDef } from "./types";
+import { Browser, TestCaseInvocation } from "./types";
+import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 
 function createFilter(pattern?: string) {
   const regex = pattern ? new RegExp(pattern) : undefined;
   return (s: string) => !regex || regex.test(s);
 }
 
-export function parseTestFiles(dir: string, filePattern?: string, namePattern?: string): TestDef[] {
+export async function parseTestFiles(
+  dir: string,
+  targetUri: string,
+  filePattern?: string,
+  namePattern?: string,
+): Promise<TestCaseInvocation[]> {
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
 
-  function parseTestFilesRecursive(dir: string): TestDef[] {
+  async function parseTestFilesRecursive(dir: string): Promise<TestCaseInvocation[]> {
     const items = listFiles(dir);
     const results = [];
     for (const item of items) {
       const path = join(dir, item);
       if (dirExistsSync(path)) {
-        results.push(...parseTestFilesRecursive(path));
+        results.push(...(await parseTestFilesRecursive(path)));
       } else if (fileFilterFn(path) && fileExistsSync(path)) {
-        let parsedFile;
         try {
-          parsedFile = parse(readFile(path));
+          const file = await readFileFromDirectory(dir, item);
+          const parsedFile = wrappedSafeLoad(file.source);
           const tests = parsedFile.tests;
           const defaultConfig = parsedFile.defaultConfig;
           if (!tests || !tests.length) {
@@ -32,7 +37,7 @@ export function parseTestFiles(dir: string, filePattern?: string, namePattern?: 
           }
           for (const rawTestDef of parsedFile.tests) {
             if (!nameFilterFn(rawTestDef.testName)) continue;
-            const testDef = toTestDef(rawTestDef, path, defaultConfig);
+            const testDef = toTestDef(rawTestDef, targetUri, defaultConfig);
             results.push(testDef);
           }
         } catch (ex) {
@@ -47,18 +52,17 @@ export function parseTestFiles(dir: string, filePattern?: string, namePattern?: 
   return parseTestFilesRecursive(dir);
 }
 
-function toTestDef(testDef: any, path: string, defaultConfig: any): TestDef {
+function toTestDef(testDef: any, targetUri: string, defaultConfig: any): TestCaseInvocation {
   const steps = testDef.steps || [];
+  const route = testDef.testConfig?.route || defaultConfig?.route || "";
+  const browsers: Browser[] = testDef.testConfig?.browsers ||
+    defaultConfig?.browsers || [Browser.CHROME];
   return {
-    id: `${path}#${testDef.testName}`,
-    testName: testDef.testName,
-    testConfig: {
-      browsers: testDef.testConfig?.browsers || defaultConfig?.browsers,
+    testCase: {
+      startUri: targetUri + route,
+      displayName: testDef.testName,
+      instructions: { steps },
     },
-    steps: steps.map((step: any) => ({
-      goal: step.goal,
-      successCriteria: step.successCriteria,
-      hint: step.hint,
-    })),
+    testExecution: browsers.map((browser) => ({ config: { browser } })),
   };
 }

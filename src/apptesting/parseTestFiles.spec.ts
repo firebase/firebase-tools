@@ -6,6 +6,7 @@ import { join } from "node:path";
 import * as fs from "fs-extra";
 import { readTemplateSync } from "../templates";
 import { stringify } from "yaml";
+import { Browser } from "./types";
 
 describe("parseTestFiles", () => {
   let tempdir: tmp.DirResult;
@@ -24,53 +25,58 @@ describe("parseTestFiles", () => {
   }
 
   describe("parsing", () => {
-    it("ignores invalid files", () => {
+    it("ignores invalid files", async () => {
       writeFile(
         "my_test.yaml",
-        stringify({ tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }] }),
+        stringify({
+          defaultConfig: { route: "/mypage" },
+          tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }],
+        }),
       );
       writeFile("my_test2.yaml", "foo");
-      const testDefs = parseTestFiles(tempdir.name);
-      expect(testDefs).to.eql([
+      const tests = await parseTestFiles(tempdir.name, "http://www.foo.com");
+      expect(tests).to.eql([
         {
-          id: `${tempdir.name}/my_test.yaml#my test`,
-          steps: [
-            {
-              goal: "click a button",
-              hint: undefined,
-              successCriteria: undefined,
+          testCase: {
+            displayName: "my test",
+            startUri: "http://www.foo.com/mypage",
+            instructions: {
+              steps: [
+                {
+                  goal: "click a button",
+                },
+              ],
             },
-          ],
-          testConfig: {
-            browsers: undefined,
           },
-          testName: "my test",
+          testExecution: [{ config: { browser: Browser.CHROME } }],
         },
       ]);
     });
 
-    it("parses the sample test case file", () => {
+    it("parses the sample test case file", async () => {
       writeFile("smoke_test.yaml", readTemplateSync("init/apptesting/smoke_test.yaml"));
-      const testDefs = parseTestFiles(tempdir.name);
-      expect(testDefs).to.eql([
+      const tests = await parseTestFiles(tempdir.name, "http://www.foo.com");
+      expect(tests).to.eql([
         {
-          id: `${tempdir.name}/smoke_test.yaml#Smoke test`,
-          steps: [
-            {
-              goal: "View the provided application",
-              hint: "No additional actions should be necessary",
-              successCriteria: "The application should load with no obvious errors",
+          testCase: {
+            displayName: "Smoke test",
+            startUri: "http://www.foo.com",
+            instructions: {
+              steps: [
+                {
+                  goal: "View the provided application",
+                  hint: "No additional actions should be necessary",
+                  successCriteria: "The application should load with no obvious errors",
+                },
+              ],
             },
-          ],
-          testConfig: {
-            browsers: undefined,
           },
-          testName: "Smoke test",
+          testExecution: [{ config: { browser: Browser.CHROME } }],
         },
       ]);
     });
 
-    it("parses multiple test case files", () => {
+    it("parses multiple test case files", async () => {
       writeFile(
         "my_test.yaml",
         stringify({ tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }] }),
@@ -78,61 +84,62 @@ describe("parseTestFiles", () => {
       writeFile(
         "my_test2.yaml",
         stringify({
-          defaultConfig: { browsers: ["chrome"] },
+          defaultConfig: { browsers: ["CHROME"] },
           tests: [
             { testName: "my second test", steps: [{ goal: "click a button" }] },
             {
               testName: "my third test",
-              testConfig: { browsers: ["firefox"] },
+              testConfig: { browsers: ["firefox"], route: "/mypage" },
               steps: [{ goal: "type something" }],
             },
           ],
         }),
       );
 
-      const testDefs = parseTestFiles(tempdir.name);
-      expect(testDefs).to.eql([
+      const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
+      expect(tests).to.eql([
         {
-          id: `${tempdir.name}/my_test.yaml#my test`,
-          steps: [
-            {
-              goal: "click a button",
-              hint: undefined,
-              successCriteria: undefined,
+          testCase: {
+            displayName: "my test",
+            startUri: "https://www.foo.com",
+            instructions: {
+              steps: [
+                {
+                  goal: "click a button",
+                },
+              ],
             },
-          ],
-          testConfig: {
-            browsers: undefined,
           },
-          testName: "my test",
+          testExecution: [{ config: { browser: "CHROME" } }],
         },
         {
-          id: `${tempdir.name}/my_test2.yaml#my second test`,
-          steps: [
-            {
-              goal: "click a button",
-              hint: undefined,
-              successCriteria: undefined,
+          testCase: {
+            displayName: "my second test",
+            startUri: "https://www.foo.com",
+            instructions: {
+              steps: [
+                {
+                  goal: "click a button",
+                },
+              ],
             },
-          ],
-          testConfig: {
-            browsers: ["chrome"],
           },
-          testName: "my second test",
+          testExecution: [{ config: { browser: "CHROME" } }],
         },
+
         {
-          id: `${tempdir.name}/my_test2.yaml#my third test`,
-          steps: [
-            {
-              goal: "type something",
-              hint: undefined,
-              successCriteria: undefined,
+          testCase: {
+            displayName: "my third test",
+            startUri: "https://www.foo.com/mypage",
+            instructions: {
+              steps: [
+                {
+                  goal: "type something",
+                },
+              ],
             },
-          ],
-          testConfig: {
-            browsers: ["firefox"],
           },
-          testName: "my third test",
+          testExecution: [{ config: { browser: "firefox" } }],
         },
       ]);
     });
@@ -148,32 +155,38 @@ describe("parseTestFiles", () => {
       });
     }
 
-    function getTestCaseNames(filenameFilter = "", testCaseFilter = "") {
-      return parseTestFiles(tempdir.name, filenameFilter, testCaseFilter).map((t) => t.testName);
+    async function getTestCaseNames(filenameFilter = "", testCaseFilter = "") {
+      const tests = await parseTestFiles(
+        tempdir.name,
+        "https://www.foo.com",
+        filenameFilter,
+        testCaseFilter,
+      );
+      return tests.map((t) => t.testCase.displayName);
     }
 
-    it("returns an empty list if no match", () => {
+    it("returns an empty list if no match", async () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
-      expect(getTestCaseNames("yyy")).to.eql([]);
+      expect(await getTestCaseNames("yyy")).to.eql([]);
     });
 
-    it("filters on filename", () => {
+    it("filters on filename", async () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
-      expect(getTestCaseNames("aaa")).to.eql(["axx", "ayy", "azz"]);
+      expect(await getTestCaseNames("aaa")).to.eql(["axx", "ayy", "azz"]);
     });
 
-    it("filters on test case name", () => {
+    it("filters on test case name", async () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
-      expect(getTestCaseNames("", ".xx")).to.eql(["axx", "bxx"]);
+      expect(await getTestCaseNames("", ".xx")).to.eql(["axx", "bxx"]);
     });
 
-    it("filters on filename and test case name", () => {
+    it("filters on filename and test case name", async () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
-      expect(getTestCaseNames("a$", "xx")).to.eql(["axx"]);
+      expect(await getTestCaseNames("a$", "xx")).to.eql(["axx"]);
     });
   });
 });

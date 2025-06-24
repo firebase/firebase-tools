@@ -44,16 +44,20 @@ describe("invokeTests", () => {
 
       await invokeTests(appId, "https://www.example.com", [
         {
-          id: "foo",
-          testName: "testName",
-          steps: [{ goal: "test this app", hint: "try clicking the button" }],
-          testConfig: { browsers: [Browser.CHROME] },
+          testCase: {
+            startUri: "https://www.example.com",
+            displayName: "testName1",
+            instructions: { steps: [{ goal: "test this app", hint: "try clicking the button" }] },
+          },
+          testExecution: [{ config: { browser: Browser.CHROME } }],
         },
         {
-          id: "foo2",
-          testName: "testName2",
-          steps: [{ goal: "retest it", successCriteria: "a dialog appears" }],
-          testConfig: {},
+          testCase: {
+            startUri: "https://www.example.com",
+            displayName: "testName2",
+            instructions: { steps: [{ goal: "retest it", successCriteria: "a dialog appears" }] },
+          },
+          testExecution: [{ config: { browser: Browser.CHROME } }],
         },
       ]);
 
@@ -62,6 +66,7 @@ describe("invokeTests", () => {
           testCaseInvocations: [
             {
               testCase: {
+                displayName: "testName1",
                 instructions: {
                   steps: [
                     {
@@ -75,13 +80,14 @@ describe("invokeTests", () => {
               testExecution: [
                 {
                   config: {
-                    browser: 1,
+                    browser: "CHROME",
                   },
                 },
               ],
             },
             {
               testCase: {
+                displayName: "testName2",
                 instructions: {
                   steps: [
                     {
@@ -95,7 +101,7 @@ describe("invokeTests", () => {
               testExecution: [
                 {
                   config: {
-                    browser: 1,
+                    browser: "CHROME",
                   },
                 },
               ],

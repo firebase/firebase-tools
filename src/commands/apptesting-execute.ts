@@ -33,7 +33,12 @@ export const command = new Command("apptesting:execute <target>")
       throw new FirebaseError("App is required");
     }
     const testDir = options.config.src.apptesting?.testDir || "tests";
-    const tests = parseTestFiles(testDir, options.testFilePattern, options.testNamePattern);
+    const tests = await parseTestFiles(
+      testDir,
+      target,
+      options.testFilePattern,
+      options.testNamePattern,
+    );
 
     if (!tests.length) {
       throw new FirebaseError("No tests found");

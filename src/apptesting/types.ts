@@ -4,35 +4,22 @@ export interface TestStep {
   hint?: string;
 }
 
-export interface TestDef {
-  id: string;
-  testName: string;
-  steps: TestStep[];
-  testConfig?: TestConfig;
-}
-
 export enum Browser {
-  BROWSER_UNSPECIFIED,
-  CHROME,
-}
-
-export interface TestConfig {
-  browsers?: Browser[];
+  BROWSER_UNSPECIFIED = "BROWSER_UNSPECIFIED",
+  CHROME = "CHROME",
 }
 
 export interface InvokedTestCases {
-  testInvocation: {
-    name?: string;
-  };
+  testInvocation: TestInvocation;
   testCaseInvocations: TestCaseInvocation[];
 }
 
 export interface TestInvocation {
   name?: string;
   createTime?: string;
-  runningExecutions: number;
-  succeededExecutions: number;
-  failedExecutions: number;
+  runningExecutions?: number;
+  succeededExecutions?: number;
+  failedExecutions?: number;
 }
 
 export interface TestCaseInvocation {
@@ -67,10 +54,10 @@ export interface TestExecutionResult {
 export interface TestCase {
   startUri: string;
   displayName: string;
-  instructions: AiInstructions;
+  instructions: Instructions;
 }
 
-export interface AiInstructions {
+export interface Instructions {
   steps: TestStep[];
 }
 
