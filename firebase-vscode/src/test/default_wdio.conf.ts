@@ -41,14 +41,11 @@ export const config: WebdriverIO.Config = {
 
   logLevel: "debug",
 
-  beforeTest: async function () {
-    const workbench = await browser.getWorkbench();
-    const notifications = new Notifications(workbench);
-    await notifications.installRecommendedExtension({
-      extensionId: "graphql.vscode-graphql-syntax",
-      message: "It is recommended to install GraphQL: Syntax Highlighter",
+  beforeTest: async function () {    
+    await browser.pause(3000); // give some time for extension dependencies to load their README page
+    await browser.executeWorkbench((vscode) => {
+      vscode.commands.executeCommand("workbench.action.closeAllEditors"); // close GCA home page
     });
-    await browser.pause(3000); // temporary fix, since installing the GCA extension takes over the main page
   },
 
   afterTest: async function (test) {

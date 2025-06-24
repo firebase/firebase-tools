@@ -1133,7 +1133,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   const exportAbsPath = path.resolve(exportPath);
   if (!fs.existsSync(exportAbsPath)) {
     utils.logBullet(`Creating export directory ${exportAbsPath}`);
-    fs.mkdirSync(exportAbsPath);
+    fs.mkdirSync(exportAbsPath, { recursive: true });
   }
 
   // Check if there is already an export there and prompt the user about deleting it

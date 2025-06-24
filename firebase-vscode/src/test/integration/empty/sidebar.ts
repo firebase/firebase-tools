@@ -13,8 +13,6 @@ firebaseSuite("Supports opening empty projects", async function () {
     await sidebar.openExtensionSidebar();
     await commands.waitForUser();
 
-    await mockUser({ email: "test@gmail.com" });
-
     await sidebar.runInStudioContext(async (firebase) => {
       await firebase.signInWithGoogleLink.waitForExist();
       await firebase.signInWithGoogleLink.waitForDisplayed();

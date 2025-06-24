@@ -16,6 +16,7 @@ const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
 const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
+const CHECK_PROJECT_ID_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export enum ProjectParentResourceType {
   ORGANIZATION = "organization",
@@ -39,14 +40,26 @@ export async function promptProjectCreation(
       message:
         "Please specify a unique project id " +
         `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
-      validate: (projectId: string) => {
+      validate: async (projectId: string) => {
         if (projectId.length < 6) {
           return "Project ID must be at least 6 characters long";
         } else if (projectId.length > 30) {
           return "Project ID cannot be longer than 30 characters";
-        } else {
-          return true;
         }
+
+        try {
+          // Best effort. We should still allow project creation even if this fails.
+          const { isAvailable, suggestedProjectId } = await checkAndRecommendProjectId(projectId);
+          if (!isAvailable && suggestedProjectId) {
+            return `Project ID is taken or unavailable. Try ${clc.bold(suggestedProjectId)}.`;
+          }
+        } catch (error: any) {
+          logger.debug(
+            `Couldn't check if project ID ${projectId} is available. Original error: ${error}`,
+          );
+        }
+
+        return true;
       },
     }));
 
@@ -73,6 +86,12 @@ const firebaseAPIClient = new Client({
   urlPrefix: api.firebaseApiOrigin(),
   auth: true,
   apiVersion: "v1beta1",
+});
+
+const firebaseV1APIClient = new Client({
+  urlPrefix: api.firebaseApiOrigin(),
+  auth: true,
+  apiVersion: "v1",
 });
 
 const resourceManagerClient = new Client({
@@ -430,6 +449,35 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
   } while (nextPageToken);
 
   return projects;
+}
+
+export async function checkAndRecommendProjectId(
+  projectId: String,
+): Promise<{ isAvailable: boolean; suggestedProjectId?: string }> {
+  try {
+    const res = await firebaseV1APIClient.request<
+      any,
+      { projectIdStatus: string; suggestedProjectId?: string }
+    >({
+      method: "POST",
+      path: "/projects:checkProjectId",
+      body: {
+        proposedId: projectId,
+      },
+      timeout: CHECK_PROJECT_ID_API_REQUEST_TIMEOUT_MILLIS,
+    });
+
+    const { projectIdStatus, suggestedProjectId } = res.body;
+    return {
+      isAvailable: projectIdStatus === "PROJECT_ID_AVAILABLE",
+      suggestedProjectId,
+    };
+  } catch (err: any) {
+    throw new FirebaseError(
+      "Failed to check if project ID is available. See firebase-debug.log for more info.",
+      { exit: 2, original: err },
+    );
+  }
 }
 
 /**

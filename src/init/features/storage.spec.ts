@@ -12,7 +12,7 @@ describe("storage", () => {
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
-    askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
+    askWriteProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
     promptStub = sandbox.stub(prompt, "input");
   });
 
