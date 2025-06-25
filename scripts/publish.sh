@@ -99,7 +99,7 @@ echo "Updated package-lock.json for Docker image."
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -am "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release"
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."
