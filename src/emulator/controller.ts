@@ -1106,12 +1106,6 @@ function getListenConfig(
  * @param options
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
-  if (options.ephemeral) {
-    utils.logBullet(
-      `Skipping data export due to --ephemeral flag. Emulator data will not be saved.`,
-    );
-    return;
-  }
   const projectId = options.project;
   if (!projectId) {
     throw new FirebaseError(
