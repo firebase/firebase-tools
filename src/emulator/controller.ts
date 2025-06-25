@@ -77,6 +77,11 @@ const START_LOGGING_EMULATOR = utils.envOverride(
 export async function exportOnExit(options: Options): Promise<void> {
   // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
   const exportOnExitDir = options.exportOnExit as string;
+console.log("export on exit, ephemeral?")
+console.log(JSON.stringify(options))
+      utils.logBullet(
+        `??????????????????????`,
+      );
   if (options.ephemeral) {
     utils.logBullet(
       `Skipping export on exit due to --ephemeral flag. Emulator data will not be saved.`,
@@ -86,7 +91,7 @@ export async function exportOnExit(options: Options): Promise<void> {
   if (exportOnExitDir) {
     try {
       utils.logBullet(
-        `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
+        `Automatically exporting data asdf asdf using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
           "please wait for the export to finish...",
       );
       await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
