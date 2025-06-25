@@ -1,3 +1,4 @@
+- Improve App Hosting compute service account flow for source deploys. (#8784)
 - Improve log messages on skipped App Hosting source deploys. (#8674)
 - Fixed issue in `init` where users were forced to specify emulator UI port (#8626)
 - Adds MCP tools for App Hosting (#8605)
