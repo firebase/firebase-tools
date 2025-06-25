@@ -1,6 +1,7 @@
 ## NEXT
 
 - [Changed] Graphql Syntax Highlighter is now an extension dependency
+- [Fixed] Language server now recognizes fragments in other files
 
 ## 1.4.1
 
