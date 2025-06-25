@@ -163,7 +163,9 @@ export class DataConnectEmulator implements EmulatorInstance {
           `Started up Postgres server, listening on ${JSON.stringify(server.address())}`,
         );
       }
+      console.log("About to conn to postgres");
       await this.connectToPostgres(new URL(connStr), dbId, serviceId);
+      console.log("Connected to postgres");
     }
     return;
   }
@@ -316,6 +318,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     database?: string,
     serviceId?: string,
   ): Promise<boolean> {
+    console.log("connecting to postgres");
     if (!connectionString) {
       const msg = `No Postgres connection found. The Data Connect emulator will not be able to execute operations.`;
       throw new FirebaseError(msg);
