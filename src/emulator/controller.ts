@@ -77,6 +77,12 @@ const START_LOGGING_EMULATOR = utils.envOverride(
 export async function exportOnExit(options: Options): Promise<void> {
   // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
   const exportOnExitDir = options.exportOnExit as string;
+  if (options.ephemeral) {
+    utils.logBullet(
+      `Skipping export on exit due to --ephemeral flag. Emulator data will not be saved.`,
+    );
+    return;
+  }
   if (exportOnExitDir) {
     try {
       utils.logBullet(
@@ -1100,6 +1106,12 @@ function getListenConfig(
  * @param options
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
+  if (options.ephemeral) {
+    utils.logBullet(
+      `Skipping data export due to --ephemeral flag. Emulator data will not be saved.`,
+    );
+    return;
+  }
   const projectId = options.project;
   if (!projectId) {
     throw new FirebaseError(
