@@ -45,19 +45,16 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   // so we check and add the role here to give the IAM changes time to propagate.
   const spinner = ora("Checking your App Hosting compute service account...").start();
   try {
-    await ensureAppHostingComputeServiceAccount(
-      projectId,
-      /* serviceAccount= */ "",
-      /* deployFromSource= */ true,
-    );
-    spinner.succeed("App Hosting compute Service account is ready");
+    await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
+    spinner.succeed("App Hosting compute service account is ready");
   } catch (err) {
     if ((err as FirebaseError).status === 400) {
       spinner.warn(
-        "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
+        "Your App Hosting compute service account is still being provisioned in the background; you may continue with the init flow.",
       );
+    } else {
+      throw err;
     }
-    throw err;
   }
 
   utils.logBullet(

@@ -23,11 +23,7 @@ export default async function (context: Context, options: Options): Promise<void
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
   try {
-    await ensureAppHostingComputeServiceAccount(
-      projectId,
-      /* serviceAccount= */ "",
-      /* deployFromSource= */ true,
-    );
+    await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
   } catch (err) {
     if ((err as FirebaseError).status === 400) {
       logLabeledWarning(

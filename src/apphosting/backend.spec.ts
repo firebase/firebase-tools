@@ -152,13 +152,24 @@ describe("apphosting setup functions", () => {
 
     it("should succeed if the user has permissions for the service account", async () => {
       testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
 
       expect(testResourceIamPermissionsStub).to.be.calledOnce;
-      expect(createServiceAccountStub).to.not.be.called;
-      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
+
+    it("should still add permissions even if the service account already exists", async () => {
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.rejects(new FirebaseError("error occurred", { status: 409 }));
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
+        .fulfilled;
+
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
     it("should succeed if the user can create the service account when it does not exist", async () => {
