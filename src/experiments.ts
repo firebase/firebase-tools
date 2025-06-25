@@ -136,7 +136,6 @@ export const ALL_EXPERIMENTS = experiments({
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
-    default: true,
     public: false,
   },
 });
