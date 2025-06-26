@@ -1,4 +1,5 @@
 - Added validation to check if project ID exists during project creation. (#5233)
-- Add `generate_dataconnect_schema`, `dataconnect_generate_operation`, `firebase_consult_assistant` MCP tools. (#8647)
+- Added `generate_dataconnect_schema`, `dataconnect_generate_operation`, `firebase_consult_assistant` MCP tools. (#8647)
 - `firebase init dataconnect` is now integrated with Gemini in Firebase API to generate Schema based on description. (#8596)
-- Add user-friendly warning for runtime errors from the GCF API. (#8713)
+- Added user-friendly warning for runtime errors from the GCF API. (#8713)
+- Updated Data Connect emulator to 2.8.0, which adds a README to generated Kotlin packages and drops support for macOS 10.15 (Catalina).
