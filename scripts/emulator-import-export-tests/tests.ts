@@ -580,7 +580,7 @@ describe("import/export end to end", () => {
 
 describe("ephemeral flag", () => {
   it("should not export data on exit when --ephemeral is used, even with --export-on-exit", async function (this) {
-    this.timeout(TEST_SETUP_TIMEOUT * 2); // Increased timeout for multiple emulator runs
+    this.timeout(TEST_SETUP_TIMEOUT * 2);
 
     const config = readConfig(); // Assuming readConfig() gets Firestore port
     const port = config.emulators!.firestore.port;
@@ -629,10 +629,14 @@ describe("ephemeral flag", () => {
       // firebase-export-metadata.json might still be created by the hub before the controller bails out
       // or if the directory was created by a previous failed run.
       // The important part is that firestore_export should not be there.
-      expect(filesInExportDir.includes("firestore_export"), "firestore_export directory should not exist").to.be.false;
+      expect(
+        filesInExportDir.includes("firestore_export"),
+        "firestore_export directory should not exist",
+      ).to.be.false;
     } else {
       // If the directory doesn't exist at all, that's also a pass.
-      expect(exportDirExists, "Export directory should ideally not be created, or be empty").to.be.false;
+      expect(exportDirExists, "Export directory should ideally not be created, or be empty").to.be
+        .false;
     }
 
     // Clean up the potentially created export directory
@@ -640,5 +644,4 @@ describe("ephemeral flag", () => {
       fs.rmSync(exportPath, { recursive: true, force: true });
     }
   });
-
 });
