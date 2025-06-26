@@ -105,11 +105,7 @@ export class Command {
    * @return The command, for chaining.
    */
   withEphemeral(): Command {
-    this.option(
-      "--ephemeral",
-      "ignore emulators.dataDir and start with a clean state",
-      false, // Default value if the flag is not present
-    );
+    this.options.push(["--ephemeral", "ignore emulators.dataDir and start with a clean state"]);
     return this;
   }
   /**
