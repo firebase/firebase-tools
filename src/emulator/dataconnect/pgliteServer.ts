@@ -255,7 +255,7 @@ export class PostgresServer {
   constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
     this.baseDataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
-    this.debug = args.debug ? 5 : 0;
+    this.debug = args.debug ? 1 : 0;
   }
 }
 
