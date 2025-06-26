@@ -5,7 +5,9 @@ import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logError } from "../logError";
 import { FirebaseError } from "../error";
+import { execSync } from "child_process";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
 import * as experiments from "../experiments";
@@ -27,7 +29,7 @@ import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
 import { confirm } from "../prompt";
-import { startChat } from "../gemini/chat";
+import { promptAndLaunchGemini } from "../gemini/cli";
 import { attachMemoryLogger, getLogs } from "../gemini/logger";
 
 const TARGETS = {
@@ -89,7 +91,7 @@ export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
   options: DeployOptions,
   customContext = {},
-) {
+): Promise<{ hosting: string | string[] | undefined }> {
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
@@ -159,19 +161,23 @@ export const deploy = async function (
     await chain(releases, context, options, payload);
     await chain(postdeploys, context, options, payload);
   } catch (err: any) {
-    if (process.env.GEMINI_API_KEY) {
-      const choice = await confirm({
-        message:
-          "Deployment failed. Would you like to start a Gemini chat session to help debug?",
-        default: true,
-      });
-      if (choice) {
-        const logs = getLogs();
-        await startChat(err, logs);
-        return { hosting: undefined };
-      }
-    }
-    throw err;
+    logError(err);
+
+    const logs = getLogs();
+    const failedTargets = targetNames.join(", ");
+    const prompt = `I encountered an error during a Firebase deployment for the following services: ${failedTargets}.
+Error: ${err.message}
+
+Here are the deployment logs:
+${logs.join("\n")}
+
+Can you help me debug this deployment failure? Note: When using shell commands, please run them in the foreground to avoid issues with process tracking.`;
+
+    await promptAndLaunchGemini(options.cwd || process.cwd(), prompt, () => {
+      return deploy(targetNames, options, customContext);
+    });
+
+    return { hosting: undefined };
   }
 
   const duration = Date.now() - startTime;
