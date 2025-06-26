@@ -1,4 +1,3 @@
-
 import * as Transport from "winston-transport";
 import { SPLAT } from "triple-beam";
 import { stripVTControlCharacters } from "util";
@@ -9,14 +8,14 @@ export class MemoryLogger extends Transport {
 
   log(info: any, callback: () => void) {
     const segments = [info.message, ...(info[SPLAT] || [])].map((v) => {
-        if (typeof v === "string") {
-            return v;
-        }
-        try {
-            return JSON.stringify(v);
-        } catch (e) {
-            return v;
-        }
+      if (typeof v === "string") {
+        return v;
+      }
+      try {
+        return JSON.stringify(v);
+      } catch (e) {
+        return v;
+      }
     });
     this.logs.push(stripVTControlCharacters(segments.join(" ")));
     callback();
@@ -26,10 +25,10 @@ export class MemoryLogger extends Transport {
 let memoryLogger: MemoryLogger | undefined;
 
 export function attachMemoryLogger() {
-    memoryLogger = new MemoryLogger();
-    logger.add(memoryLogger);
+  memoryLogger = new MemoryLogger();
+  logger.add(memoryLogger);
 }
 
 export function getLogs(): string[] {
-    return memoryLogger ? memoryLogger.logs : [];
+  return memoryLogger ? memoryLogger.logs : [];
 }

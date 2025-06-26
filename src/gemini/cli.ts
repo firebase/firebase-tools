@@ -104,7 +104,11 @@ export async function promptAndLaunchGemini(
   const endColor = { r: 219, g: 68, b: 55 }; // Google Red
   const text = ">Gemini";
 
-  const createGradient = (str: string, start: { r: number, g: number, b: number }, end: { r: number, g: number, b: number }): string => {
+  const createGradient = (
+    str: string,
+    start: { r: number; g: number; b: number },
+    end: { r: number; g: number; b: number },
+  ): string => {
     const steps = str.length;
     let output = "";
     for (let i = 0; i < steps; i++) {
@@ -129,7 +133,7 @@ export async function promptAndLaunchGemini(
     if (!isGeminiInstalled()) {
       throw new FirebaseError(
         "Gemini CLI not found. Please install it by running " +
-        clc.bold("npm install -g @gemini-cli/cli"),
+          clc.bold("npm install -g @gemini-cli/cli"),
       );
     }
     configureProject(projectDir);

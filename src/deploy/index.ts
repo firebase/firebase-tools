@@ -91,7 +91,7 @@ export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
   options: DeployOptions,
   customContext = {},
-): Promise<{ hosting: string | string[] | undefined }> {
+) {
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
@@ -176,8 +176,6 @@ Can you help me debug this deployment failure? Note: When using shell commands, 
     await promptAndLaunchGemini(options.cwd || process.cwd(), prompt, () => {
       return deploy(targetNames, options, customContext);
     });
-
-    return { hosting: undefined };
   }
 
   const duration = Date.now() - startTime;
