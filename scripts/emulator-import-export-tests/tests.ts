@@ -259,20 +259,16 @@ describe("import/export end to end", () => {
       // Ask for export
       const exportCLI = new CLIProcess("2", __dirname);
       const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-      console.log("starting 1");
       await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
         if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes("Export complete");
       });
-      console.log("finished 1");
       await exportCLI.stop();
-      console.log("finished 2");
 
       // Stop the suite
       await emulatorsCLI.stop();
-      console.log("finished 3");
 
       // Confirm the data is exported as expected
       const configPath = path.join(exportPath, "auth_export", "config.json");
@@ -597,7 +593,6 @@ describe("ephemeral flag", () => {
     // Start emulators with --ephemeral and --export-on-exit
     // Expect "Skipping export on exit due to --ephemeral flag."
     let sawEphemeralSkipLog = false;
-console.log("startinggggg");
     await emulatorsCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
@@ -607,17 +602,11 @@ console.log("startinggggg");
           if (data.includes("Skipping export on exit due to --ephemeral flag.")) {
             sawEphemeralSkipLog = true;
           }
-          // Check for import success log for Firestore
-          if (data.includes("Importing data from") && data.includes("firestore_export.overall_export_metadata")) {
-            console.log("HELL YEAH BOI");
-             // This is a good sign import is happening
-          }
           return data.includes(ALL_EMULATORS_STARTED_LOG);
         }
         return false;
       },
     );
-console.log("started");
     // Add some data (which should not be exported)
     const adminApp = admin.initializeApp(
       {
