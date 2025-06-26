@@ -26,7 +26,7 @@ export const list_apps = tool(
     try {
       const apps = await listFirebaseApps(
         projectId!,
-        (!platform || platform === "all")
+        !platform || platform === "all"
           ? AppPlatform.ANY
           : (platform.toUpperCase() as AppPlatform),
       );
