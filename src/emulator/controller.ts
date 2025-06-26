@@ -76,18 +76,26 @@ const START_LOGGING_EMULATOR = utils.envOverride(
  */
 export async function exportOnExit(options: Options): Promise<void> {
   // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
-  const exportOnExitDir = options.exportOnExit as string;
-  if (exportOnExitDir) {
-    try {
-      utils.logBullet(
-        `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
-          "please wait for the export to finish...",
-      );
-      await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
-    } catch (e: unknown) {
-      utils.logWarning(`${e}`);
-      utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
-    }
+  var exportOnExitDir: string
+  
+  if (options.config.src.emulators?.dataDir) {
+    exportOnExitDir = options.config.src.emulators.dataDir
+  } else if (options.exportOnExit) {
+    exportOnExitDir = options.exportOnExit as string;
+  } else {
+    // If no export directory, skip the export.
+    return;
+  }
+  
+  try {
+    utils.logBullet(
+      `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
+        "please wait for the export to finish...",
+    );
+    await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
+  } catch (e: unknown) {
+    utils.logWarning(`${e}`);
+    utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
   }
 }
 
