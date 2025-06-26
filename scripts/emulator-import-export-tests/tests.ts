@@ -577,3 +577,71 @@ describe("import/export end to end", () => {
     await importCLI.stop();
   });
 });
+
+describe("ephemeral flag", () => {
+  it("should not export data on exit when --ephemeral is used, even with --export-on-exit", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT * 2);
+
+    const config = readConfig(); // Assuming readConfig() gets Firestore port
+    const port = config.emulators!.firestore.port;
+    const host = await localhost(); // Make sure localhost is resolved
+    process.env.FIRESTORE_EMULATOR_HOST = `${host}:${port}`;
+
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "database_export"));
+    const emulatorsCLI = new CLIProcess("ephemeral-1", __dirname);
+
+    // Start emulators with --ephemeral and --export-on-exit
+    // Expect "Skipping export on exit due to --ephemeral flag."
+    let sawEphemeralSkipLog = false;
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "firestore", "--ephemeral", "--export-on-exit", exportPath, "--debug"],
+      (data: unknown) => {
+        if (typeof data === "string" || Buffer.isBuffer(data)) {
+          if (data.includes("Skipping export on exit due to --ephemeral flag.")) {
+            sawEphemeralSkipLog = true;
+          }
+          return data.includes(ALL_EMULATORS_STARTED_LOG);
+        }
+        return false;
+      },
+    );
+    // Add some data (which should not be exported)
+    const adminApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+      },
+      "ephemeral-firestore-1",
+    ); // firestore set via env variable
+
+    await adminApp.firestore().collection("testCollection").doc("testDoc").set({ foo: "bar" });
+    await adminApp.delete(); // Clean up the app
+
+    // Stop the emulators (which would trigger export-on-exit if not ephemeral)
+    await emulatorsCLI.stop();
+
+    // Verify that the export path does not exist or is empty
+    expect(sawEphemeralSkipLog, "Did not see ephemeral skip log message").to.be.true;
+    const exportDirExists = fs.existsSync(exportPath);
+    if (exportDirExists) {
+      const filesInExportDir = fs.readdirSync(exportPath);
+      // firebase-export-metadata.json might still be created by the hub before the controller bails out
+      // or if the directory was created by a previous failed run.
+      // The important part is that firestore_export should not be there.
+      expect(
+        filesInExportDir.includes("firestore_export"),
+        "firestore_export directory should not exist",
+      ).to.be.false;
+    } else {
+      // If the directory doesn't exist at all, that's also a pass.
+      expect(exportDirExists, "Export directory should ideally not be created, or be empty").to.be
+        .false;
+    }
+
+    // Clean up the potentially created export directory
+    if (exportDirExists) {
+      fs.rmSync(exportPath, { recursive: true, force: true });
+    }
+  });
+});
