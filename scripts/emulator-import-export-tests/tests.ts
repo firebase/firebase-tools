@@ -230,12 +230,17 @@ describe("import/export end to end", () => {
     const project = FIREBASE_PROJECT || "example";
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
-    await emulatorsCLI.start("emulators:start", project, ["--only", "auth", "--debug"], (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+    await emulatorsCLI.start(
+      "emulators:start",
+      project,
+      ["--only", "auth", "--debug"],
+      (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      },
+    );
 
     // Create some accounts to export:
     const config = readConfig();
@@ -339,12 +344,17 @@ describe("import/export end to end", () => {
     const project = FIREBASE_PROJECT || "example";
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
-    await emulatorsCLI.start("emulators:start", project, ["--only", "auth", "--debug"], (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+    await emulatorsCLI.start(
+      "emulators:start",
+      project,
+      ["--only", "auth", "--debug"],
+      (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      },
+    );
 
     // Create some accounts to export:
     const accountCount = 777; // ~120KB data when exported
@@ -425,12 +435,17 @@ describe("import/export end to end", () => {
     const project = FIREBASE_PROJECT || "example";
     const emulatorsCLI = new CLIProcess("1", __dirname);
 
-    await emulatorsCLI.start("emulators:start", project, ["--only", "auth", "--debug"], (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+    await emulatorsCLI.start(
+      "emulators:start",
+      project,
+      ["--only", "auth", "--debug"],
+      (data: unknown) => {
+        if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      },
+    );
 
     // Ask for export (with no users)
     const exportCLI = new CLIProcess("2", __dirname);
@@ -607,7 +622,9 @@ describe("import/export end to end", () => {
     );
 
     const db = adminApp.firestore();
-    const docRefId = (await db.collection("testCollection").add(firestoreData.testCollection.testDoc)).id;
+    const docRefId = (
+      await db.collection("testCollection").add(firestoreData.testCollection.testDoc)
+    ).id;
 
     await adminApp.delete();
     // Stop the emulator suite - this should trigger export to dataDir
@@ -616,8 +633,15 @@ describe("import/export end to end", () => {
     // Verify data was exported to dataDir
     // Firestore data is stored in a subdirectory named after the project ID, then 'fs_export_output'
     // and then a metadata file and the actual data files.
-    const firestoreExportMetadataPath = path.join(dataDir, "firestore_export", "firestore_export.overall_export_metadata");
-    expect(fs.existsSync(firestoreExportMetadataPath), `Firestore export metadata should exist at ${firestoreExportMetadataPath}`).to.be.true;
+    const firestoreExportMetadataPath = path.join(
+      dataDir,
+      "firestore_export",
+      "firestore_export.overall_export_metadata",
+    );
+    expect(
+      fs.existsSync(firestoreExportMetadataPath),
+      `Firestore export metadata should exist at ${firestoreExportMetadataPath}`,
+    ).to.be.true;
 
     // Start emulator again - it should automatically import from dataDir
     emulatorsCLI = new CLIProcess("dataDir-import", __dirname);
@@ -641,7 +665,9 @@ describe("import/export end to end", () => {
     const dbImport = adminAppImport.firestore();
     const docSnap = await dbImport.collection("testCollection").doc(docRefId).get();
     expect(docSnap.exists, "Document should exist after import from dataDir").to.be.true;
-    expect(docSnap.data(), "Document data should match after import from dataDir").to.deep.equal(firestoreData.testCollection.testDoc);
+    expect(docSnap.data(), "Document data should match after import from dataDir").to.deep.equal(
+      firestoreData.testCollection.testDoc,
+    );
     await adminAppImport.delete();
 
     // Stop the emulator suite
