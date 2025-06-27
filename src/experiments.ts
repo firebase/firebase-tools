@@ -134,6 +134,10 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
