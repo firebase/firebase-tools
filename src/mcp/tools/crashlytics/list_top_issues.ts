@@ -12,7 +12,7 @@ export const list_top_issues = tool(
         .string()
         .optional()
         .describe(
-          "AppId for which the issues list should be fetched. For an Android application, defaults to the mobilesdk_app_id value specified in the google-services.json file for the current package name. For an iOS Application, defaults to the GOOGLE_APP_ID from GoogleService-Info.plist. If neither, use the first appId provided by firebase_list_apps.",
+          "AppId for which the issues list should be fetched. For an Android application, read the mobilesdk_app_id value specified in the google-services.json file for the current package name. For an iOS Application, read the GOOGLE_APP_ID from GoogleService-Info.plist. If neither is available, use the `firebase_list_apps` tool to find an app_id to pass to this tool.",
         ),
       issue_count: z
         .number()
