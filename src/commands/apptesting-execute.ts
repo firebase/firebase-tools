@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 import { marked } from "marked";
 import { needProjectId } from "../projectUtils";
 import { consoleUrl } from "../utils";
+import { AppPlatform, listFirebaseApps } from "../management/apps";
 
 export const command = new Command("apptesting:execute <target>")
   .description(
@@ -32,6 +33,15 @@ export const command = new Command("apptesting:execute <target>")
     if (!options.app) {
       throw new FirebaseError("App is required");
     }
+
+    const projectId = needProjectId(options);
+    const appList = await listFirebaseApps(projectId, AppPlatform.WEB);
+    const app = appList.find((a) => a.appId === options.app);
+
+    if (!app) {
+      throw new FirebaseError("Invalid app id");
+    }
+
     const testDir = options.config.src.apptesting?.testDir || "tests";
     const tests = await parseTestFiles(
       testDir,
@@ -46,10 +56,21 @@ export const command = new Command("apptesting:execute <target>")
 
     logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
 
+    const invokeSpinner = ora("Sending test request");
+    invokeSpinner.start();
     const invocationOperation = await invokeTests(options.app, target, tests);
+    invokeSpinner.text = "Testing started";
+    invokeSpinner.succeed();
+
     const invocationId = invocationOperation.name?.split("/").pop();
-    const projectId = needProjectId(options);
-    const url = consoleUrl(projectId, `/apptesting/${options.app}/invocations/${invocationId}`);
+
+    // The console expects legacy namespace style IDs.
+    // This is temporary until console supports appId URLs.
+    const appWebId = (app as any).webId;
+    const url = consoleUrl(
+      projectId,
+      `/apptesting/app/web:${appWebId}/invocations/${invocationId}`,
+    );
     logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`));
 
     if (options.testsNonBlocking) {
@@ -61,16 +82,16 @@ export const command = new Command("apptesting:execute <target>")
       throw new FirebaseError("Invocation details unavailable");
     }
 
-    const spinner = ora(getOutput(invocationOperation.metadata));
-    spinner.start();
+    const executionSpinner = ora(getOutput(invocationOperation.metadata));
+    executionSpinner.start();
     await pollInvocationStatus(invocationOperation.name, (operation) => {
       if (!operation.response) {
         logger.info("invocation details unavailable");
         return;
       }
-      spinner.text = getOutput(operation.metadata as TestInvocation);
+      executionSpinner.text = getOutput(operation.metadata as TestInvocation);
     });
-    spinner.succeed();
+    executionSpinner.succeed();
   });
 
 function getOutput(invocation: TestInvocation) {
@@ -79,7 +100,7 @@ function getOutput(invocation: TestInvocation) {
   }
   return [
     invocation.runningExecutions
-      ? `${invocation.runningExecutions} tests still running...`
+      ? `${invocation.runningExecutions} tests still running (this may take a while)...`
       : undefined,
     invocation.succeededExecutions
       ? `✔ ${invocation.succeededExecutions} tests passing`
