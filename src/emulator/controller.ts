@@ -77,11 +77,11 @@ const START_LOGGING_EMULATOR = utils.envOverride(
 export async function exportOnExit(options: Options): Promise<void> {
   // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
   var exportOnExitDir: string
-  
-  if (options.config.src.emulators?.dataDir) {
-    exportOnExitDir = options.config.src.emulators.dataDir
-  } else if (options.exportOnExit) {
+console.log("wtf");
+  if (options.exportOnExit) { // CLI flag takes priority over firebase.json value
     exportOnExitDir = options.exportOnExit as string;
+  } else if (options.config.src.emulators?.dataDir) {
+    exportOnExitDir = options.config.src.emulators.dataDir
   } else {
     // If no export directory, skip the export.
     return;
