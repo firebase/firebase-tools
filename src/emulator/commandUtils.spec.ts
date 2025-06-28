@@ -5,7 +5,20 @@ import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./command
 import * as path from "path";
 import * as sinon from "sinon";
 
+import { Config } from "../config";
+import * as utils from "../utils";
+
 describe("commandUtils", () => {
+  let logLabeledBulletStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    logLabeledBulletStub = sinon.stub(utils, "logLabeledBullet");
+  });
+
+  afterEach(() => {
+    logLabeledBulletStub.restore();
+  });
+
   const testSetExportOnExitOptions = (options: any): any => {
     commandUtils.setExportOnExitOptions(options);
     return options;
@@ -119,5 +132,40 @@ describe("commandUtils", () => {
         someUnrelatedOption: "isHere",
       }).someUnrelatedOption,
     ).to.eql("isHere");
+  });
+
+  describe("beforeEmulatorCommand", () => {
+    it("should unset dataDir if --ephemeral is true and dataDir is set", async () => {
+      const options = {
+        ephemeral: true,
+        config: new Config({ emulators: { dataDir: "./emulator_data" } }, {}),
+        project: "test-project",
+      };
+      await commandUtils.beforeEmulatorCommand(options);
+      expect(options.config.get("emulators.dataDir")).to.be.undefined;
+      expect(logLabeledBulletStub.calledOnceWith("emulators", "Ignoring dataDir due to --ephemeral flag.")).to.be.true;
+    });
+
+    it("should not modify dataDir if --ephemeral is false", async () => {
+      const options = {
+        ephemeral: false,
+        config: new Config({ emulators: { dataDir: "./emulator_data" } }, {}),
+        project: "test-project",
+      };
+      await commandUtils.beforeEmulatorCommand(options);
+      expect(options.config.get("emulators.dataDir")).to.equal("./emulator_data");
+      expect(logLabeledBulletStub.called).to.be.false;
+    });
+
+    it("should not modify dataDir if --ephemeral is true but dataDir is not set", async () => {
+      const options = {
+        ephemeral: true,
+        config: new Config({ emulators: {} }, {}),
+        project: "test-project",
+      };
+      await commandUtils.beforeEmulatorCommand(options);
+      expect(options.config.get("emulators.dataDir")).to.be.undefined;
+      expect(logLabeledBulletStub.called).to.be.false;
+    });
   });
 });
