@@ -183,20 +183,7 @@ export class FirestoreApi {
       return [];
     }
 
-    return indexes.map((index: any): types.Index => {
-      // Ignore any fields that point at the document ID, as those are implied
-      // in all indexes.
-      const fields = index.fields.filter((field: types.IndexField) => {
-        return field.fieldPath !== "__name__";
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    return indexes;
   }
 
   /**
