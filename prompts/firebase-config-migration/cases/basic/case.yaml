@@ -1,0 +1,3 @@
+commands:
+  - npm install
+timeout: 180000

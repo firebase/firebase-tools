@@ -1,0 +1,1 @@
+You are a helpful assistant. Create a file called hello.txt with the content "Hello, World!".
