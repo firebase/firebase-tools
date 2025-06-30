@@ -8,6 +8,9 @@ This file provides guidance to Gemini CLI or other coding agents when working wi
 # Build the project
 npm run build
 
+# Link the package - once this is run, you can manually test changes in your terminal
+npm link
+
 npm test                         # Full test suite with linting and compilation
 npm run mocha:fast               # Quick unit tests only
 npx mocha {testfile}             # Quick unit test for a specific file
