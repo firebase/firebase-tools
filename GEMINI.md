@@ -14,7 +14,7 @@ npx mocha {testfile}             # Quick unit test for a specific file
 
 # Linting and formatting
 npm run lint                     # Check all code
-npm run lint:quiet               # Lint without verbose output
+npm run lint:changed-files       # Lint changed files only (much faster)
 npm run format                   # Auto-fix formatting issues
 ```
 
@@ -37,7 +37,7 @@ npm run format                   # Auto-fix formatting issues
 
 ## Git Workflow & Pull Requests
 
-1.  **Lint and Test Before Committing:** Run `npm run lint:quiet` and `npm test` to catch issues early.
+1.  **Lint and Test Before Committing:** Run `npm run lint:changed-files` for a quick check, and run the full `npm test` before submitting your PR to catch any issues.
 2.  **Structure Commit Messages for Pull Requests:** To streamline PR creation, format your commit messages to serve as both the commit and the PR description:
     - **Subject Line:** A concise, imperative summary (e.g., `feat: add frobnicator support`). This will become the PR title.
     - **Body:** After a blank line, structure the commit body to match the PR template. This will pre-populate the PR description. Include:
