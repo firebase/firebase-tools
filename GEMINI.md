@@ -1,6 +1,6 @@
 # GEMINI.md
 
-This file provides guidance to Gemini CLI or other coding agents when working with code in this repository.
+This file provides guidance to Gemini CLI or other coding agents when working with code in this repository. It focuses on key conventions and best practices. For a comprehensive guide on the development setup and contribution process, see [`CONTRIBUTING.md`](/Users/danielylee/google/firebase-tools/CONTRIBUTING.md).
 
 ## Essential Commands
 
@@ -10,67 +10,34 @@ npm run build
 
 npm test                         # Full test suite with linting and compilation
 npm run mocha:fast               # Quick unit tests only
-npx npx mocha {testfile}         # quick unit test specific file only
+npx mocha {testfile}             # Quick unit test for a specific file
 
 # Linting and formatting
 npm run lint                     # Check all code
-npm run lint:changed-files       # Lint changed files only
+npm run lint:quiet               # Lint without verbose output
 npm run format                   # Auto-fix formatting issues
-
-# TypeScript compilation
-npm run test:compile             # Check TypeScript compilation
 ```
-
-## Architecture Overview
-
-### Command Structure
-
-- Commands are defined in `src/commands/` with pattern `[service]-[action].ts`
-- Each command extends base `Command` class from `src/command.ts`
-- Commands are registered in `src/commands/index.ts`
-
-### Key Patterns
-
-- API calls use `src/apiv2.ts` for authenticated requests
-- Error handling uses custom `FirebaseError` class
-
-## Testing Guidelines
-
-- Unit tests: `*.spec.ts` files alongside source
-- Integration tests: in `/scripts/`
-- Use Mocha + Chai for assertions
-- Mock external services with nock
 
 ## Best Practices
 
-### TypeScript
+### Code Quality & Utilities
+- **Look for existing utilities first:** Before writing common helper functions (e.g., for logging, file system operations, promises, string manipulation), check `src/utils.ts` to see if a suitable function already exists.
+- **Use the central `logger`** (`src/logger.ts`); never use `console.log()` for user-facing output.
+- **Throw `FirebaseError`** (`src/error.ts`) for expected, user-facing errors.
+- **API calls must use `apiv2.ts`** for authenticated requests.
 
-- **Never use `any` or `unknown`** to resolve type issues
-  - Define proper interfaces/types instead
-  - Use type guards for runtime type checking
+### TypeScript
+- **Never use `any` or `unknown` as an escape hatch.** Define proper interfaces/types or use type guards.
+- Use strict null checks and handle `undefined`/`null` explicitly.
 
 ### Testing
+- **Avoid excessive mocking in unit tests.** If a test requires many mocks, it might be better as an integration test in `/scripts/[feature]-tests/`.
+- **Unit tests (`*.spec.ts`) should be co-located with their source files.**
+- Test error cases and edge conditions, not just the "happy path."
 
-- **Avoid excessive mocking** in unit tests
-  - If a test requires many mocks, consider writing an integration test instead
-  - Prefer testing real behavior over implementation details
-- Test error cases and edge conditions, not just happy paths
-- Use descriptive test names that explain the scenario
-- Group related tests with `describe` blocks
-- Each test should be independent - no shared state between tests
+## Git Workflow & Pull Requests
 
-### Code Quality
-
-- Functions should do one thing well
-- Use early returns to reduce nesting
-- Extract magic numbers/strings to named constants
-- Add JSDoc comments for public APIs
-- Keep files focused - if a file grows too large, split it
-
-## Git Workflow
-
-- Never commit without running `npm run lint`
-- Fix lint/type errors before pushing
-- Keep commits focused on single changes
-- Reference issues with "Fixes #123" in commit messages
+1.  **Lint and Test Before Committing:** Run `npm run lint:quiet` and `npm test` to catch issues early.
+2.  **Write Clear Commit Messages:** Keep commits focused on a single change. Reference issues with "Fixes #123" in the message body.
+3.  **Update Changelog:** For any user-facing change (new features, bug fixes, deprecations), add a corresponding entry to `CHANGELOG.md`.
 
