@@ -1,6 +1,6 @@
 # GEMINI.md
 
-This file provides guidance to Gemini CLI or other coding agents when working with code in this repository. It focuses on key conventions and best practices. For a comprehensive guide on the development setup and contribution process, see [`CONTRIBUTING.md`](/Users/danielylee/google/firebase-tools/CONTRIBUTING.md).
+This file provides guidance to Gemini CLI or other coding agents when working with code in this repository. It focuses on key conventions and best practices. For a comprehensive guide on the development setup and contribution process, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Essential Commands
 
