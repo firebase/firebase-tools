@@ -38,6 +38,12 @@ npm run format                   # Auto-fix formatting issues
 ## Git Workflow & Pull Requests
 
 1.  **Lint and Test Before Committing:** Run `npm run lint:quiet` and `npm test` to catch issues early.
-2.  **Write Clear Commit Messages:** Keep commits focused on a single change. Reference issues with "Fixes #123" in the message body.
+2.  **Structure Commit Messages for Pull Requests:** To streamline PR creation, format your commit messages to serve as both the commit and the PR description:
+    - **Subject Line:** A concise, imperative summary (e.g., `feat: add frobnicator support`). This will become the PR title.
+    - **Body:** After a blank line, structure the commit body to match the PR template. This will pre-populate the PR description. Include:
+        - `### Description`
+        - `### Scenarios Tested`
+        - `### Sample Commands`
+        - Reference issues with "Fixes #123" in the description.
 3.  **Update Changelog:** For any user-facing change (new features, bug fixes, deprecations), add a corresponding entry to `CHANGELOG.md`.
 
