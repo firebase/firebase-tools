@@ -18,11 +18,10 @@ The Firebase MCP server lives alongside the Firebase CLI in the [firebase/fireba
 It lives here so that it can share code for authentication, API calls, and utilities with the CLI.
 
 External developers: If you're interested in contributing code, get started by
-[making a fork of the repository for your GitHub account](https://help.github.com/en/github/getting-started-with-github/fork-a-repo). 
+[making a fork of the repository for your GitHub account](https://help.github.com/en/github/getting-started-with-github/fork-a-repo).
 
 Internal developers: Go to go/firebase-github-request and ask for access to this repo. You should work
 off of sepearate branches in this repo, to ensure that all CI runs correctly for you.
-
 
 ### Contribution Process
 
@@ -84,9 +83,9 @@ you want to add can be added to an existing tool.
 
 #### Create a file for your tool
 
-First, create a new file in `src/mcp/tools/<product>`. 
-If your product does not have tools yet, create a new directory under `src/mcp/tools`/. 
-If the tool is relevant for many Firebase products, put it under `core`. 
+First, create a new file in `src/mcp/tools/<product>`.
+If your product does not have tools yet, create a new directory under `src/mcp/tools`/.
+If the tool is relevant for many Firebase products, put it under `core`.
 
 Tool files should be named `<product>/<foo_tool>`. The tool will then be listed as `<product>_<foo_tool>`.
 
@@ -98,8 +97,7 @@ import { mcpError, toContent } from "../../util.js";
 export const foo_bar = tool(
   {
     name: "foo_bar",
-    description:
-      "Foos a bar. This description informs LLMs when to use this tool",
+    description: "Foos a bar. This description informs LLMs when to use this tool",
     inputSchema: z.object({
       foo: z
         .string()
@@ -110,23 +108,20 @@ export const foo_bar = tool(
       readOnlyHint: true, // True if this tool makes no changes to your local files or Firebase project.
       idempotentHint: false, // True if this tool can safely be run multiple times without redundant effects.
       destructiveHint: false, // True if this tool deletes files or data.
-      openWorldHint: false // Does this tool interact with open (ie the web) or closed systems (ie a Firestore DB)
+      openWorldHint: false, // Does this tool interact with open (ie the web) or closed systems (ie a Firestore DB)
     },
     _meta: {
       requiresProject: true, // Does this tool require you to be in a Firebase project directory?
       requiresAuth: true, // Does this tool require you to be authenticated (usually via `firebase login`)
-      requiresGemini: true, // Does this tool use Gemini in Firebase in any way? 
+      requiresGemini: true, // Does this tool use Gemini in Firebase in any way?
     },
   },
   async (
     { foo }, // Anything passed in inputSchema is avialable here.
-    {   projectId,
-        accountEmail,
-        config,
-    } // See ServerToolContext for a complete list of available fields
+    { projectId, accountEmail, config }, // See ServerToolContext for a complete list of available fields
   ) => {
     // Business logic for the tool
-    let foo
+    let foo;
     try {
       const foo = await barFood(prompt, projectId);
     } catch (e: any) {
@@ -141,18 +136,18 @@ export const foo_bar = tool(
 
 Here are a few style notes:
 
-*   Tool names
-    *  should not include product name
-    *  should be all lower-case letters
-    *  should be snake case
-*   Descriptions
-    *  should be aimed at informing LLMs, not humans
+- Tool names
+  - should not include product name
+  - should be all lower-case letters
+  - should be snake case
+- Descriptions
+  - should be aimed at informing LLMs, not humans
 
 #### Load the command
 
 Next, go to `src/mcp/tools/<product>/index.ts`, and add your tool:
 
-``` typescript
+```typescript
 import { foo_bar } from "./foo_bar"
 
 export const <product>Tools = [
@@ -163,7 +158,7 @@ export const <product>Tools = [
 
 If this is the first tool for this product, also go to `src/mcp/tools/index.ts` and add your product:
 
-``` typescript
+```typescript
 import { <product>Tools } from "./<product>/index.js"
 
 const tools: Record<ServerFeature, ServerTool[]> = {
@@ -171,6 +166,14 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   <product>: addFeaturePrefix("<product>", <product>Tools),
 }
 
+```
+
+### Update the README.md tool list
+
+Run the following command to add your new tool to the list in `src/mcp/README.md`
+
+```
+node lib/bin/firebase.js experimental:mcp --generate-tool-list
 ```
 
 ### Logging and terminal formatting
