@@ -278,6 +278,7 @@
                 },
                 "runtime": {
                     "enum": [
+                        "nodejs18",
                         "nodejs20",
                         "nodejs22",
                         "python310",

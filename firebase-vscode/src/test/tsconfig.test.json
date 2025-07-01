@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "es2020",
     "lib": ["es2020", "dom"],
-    "strict": false /* enable all strict type-checking options */,
+    "strict": true /* enable all strict type-checking options */,
     "allowJs": true,
     "checkJs": false,
     "sourceMap": true,
