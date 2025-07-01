@@ -73,7 +73,7 @@ export const RUNTIMES = runtimes({
   },
   nodejs18: {
     friendly: "Node.js 18",
-    status: "decommissioned",
+    status: "deprecated",
     deprecationDate: "2025-04-30",
     decommissionDate: "2025-10-30",
   },
