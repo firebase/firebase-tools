@@ -358,17 +358,27 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       throw err;
     }
   }
-  await addServiceAccountToRoles(
-    projectId,
-    defaultComputeServiceAccountEmail(projectId),
-    [
-      "roles/firebaseapphosting.computeRunner",
-      "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.readTokenAccessor",
-      "roles/storage.objectViewer",
-    ],
-    /* skipAccountLookup= */ true,
-  );
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      defaultComputeServiceAccountEmail(projectId),
+      [
+        "roles/firebaseapphosting.computeRunner",
+        "roles/firebase.sdkAdminServiceAgent",
+        "roles/developerconnect.readTokenAccessor",
+        "roles/storage.objectViewer",
+      ],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 400) {
+      logWarning(
+        "Your App Hosting compute service account is still being provisioned in the background; you may continue with the init flow.",
+      );
+    } else {
+      throw err;
+    }
+  }
 }
 
 /**
