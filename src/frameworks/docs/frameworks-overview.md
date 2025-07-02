@@ -50,6 +50,10 @@ live site:
 1. Run `firebase deploy` from the terminal.
 2. Check your website on: `SITE_ID.web.app` or `PROJECT_ID.web.app` (or your custom domain, if you set one up).
 
+## Configure different environments
+
+Cloud Functions [parameterized configuration](https://firebase.google.com/docs/functions/config-env?gen=2nd#params) can be used to leverage `.env` files based on your project ID, which can be used to deploy your project to different environments, like staging and production.
+
 ## Next steps
 
 See the detailed guide for your preferred framework:
