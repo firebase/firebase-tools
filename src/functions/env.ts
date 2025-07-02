@@ -243,6 +243,9 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  codebase?: string;
+  isRemoteSource?: boolean;
+  projectRoot?: string;
 }
 
 /**
@@ -359,6 +362,10 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *   1. .env
  *   2. .env.<project or alias>
  *
+ * For remote sources, also looks for:
+ *   3. .env.<codebase> (in project root)
+ *   4. .env.<codebase>.<project or alias> (in project root)
+ *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
  *
  * @return {Record<string, string>} Environment variables for the project.
@@ -368,8 +375,46 @@ export function loadUserEnvs({
   projectId,
   projectAlias,
   isEmulator,
+  codebase,
+  isRemoteSource,
+  projectRoot,
 }: UserEnvsOpts): Record<string, string> {
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  let envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  
+  // For remote sources, also look for codebase-specific env files in project root
+  if (isRemoteSource && codebase && projectRoot) {
+    const remoteEnvFiles: string[] = [];
+    
+    // Check for .env.<codebase>
+    const codebaseEnvFile = path.join(projectRoot, `.env.${codebase}`);
+    if (fs.existsSync(codebaseEnvFile)) {
+      remoteEnvFiles.push(codebaseEnvFile);
+    }
+    
+    // Check for .env.<codebase>.<projectId>
+    const codebaseProjectEnvFile = path.join(projectRoot, `.env.${codebase}.${projectId}`);
+    if (fs.existsSync(codebaseProjectEnvFile)) {
+      remoteEnvFiles.push(codebaseProjectEnvFile);
+    }
+    
+    // Check for .env.<codebase>.<projectAlias>
+    if (projectAlias) {
+      const codebaseAliasEnvFile = path.join(projectRoot, `.env.${codebase}.${projectAlias}`);
+      if (fs.existsSync(codebaseAliasEnvFile)) {
+        remoteEnvFiles.push(codebaseAliasEnvFile);
+      }
+      
+      // Disallow both project and alias files
+      if (fs.existsSync(codebaseProjectEnvFile) && fs.existsSync(codebaseAliasEnvFile)) {
+        throw new FirebaseError(
+          `Can't have both dotenv files .env.${codebase}.${projectId} and .env.${codebase}.${projectAlias}.`
+        );
+      }
+    }
+    
+    envFiles = [...envFiles, ...remoteEnvFiles];
+  }
+  
   if (envFiles.length === 0) {
     return {};
   }
@@ -387,7 +432,10 @@ export function loadUserEnvs({
   let envs: Record<string, string> = {};
   for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
+      // For absolute paths (remote source env files), use as-is
+      // For relative paths, join with functionsSource
+      const filePath = path.isAbsolute(f) ? f : path.join(functionsSource, f);
+      const data = fs.readFileSync(filePath, "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {

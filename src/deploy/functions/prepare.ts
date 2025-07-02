@@ -50,6 +50,7 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import { prepareRemoteSource } from "./remoteSource";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -95,13 +96,16 @@ export async function prepare(
   context.codebaseDeployEvents = {};
 
   // ===Phase 1. Load codebases from source.
-  const wantBuilds = await loadCodebases(
+  const { builds: wantBuilds, resolvedSourceDirs } = await loadCodebases(
     context.config,
     options,
     firebaseConfig,
     runtimeConfig,
     context.filters,
   );
+  
+  // Store resolved source directories in context
+  context.resolvedSourceDirs = resolvedSourceDirs;
 
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
@@ -118,10 +122,20 @@ export async function prepare(
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    
+    // Get the resolved source directory
+    const sourceDir = context.resolvedSourceDirs![codebase];
+    if (!sourceDir) {
+      throw new FirebaseError(`No resolved source directory found for codebase ${codebase}`);
+    }
+    
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: options.config.path(config.source),
+      functionsSource: sourceDir,
       projectId: projectId,
       projectAlias: options.projectAlias,
+      codebase: config.codebase,
+      isRemoteSource: !!config.remoteSource,
+      projectRoot: options.config.projectDir,
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
@@ -429,20 +443,54 @@ export async function loadCodebases(
   firebaseConfig: args.FirebaseConfig,
   runtimeConfig: Record<string, unknown>,
   filters?: EndpointFilter[],
-): Promise<Record<string, build.Build>> {
+): Promise<{ builds: Record<string, build.Build>; resolvedSourceDirs: Record<string, string> }> {
   const codebases = targetCodebases(config, filters);
   const projectId = needProjectId(options);
 
+  // Resolve all source directories in a single pass
+  const resolvedSourceDirs: Record<string, string> = {};
+  
+  // Process all codebases in parallel for better performance
+  const resolutionPromises = codebases.map(async (codebase) => {
+    const codebaseConfig = configForCodebase(config, codebase);
+    
+    if (codebaseConfig.remoteSource) {
+      logLabeledBullet("functions", `resolving remote source for codebase ${codebase}`);
+      const result = await prepareRemoteSource(
+        codebaseConfig.remoteSource,
+        codebase,
+        options.config.projectDir
+      );
+      return { codebase, sourceDir: result.sourceDir };
+    } else if (codebaseConfig.source) {
+      // Local source - just resolve the path
+      const sourceDir = options.config.path(codebaseConfig.source);
+      return { codebase, sourceDir };
+    } else {
+      throw new FirebaseError(`No source specified for codebase ${codebase}`);
+    }
+  });
+  
+  // Wait for all resolutions to complete
+  const results = await Promise.all(resolutionPromises);
+  
+  // Build the result map
+  for (const { codebase, sourceDir } of results) {
+    resolvedSourceDirs[codebase] = sourceDir;
+  }
+
   const wantBuilds: Record<string, build.Build> = {};
+  
   for (const codebase of codebases) {
     const codebaseConfig = configForCodebase(config, codebase);
-    const sourceDirName = codebaseConfig.source;
-    if (!sourceDirName) {
+    const sourceDir = resolvedSourceDirs[codebase];
+    
+    if (!sourceDir) {
       throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
+        `Failed to resolve source directory for codebase ${codebase}`,
       );
     }
-    const sourceDir = options.config.path(sourceDirName);
+    
     const delegateContext: runtimes.DelegateContext = {
       projectId,
       sourceDir,
@@ -480,7 +528,7 @@ export async function loadCodebases(
     });
     wantBuilds[codebase].runtime = codebaseConfig.runtime;
   }
-  return wantBuilds;
+  return { builds: wantBuilds, resolvedSourceDirs };
 }
 
 // Genkit almost always requires an API key, so warn if the customer is about to deploy

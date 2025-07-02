@@ -58,6 +58,9 @@ export interface Context {
 
   // Tracks context for extension deploy
   extensions?: ExtContext;
+  
+  // Maps codebase to its resolved source directory (local path or downloaded remote)
+  resolvedSourceDirs?: Record<string, string>;
 }
 
 export interface CodebaseDeployEvent {

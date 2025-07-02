@@ -165,8 +165,15 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
+export type RemoteSource = {
+  repo: string;
+  ref: string;
+  path?: string;
+};
+
 export type FunctionConfig = {
   source?: string;
+  remoteSource?: RemoteSource;
   ignore?: string[];
   runtime?: ActiveRuntime;
   codebase?: string;
