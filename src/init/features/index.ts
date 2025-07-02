@@ -31,4 +31,4 @@ export {
 export { doSetup as dataconnectSdk } from "./dataconnect/sdk";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
-export { doSetup as aiTools } from "./ai-tools";
+export { doSetup as aiTools } from "./aitools";

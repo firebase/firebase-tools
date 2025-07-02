@@ -14,7 +14,7 @@ export const gemini: AIToolModule = {
     enabledFeatures: string[]
   ): Promise<void> {
     // Create extension configuration from template
-    const extensionTemplate = readTemplateSync("init/ai-tools/gemini-extension.json");
+    const extensionTemplate = readTemplateSync("init/aitools/gemini-extension.json");
     const extensionConfig = extensionTemplate.replace("{{PROJECT_PATH}}", projectPath);
     config.writeProjectFile(
       ".gemini/extensions/firebase/gemini-extension.json",

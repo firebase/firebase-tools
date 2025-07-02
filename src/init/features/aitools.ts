@@ -2,7 +2,7 @@ import * as utils from "../../utils";
 import { checkbox, confirm } from "../../prompt";
 import { Setup } from "../index";
 import { Config } from "../../config";
-import { AI_TOOLS, AIToolChoice } from "./ai-tools/index";
+import { AI_TOOLS, AIToolChoice } from "./aitools/index";
 
 interface AgentsInitSelections {
   tools?: string[];

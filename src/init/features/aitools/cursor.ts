@@ -14,12 +14,12 @@ export const cursor: AIToolModule = {
     enabledFeatures: string[]
   ): Promise<void> {
     // Create MCP configuration from template
-    const mcpTemplate = readTemplateSync("init/ai-tools/cursor-mcp.json");
+    const mcpTemplate = readTemplateSync("init/aitools/cursor-mcp.json");
     const mcpConfig = mcpTemplate.replace("{{PROJECT_PATH}}", projectPath);
     config.writeProjectFile(".cursor/mcp.json", mcpConfig);
 
     // Create Cursor rules file with proper header
-    const header = readTemplateSync("init/ai-tools/cursor-rules-header.txt");
+    const header = readTemplateSync("init/aitools/cursor-rules-header.txt");
     let rulesContent = header + "\n\n" + getBaseContext();
     
     // For Cursor, we reference separate files for additional contexts

@@ -14,7 +14,7 @@ export const studio: AIToolModule = {
     enabledFeatures: string[]
   ): Promise<void> {
     // Read the Studio AI rules header template
-    const header = readTemplateSync("init/ai-tools/studio-airules-header.md");
+    const header = readTemplateSync("init/aitools/studio-airules-header.md");
     
     // Build the Studio-specific content
     let aiRulesContent = header + "\n\nThis is a Firebase project with the following structure and conventions:\n\n";

@@ -79,7 +79,7 @@ let choices: {
     checked: false,
   },
   {
-    value: "ai-tools",
+    value: "aitools",
     name: "AI Tools: Configure AI coding assistants with Firebase context",
     checked: false,
   },
