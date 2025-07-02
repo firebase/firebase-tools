@@ -79,6 +79,11 @@ let choices: {
     checked: false,
   },
   {
+    value: "agents",
+    name: "AI Agents: Configure AI coding assistants with Firebase context",
+    checked: false,
+  },
+  {
     value: "database",
     name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
     checked: false,
