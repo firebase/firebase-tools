@@ -7,5 +7,5 @@
       "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "{{PROJECT_PATH}}"]
     }
   },
-  "contextFileName": "GEMINI.md"
+  "contextFileName": "FIREBASE.md"
 }

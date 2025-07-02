@@ -79,8 +79,8 @@ let choices: {
     checked: false,
   },
   {
-    value: "agents",
-    name: "AI Agents: Configure AI coding assistants with Firebase context",
+    value: "ai-tools",
+    name: "AI Tools: Configure AI coding assistants with Firebase context",
     checked: false,
   },
   {
