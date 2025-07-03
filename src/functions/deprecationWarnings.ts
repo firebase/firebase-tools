@@ -1,6 +1,6 @@
 import { logWarning } from "../utils";
 
-const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE = 
+const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE =
   "DEPRECATION NOTICE: Action required to deploy after Dec 31, 2025\n" +
   "  functions.config() API is deprecated.\n" +
   "  Cloud Runtime Configuration API, the Google Cloud service used to store function configuration data, will be shut down on December 31, 2025. As a result, you must migrate away from using functions.config() to continue deploying your functions after December 31, 2025.\n" +
