@@ -6,6 +6,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
+import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 async function materialize(projectId: string, path?: string): Promise<any> {
   if (path === undefined) {
@@ -31,5 +32,6 @@ export const command = new Command("functions:config:get [path]")
   .action(async (path, options) => {
     const result = await materialize(needProjectId(options), path);
     logger.info(JSON.stringify(result, null, 2));
+    logFunctionsConfigDeprecationWarning();
     return result;
   });
