@@ -9,7 +9,7 @@ interface AgentsInitSelections {
   optimizeForFeatures?: boolean;
 }
 
-const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map(tool => ({
+const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map((tool) => ({
   value: tool.name,
   name: tool.displayName,
   checked: false,
@@ -19,7 +19,7 @@ export async function doSetup(setup: Setup, config: Config) {
   utils.logBullet("🔥 Welcome to Firebase AI Tools Setup");
 
   const selections: AgentsInitSelections = {};
-  
+
   selections.tools = await checkbox<string>({
     message: "Which tools would you like to configure?",
     choices: AGENT_CHOICES,
@@ -35,13 +35,24 @@ export async function doSetup(setup: Setup, config: Config) {
     return;
   }
 
-  selections.optimizeForFeatures = await confirm({
-    message: "Select Firebase features to optimize for? (Optional - improves performance)",
-    default: false,
-  });
-
   const projectPath = config.projectDir;
-  const enabledFeatures = getEnabledFeatures(setup.config, selections.optimizeForFeatures);
+  const detectedFeatures = getEnabledFeatures(setup.config, true);
+  
+  let enabledFeatures: string[] = [];
+  if (detectedFeatures.length > 0) {
+    const featureList = detectedFeatures.join(", ");
+    selections.optimizeForFeatures = await confirm({
+      message: `Optimize for detected Firebase features (${featureList})?`,
+      default: true,
+    });
+    enabledFeatures = selections.optimizeForFeatures ? detectedFeatures : [];
+  } else {
+    selections.optimizeForFeatures = await confirm({
+      message: "Select Firebase features to optimize for? (Optional - improves performance)",
+      default: false,
+    });
+    enabledFeatures = [];
+  }
 
   utils.logBullet("Configuring selected tools...");
 
@@ -70,14 +81,17 @@ export async function doSetup(setup: Setup, config: Config) {
 
 function getEnabledFeatures(config: any, optimize: boolean): string[] {
   if (!optimize) return [];
-  
+
   const features = [];
+  // Only support features we have prompts for
   if (config.functions) features.push("functions");
-  if (config.firestore) features.push("firestore");
-  if (config.hosting) features.push("hosting");
-  if (config.storage) features.push("storage");
-  if (config.database) features.push("database");
-  if (config.dataconnect) features.push("dataconnect");
   
+  // Future: Add these when we have corresponding prompt files
+  // if (config.firestore && hasPromptFile("FIREBASE_FIRESTORE.md")) features.push("firestore");
+  // if (config.hosting && hasPromptFile("FIREBASE_HOSTING.md")) features.push("hosting");
+  // if (config.storage && hasPromptFile("FIREBASE_STORAGE.md")) features.push("storage");
+  // if (config.database && hasPromptFile("FIREBASE_DATABASE.md")) features.push("database");
+  // if (config.dataconnect && hasPromptFile("FIREBASE_DATACONNECT.md")) features.push("dataconnect");
+
   return features;
 }

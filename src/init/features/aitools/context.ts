@@ -23,15 +23,15 @@ export function getFunctionsContext(): string {
  */
 export function getCombinedContext(enabledFeatures: string[]): string {
   let context = getBaseContext();
-  
+
   if (enabledFeatures.includes("functions")) {
     context += "\n\n# Firebase Functions Context\n\n" + getFunctionsContext();
   }
-  
+
   // Future: Add other feature contexts as they become available
   // if (enabledFeatures.includes("firestore")) {
   //   context += "\n\n# Firestore Context\n\n" + getFirestoreContext();
   // }
-  
+
   return context;
 }
