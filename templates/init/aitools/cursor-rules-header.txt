@@ -1,0 +1,8 @@
+---
+description: Firebase project development guidelines
+globs:
+  - "firebase.json"
+  - "firestore.rules"
+  - "**/*.rules"
+  - "functions/**/*"
+---
