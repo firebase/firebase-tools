@@ -187,11 +187,11 @@ export class TasksEmulator implements EmulatorInstance {
       return false;
     }
 
-    if (queueId.length > 100) {
+    if (queueId.length < 1 || queueId.length > 62) {
       return false;
     }
 
-    const regex = /^[A-Za-z0-9-]+$/;
+    const regex = /^[A-Za-z][A-Za-z0-9_-]*[A-Za-z0-9]$/;
     return regex.test(queueId);
   }
   createHubServer(): express.Application {
