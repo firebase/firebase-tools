@@ -65,12 +65,9 @@ This will print out a localhost link to a simple testing UI. There, you can conf
 and manually list and execute tools.
 
 ```
-Transport Type
-STDIO
-Command
-firebase
-Arguments
-experimental:mcp
+Transport Type: STDIO
+Command: firebase
+Arguments: experimental:mcp
 
 ```
 
