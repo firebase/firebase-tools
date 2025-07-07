@@ -264,13 +264,13 @@ export async function ensureAppHostingComputeServiceAccount(
       `projects/${projectId}`,
     );
   } catch (err: unknown) {
-    if (!(err instanceof FirebaseError)) {
-      throw err;
-    } else if (err.status === 403) {
+    if (err instanceof FirebaseError && err.status === 403) {
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
       );
+    } else if (getErrStatus(err) !== 404) {
+      throw err;
     }
   }
   await provisionDefaultComputeServiceAccount(projectId);
@@ -373,7 +373,7 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
   } catch (err: unknown) {
     if (getErrStatus(err) === 400) {
       logWarning(
-        "Your App Hosting compute service account is still being provisioned in the background; you may continue with the init flow.",
+        "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
       );
     } else {
       throw err;
