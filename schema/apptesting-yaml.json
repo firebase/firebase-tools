@@ -9,13 +9,6 @@
         "route": {
           "type": "string",
           "description": "URL route appended to the test target base URL at which to start the test"
-        },
-        "browsers": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Browsers on which to run tests. Currently only CHROME is supported."
         }
       }
     },
