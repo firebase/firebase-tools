@@ -2,7 +2,7 @@ import { Client } from "../apiv2";
 import { appTestingOrigin } from "../api";
 import { InvokeTestCasesRequest, TestCaseInvocation, TestInvocation } from "./types";
 import * as operationPoller from "../operation-poller";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 
 const apiClient = new Client({ urlPrefix: appTestingOrigin(), apiVersion: "v1alpha" });
 
@@ -15,7 +15,7 @@ export async function invokeTests(appId: string, startUri: string, testDefs: Tes
     >(`${appResource}/testInvocations:invokeTestCases`, buildInvokeTestCasesRequest(testDefs));
     return invocationResponse.body;
   } catch (err: unknown) {
-    throw new FirebaseError("Test invocation failed");
+    throw new FirebaseError("Test invocation failed", {original: getError(err)});
   }
 }
 

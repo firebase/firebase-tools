@@ -3,6 +3,7 @@ import { join } from "path";
 import { logger } from "../logger";
 import { Browser, TestCaseInvocation } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
+import { getErrMsg } from "../error";
 
 function createFilter(pattern?: string) {
   const regex = pattern ? new RegExp(pattern) : undefined;
@@ -18,16 +19,16 @@ export async function parseTestFiles(
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
 
-  async function parseTestFilesRecursive(dir: string): Promise<TestCaseInvocation[]> {
-    const items = listFiles(dir);
+  async function parseTestFilesRecursive(testDir: string): Promise<TestCaseInvocation[]> {
+    const items = listFiles(testDir);
     const results = [];
     for (const item of items) {
-      const path = join(dir, item);
+      const path = join(testDir, item);
       if (dirExistsSync(path)) {
         results.push(...(await parseTestFilesRecursive(path)));
       } else if (fileFilterFn(path) && fileExistsSync(path)) {
         try {
-          const file = await readFileFromDirectory(dir, item);
+          const file = await readFileFromDirectory(testDir, item);
           const parsedFile = wrappedSafeLoad(file.source);
           const tests = parsedFile.tests;
           const defaultConfig = parsedFile.defaultConfig;
@@ -41,7 +42,9 @@ export async function parseTestFiles(
             results.push(testDef);
           }
         } catch (ex) {
-          logger.info(`Unable to parse test file ${path}. Ignoring.`);
+          const errMsg = getErrMsg(ex);
+          const errDetails = errMsg ? `Error details: \n${errMsg}` : '';
+          logger.info(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
           continue;
         }
       }
@@ -53,10 +56,10 @@ export async function parseTestFiles(
 }
 
 function toTestDef(testDef: any, targetUri: string, defaultConfig: any): TestCaseInvocation {
-  const steps = testDef.steps || [];
-  const route = testDef.testConfig?.route || defaultConfig?.route || "";
-  const browsers: Browser[] = testDef.testConfig?.browsers ||
-    defaultConfig?.browsers || [Browser.CHROME];
+  const steps = testDef.steps ?? [];
+  const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
+  const browsers: Browser[] = testDef.testConfig?.browsers ??
+    defaultConfig?.browsers ?? [Browser.CHROME];
   return {
     testCase: {
       startUri: targetUri + route,

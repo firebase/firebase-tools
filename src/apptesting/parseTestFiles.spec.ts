@@ -1,11 +1,11 @@
 import * as tmp from "tmp";
 import { expect } from "chai";
 import { rmSync } from "node:fs";
-import { parseTestFiles } from "./parseTestFiles";
 import { join } from "node:path";
 import * as fs from "fs-extra";
-import { readTemplateSync } from "../templates";
 import { stringify } from "yaml";
+import { parseTestFiles } from "./parseTestFiles";
+import { readTemplateSync } from "../templates";
 import { Browser } from "./types";
 
 describe("parseTestFiles", () => {
