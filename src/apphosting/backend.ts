@@ -264,13 +264,19 @@ export async function ensureAppHostingComputeServiceAccount(
       `projects/${projectId}`,
     );
   } catch (err: unknown) {
-    if (err instanceof FirebaseError && err.status === 403) {
+    if (!(err instanceof FirebaseError)) {
+      throw err;
+    }
+    if (err.status === 403) {
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
       );
-    } else if (getErrStatus(err) !== 404) {
-      throw err;
+    } else if (err.status === 404) {
+      throw new FirebaseError(
+        "Unexpected error occurred while testing for IAM service account permissions",
+        { original: err },
+      );
     }
   }
   await provisionDefaultComputeServiceAccount(projectId);
