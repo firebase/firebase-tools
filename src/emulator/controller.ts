@@ -875,6 +875,7 @@ export async function startAll(
       );
     }
 
+    const account = getProjectDefaultAccount(options.projectRoot);
     const args: DataConnectEmulatorArgs = {
       listen: listenForEmulator.dataconnect,
       projectId,
@@ -887,6 +888,7 @@ export async function startAll(
       enable_output_generated_sdk: true, // TODO: source from arguments
       enable_output_schema_extensions: true,
       debug: options.debug,
+      account,
     };
 
     if (exportMetadata.dataconnect) {
