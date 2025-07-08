@@ -560,6 +560,8 @@ export async function startAll(
     await startEmulator(extensionEmulator);
   }
 
+  const account = getProjectDefaultAccount(options.projectRoot);
+
   if (emulatableBackends.length) {
     if (!listenForEmulator.functions || !listenForEmulator.eventarc || !listenForEmulator.tasks) {
       // We did not know that we need Functions and Eventarc earlier but now we do.
@@ -601,7 +603,6 @@ export async function startAll(
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot);
 
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
@@ -875,7 +876,6 @@ export async function startAll(
       );
     }
 
-    const account = getProjectDefaultAccount(options.projectRoot);
     const args: DataConnectEmulatorArgs = {
       listen: listenForEmulator.dataconnect,
       projectId,
