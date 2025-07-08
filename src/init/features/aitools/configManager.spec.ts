@@ -6,19 +6,19 @@ import {
   generateFirebasePrompt,
   wrapInFirebaseTags,
   generateDiff,
+  generateMinimalDiff,
 } from "./configManager";
 
 describe("configManager", () => {
   describe("findFirebaseSection", () => {
-    it("should find existing firebase section with attributes", () => {
-      const content = `<firebase_prompts version="1.0.0" features="functions,firestore">
+    it("should find existing firebase section with versions attribute", () => {
+      const content = `<firebase_prompts versions="firebase_base:0.0.1,firebase_functions:0.0.1">
 Firebase content
 </firebase_prompts>`;
       const result = findFirebaseSection(content);
       expect(result).to.not.be.null;
       expect(result!.found).to.be.true;
-      expect(result!.version).to.equal("1.0.0");
-      expect(result!.features).to.deep.equal(["functions", "firestore"]);
+      expect(result!.versions).to.equal("firebase_base:0.0.1,firebase_functions:0.0.1");
       expect(result!.content).to.include("Firebase content");
     });
 
@@ -27,8 +27,7 @@ Firebase content
       const result = findFirebaseSection(content);
       expect(result).to.not.be.null;
       expect(result!.found).to.be.true;
-      expect(result!.version).to.be.undefined;
-      expect(result!.features).to.be.undefined;
+      expect(result!.versions).to.be.undefined;
     });
 
     it("should return null when no section exists", () => {
@@ -54,7 +53,7 @@ Middle content
 
     it("should calculate correct start and end positions", () => {
       const content = `User content before
-<firebase_prompts version="0.9.0" features="functions">
+<firebase_prompts versions="firebase_base:0.0.1">
 Old Firebase content
 </firebase_prompts>
 User content after`;
@@ -67,13 +66,13 @@ User content after`;
   });
 
   describe("replaceFirebaseSection", () => {
-    const newSection = `<firebase_prompts version="1.0.0" features="functions,firestore">
+    const newSection = `<firebase_prompts versions="firebase_base:0.0.1,firebase_functions:0.0.1">
 New Firebase content
 </firebase_prompts>`;
 
     it("should replace single firebase section", () => {
       const content = `User content before
-<firebase_prompts version="0.9.0" features="functions">
+<firebase_prompts versions="firebase_base:0.0.1">
 Old Firebase content
 </firebase_prompts>
 User content after`;
@@ -101,7 +100,7 @@ Middle content
 
     it("should preserve content outside tags", () => {
       const content = `User content before
-<firebase_prompts version="0.9.0" features="functions">
+<firebase_prompts versions="firebase_base:0.0.1">
 Old Firebase content
 </firebase_prompts>
 User content after`;
@@ -163,42 +162,54 @@ No firebase section here`;
 
   describe("generateFirebasePrompt", () => {
     it("should wrap content in firebase_prompts tags", () => {
-      const result = generateFirebasePrompt(["functions"]);
-      expect(result).to.include('<firebase_prompts version="1.0.0" features="functions">');
+      const result = generateFirebasePrompt({
+        firebase_base: "0.0.1",
+        firebase_functions: "0.0.1",
+      });
+      expect(result).to.include(
+        '<firebase_prompts versions="firebase_base:0.0.1,firebase_functions:0.0.1">',
+      );
       expect(result).to.include("</firebase_prompts>");
       expect(result).to.include("{{CONTENT}}");
     });
 
-    it("should include version and features attributes", () => {
-      const result = generateFirebasePrompt(["functions", "firestore"], "2.0.0");
-      expect(result).to.include('version="2.0.0"');
-      expect(result).to.include('features="functions,firestore"');
+    it("should include versions attribute", () => {
+      const result = generateFirebasePrompt({
+        firebase_base: "0.0.1",
+        firebase_firestore: "0.0.1",
+      });
+      expect(result).to.include('versions="firebase_base:0.0.1,firebase_firestore:0.0.1"');
     });
 
     it("should add auto-generated comment", () => {
-      const result = generateFirebasePrompt([]);
+      const result = generateFirebasePrompt({});
       expect(result).to.include("<!-- Firebase Tools Context - Auto-generated, do not edit -->");
     });
 
-    it("should handle empty features array", () => {
-      const result = generateFirebasePrompt([]);
-      expect(result).to.include('<firebase_prompts version="1.0.0">');
-      expect(result).to.not.include("features=");
+    it("should handle empty versions object", () => {
+      const result = generateFirebasePrompt({});
+      expect(result).to.include("<firebase_prompts>");
+      expect(result).to.not.include("versions=");
     });
   });
 
   describe("wrapInFirebaseTags", () => {
     it("should wrap content with firebase tags", () => {
       const content = "Test content";
-      const result = wrapInFirebaseTags(content, ["functions"]);
-      expect(result).to.include('<firebase_prompts version="1.0.0" features="functions">');
+      const result = wrapInFirebaseTags(content, {
+        firebase_base: "0.0.1",
+        firebase_functions: "0.0.1",
+      });
+      expect(result).to.include(
+        '<firebase_prompts versions="firebase_base:0.0.1,firebase_functions:0.0.1">',
+      );
       expect(result).to.include("Test content");
       expect(result).to.include("</firebase_prompts>");
     });
 
     it("should preserve content formatting", () => {
       const content = "Line 1\n  Line 2 with indent\nLine 3";
-      const result = wrapInFirebaseTags(content, []);
+      const result = wrapInFirebaseTags(content, {});
       expect(result).to.include(content);
     });
   });
@@ -261,6 +272,54 @@ No firebase section here`;
       const lines = diff.split("\n").filter((line) => line.length > 0);
       const allUnchanged = lines.every((line) => line.startsWith(" "));
       expect(allUnchanged).to.be.true;
+    });
+  });
+
+  describe("generateMinimalDiff", () => {
+    it("should show only tag changes when versions differ", () => {
+      const existingSection = {
+        found: true,
+        start: 0,
+        end: 100,
+        versions: "firebase_base:0.0.1",
+        content: "Some content",
+      };
+      const newVersions = { firebase_base: "0.0.1", firebase_functions: "0.0.1" };
+
+      const diff = generateMinimalDiff(existingSection, newVersions);
+      expect(diff).to.include('-<firebase_prompts versions="firebase_base:0.0.1">');
+      expect(diff).to.include(
+        '+<firebase_prompts versions="firebase_base:0.0.1,firebase_functions:0.0.1">',
+      );
+      expect(diff).to.not.include("Some content");
+    });
+
+    it("should return empty string when versions are identical", () => {
+      const existingSection = {
+        found: true,
+        start: 0,
+        end: 100,
+        versions: "firebase_base:0.0.1,firebase_functions:0.0.1",
+        content: "Some content",
+      };
+      const newVersions = { firebase_base: "0.0.1", firebase_functions: "0.0.1" };
+
+      const diff = generateMinimalDiff(existingSection, newVersions);
+      expect(diff).to.equal("");
+    });
+
+    it("should handle missing versions attribute", () => {
+      const existingSection = {
+        found: true,
+        start: 0,
+        end: 100,
+        content: "Some content",
+      };
+      const newVersions = { firebase_base: "0.0.1" };
+
+      const diff = generateMinimalDiff(existingSection, newVersions);
+      expect(diff).to.include("-<firebase_prompts>");
+      expect(diff).to.include('+<firebase_prompts versions="firebase_base:0.0.1">');
     });
   });
 });

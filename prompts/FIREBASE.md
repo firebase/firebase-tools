@@ -1,3 +1,4 @@
+<firebase_base_context version="0.0.1">
 # Firebase CLI Context
 
 <project-structure>
@@ -120,3 +121,4 @@ firebase deploy --only hosting,firestore
 }
 ```
 </example>
+</firebase_base_context>

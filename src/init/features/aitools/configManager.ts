@@ -1,11 +1,11 @@
 import { diffLines } from "diff";
+import { parseVersionsString, versionsToString } from "./promptVersions";
 
 export interface FirebaseSection {
   found: boolean;
   start: number;
   end: number;
-  version?: string;
-  features?: string[];
+  versions?: string;
   content?: string;
 }
 
@@ -31,22 +31,15 @@ export function findFirebaseSection(content: string): FirebaseSection | null {
 
   // Extract attributes from the opening tag
   const openingTagMatch = FIREBASE_TAG_START.exec(fullMatch);
-  let version: string | undefined;
-  let features: string[] | undefined;
+  let versions: string | undefined;
 
   if (openingTagMatch && openingTagMatch[1]) {
     const attributes = openingTagMatch[1];
-
-    // Extract version
-    const versionMatch = /version="([^"]+)"/.exec(attributes);
-    if (versionMatch) {
-      version = versionMatch[1];
-    }
-
-    // Extract features
-    const featuresMatch = /features="([^"]+)"/.exec(attributes);
-    if (featuresMatch) {
-      features = featuresMatch[1].split(",").map((f) => f.trim());
+    
+    // Extract versions (simple key:value format)
+    const versionsMatch = /versions="([^"]+)"/.exec(attributes);
+    if (versionsMatch) {
+      versions = versionsMatch[1];
     }
   }
 
@@ -58,8 +51,7 @@ export function findFirebaseSection(content: string): FirebaseSection | null {
     found: true,
     start,
     end,
-    version,
-    features,
+    versions,
     content: sectionContent,
   };
 }
@@ -119,9 +111,19 @@ export function insertFirebaseSection(
 /**
  * Generate Firebase prompt wrapped in XML tags
  */
-export function generateFirebasePrompt(features: string[], version = "1.0.0"): string {
-  const featuresAttr = features.length > 0 ? ` features="${features.join(",")}"` : "";
-  return `<firebase_prompts version="${version}"${featuresAttr}>
+export function generateFirebasePrompt(
+  promptVersions?: Record<string, string>
+): string {
+  // Convert versions object to simple key:value format
+  let versionsAttr = "";
+  if (promptVersions && Object.keys(promptVersions).length > 0) {
+    const versionPairs = Object.entries(promptVersions)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(",");
+    versionsAttr = ` versions="${versionPairs}"`;
+  }
+  
+  return `<firebase_prompts${versionsAttr}>
 <!-- Firebase Tools Context - Auto-generated, do not edit -->
 {{CONTENT}}
 </firebase_prompts>`;
@@ -130,8 +132,11 @@ export function generateFirebasePrompt(features: string[], version = "1.0.0"): s
 /**
  * Wrap content in Firebase XML tags
  */
-export function wrapInFirebaseTags(content: string, features: string[], version = "1.0.0"): string {
-  const template = generateFirebasePrompt(features, version);
+export function wrapInFirebaseTags(
+  content: string, 
+  promptVersions?: Record<string, string>
+): string {
+  const template = generateFirebasePrompt(promptVersions);
   return template.replace("{{CONTENT}}", content);
 }
 
@@ -155,4 +160,24 @@ export function generateDiff(original: string, modified: string): string {
   });
 
   return output;
+}
+
+/**
+ * Generate a minimal diff showing only the firebase_prompts tag changes
+ */
+export function generateMinimalDiff(
+  existingSection: FirebaseSection, 
+  newVersions: Record<string, string>
+): string {
+  const oldVersions = parseVersionsString(existingSection.versions);
+  
+  // Build the old and new opening tags
+  const oldTag = `<firebase_prompts${existingSection.versions ? ` versions="${existingSection.versions}"` : ''}>`;
+  const newTag = `<firebase_prompts${Object.keys(newVersions).length > 0 ? ` versions="${versionsToString(newVersions)}"` : ''}>`;
+  
+  if (oldTag === newTag) {
+    return ""; // No changes
+  }
+  
+  return `-${oldTag}\n+${newTag}\n`;
 }

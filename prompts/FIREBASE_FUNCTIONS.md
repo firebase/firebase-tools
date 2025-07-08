@@ -1,3 +1,4 @@
+<firebase_functions_context version="0.0.1">
 # Firebase Functions Context (SDK 6.0.0+)
 
 Always use v2 functions for new development. Use v1 only for Analytics, basic Auth, and Test Lab triggers.
@@ -333,3 +334,4 @@ export const cleanup = onSchedule({
 });
 ````
 </example>
+</firebase_functions_context>
