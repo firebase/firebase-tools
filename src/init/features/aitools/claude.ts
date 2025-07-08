@@ -16,52 +16,56 @@ export const claude: AIToolModule = {
     try {
       await execAsync("which claude");
     } catch (e) {
-      utils.logWarning("Claude CLI not found. Please install it first:");
-      utils.logBullet("  - Visit: https://docs.anthropic.com/en/docs/claude-code");
-      utils.logBullet("  - Or run: brew install claude (on macOS)");
+      console.log();
+      utils.logLabeledWarning("Missing", "Claude CLI not found");
+      utils.logBullet("📚 Install instructions:");
+      utils.logBullet("   • Visit: https://docs.anthropic.com/en/docs/claude-code");
+      utils.logBullet("   • macOS: brew install claude");
       return;
     }
 
     // Build the MCP add command
     const cmd = `claude mcp add firebase -e PROJECT_ROOT="${projectPath}" -- npx -y firebase-tools experimental:mcp`;
 
-    utils.logBullet("Will execute the following command:");
-    utils.logBullet(`  ${cmd}`);
+    console.log();
+    utils.logLabeledBullet("Setup", "Ready to install Firebase MCP server for Claude Code");
+    utils.logBullet("🔧 Command to execute:");
+    utils.logBullet(`   ${cmd}`);
+    console.log();
 
     const shouldProceed = await confirm({
-      message: "Proceed with Claude Code MCP server installation?",
+      message: "Proceed with installation?",
       default: true,
     });
 
     if (!shouldProceed) {
-      utils.logBullet("Skipping Claude Code configuration.");
+      utils.logBullet("🚫 Skipping Claude Code configuration.");
       return;
     }
 
     try {
-      utils.logBullet("Installing MCP server for Claude Code...");
+      console.log();
+      utils.logBullet("🔄 Installing MCP server...");
       const { stdout } = await execAsync(cmd);
 
-      utils.logSuccess("✓ Claude Code MCP server installed successfully");
+      console.log();
+      utils.logLabeledSuccess("Claude Code", "MCP server installed successfully! 🎆");
 
       if (stdout && stdout.trim()) {
-        utils.logBullet("Output:");
+        console.log();
+        utils.logLabeledBullet("Output", "Installation details:");
         utils.logBullet(stdout);
       }
-
-      utils.logBullet("");
-      utils.logBullet("Next steps for Claude Code:");
-      utils.logBullet("  1. Restart Claude Code to load the new MCP server");
-      utils.logBullet("  2. You should see 'firebase' in the MCP servers list");
-      utils.logBullet("  3. Claude Code will now understand Firebase CLI commands");
     } catch (error: any) {
-      utils.logWarning(`Failed to install MCP server: ${error.message}`);
+      console.log();
+      utils.logLabeledWarning("Error", `Failed to install MCP server: ${error.message}`);
       if (error.stderr) {
-        utils.logWarning(`Error details: ${error.stderr}`);
+        utils.logWarning(`Details: ${error.stderr}`);
       }
-      utils.logBullet("");
-      utils.logBullet("You can try running the command manually:");
-      utils.logBullet(`  ${cmd}`);
+      console.log();
+      utils.logBullet("💡 You can try running the command manually:");
+      utils.logBullet(`   ${cmd}`);
+      console.log();
     }
   },
 };

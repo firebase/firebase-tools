@@ -15,8 +15,13 @@ const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map((tool) => ({
   checked: false,
 }));
 
+/**
+ *
+ */
 export async function doSetup(setup: Setup, config: Config) {
-  utils.logBullet("🔥 Welcome to Firebase AI Tools Setup");
+  console.log();
+  utils.logLabeledBullet("AI Tools", "🤖 Welcome to Firebase AI Tools Setup!");
+  console.log();
 
   const selections: AgentsInitSelections = {};
 
@@ -37,24 +42,28 @@ export async function doSetup(setup: Setup, config: Config) {
 
   const projectPath = config.projectDir;
   const detectedFeatures = getEnabledFeatures(setup.config, true);
-  
+
   let enabledFeatures: string[] = [];
   if (detectedFeatures.length > 0) {
     const featureList = detectedFeatures.join(", ");
+    utils.logLabeledSuccess("Detected", `Firebase features in your project: ${featureList}`);
+    console.log();
     selections.optimizeForFeatures = await confirm({
-      message: `Optimize for detected Firebase features (${featureList})?`,
+      message: `Optimize AI tools for these features?`,
       default: true,
     });
     enabledFeatures = selections.optimizeForFeatures ? detectedFeatures : [];
   } else {
     selections.optimizeForFeatures = await confirm({
-      message: "Select Firebase features to optimize for? (Optional - improves performance)",
+      message: "Select Firebase features to optimize for? (Optional - improves AI assistance quality)",
       default: false,
     });
     enabledFeatures = [];
   }
 
-  utils.logBullet("Configuring selected tools...");
+  console.log();
+  utils.logLabeledBullet("Setup", "Configuring your AI tools...");
+  console.log();
 
   // Configure each selected tool
   for (const toolName of selections.tools) {
@@ -66,17 +75,49 @@ export async function doSetup(setup: Setup, config: Config) {
     }
   }
 
-  utils.logBullet("✓ Configuration complete!");
-  utils.logBullet("");
-  utils.logBullet("Next steps:");
-  if (selections.tools?.includes("cursor") || selections.tools?.includes("gemini")) {
-    utils.logBullet("1. Restart your AI tools to load the new configuration");
+  console.log();
+  utils.logLabeledSuccess("Success", "AI tools configuration complete! 🎉");
+  console.log();
+  
+  // Tool-specific next steps
+  utils.logLabeledBullet("Next steps", "To start using your enhanced AI assistant:");
+  console.log();
+  
+  if (selections.tools?.includes("gemini")) {
+    utils.logBullet("🟣 Gemini CLI:");
+    utils.logBullet("   • Restart Gemini to load Firebase context");
+    utils.logBullet("   • Try: \"How do I deploy only my functions?\"");
+    utils.logBullet("   • Try: \"Show me the Firebase emulator commands\"");
+    console.log();
   }
+  
+  if (selections.tools?.includes("cursor")) {
+    utils.logBullet("🟦 Cursor:");
+    utils.logBullet("   • Restart Cursor to activate Firebase MCP server");
+    utils.logBullet("   • Your AI now knows your project structure");
+    utils.logBullet("   • Try: \"Create a new Cloud Function for user authentication\"");
+    console.log();
+  }
+  
   if (selections.tools?.includes("studio")) {
-    utils.logBullet("1. Refresh your Firebase Studio workspace to load new AI rules");
+    utils.logBullet("🟨 Firebase Studio:");
+    utils.logBullet("   • Refresh your workspace to load AI rules");
+    utils.logBullet("   • AI assistance is now Firebase-aware");
+    utils.logBullet("   • Try: \"Help me set up Firestore security rules\"");
+    console.log();
   }
-  utils.logBullet("2. Try asking your AI assistant about your Firebase project structure");
-  utils.logBullet("3. AI assistants now understand Firebase CLI commands and debugging");
+  
+  if (selections.tools?.includes("claude")) {
+    utils.logBullet("🟩 Claude Code:");
+    utils.logBullet("   • Restart Claude Code to activate MCP server");
+    utils.logBullet("   • Look for 'firebase' in your MCP servers list");
+    utils.logBullet("   • Claude can now run Firebase CLI commands directly");
+    console.log();
+  }
+  
+  if (enabledFeatures.length > 0) {
+    utils.logLabeledBullet("Pro tip", `Your AI assistant is now optimized for: ${enabledFeatures.join(", ")}`);
+  }
 }
 
 function getEnabledFeatures(config: any, optimize: boolean): string[] {
@@ -85,7 +126,7 @@ function getEnabledFeatures(config: any, optimize: boolean): string[] {
   const features = [];
   // Only support features we have prompts for
   if (config.functions) features.push("functions");
-  
+
   // Future: Add these when we have corresponding prompt files
   // if (config.firestore && hasPromptFile("FIREBASE_FIRESTORE.md")) features.push("firestore");
   // if (config.hosting && hasPromptFile("FIREBASE_HOSTING.md")) features.push("hosting");

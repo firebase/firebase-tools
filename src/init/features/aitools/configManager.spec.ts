@@ -235,5 +235,32 @@ No firebase section here`;
       const diff2 = generateDiff("Old content", "");
       expect(diff2).to.include("-Old content");
     });
+
+    it("should preserve empty lines in diff output", () => {
+      const original = "Line 1\n\nLine 3\n\nLine 5";
+      const modified = "Line 1\n\nLine 3 modified\n\nLine 5";
+      const diff = generateDiff(original, modified);
+
+      // The diff should show the empty lines as unchanged
+      const lines = diff.split("\n");
+
+      // Count the number of lines that are empty with space prefix (unchanged empty lines)
+      const unchangedEmptyLines = lines.filter((line) => line === " ").length;
+      expect(unchangedEmptyLines).to.be.greaterThan(0, "Diff should preserve empty lines");
+
+      // Also check that the modified line is shown
+      expect(diff).to.include("-Line 3");
+      expect(diff).to.include("+Line 3 modified");
+    });
+
+    it("should not show false positives when content is identical", () => {
+      const content = "Line 1\n\nLine 3\nLine 4\n\nLine 6";
+      const diff = generateDiff(content, content);
+
+      // When content is identical, all lines should have space prefix (unchanged)
+      const lines = diff.split("\n").filter((line) => line.length > 0);
+      const allUnchanged = lines.every((line) => line.startsWith(" "));
+      expect(allUnchanged).to.be.true;
+    });
   });
 });

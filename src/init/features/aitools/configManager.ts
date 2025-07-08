@@ -30,7 +30,7 @@ export function findFirebaseSection(content: string): FirebaseSection | null {
   const end = start + fullMatch.length;
 
   // Extract attributes from the opening tag
-  const openingTagMatch = fullMatch.match(FIREBASE_TAG_START);
+  const openingTagMatch = FIREBASE_TAG_START.exec(fullMatch);
   let version: string | undefined;
   let features: string[] | undefined;
 
@@ -38,20 +38,20 @@ export function findFirebaseSection(content: string): FirebaseSection | null {
     const attributes = openingTagMatch[1];
 
     // Extract version
-    const versionMatch = attributes.match(/version="([^"]+)"/);
+    const versionMatch = /version="([^"]+)"/.exec(attributes);
     if (versionMatch) {
       version = versionMatch[1];
     }
 
     // Extract features
-    const featuresMatch = attributes.match(/features="([^"]+)"/);
+    const featuresMatch = /features="([^"]+)"/.exec(attributes);
     if (featuresMatch) {
       features = featuresMatch[1].split(",").map((f) => f.trim());
     }
   }
 
   // Extract content between tags
-  const contentMatch = fullMatch.match(FIREBASE_TAG_CONTENT_REGEX);
+  const contentMatch = FIREBASE_TAG_CONTENT_REGEX.exec(fullMatch);
   const sectionContent = contentMatch ? contentMatch[1] : "";
 
   return {
@@ -119,7 +119,7 @@ export function insertFirebaseSection(
 /**
  * Generate Firebase prompt wrapped in XML tags
  */
-export function generateFirebasePrompt(features: string[], version: string = "1.0.0"): string {
+export function generateFirebasePrompt(features: string[], version = "1.0.0"): string {
   const featuresAttr = features.length > 0 ? ` features="${features.join(",")}"` : "";
   return `<firebase_prompts version="${version}"${featuresAttr}>
 <!-- Firebase Tools Context - Auto-generated, do not edit -->
@@ -130,11 +130,7 @@ export function generateFirebasePrompt(features: string[], version: string = "1.
 /**
  * Wrap content in Firebase XML tags
  */
-export function wrapInFirebaseTags(
-  content: string,
-  features: string[],
-  version: string = "1.0.0",
-): string {
+export function wrapInFirebaseTags(content: string, features: string[], version = "1.0.0"): string {
   const template = generateFirebasePrompt(features, version);
   return template.replace("{{CONTENT}}", content);
 }
@@ -148,7 +144,11 @@ export function generateDiff(original: string, modified: string): string {
 
   diff.forEach((part) => {
     const prefix = part.added ? "+" : part.removed ? "-" : " ";
-    const lines = part.value.split("\n").filter((line) => line !== "");
+    const lines = part.value.split("\n");
+    // Remove only the last empty line if it exists (from the split)
+    if (lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
     lines.forEach((line) => {
       output += `${prefix}${line}\n`;
     });

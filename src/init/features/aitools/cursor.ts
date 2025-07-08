@@ -17,13 +17,41 @@ export const cursor: AIToolModule = {
   displayName: "Cursor",
 
   async configure(config: Config, projectPath: string, enabledFeatures: string[]): Promise<void> {
-    // Create MCP configuration from template
-    const mcpTemplate = readTemplateSync("init/aitools/cursor-mcp.json");
-    const mcpConfig = mcpTemplate.replace("{{PROJECT_PATH}}", projectPath);
-    config.writeProjectFile(".cursor/mcp.json", mcpConfig);
+    // Handle MCP configuration - merge with existing if present
+    const mcpPath = ".cursor/mcp.json";
+    let existingMcpConfig: any = {};
+    let mcpUpdated = false;
+    
+    try {
+      const existingMcp = config.readProjectFile(mcpPath);
+      if (existingMcp) {
+        existingMcpConfig = JSON.parse(existingMcp);
+      }
+    } catch (e) {
+      // File doesn't exist or is invalid JSON, start fresh
+    }
+    
+    // Check if firebase server already exists
+    if (existingMcpConfig.mcpServers?.firebase) {
+      utils.logLabeledBullet("Cursor", "MCP server 'firebase' already configured");
+    } else {
+      // Add firebase server configuration
+      if (!existingMcpConfig.mcpServers) {
+        existingMcpConfig.mcpServers = {};
+      }
+      
+      existingMcpConfig.mcpServers.firebase = {
+        command: "npx",
+        args: ["-y", "firebase-tools", "experimental:mcp", "--dir", projectPath]
+      };
+      
+      // Write the merged configuration
+      config.writeProjectFile(mcpPath, JSON.stringify(existingMcpConfig, null, 2));
+      mcpUpdated = true;
+    }
 
     // Handle Cursor rules file
-    const rulesPath = ".cursor/rules/firebase.mdc";
+    const rulesPath = ".cursor/rules/FIREBASE.mdc";
     let existingContent = "";
 
     try {
@@ -52,20 +80,51 @@ export const cursor: AIToolModule = {
     let newContent: string;
 
     if (existingSection) {
-      // Replace existing Firebase section
+      // Check if version and features match - if so, skip update
+      const currentFeatures = enabledFeatures.sort().join(",");
+      const existingFeatures = (existingSection.features || []).sort().join(",");
+      
+      if (existingSection.version === "1.0.0" && existingFeatures === currentFeatures) {
+        utils.logLabeledSuccess("Cursor", "Configuration is already up to date ✓");
+        if (currentFeatures) {
+          utils.logBullet(`   Optimized for: ${currentFeatures}`);
+        }
+        return;
+      }
+      
+      // Version or features changed, show diff
       newContent = replaceFirebaseSection(existingContent, firebaseContent);
       const diff = generateDiff(existingContent, newContent);
+      
+      // Explain what changed
+      if (existingFeatures !== currentFeatures) {
+        console.log();
+        utils.logLabeledBullet("Changes", "Firebase project configuration has changed:");
+        const oldFeatures = existingSection.features || [];
+        const newFeatures = enabledFeatures;
+        
+        const added = newFeatures.filter(f => !oldFeatures.includes(f));
+        const removed = oldFeatures.filter(f => !newFeatures.includes(f));
+        
+        if (added.length > 0) {
+          utils.logSuccess(`   + Added: ${added.join(", ")}`);
+        }
+        if (removed.length > 0) {
+          utils.logWarning(`   - Removed: ${removed.join(", ")}`);
+        }
+        console.log();
+      }
 
-      utils.logBullet("Cursor configuration update:");
+      utils.logLabeledBullet("Preview", "Configuration changes:");
       console.log(diff);
 
       const shouldApply = await confirm({
-        message: "Apply this change to .cursor/rules/firebase.mdc?",
+        message: "Apply this change to .cursor/rules/FIREBASE.mdc?",
         default: true,
       });
 
       if (!shouldApply) {
-        utils.logBullet("Skipping Cursor rules update.");
+        utils.logBullet("🚫 Skipping Cursor update.");
         return;
       }
     } else if (existingContent) {
@@ -79,11 +138,16 @@ export const cursor: AIToolModule = {
     // Write the main rules file
     config.writeProjectFile(rulesPath, newContent);
 
-    utils.logBullet(`✓ Cursor configuration written to:`);
-    utils.logBullet(`  - .cursor/mcp.json (MCP server config)`);
-    utils.logBullet(`  - .cursor/rules/firebase.mdc (AI context)`);
+    console.log();
+    utils.logLabeledSuccess("Cursor", "Configuration written successfully!");
+    utils.logBullet("📁 Files updated:");
+    if (mcpUpdated) {
+      utils.logBullet(`   • .cursor/mcp.json (added Firebase MCP server)`);
+    }
+    utils.logBullet(`   • .cursor/rules/FIREBASE.mdc (AI context rules)`);
     if (enabledFeatures.includes("functions")) {
-      utils.logBullet(`  - .cursor/rules/FIREBASE_FUNCTIONS.md (Functions context)`);
+      utils.logBullet(`   • .cursor/rules/FIREBASE_FUNCTIONS.md`);
+      utils.logSuccess(`   ✓ Firebase Functions context included`);
     }
   },
 };
