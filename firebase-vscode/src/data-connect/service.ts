@@ -146,8 +146,8 @@ export class DataConnectService {
     return {
       impersonate:
         userMock.kind === UserMockKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims) }
-          : { unauthenticated: true },
+          ? { authClaims: JSON.parse(userMock.claims), includeDebugDetails: true }
+          : { unauthenticated: true, includeDebugDetails: true },
     };
   }
 
