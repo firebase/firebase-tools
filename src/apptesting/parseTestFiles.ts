@@ -3,7 +3,7 @@ import { join } from "path";
 import { logger } from "../logger";
 import { Browser, TestCaseInvocation } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { getErrMsg } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 
 function createFilter(pattern?: string) {
   const regex = pattern ? new RegExp(pattern) : undefined;
@@ -16,6 +16,12 @@ export async function parseTestFiles(
   filePattern?: string,
   namePattern?: string,
 ): Promise<TestCaseInvocation[]> {
+  try {
+    targetUri = new URL(targetUri).toString();
+  } catch (ex) {
+    const errMsg = "Invalid URL" + (targetUri.startsWith("http") ? "" : " (must include protocol)");
+    throw new FirebaseError(errMsg, { original: getError(ex) });
+  }
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
 
@@ -43,7 +49,7 @@ export async function parseTestFiles(
           }
         } catch (ex) {
           const errMsg = getErrMsg(ex);
-          const errDetails = errMsg ? `Error details: \n${errMsg}` : '';
+          const errDetails = errMsg ? `Error details: \n${errMsg}` : "";
           logger.info(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
           continue;
         }

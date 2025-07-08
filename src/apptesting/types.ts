@@ -14,12 +14,17 @@ export interface InvokedTestCases {
   testCaseInvocations: TestCaseInvocation[];
 }
 
-export interface TestInvocation {
-  name?: string;
-  createTime?: string;
+export interface ExecutionMetadata {
   runningExecutions?: number;
   succeededExecutions?: number;
   failedExecutions?: number;
+  totalExecutions?: number;
+  cancelledExecutions?: number;
+}
+
+export interface TestInvocation extends ExecutionMetadata {
+  name?: string;
+  createTime?: string;
 }
 
 export interface TestCaseInvocation {

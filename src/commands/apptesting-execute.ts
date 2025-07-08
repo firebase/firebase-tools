@@ -6,7 +6,7 @@ import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { invokeTests, pollInvocationStatus } from "../apptesting/invokeTests";
-import { TestInvocation } from "../apptesting/types";
+import { ExecutionMetadata } from "../apptesting/types";
 import { FirebaseError } from "../error";
 import { marked } from "marked";
 import { needProjectId } from "../projectUtils";
@@ -14,10 +14,11 @@ import { consoleUrl } from "../utils";
 import { AppPlatform, listFirebaseApps } from "../management/apps";
 
 export const command = new Command("apptesting:execute <target>")
-  .description(
-    "upload a release binary and optionally distribute it to testers and run automated tests",
+  .description("Run automated tests written in natural language driven by AI")
+  .option(
+    "--app <app_id>",
+    "The app id of your Firebase web app. Optional if the project contains exactly one web app.",
   )
-  .option("--app <app_id>", "the app id of your Firebase app")
   .option(
     "--test-file-pattern <pattern>",
     "Test file pattern. Only tests contained in files that match this pattern will be executed.",
@@ -30,15 +31,13 @@ export const command = new Command("apptesting:execute <target>")
   .before(requireAuth)
   .before(requireConfig)
   .action(async (target: string, options: any) => {
-    if (!options.app) {
-      throw new FirebaseError("App is required");
-    }
-
     const projectId = needProjectId(options);
     const appList = await listFirebaseApps(projectId, AppPlatform.WEB);
-    const app = appList.find((a) => a.appId === options.app);
-
-    if (!app) {
+    let app = appList.find((a) => a.appId === options.app);
+    if (!app && appList.length === 1) {
+      app = appList[0];
+      logger.info(`No app specified, defaulting to ${app.appId}`);
+    } else {
       throw new FirebaseError("Invalid app id");
     }
 
@@ -54,13 +53,20 @@ export const command = new Command("apptesting:execute <target>")
       throw new FirebaseError("No tests found");
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} Running ${tests.length} tests`));
-
-    const invokeSpinner = ora("Sending test request");
+    const invokeSpinner = ora("Requesting test execution");
     invokeSpinner.start();
-    const invocationOperation = await invokeTests(options.app, target, tests);
-    invokeSpinner.text = "Testing started";
-    invokeSpinner.succeed();
+
+    let invocationOperation;
+    try {
+      invocationOperation = await invokeTests(app.appId, target, tests);
+      invokeSpinner.text = "Test execution requested";
+      invokeSpinner.succeed();
+    } catch (ex) {
+      invokeSpinner.fail("Failed to request test execution");
+      throw ex;
+    }
+
+    logger.info(clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(tests.length)}`));
 
     const invocationId = invocationOperation.name?.split("/").pop();
 
@@ -84,29 +90,40 @@ export const command = new Command("apptesting:execute <target>")
 
     const executionSpinner = ora(getOutput(invocationOperation.metadata));
     executionSpinner.start();
-    await pollInvocationStatus(invocationOperation.name, (operation) => {
-      if (!operation.response) {
-        logger.info("invocation details unavailable");
-        return;
+    const invocationOp = await pollInvocationStatus(invocationOperation.name, (operation) => {
+      if (!operation.done) {
+        executionSpinner.text = getOutput(operation.metadata as ExecutionMetadata);
       }
-      executionSpinner.text = getOutput(operation.metadata as TestInvocation);
     });
-    executionSpinner.succeed();
+    const response = invocationOp.resource.testInvocation;
+    executionSpinner.text = `Testing complete\n${getOutput(response)}`;
+    if (response.failedExecutions || response.cancelledExecutions) {
+      executionSpinner.fail();
+      throw new FirebaseError("Testing complete with errors");
+    } else {
+      executionSpinner.succeed();
+    }
   });
 
-function getOutput(invocation: TestInvocation) {
-  if (!invocation.failedExecutions && !invocation.runningExecutions) {
-    return "All tests passed";
+function pluralizeTests(numTests: number) {
+  return `${numTests} test${numTests === 1 ? "" : "s"}`;
+}
+
+function getOutput(invocation: ExecutionMetadata) {
+  const output = [];
+  if (invocation.runningExecutions) {
+    output.push(
+      `${pluralizeTests(invocation.runningExecutions)} running (this may take a while)...`,
+    );
   }
-  return [
-    invocation.runningExecutions
-      ? `${invocation.runningExecutions} tests still running (this may take a while)...`
-      : undefined,
-    invocation.succeededExecutions
-      ? `✔ ${invocation.succeededExecutions} tests passing`
-      : undefined,
-    invocation.failedExecutions ? `✖ ${invocation.failedExecutions} tests failing` : undefined,
-  ]
-    .filter((a) => a)
-    .join("\n");
+  if (invocation.succeededExecutions) {
+    output.push(`✔ ${pluralizeTests(invocation.succeededExecutions)} passed`);
+  }
+  if (invocation.failedExecutions) {
+    output.push(`✖ ${pluralizeTests(invocation.failedExecutions)} failed`);
+  }
+  if (invocation.cancelledExecutions) {
+    output.push(`⊝ ${pluralizeTests(invocation.cancelledExecutions)} cancelled`);
+  }
+  return output.length ? output.join("\n") : "Tests are starting";
 }

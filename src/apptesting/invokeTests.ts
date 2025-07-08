@@ -1,6 +1,11 @@
 import { Client } from "../apiv2";
 import { appTestingOrigin } from "../api";
-import { InvokeTestCasesRequest, TestCaseInvocation, TestInvocation } from "./types";
+import {
+  InvokedTestCases,
+  InvokeTestCasesRequest,
+  TestCaseInvocation,
+  TestInvocation,
+} from "./types";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError, getError } from "../error";
 
@@ -15,7 +20,7 @@ export async function invokeTests(appId: string, startUri: string, testDefs: Tes
     >(`${appResource}/testInvocations:invokeTestCases`, buildInvokeTestCasesRequest(testDefs));
     return invocationResponse.body;
   } catch (err: unknown) {
-    throw new FirebaseError("Test invocation failed", {original: getError(err)});
+    throw new FirebaseError("Test invocation failed", { original: getError(err) });
   }
 }
 
@@ -30,19 +35,23 @@ function buildInvokeTestCasesRequest(
   };
 }
 
+interface InvocationOperation {
+  resource: InvokedTestCases;
+}
+
 export async function pollInvocationStatus(
   operationName: string,
-  onPoll: (invocation: operationPoller.OperationResult<TestInvocation>) => void,
+  onPoll: (invocation: operationPoller.OperationResult<InvocationOperation>) => void,
   backoff = 30 * 1000,
-): Promise<TestInvocation> {
-  return operationPoller.pollOperation<TestInvocation>({
+): Promise<InvocationOperation> {
+  return operationPoller.pollOperation<InvocationOperation>({
     pollerName: "App Testing Invocation Poller",
     apiOrigin: appTestingOrigin(),
     apiVersion: "v1alpha",
     operationResourceName: operationName,
     masterTimeout: 30 * 60 * 1000, // 30 minutes
     backoff,
-    maxBackoff: 30 * 1000, // 30 seconds
+    maxBackoff: 15 * 1000, // 30 seconds
     onPoll,
   });
 }
