@@ -7,6 +7,7 @@ import { stringify } from "yaml";
 import { parseTestFiles } from "./parseTestFiles";
 import { readTemplateSync } from "../templates";
 import { Browser } from "./types";
+import { FirebaseError } from "../error";
 
 describe("parseTestFiles", () => {
   let tempdir: tmp.DirResult;
@@ -25,6 +26,20 @@ describe("parseTestFiles", () => {
   }
 
   describe("parsing", () => {
+    it("throws an error for invalid targetUri", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          defaultConfig: { route: "/mypage" },
+          tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }],
+        }),
+      );
+      await expect(parseTestFiles(tempdir.name, "foo.com")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid URL",
+      );
+    });
+
     it("ignores invalid files", async () => {
       writeFile(
         "my_test.yaml",

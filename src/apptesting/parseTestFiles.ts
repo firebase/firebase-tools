@@ -17,7 +17,7 @@ export async function parseTestFiles(
   namePattern?: string,
 ): Promise<TestCaseInvocation[]> {
   try {
-    targetUri = new URL(targetUri).toString();
+    new URL(targetUri);
   } catch (ex) {
     const errMsg = "Invalid URL" + (targetUri.startsWith("http") ? "" : " (must include protocol)");
     throw new FirebaseError(errMsg, { original: getError(ex) });
