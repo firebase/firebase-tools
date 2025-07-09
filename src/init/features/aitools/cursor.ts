@@ -1,27 +1,42 @@
-import * as utils from "../../../utils";
+import * as path from "path";
 import { Config } from "../../../config";
 import { readTemplateSync } from "../../../templates";
-import { AIToolModule } from "./types";
-import { getBaseContext, getFunctionsContext, getPromptVersions } from "./context";
+import { AIToolModule, AIToolConfigResult } from "./types";
 import {
-  findFirebaseSection,
-  replaceFirebaseSection,
-  insertFirebaseSection,
-  wrapInFirebaseTags,
-} from "./configManager";
-import { parseVersionsString } from "./promptVersions";
+  replaceFirebaseFile,
+  generatePromptSection,
+  generateFeaturePromptSection,
+} from "./promptUpdater";
+
+const CURSOR_MCP_PATH = ".cursor/mcp.json";
+const CURSOR_RULES_DIR = ".cursor/rules";
 
 export const cursor: AIToolModule = {
   name: "cursor",
   displayName: "Cursor",
 
-  async configure(config: Config, projectPath: string, enabledFeatures: string[]): Promise<void> {
+  /**
+   * Configures Cursor with Firebase context files.
+   *
+   * - .cursor/mcp.json: Merges with existing config (preserves user settings)
+   * - .cursor/rules/*.md: Fully managed by us (replaced on each update)
+   *
+   * We own the entire rules directory, so we can safely replace Firebase-related
+   * rule files without worrying about user customizations.
+   */
+  async configure(
+    config: Config,
+    projectPath: string,
+    enabledFeatures: string[],
+  ): Promise<AIToolConfigResult> {
+    const files: AIToolConfigResult["files"] = [];
+
     // Handle MCP configuration - merge with existing if present
-    const mcpPath = ".cursor/mcp.json";
+    let mcpUpdated = false;
     let existingMcpConfig: any = {};
 
     try {
-      const existingMcp = config.readProjectFile(mcpPath);
+      const existingMcp = config.readProjectFile(CURSOR_MCP_PATH);
       if (existingMcp) {
         existingMcpConfig = JSON.parse(existingMcp);
       }
@@ -29,79 +44,55 @@ export const cursor: AIToolModule = {
       // File doesn't exist or is invalid JSON, start fresh
     }
 
-    // Check if firebase server already exists
     if (!existingMcpConfig.mcpServers?.firebase) {
-      // Add firebase server configuration
       if (!existingMcpConfig.mcpServers) {
         existingMcpConfig.mcpServers = {};
       }
-
       existingMcpConfig.mcpServers.firebase = {
         command: "npx",
         args: ["-y", "firebase-tools", "experimental:mcp", "--dir", projectPath],
       };
-
-      // Write the merged configuration
-      config.writeProjectFile(mcpPath, JSON.stringify(existingMcpConfig, null, 2));
+      config.writeProjectFile(CURSOR_MCP_PATH, JSON.stringify(existingMcpConfig, null, 2));
+      mcpUpdated = true;
     }
 
-    // Handle Cursor rules file
-    const rulesPath = ".cursor/rules/FIREBASE.mdc";
-    let existingContent = "";
+    files.push({ path: CURSOR_MCP_PATH, updated: mcpUpdated });
 
-    try {
-      existingContent = config.readProjectFile(rulesPath) || "";
-    } catch (e) {
-      // File doesn't exist yet, which is fine
-    }
-
-    // Prepare Firebase content
     const header = readTemplateSync("init/aitools/cursor-rules-header.txt");
-    let firebaseContext = getBaseContext();
+    const baseContent = generateFeaturePromptSection("base");
+    const basePromptPath = path.join(CURSOR_RULES_DIR, "FIREBASE_BASE.md");
 
-    // For Cursor, we reference separate files for additional contexts
+    const baseResult = await replaceFirebaseFile(config, basePromptPath, baseContent);
+    files.push({ path: basePromptPath, updated: baseResult.updated });
+
     if (enabledFeatures.includes("functions")) {
-      firebaseContext += "\n\n@file ./FIREBASE_FUNCTIONS.md";
+      const functionsContent = generateFeaturePromptSection("functions");
+      const functionsPromptPath = path.join(CURSOR_RULES_DIR, "FIREBASE_FUNCTIONS.md");
 
-      // Also write the separate functions file
-      config.writeProjectFile(".cursor/rules/FIREBASE_FUNCTIONS.md", getFunctionsContext());
+      const functionsResult = await replaceFirebaseFile(
+        config,
+        functionsPromptPath,
+        functionsContent,
+      );
+      files.push({ path: functionsPromptPath, updated: functionsResult.updated });
     }
 
-    // Get prompt versions and wrap content in Firebase tags
-    const promptVersions = getPromptVersions(enabledFeatures);
-    const firebaseContent = wrapInFirebaseTags(firebaseContext, promptVersions);
+    const importContent = `# Firebase Context
 
-    // Check if we need to update existing content
-    const existingSection = findFirebaseSection(existingContent);
-    let newContent: string;
+@FIREBASE_BASE.md
+${enabledFeatures.includes("functions") ? `@FIREBASE_FUNCTIONS.md` : ""}
 
-    if (existingSection) {
-      // Check if versions match - if so, skip update
-      const existingVersions = parseVersionsString(existingSection.versions);
-      const currentVersions = getPromptVersions(enabledFeatures);
+`;
 
-      // Compare versions
-      const versionsMatch = JSON.stringify(existingVersions) === JSON.stringify(currentVersions);
+    const { content: mainContent } = generatePromptSection(enabledFeatures, {
+      customContent: importContent,
+    });
+    const fullContent = header + "\n" + mainContent;
+    const firebaseMDCPath = path.join(CURSOR_RULES_DIR, "FIREBASE.mdc");
 
-      if (versionsMatch) {
-        return;
-      }
+    const mainResult = await replaceFirebaseFile(config, firebaseMDCPath, fullContent);
+    files.push({ path: firebaseMDCPath, updated: mainResult.updated });
 
-      // Update silently
-      newContent = replaceFirebaseSection(existingContent, firebaseContent);
-    } else if (existingContent) {
-      // Append to existing file
-      newContent = insertFirebaseSection(existingContent, firebaseContent);
-    } else {
-      // New file, add header + content
-      newContent = header + "\n\n" + firebaseContent;
-    }
-
-    // Write the main rules file
-    config.writeProjectFile(rulesPath, newContent);
-
-    utils.logSuccess("✓ Cursor configuration written to:");
-    utils.logBullet("  - .cursor/mcp.json");
-    utils.logBullet("  - .cursor/rules/FIREBASE.mdc");
+    return { files };
   },
 };

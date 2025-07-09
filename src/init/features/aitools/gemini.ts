@@ -1,86 +1,87 @@
-import * as utils from "../../../utils";
 import { Config } from "../../../config";
 import { readTemplateSync } from "../../../templates";
-import { AIToolModule } from "./types";
-import { getBaseContext, getFunctionsContext, getPromptVersions } from "./context";
-import { findFirebaseSection, replaceFirebaseSection, wrapInFirebaseTags } from "./configManager";
-import { parseVersionsString } from "./promptVersions";
+import { AIToolModule, AIToolConfigResult } from "./types";
+import {
+  replaceFirebaseFile,
+  generatePromptSection,
+  generateFeaturePromptSection,
+} from "./promptUpdater";
 
 export const gemini: AIToolModule = {
   name: "gemini",
   displayName: "Gemini CLI",
 
-  async configure(config: Config, projectPath: string, enabledFeatures: string[]): Promise<void> {
-    // Create extension configuration from template
+  /**
+   * Configures Gemini CLI with Firebase extension.
+   *
+   * File ownership:
+   * - ALL files under .gemini/extensions/firebase/: Fully managed by us
+   *
+   * Since this is a dedicated Firebase extension directory, we own all files
+   * and can safely replace them without worrying about user customizations.
+   * Users don't typically edit extension files directly.
+   */
+  async configure(
+    config: Config,
+    projectPath: string,
+    enabledFeatures: string[],
+  ): Promise<AIToolConfigResult> {
+    const files: AIToolConfigResult["files"] = [];
     const extensionTemplate = readTemplateSync("init/aitools/gemini-extension.json");
     const extensionConfig = extensionTemplate.replace("{{PROJECT_PATH}}", projectPath);
-    config.writeProjectFile(".gemini/extensions/firebase/gemini-extension.json", extensionConfig);
+    const extensionPath = ".gemini/extensions/firebase/gemini-extension.json";
 
-    // Create modular context files using memory import processor
+    // Check if extension config exists and needs updating
+    let extensionUpdated = false;
+    try {
+      const existing = config.readProjectFile(extensionPath);
+      if (existing !== extensionConfig) {
+        config.writeProjectFile(extensionPath, extensionConfig);
+        extensionUpdated = true;
+      }
+    } catch {
+      // File doesn't exist, needs to be created
+      config.writeProjectFile(extensionPath, extensionConfig);
+      extensionUpdated = true;
+    }
+    files.push({ path: extensionPath, updated: extensionUpdated });
+
     const baseDir = ".gemini/extensions/firebase";
 
-    // Write base Firebase context
-    const baseContext = getBaseContext();
-    config.writeProjectFile(`${baseDir}/contexts/firebase-base.md`, baseContext);
+    const baseContent = generateFeaturePromptSection("base");
+    const basePath = `${baseDir}/contexts/firebase-base.md`;
+    const baseResult = await replaceFirebaseFile(config, basePath, baseContent);
+    files.push({ path: basePath, updated: baseResult.updated });
 
-    // Write functions context if enabled
     if (enabledFeatures.includes("functions")) {
-      const functionsContext = getFunctionsContext();
-      config.writeProjectFile(`${baseDir}/contexts/firebase-functions.md`, functionsContext);
+      const functionsContent = generateFeaturePromptSection("functions");
+      const functionsPath = `${baseDir}/contexts/firebase-functions.md`;
+      const functionsResult = await replaceFirebaseFile(config, functionsPath, functionsContent);
+      files.push({ path: functionsPath, updated: functionsResult.updated });
     }
 
-    // Get current prompt versions
-    const promptVersions = getPromptVersions(enabledFeatures);
-    
-    // Create main FIREBASE.md with imports
-    const mainContent = wrapInFirebaseTags(`
-# Firebase Context
+    // Generate the main FIREBASE.md content with imports
+    const importContent = `# Firebase Context
 
 <!-- Import base Firebase context -->
 @./contexts/firebase-base.md
-${enabledFeatures.includes("functions") ? `
+${
+  enabledFeatures.includes("functions")
+    ? `
 <!-- Import Firebase Functions context -->
-@./contexts/firebase-functions.md` : ''}
-`, promptVersions);
+@./contexts/firebase-functions.md`
+    : ""
+}`;
 
-    // Handle existing content with diff preview
+    const { content: mainContent } = generatePromptSection(enabledFeatures, {
+      customContent: importContent,
+    });
+
     const contextPath = `${baseDir}/FIREBASE.md`;
-    let existingContent = "";
 
-    try {
-      existingContent = config.readProjectFile(contextPath) || "";
-    } catch (e) {
-      // File doesn't exist yet, which is fine
-    }
+    const mainResult = await replaceFirebaseFile(config, contextPath, mainContent);
+    files.push({ path: contextPath, updated: mainResult.updated });
 
-    // Check if we need to show diff
-    if (existingContent) {
-      const existingSection = findFirebaseSection(existingContent);
-      if (existingSection) {
-        // Check if versions match - if so, skip update
-        const existingVersions = parseVersionsString(existingSection.versions);
-        const currentVersions = getPromptVersions(enabledFeatures);
-        
-        // Compare versions
-        const versionsMatch = JSON.stringify(existingVersions) === JSON.stringify(currentVersions);
-        
-        if (versionsMatch) {
-          return;
-        }
-        
-        // Update silently
-        const newContent = replaceFirebaseSection(existingContent, mainContent);
-        config.writeProjectFile(contextPath, newContent);
-      } else {
-        // No Firebase section found, just overwrite
-        config.writeProjectFile(contextPath, mainContent);
-      }
-    } else {
-      // New file
-      config.writeProjectFile(contextPath, mainContent);
-    }
-
-    utils.logSuccess("✓ Gemini CLI extension for Firebase created at:");
-    utils.logBullet("  - .gemini/extensions/firebase/gemini-extension.json");
+    return { files };
   },
 };

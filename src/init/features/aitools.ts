@@ -1,8 +1,9 @@
 import * as utils from "../../utils";
-import { checkbox, confirm } from "../../prompt";
+import { checkbox } from "../../prompt";
 import { Setup } from "../index";
 import { Config } from "../../config";
 import { AI_TOOLS, AIToolChoice } from "./aitools/index";
+import { logger } from "../../logger";
 
 interface AgentsInitSelections {
   tools?: string[];
@@ -15,18 +16,17 @@ const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map((tool) => ({
   checked: false,
 }));
 
-/**
- *
- */
 export async function doSetup(setup: Setup, config: Config) {
-  console.log();
-  console.log("This command will configure AI coding assistants to work with your Firebase project by:");
+  logger.info();
+  logger.info(
+    "This command will configure AI coding assistants to work with your Firebase project by:",
+  );
   utils.logBullet("• Setting up the Firebase MCP server for direct Firebase operations");
   utils.logBullet("• Installing context files that help AI understand:");
   utils.logBullet("  - Firebase project structure and firebase.json configuration");
   utils.logBullet("  - Common Firebase CLI commands and debugging practices");
   utils.logBullet("  - Product-specific guidance (Functions, Firestore, Hosting, etc.)");
-  console.log();
+  logger.info();
 
   const selections: AgentsInitSelections = {};
 
@@ -45,46 +45,71 @@ export async function doSetup(setup: Setup, config: Config) {
     return;
   }
 
-  console.log();
-  console.log("Configuring selected tools...");
-  console.log();
+  logger.info();
+  logger.info("Configuring selected tools...");
 
   const projectPath = config.projectDir;
-  const detectedFeatures = getEnabledFeatures(setup.config, true);
+  const detectedFeatures = getEnabledFeatures(setup.config);
   const enabledFeatures = detectedFeatures;
 
   // Configure each selected tool
+  let anyUpdates = false;
+
   for (const toolName of selections.tools) {
     const tool = AI_TOOLS[toolName];
-    if (tool) {
-      await tool.configure(config, projectPath, enabledFeatures);
-    } else {
+    if (!tool) {
       utils.logWarning(`Unknown tool: ${toolName}`);
+      continue;
+    }
+
+    const result = await tool.configure(config, projectPath, enabledFeatures);
+
+    // Count updated files
+    const updatedCount = result.files.filter((f) => f.updated).length;
+    const hasChanges = updatedCount > 0;
+
+    if (hasChanges) {
+      anyUpdates = true;
+      logger.info();
+      utils.logSuccess(
+        `${tool.displayName} configured - ${updatedCount} file${updatedCount > 1 ? "s" : ""} updated:`,
+      );
+    } else {
+      logger.info();
+      utils.logBullet(`${tool.displayName} - all files up to date`);
+    }
+
+    // Always show the file list
+    for (const file of result.files) {
+      const status = file.updated ? "(updated)" : "(unchanged)";
+      utils.logBullet(`  ${file.path} ${status}`);
     }
   }
 
-  console.log();
-  utils.logSuccess("✓ Configuration complete!");
-  console.log();
-  console.log("Next steps:");
-  utils.logBullet("1. Restart your AI tools to load the new configuration");
-  utils.logBullet("2. Try asking your AI assistant about your Firebase project structure");
-  utils.logBullet("3. AI assistants now understand Firebase CLI commands and debugging");
+  logger.info();
+
+  if (anyUpdates) {
+    utils.logSuccess("AI tools configuration complete!");
+    logger.info();
+    logger.info("Next steps:");
+    utils.logBullet("Restart your AI tools to load the new configuration");
+    utils.logBullet("Try asking your AI assistant about your Firebase project structure");
+    utils.logBullet("AI assistants now understand Firebase CLI commands and debugging");
+  } else {
+    utils.logSuccess("All AI tools are already up to date.");
+  }
 }
 
-function getEnabledFeatures(config: any, optimize: boolean): string[] {
-  if (!optimize) return [];
-
+function getEnabledFeatures(config: any): string[] {
   const features = [];
-  // Only support features we have prompts for
   if (config.functions) features.push("functions");
 
   // Future: Add these when we have corresponding prompt files
-  // if (config.firestore && hasPromptFile("FIREBASE_FIRESTORE.md")) features.push("firestore");
-  // if (config.hosting && hasPromptFile("FIREBASE_HOSTING.md")) features.push("hosting");
-  // if (config.storage && hasPromptFile("FIREBASE_STORAGE.md")) features.push("storage");
-  // if (config.database && hasPromptFile("FIREBASE_DATABASE.md")) features.push("database");
-  // if (config.dataconnect && hasPromptFile("FIREBASE_DATACONNECT.md")) features.push("dataconnect");
+  // if (config.firestore)) features.push("firestore");
+  // if (config.hosting)) features.push("hosting");
+  // if (config.storage)) features.push("storage");
+  // if (config.database)) features.push("database");
+  // if (config.dataconnect)) features.push("dataconnect");
 
   return features;
 }

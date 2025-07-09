@@ -1,42 +1,63 @@
-import { exec } from "child_process";
-import { promisify } from "util";
-import * as utils from "../../../utils";
 import { Config } from "../../../config";
-import { AIToolModule } from "./types";
+import { AIToolModule, AIToolConfigResult } from "./types";
+import { updateFirebaseSection } from "./promptUpdater";
 
-const execAsync = promisify(exec);
+const CLAUDE_SETTINGS_PATH = ".claude/settings.local.json";
+const CLAUDE_PROMPT_PATH = "CLAUDE.local.md";
 
 export const claude: AIToolModule = {
   name: "claude",
   displayName: "Claude Code",
 
-  async configure(config: Config, projectPath: string, _enabledFeatures: string[]): Promise<void> {
-    // Check if claude CLI exists
+  /**
+   * Configures Claude Code with Firebase context.
+   *
+   * - .claude/settings.local.json: Merges with existing config (preserves user settings)
+   * - CLAUDE.local.md: Updates Firebase section only (preserves user content)
+   */
+  async configure(
+    config: Config,
+    projectPath: string,
+    enabledFeatures: string[],
+  ): Promise<AIToolConfigResult> {
+    const files: AIToolConfigResult["files"] = [];
+
+    // Handle MCP configuration - merge with existing if present
+    let existingConfig: any = {};
+    let settingsUpdated = false;
     try {
-      await execAsync("which claude");
+      const existingContent = config.readProjectFile(CLAUDE_SETTINGS_PATH);
+      if (existingContent) {
+        existingConfig = JSON.parse(existingContent);
+      }
     } catch (e) {
-      utils.logWarning("Claude CLI not found. Install from: https://docs.anthropic.com/en/docs/claude-code");
-      return;
+      // File doesn't exist or is invalid JSON, start fresh
     }
 
-    // Build the MCP add command
-    const cmd = `claude mcp add firebase -e PROJECT_ROOT="${projectPath}" -- npx -y firebase-tools experimental:mcp`;
-
-    try {
-      await execAsync(cmd);
-      // Write a simple config file to indicate setup is complete
-      config.writeProjectFile(".claude/settings.local.json", JSON.stringify({
-        "mcp-servers": {
-          "firebase": {
-            "configured": true
-          }
-        }
-      }, null, 2));
-      
-      utils.logSuccess("✓ Claude Code configuration written to:");
-      utils.logBullet("  - .claude/settings.local.json");
-    } catch (error: any) {
-      // Silently fail - user can run command manually if needed
+    // Check if firebase server already exists
+    if (!existingConfig.mcpServers?.firebase) {
+      if (!existingConfig.mcpServers) {
+        existingConfig.mcpServers = {};
+      }
+      existingConfig.mcpServers.firebase = {
+        command: "npx",
+        args: ["-y", "firebase-tools", "experimental:mcp", "--dir", projectPath],
+      };
+      config.writeProjectFile(CLAUDE_SETTINGS_PATH, JSON.stringify(existingConfig, null, 2));
+      settingsUpdated = true;
     }
+
+    files.push({ path: CLAUDE_SETTINGS_PATH, updated: settingsUpdated });
+
+    const { updated } = await updateFirebaseSection(config, CLAUDE_PROMPT_PATH, enabledFeatures, {
+      interactive: true,
+    });
+
+    files.push({
+      path: CLAUDE_PROMPT_PATH,
+      updated,
+    });
+
+    return { files };
   },
 };
