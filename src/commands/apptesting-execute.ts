@@ -37,7 +37,7 @@ export const command = new Command("apptesting:execute <target>")
     if (!app && appList.length === 1) {
       app = appList[0];
       logger.info(`No app specified, defaulting to ${app.appId}`);
-    } else {
+    } else if (!app) {
       throw new FirebaseError("Invalid app id");
     }
 
