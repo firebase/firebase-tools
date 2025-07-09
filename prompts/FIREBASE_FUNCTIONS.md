@@ -129,7 +129,7 @@ export const processPayment = onRequest({
 
 <example>
 ```typescript
-import {onInit} from 'firebase-functions/core';
+import {onInit} from 'firebase-functions';
 import {onRequest} from 'firebase-functions/https';
 
 let heavyClient: HeavySDK;
