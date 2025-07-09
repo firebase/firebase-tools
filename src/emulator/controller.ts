@@ -603,7 +603,6 @@ export async function startAll(
       );
     }
 
-
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
