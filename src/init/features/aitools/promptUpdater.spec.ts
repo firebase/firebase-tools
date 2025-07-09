@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+
+import * as prompt from "../../../prompt";
 import { Config } from "../../../config";
 import {
   generatePromptSection,
@@ -23,14 +25,10 @@ describe("promptUpdater", () => {
       writeProjectFile: sandbox.stub(),
     } as any;
 
-    // Stub fs.readFileSync for prompt files
     readFileSyncStub = sandbox.stub(fs, "readFileSync");
-
-    // Mock prompt file contents (without any wrapper tags - raw content)
     readFileSyncStub.withArgs(sinon.match(/FIREBASE\.md$/)).returns(`# Firebase CLI Context
 
 Base Firebase content`);
-
     readFileSyncStub.withArgs(sinon.match(/FIREBASE_FUNCTIONS\.md$/)).returns(`# Firebase Functions
 
 Functions specific content`);
@@ -38,30 +36,6 @@ Functions specific content`);
 
   afterEach(() => {
     sandbox.restore();
-  });
-
-  describe("generatePromptSection with custom content", () => {
-    it("should generate wrapper with custom content but hash from actual prompts", () => {
-      const customContent = "Custom import statements";
-      const result = generatePromptSection(["functions"], { customContent });
-
-      // Should include custom content
-      expect(result.content).to.include(customContent);
-      expect(result.content).to.include("<firebase_prompts hash=");
-      expect(result.content).to.not.include("Base Firebase content");
-      expect(result.content).to.not.include("Functions specific content");
-
-      // Hash should match the hash from normal generation
-      const normalResult = generatePromptSection(["functions"]);
-      expect(result.hash).to.equal(normalResult.hash);
-    });
-
-    it("should generate same hash regardless of custom content", () => {
-      const result1 = generatePromptSection(["functions"], { customContent: "Content 1" });
-      const result2 = generatePromptSection(["functions"], { customContent: "Content 2" });
-
-      expect(result1.hash).to.equal(result2.hash);
-    });
   });
 
   describe("generatePromptSection", () => {
@@ -105,9 +79,41 @@ Functions specific content`);
       expect(result.content).to.include("# Firebase CLI Context");
       expect(result.content).to.include("Base Firebase content");
     });
+
+    it("should generate wrapper with custom content but hash from actual prompts", () => {
+      const customContent = "Custom import statements";
+      const result = generatePromptSection(["functions"], { customContent });
+
+      expect(result.content).to.include(customContent);
+      expect(result.content).to.include("<firebase_prompts hash=");
+      expect(result.content).to.not.include("Base Firebase content");
+      expect(result.content).to.not.include("Functions specific content");
+
+      const normalResult = generatePromptSection(["functions"]);
+      expect(result.hash).to.equal(normalResult.hash);
+    });
+
+    it("should generate same hash regardless of custom content", () => {
+      const result1 = generatePromptSection(["functions"], { customContent: "Content 1" });
+      const result2 = generatePromptSection(["functions"], { customContent: "Content 2" });
+
+      expect(result1.hash).to.equal(result2.hash);
+    });
   });
 
   describe("updateFirebaseSection", () => {
+    let sandbox: sinon.SinonSandbox;
+    let confirmStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
     it("should create new file when none exists", async () => {
       (mockConfig.readProjectFile as sinon.SinonStub).throws(new Error("File not found"));
 
@@ -196,8 +202,6 @@ More user content`;
       (mockConfig.readProjectFile as sinon.SinonStub).returns(existingContent);
 
       // Mock the confirm prompt to return false
-      const promptModule = require("../../../prompt");
-      const confirmStub = sandbox.stub(promptModule, "confirm").resolves(false);
 
       const result = await updateFirebaseSection(mockConfig, "test.md", [], {
         interactive: true,
@@ -311,7 +315,6 @@ Content
 After`;
       (mockConfig.readProjectFile as sinon.SinonStub).returns(content);
 
-      // Force an update by using different features
       await updateFirebaseSection(mockConfig, "test.md", ["functions"]);
 
       const writtenContent = (mockConfig.writeProjectFile as sinon.SinonStub).firstCall.args[1];
