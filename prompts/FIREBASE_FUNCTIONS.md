@@ -40,7 +40,7 @@ import {logger} from 'firebase-functions';
 
 // Configuration
 import {defineString, defineInt, defineSecret} from 'firebase-functions/params';
-import \* as params from 'firebase-functions/params';
+import * as params from 'firebase-functions/params';
 
 // Note: For SDK versions before 6.0.0, add /v2 to import paths:
 // import {onRequest} from 'firebase-functions/v2/https';
