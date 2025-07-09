@@ -1,2 +1,4 @@
 - Improve App Hosting compute service account flow for source deploys. (#8785)
 - Fixed an issue with `ext:configure` where params without default values could not be set. (#8810)
+- Fixed an issue in Data Connect where indexes over 63 characters broke schema migration.
+- Added support for `string_pattern` filters in Data Connect. These allow you to filter string fields using regex or `LIKE` semantics.
