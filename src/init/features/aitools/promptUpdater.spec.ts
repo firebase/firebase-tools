@@ -27,13 +27,11 @@ describe("promptUpdater", () => {
     readFileSyncStub = sandbox.stub(fs, "readFileSync");
 
     // Mock prompt file contents (without any wrapper tags - raw content)
-    readFileSyncStub.withArgs(sinon.match(/FIREBASE\.md$/))
-      .returns(`# Firebase CLI Context
+    readFileSyncStub.withArgs(sinon.match(/FIREBASE\.md$/)).returns(`# Firebase CLI Context
 
 Base Firebase content`);
 
-    readFileSyncStub.withArgs(sinon.match(/FIREBASE_FUNCTIONS\.md$/))
-      .returns(`# Firebase Functions
+    readFileSyncStub.withArgs(sinon.match(/FIREBASE_FUNCTIONS\.md$/)).returns(`# Firebase Functions
 
 Functions specific content`);
   });
