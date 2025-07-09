@@ -49,8 +49,7 @@ export async function doSetup(setup: Setup, config: Config) {
   logger.info("Configuring selected tools...");
 
   const projectPath = config.projectDir;
-  const detectedFeatures = getEnabledFeatures(setup.config);
-  const enabledFeatures = detectedFeatures;
+  const enabledFeatures = getEnabledFeatures(setup.config);
 
   // Configure each selected tool
   let anyUpdates = false;

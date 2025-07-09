@@ -26,20 +26,16 @@ describe("promptUpdater", () => {
     // Stub fs.readFileSync for prompt files
     readFileSyncStub = sandbox.stub(fs, "readFileSync");
 
-    // Mock prompt file contents
+    // Mock prompt file contents (without any wrapper tags - raw content)
     readFileSyncStub.withArgs(sinon.match(/FIREBASE\.md$/))
-      .returns(`<firebase_base_context version="0.0.1">
-# Firebase CLI Context
+      .returns(`# Firebase CLI Context
 
-Base Firebase content
-</firebase_base_context>`);
+Base Firebase content`);
 
     readFileSyncStub.withArgs(sinon.match(/FIREBASE_FUNCTIONS\.md$/))
-      .returns(`<firebase_functions_context version="0.0.1">
-# Firebase Functions
+      .returns(`# Firebase Functions
 
-Functions specific content
-</firebase_functions_context>`);
+Functions specific content`);
   });
 
   afterEach(() => {
@@ -105,11 +101,11 @@ Functions specific content
       expect(result1.hash).to.not.equal(result2.hash);
     });
 
-    it("should strip XML wrapper tags from prompt files", () => {
+    it("should include raw prompt content without modification", () => {
       const result = generatePromptSection([]);
 
-      expect(result.content).to.not.include("firebase_base_context");
-      expect(result.content).to.not.include('version="0.0.1"');
+      expect(result.content).to.include("# Firebase CLI Context");
+      expect(result.content).to.include("Base Firebase content");
     });
   });
 
@@ -275,18 +271,16 @@ More user content`;
   });
 
   describe("getFeatureContent", () => {
-    it("should return stripped content for base feature", () => {
+    it("should return raw content for base feature", () => {
       const content = getFeatureContent("base");
 
       expect(content).to.equal("# Firebase CLI Context\n\nBase Firebase content");
-      expect(content).to.not.include("firebase_base_context");
     });
 
-    it("should return stripped content for functions feature", () => {
+    it("should return raw content for functions feature", () => {
       const content = getFeatureContent("functions");
 
       expect(content).to.equal("# Firebase Functions\n\nFunctions specific content");
-      expect(content).to.not.include("firebase_functions_context");
     });
 
     it("should return empty string for unknown feature", () => {

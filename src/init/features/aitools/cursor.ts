@@ -77,12 +77,11 @@ export const cursor: AIToolModule = {
       files.push({ path: functionsPromptPath, updated: functionsResult.updated });
     }
 
-    const importContent = `# Firebase Context
-
-@FIREBASE_BASE.md
-${enabledFeatures.includes("functions") ? `@FIREBASE_FUNCTIONS.md` : ""}
-
-`;
+    const imports = ["@FIREBASE_BASE.md"];
+    if (enabledFeatures.includes("functions")) {
+      imports.push("@FIREBASE_FUNCTIONS.md");
+    }
+    const importContent = `# Firebase Context\n\n${imports.join("\n")}\n`;
 
     const { content: mainContent } = generatePromptSection(enabledFeatures, {
       customContent: importContent,

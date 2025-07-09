@@ -60,18 +60,20 @@ export const gemini: AIToolModule = {
       files.push({ path: functionsPath, updated: functionsResult.updated });
     }
 
-    // Generate the main FIREBASE.md content with imports
-    const importContent = `# Firebase Context
-
-<!-- Import base Firebase context -->
-@./contexts/firebase-base.md
-${
-  enabledFeatures.includes("functions")
-    ? `
-<!-- Import Firebase Functions context -->
-@./contexts/firebase-functions.md`
-    : ""
-}`;
+    const imports = [
+      "# Firebase Context",
+      "",
+      "<!-- Import base Firebase context -->",
+      "@./contexts/firebase-base.md",
+    ];
+    if (enabledFeatures.includes("functions")) {
+      imports.push(
+        "",
+        "<!-- Import Firebase Functions context -->",
+        "@./contexts/firebase-functions.md",
+      );
+    }
+    const importContent = imports.join("\n");
 
     const { content: mainContent } = generatePromptSection(enabledFeatures, {
       customContent: importContent,
