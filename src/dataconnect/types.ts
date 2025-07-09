@@ -220,7 +220,7 @@ export interface ExecuteGraphqlRequest {
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };
-  extensions?: { impersonate?: Impersonation };
+  extensions?: { impersonate?: Impersonation; includeDebugDetails?: boolean };
 }
 
 export interface GraphqlResponse {
@@ -242,9 +242,11 @@ export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g
 
 interface ImpersonationAuthenticated {
   authClaims: any;
+  includeDebugDetails?: boolean;
 }
 interface ImpersonationUnauthenticated {
   unauthenticated: boolean;
+  includeDebugDetails?: boolean;
 }
 export type Impersonation = ImpersonationAuthenticated | ImpersonationUnauthenticated;
 
