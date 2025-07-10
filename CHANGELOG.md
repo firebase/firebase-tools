@@ -1,0 +1,1 @@
+- Fixed an issue where `firebase-tools` could not be used within v1 Cloud Functions due to trying to write to a read only file.
