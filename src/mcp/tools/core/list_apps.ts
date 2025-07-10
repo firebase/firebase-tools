@@ -10,7 +10,7 @@ export const list_apps = tool(
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web", "all"])
-        .default("all")
+        .optional()
         .describe("the specific platform to list (omit to list all platforms)"),
     }),
     annotations: {
@@ -26,7 +26,7 @@ export const list_apps = tool(
     try {
       const apps = await listFirebaseApps(
         projectId!,
-        platform === "all" ? AppPlatform.ANY : (platform.toUpperCase() as AppPlatform),
+        !platform || platform === "all" ? AppPlatform.ANY : (platform.toUpperCase() as AppPlatform),
       );
       return toContent(apps);
     } catch (err: any) {

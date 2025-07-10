@@ -64,7 +64,8 @@ export function setNewDefaults(params: Param[], newDefaults: { [key: string]: st
     if (newDefaults[param.param]) {
       param.default = newDefaults[param.param];
     } else if (
-      (param.param = `firebaseextensions.v1beta.function/location` && newDefaults["LOCATION"])
+      param.param === `firebaseextensions.v1beta.function/location` &&
+      newDefaults["LOCATION"]
     ) {
       // Special case handling for when we are updating from LOCATION to system param location.
       param.default = newDefaults["LOCATION"];
