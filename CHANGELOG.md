@@ -1,3 +1,0 @@
-- Improve App Hosting compute service account flow for source deploys. (#8785)
-- Fixed an issue with `ext:configure` where params without default values could not be set. (#8810)
-- Fixed an issue where the Data Connect emulator wasn't provided application default credentials. (#8819)

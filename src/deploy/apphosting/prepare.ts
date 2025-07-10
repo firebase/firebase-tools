@@ -12,7 +12,6 @@ import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context } from "./args";
-import { FirebaseError } from "../../error";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -22,17 +21,7 @@ export default async function (context: Context, options: Options): Promise<void
   const projectId = needProjectId(options);
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
-  try {
-    await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
-  } catch (err) {
-    if ((err as FirebaseError).status === 400) {
-      logLabeledWarning(
-        "apphosting",
-        "Your App Hosting compute service account is still being provisioned. Please try again in a few moments.",
-      );
-    }
-    throw err;
-  }
+  await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
 
   context.backendConfigs = new Map<string, AppHostingSingle>();
   context.backendLocations = new Map<string, string>();
