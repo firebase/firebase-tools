@@ -1,5 +1,0 @@
-- Updated Data Connect emulator to v2.9.1, which:
-  - Replaces the release of v2.9.0, which used an outdated version of Data Connect emulator.
-  - Fixed an issue in Data Connect where indexes over 63 characters broke schema migration.
-  - Added support for `string_pattern` filters in Data Connect. These allow you to filter string fields using regex or `LIKE` semantics.
-- Fixed an issue where `firebase-tools` could not be used within v1 Cloud Functions due to trying to write to a read only file.
