@@ -3,3 +3,4 @@
 - Updated Data Connect emulator to v2.9.0, which:
   - Fixed an issue in Data Connect where indexes over 63 characters broke schema migration.
   - Added support for `string_pattern` filters in Data Connect. These allow you to filter string fields using regex or `LIKE` semantics.
+- Fixed an issue where the Data Connect emulator wasn't provided application default credentials. (#8819)
