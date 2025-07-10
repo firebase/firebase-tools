@@ -37,7 +37,6 @@ END
 $do$;`;
 
 const decoder = new StringDecoder();
-const pgliteDebugLog = fs.createWriteStream("pglite-debug.log");
 
 export class PostgresServer {
   private baseDataDirectory?: string;
@@ -283,8 +282,12 @@ export async function fromNodeSocket(socket: net.Socket, options?: PostgresConne
 export class PGliteExtendedQueryPatch {
   isExtendedQuery = false;
   eqpErrored = false;
+  pgliteDebugLog: fs.WriteStream;
 
-  constructor(public connection: PostgresConnection) {}
+  constructor(public connection: PostgresConnection) {
+    this.pgliteDebugLog = fs.createWriteStream("pglite-debug.log");
+  }
+
 
   async *filterResponse(message: Uint8Array, response: Uint8Array) {
     // 'Parse' indicates the start of an extended query
@@ -295,7 +298,7 @@ export class PGliteExtendedQueryPatch {
     ];
     const decoded = decoder.write(message as any as Buffer);
 
-    pgliteDebugLog.write("Front: " + decoded);
+    this.pgliteDebugLog.write("Front: " + decoded);
 
     if (pipelineStartMessages.includes(message[0])) {
       this.isExtendedQuery = true;
@@ -319,10 +322,10 @@ export class PGliteExtendedQueryPatch {
       }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
       if (this.isExtendedQuery && bm[0] === BackendMessageCode.ReadyForQuery) {
-        pgliteDebugLog.write("Filtered: " + decoder.write(bm as any as Buffer));
+        this.pgliteDebugLog.write("Filtered: " + decoder.write(bm as any as Buffer));
         continue;
       }
-      pgliteDebugLog.write("Sent: " + decoder.write(bm as any as Buffer));
+      this.pgliteDebugLog.write("Sent: " + decoder.write(bm as any as Buffer));
       yield bm;
     }
   }

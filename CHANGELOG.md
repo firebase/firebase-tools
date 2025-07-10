@@ -1,6 +1,1 @@
-- Improve App Hosting compute service account flow for source deploys. (#8785)
-- Fixed an issue with `ext:configure` where params without default values could not be set. (#8810)
-- Updated Data Connect emulator to v2.9.0, which:
-  - Fixed an issue in Data Connect where indexes over 63 characters broke schema migration.
-  - Added support for `string_pattern` filters in Data Connect. These allow you to filter string fields using regex or `LIKE` semantics.
-- Fixed an issue where the Data Connect emulator wasn't provided application default credentials. (#8819)
+- Fixed an issue where `firebase-tools` could not be used within v1 Cloud Functions due to trying to write to a read only file.
