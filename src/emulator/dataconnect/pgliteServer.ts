@@ -288,7 +288,6 @@ export class PGliteExtendedQueryPatch {
     this.pgliteDebugLog = fs.createWriteStream("pglite-debug.log");
   }
 
-
   async *filterResponse(message: Uint8Array, response: Uint8Array) {
     // 'Parse' indicates the start of an extended query
     const pipelineStartMessages: number[] = [
