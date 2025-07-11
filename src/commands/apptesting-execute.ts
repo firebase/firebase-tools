@@ -77,7 +77,8 @@ export const command = new Command("apptesting:execute <target>")
       projectId,
       `/apptesting/app/web:${appWebId}/invocations/${invocationId}`,
     );
-    logger.info(await marked(`View progress and resuts in the [Firebase Console](${url})`));
+    logger.info(await marked(`**Invocation ID:** ${invocationId}`))
+    logger.info(await marked(`View progress and results in the [Firebase Console](${url})`));
 
     if (options.testsNonBlocking) {
       logger.info("Not waiting for results");
