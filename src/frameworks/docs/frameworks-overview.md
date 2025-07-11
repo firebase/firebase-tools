@@ -52,7 +52,13 @@ live site:
 
 ## Configure different environments
 
-Cloud Functions [parameterized configuration](https://firebase.google.com/docs/functions/config-env?gen=2nd#params) can be used to leverage `.env` files based on your project ID, which can be used to deploy your project to different environments, like staging and production.
+You can deploy multiple sets of environment variables for different project environments, such as staging and production.
+
+* If you have a `staging` project alias, you can deploy environment variables from a `.env.staging` file.
+* If you have a `production` project alias, you can deploy environment variables from a `.env.production` file.
+* If you have a project with id `PROJECT_ID`, you can deploy environment variables from a `.env.PROJECT_ID` file.
+
+See the [Cloud Functions documentation](https://firebase.google.com/docs/functions/config-env?gen=2nd#deploying_multiple_sets_of_environment_variables) for a detailed guide.
 
 ## Next steps
 
