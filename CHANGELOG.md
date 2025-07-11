@@ -1,0 +1,1 @@
+- Added Cloud Logging URL at the end of `functions:log` command (#8211)
