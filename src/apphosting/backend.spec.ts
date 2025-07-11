@@ -215,6 +215,20 @@ describe("apphosting setup functions", () => {
       expect(createServiceAccountStub).to.be.calledOnce;
       expect(addServiceAccountToRolesStub).to.not.be.called;
     });
+
+    it("should throw an unexpected error", async () => {
+      testResourceIamPermissionsStub.rejects(
+        new FirebaseError("Unexpected error", { status: 500 }),
+      );
+
+      await expect(
+        ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
+      ).to.be.rejectedWith("Unexpected error");
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
   });
 
   describe("deleteBackendAndPoll", () => {
