@@ -162,24 +162,7 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serveAdmin(
-    port: string,
-    config: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables,
-  ): Promise<() => Promise<void>> {
-    const env: NodeJS.ProcessEnv = {
-      ...envs,
-      PORT: port,
-      FUNCTIONS_CONTROL_API: "true",
-      HOME: process.env.HOME,
-      PATH: process.env.PATH,
-      NODE_ENV: process.env.NODE_ENV,
-      // Web Frameworks fails without this environment variable
-      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
-    };
-    if (Object.keys(config || {}).length) {
-      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
-    }
+  private findFunctionsBinary(): string {
     // Location of the binary included in the Firebase Functions SDK
     // differs depending on the developer's setup and choice of package manager.
     //
@@ -199,6 +182,7 @@ export class Delegate {
     const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
     const sdkNodeModulesPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
     const ignorePnpmModulesPath = sdkNodeModulesPath.replace(/\/\.pnpm\/.*/, "");
+    
     for (const nodeModulesPath of [
       sourceNodeModulesPath,
       projectNodeModulesPath,
@@ -208,46 +192,103 @@ export class Delegate {
       const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
-        // Note: We cannot use inherit because we need the stdout/err to be
-        // omitted in commands that use --json.
-        const childProcess = spawn(binPath, [this.sourceDir], {
-          env,
-          cwd: this.sourceDir,
-          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
-        });
-        childProcess.stdout?.on("data", (chunk: Buffer) => {
-          logger.info(chunk.toString("utf8"));
-        });
-        childProcess.stderr?.on("data", (chunk: Buffer) => {
-          logger.error(chunk.toString("utf8"));
-        });
-        return Promise.resolve(async () => {
-          const p = new Promise<void>((resolve, reject) => {
-            childProcess.once("exit", resolve);
-            childProcess.once("error", reject);
-          });
-
-          try {
-            await fetch(`http://localhost:${port}/__/quitquitquit`);
-          } catch (e) {
-            logger.debug(
-              "Failed to call quitquitquit. This often means the server failed to start",
-              e,
-            );
-          }
-          setTimeout(() => {
-            if (!childProcess.killed) {
-              childProcess.kill("SIGKILL");
-            }
-          }, 10_000);
-          return p;
-        });
+        return binPath;
       }
     }
+    
     throw new FirebaseError(
       "Failed to find location of Firebase Functions SDK. " +
         "Please file a bug on Github (https://github.com/firebase/firebase-tools/).",
     );
+  }
+
+  execAdmin(
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables,
+  ): any {
+    const env: NodeJS.ProcessEnv = {
+      ...envs,
+      FUNCTIONS_CONTROL_API: "true",
+      FUNCTIONS_DISCOVERY_MODE: "stdio",
+      HOME: process.env.HOME,
+      PATH: process.env.PATH,
+      NODE_ENV: process.env.NODE_ENV,
+      // Web Frameworks fails without this environment variable
+      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
+    };
+    if (Object.keys(config || {}).length) {
+      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
+    }
+    
+    const binPath = this.findFunctionsBinary();
+    const childProcess = spawn(binPath, [this.sourceDir], {
+      env,
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
+    });
+    
+    childProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.info(chunk.toString("utf8"));
+    });
+    
+    return childProcess;
+  }
+
+  serveAdmin(
+    port: string,
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables,
+  ): Promise<() => Promise<void>> {
+    const env: NodeJS.ProcessEnv = {
+      ...envs,
+      PORT: port,
+      FUNCTIONS_CONTROL_API: "true",
+      HOME: process.env.HOME,
+      PATH: process.env.PATH,
+      NODE_ENV: process.env.NODE_ENV,
+      // Web Frameworks fails without this environment variable
+      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
+    };
+    if (Object.keys(config || {}).length) {
+      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
+    }
+    
+    const binPath = this.findFunctionsBinary();
+    // Note: We cannot use inherit because we need the stdout/err to be
+    // omitted in commands that use --json.
+    const childProcess = spawn(binPath, [this.sourceDir], {
+      env,
+      cwd: this.sourceDir,
+      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
+    });
+    childProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.info(chunk.toString("utf8"));
+    });
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.error(chunk.toString("utf8"));
+    });
+    
+    return Promise.resolve(async () => {
+      const p = new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
+
+      try {
+        await fetch(`http://localhost:${port}/__/quitquitquit`);
+      } catch (e) {
+        logger.debug(
+          "Failed to call quitquitquit. This often means the server failed to start",
+          e,
+        );
+      }
+      setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      return p;
+    });
   }
 
   // eslint-disable-next-line require-await
@@ -280,13 +321,18 @@ export class Delegate {
     }
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
-      const port = await portfinder.getPortPromise({ port: basePort });
-      const kill = await this.serveAdmin(port.toString(), config, env);
-      try {
-        discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
-      } finally {
-        await kill();
+      if (process.env.FUNCTIONS_DISCOVERY_MODE === "stdio") {
+        const childProcess = this.execAdmin(config, env);
+        discovered = await discovery.detectFromStdio(childProcess, this.projectId, this.runtime);
+      } else {
+        const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
+        const port = await portfinder.getPortPromise({ port: basePort });
+        const kill = await this.serveAdmin(port.toString(), config, env);
+        try {
+          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+        } finally {
+          await kill();
+        }
       }
     }
     return discovered;

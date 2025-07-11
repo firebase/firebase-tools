@@ -130,3 +130,84 @@ export async function detectFromPort(
 
   return yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime);
 }
+
+/**
+ * Load a build from stdio output.
+ */
+export async function detectFromStdio(
+  childProcess: any,
+  project: string,
+  runtime: Runtime,
+  timeout = 10_000,
+): Promise<build.Build> {
+  return new Promise((resolve, reject) => {
+    let stderrBuffer = "";
+    let resolved = false;
+    
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        reject(new FirebaseError(
+          `User code failed to load. Cannot determine backend specification. Timeout after ${timeout}ms`
+        ));
+      }
+    }, timeout);
+
+    const processLine = (line: string) => {
+      const manifestPrefix = "__FIREBASE_FUNCTIONS_MANIFEST__:";
+      const errorPrefix = "__FIREBASE_FUNCTIONS_MANIFEST_ERROR__:";
+      
+      if (line.startsWith(errorPrefix)) {
+        const errorMsg = line.substring(errorPrefix.length);
+        clearTimeout(timer);
+        resolved = true;
+        reject(new FirebaseError(`Failed to generate manifest from function source: ${errorMsg}`));
+      } else if (line.startsWith(manifestPrefix)) {
+        try {
+          const base64Content = line.substring(manifestPrefix.length);
+          const manifestJson = Buffer.from(base64Content, "base64").toString("utf8");
+          const parsed = JSON.parse(manifestJson);
+          
+          clearTimeout(timer);
+          resolved = true;
+          resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
+        } catch (err: any) {
+          logger.debug("Failed to parse discovery line", err);
+        }
+      }
+    };
+
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      stderrBuffer += chunk.toString();
+      
+      const lines = stderrBuffer.split("\n");
+      stderrBuffer = lines.pop() || "";
+      
+      for (const line of lines) {
+        if (!resolved) {
+          processLine(line);
+        }
+      }
+    });
+
+    childProcess.on("exit", (code: number) => {
+      if (!resolved) {
+        clearTimeout(timer);
+        resolved = true;
+        if (code !== 0 && code !== null) {
+          reject(new FirebaseError(
+            `Discovery process exited with code ${code}`
+          ));
+        }
+      }
+    });
+
+    childProcess.on("error", (err: Error) => {
+      if (!resolved) {
+        clearTimeout(timer);
+        resolved = true;
+        reject(new FirebaseError(`Discovery process failed: ${err.message}`));
+      }
+    });
+  });
+}
