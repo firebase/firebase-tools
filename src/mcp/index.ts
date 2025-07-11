@@ -3,9 +3,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequest,
   CallToolRequestSchema,
-  CallToolResult,
-  ListToolsRequestSchema,
   ListToolsResult,
+  LoggingLevel,
+  SetLevelRequestSchema,
+  ListToolsRequestSchema,
+  CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { checkFeatureActive, mcpError } from "./util.js";
 import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types.js";
@@ -30,6 +32,17 @@ const SERVER_VERSION = "0.1.0";
 
 const cmd = new Command("experimental:mcp").before(requireAuth);
 
+const orderedLogLevels = [
+  "debug",
+  "info",
+  "notice",
+  "warning",
+  "error",
+  "critical",
+  "alert",
+  "emergency",
+] as const;
+
 export class FirebaseMcpServer {
   private _ready: boolean = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
@@ -41,11 +54,22 @@ export class FirebaseMcpServer {
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
 
+  // logging spec:
+  // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
+  currentLogLevel?: LoggingLevel;
+  // the api of logging from a consumers perspective looks like `server.logger.warn("my warning")`.
+  public readonly logger = Object.fromEntries(
+    orderedLogLevels.map((logLevel) => [
+      logLevel,
+      (message: unknown) => this.log(logLevel, message),
+    ]),
+  ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
+
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
-    this.server.registerCapabilities({ tools: { listChanged: true } });
+    this.server.registerCapabilities({ tools: { listChanged: true }, logging: {} });
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.server.oninitialized = async () => {
@@ -64,6 +88,12 @@ export class FirebaseMcpServer {
         this._readyPromises.pop()?.resolve();
       }
     };
+
+    this.server.setRequestHandler(SetLevelRequestSchema, async ({ params }) => {
+      this.currentLogLevel = params.level;
+      return {};
+    });
+
     this.detectProjectRoot();
     this.detectActiveFeatures();
   }
@@ -274,5 +304,25 @@ export class FirebaseMcpServer {
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
+  }
+
+  private async log(level: LoggingLevel, message: unknown) {
+    let data = message;
+
+    // mcp protocol only takes jsons or it errors; for convienence, format
+    // a a string into a json.
+    if (typeof message === "string") {
+      data = { message };
+    }
+
+    if (!this.currentLogLevel) {
+      return;
+    }
+
+    if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
+      return;
+    }
+
+    await this.server.sendLoggingMessage({ level, data });
   }
 }
