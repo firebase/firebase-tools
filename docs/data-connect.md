@@ -2,7 +2,7 @@ Firebase Data Connect, is a feature that enables developers to build GraphQL-bas
 
 ### **Product Overview**
 
-Data Connect acts as a bridge between a project's frontend (web or mobile app) and its backend Cloud SQL for PostgreSQL database. Developers define their data model and business logic using a GraphQL schema (`*.gql`) and write data access logic in TypeScript-based connectors (`connector.ts`). The Firebase CLI then bundles these definitions and deploys them as a managed Data Connect service. This service exposes a secure GraphQL endpoint that applications can query. The system automatically handles aspects like identity and access management (IAM) integration, schema validation, and database migrations. For local development, the Emulator Suite includes a Data Connect emulator that uses an in-memory PostgreSQL instance (pg-lite) to simulate the production environment, allowing for rapid iteration without needing a live database.
+Data Connect acts as a bridge between a project's frontend (web or mobile app) and its backend Cloud SQL for PostgreSQL database. Developers define their data model and business logic using a GraphQL schema (`*.gql`). The Firebase CLI then bundles these definitions and deploys them as a managed Data Connect service. This service exposes a secure GraphQL endpoint that applications can query. The system automatically handles aspects like identity and access management (IAM) integration, schema validation, and database migrations. For local development, the Emulator Suite includes a Data Connect emulator that uses an in-memory PostgreSQL instance (pg-lite) to simulate the production environment, allowing for rapid iteration without needing a live database.
 
 ### **Project Structure**
 
