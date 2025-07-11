@@ -341,6 +341,19 @@ export function makeActiveProject(projectDir: string, newActive?: string): void 
 }
 
 /**
+ * Sets the global default project.
+ * When no other project is specified (either via the current directory or the --project flag),
+ * this project will be used.
+ */
+export function setGlobalDefaultProject(project: string): void {
+  configstore.set("globalDefaultProject", project);
+  logger.info("");
+  logger.info(`${clc.bold(project)} is now your global default project.`);
+  logger.info("When no other project is specified (by 'firebase use' or '--project'), this project will be used.");
+  logger.info("");
+}
+
+/**
  * Creates API endpoint string, e.g. /v1/projects/pid/cloudfunctions
  */
 export function endpoint(parts: string[]): string {
