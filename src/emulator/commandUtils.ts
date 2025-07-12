@@ -181,6 +181,12 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   } else {
     await requireConfig(options);
   }
+
+  // Handle --ephemeral flag
+  if (options.ephemeral && options.config?.emulators?.dataDir) {
+    delete options.config.emulators.dataDir;
+    utils.logLabeledBullet("emulators", "Ignoring dataDir due to --ephemeral flag.");
+  }
 }
 
 /**
