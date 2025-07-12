@@ -4,6 +4,7 @@
     "definitions": {
         "DataConnectSingle": {
             "additionalProperties": false,
+            "description": "A single Data Connect deployment configs",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -16,7 +17,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -29,9 +31,11 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "source": {
+                    "description": "The directory containing dataconnect.yaml for this service",
                     "type": "string"
                 }
             },
@@ -42,6 +46,7 @@
         },
         "DatabaseSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Realtime Database instance.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -54,7 +59,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -67,9 +73,11 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "The rules files for this Realtime Database instance.",
                     "type": "string"
                 }
             },
@@ -80,18 +88,23 @@
         },
         "ExtensionsConfig": {
             "additionalProperties": false,
+            "description": "The Firebase Extensions that should be deployed to this project.\nThis is a map of instance ID to extension reference (<publisherId>/<extensionId>@<version>)- ie:\n\"my-firestore-export\": \"firebase/firestore-bigquery-export@1.2.3\"\n\nVersion can also be a semver range.",
             "type": "object"
         },
         "FirestoreSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firestore database.",
             "properties": {
                 "database": {
+                    "description": "The id of the Firestore database to deploy. If omitted, defaults to '(default)'",
                     "type": "string"
                 },
                 "indexes": {
+                    "description": "Path to the firestore indexes file",
                     "type": "string"
                 },
                 "location": {
+                    "description": "The region of the Firestore database to deploy. Required when 'database' is set.",
                     "type": "string"
                 },
                 "postdeploy": {
@@ -105,7 +118,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -118,9 +132,11 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "Path to the firestore rules file",
                     "type": "string"
                 }
             },
@@ -210,6 +226,7 @@
                     "type": "string"
                 },
                 "secrets": {
+                    "description": "A list of secrets used in this app.",
                     "items": {
                         "type": "string"
                     },
@@ -242,9 +259,11 @@
             "additionalProperties": false,
             "properties": {
                 "codebase": {
+                    "description": "The codebase that these functions are part of. You can use codebases to control which functions are deployed\n ie: `firebase deploy --only functions:my-codebase`",
                     "type": "string"
                 },
                 "ignore": {
+                    "description": "Files in the source directory that should not be uploaed during dpeloyment.",
                     "items": {
                         "type": "string"
                     },
@@ -261,7 +280,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -274,9 +294,11 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "runtime": {
+                    "description": "The runtime these functions should use.",
                     "enum": [
                         "nodejs18",
                         "nodejs20",
@@ -289,6 +311,7 @@
                     "type": "string"
                 },
                 "source": {
+                    "description": "The directory containing your functions source code.\nThis directory will be archived and uploaded during deployment.\nFiles outside of this directory will not be included and should not be referenced from your functions code.",
                     "type": "string"
                 }
             },
@@ -300,6 +323,7 @@
                     "additionalProperties": false,
                     "properties": {
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "headers": {
@@ -307,9 +331,11 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -336,9 +362,11 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -351,6 +379,7 @@
                             "type": "array"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -368,9 +397,11 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "key": {
+                                        "description": "The header to set.",
                                         "type": "string"
                                     },
                                     "value": {
+                                        "description": "The value to set this header to.",
                                         "type": "string"
                                     }
                                 },
@@ -383,6 +414,7 @@
                             "type": "array"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -392,7 +424,8 @@
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "Extra headers that should be sent when serving this path."
         },
         "HostingRedirects": {
             "anyOf": [
@@ -400,12 +433,19 @@
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -419,12 +459,19 @@
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -438,12 +485,19 @@
                     "additionalProperties": false,
                     "properties": {
                         "destination": {
+                            "description": "The destination to redirect to.",
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "type": {
+                            "description": "The type of redirect.\nUse 301 for 'Moved Permanently' or 302 for 'Found' (Temporary Redirect)",
+                            "enum": [
+                                301,
+                                302
+                            ],
                             "type": "number"
                         }
                     },
@@ -453,7 +507,8 @@
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "URL redirects for a hosting site. Use these to prevent broken links when moving pages."
         },
         "HostingRewrites": {
             "anyOf": [
@@ -464,6 +519,7 @@
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -480,6 +536,7 @@
                             "type": "string"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "region": {
@@ -499,12 +556,15 @@
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -514,6 +574,7 @@
                             "type": "object"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -527,18 +588,22 @@
                     "additionalProperties": false,
                     "properties": {
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         },
                         "run": {
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -561,6 +626,7 @@
                             "type": "boolean"
                         },
                         "glob": {
+                            "description": "A glob pattern describing the paths that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -577,6 +643,7 @@
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -596,6 +663,7 @@
                             "type": "string"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -612,12 +680,15 @@
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -627,6 +698,7 @@
                             "type": "object"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -643,12 +715,15 @@
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -658,6 +733,7 @@
                             "type": "object"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -674,6 +750,7 @@
                             "type": "boolean"
                         },
                         "source": {
+                            "description": "A file path that this setting should apply to.",
                             "type": "string"
                         }
                     },
@@ -690,6 +767,7 @@
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -706,6 +784,7 @@
                             "type": "string"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "region": {
@@ -725,12 +804,15 @@
                             "additionalProperties": false,
                             "properties": {
                                 "functionId": {
+                                    "description": "The ID of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 },
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running version of the Cloud Function.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Function to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -740,6 +822,7 @@
                             "type": "object"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -753,18 +836,22 @@
                     "additionalProperties": false,
                     "properties": {
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         },
                         "run": {
                             "additionalProperties": false,
                             "properties": {
                                 "pinTag": {
+                                    "description": "If true, the rewrite will be pinned to the currently running revision of the Cloud Run service.",
                                     "type": "boolean"
                                 },
                                 "region": {
+                                    "description": "The region of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 },
                                 "serviceId": {
+                                    "description": "The ID of the Cloud Run service to rewrite to.",
                                     "type": "string"
                                 }
                             },
@@ -787,6 +874,7 @@
                             "type": "boolean"
                         },
                         "regex": {
+                            "description": "A regex pattern that matches the paths that this setting should apply to. *",
                             "type": "string"
                         }
                     },
@@ -796,10 +884,12 @@
                     ],
                     "type": "object"
                 }
-            ]
+            ],
+            "description": "Defines a Hosting rewrite. Rewrites allow you to redirect URLs to a different path, Cloud function or Cloud Run service."
         },
         "HostingSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firebase Hosting site.",
             "properties": {
                 "appAssociation": {
                     "enum": [
@@ -812,9 +902,11 @@
                     "type": "boolean"
                 },
                 "frameworksBackend": {
-                    "$ref": "#/definitions/FrameworksBackendOptions"
+                    "$ref": "#/definitions/FrameworksBackendOptions",
+                    "description": "Options for this sites web frameworks backend."
                 },
                 "headers": {
+                    "description": "A list of extra headers to send when serving specific paths on this site.",
                     "items": {
                         "$ref": "#/definitions/HostingHeaders"
                     },
@@ -822,8 +914,10 @@
                 },
                 "i18n": {
                     "additionalProperties": false,
+                    "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                     "properties": {
                         "root": {
+                            "description": "The directory containing internationalization rewrites.",
                             "type": "string"
                         }
                     },
@@ -833,6 +927,7 @@
                     "type": "object"
                 },
                 "ignore": {
+                    "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                     "items": {
                         "type": "string"
                     },
@@ -849,7 +944,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -862,30 +958,37 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "public": {
+                    "description": "Whether this site should publically available.",
                     "type": "string"
                 },
                 "redirects": {
+                    "description": "A list of redirects for this site.",
                     "items": {
                         "$ref": "#/definitions/HostingRedirects"
                     },
                     "type": "array"
                 },
                 "rewrites": {
+                    "description": "A list o rewrites for this site.",
                     "items": {
                         "$ref": "#/definitions/HostingRewrites"
                     },
                     "type": "array"
                 },
                 "site": {
+                    "description": "The site to deploy.",
                     "type": "string"
                 },
                 "source": {
+                    "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                     "type": "string"
                 },
                 "target": {
+                    "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                     "type": "string"
                 },
                 "trailingSlash": {
@@ -900,6 +1003,7 @@
         },
         "RemoteConfigConfig": {
             "additionalProperties": false,
+            "description": "A Remote Config template to deploy.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -912,7 +1016,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -925,9 +1030,11 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "template": {
+                    "description": "A path to a CJSON file containing a Remote Config template.",
                     "type": "string"
                 }
             },
@@ -938,6 +1045,7 @@
         },
         "StorageSingle": {
             "additionalProperties": false,
+            "description": "Deployment options for a single Firebase storage bucket.",
             "properties": {
                 "postdeploy": {
                     "anyOf": [
@@ -950,7 +1058,8 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran after this product is deployed."
                 },
                 "predeploy": {
                     "anyOf": [
@@ -963,12 +1072,15 @@
                         {
                             "type": "string"
                         }
-                    ]
+                    ],
+                    "description": "A script or list of scripts that will be ran before this product is deployed."
                 },
                 "rules": {
+                    "description": "Path to the rules files for this Firebase Storage bucket.",
                     "type": "string"
                 },
                 "target": {
+                    "description": "The deploy target to these Storage rules to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                     "type": "string"
                 }
             },
@@ -978,8 +1090,10 @@
             "type": "object"
         }
     },
+    "description": "Information about the resources in your Firebase project.\nThis used for declarative deployments via `firebase deploy` and local emulation via `firebase emulators:start`",
     "properties": {
         "$schema": {
+            "description": "Unused. Included in schema so that the schema can be applied to single files.",
             "format": "uri",
             "type": "string"
         },
@@ -987,20 +1101,25 @@
             "anyOf": [
                 {
                     "additionalProperties": false,
+                    "description": "A single App Hosting deployment config",
                     "properties": {
                         "alwaysDeployFromSource": {
+                            "description": "If true, this backend will only be deployed from local source, not from source control.",
                             "type": "boolean"
                         },
                         "backendId": {
+                            "description": "The ID of the backend that should be deployed.",
                             "type": "string"
                         },
                         "ignore": {
+                            "description": "A list of file paths to exclude from the archive that is uploaded for this backend.",
                             "items": {
                                 "type": "string"
                             },
                             "type": "array"
                         },
                         "rootDir": {
+                            "description": "The root directory of your app. This directory will be archived and uploaded during dpeloyment.",
                             "type": "string"
                         }
                     },
@@ -1012,22 +1131,28 @@
                     "type": "object"
                 },
                 {
+                    "description": "A list of App Hosting deployment configs",
                     "items": {
                         "additionalProperties": false,
+                        "description": "A single App Hosting deployment config",
                         "properties": {
                             "alwaysDeployFromSource": {
+                                "description": "If true, this backend will only be deployed from local source, not from source control.",
                                 "type": "boolean"
                             },
                             "backendId": {
+                                "description": "The ID of the backend that should be deployed.",
                                 "type": "string"
                             },
                             "ignore": {
+                                "description": "A list of file paths to exclude from the archive that is uploaded for this backend.",
                                 "items": {
                                     "type": "string"
                                 },
                                 "type": "array"
                             },
                             "rootDir": {
+                                "description": "The root directory of your app. This directory will be archived and uploaded during dpeloyment.",
                                 "type": "string"
                             }
                         },
@@ -1040,20 +1165,24 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The App Hosting backend(s) that should be deployed or emulated."
         },
         "database": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/DatabaseSingle"
+                    "$ref": "#/definitions/DatabaseSingle",
+                    "description": "Deployment options for a single Realtime Database instance."
                 },
                 {
+                    "description": "Deployment options for a list of Realtime Database instancs.",
                     "items": {
                         "anyOf": [
                             {
                                 "additionalProperties": false,
                                 "properties": {
                                     "instance": {
+                                        "description": "The instance that this rules files is for.",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -1067,7 +1196,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1080,9 +1210,11 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "The rules files for this Realtime Database instance.",
                                         "type": "string"
                                     },
                                     "target": {
@@ -1099,6 +1231,7 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "instance": {
+                                        "description": "The instance that this rules files is for.",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -1112,7 +1245,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1125,9 +1259,11 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "The rules files for this Realtime Database instance.",
                                         "type": "string"
                                     },
                                     "target": {
@@ -1144,37 +1280,47 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Realtime Database rules that should be deployed or emulated."
         },
         "dataconnect": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/DataConnectSingle"
+                    "$ref": "#/definitions/DataConnectSingle",
+                    "description": "A single Data Connect deployment configs"
                 },
                 {
+                    "description": "A list of Data Connect deployment configs",
                     "items": {
                         "$ref": "#/definitions/DataConnectSingle"
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Data Connect service(s) that should be deployed or emulated."
         },
         "emulators": {
             "additionalProperties": false,
+            "description": "Hosts, ports, and configuration options for the Firebase Emulator suite.",
             "properties": {
                 "apphosting": {
                     "additionalProperties": false,
+                    "description": "Config for the App Hosting emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "rootDirectory": {
+                            "description": "The root directory of your app. The start command will ran from this directory.",
                             "type": "string"
                         },
                         "startCommand": {
+                            "description": "The command that will be run to start your app when emulating your App Hosting backend",
                             "type": "string"
                         },
                         "startCommandOverride": {
@@ -1185,11 +1331,14 @@
                 },
                 "auth": {
                     "additionalProperties": false,
+                    "description": "Config for the Auth emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1197,11 +1346,14 @@
                 },
                 "database": {
                     "additionalProperties": false,
+                    "description": "Config for the Realtime Database emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1209,20 +1361,26 @@
                 },
                 "dataconnect": {
                     "additionalProperties": false,
+                    "description": "Config for the Data Connect emulator.",
                     "properties": {
                         "dataDir": {
+                            "description": "The directory to persist emulator data to. If set, data will be saved between runs automatically.\nIf the --import flag is used, the current data will be overwritten by the imported data.",
                             "type": "string"
                         },
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "postgresHost": {
+                            "description": "Host for the Postgres database that backs the Data Connect emulator.",
                             "type": "string"
                         },
                         "postgresPort": {
+                            "description": "Port for the Postgres database that backs the Data Connect emulator.",
                             "type": "number"
                         }
                     },
@@ -1230,27 +1388,34 @@
                 },
                 "eventarc": {
                     "additionalProperties": false,
+                    "description": "Config for the EventArc emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
                     "type": "object"
                 },
                 "extensions": {
+                    "description": "Placeholder - the Extensions emulator has no configuration options.",
                     "properties": {},
                     "type": "object"
                 },
                 "firestore": {
                     "additionalProperties": false,
+                    "description": "Config for the Firestore emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         },
                         "websocketPort": {
@@ -1259,25 +1424,16 @@
                     },
                     "type": "object"
                 },
-                "functions": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "host": {
-                            "type": "string"
-                        },
-                        "port": {
-                            "type": "number"
-                        }
-                    },
-                    "type": "object"
-                },
                 "hosting": {
                     "additionalProperties": false,
+                    "description": "Config for the Firebase Hosting emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1285,11 +1441,14 @@
                 },
                 "hub": {
                     "additionalProperties": false,
+                    "description": "Config for the emulator suite hub.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1297,11 +1456,14 @@
                 },
                 "logging": {
                     "additionalProperties": false,
+                    "description": "Config for the logging emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1309,26 +1471,33 @@
                 },
                 "pubsub": {
                     "additionalProperties": false,
+                    "description": "Config for the Pub/Sub emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
                     "type": "object"
                 },
                 "singleProjectMode": {
+                    "description": "If true, the Emulator Suite will only allow a single project to be used at a time.",
                     "type": "boolean"
                 },
                 "storage": {
                     "additionalProperties": false,
+                    "description": "Config for the Firebase Storage emulator",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1336,11 +1505,14 @@
                 },
                 "tasks": {
                     "additionalProperties": false,
+                    "description": "Config for the Cloud Tasks emulator.",
                     "properties": {
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1348,14 +1520,18 @@
                 },
                 "ui": {
                     "additionalProperties": false,
+                    "description": "Config for the Emulator UI.",
                     "properties": {
                         "enabled": {
+                            "description": "If false, the Emulator UI will not be served.",
                             "type": "boolean"
                         },
                         "host": {
+                            "description": "The host that this emulator will serve on.",
                             "type": "string"
                         },
                         "port": {
+                            "description": "The port that this emulator will serve on.",
                             "type": "number"
                         }
                     },
@@ -1365,23 +1541,28 @@
             "type": "object"
         },
         "extensions": {
-            "$ref": "#/definitions/ExtensionsConfig"
+            "$ref": "#/definitions/ExtensionsConfig",
+            "description": "The Firebase Extension(s) that should be deployed or emulated."
         },
         "firestore": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/FirestoreSingle"
+                    "$ref": "#/definitions/FirestoreSingle",
+                    "description": "Deployment options for a single Firestore database."
                 },
                 {
+                    "description": "Deployment options for a list of Firestore databases.",
                     "items": {
                         "anyOf": [
                             {
                                 "additionalProperties": false,
                                 "properties": {
                                     "database": {
+                                        "description": "The ID of the Firestore database to deploy. Required when deploying multiple Firestore databases.",
                                         "type": "string"
                                     },
                                     "indexes": {
+                                        "description": "Path to the firestore indexes file for this database",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -1395,7 +1576,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1408,12 +1590,15 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "Path to the firestore rules file for this database",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target these rules and indexes should be deployed to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     }
                                 },
@@ -1426,9 +1611,11 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "database": {
+                                        "description": "The ID of the Firestore database to deploy. Required when deploying multiple Firestore databases.",
                                         "type": "string"
                                     },
                                     "indexes": {
+                                        "description": "Path to the firestore indexes file for this database",
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -1442,7 +1629,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1455,12 +1643,15 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "rules": {
+                                        "description": "Path to the firestore rules file for this database",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target these rules and indexes should be deployed to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     }
                                 },
@@ -1473,7 +1664,8 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firestore rules and indexes that should be deployed or emulated."
         },
         "functions": {
             "anyOf": [
@@ -1486,14 +1678,17 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Cloud Functions for Firebase that should be deployed or emulated."
         },
         "hosting": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/HostingSingle"
+                    "$ref": "#/definitions/HostingSingle",
+                    "description": "Deployment options for a single Firebase Hosting site."
                 },
                 {
+                    "description": "Deployment options for a list of Firebase Hosting sites.",
                     "items": {
                         "anyOf": [
                             {
@@ -1510,9 +1705,11 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/FrameworksBackendOptions"
+                                        "$ref": "#/definitions/FrameworksBackendOptions",
+                                        "description": "Options for this sites web frameworks backend."
                                     },
                                     "headers": {
+                                        "description": "A list of extra headers to send when serving specific paths on this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingHeaders"
                                         },
@@ -1520,8 +1717,10 @@
                                     },
                                     "i18n": {
                                         "additionalProperties": false,
+                                        "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                                         "properties": {
                                             "root": {
+                                                "description": "The directory containing internationalization rewrites.",
                                                 "type": "string"
                                             }
                                         },
@@ -1531,6 +1730,7 @@
                                         "type": "object"
                                     },
                                     "ignore": {
+                                        "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                                         "items": {
                                             "type": "string"
                                         },
@@ -1547,7 +1747,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1560,30 +1761,37 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
+                                        "description": "Whether this site should publically available.",
                                         "type": "string"
                                     },
                                     "redirects": {
+                                        "description": "A list of redirects for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
+                                        "description": "A list o rewrites for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
                                     "site": {
+                                        "description": "The site to deploy",
                                         "type": "string"
                                     },
                                     "source": {
+                                        "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     },
                                     "trailingSlash": {
@@ -1609,9 +1817,11 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/FrameworksBackendOptions"
+                                        "$ref": "#/definitions/FrameworksBackendOptions",
+                                        "description": "Options for this sites web frameworks backend."
                                     },
                                     "headers": {
+                                        "description": "A list of extra headers to send when serving specific paths on this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingHeaders"
                                         },
@@ -1619,8 +1829,10 @@
                                     },
                                     "i18n": {
                                         "additionalProperties": false,
+                                        "description": "Internationalization config for this site.\nSee https://firebase.google.com/docs/hosting/i18n-rewrites#set-up-i18n-rewrites\nfor instructions on how to enable interntionalization for your site.",
                                         "properties": {
                                             "root": {
+                                                "description": "The directory containing internationalization rewrites.",
                                                 "type": "string"
                                             }
                                         },
@@ -1630,6 +1842,7 @@
                                         "type": "object"
                                     },
                                     "ignore": {
+                                        "description": "A list of paths or globs within the source directory that should not be included in the uploaded archive.",
                                         "items": {
                                             "type": "string"
                                         },
@@ -1646,7 +1859,8 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran after this product is deployed."
                                     },
                                     "predeploy": {
                                         "anyOf": [
@@ -1659,30 +1873,37 @@
                                             {
                                                 "type": "string"
                                             }
-                                        ]
+                                        ],
+                                        "description": "A script or list of scripts that will be ran before this product is deployed."
                                     },
                                     "public": {
+                                        "description": "Whether this site should publically available.",
                                         "type": "string"
                                     },
                                     "redirects": {
+                                        "description": "A list of redirects for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
+                                        "description": "A list o rewrites for this site.",
                                         "items": {
                                             "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
                                     "site": {
+                                        "description": "The site to deploy",
                                         "type": "string"
                                     },
                                     "source": {
+                                        "description": "Path to the directory containing this site's source code. This will be archived and uploaded during deployment.",
                                         "type": "string"
                                     },
                                     "target": {
+                                        "description": "The deploy target to deploy.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                         "type": "string"
                                     },
                                     "trailingSlash": {
@@ -1698,21 +1919,26 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firebase Hosting site(s) that should be deployed or emulated."
         },
         "remoteconfig": {
-            "$ref": "#/definitions/RemoteConfigConfig"
+            "$ref": "#/definitions/RemoteConfigConfig",
+            "description": "The Remote Config template(s) used by this project."
         },
         "storage": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/StorageSingle"
+                    "$ref": "#/definitions/StorageSingle",
+                    "description": "Deployment options for a single Firebase storage bucket."
                 },
                 {
+                    "description": "Deployment options for multiple Firebase storage buckets.",
                     "items": {
                         "additionalProperties": false,
                         "properties": {
                             "bucket": {
+                                "description": "The Firebase Storage bucket that this config is for.",
                                 "type": "string"
                             },
                             "postdeploy": {
@@ -1726,7 +1952,8 @@
                                     {
                                         "type": "string"
                                     }
-                                ]
+                                ],
+                                "description": "A script or list of scripts that will be ran after this product is deployed."
                             },
                             "predeploy": {
                                 "anyOf": [
@@ -1739,12 +1966,15 @@
                                     {
                                         "type": "string"
                                     }
-                                ]
+                                ],
+                                "description": "A script or list of scripts that will be ran before this product is deployed."
                             },
                             "rules": {
+                                "description": "Path to the rules files for this Firebase Storage bucket.",
                                 "type": "string"
                             },
                             "target": {
+                                "description": "The deploy target to these Storage rules to.\nSee https://firebase.google.com/docs/cli/targets to learn more about deploy targets.",
                                 "type": "string"
                             }
                         },
@@ -1756,7 +1986,8 @@
                     },
                     "type": "array"
                 }
-            ]
+            ],
+            "description": "The Firebase Storage rules that should be deployed or emulated."
         }
     },
     "type": "object"

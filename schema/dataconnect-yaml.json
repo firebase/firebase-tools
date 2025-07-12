@@ -1,5 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dataconnect.yaml",
+  "description": "dataconnect.yaml is how you configure a Firebase Data Connect service.",
   "additionalProperties": false,
   "definitions": {
     "postgresql": {
