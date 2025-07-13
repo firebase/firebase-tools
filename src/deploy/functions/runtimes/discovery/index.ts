@@ -132,10 +132,12 @@ export async function detectFromPort(
 }
 
 /**
- * Load a build from stdio output.
+ * Load a build by executing user code that writes a manifest file (dynamic file-based discovery).
+ * The user code is expected to write functions.yaml to the path specified by FUNCTIONS_MANIFEST_OUTPUT_PATH.
  */
-export async function detectFromStdio(
+export async function detectFromOutputPath(
   childProcess: any,
+  manifestPath: string,
   project: string,
   runtime: Runtime,
   timeout = 10_000,
@@ -143,61 +145,60 @@ export async function detectFromStdio(
   return new Promise((resolve, reject) => {
     let stderrBuffer = "";
     let resolved = false;
-    
+
+    const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        reject(new FirebaseError(
-          `User code failed to load. Cannot determine backend specification. Timeout after ${timeout}ms`
-        ));
+        reject(
+          new FirebaseError(
+            `User code failed to load. Cannot determine backend specification. Timeout after ${discoveryTimeout}ms`,
+          ),
+        );
       }
-    }, timeout);
-
-    const processLine = (line: string) => {
-      const manifestPrefix = "__FIREBASE_FUNCTIONS_MANIFEST__:";
-      const errorPrefix = "__FIREBASE_FUNCTIONS_MANIFEST_ERROR__:";
-      
-      if (line.startsWith(errorPrefix)) {
-        const errorMsg = line.substring(errorPrefix.length);
-        clearTimeout(timer);
-        resolved = true;
-        reject(new FirebaseError(`Failed to generate manifest from function source: ${errorMsg}`));
-      } else if (line.startsWith(manifestPrefix)) {
-        try {
-          const base64Content = line.substring(manifestPrefix.length);
-          const manifestJson = Buffer.from(base64Content, "base64").toString("utf8");
-          const parsed = JSON.parse(manifestJson);
-          
-          clearTimeout(timer);
-          resolved = true;
-          resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
-        } catch (err: any) {
-          logger.debug("Failed to parse discovery line", err);
-        }
-      }
-    };
+    }, discoveryTimeout);
 
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       stderrBuffer += chunk.toString();
-      
-      const lines = stderrBuffer.split("\n");
-      stderrBuffer = lines.pop() || "";
-      
-      for (const line of lines) {
-        if (!resolved) {
-          processLine(line);
-        }
-      }
     });
 
-    childProcess.on("exit", (code: number) => {
+    childProcess.on("exit", async (code: number) => {
       if (!resolved) {
         clearTimeout(timer);
         resolved = true;
+
         if (code !== 0 && code !== null) {
-          reject(new FirebaseError(
-            `Discovery process exited with code ${code}`
-          ));
+          const errorMessage = stderrBuffer.trim() || `Discovery process exited with code ${code}`;
+          reject(
+            new FirebaseError(
+              `User code failed to load. Cannot determine backend specification.\n${errorMessage}`,
+            ),
+          );
+        } else {
+          try {
+            const manifestContent = await readFileAsync(manifestPath, "utf8");
+            const parsed = yaml.parse(manifestContent);
+            
+            try {
+              await promisify(fs.unlink)(manifestPath);
+            } catch (err) {
+              logger.debug(`Failed to clean up manifest file at ${manifestPath}:`, err);
+            }
+            
+            resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
+          } catch (err: any) {
+            if (err.code === "ENOENT") {
+              reject(
+                new FirebaseError(
+                  `Discovery process completed but no function manifest was found at ${manifestPath}`,
+                ),
+              );
+            } else {
+              reject(
+                new FirebaseError(`Failed to read or parse manifest file: ${err.message}`),
+              );
+            }
+          }
         }
       }
     });
