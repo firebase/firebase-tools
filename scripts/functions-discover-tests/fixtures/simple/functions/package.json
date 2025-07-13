@@ -1,9 +1,6 @@
 {
   "name": "simple",
   "dependencies": {
-    "firebase-functions": "^5.1.0"
-  },
-  "engines": {
-    "node": "20"
+    "firebase-functions": "file:/Users/daniel/dev/firebase-functions"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "codebase-v1",
+  "name": "stress-test",
   "dependencies": {
     "firebase-functions": "file:/Users/daniel/dev/firebase-functions"
   }
