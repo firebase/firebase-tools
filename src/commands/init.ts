@@ -109,6 +109,14 @@ if (isEnabled("genkit")) {
   ];
 }
 
+if (isEnabled("apptesting")) {
+  choices.push({
+    value: "apptesting",
+    name: "App Testing: create a smoke test",
+    checked: false,
+  });
+}
+
 const featureNames = choices.map((choice) => choice.value);
 
 const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
