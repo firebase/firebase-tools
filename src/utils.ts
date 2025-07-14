@@ -349,7 +349,9 @@ export function setGlobalDefaultProject(project: string): void {
   configstore.set("globalDefaultProject", project);
   logger.info("");
   logger.info(`${clc.bold(project)} is now your global default project.`);
-  logger.info("When no other project is specified (by 'firebase use' or '--project'), this project will be used.");
+  logger.info(
+    "When no other project is specified (by 'firebase use' or '--project'), this project will be used.",
+  );
   logger.info("");
 }
 
