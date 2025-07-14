@@ -2,7 +2,6 @@ import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "yaml";
-import { promisify } from "util";
 
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
@@ -10,8 +9,6 @@ import * as build from "../../build";
 import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
-
-export const readFileAsync = promisify(fs.readFile);
 
 const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
@@ -53,7 +50,7 @@ export async function detectFromYaml(
 ): Promise<build.Build | undefined> {
   let text: string;
   try {
-    text = await exports.readFileAsync(path.join(directory, "functions.yaml"), "utf8");
+    text = await fs.promises.readFile(path.join(directory, "functions.yaml"), "utf8");
   } catch (err: any) {
     if (err.code === "ENOENT") {
       logger.debug("Could not find functions.yaml. Must use http discovery");
@@ -177,11 +174,11 @@ export async function detectFromOutputPath(
           );
         } else {
           try {
-            const manifestContent = await readFileAsync(manifestPath, "utf8");
+            const manifestContent = await fs.promises.readFile(manifestPath, "utf8");
             const parsed = yaml.parse(manifestContent);
 
             try {
-              await promisify(fs.unlink)(manifestPath);
+              await fs.promises.unlink(manifestPath);
             } catch (err) {
               logger.debug(`Failed to clean up manifest file at ${manifestPath}:`, err);
             }
