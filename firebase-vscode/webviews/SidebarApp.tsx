@@ -167,7 +167,7 @@ function DataConnect() {
         </a>
       </Label>
       <Spacer size="xlarge"></Spacer>
-      <Label level={2}>Generate Schema and Operations (Preview)</Label>
+      <Label level={2}>Develop your app with the Firebase Agent in Gemini (Preview)</Label>
       <Spacer size="medium"></Spacer>
       <VSCodeButton
         appearance="secondary"
@@ -175,15 +175,21 @@ function DataConnect() {
           broker.send("firebase.activate.gemini");
         }}
       >
-        Try Gemini with @FirebaseDataConnect
+        Build your schema and queries with AI
       </VSCodeButton>
-      <Spacer size="xsmall" />
+      <Spacer size="small" />
       <Label level={3}>
-        See also:{" "}
         <a href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data">
           Gemini in Firebase Usage and Terms
         </a>
       </Label>
+      <Label level={3}>
+        See also:{" "}
+        <a href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data">
+          Working with Firebase MCP
+        </a>
+      </Label>
+
     </>
   );
 }

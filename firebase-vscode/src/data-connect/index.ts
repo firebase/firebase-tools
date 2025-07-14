@@ -35,6 +35,7 @@ import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { emulators } from "../init/features";
 import { GCAToolClient } from "./ai-tools/gca-tool";
 import { GeminiToolController } from "./ai-tools/tool-controller";
+import { writeToGeminiConfig } from "./ai-tools/firebase-mcp";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -171,6 +172,7 @@ export function registerFdc(
 
   broker.on("firebase.activate.gemini", () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.TRY_GEMINI_CLICKED);
+    writeToGeminiConfig();
     vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
   });
 
