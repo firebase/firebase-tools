@@ -1,4 +1,5 @@
 import { promisify } from "util";
+import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
@@ -202,7 +203,11 @@ export class Delegate {
     );
   }
 
-  execAdmin(config: backend.RuntimeConfigValues, envs: backend.EnvironmentVariables, manifestPath?: string): any {
+  execAdmin(
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables,
+    manifestPath?: string,
+  ): any {
     const env: NodeJS.ProcessEnv = {
       ...envs,
       FUNCTIONS_CONTROL_API: "true",
@@ -317,10 +322,29 @@ export class Delegate {
     }
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      if (process.env.FUNCTIONS_MANIFEST_OUTPUT_PATH) {
-        const manifestPath = process.env.FUNCTIONS_MANIFEST_OUTPUT_PATH;
+      const discoveryPath = process.env.FIREBASE_FUNCTIONS_DISCOVERY_OUTPUT_PATH;
+      if (discoveryPath) {
+        let manifestPath: string;
+        if (discoveryPath === "true") {
+          const tempDir = await promisify(fs.mkdtemp)(
+            path.join(os.tmpdir(), "firebase-discovery-"),
+          );
+          manifestPath = path.join(tempDir, "functions.yaml");
+          logLabeledBullet(
+            "functions",
+            `Writing functions discovery manifest to temporary file ${manifestPath}`,
+          );
+        } else {
+          manifestPath = path.join(discoveryPath, "functions.yaml");
+          logLabeledBullet("functions", `Writing functions discovery manifest to ${manifestPath}`);
+        }
         const childProcess = this.execAdmin(config, env, manifestPath);
-        discovered = await discovery.detectFromOutputPath(childProcess, manifestPath, this.projectId, this.runtime);
+        discovered = await discovery.detectFromOutputPath(
+          childProcess,
+          manifestPath,
+          this.projectId,
+          this.runtime,
+        );
       } else {
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });

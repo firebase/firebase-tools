@@ -133,6 +133,7 @@ export async function detectFromPort(
 
 /**
  * Load a build by executing user code that writes a manifest file (dynamic file-based discovery).
+ 
  * The user code is expected to write functions.yaml to the path specified by FUNCTIONS_MANIFEST_OUTPUT_PATH.
  */
 export async function detectFromOutputPath(
@@ -178,13 +179,13 @@ export async function detectFromOutputPath(
           try {
             const manifestContent = await readFileAsync(manifestPath, "utf8");
             const parsed = yaml.parse(manifestContent);
-            
+
             try {
               await promisify(fs.unlink)(manifestPath);
             } catch (err) {
               logger.debug(`Failed to clean up manifest file at ${manifestPath}:`, err);
             }
-            
+
             resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
           } catch (err: any) {
             if (err.code === "ENOENT") {
@@ -194,9 +195,7 @@ export async function detectFromOutputPath(
                 ),
               );
             } else {
-              reject(
-                new FirebaseError(`Failed to read or parse manifest file: ${err.message}`),
-              );
+              reject(new FirebaseError(`Failed to read or parse manifest file: ${err.message}`));
             }
           }
         }

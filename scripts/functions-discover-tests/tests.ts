@@ -136,7 +136,11 @@ describe("Function discovery test", function (this) {
     for (const tc of testCases) {
       it(`discovers functions using file-based discovery in a ${tc.name} project`, async () => {
         const cli = new CLIProcess("default", path.join(FIXTURES, tc.projectDir));
-        const manifestPath = path.join(FIXTURES, tc.projectDir, `.test-manifest-${Date.now()}.yaml`);
+        const manifestPath = path.join(
+          FIXTURES,
+          tc.projectDir,
+          `.test-manifest-${Date.now()}.yaml`,
+        );
 
         let outputBuffer = "";
         let output: any;
@@ -165,7 +169,7 @@ describe("Function discovery test", function (this) {
         }
 
         await cli.stop();
-        
+
         // Clean up test manifest file if it exists
         try {
           const fs = await import("fs");
