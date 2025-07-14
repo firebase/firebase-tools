@@ -160,13 +160,49 @@ export function launchGemini(prompt: string): Promise<void> {
   return new Promise((resolve, reject) => {
     logger.info("Connecting to Gemini...");
 
-    const ptyProcess = pty.spawn("gemini", ["-i", "-p", prompt], {
+    const ptyProcess = pty.spawn("gemini", ["-i", prompt], {
       name: "xterm-color",
       cols: process.stdout.columns,
       rows: process.stdout.rows,
       cwd: process.cwd(),
       env: process.env,
+      handleFlowControl: true,
     });
+
+    // Store original handlers
+    const originalSigintListeners = process.listeners("SIGINT");
+    const originalSigtermListeners = process.listeners("SIGTERM");
+    
+    // Remove all existing SIGINT/SIGTERM handlers
+    process.removeAllListeners("SIGINT");
+    process.removeAllListeners("SIGTERM");
+
+    const cleanup = (): void => {
+      process.stdout.removeListener("resize", onResize);
+      process.stdin.removeListener("data", dataListener);
+      
+      // Restore original signal handlers
+      process.removeAllListeners("SIGINT");
+      process.removeAllListeners("SIGTERM");
+      originalSigintListeners.forEach((listener) => process.on("SIGINT", listener));
+      originalSigtermListeners.forEach((listener) => process.on("SIGTERM", listener));
+      
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.resume();
+    };
+
+    // Handle signals by forwarding to PTY process
+    const signalHandler = (signal: NodeJS.Signals) => {
+      return () => {
+        // Forward the signal to the PTY process
+        ptyProcess.kill(signal);
+      };
+    };
+
+    process.on("SIGINT", signalHandler("SIGINT"));
+    process.on("SIGTERM", signalHandler("SIGTERM"));
 
     const dataListener = (data: Buffer): void => {
       ptyProcess.write(data.toString());
@@ -186,15 +222,119 @@ export function launchGemini(prompt: string): Promise<void> {
     process.stdin.resume();
 
     ptyProcess.onExit(({ exitCode }) => {
-      process.stdout.removeListener("resize", onResize);
-      process.stdin.removeListener("data", dataListener);
-      process.stdin.setRawMode(false);
-      process.stdin.resume();
-      if (exitCode !== 0) {
-        reject(new FirebaseError(`Gemini CLI exited with code ${exitCode}`));
-      } else {
-        resolve();
-      }
+      cleanup();
+      // Since we're just a launcher for Gemini, exit immediately when Gemini exits
+      process.exit(exitCode || 0);
     });
   });
+}
+
+/**
+ * Extracts help information for a given Firebase command.
+ * @param commandName The command name to get help for (e.g., "deploy", "functions:delete")
+ * @param client The firebase client object (passed in to avoid circular dependency)
+ * @return The help text for the command, or an error message if not found
+ */
+export function getCommandHelp(commandName: string, client: any): string {
+  const cmd = client.getCommand(commandName);
+  if (cmd) {
+    // Commander's outputHelp() writes to stdout, so we need to capture it
+    const originalWrite = process.stdout.write;
+    let helpText = "";
+    process.stdout.write = (chunk: any): boolean => {
+      helpText += chunk;
+      return true;
+    };
+    
+    try {
+      cmd.outputHelp();
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+    
+    return helpText;
+  }
+  return `Command '${commandName}' not found. Run 'firebase help' to see available commands.`;
+}
+
+/**
+ * Launches Gemini CLI with a Firebase command context.
+ * @param command The Firebase command to run (e.g., "deploy", "functions:delete")
+ * @param args The arguments passed to the command
+ * @param projectDir The project directory
+ * @param client The firebase client object (passed in to avoid circular dependency)
+ */
+export async function launchGeminiWithCommand(
+  command: string,
+  args: string[],
+  projectDir: string,
+  client: any,
+): Promise<void> {
+  // Check if Gemini is installed
+  if (!isGeminiInstalled()) {
+    logger.error(
+      "Gemini CLI not found. To use the --with-gemini feature, please install Gemini CLI:\n" +
+      "\n" +
+      clc.bold("  npm install -g @google/gemini-cli") + "\n" +
+      "\n" +
+      "Or run it temporarily with npx:\n" +
+      "\n" +
+      clc.bold("  npx @google/gemini-cli -i \"Your prompt here\"") + "\n" +
+      "\n" +
+      "Learn more at: https://github.com/google-gemini/gemini-cli"
+    );
+    return;
+  }
+
+  // Configure the project for MCP
+  configureProject(projectDir);
+
+  let prompt: string;
+  
+  // Special handling for when no command is provided
+  if (command === "help" && args.length === 0) {
+    prompt = `You are an AI assistant helping with Firebase CLI commands. The user has launched Firebase with the --with-gemini flag but hasn't specified a particular command.
+
+You have access to the Firebase CLI through the MCP server that's already configured.
+
+Please ask the user what they would like to do with Firebase. Some common tasks include:
+- Deploying functions, hosting, or other services
+- Managing Firebase projects
+- Working with Firestore, Realtime Database, or Storage
+- Setting up authentication
+- Managing extensions
+
+Current working directory: ${projectDir}
+
+What would you like to help the user accomplish?`;
+  } else {
+    // Get help text for the command
+    const helpText = getCommandHelp(command, client);
+    
+    // Build the full command string
+    const fullCommand = `firebase ${command} ${args.join(" ")}`.trim();
+    
+    // Build the context prompt
+    prompt = `You are helping a user run a Firebase CLI command. The user wants to run:
+
+${fullCommand}
+
+Here is the help documentation for this command:
+
+${helpText}
+
+Please do the following:
+1. First, analyze if the command has all required flags and arguments
+2. If the command appears complete and ready to run (like "firebase deploy --only functions"), go ahead and execute it immediately using the Firebase MCP server
+3. If the command is missing required information or could benefit from additional options, ask the user for clarification
+4. Explain what the command will do before or after running it
+
+The user has access to the Firebase CLI through the MCP server that's already configured.
+
+Current working directory: ${projectDir}`;
+  }
+
+  // Launch Gemini with the context
+  logger.info("Launching Gemini CLI with Firebase command context...");
+  await launchGemini(prompt);
 }

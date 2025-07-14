@@ -29,8 +29,6 @@ import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
 import { confirm } from "../prompt";
-import { promptAndLaunchGemini } from "../gemini/cli";
-import { attachMemoryLogger, getLogs } from "../gemini/logger";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -153,30 +151,11 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
-  attachMemoryLogger();
-  try {
-    await chain(predeploys, context, options, payload);
-    await chain(prepares, context, options, payload);
-    await chain(deploys, context, options, payload);
-    await chain(releases, context, options, payload);
-    await chain(postdeploys, context, options, payload);
-  } catch (err: any) {
-    logError(err);
-
-    const logs = getLogs();
-    const failedTargets = targetNames.join(", ");
-    const prompt = `I encountered an error during a Firebase deployment for the following services: ${failedTargets}.
-Error: ${err.message}
-
-Here are the deployment logs:
-${logs.join("\n")}
-
-Can you help me debug this deployment failure? Note: When using shell commands, please run them in the foreground to avoid issues with process tracking.`;
-
-    await promptAndLaunchGemini(options.cwd || process.cwd(), prompt, () => {
-      return deploy(targetNames, options, customContext);
-    });
-  }
+  await chain(predeploys, context, options, payload);
+  await chain(prepares, context, options, payload);
+  await chain(deploys, context, options, payload);
+  await chain(releases, context, options, payload);
+  await chain(postdeploys, context, options, payload);
 
   const duration = Date.now() - startTime;
   const analyticsParams: AnalyticsParams = {
