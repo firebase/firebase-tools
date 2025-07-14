@@ -15,6 +15,43 @@ interface Testcase {
   }[];
 }
 
+async function runDiscoveryTest(
+  projectDir: string,
+  testcase: Testcase,
+  env?: NodeJS.ProcessEnv,
+): Promise<void> {
+  const cli = new CLIProcess("default", projectDir);
+
+  let outputBuffer = "";
+  let output: any;
+  await cli.start(
+    "internaltesting:functions:discover",
+    FIREBASE_PROJECT,
+    ["--json"],
+    (data: any) => {
+      outputBuffer += data;
+      try {
+        output = JSON.parse(outputBuffer);
+        return true;
+      } catch (e) {
+        // Not complete JSON yet, continue buffering
+        return false;
+      }
+    },
+    env,
+  );
+
+  expect(output.status).to.equal("success");
+  for (const e of testcase.expects) {
+    const endpoints = output.result?.[e.codebase]?.endpoints;
+    expect(endpoints).to.be.an("object").that.is.not.empty;
+    expect(Object.keys(endpoints)).to.have.length(e.endpoints.length);
+    expect(Object.keys(endpoints)).to.include.members(e.endpoints);
+  }
+
+  await cli.stop();
+}
+
 describe("Function discovery test", function (this) {
   this.timeout(2000_000);
 
@@ -101,74 +138,21 @@ describe("Function discovery test", function (this) {
 
   for (const tc of testCases) {
     it(`discovers functions using HTTP in a ${tc.name} project`, async () => {
-      const cli = new CLIProcess("default", path.join(FIXTURES, tc.projectDir));
-
-      let outputBuffer = "";
-      let output: any;
-      await cli.start(
-        "internaltesting:functions:discover",
-        FIREBASE_PROJECT,
-        ["--json"],
-        (data: any) => {
-          outputBuffer += data;
-          try {
-            output = JSON.parse(outputBuffer);
-            return true;
-          } catch (e) {
-            // Not complete JSON yet, continue buffering
-            return false;
-          }
-        },
-      );
-      expect(output.status).to.equal("success");
-      for (const e of tc.expects) {
-        const endpoints = output.result?.[e.codebase]?.endpoints;
-        expect(endpoints).to.be.an("object").that.is.not.empty;
-        expect(Object.keys(endpoints)).to.have.length(e.endpoints.length);
-        expect(Object.keys(endpoints)).to.include.members(e.endpoints);
-      }
-
-      await cli.stop();
+      await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc);
     });
   }
 
   describe("file-based discovery", () => {
     for (const tc of testCases) {
       it(`discovers functions using file-based discovery in a ${tc.name} project`, async () => {
-        const cli = new CLIProcess("default", path.join(FIXTURES, tc.projectDir));
         const manifestPath = path.join(
           FIXTURES,
           tc.projectDir,
           `.test-manifest-${Date.now()}.yaml`,
         );
-
-        let outputBuffer = "";
-        let output: any;
-        await cli.start(
-          "internaltesting:functions:discover",
-          FIREBASE_PROJECT,
-          ["--json"],
-          (data: any) => {
-            outputBuffer += data;
-            try {
-              output = JSON.parse(outputBuffer);
-              return true;
-            } catch (e) {
-              // Not complete JSON yet, continue buffering
-              return false;
-            }
-          },
-          { FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath },
-        );
-        expect(output.status).to.equal("success");
-        for (const e of tc.expects) {
-          const endpoints = output.result?.[e.codebase]?.endpoints;
-          expect(endpoints).to.be.an("object").that.is.not.empty;
-          expect(Object.keys(endpoints)).to.have.length(e.endpoints.length);
-          expect(Object.keys(endpoints)).to.include.members(e.endpoints);
-        }
-
-        await cli.stop();
+        await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc, {
+          FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
+        });
 
         // Clean up test manifest file if it exists
         try {
