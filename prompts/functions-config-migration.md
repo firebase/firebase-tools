@@ -40,7 +40,10 @@ Do not prefix parameter names with the codebase name (e.g., avoid TEAM_A_API_KEY
 - **Injected outside Firebase at runtime?** → `process.env.NAME`
 
 ### 3. Edge‑case notes
-- **Invalid keys** – if `functions:config:export` prompts for a prefix (key starts with a digit), use the prefixed name (`FF_CONFIG_`).
+- **Invalid keys** – Some config keys cannot be directly converted to valid environment variable names (e.g., keys starting with digits, containing invalid characters). These will be marked in the configuration analysis. Always:
+  - Ask the user for their preferred prefix (default suggestion: `CONFIG_`)
+  - Apply the same prefix consistently to all invalid keys
+  - Explain why the keys are invalid and show the transformation
 - **Nested blobs** – flatten (`service.db.user` → `SERVICE_DB_USER`). For large JSON config, must make individual value it's own parameter.
 
 ### 4. Worked out examples

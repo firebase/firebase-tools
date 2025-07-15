@@ -8,6 +8,9 @@ import { getProjectId } from "../projectUtils";
 import { loadRC } from "../rc";
 import { logWarning } from "../utils";
 import { flatten } from "../functional";
+import { normalizeAndValidate } from "./projectConfig";
+
+export { normalizeAndValidate };
 
 export interface ProjectConfigInfo {
   projectId: string;
@@ -145,7 +148,6 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
 
 /**
  * Fill in environment variables for each project by converting project's runtime config.
- *
  * @return {ConfigToEnvResult} Collection of successful and errored conversion.
  */
 export function hydrateEnvs(pInfos: ProjectConfigInfo[], prefix: string): string {
@@ -204,6 +206,11 @@ export interface ConfigAnalysis {
   definiteSecrets: string[];
   likelySecrets: string[];
   regularConfigs: string[];
+  invalidKeys: Array<{
+    originalKey: string;
+    suggestedKey: string;
+    reason: string;
+  }>;
 }
 
 /**
@@ -221,22 +228,24 @@ export function isLikelySecret(key: string): boolean {
     /\bkey\b/i,
     /\btoken\b/i,
     /\bauth\b/i,
-    /\bcredential\b/i
+    /\bcredential\b/i,
   ];
-  
-  return secretPatterns.some(pattern => pattern.test(key));
+
+  return secretPatterns.some((pattern) => pattern.test(key));
 }
 
 /**
  * Analyze config keys to categorize them as secrets, likely secrets, or regular configs.
+ * Also detects invalid environment variable keys.
  */
 export function analyzeConfig(config: Record<string, unknown>): ConfigAnalysis {
   const analysis: ConfigAnalysis = {
     definiteSecrets: [],
     likelySecrets: [],
-    regularConfigs: []
+    regularConfigs: [],
+    invalidKeys: [],
   };
-  
+
   const definitePatterns = [
     /\bapi[_-]?key\b/i,
     /\bsecret\b/i,
@@ -244,44 +253,59 @@ export function analyzeConfig(config: Record<string, unknown>): ConfigAnalysis {
     /\bprivate[_-]?key\b/i,
     /_token$/i,
     /_auth$/i,
-    /_credential$/i
+    /_credential$/i,
   ];
-  
-  const likelyPatterns = [
-    /\bkey\b/i,
-    /\btoken\b/i,
-    /\bauth\b/i,
-    /\bcredential\b/i
-  ];
-  
+
+  const likelyPatterns = [/\bkey\b/i, /\btoken\b/i, /\bauth\b/i, /\bcredential\b/i];
+
   const servicePatterns = /^(stripe|twilio|sendgrid|aws|github|slack)\./i;
-  
+
   function checkKey(key: string, path: string) {
-    if (definitePatterns.some(p => p.test(key))) {
+    // First check if the key would be valid as an env var
+    try {
+      const envKey = convertKey(path, "");
+      env.validateKey(envKey);
+    } catch (err: any) {
+      if (err instanceof env.KeyValidationError) {
+        // Generate suggested key manually without validation
+        const baseKey = path.toUpperCase().replace(/\./g, "_").replace(/-/g, "_");
+        const suggestedKey = "CONFIG_" + baseKey;
+        analysis.invalidKeys.push({
+          originalKey: path,
+          suggestedKey: suggestedKey,
+          reason: err.message,
+        });
+        return; // Don't categorize invalid keys further
+      }
+      // Re-throw unexpected errors
+      throw err;
+    }
+
+    if (definitePatterns.some((p) => p.test(key))) {
       analysis.definiteSecrets.push(path);
       return;
     }
-    
-    if (servicePatterns.test(path) || likelyPatterns.some(p => p.test(key))) {
+
+    if (servicePatterns.test(path) || likelyPatterns.some((p) => p.test(key))) {
       analysis.likelySecrets.push(path);
       return;
     }
-    
+
     analysis.regularConfigs.push(path);
   }
-  
-  function traverse(obj: any, path: string = '') {
+
+  function traverse(obj: any, path = "") {
     for (const [key, value] of Object.entries(obj)) {
       const fullPath = path ? `${path}.${key}` : key;
-      
-      if (typeof value === 'object' && value !== null) {
+
+      if (typeof value === "object" && value !== null) {
         traverse(value, fullPath);
       } else {
         checkKey(key, fullPath);
       }
     }
   }
-  
+
   traverse(config);
   return analysis;
 }
@@ -291,7 +315,7 @@ export function analyzeConfig(config: Record<string, unknown>): ConfigAnalysis {
  */
 export function getEnhancedComment(origKey: string, value: string): string {
   const parts = [`from ${origKey}`];
-  
+
   // Add type hint
   if (value === "true" || value === "false") {
     parts.push("[boolean]");
@@ -300,12 +324,12 @@ export function getEnhancedComment(origKey: string, value: string): string {
   } else if (value.includes(",")) {
     parts.push("[possible list]");
   }
-  
+
   // Add secret warning
   if (isLikelySecret(origKey)) {
     parts.push("⚠️ LIKELY SECRET");
   }
-  
+
   return parts.length > 1 ? ` # ${parts.join(" ")}` : ` # ${parts[0]}`;
 }
 
@@ -313,20 +337,66 @@ export function getEnhancedComment(origKey: string, value: string): string {
  * Convert env var mapping to enhanced dotenv format with type hints and aligned comments.
  */
 export function enhancedToDotenvFormat(envs: EnvMap[], header = ""): string {
-  const lines = envs.map(({ newKey, value, origKey }) => {
-    const comment = getEnhancedComment(origKey, value);
-    return `${newKey}="${escape(value)}"${comment}`;
-  });
-  
-  // Calculate max line length for alignment
-  const maxLineLen = Math.max(...lines.map(l => l.indexOf(" #")));
-  const alignedLines = lines.map(line => {
-    const commentIndex = line.indexOf(" #");
-    const padding = " ".repeat(Math.max(0, maxLineLen - commentIndex));
-    return line.replace(" #", padding + " #");
-  });
-  
-  return `${header}\n${alignedLines.join('\n')}`;
+  // Separate secrets from regular configs
+  const secrets = envs.filter((env) => isLikelySecret(env.origKey));
+  const regular = envs.filter((env) => !isLikelySecret(env.origKey));
+
+  let output = header;
+
+  // Add regular configs with aligned comments
+  if (regular.length > 0) {
+    output += "\n\n# === SAFE CONFIGS ===";
+
+    // Calculate max length for alignment
+    const regularWithComments = regular.map(({ newKey, value, origKey }) => {
+      const envLine = `${newKey}="${escape(value)}"`;
+      const comment = getEnhancedComment(origKey, value);
+      return { envLine, comment };
+    });
+
+    const maxEnvLength = Math.max(...regularWithComments.map(({ envLine }) => envLine.length));
+    const paddedLength = Math.max(maxEnvLength + 2, 45); // Minimum padding for readability
+
+    regularWithComments.forEach(({ envLine, comment }) => {
+      const padding = " ".repeat(paddedLength - envLine.length);
+      output += `\n${envLine}${padding}${comment}`;
+    });
+  }
+
+  // Add secrets section
+  if (secrets.length > 0) {
+    output += "\n\n# === REVIEW REQUIRED - LIKELY SECRETS ===\n";
+    output += "# Move these to 'firebase functions:secrets:set' before deploying\n";
+    output += "# Temporarily uncomment for local development only\n";
+
+    secrets.forEach(({ newKey, value, origKey }) => {
+      const secretType = getSecretType(origKey);
+      output += `\n# ${newKey}="${escape(value)}"`;
+      output += `\n# To set as secret: firebase functions:secrets:set ${newKey}`;
+      output += `\n`;
+    });
+  }
+
+  return output;
+}
+
+/**
+ * Get a description of why this is detected as a secret
+ */
+function getSecretType(key: string): string {
+  const lowerKey = key.toLowerCase();
+  if (lowerKey.includes("api_key") || lowerKey.includes("api-key")) return "API key pattern";
+  if (lowerKey.includes("secret")) return "Contains 'secret'";
+  if (lowerKey.includes("password") || lowerKey.includes("passwd")) return "Password pattern";
+  if (lowerKey.includes("private_key") || lowerKey.includes("private-key"))
+    return "Private key pattern";
+  if (lowerKey.endsWith("_token") || lowerKey.endsWith("-token")) return "Token pattern";
+  if (lowerKey.endsWith("_auth") || lowerKey.endsWith("-auth")) return "Auth pattern";
+  if (/^(stripe|twilio|sendgrid|aws|github|slack)\./i.test(key)) return "Service-specific pattern";
+  if (lowerKey.includes("key")) return "Contains 'key'";
+  if (lowerKey.includes("token")) return "Contains 'token'";
+  if (lowerKey.includes("credential")) return "Contains 'credential'";
+  return "Matches secret pattern";
 }
 
 /**
@@ -334,32 +404,32 @@ export function enhancedToDotenvFormat(envs: EnvMap[], header = ""): string {
  */
 export function addMigrationHints(envs: EnvMap[]): string {
   const hints: string[] = [];
-  
-  const secrets = envs.filter(e => isLikelySecret(e.origKey));
-  const booleans = envs.filter(e => e.value === "true" || e.value === "false");
-  const numbers = envs.filter(e => !isNaN(Number(e.value)) && e.value !== "");
-  
+
+  const secrets = envs.filter((e) => isLikelySecret(e.origKey));
+  const booleans = envs.filter((e) => e.value === "true" || e.value === "false");
+  const numbers = envs.filter((e) => !isNaN(Number(e.value)) && e.value !== "");
+
   if (secrets.length > 0) {
     hints.push(`# 🔐 Migration hint: ${secrets.length} potential secrets detected.
-# Consider using defineSecret() for: ${secrets.map(s => s.newKey).join(", ")}
+# Consider using defineSecret() for: ${secrets.map((s) => s.newKey).join(", ")}
 # Run: firebase functions:secrets:set ${secrets[0].newKey}\n`);
   }
-  
+
   if (booleans.length > 0) {
     hints.push(`# 📊 Migration hint: ${booleans.length} boolean values detected.
-# Consider using defineBoolean() for: ${booleans.map(b => b.newKey).join(", ")}\n`);
+# Consider using defineBoolean() for: ${booleans.map((b) => b.newKey).join(", ")}\n`);
   }
-  
+
   if (numbers.length > 0) {
     hints.push(`# 🔢 Migration hint: ${numbers.length} numeric values detected.
-# Consider using defineInt() for: ${numbers.map(n => n.newKey).join(", ")}\n`);
+# Consider using defineInt() for: ${numbers.map((n) => n.newKey).join(", ")}\n`);
   }
-  
+
   if (hints.length > 0) {
     hints.push(`# 💡 For AI-assisted migration, run: firebase functions:config:export --prompt\n`);
   }
-  
-  return hints.join('\n');
+
+  return hints.join("\n");
 }
 
 /**
@@ -367,28 +437,28 @@ export function addMigrationHints(envs: EnvMap[]): string {
  */
 export function validateConfigValues(pInfos: ProjectConfigInfo[]): string[] {
   const warnings: string[] = [];
-  
+
   for (const pInfo of pInfos) {
     if (!pInfo.envs) continue;
-    
+
     for (const env of pInfo.envs) {
       // Check for multiline values
-      if (env.value.includes('\n')) {
+      if (env.value.includes("\n")) {
         warnings.push(`${env.origKey}: Contains newlines (will be escaped)`);
       }
-      
+
       // Check for very long values
       if (env.value.length > 1000) {
         warnings.push(`${env.origKey}: Very long value (${env.value.length} chars)`);
       }
-      
+
       // Check for empty values
-      if (env.value === '') {
+      if (env.value === "") {
         warnings.push(`${env.origKey}: Empty value`);
       }
     }
   }
-  
+
   return warnings;
 }
 
@@ -396,17 +466,17 @@ export function validateConfigValues(pInfos: ProjectConfigInfo[]): string[] {
  * Get value for a specific key path from nested config object.
  */
 export function getValueForKey(config: Record<string, unknown>, path: string): unknown {
-  const parts = path.split('.');
+  const parts = path.split(".");
   let current: any = config;
-  
+
   for (const part of parts) {
-    if (current && typeof current === 'object' && part in current) {
+    if (current && typeof current === "object" && part in current) {
       current = current[part];
     } else {
       return undefined;
     }
   }
-  
+
   return current;
 }
 
@@ -414,30 +484,49 @@ export function getValueForKey(config: Record<string, unknown>, path: string): u
  * Build categorized config objects with their values based on analysis.
  */
 export function buildCategorizedConfigs(
-  config: Record<string, unknown>, 
-  analysis: ConfigAnalysis
+  config: Record<string, unknown>,
+  analysis: ConfigAnalysis,
 ): {
   definiteSecrets: Record<string, unknown>;
   likelySecrets: Record<string, unknown>;
   regularConfigs: Record<string, unknown>;
+  invalidKeys: Array<{
+    originalKey: string;
+    suggestedKey: string;
+    value: unknown;
+    reason: string;
+  }>;
 } {
   const result = {
     definiteSecrets: {} as Record<string, unknown>,
     likelySecrets: {} as Record<string, unknown>,
-    regularConfigs: {} as Record<string, unknown>
+    regularConfigs: {} as Record<string, unknown>,
+    invalidKeys: [] as Array<{
+      originalKey: string;
+      suggestedKey: string;
+      value: unknown;
+      reason: string;
+    }>,
   };
-  
+
   for (const path of analysis.definiteSecrets) {
     result.definiteSecrets[path] = getValueForKey(config, path);
   }
-  
+
   for (const path of analysis.likelySecrets) {
     result.likelySecrets[path] = getValueForKey(config, path);
   }
-  
+
   for (const path of analysis.regularConfigs) {
     result.regularConfigs[path] = getValueForKey(config, path);
   }
-  
+
+  for (const invalidKey of analysis.invalidKeys) {
+    result.invalidKeys.push({
+      ...invalidKey,
+      value: getValueForKey(config, invalidKey.originalKey),
+    });
+  }
+
   return result;
 }
