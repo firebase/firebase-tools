@@ -205,10 +205,7 @@ export class Delegate {
     );
   }
 
-  execAdmin(
-    config: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables,
-  ): ChildProcess {
+  execAdmin(config: backend.RuntimeConfigValues, envs: backend.EnvironmentVariables): ChildProcess {
     const env: NodeJS.ProcessEnv = {
       ...envs,
       FUNCTIONS_CONTROL_API: "true",
