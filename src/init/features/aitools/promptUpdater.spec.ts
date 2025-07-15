@@ -323,17 +323,19 @@ After`;
       expect(writtenContent).to.match(/<firebase_prompts hash="[^"]+">[\s\S]*<\/firebase_prompts>/);
     });
 
-    it("should handle missing hash attribute", async () => {
-      const content = `<firebase_prompts>
-Old content without hash
-</firebase_prompts>`;
+    it("should replace section with missing hash attribute", async () => {
+      const content = `User content before\n<firebase_prompts>\nOld content without hash\n</firebase_prompts>\nUser content after`;
       (mockConfig.readProjectFile as sinon.SinonStub).returns(content);
 
       const result = await updateFirebaseSection(mockConfig, "test.md", []);
 
       expect(result.updated).to.be.true;
       const writtenContent = (mockConfig.writeProjectFile as sinon.SinonStub).firstCall.args[1];
-      expect(writtenContent).to.include('hash="');
+      expect(writtenContent).to.include("User content before");
+      expect(writtenContent).to.include("User content after");
+      expect(writtenContent).to.include("<firebase_prompts hash=");
+      expect(writtenContent).to.include("Base Firebase content");
+      expect(writtenContent).to.not.include("Old content without hash");
     });
   });
 });

@@ -12,7 +12,7 @@ import * as utils from "../../../utils";
 import { logger } from "../../../logger";
 
 const PROMPTS_DIR = path.join(__dirname, "../../../../prompts");
-const FIREBASE_TAG_REGEX = /<firebase_prompts\s+hash="([^"]+)">([\s\S]*?)<\/firebase_prompts>/;
+const FIREBASE_TAG_REGEX = /<firebase_prompts(?:\s+hash="([^"]+)")?>([\s\S]*?)<\/firebase_prompts>/;
 
 const PROMPT_FILES: Record<string, string> = {
   base: "FIREBASE.md",

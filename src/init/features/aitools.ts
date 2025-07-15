@@ -7,7 +7,6 @@ import { logger } from "../../logger";
 
 interface AgentsInitSelections {
   tools?: string[];
-  includeFeatures?: boolean;
 }
 
 const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map((tool) => ({

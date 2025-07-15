@@ -8,6 +8,10 @@ import {
 } from "./promptUpdater";
 import { deepEqual } from "../../../utils";
 
+// Define constants at the module level for clarity and reuse.
+const GEMINI_DIR = ".gemini/extensions/firebase";
+const CONTEXTS_DIR = `${GEMINI_DIR}/contexts`;
+
 export const gemini: AIToolModule = {
   name: "gemini",
   displayName: "Gemini CLI",
@@ -37,11 +41,12 @@ export const gemini: AIToolModule = {
     enabledFeatures: string[],
   ): Promise<AIToolConfigResult> {
     const files: AIToolConfigResult["files"] = [];
+
+    // Part 1: Configure the main gemini-extension.json file.
+    const extensionPath = `${GEMINI_DIR}/gemini-extension.json`;
     const extensionTemplate = readTemplateSync("init/aitools/gemini-extension.json");
     const extensionConfig = extensionTemplate.replace("{{PROJECT_PATH}}", projectPath);
-    const extensionPath = ".gemini/extensions/firebase/gemini-extension.json";
 
-    // Check if extension config exists and needs updating
     let extensionUpdated = false;
     try {
       const existingRaw = config.readProjectFile(extensionPath);
@@ -53,43 +58,37 @@ export const gemini: AIToolModule = {
         extensionUpdated = true;
       }
     } catch {
-      // File doesn't exist or is invalid JSON, needs to be (re)created
+      // File doesn't exist or is invalid JSON, so we (re)create it.
       config.writeProjectFile(extensionPath, extensionConfig);
       extensionUpdated = true;
     }
     files.push({ path: extensionPath, updated: extensionUpdated });
 
-    const baseDir = ".gemini/extensions/firebase";
-
-    // Create the base Firebase context file (FIREBASE-BASE.md).
-    // This file contains fundamental details about the Firebase project.
+    // Part 2: Generate feature-specific context files (e.g., FIREBASE-BASE.md).
     const baseContent = generateFeaturePromptSection("base");
-    const basePath = `${baseDir}/contexts/FIREBASE-BASE.md`;
+    const basePath = `${CONTEXTS_DIR}/FIREBASE-BASE.md`;
     const baseResult = await replaceFirebaseFile(config, basePath, baseContent);
     files.push({ path: basePath, updated: baseResult.updated });
 
-    // If Functions are enabled, create the Functions-specific context file.
     if (enabledFeatures.includes("functions")) {
       const functionsContent = generateFeaturePromptSection("functions");
-      const functionsPath = `${baseDir}/contexts/FIREBASE-FUNCTIONS.md`;
+      const functionsPath = `${CONTEXTS_DIR}/FIREBASE-FUNCTIONS.md`;
       const functionsResult = await replaceFirebaseFile(config, functionsPath, functionsContent);
       files.push({ path: functionsPath, updated: functionsResult.updated });
     }
 
-    // Create the main `FIREBASE.md` file, which acts as an entry point
-    // and imports the other context files. This provides a consolidated
-    // view of the project for Gemini.
+    // Part 3: Create the main FIREBASE.md file that imports the context files.
     const imports = [
       "# Firebase Context",
       "",
       "<!-- Import base Firebase context -->",
-      "@./contexts/FIREBASE-BASE.md",
+      `@./contexts/FIREBASE-BASE.md`,
     ];
     if (enabledFeatures.includes("functions")) {
       imports.push(
         "",
         "<!-- Import Firebase Functions context -->",
-        "@./contexts/FIREBASE-FUNCTIONS.md",
+        `@./contexts/FIREBASE-FUNCTIONS.md`,
       );
     }
     const importContent = imports.join("\n");
@@ -98,8 +97,7 @@ export const gemini: AIToolModule = {
       customContent: importContent,
     });
 
-    const contextPath = `${baseDir}/FIREBASE.md`;
-
+    const contextPath = `${GEMINI_DIR}/FIREBASE.md`;
     const mainResult = await replaceFirebaseFile(config, contextPath, mainContent);
     files.push({ path: contextPath, updated: mainResult.updated });
 
