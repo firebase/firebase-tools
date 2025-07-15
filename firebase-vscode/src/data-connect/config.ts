@@ -268,7 +268,7 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativePath(): string {
-    return this.path.split("/").pop()!;
+    return path.relative(vscode.workspace.rootPath, this.path);
   }
 
   get relativeSchemaPath(): string {
