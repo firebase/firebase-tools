@@ -161,7 +161,7 @@ export async function detectFromOutputPath(
       stderrBuffer += chunk.toString();
     });
 
-    childProcess.on("exit", async (code: number) => {
+    childProcess.on("exit", async (code: number | null) => {
       if (!resolved) {
         clearTimeout(timer);
         resolved = true;
