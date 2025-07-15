@@ -2,6 +2,6 @@
   "name": "codebase-v2",
   "type": "module",
   "dependencies": {
-    "firebase-functions": "file:/Users/daniel/dev/firebase-functions"
+    "firebase-functions": "^6.4.0"
   }
 }

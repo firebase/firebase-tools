@@ -1,6 +1,6 @@
 {
   "name": "simple",
   "dependencies": {
-    "firebase-functions": "file:/Users/daniel/dev/firebase-functions"
+    "firebase-functions": "^6.4.0"
   }
 }
