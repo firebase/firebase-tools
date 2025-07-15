@@ -55,6 +55,9 @@ export class CLIProcess {
         };
         p.stdout?.on("data", customCallback);
         p.stdout?.on("close", customFailure);
+        p.stderr?.on("data", (data) => {
+          console.error(`[${this.name} stderr]`, data.toString());
+        });
       });
     } else {
       started = new Promise((resolve) => {

@@ -1,4 +1,5 @@
-import * as path from "path";
+import * as path from "node:path";
+import * as os from "node:os";
 
 import { expect } from "chai";
 import { CLIProcess } from "../integration-helpers/cli";
@@ -18,7 +19,7 @@ interface Testcase {
 async function runDiscoveryTest(
   projectDir: string,
   testcase: Testcase,
-  env?: NodeJS.ProcessEnv,
+  env?: Record<string, string>,
 ): Promise<void> {
   const cli = new CLIProcess("default", projectDir);
 
@@ -136,31 +137,21 @@ describe("Function discovery test", function (this) {
     },
   ];
 
-  for (const tc of testCases) {
-    it(`discovers functions using HTTP in a ${tc.name} project`, async () => {
-      await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc);
-    });
-  }
+  describe("detectFromPort", () => {
+    for (const tc of testCases) {
+      it(`discovers functions using HTTP in a ${tc.name} project`, async () => {
+        await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc);
+      });
+    }
+  });
 
-  describe("file-based discovery", () => {
+  describe("detectFromOutputPath", () => {
     for (const tc of testCases) {
       it(`discovers functions using file-based discovery in a ${tc.name} project`, async () => {
-        const manifestPath = path.join(
-          FIXTURES,
-          tc.projectDir,
-          `.test-manifest-${Date.now()}.yaml`,
-        );
+        const manifestPath = path.join(os.tmpdir(), `test-manifest-${Date.now()}.yaml`);
         await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc, {
           FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
         });
-
-        // Clean up test manifest file if it exists
-        try {
-          const fs = await import("fs");
-          await fs.promises.unlink(manifestPath);
-        } catch (err) {
-          // Ignore if file doesn't exist
-        }
       });
     }
   });
