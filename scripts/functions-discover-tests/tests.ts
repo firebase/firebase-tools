@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as os from "node:os";
+import * as fs from "node:fs/promises";
 
 import { expect } from "chai";
 import { CLIProcess } from "../integration-helpers/cli";
@@ -148,10 +149,18 @@ describe("Function discovery test", function (this) {
   describe("detectFromOutputPath", () => {
     for (const tc of testCases) {
       it(`discovers functions using file-based discovery in a ${tc.name} project`, async () => {
-        const manifestPath = path.join(os.tmpdir(), `test-manifest-${Date.now()}.yaml`);
-        await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc, {
-          FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
-        });
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "firebase-test-"));
+        const manifestPath = path.join(tempDir, "functions.yaml");
+        try {
+          await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc, {
+            FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
+          });
+        } finally {
+          // Clean up the temp directory
+          await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {
+            // Ignore cleanup errors
+          });
+        }
       });
     }
   });

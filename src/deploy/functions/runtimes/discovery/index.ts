@@ -2,6 +2,7 @@ import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "yaml";
+import { ChildProcess } from "child_process";
 
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
@@ -134,7 +135,7 @@ export async function detectFromPort(
  * The user code is expected to write functions.yaml to the path specified by FUNCTIONS_MANIFEST_OUTPUT_PATH.
  */
 export async function detectFromOutputPath(
-  childProcess: any,
+  childProcess: ChildProcess,
   manifestPath: string,
   project: string,
   runtime: Runtime,
