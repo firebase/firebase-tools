@@ -1,4 +1,3 @@
-import { promisify } from "util";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
@@ -38,7 +37,9 @@ const MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES = "5.1.0";
 export async function tryCreateDelegate(context: DelegateContext): Promise<Delegate | undefined> {
   const packageJsonPath = path.join(context.sourceDir, "package.json");
 
-  if (!(await promisify(fs.exists)(packageJsonPath))) {
+  try {
+    await fs.promises.access(packageJsonPath);
+  } catch {
     logger.debug("Customer code is not Node");
     return undefined;
   }
@@ -326,17 +327,12 @@ export class Delegate {
       if (discoveryPath) {
         let manifestPath: string;
         if (discoveryPath === "true") {
-          const tempDir = await promisify(fs.mkdtemp)(
-            path.join(os.tmpdir(), "firebase-discovery-"),
-          );
+          const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "firebase-discovery-"));
           manifestPath = path.join(tempDir, "functions.yaml");
-          logLabeledBullet(
-            "functions",
-            `Writing functions discovery manifest to temporary file ${manifestPath}`,
-          );
+          logger.debug(`Writing functions discovery manifest to temporary file ${manifestPath}`);
         } else {
           manifestPath = path.join(discoveryPath, "functions.yaml");
-          logLabeledBullet("functions", `Writing functions discovery manifest to ${manifestPath}`);
+          logger.debug(`Writing functions discovery manifest to ${manifestPath}`);
         }
         const childProcess = this.execAdmin(config, env, manifestPath);
         discovered = await discovery.detectFromOutputPath(
