@@ -446,9 +446,160 @@ function fromEntries<V>(itr: Iterable<[string, V]>): Record<string, V> {
   return obj;
 }
 
+function isLikelySecret(key: string): boolean {
+  const secretPatterns = [
+    /\bapi[_-]?key\b/i,
+    /\bsecret\b/i,
+    /\bpassw(ord|d)\b/i,
+    /\bprivate[_-]?key\b/i,
+    /_token$/i,
+    /_auth$/i,
+    /_credential$/i,
+    /\bkey\b/i,
+    /\btoken\b/i,
+    /\bauth\b/i,
+    /\bcredential\b/i
+  ];
+  
+  return secretPatterns.some(pattern => pattern.test(key));
+}
+
+function getEnhancedComment(origKey: string, value: string): string {
+  const parts = [`from ${origKey}`];
+  
+  // Add type hint
+  if (value === "true" || value === "false") {
+    parts.push("[boolean]");
+  } else if (!isNaN(Number(value)) && value !== "") {
+    parts.push("[number]");
+  } else if (value.includes(",")) {
+    parts.push("[possible list]");
+  }
+  
+  // Add secret warning
+  if (isLikelySecret(origKey)) {
+    parts.push("⚠️ LIKELY SECRET");
+  }
+  
+  return parts.length > 1 ? ` # ${parts.join(" ")}` : ` # ${parts[0]}`;
+}
+
+function escape(s: string): string {
+  // Escape newlines, tabs, backslashes and quotes
+  return s.replace(/[\n\r\t\v\\"']/g, (ch) => {
+    const escapeMap: Record<string, string> = {
+      "\n": "\\n",
+      "\r": "\\r",
+      "\t": "\\t",
+      "\v": "\\v",
+      "\\": "\\\\",
+      '"': '\\"',
+      "'": "\\'",
+    };
+    return escapeMap[ch];
+  });
+}
+
+function enhancedToDotenvFormat(envs: configExport.EnvMap[], header = ""): string {
+  const lines = envs.map(({ newKey, value, origKey }) => {
+    const comment = getEnhancedComment(origKey, value);
+    return `${newKey}="${escape(value)}"${comment}`;
+  });
+  
+  // Calculate max line length for alignment
+  const maxLineLen = Math.max(...lines.map(l => l.indexOf(" #")));
+  const alignedLines = lines.map(line => {
+    const commentIndex = line.indexOf(" #");
+    const padding = " ".repeat(Math.max(0, maxLineLen - commentIndex));
+    return line.replace(" #", padding + " #");
+  });
+  
+  return `${header}\n${alignedLines.join('\n')}`;
+}
+
+function addMigrationHints(envs: configExport.EnvMap[]): string {
+  const hints: string[] = [];
+  
+  const secrets = envs.filter(e => isLikelySecret(e.origKey));
+  const booleans = envs.filter(e => e.value === "true" || e.value === "false");
+  const numbers = envs.filter(e => !isNaN(Number(e.value)) && e.value !== "");
+  
+  if (secrets.length > 0) {
+    hints.push(`# 🔐 Migration hint: ${secrets.length} potential secrets detected.
+# Consider using defineSecret() for: ${secrets.map(s => s.newKey).join(", ")}
+# Run: firebase functions:secrets:set ${secrets[0].newKey}\n`);
+  }
+  
+  if (booleans.length > 0) {
+    hints.push(`# 📊 Migration hint: ${booleans.length} boolean values detected.
+# Consider using defineBoolean() for: ${booleans.map(b => b.newKey).join(", ")}\n`);
+  }
+  
+  if (numbers.length > 0) {
+    hints.push(`# 🔢 Migration hint: ${numbers.length} numeric values detected.
+# Consider using defineInt() for: ${numbers.map(n => n.newKey).join(", ")}\n`);
+  }
+  
+  if (hints.length > 0) {
+    hints.push(`# 💡 For AI-assisted migration, run: firebase functions:config:export --prompt\n`);
+  }
+  
+  return hints.join('\n');
+}
+
+function validateConfigValues(pInfos: configExport.ProjectConfigInfo[]): string[] {
+  const warnings: string[] = [];
+  
+  for (const pInfo of pInfos) {
+    if (!pInfo.envs) continue;
+    
+    for (const env of pInfo.envs) {
+      // Check for multiline values
+      if (env.value.includes('\n')) {
+        warnings.push(`${env.origKey}: Contains newlines (will be escaped)`);
+      }
+      
+      // Check for very long values
+      if (env.value.length > 1000) {
+        warnings.push(`${env.origKey}: Very long value (${env.value.length} chars)`);
+      }
+      
+      // Check for empty values
+      if (env.value === '') {
+        warnings.push(`${env.origKey}: Empty value`);
+      }
+    }
+  }
+  
+  return warnings;
+}
+
+function showExportSummary(pInfos: configExport.ProjectConfigInfo[], filesToWrite: Record<string, string>): void {
+  const totalConfigs = pInfos.reduce((sum, p) => sum + (p.envs?.length || 0), 0);
+  const filesCreated = Object.keys(filesToWrite).length;
+  
+  logger.info("\n📊 Export Summary:");
+  logger.info(`  ✓ ${totalConfigs} config values exported`);
+  logger.info(`  ✓ ${filesCreated} files created`);
+  
+  const secrets = pInfos.flatMap(p => 
+    (p.envs || []).filter(e => isLikelySecret(e.origKey))
+  );
+  
+  if (secrets.length > 0) {
+    logger.info(`  ⚠️  ${secrets.length} potential secrets exported`);
+    logger.info(`\n💡 Next steps:`);
+    logger.info(`  1. Review .env files for sensitive values`);
+    logger.info(`  2. Move secrets to Firebase: firebase functions:secrets:set`);
+    logger.info(`  3. Update your code to use the params API`);
+    logger.info(`  4. Run 'firebase functions:config:export --prompt' for migration help`);
+  }
+}
+
 export const command = new Command("functions:config:export")
   .description("export environment config as environment variables in dotenv format (or generate AI migration prompt with --prompt)")
   .option("--prompt", "Generate an AI migration prompt instead of exporting to .env files")
+  .option("--dry-run", "Preview the export without writing files")
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.get",
@@ -526,16 +677,78 @@ export const command = new Command("functions:config:export")
       attempts += 1;
     }
 
+    // Check for secrets and warn user
+    const secretsFound: string[] = [];
+    for (const pInfo of pInfos) {
+      if (pInfo.envs) {
+        for (const env of pInfo.envs) {
+          if (isLikelySecret(env.origKey)) {
+            secretsFound.push(`${env.origKey} → ${env.newKey}`);
+          }
+        }
+      }
+    }
+
+    if (secretsFound.length > 0 && !options.dryRun) {
+      logWarning(
+        "⚠️  The following configs appear to be secrets and will be exported to .env files:\n" +
+        secretsFound.map(s => `  - ${s}`).join('\n') + 
+        "\n\nConsider using Firebase Functions secrets instead: firebase functions:secrets:set"
+      );
+      
+      const proceed = await confirm({
+        message: "Continue exporting these potentially sensitive values?",
+        default: false
+      });
+      
+      if (!proceed) {
+        throw new FirebaseError("Export cancelled by user");
+      }
+    }
+
+    // Validate config values and show warnings
+    const valueWarnings = validateConfigValues(pInfos);
+    if (valueWarnings.length > 0) {
+      logWarning("⚠️  Value warnings:\n" + valueWarnings.map(w => `  - ${w}`).join('\n'));
+    }
+
     const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
-    const dotEnvs = pInfos.map((pInfo) => configExport.toDotenvFormat(pInfo.envs!, header));
-    const filenames = pInfos.map(configExport.generateDotenvFilename);
-    const filesToWrite = fromEntries(zip(filenames, dotEnvs));
+    
+    // Generate enhanced .env files with migration hints
+    const filesToWrite: Record<string, string> = {};
+    
+    for (const pInfo of pInfos) {
+      if (!pInfo.envs || pInfo.envs.length === 0) continue;
+      
+      const filename = configExport.generateDotenvFilename(pInfo);
+      const migrationHints = addMigrationHints(pInfo.envs);
+      const envContent = enhancedToDotenvFormat(pInfo.envs, header);
+      
+      filesToWrite[filename] = migrationHints ? `${header}\n${migrationHints}\n${envContent}` : envContent;
+    }
+    
+    // Add default files
     filesToWrite[".env.local"] =
       `${header}\n# .env.local file contains environment variables for the Functions Emulator.\n`;
     filesToWrite[".env"] =
-      `${header}# .env file contains environment variables that applies to all projects.\n`;
+      `${header}\n# .env file contains environment variables that applies to all projects.\n`;
 
-    for (const [filename, content] of Object.entries(filesToWrite)) {
-      await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
+    if (options.dryRun) {
+      logger.info("🔍 DRY RUN MODE - No files will be written\n");
+      
+      for (const [filename, content] of Object.entries(filesToWrite)) {
+        console.log(clc.bold(clc.cyan(`=== ${filename} ===`)));
+        console.log(content);
+        console.log();
+      }
+      
+      logger.info("✅ Dry run complete. Use without --dry-run to write files.");
+    } else {
+      for (const [filename, content] of Object.entries(filesToWrite)) {
+        await options.config.askWriteProjectFile(path.join(functionsDir, filename), content);
+      }
+      
+      // Show export summary
+      showExportSummary(pInfos, filesToWrite);
     }
   });
