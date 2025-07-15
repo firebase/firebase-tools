@@ -5,6 +5,7 @@ import * as portfinder from "portfinder";
 import * as semver from "semver";
 import * as spawn from "cross-spawn";
 import fetch from "node-fetch";
+import { ChildProcess } from "child_process";
 
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
@@ -207,8 +208,7 @@ export class Delegate {
   execAdmin(
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
-    manifestPath?: string,
-  ): any {
+  ): ChildProcess {
     const env: NodeJS.ProcessEnv = {
       ...envs,
       FUNCTIONS_CONTROL_API: "true",
@@ -218,9 +218,6 @@ export class Delegate {
       // Web Frameworks fails without this environment variable
       __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
     };
-    if (manifestPath) {
-      env.FUNCTIONS_MANIFEST_OUTPUT_PATH = manifestPath;
-    }
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
@@ -334,7 +331,11 @@ export class Delegate {
           manifestPath = path.join(discoveryPath, "functions.yaml");
           logger.debug(`Writing functions discovery manifest to ${manifestPath}`);
         }
-        const childProcess = this.execAdmin(config, env, manifestPath);
+        const manifestEnv = {
+          ...env,
+          FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
+        };
+        const childProcess = this.execAdmin(config, manifestEnv);
         discovered = await discovery.detectFromOutputPath(
           childProcess,
           manifestPath,
