@@ -1,1 +1,3 @@
 - Add experimental App Testing feature
+- Fixed an issue where the Cloud Task emulator couldn't decode non-ASCII characters. (#8836)
+- Fixed an issue where `firestore:indexes` wrongly removed the `__name__` field. (#7629)
