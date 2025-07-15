@@ -150,10 +150,9 @@ describe("Function discovery test", function (this) {
     for (const tc of testCases) {
       it(`discovers functions using file-based discovery in a ${tc.name} project`, async () => {
         const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "firebase-test-"));
-        const manifestPath = path.join(tempDir, "functions.yaml");
         try {
           await runDiscoveryTest(path.join(FIXTURES, tc.projectDir), tc, {
-            FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
+            FIREBASE_FUNCTIONS_DISCOVERY_OUTPUT_PATH: tempDir,
           });
         } finally {
           // Clean up the temp directory

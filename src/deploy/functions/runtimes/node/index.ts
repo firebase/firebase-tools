@@ -205,9 +205,14 @@ export class Delegate {
     );
   }
 
-  execAdmin(config: backend.RuntimeConfigValues, envs: backend.EnvironmentVariables): ChildProcess {
+  private spawnFunctionsProcess(
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables,
+    additionalEnv?: NodeJS.ProcessEnv,
+  ): ChildProcess {
     const env: NodeJS.ProcessEnv = {
       ...envs,
+      ...additionalEnv,
       FUNCTIONS_CONTROL_API: "true",
       HOME: process.env.HOME,
       PATH: process.env.PATH,
@@ -233,36 +238,16 @@ export class Delegate {
     return childProcess;
   }
 
+  execAdmin(config: backend.RuntimeConfigValues, envs: backend.EnvironmentVariables): ChildProcess {
+    return this.spawnFunctionsProcess(config, envs);
+  }
+
   serveAdmin(
     port: string,
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
   ): Promise<() => Promise<void>> {
-    const env: NodeJS.ProcessEnv = {
-      ...envs,
-      PORT: port,
-      FUNCTIONS_CONTROL_API: "true",
-      HOME: process.env.HOME,
-      PATH: process.env.PATH,
-      NODE_ENV: process.env.NODE_ENV,
-      // Web Frameworks fails without this environment variable
-      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
-    };
-    if (Object.keys(config || {}).length) {
-      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
-    }
-
-    const binPath = this.findFunctionsBinary();
-    // Note: We cannot use inherit because we need the stdout/err to be
-    // omitted in commands that use --json.
-    const childProcess = spawn(binPath, [this.sourceDir], {
-      env,
-      cwd: this.sourceDir,
-      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
-    });
-    childProcess.stdout?.on("data", (chunk: Buffer) => {
-      logger.info(chunk.toString("utf8"));
-    });
+    const childProcess = this.spawnFunctionsProcess(config, envs, { PORT: port });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
