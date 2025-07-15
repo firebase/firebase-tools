@@ -32,7 +32,6 @@
         "cross-spawn": "^7.0.5",
         "csv-parse": "^5.0.4",
         "deep-equal-in-any-order": "^2.0.6",
-        "diff": "^5.0.0",
         "exegesis": "^4.2.0",
         "exegesis-express": "^4.0.0",
         "express": "^4.16.4",
@@ -102,7 +101,6 @@
         "@types/cors": "^2.8.10",
         "@types/cross-spawn": "^6.0.1",
         "@types/deep-equal-in-any-order": "^1.0.3",
-        "@types/diff": "^5.0.0",
         "@types/express": "^4.17.0",
         "@types/express-serve-static-core": "^4.17.8",
         "@types/fs-extra": "^9.0.13",
@@ -4799,13 +4797,6 @@
       "integrity": "sha512-jT0O3hAILDKeKbdWJ9FZLD0Xdfhz7hMvfyFlRWpirjiEVr8G+GZ4kVIzPIqM6x6Rpp93TNPgOAed4XmvcuV6Qg==",
       "dev": true
     },
-    "node_modules/@types/diff": {
-      "version": "5.2.3",
-      "resolved": "https://registry.npmjs.org/@types/diff/-/diff-5.2.3.tgz",
-      "integrity": "sha512-K0Oqlrq3kQMaO2RhfrNQX5trmt+XLyom88zS0u84nnIcLvFnRUMRRHmrGny5GSM+kNO9IZLARsdQHDzkhAgmrQ==",
-      "dev": true,
-      "license": "MIT"
-    },
     "node_modules/@types/estree": {
       "version": "1.0.0",
       "resolved": "https://registry.npmjs.org/@types/estree/-/estree-1.0.0.tgz",
@@ -8830,6 +8821,7 @@
       "version": "5.0.0",
       "resolved": "https://registry.npmjs.org/diff/-/diff-5.0.0.tgz",
       "integrity": "sha512-/VTCrvm5Z0JGty/BWHljh+BAiw3IK+2j87NGMu8Nwc/f48WoDAC395uomO9ZD117ZOBaHmkX1oyLvkVM/aIT3w==",
+      "dev": true,
       "engines": {
         "node": ">=0.3.1"
       }
@@ -25325,12 +25317,6 @@
       "integrity": "sha512-jT0O3hAILDKeKbdWJ9FZLD0Xdfhz7hMvfyFlRWpirjiEVr8G+GZ4kVIzPIqM6x6Rpp93TNPgOAed4XmvcuV6Qg==",
       "dev": true
     },
-    "@types/diff": {
-      "version": "5.2.3",
-      "resolved": "https://registry.npmjs.org/@types/diff/-/diff-5.2.3.tgz",
-      "integrity": "sha512-K0Oqlrq3kQMaO2RhfrNQX5trmt+XLyom88zS0u84nnIcLvFnRUMRRHmrGny5GSM+kNO9IZLARsdQHDzkhAgmrQ==",
-      "dev": true
-    },
     "@types/estree": {
       "version": "1.0.0",
       "resolved": "https://registry.npmjs.org/@types/estree/-/estree-1.0.0.tgz",
@@ -28349,7 +28335,8 @@
     "diff": {
       "version": "5.0.0",
       "resolved": "https://registry.npmjs.org/diff/-/diff-5.0.0.tgz",
-      "integrity": "sha512-/VTCrvm5Z0JGty/BWHljh+BAiw3IK+2j87NGMu8Nwc/f48WoDAC395uomO9ZD117ZOBaHmkX1oyLvkVM/aIT3w=="
+      "integrity": "sha512-/VTCrvm5Z0JGty/BWHljh+BAiw3IK+2j87NGMu8Nwc/f48WoDAC395uomO9ZD117ZOBaHmkX1oyLvkVM/aIT3w==",
+      "dev": true
     },
     "dir-glob": {
       "version": "3.0.1",
