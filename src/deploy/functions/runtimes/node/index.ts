@@ -208,11 +208,9 @@ export class Delegate {
   private spawnFunctionsProcess(
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
-    additionalEnv?: NodeJS.ProcessEnv,
   ): ChildProcess {
     const env: NodeJS.ProcessEnv = {
       ...envs,
-      ...additionalEnv,
       FUNCTIONS_CONTROL_API: "true",
       HOME: process.env.HOME,
       PATH: process.env.PATH,
@@ -247,7 +245,7 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
   ): Promise<() => Promise<void>> {
-    const childProcess = this.spawnFunctionsProcess(config, envs, { PORT: port });
+    const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
