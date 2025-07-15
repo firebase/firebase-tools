@@ -177,13 +177,6 @@ export async function detectFromOutputPath(
           try {
             const manifestContent = await fs.promises.readFile(manifestPath, "utf8");
             const parsed = yaml.parse(manifestContent);
-
-            try {
-              await fs.promises.unlink(manifestPath);
-            } catch (err) {
-              logger.debug(`Failed to clean up manifest file at ${manifestPath}:`, err);
-            }
-
             resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
           } catch (err: any) {
             if (err.code === "ENOENT") {
