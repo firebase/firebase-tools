@@ -199,3 +199,245 @@ export function toDotenvFormat(envs: EnvMap[], header = ""): string {
 export function generateDotenvFilename(pInfo: ProjectConfigInfo): string {
   return `.env.${pInfo.alias ?? pInfo.projectId}`;
 }
+
+export interface ConfigAnalysis {
+  definiteSecrets: string[];
+  likelySecrets: string[];
+  regularConfigs: string[];
+}
+
+/**
+ * Check if a config key is likely to be a secret based on common patterns.
+ */
+export function isLikelySecret(key: string): boolean {
+  const secretPatterns = [
+    /\bapi[_-]?key\b/i,
+    /\bsecret\b/i,
+    /\bpassw(ord|d)\b/i,
+    /\bprivate[_-]?key\b/i,
+    /_token$/i,
+    /_auth$/i,
+    /_credential$/i,
+    /\bkey\b/i,
+    /\btoken\b/i,
+    /\bauth\b/i,
+    /\bcredential\b/i
+  ];
+  
+  return secretPatterns.some(pattern => pattern.test(key));
+}
+
+/**
+ * Analyze config keys to categorize them as secrets, likely secrets, or regular configs.
+ */
+export function analyzeConfig(config: Record<string, unknown>): ConfigAnalysis {
+  const analysis: ConfigAnalysis = {
+    definiteSecrets: [],
+    likelySecrets: [],
+    regularConfigs: []
+  };
+  
+  const definitePatterns = [
+    /\bapi[_-]?key\b/i,
+    /\bsecret\b/i,
+    /\bpassw(ord|d)\b/i,
+    /\bprivate[_-]?key\b/i,
+    /_token$/i,
+    /_auth$/i,
+    /_credential$/i
+  ];
+  
+  const likelyPatterns = [
+    /\bkey\b/i,
+    /\btoken\b/i,
+    /\bauth\b/i,
+    /\bcredential\b/i
+  ];
+  
+  const servicePatterns = /^(stripe|twilio|sendgrid|aws|github|slack)\./i;
+  
+  function checkKey(key: string, path: string) {
+    if (definitePatterns.some(p => p.test(key))) {
+      analysis.definiteSecrets.push(path);
+      return;
+    }
+    
+    if (servicePatterns.test(path) || likelyPatterns.some(p => p.test(key))) {
+      analysis.likelySecrets.push(path);
+      return;
+    }
+    
+    analysis.regularConfigs.push(path);
+  }
+  
+  function traverse(obj: any, path: string = '') {
+    for (const [key, value] of Object.entries(obj)) {
+      const fullPath = path ? `${path}.${key}` : key;
+      
+      if (typeof value === 'object' && value !== null) {
+        traverse(value, fullPath);
+      } else {
+        checkKey(key, fullPath);
+      }
+    }
+  }
+  
+  traverse(config);
+  return analysis;
+}
+
+/**
+ * Get enhanced comment for env var with type hints and secret warnings.
+ */
+export function getEnhancedComment(origKey: string, value: string): string {
+  const parts = [`from ${origKey}`];
+  
+  // Add type hint
+  if (value === "true" || value === "false") {
+    parts.push("[boolean]");
+  } else if (!isNaN(Number(value)) && value !== "") {
+    parts.push("[number]");
+  } else if (value.includes(",")) {
+    parts.push("[possible list]");
+  }
+  
+  // Add secret warning
+  if (isLikelySecret(origKey)) {
+    parts.push("⚠️ LIKELY SECRET");
+  }
+  
+  return parts.length > 1 ? ` # ${parts.join(" ")}` : ` # ${parts[0]}`;
+}
+
+/**
+ * Convert env var mapping to enhanced dotenv format with type hints and aligned comments.
+ */
+export function enhancedToDotenvFormat(envs: EnvMap[], header = ""): string {
+  const lines = envs.map(({ newKey, value, origKey }) => {
+    const comment = getEnhancedComment(origKey, value);
+    return `${newKey}="${escape(value)}"${comment}`;
+  });
+  
+  // Calculate max line length for alignment
+  const maxLineLen = Math.max(...lines.map(l => l.indexOf(" #")));
+  const alignedLines = lines.map(line => {
+    const commentIndex = line.indexOf(" #");
+    const padding = " ".repeat(Math.max(0, maxLineLen - commentIndex));
+    return line.replace(" #", padding + " #");
+  });
+  
+  return `${header}\n${alignedLines.join('\n')}`;
+}
+
+/**
+ * Generate migration hints for env files based on detected patterns.
+ */
+export function addMigrationHints(envs: EnvMap[]): string {
+  const hints: string[] = [];
+  
+  const secrets = envs.filter(e => isLikelySecret(e.origKey));
+  const booleans = envs.filter(e => e.value === "true" || e.value === "false");
+  const numbers = envs.filter(e => !isNaN(Number(e.value)) && e.value !== "");
+  
+  if (secrets.length > 0) {
+    hints.push(`# 🔐 Migration hint: ${secrets.length} potential secrets detected.
+# Consider using defineSecret() for: ${secrets.map(s => s.newKey).join(", ")}
+# Run: firebase functions:secrets:set ${secrets[0].newKey}\n`);
+  }
+  
+  if (booleans.length > 0) {
+    hints.push(`# 📊 Migration hint: ${booleans.length} boolean values detected.
+# Consider using defineBoolean() for: ${booleans.map(b => b.newKey).join(", ")}\n`);
+  }
+  
+  if (numbers.length > 0) {
+    hints.push(`# 🔢 Migration hint: ${numbers.length} numeric values detected.
+# Consider using defineInt() for: ${numbers.map(n => n.newKey).join(", ")}\n`);
+  }
+  
+  if (hints.length > 0) {
+    hints.push(`# 💡 For AI-assisted migration, run: firebase functions:config:export --prompt\n`);
+  }
+  
+  return hints.join('\n');
+}
+
+/**
+ * Validate config values and return warnings for edge cases.
+ */
+export function validateConfigValues(pInfos: ProjectConfigInfo[]): string[] {
+  const warnings: string[] = [];
+  
+  for (const pInfo of pInfos) {
+    if (!pInfo.envs) continue;
+    
+    for (const env of pInfo.envs) {
+      // Check for multiline values
+      if (env.value.includes('\n')) {
+        warnings.push(`${env.origKey}: Contains newlines (will be escaped)`);
+      }
+      
+      // Check for very long values
+      if (env.value.length > 1000) {
+        warnings.push(`${env.origKey}: Very long value (${env.value.length} chars)`);
+      }
+      
+      // Check for empty values
+      if (env.value === '') {
+        warnings.push(`${env.origKey}: Empty value`);
+      }
+    }
+  }
+  
+  return warnings;
+}
+
+/**
+ * Get value for a specific key path from nested config object.
+ */
+export function getValueForKey(config: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.');
+  let current: any = config;
+  
+  for (const part of parts) {
+    if (current && typeof current === 'object' && part in current) {
+      current = current[part];
+    } else {
+      return undefined;
+    }
+  }
+  
+  return current;
+}
+
+/**
+ * Build categorized config objects with their values based on analysis.
+ */
+export function buildCategorizedConfigs(
+  config: Record<string, unknown>, 
+  analysis: ConfigAnalysis
+): {
+  definiteSecrets: Record<string, unknown>;
+  likelySecrets: Record<string, unknown>;
+  regularConfigs: Record<string, unknown>;
+} {
+  const result = {
+    definiteSecrets: {} as Record<string, unknown>,
+    likelySecrets: {} as Record<string, unknown>,
+    regularConfigs: {} as Record<string, unknown>
+  };
+  
+  for (const path of analysis.definiteSecrets) {
+    result.definiteSecrets[path] = getValueForKey(config, path);
+  }
+  
+  for (const path of analysis.likelySecrets) {
+    result.likelySecrets[path] = getValueForKey(config, path);
+  }
+  
+  for (const path of analysis.regularConfigs) {
+    result.regularConfigs[path] = getValueForKey(config, path);
+  }
+  
+  return result;
+}
