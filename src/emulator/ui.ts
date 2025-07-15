@@ -62,7 +62,10 @@ export class EmulatorUI extends ExpressBasedEmulator {
     app.get(
       "/api/config",
       this.jsonHandler(() => {
-        const emulatorInfos = mapObject((hub! as EmulatorHub).getRunningEmulatorsMapping(), maybeUsePortForwarding);
+        const emulatorInfos = mapObject(
+          (hub! as EmulatorHub).getRunningEmulatorsMapping(),
+          maybeUsePortForwarding,
+        );
         const json: EmulatorConfigInfo = {
           projectId,
           experiments: enabledExperiments ?? [],
