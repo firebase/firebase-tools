@@ -32,7 +32,7 @@ function checkReservedAliases(pInfos: configExport.ProjectConfigInfo[]): void {
     if (pInfo.alias && RESERVED_PROJECT_ALIAS.includes(pInfo.alias)) {
       logWarning(
         `Project alias (${clc.bold(pInfo.alias)}) is reserved for internal use. ` +
-          `Saving exported config in .env.${pInfo.projectId} instead.`,
+          `Using project ID (${pInfo.projectId}) in the .env file header instead.`,
       );
       delete pInfo.alias;
     }
@@ -301,11 +301,17 @@ export const command = new Command("functions:config:export")
     }
 
     // 5. Generate .env file contents
-    const header = `# Exported firebase functions:config:export command on ${new Date().toLocaleDateString()}`;
     const filesToWrite: Record<string, string> = {};
 
     for (const pInfo of pInfos) {
       if (!pInfo.envs || pInfo.envs.length === 0) continue;
+
+      // Create project-specific header
+      const projectInfo = pInfo.alias ? `${pInfo.projectId} (${pInfo.alias})` : pInfo.projectId;
+      const header = 
+        `# Environment variables for Firebase project: ${projectInfo}\n` +
+        `# Exported by firebase functions:config:export on ${new Date().toLocaleDateString()}\n` +
+        `# Learn more: https://firebase.google.com/docs/functions/config-env#env-variables`;
 
       const filename = configExport.generateDotenvFilename(pInfo);
       let envContent = configExport.enhancedToDotenvFormat(pInfo.envs, header);
@@ -313,9 +319,10 @@ export const command = new Command("functions:config:export")
       // Add helpful footer
       const footer =
         `\n\n# === NOTES ===\n` +
-        `# - Override values: Create .env.local or .env\n` +
+        `# - Override values: Create .env.local or .env.${pInfo.projectId}\n` +
         `# - Never commit files containing secrets\n` +
-        `# - Use 'firebase functions:secrets:set' for production secrets\n`;
+        `# - Use 'firebase functions:secrets:set' for production secrets\n` +
+        `# - Learn more: https://firebase.google.com/docs/functions/config-env#env-variables`;
 
       envContent = envContent + footer;
       filesToWrite[filename] = envContent;

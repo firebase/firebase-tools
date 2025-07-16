@@ -199,7 +199,7 @@ export function toDotenvFormat(envs: EnvMap[], header = ""): string {
  * Generate dotenv filename for given project.
  */
 export function generateDotenvFilename(pInfo: ProjectConfigInfo): string {
-  return `.env.${pInfo.alias ?? pInfo.projectId}`;
+  return `.env`;
 }
 
 export interface ConfigAnalysis {
