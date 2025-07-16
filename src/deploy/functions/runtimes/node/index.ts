@@ -236,14 +236,21 @@ export class Delegate {
     return childProcess;
   }
 
-  execAdmin(config: backend.RuntimeConfigValues, envs: backend.EnvironmentVariables): ChildProcess {
-    return this.spawnFunctionsProcess(config, envs);
+  execAdmin(
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables,
+    manifestPath: string,
+  ): ChildProcess {
+    return this.spawnFunctionsProcess(config, {
+      ...envs,
+      FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
+    });
   }
 
   serveAdmin(
-    port: string,
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
+    port: string,
   ): Promise<() => Promise<void>> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
@@ -311,11 +318,7 @@ export class Delegate {
           manifestPath = path.join(discoveryPath, "functions.yaml");
           logger.debug(`Writing functions discovery manifest to ${manifestPath}`);
         }
-        const manifestEnv = {
-          ...env,
-          FUNCTIONS_MANIFEST_OUTPUT_PATH: manifestPath,
-        };
-        const childProcess = this.execAdmin(config, manifestEnv);
+        const childProcess = this.execAdmin(config, env, manifestPath);
         discovered = await discovery.detectFromOutputPath(
           childProcess,
           manifestPath,
@@ -325,7 +328,7 @@ export class Delegate {
       } else {
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });
-        const kill = await this.serveAdmin(port.toString(), config, env);
+        const kill = await this.serveAdmin(config, env, port.toString());
         try {
           discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
         } finally {
