@@ -91,12 +91,12 @@ ${JSON.stringify(firebaseConfig, null, 2)}
 
 ### Runtime Configuration Analysis
 ${invalidKeysSection}
-#### Configs marked as LIKELY SECRETS by heuristic:
+#### Configs marked as DEFINITE SECRETS by heuristic:
 \`\`\`json
 ${JSON.stringify(categorizedConfigs.definiteSecrets, null, 2)}
 \`\`\`
 
-#### Configs marked as POSSIBLE SECRETS by heuristic:
+#### Configs marked as LIKELY SECRETS by heuristic:
 \`\`\`json
 ${JSON.stringify(categorizedConfigs.likelySecrets, null, 2)}
 \`\`\`
@@ -114,7 +114,7 @@ Please analyze this project and guide me through the migration following the wor
 }
 
 /* For projects where we failed to fetch the runtime config, find out what permissions are missing in the project. */
-async function checkRequiredPermission(pInfos: any[]): Promise<void> {
+async function checkRequiredPermission(pInfos: configExport.ProjectConfigInfo[]): Promise<void> {
   pInfos = pInfos.filter((pInfo) => !pInfo.config);
   const testPermissions = pInfos.map((pInfo) =>
     testIamPermissions(pInfo.projectId, REQUIRED_PERMISSIONS),
@@ -261,7 +261,10 @@ export const command = new Command("functions:config:export")
         message:
           "Enter a PREFIX to rename invalid environment variable keys (must start with uppercase letter or _):",
         validate: (input) => {
-          if (!input || /^[A-Z_]/.test(input)) {
+          if (!input) {
+            return "Prefix is required. Please enter a valid prefix (e.g., CONFIG_, APP_)";
+          }
+          if (/^[A-Z_]/.test(input)) {
             return true;
           }
           return "Prefix must start with an uppercase letter or underscore (e.g., CONFIG_, APP_)";
@@ -308,12 +311,12 @@ export const command = new Command("functions:config:export")
 
       // Create project-specific header
       const projectInfo = pInfo.alias ? `${pInfo.projectId} (${pInfo.alias})` : pInfo.projectId;
-      const header = 
+      const header =
         `# Environment variables for Firebase project: ${projectInfo}\n` +
         `# Exported by firebase functions:config:export on ${new Date().toLocaleDateString()}\n` +
         `# Learn more: https://firebase.google.com/docs/functions/config-env#env-variables`;
 
-      const filename = configExport.generateDotenvFilename(pInfo);
+      const filename = ".env";
       let envContent = configExport.enhancedToDotenvFormat(pInfo.envs, header);
 
       // Add helpful footer

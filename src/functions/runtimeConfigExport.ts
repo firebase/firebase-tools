@@ -126,14 +126,14 @@ export function configToEnv(configs: Record<string, unknown>, prefix: string): C
   for (const [configKey, value] of flatten(configs)) {
     try {
       const envKey = convertKey(configKey, prefix);
-      success.push({ origKey: configKey, newKey: envKey, value: value as string });
+      success.push({ origKey: configKey, newKey: envKey, value: value });
     } catch (err: any) {
       if (err instanceof env.KeyValidationError) {
         errors.push({
           origKey: configKey,
           newKey: err.key,
           err: err.message,
-          value: value as string,
+          value: value,
         });
       } else {
         throw new FirebaseError("Unexpected error while converting config", {
@@ -193,13 +193,6 @@ export function toDotenvFormat(envs: EnvMap[], header = ""): string {
     `${header}\n` +
     lines.map((line, idx) => `${line.padEnd(maxLineLen)} # from ${envs[idx].origKey}`).join("\n")
   );
-}
-
-/**
- * Generate dotenv filename for given project.
- */
-export function generateDotenvFilename(pInfo: ProjectConfigInfo): string {
-  return `.env`;
 }
 
 export interface ConfigAnalysis {
@@ -369,8 +362,7 @@ export function enhancedToDotenvFormat(envs: EnvMap[], header = ""): string {
     output += "# Move these to 'firebase functions:secrets:set' before deploying\n";
     output += "# Temporarily uncomment for local development only\n";
 
-    secrets.forEach(({ newKey, value, origKey }) => {
-      const secretType = getSecretType(origKey);
+    secrets.forEach(({ newKey, value }) => {
       output += `\n# ${newKey}="${escape(value)}"`;
       output += `\n# To set as secret: firebase functions:secrets:set ${newKey}`;
       output += `\n`;
@@ -378,58 +370,6 @@ export function enhancedToDotenvFormat(envs: EnvMap[], header = ""): string {
   }
 
   return output;
-}
-
-/**
- * Get a description of why this is detected as a secret
- */
-function getSecretType(key: string): string {
-  const lowerKey = key.toLowerCase();
-  if (lowerKey.includes("api_key") || lowerKey.includes("api-key")) return "API key pattern";
-  if (lowerKey.includes("secret")) return "Contains 'secret'";
-  if (lowerKey.includes("password") || lowerKey.includes("passwd")) return "Password pattern";
-  if (lowerKey.includes("private_key") || lowerKey.includes("private-key"))
-    return "Private key pattern";
-  if (lowerKey.endsWith("_token") || lowerKey.endsWith("-token")) return "Token pattern";
-  if (lowerKey.endsWith("_auth") || lowerKey.endsWith("-auth")) return "Auth pattern";
-  if (/^(stripe|twilio|sendgrid|aws|github|slack)\./i.test(key)) return "Service-specific pattern";
-  if (lowerKey.includes("key")) return "Contains 'key'";
-  if (lowerKey.includes("token")) return "Contains 'token'";
-  if (lowerKey.includes("credential")) return "Contains 'credential'";
-  return "Matches secret pattern";
-}
-
-/**
- * Generate migration hints for env files based on detected patterns.
- */
-export function addMigrationHints(envs: EnvMap[]): string {
-  const hints: string[] = [];
-
-  const secrets = envs.filter((e) => isLikelySecret(e.origKey));
-  const booleans = envs.filter((e) => e.value === "true" || e.value === "false");
-  const numbers = envs.filter((e) => !isNaN(Number(e.value)) && e.value !== "");
-
-  if (secrets.length > 0) {
-    hints.push(`# 🔐 Migration hint: ${secrets.length} potential secrets detected.
-# Consider using defineSecret() for: ${secrets.map((s) => s.newKey).join(", ")}
-# Run: firebase functions:secrets:set ${secrets[0].newKey}\n`);
-  }
-
-  if (booleans.length > 0) {
-    hints.push(`# 📊 Migration hint: ${booleans.length} boolean values detected.
-# Consider using defineBoolean() for: ${booleans.map((b) => b.newKey).join(", ")}\n`);
-  }
-
-  if (numbers.length > 0) {
-    hints.push(`# 🔢 Migration hint: ${numbers.length} numeric values detected.
-# Consider using defineInt() for: ${numbers.map((n) => n.newKey).join(", ")}\n`);
-  }
-
-  if (hints.length > 0) {
-    hints.push(`# 💡 For AI-assisted migration, run: firebase functions:config:export --prompt\n`);
-  }
-
-  return hints.join("\n");
 }
 
 /**
