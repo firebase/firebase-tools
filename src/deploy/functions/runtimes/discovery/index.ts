@@ -141,68 +141,64 @@ export async function detectFromOutputPath(
   runtime: Runtime,
   timeout = 10_000,
 ): Promise<build.Build> {
-  const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
-  const timedOut = new Promise<never>((resolve, reject) => {
-    setTimeout(() => {
-      reject(
-        new FirebaseError(
-          `User code failed to load. Cannot determine backend specification. Timeout after ${discoveryTimeout}ms`,
-        ),
-      );
-    }, discoveryTimeout);
-  });
+  return new Promise((resolve, reject) => {
+    let stderrBuffer = "";
+    let resolved = false;
 
-  // Collect stderr for error reporting
-  let stderrBuffer = "";
-  childProcess.stderr?.on("data", (chunk: Buffer) => {
-    stderrBuffer += chunk.toString();
-  });
-
-  // Handle process errors
-  const processError = new Promise<never>((resolve, reject) => {
-    childProcess.on("error", (err: Error) => {
-      reject(new FirebaseError(`Discovery process failed: ${err.message}`));
-    });
-
-    childProcess.on("exit", (code: number | null) => {
-      if (code !== 0 && code !== null) {
-        const errorMessage = stderrBuffer.trim() || `Discovery process exited with code ${code}`;
+    const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
         reject(
           new FirebaseError(
-            `User code failed to load. Cannot determine backend specification.\n${errorMessage}`,
+            `User code failed to load. Cannot determine backend specification. Timeout after ${discoveryTimeout}ms`,
           ),
         );
       }
-    });
-  });
+    }, discoveryTimeout);
 
-  // Poll for the manifest file
-  const pollInterval = 100; // 100ms
-  const fileFound = new Promise<build.Build>(async (resolve, reject) => {
-    while (true) {
-      try {
-        const manifestContent = await fs.promises.readFile(manifestPath, "utf8");
-        const parsed = yaml.parse(manifestContent);
-        resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
-        break;
-      } catch (err: any) {
-        if (err.code === "ENOENT") {
-          // File doesn't exist yet, wait and retry
-          await new Promise((resolve) => setTimeout(resolve, pollInterval));
-          continue;
-        } else if (err.name === "YAMLParseError") {
-          // File exists but might be partially written, wait and retry
-          await new Promise((resolve) => setTimeout(resolve, pollInterval));
-          continue;
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      stderrBuffer += chunk.toString();
+    });
+
+    childProcess.on("exit", async (code: number | null) => {
+      if (!resolved) {
+        clearTimeout(timer);
+        resolved = true;
+
+        if (code !== 0 && code !== null) {
+          const errorMessage = stderrBuffer.trim() || `Discovery process exited with code ${code}`;
+          reject(
+            new FirebaseError(
+              `User code failed to load. Cannot determine backend specification.\n${errorMessage}`,
+            ),
+          );
         } else {
-          // Unexpected error
-          reject(new FirebaseError(`Failed to read or parse manifest file: ${err.message}`));
-          break;
+          try {
+            const manifestContent = await fs.promises.readFile(manifestPath, "utf8");
+            const parsed = yaml.parse(manifestContent);
+            resolve(yamlToBuild(parsed, project, api.functionsDefaultRegion(), runtime));
+          } catch (err: any) {
+            if (err.code === "ENOENT") {
+              reject(
+                new FirebaseError(
+                  `Discovery process completed but no function manifest was found at ${manifestPath}`,
+                ),
+              );
+            } else {
+              reject(new FirebaseError(`Failed to read or parse manifest file: ${err.message}`));
+            }
+          }
         }
       }
-    }
-  });
+    });
 
-  // Race between file found, timeout, and process error
-  return Promise.race([fileFound, timedOut, processError]);
+    childProcess.on("error", (err: Error) => {
+      if (!resolved) {
+        clearTimeout(timer);
+        resolved = true;
+        reject(new FirebaseError(`Discovery process failed: ${err.message}`));
+      }
+    });
+  });
 }
