@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Language server now properly recognizes nested Dataconnect folders
+
 ## 1.5.0
 
 - Update internal `firebase-tools` dependency to 14.9.0
