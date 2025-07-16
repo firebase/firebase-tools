@@ -45,21 +45,21 @@ export const gemini: AIToolModule = {
     // Part 1: Configure the main gemini-extension.json file.
     const extensionPath = `${GEMINI_DIR}/gemini-extension.json`;
     const extensionTemplate = readTemplateSync("init/aitools/gemini-extension.json");
-    const extensionConfig = extensionTemplate.replace("{{PROJECT_PATH}}", projectPath);
+    const newConfigRaw = extensionTemplate.replace("{{PROJECT_PATH}}", projectPath);
 
     let extensionUpdated = false;
     try {
       const existingRaw = config.readProjectFile(extensionPath);
       const existingConfig = JSON.parse(existingRaw);
-      const newConfig = JSON.parse(extensionConfig);
+      const newConfig = JSON.parse(newConfigRaw);
 
       if (!deepEqual(existingConfig, newConfig)) {
-        config.writeProjectFile(extensionPath, extensionConfig);
+        config.writeProjectFile(extensionPath, newConfigRaw);
         extensionUpdated = true;
       }
     } catch {
       // File doesn't exist or is invalid JSON, so we (re)create it.
-      config.writeProjectFile(extensionPath, extensionConfig);
+      config.writeProjectFile(extensionPath, newConfigRaw);
       extensionUpdated = true;
     }
     files.push({ path: extensionPath, updated: extensionUpdated });
@@ -70,13 +70,6 @@ export const gemini: AIToolModule = {
     const baseResult = await replaceFirebaseFile(config, basePath, baseContent);
     files.push({ path: basePath, updated: baseResult.updated });
 
-    if (enabledFeatures.includes("functions")) {
-      const functionsContent = generateFeaturePromptSection("functions");
-      const functionsPath = `${CONTEXTS_DIR}/FIREBASE-FUNCTIONS.md`;
-      const functionsResult = await replaceFirebaseFile(config, functionsPath, functionsContent);
-      files.push({ path: functionsPath, updated: functionsResult.updated });
-    }
-
     // Part 3: Create the main FIREBASE.md file that imports the context files.
     const imports = [
       "# Firebase Context",
@@ -85,6 +78,11 @@ export const gemini: AIToolModule = {
       `@./contexts/FIREBASE-BASE.md`,
     ];
     if (enabledFeatures.includes("functions")) {
+      const functionsContent = generateFeaturePromptSection("functions");
+      const functionsPath = `${CONTEXTS_DIR}/FIREBASE-FUNCTIONS.md`;
+      const functionsResult = await replaceFirebaseFile(config, functionsPath, functionsContent);
+      files.push({ path: functionsPath, updated: functionsResult.updated });
+
       imports.push(
         "",
         "<!-- Import Firebase Functions context -->",
