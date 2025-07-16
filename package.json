@@ -48,6 +48,7 @@
   },
   "files": [
     "lib",
+    "prompts",
     "schema",
     "standalone",
     "templates"
