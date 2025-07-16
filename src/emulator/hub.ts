@@ -13,7 +13,6 @@ import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
 import { isVSCodeExtension } from "../vsCodeUtils";
-import { maybeUsePortForwarding } from "./env";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -83,10 +82,10 @@ export class EmulatorHub extends ExpressBasedEmulator {
   getRunningEmulatorsMapping(): GetEmulatorsResponse {
     const emulators: GetEmulatorsResponse = {};
     for (const info of EmulatorRegistry.listRunningWithInfo()) {
-      emulators[info.name] = maybeUsePortForwarding({
+      emulators[info.name] = {
         listen: this.args.listenForEmulator[info.name],
         ...info,
-      });
+      };
     }
     return emulators;
   }
