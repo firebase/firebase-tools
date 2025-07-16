@@ -1,7 +1,7 @@
 ## NEXT
 
 - [Fixed] Language server now properly recognizes nested Dataconnect folders
-- [Fixed] Add Data now properly support enum and list types
+- [Fixed] Add Data and Read Data now properly support enum and list types
 
 ## 1.5.0
 
