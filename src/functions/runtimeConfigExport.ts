@@ -8,9 +8,6 @@ import { getProjectId } from "../projectUtils";
 import { loadRC } from "../rc";
 import { logWarning } from "../utils";
 import { flatten } from "../functional";
-import { normalizeAndValidate } from "./projectConfig";
-
-export { normalizeAndValidate };
 
 export interface ProjectConfigInfo {
   projectId: string;
