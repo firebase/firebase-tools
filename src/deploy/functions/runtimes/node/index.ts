@@ -218,6 +218,8 @@ export class Delegate {
       // Web Frameworks fails without this environment variable
       __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
     };
+    // Defensive check: config may come from external sources (e.g., API responses)
+    // and could be null/undefined despite TypeScript types
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
@@ -233,9 +235,18 @@ export class Delegate {
       logger.info(chunk.toString("utf8"));
     });
 
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.error(chunk.toString("utf8"));
+    });
+
     return childProcess;
   }
 
+  /**
+   * Executes the admin binary for file-based function discovery.
+   * Sets the FUNCTIONS_MANIFEST_OUTPUT_PATH environment variable to tell
+   * the SDK where to write the functions.yaml manifest file.
+   */
   execAdmin(
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
@@ -253,10 +264,8 @@ export class Delegate {
     port: string,
   ): Promise<() => Promise<void>> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
-    childProcess.stderr?.on("data", (chunk: Buffer) => {
-      logger.error(chunk.toString("utf8"));
-    });
 
+    // TODO: Refactor return type to () => Promise<void> to simplify nested promises
     return Promise.resolve(async () => {
       const p = new Promise<void>((resolve, reject) => {
         childProcess.once("exit", resolve);
@@ -308,24 +317,8 @@ export class Delegate {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
       const discoveryPath = process.env.FIREBASE_FUNCTIONS_DISCOVERY_OUTPUT_PATH;
-      if (discoveryPath) {
-        let manifestPath: string;
-        if (discoveryPath === "true") {
-          const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "firebase-discovery-"));
-          manifestPath = path.join(tempDir, "functions.yaml");
-          logger.debug(`Writing functions discovery manifest to temporary file ${manifestPath}`);
-        } else {
-          manifestPath = path.join(discoveryPath, "functions.yaml");
-          logger.debug(`Writing functions discovery manifest to ${manifestPath}`);
-        }
-        const childProcess = this.execAdmin(config, env, manifestPath);
-        discovered = await discovery.detectFromOutputPath(
-          childProcess,
-          manifestPath,
-          this.projectId,
-          this.runtime,
-        );
-      } else {
+      if (!discoveryPath) {
+        // HTTP-based discovery (default)
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });
         const kill = await this.serveAdmin(config, env, port.toString());
@@ -334,6 +327,29 @@ export class Delegate {
         } finally {
           await kill();
         }
+      } else if (discoveryPath === "true") {
+        // File-based discovery with auto-generated temp directory
+        const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "firebase-discovery-"));
+        const manifestPath = path.join(tempDir, "functions.yaml");
+        logger.debug(`Writing functions discovery manifest to temporary file ${manifestPath}`);
+        const childProcess = this.execAdmin(config, env, manifestPath);
+        discovered = await discovery.detectFromOutputPath(
+          childProcess,
+          manifestPath,
+          this.projectId,
+          this.runtime,
+        );
+      } else {
+        // File-based discovery with user-specified directory
+        const manifestPath = path.join(discoveryPath, "functions.yaml");
+        logger.debug(`Writing functions discovery manifest to ${manifestPath}`);
+        const childProcess = this.execAdmin(config, env, manifestPath);
+        discovered = await discovery.detectFromOutputPath(
+          childProcess,
+          manifestPath,
+          this.projectId,
+          this.runtime,
+        );
       }
     }
     return discovered;

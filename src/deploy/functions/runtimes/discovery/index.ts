@@ -77,7 +77,7 @@ export async function detectFromPort(
   timeout = 10_000 /* 10s to boot up */,
 ): Promise<build.Build> {
   let res: Response;
-  const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
+  const discoveryTimeout = getFunctionDiscoveryTimeout() ?? timeout;
   const timedOut = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
       const originalError = "User code failed to load. Cannot determine backend specification.";
@@ -145,7 +145,7 @@ export async function detectFromOutputPath(
     let stderrBuffer = "";
     let resolved = false;
 
-    const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
+    const discoveryTimeout = getFunctionDiscoveryTimeout() ?? timeout;
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -167,7 +167,7 @@ export async function detectFromOutputPath(
         resolved = true;
 
         if (code !== 0 && code !== null) {
-          const errorMessage = stderrBuffer.trim() || `Discovery process exited with code ${code}`;
+          const errorMessage = stderrBuffer.trim() ?? `Discovery process exited with code ${code}`;
           reject(
             new FirebaseError(
               `User code failed to load. Cannot determine backend specification.\n${errorMessage}`,
