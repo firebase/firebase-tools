@@ -26,12 +26,9 @@ export class FirestoreApi {
    */
   public static processIndexes(indexes: types.Index[]): types.Index[] {
     return indexes.map((index: types.Index): types.Index => {
-      const fields = index.fields.filter((field) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === types.Order.DESCENDING;
-      });
+      const fields = index.fields.filter(
+        (field) => field.fieldPath !== "__name__" || field.order === types.Order.DESCENDING,
+      );
 
       return {
         ...index,
