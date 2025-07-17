@@ -19,6 +19,28 @@ export class FirestoreApi {
   printer = new PrettyPrint();
 
   /**
+   * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
+   * Keeps explicit __name__ fields with DESCENDING order.
+   * @param indexes Array of indexes to process
+   * @returns Processed array of indexes with filtered fields
+   */
+  public static processIndexes(indexes: types.Index[]): types.Index[] {
+    return indexes.map((index: types.Index): types.Index => {
+      const fields = index.fields.filter((field) => {
+        if (field.fieldPath !== "__name__") {
+          return true;
+        }
+        return field.order === types.Order.DESCENDING;
+      });
+
+      return {
+        ...index,
+        fields,
+      };
+    });
+  }
+
+  /**
    * Deploy an index specification to the specified project.
    * @param options the CLI options.
    * @param indexes an array of objects, each will be validated and then converted
@@ -183,22 +205,7 @@ export class FirestoreApi {
       return [];
     }
 
-    return indexes.map((index: any): types.Index => {
-      // Filter out implicit __name__ fields with ASCENDING order, keep explicit DESCENDING ones.
-      const fields = index.fields.filter((field: types.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === types.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    return FirestoreApi.processIndexes(indexes);
   }
 
   /**

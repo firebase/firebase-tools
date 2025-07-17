@@ -449,110 +449,68 @@ describe("IndexSpecMatching", () => {
 
 describe("IndexListingWithNameFields", () => {
   it("should filter out __name__ fields with ASCENDING order", () => {
-    const mockIndexes = [
+    const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "__name__", order: "ASCENDING" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "__name__", order: API.Order.ASCENDING },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
     ];
 
-    const result = mockIndexes.map((index: any): API.Index => {
-      const fields = index.fields.filter((field: API.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === API.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    const result = FirestoreApi.processIndexes(mockIndexes);
 
     expect(result[0].fields).to.have.length(1);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
   });
 
   it("should keep __name__ fields with DESCENDING order", () => {
-    const mockIndexes = [
+    const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "__name__", order: "DESCENDING" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "__name__", order: API.Order.DESCENDING },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
     ];
 
-    const result = mockIndexes.map((index: any): API.Index => {
-      const fields = index.fields.filter((field: API.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === API.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    const result = FirestoreApi.processIndexes(mockIndexes);
 
     expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
     expect(result[0].fields[1].fieldPath).to.equal("__name__");
-    expect(result[0].fields[1].order).to.equal("DESCENDING");
+    expect(result[0].fields[1].order).to.equal(API.Order.DESCENDING);
   });
 
   it("should distinguish between indexes that differ only by __name__ order", () => {
-    const mockIndexes = [
+    const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "__name__", order: "ASCENDING" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "__name__", order: API.Order.ASCENDING },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/def456",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "__name__", order: "DESCENDING" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "__name__", order: API.Order.DESCENDING },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
     ];
 
-    const result = mockIndexes.map((index: any): API.Index => {
-      const fields = index.fields.filter((field: API.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === API.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    const result = FirestoreApi.processIndexes(mockIndexes);
 
     // First index should have __name__ field filtered out
     expect(result[0].fields).to.have.length(1);
@@ -562,77 +520,49 @@ describe("IndexListingWithNameFields", () => {
     expect(result[1].fields).to.have.length(2);
     expect(result[1].fields[0].fieldPath).to.equal("foo");
     expect(result[1].fields[1].fieldPath).to.equal("__name__");
-    expect(result[1].fields[1].order).to.equal("DESCENDING");
+    expect(result[1].fields[1].order).to.equal(API.Order.DESCENDING);
 
     // The two processed indexes should be different (fixing the duplicate issue)
     expect(JSON.stringify(result[0].fields)).to.not.equal(JSON.stringify(result[1].fields));
   });
 
   it("should keep all non-__name__ fields regardless of order", () => {
-    const mockIndexes = [
+    const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "bar", order: "DESCENDING" },
-          { fieldPath: "__name__", order: "ASCENDING" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "bar", order: API.Order.DESCENDING },
+          { fieldPath: "__name__", order: API.Order.ASCENDING },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
     ];
 
-    const result = mockIndexes.map((index: any): API.Index => {
-      const fields = index.fields.filter((field: API.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === API.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    const result = FirestoreApi.processIndexes(mockIndexes);
 
     expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
-    expect(result[0].fields[0].order).to.equal("ASCENDING");
+    expect(result[0].fields[0].order).to.equal(API.Order.ASCENDING);
     expect(result[0].fields[1].fieldPath).to.equal("bar");
-    expect(result[0].fields[1].order).to.equal("DESCENDING");
+    expect(result[0].fields[1].order).to.equal(API.Order.DESCENDING);
   });
 
   it("should handle indexes with no __name__ fields", () => {
-    const mockIndexes = [
+    const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: "COLLECTION",
+        queryScope: API.QueryScope.COLLECTION,
         fields: [
-          { fieldPath: "foo", order: "ASCENDING" },
-          { fieldPath: "bar", arrayConfig: "CONTAINS" },
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
         ],
-        state: "READY",
+        state: API.State.READY,
       },
     ];
 
-    const result = mockIndexes.map((index: any): API.Index => {
-      const fields = index.fields.filter((field: API.IndexField) => {
-        if (field.fieldPath !== "__name__") {
-          return true;
-        }
-        return field.order === API.Order.DESCENDING;
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    const result = FirestoreApi.processIndexes(mockIndexes);
 
     expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
