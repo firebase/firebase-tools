@@ -29,10 +29,10 @@ export class FirestoreApi {
       // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
       // this matches the direction of the last non-name field in the index.
       let fields = index.fields;
-      const lastField = index.fields[index.fields.length - 1];
-      if (lastField.fieldPath === "__name__") {
-        const defaultDirection = index.fields[index.fields.length - 2]?.order;
-        if (lastField.order === defaultDirection) {
+      const lastField = index.fields?.[index.fields.length - 1];
+      if (lastField?.fieldPath === "__name__") {
+        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
+        if (lastField?.order === defaultDirection) {
           fields = fields.slice(0, -1);
         }
       }
