@@ -76,8 +76,26 @@ const START_LOGGING_EMULATOR = utils.envOverride(
  */
 export async function exportOnExit(options: Options): Promise<void> {
   // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
-  const exportOnExitDir = options.exportOnExit as string;
+  const globalDataDir = options.config?.emulators?.dataDir as string | undefined;
+  const exportOnExitDir = options.exportOnExit as string | undefined;
+
+  if (globalDataDir && !exportOnExitDir) {
+    // If global dataDir is set and --export-on-exit is NOT used, export to global dataDir.
+    try {
+      utils.logBullet(
+        `Automatically exporting data to global dataDir: "${globalDataDir}" ` +
+          "please wait for the export to finish...",
+      );
+      await exportEmulatorData(globalDataDir, options, /* initiatedBy= */ "datadir_exit");
+    } catch (e: unknown) {
+      utils.logWarning(`${e}`);
+      utils.logWarning(`Automatic export to "${globalDataDir}" failed, going to exit now...`);
+    }
+    return; // Prioritize global dataDir if no specific exportOnExitDir is given.
+  }
+
   if (exportOnExitDir) {
+    // If --export-on-exit IS used, it takes precedence.
     try {
       utils.logBullet(
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
@@ -474,12 +492,41 @@ export async function startAll(
   let exportMetadata: ExportMetadata = {
     version: "unknown",
   };
-  if (options.import) {
+  const globalDataDir = options.config?.emulators?.dataDir as string | undefined;
+
+  if (globalDataDir) {
+    const dataDirPath = path.resolve(globalDataDir);
+    if (fs.existsSync(dataDirPath) && fs.lstatSync(dataDirPath).isDirectory()) {
+      const foundGlobalMetadata = findExportMetadata(dataDirPath);
+      if (foundGlobalMetadata) {
+        hubLogger.logLabeled("BULLET", "emulators", `Importing data from global dataDir: ${dataDirPath}`);
+        exportMetadata = foundGlobalMetadata;
+        void trackEmulator("emulator_import", {
+          initiated_by: "datadir_start",
+          emulator_name: Emulators.HUB,
+        });
+      } else {
+        // If dataDir exists but is empty or not a valid export, don't warn, just proceed.
+        // It might be intended for export only on the first run.
+        hubLogger.logLabeled("DEBUG", "emulators", `Global dataDir ${dataDirPath} is empty or not a valid export, skipping import from dataDir.`);
+      }
+    } else if (options.import) {
+      // dataDir is set but doesn't exist, but options.import is also set.
+      // Warn that dataDir will be created on exit, but for now, options.import will be used.
+       hubLogger.logLabeled("INFO", "emulators", `Global dataDir ${dataDirPath} does not exist. It will be created on export. Current import is from --import flag.`);
+    }
+  }
+
+  // --import flag takes precedence if dataDir did not yield metadata or if --import is explicitly used.
+  // However, if dataDir yielded metadata, it has already populated exportMetadata.
+  // This logic handles the case where dataDir is not set, or is empty, and --import is used.
+  if (options.import && exportMetadata.version === "unknown") {
     utils.assertIsString(options.import);
     const importDir = path.resolve(options.import);
-    const foundMetadata = findExportMetadata(importDir);
-    if (foundMetadata) {
-      exportMetadata = foundMetadata;
+    const foundImportFlagMetadata = findExportMetadata(importDir);
+    if (foundImportFlagMetadata) {
+      hubLogger.logLabeled("BULLET", "emulators", `Importing data from --import directory: ${importDir}`);
+      exportMetadata = foundImportFlagMetadata;
       void trackEmulator("emulator_import", {
         initiated_by: "start",
         emulator_name: Emulators.HUB,
@@ -488,10 +535,17 @@ export async function startAll(
       hubLogger.logLabeled(
         "WARN",
         "emulators",
-        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`,
+        `Could not find import/export metadata file in --import directory ${importDir}, ${clc.bold(
+          "skipping data import!",
+        )}`,
       );
     }
+  } else if (options.import && exportMetadata.version !== "unknown" && globalDataDir) {
+    // This case means globalDataDir provided metadata, and --import was also used.
+    // globalDataDir's metadata already took precedence. Log this clearly.
+    hubLogger.logLabeled("INFO", "emulators", `Global dataDir (${globalDataDir}) provided import data, --import flag (${options.import}) was ignored for initial import.`);
   }
+
 
   // TODO: turn this into hostingConfig.extract or hostingConfig.hostingConfig
   // once those branches merge
