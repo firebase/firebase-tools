@@ -19,6 +19,31 @@ export class FirestoreApi {
   printer = new PrettyPrint();
 
   /**
+   * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
+   * Keeps explicit __name__ fields with DESCENDING order.
+   * @param indexes Array of indexes to process
+   * @returns Processed array of indexes with filtered fields
+   */
+  public static processIndexes(indexes: types.Index[]): types.Index[] {
+    return indexes.map((index: types.Index): types.Index => {
+      // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
+      // this matches the direction of the last non-name field in the index.
+      let fields = index.fields;
+      const lastField = index.fields?.[index.fields.length - 1];
+      if (lastField?.fieldPath === "__name__") {
+        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
+        if (lastField?.order === defaultDirection) {
+          fields = fields.slice(0, -1);
+        }
+      }
+      return {
+        ...index,
+        fields,
+      };
+    });
+  }
+
+  /**
    * Deploy an index specification to the specified project.
    * @param options the CLI options.
    * @param indexes an array of objects, each will be validated and then converted
@@ -183,7 +208,7 @@ export class FirestoreApi {
       return [];
     }
 
-    return indexes;
+    return FirestoreApi.processIndexes(indexes);
   }
 
   /**
