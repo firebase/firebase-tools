@@ -1,6 +1,5 @@
 {
-  "name": "esm",
-  "type": "module",
+  "name": "stress-test",
   "dependencies": {
     "firebase-functions": "^6.4.0"
   }
