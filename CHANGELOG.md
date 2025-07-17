@@ -1,4 +1,4 @@
 - Add experimental App Testing feature
 - Fixed an issue where the Cloud Task emulator couldn't decode non-ASCII characters. (#8836)
 - Fixed an issue where `firestore:indexes` wrongly removed the `__name__` field. (#7629)
-- Update Firebase Data Connect Emulator to version 2.10.0, which added support for full-text search and user-defined enums. (#8837)
+- Update Firebase Data Connect Emulator to version 2.10.0, which added support for full-text search and user-defined enums. (#8858)
