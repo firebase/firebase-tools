@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "14.10.1",
+  "version": "14.11.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -48,6 +48,7 @@
   },
   "files": [
     "lib",
+    "prompts",
     "schema",
     "standalone",
     "templates"

@@ -1,1 +1,1 @@
-- Add experimental App Testing feature
+- Fixed issue where `__name__` fields with DESCENDING order were incorrectly filtered from index listings, causing duplicate index issues (#7629) and deployment conflicts (#8859). The fix now preserves `__name__` fields with explicit DESCENDING order while filtering out implicit ASCENDING `__name__` fields.
