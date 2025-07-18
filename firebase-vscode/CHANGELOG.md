@@ -1,5 +1,6 @@
 ## NEXT
 
+- Update internal `firebase-tools` dependency to 14.11.0
 - [Fixed] Language server now properly recognizes nested Dataconnect folders
 - [Fixed] Add Data and Read Data now properly support enum and list types
 
