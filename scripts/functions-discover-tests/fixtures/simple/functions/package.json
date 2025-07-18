@@ -1,9 +1,6 @@
 {
   "name": "simple",
   "dependencies": {
-    "firebase-functions": "^5.1.0"
-  },
-  "engines": {
-    "node": "20"
+    "firebase-functions": "^6.4.0"
   }
 }

@@ -1,3 +1,1 @@
-- Add experimental App Testing feature
-- Fixed an issue where the Cloud Task emulator couldn't decode non-ASCII characters. (#8836)
-- Fixed an issue where `firestore:indexes` wrongly removed the `__name__` field. (#7629)
+- Fixed issue where `__name__` fields with DESCENDING order were incorrectly filtered from index listings, causing duplicate index issues (#7629) and deployment conflicts (#8859). The fix now preserves `__name__` fields with explicit DESCENDING order while filtering out implicit ASCENDING `__name__` fields.
