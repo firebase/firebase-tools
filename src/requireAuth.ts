@@ -64,6 +64,8 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<null | 
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
+    // Persist this project so it is used by other commands, too.
+    utils.setGlobalDefaultProject(options.projectId);
   }
   return clientEmail || null;
 }
