@@ -58,6 +58,9 @@ export interface Context {
 
   // Tracks context for extension deploy
   extensions?: ExtContext;
+
+  // True if functions deploy is using runtime config
+  hasRuntimeConfig?: boolean;
 }
 
 export interface CodebaseDeployEvent {
