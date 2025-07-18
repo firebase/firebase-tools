@@ -10,8 +10,14 @@ import { ExecutionMetadata } from "../apptesting/types";
 import { FirebaseError } from "../error";
 import { marked } from "marked";
 import { needProjectId } from "../projectUtils";
-import { consoleUrl } from "../utils";
+import { consoleUrl, logBullet } from "../utils";
 import { AppPlatform, listFirebaseApps } from "../management/apps";
+import { addServiceAccountToRoles, serviceAccountHasRoles } from "../gcp/resourceManager";
+import { ensure } from "../ensureApiEnabled";
+import { appTestingOrigin } from "../api";
+import { generateServiceIdentityAndPoll } from "../gcp/serviceusage";
+
+const TEST_RUNNER_ROLE = "roles/firebaseapptesting.testRunner"
 
 export const command = new Command("apptesting:execute <target>")
   .description("Run automated tests written in natural language driven by AI")
@@ -55,7 +61,57 @@ export const command = new Command("apptesting:execute <target>")
 
     const invokeSpinner = ora("Requesting test execution");
     invokeSpinner.start();
+    await ensure(projectId, appTestingOrigin(), "storage", false);
+    await ensure(projectId, appTestingOrigin(), "run", false);
+    await ensure(projectId, appTestingOrigin(), "artifactregistry", false);
+    const serviceAccount = runnerServiceAccount(app.projectId);
 
+
+    
+    const serviceAccountExistsAndIsRunner = await serviceAccountHasRoles(
+        projectId,
+        serviceAccount,
+        [TEST_RUNNER_ROLE],
+        true,
+      );
+    if (!serviceAccountExistsAndIsRunner) {
+      const grant = await confirm("Firebase App Testing runs tests in Cloud Run using a service account, create the account?");
+      if (!grant) {
+        logBullet(
+              "You, or your project administrator, should run the following command to grant the required role:\n\n" +
+                "You, or your project adminstrator, can run the following command to grant the required role manually:\n\n" +
+                `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
+                `\t  --member="serviceAccount:${serviceAccount} \\\n` +
+                `\t  --role="${TEST_RUNNER_ROLE}\n`,
+            );
+        throw new FirebaseError(`Firebase App Testing requires a service account with the "${TEST_RUNNER_ROLE}" role to execute tests using Cloud Run`);
+      }
+      try {
+        await addServiceAccountToRoles(
+          projectId,
+          serviceAccount,
+          [TEST_RUNNER_ROLE],
+          /* skipAccountLookup= */ true,
+        );
+      } catch (e: any) {
+      // if the user service account doesn't exist in the project, generate one
+      if (e?.code === 400 || e?.status === 400) {
+          await generateServiceIdentityAndPoll(
+            projectId,
+            appTestingOrigin(),
+            "apptesting",
+          );
+          await addServiceAccountToRoles(
+            projectId,
+            serviceAccount,
+            [TEST_RUNNER_ROLE],
+            /* skipAccountLookup= */ true,
+          );
+        } else {
+          throw e;
+        }
+      }
+    }
     let invocationOperation;
     try {
       invocationOperation = await invokeTests(app.appId, target, tests);
@@ -127,4 +183,8 @@ function getOutput(invocation: ExecutionMetadata) {
     output.push(`⊝ ${pluralizeTests(invocation.cancelledExecutions)} cancelled`);
   }
   return output.length ? output.join("\n") : "Tests are starting";
+}
+
+function runnerServiceAccount(projectId: string): string {
+  return `firebaseapptesting-test-runner@-${projectId}@.iam.gserviceaccount.com`;
 }
