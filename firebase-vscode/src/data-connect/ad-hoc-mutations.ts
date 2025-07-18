@@ -176,7 +176,6 @@ export function registerAdHoc(
     });
   }
 
-
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",
