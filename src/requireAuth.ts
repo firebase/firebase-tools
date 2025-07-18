@@ -82,7 +82,10 @@ export async function refreshAuth(): Promise<Tokens> {
  * if the user is not authenticated
  * @param options CLI options.
  */
-export async function requireAuth(options: any): Promise<string | null> {
+export async function requireAuth(
+  options: any,
+  skipAutoAuth: boolean = false,
+): Promise<string | null> {
   lastOptions = options;
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
   options.authScopes = api.getScopes();
@@ -104,6 +107,8 @@ export async function requireAuth(options: any): Promise<string | null> {
     );
   } else if (user && (!isExpired(tokens) || tokens?.refresh_token)) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
+  } else if (skipAutoAuth) {
+    return null;
   } else {
     try {
       return await autoAuth(options, options.authScopes);

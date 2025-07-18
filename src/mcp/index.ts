@@ -9,7 +9,7 @@ import {
   ListToolsRequestSchema,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkFeatureActive, mcpError } from "./util.js";
+import { checkFeatureActive, mcpError, timeoutFallback } from "./util.js";
 import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
 import { ServerTool, ServerToolContext } from "./tool.js";
@@ -27,10 +27,11 @@ import { Emulators } from "../emulator/types.js";
 import { existsSync } from "node:fs";
 import { ensure, check } from "../ensureApiEnabled.js";
 import * as api from "../api.js";
+import { LoggingStdioServerTransport } from "./logging-transport.js";
 
 const SERVER_VERSION = "0.1.0";
 
-const cmd = new Command("experimental:mcp").before(requireAuth);
+const cmd = new Command("experimental:mcp");
 
 const orderedLogLevels = [
   "debug",
@@ -56,7 +57,7 @@ export class FirebaseMcpServer {
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
-  currentLogLevel?: LoggingLevel;
+  currentLogLevel?: LoggingLevel = process.env.FIREBASE_MCP_DEBUG_LOG ? "debug" : undefined;
   // the api of logging from a consumers perspective looks like `server.logger.warn("my warning")`.
   public readonly logger = Object.fromEntries(
     orderedLogLevels.map((logLevel) => [
@@ -64,6 +65,20 @@ export class FirebaseMcpServer {
       (message: unknown) => this.log(logLevel, message),
     ]),
   ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
+
+  /** Create a special tracking function to avoid blocking everything on initialization notification. */
+  private async trackGA4(
+    event: Parameters<typeof trackGA4>[0],
+    params: Parameters<typeof trackGA4>[1] = {},
+  ): Promise<void> {
+    // wait until ready or until 2s has elapsed
+    if (!this.clientInfo) await timeoutFallback(this.ready(), null, 2000);
+    let clientInfoParams = {
+      mcp_client_name: this.clientInfo?.name || "<unknown-client>",
+      mcp_client_version: this.clientInfo?.version || "<unknown-version>",
+    };
+    trackGA4(event, { ...params, ...clientInfoParams });
+  }
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
@@ -76,10 +91,7 @@ export class FirebaseMcpServer {
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {
-        trackGA4("mcp_client_connected", {
-          mcp_client_name: clientInfo.name,
-          mcp_client_version: clientInfo.version,
-        });
+        this.trackGA4("mcp_client_connected");
       }
       if (!this.clientInfo?.name) this.clientInfo = { name: "<unknown-client>" };
 
@@ -106,8 +118,14 @@ export class FirebaseMcpServer {
     });
   }
 
+  get clientName(): string {
+    return this.clientInfo?.name ?? process.env.MONOSPACE_ENV
+      ? "Firebase Studio"
+      : "<unknown-client>";
+  }
+
   private get clientConfigKey() {
-    return `mcp.clientConfigs.${this.clientInfo?.name || "<unknown-client>"}:${this.startupRoot || process.cwd()}`;
+    return `mcp.clientConfigs.${this.clientName}:${this.startupRoot || process.cwd()}`;
   }
 
   getStoredClientConfig(): ClientConfig {
@@ -122,15 +140,17 @@ export class FirebaseMcpServer {
   }
 
   async detectProjectRoot(): Promise<string> {
-    await this.ready();
+    await timeoutFallback(this.ready(), null, 2000);
     if (this.cachedProjectRoot) return this.cachedProjectRoot;
     const storedRoot = this.getStoredClientConfig().projectRoot;
     this.cachedProjectRoot = storedRoot || this.startupRoot || process.cwd();
+    this.log("debug", "detected and cached project root: " + this.cachedProjectRoot);
     return this.cachedProjectRoot;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
+    this.log("debug", "detecting active features of Firebase MCP server...");
     const options = await this.resolveOptions();
     const projectId = await this.getProjectId();
     const detected = await Promise.all(
@@ -140,6 +160,10 @@ export class FirebaseMcpServer {
       }),
     );
     this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    this.log(
+      "debug",
+      "detected features of Firebase MCP server: " + this.detectedFeatures.join(", ") || "<none>",
+    );
     return this.detectedFeatures;
   }
 
@@ -204,11 +228,14 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
-  async getAuthenticatedUser(): Promise<string | null> {
+  async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
     try {
-      const email = await requireAuth(await this.resolveOptions());
-      return email ?? "Application Default Credentials";
+      this.log("debug", `calling requireAuth`);
+      const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
+      this.log("debug", `result of requireAuth: ${email}`);
+      return email ?? skipAutoAuth ? null : "Application Default Credentials";
     } catch (e) {
+      this.log("debug", `error in requireAuth: ${e}`);
       return null;
     }
   }
@@ -216,16 +243,14 @@ export class FirebaseMcpServer {
   async mcpListTools(): Promise<ListToolsResult> {
     await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
     const hasActiveProject = !!(await this.getProjectId());
-    await trackGA4("mcp_list_tools", {
-      mcp_client_name: this.clientInfo?.name,
-      mcp_client_version: this.clientInfo?.version,
-    });
+    await this.trackGA4("mcp_list_tools");
+    const skipAutoAuthForStudio = !!process.env.MONOSPACE_ENV;
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
         projectRoot: this.cachedProjectRoot,
         projectDetected: hasActiveProject,
-        authenticatedUser: await this.getAuthenticatedUser(),
+        authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
         detectedFeatures: this.detectedFeatures,
       },
@@ -283,26 +308,24 @@ export class FirebaseMcpServer {
     };
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
-      await trackGA4("mcp_tool_call", {
+      await this.trackGA4("mcp_tool_call", {
         tool_name: toolName,
         error: res.isError ? 1 : 0,
-        mcp_client_name: this.clientInfo?.name,
-        mcp_client_version: this.clientInfo?.version,
       });
       return res;
     } catch (err: unknown) {
-      await trackGA4("mcp_tool_call", {
+      await this.trackGA4("mcp_tool_call", {
         tool_name: toolName,
         error: 1,
-        mcp_client_name: this.clientInfo?.name,
-        mcp_client_version: this.clientInfo?.version,
       });
       return mcpError(err);
     }
   }
 
   async start(): Promise<void> {
-    const transport = new StdioServerTransport();
+    const transport = process.env.FIREBASE_MCP_DEBUG_LOG
+      ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
+      : new StdioServerTransport();
     await this.server.connect(transport);
   }
 
@@ -323,6 +346,6 @@ export class FirebaseMcpServer {
       return;
     }
 
-    await this.server.sendLoggingMessage({ level, data });
+    if (this._ready) await this.server.sendLoggingMessage({ level, data });
   }
 }

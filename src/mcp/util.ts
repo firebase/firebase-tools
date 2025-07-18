@@ -104,12 +104,28 @@ export async function checkFeatureActive(
   if (feature in (options?.config?.data || {})) return true;
   // if the feature's api is active in the project, it's active
   try {
-    if (projectId) return await check(projectId, SERVER_FEATURE_APIS[feature], "", true);
+    if (projectId)
+      return await timeoutFallback(
+        check(projectId, SERVER_FEATURE_APIS[feature], "", true),
+        true,
+        3000,
+      );
   } catch (e) {
     // if we don't have network or something, better to default to on
     return true;
   }
   return false;
+}
+
+export async function timeoutFallback<T, V>(
+  promise: Promise<T>,
+  value: V,
+  timeoutMillis = 2000,
+): Promise<T | V> {
+  return Promise.race([
+    promise,
+    new Promise<V>((resolve) => setTimeout(() => resolve(value), timeoutMillis)),
+  ]);
 }
 
 // Helper function to process a single schema node (could be a property schema, items schema, etc.)
