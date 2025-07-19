@@ -14,6 +14,7 @@ import {
   crashlyticsApiOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
+import { timeoutFallback } from "../timeout";
 
 /**
  * Converts data to a CallToolResult.

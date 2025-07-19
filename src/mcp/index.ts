@@ -9,7 +9,7 @@ import {
   ListToolsRequestSchema,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkFeatureActive, mcpError, timeoutFallback } from "./util.js";
+import { checkFeatureActive, mcpError } from "./util.js";
 import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types.js";
 import { availableTools } from "./tools/index.js";
 import { ServerTool, ServerToolContext } from "./tool.js";
@@ -29,6 +29,7 @@ import { ensure, check } from "../ensureApiEnabled.js";
 import * as api from "../api.js";
 import { LoggingStdioServerTransport } from "./logging-transport.js";
 import { isFirebaseStudio } from "../env.js";
+import { timeoutFallback } from "../timeout.js";
 
 const SERVER_VERSION = "0.2.0";
 
