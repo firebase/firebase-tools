@@ -28,8 +28,9 @@ import { existsSync } from "node:fs";
 import { ensure, check } from "../ensureApiEnabled.js";
 import * as api from "../api.js";
 import { LoggingStdioServerTransport } from "./logging-transport.js";
+import { isFirebaseStudio } from "../env.js";
 
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.2.0";
 
 const cmd = new Command("experimental:mcp");
 
@@ -73,7 +74,7 @@ export class FirebaseMcpServer {
   ): Promise<void> {
     // wait until ready or until 2s has elapsed
     if (!this.clientInfo) await timeoutFallback(this.ready(), null, 2000);
-    let clientInfoParams = {
+    const clientInfoParams = {
       mcp_client_name: this.clientInfo?.name || "<unknown-client>",
       mcp_client_version: this.clientInfo?.version || "<unknown-version>",
     };
@@ -119,9 +120,7 @@ export class FirebaseMcpServer {
   }
 
   get clientName(): string {
-    return this.clientInfo?.name ?? process.env.MONOSPACE_ENV
-      ? "Firebase Studio"
-      : "<unknown-client>";
+    return this.clientInfo?.name ?? isFirebaseStudio() ? "Firebase Studio" : "<unknown-client>";
   }
 
   private get clientConfigKey() {
@@ -232,7 +231,7 @@ export class FirebaseMcpServer {
     try {
       this.log("debug", `calling requireAuth`);
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
-      this.log("debug", `result of requireAuth: ${email}`);
+      this.log("debug", `detected authenticated account: ${email || "<none>"}`);
       return email ?? skipAutoAuth ? null : "Application Default Credentials";
     } catch (e) {
       this.log("debug", `error in requireAuth: ${e}`);
@@ -244,7 +243,8 @@ export class FirebaseMcpServer {
     await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_tools");
-    const skipAutoAuthForStudio = !!process.env.MONOSPACE_ENV;
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    this.log("debug", `skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {

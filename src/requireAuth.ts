@@ -10,6 +10,9 @@ import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
+import { isFirebaseMcp, isFirebaseStudio } from "./env";
+import { timeoutError } from "./timeout";
+import { timeouts } from "retry";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",
@@ -44,13 +47,19 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<null | 
 
   let clientEmail;
   try {
-    const credentials = await client.getCredentials();
+    const timeoutSeconds = isFirebaseMcp() ? 5000 : 15000; // shorter timeout for MCP
+    const credentials = await timeoutError(
+      client.getCredentials(),
+      new FirebaseError(
+        `Authenticating with default credentials timed out after ${timeouts} seconds. Please try running \`firebase login\` instead.`,
+      ),
+    );
     clientEmail = credentials.client_email;
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
-  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+  if (isFirebaseStudio() && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
     const activeAccount = {
       user: { email: clientEmail },

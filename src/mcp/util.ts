@@ -117,17 +117,6 @@ export async function checkFeatureActive(
   return false;
 }
 
-export async function timeoutFallback<T, V>(
-  promise: Promise<T>,
-  value: V,
-  timeoutMillis = 2000,
-): Promise<T | V> {
-  return Promise.race([
-    promise,
-    new Promise<V>((resolve) => setTimeout(() => resolve(value), timeoutMillis)),
-  ]);
-}
-
 // Helper function to process a single schema node (could be a property schema, items schema, etc.)
 // Returns the cleaned schema, or null if the schema becomes invalid and should be removed according to the rules.
 // The isRoot parameter is true only for the top-level schema object.

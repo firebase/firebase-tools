@@ -8,6 +8,7 @@ export class LoggingStdioServerTransport extends StdioServerTransport {
   constructor(path: string) {
     super();
     this.path = path;
+    appendFileSync(path, "--- new process start ---\n");
     const origOnData = this._ondata;
     this._ondata = (chunk: Buffer) => {
       origOnData(chunk);
