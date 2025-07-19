@@ -89,7 +89,9 @@ export async function prepare(
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
   if (checkAPIsEnabled[1]) {
     // If runtime config API is enabled, load the runtime config.
-    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
+    const config = await getFunctionsConfig(projectId);
+    runtimeConfig = { ...runtimeConfig, ...config };
+    context.hasRuntimeConfig = Object.keys(config).length > 0;
   }
 
   context.codebaseDeployEvents = {};
