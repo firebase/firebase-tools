@@ -8,12 +8,14 @@ interface Environment {
 }
 
 export const env = globalSignal<Environment>({
-  isMonospace: !!process.env.MONOSPACE_ENV,
+  isMonospace: Boolean(process.env.MONOSPACE_ENV),
 });
 
 export function registerEnv(broker: ExtensionBrokerImpl): Disposable {
   const sub = broker.on("getInitialData", async () => {
-    pluginLogger.debug(`Value of isFirebaseStudio: ` + `${isFirebaseStudio()}`);
+    pluginLogger.debug(
+      `Value of process.env.MONOSPACE_ENV: ` + `${process.env.MONOSPACE_ENV}`,
+    );
 
     broker.send("notifyEnv", {
       env: env.peek(),
