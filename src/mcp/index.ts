@@ -240,6 +240,13 @@ export class FirebaseMcpServer {
     }
   }
 
+  async filteredAvailableTools(): Promise<ServerTool[]> {
+    const excludedNames: string[] = [];
+    // exclude create_project from firebase studio since there's a better way there
+    if (isFirebaseStudio()) excludedNames.push("firebase_create_project");
+    return this.availableTools.filter((t) => !excludedNames.includes(t.mcp.name));
+  }
+
   async mcpListTools(): Promise<ListToolsResult> {
     await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
     const hasActiveProject = !!(await this.getProjectId());
