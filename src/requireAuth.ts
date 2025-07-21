@@ -47,13 +47,14 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<null | 
 
   let clientEmail;
   try {
-    const timeoutSeconds = isFirebaseMcp() ? 5000 : 15000; // shorter timeout for MCP
-    const credentials = await timeoutError(
-      client.getCredentials(),
-      new FirebaseError(
-        `Authenticating with default credentials timed out after ${timeouts} seconds. Please try running \`firebase login\` instead.`,
-      ),
-    );
+const timeoutMillis = isFirebaseMcp() ? 5000 : 15000;
+const credentials = await timeoutError(
+  client.getCredentials(),
+  new FirebaseError(
+    `Authenticating with default credentials timed out after ${timeoutMillis / 1000} seconds. Please try running \`firebase login\` instead.`,
+  ),
+  timeoutMillis
+);
     clientEmail = credentials.client_email;
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
