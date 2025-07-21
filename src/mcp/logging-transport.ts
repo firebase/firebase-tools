@@ -1,6 +1,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { appendFileSync } from "fs";
+import { appendFile } from "fs/promises";
 
 export class LoggingStdioServerTransport extends StdioServerTransport {
   path: string;
@@ -18,6 +19,6 @@ export class LoggingStdioServerTransport extends StdioServerTransport {
 
   async send(message: JSONRPCMessage) {
     await super.send(message);
-    appendFileSync(this.path, JSON.stringify(message) + "\n");
+    await appendFile(this.path, JSON.stringify(message) + "\n");
   }
 }

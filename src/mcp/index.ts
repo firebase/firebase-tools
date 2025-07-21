@@ -121,7 +121,7 @@ export class FirebaseMcpServer {
   }
 
   get clientName(): string {
-    return this.clientInfo?.name ?? isFirebaseStudio() ? "Firebase Studio" : "<unknown-client>";
+    return this.clientInfo?.name ?? (isFirebaseStudio() ? "Firebase Studio" : "<unknown-client>");
   }
 
   private get clientConfigKey() {
@@ -162,7 +162,7 @@ export class FirebaseMcpServer {
     this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
     this.log(
       "debug",
-      "detected features of Firebase MCP server: " + this.detectedFeatures.join(", ") || "<none>",
+      "detected features of Firebase MCP server: " + (this.detectedFeatures.join(", ") || "<none>"),
     );
     return this.detectedFeatures;
   }
