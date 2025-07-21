@@ -6,7 +6,6 @@ import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { invokeTests, pollInvocationStatus } from "../apptesting/invokeTests";
-import { ensureProjectConfigured } from "../apptesting/ensureProjectConfigured";
 import { ExecutionMetadata } from "../apptesting/types";
 import { FirebaseError } from "../error";
 import { marked } from "marked";
@@ -56,8 +55,6 @@ export const command = new Command("apptesting:execute <target>")
 
     const invokeSpinner = ora("Requesting test execution");
     invokeSpinner.start();
-
-    ensureProjectConfigured(app.projectId);
 
     let invocationOperation;
     try {
