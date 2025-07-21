@@ -12,7 +12,6 @@ import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired }
 import type { Options } from "./options";
 import { isFirebaseMcp, isFirebaseStudio } from "./env";
 import { timeoutError } from "./timeout";
-import { timeouts } from "retry";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",
@@ -47,14 +46,14 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<null | 
 
   let clientEmail;
   try {
-const timeoutMillis = isFirebaseMcp() ? 5000 : 15000;
-const credentials = await timeoutError(
-  client.getCredentials(),
-  new FirebaseError(
-    `Authenticating with default credentials timed out after ${timeoutMillis / 1000} seconds. Please try running \`firebase login\` instead.`,
-  ),
-  timeoutMillis
-);
+    const timeoutMillis = isFirebaseMcp() ? 5000 : 15000;
+    const credentials = await timeoutError(
+      client.getCredentials(),
+      new FirebaseError(
+        `Authenticating with default credentials timed out after ${timeoutMillis / 1000} seconds. Please try running \`firebase login\` instead.`,
+      ),
+      timeoutMillis,
+    );
     clientEmail = credentials.client_email;
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
