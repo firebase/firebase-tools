@@ -1,6 +1,5 @@
 import { RC } from "../../src/rc";
 import { Options } from "../../src/options";
-import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";

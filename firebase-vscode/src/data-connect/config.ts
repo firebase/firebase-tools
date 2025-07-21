@@ -268,7 +268,10 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativePath(): string {
-    return this.path.split("/").pop()!;
+    if (!getConfigPath()) {
+      return this.path.split("/").pop()!;
+    }
+    return path.relative(getConfigPath()!, this.path);
   }
 
   get relativeSchemaPath(): string {

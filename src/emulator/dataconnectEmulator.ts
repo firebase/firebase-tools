@@ -363,7 +363,6 @@ export class DataConnectEmulator implements EmulatorInstance {
       // If Firebase CLI is logged in, always pass in the credentials to FDC emulator.
       const defaultCredPath = await getCredentialPathAsync(account);
       if (defaultCredPath) {
-        logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
         credsEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
     }

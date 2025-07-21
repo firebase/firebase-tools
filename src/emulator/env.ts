@@ -97,7 +97,8 @@ export function maybeUsePortForwarding(i: EmulatorInfo): EmulatorInfo {
     }
     const url = `${info.port}-${portForwardingHost}`;
     info.host = url;
-    info.listen = info.listen?.map((l) => {
+    info.listen = info.listen?.map((listen) => {
+      const l = { ...listen };
       l.address = url;
       l.port = 443;
       return l;
