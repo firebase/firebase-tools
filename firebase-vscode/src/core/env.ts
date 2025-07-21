@@ -2,14 +2,13 @@ import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { pluginLogger } from "../logger-wrapper";
 import { globalSignal } from "../utils/globals";
-import { isFirebaseStudio } from "../../src/env";
 
 interface Environment {
   isMonospace: boolean;
 }
 
 export const env = globalSignal<Environment>({
-  isMonospace: isFirebaseStudio(),
+  isMonospace: !!process.env.MONOSPACE_ENV,
 });
 
 export function registerEnv(broker: ExtensionBrokerImpl): Disposable {
