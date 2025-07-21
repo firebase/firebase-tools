@@ -118,6 +118,7 @@ export async function logAndTrackDeployStats(
     fn_deploy_num_successes: totalSuccesses,
     fn_deploy_num_canceled: totalAborts,
     fn_deploy_num_failures: totalErrors,
+    has_runtime_config: String(!!context?.hasRuntimeConfig),
   };
   reports.push(trackGA4("function_deploy_group", fnDeployGroupEvent));
 
