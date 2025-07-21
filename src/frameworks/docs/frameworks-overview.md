@@ -54,6 +54,8 @@ live site:
 
 You can deploy multiple sets of environment variables for different project environments, such as staging and production.
 
+Like Cloud Functions for Firebase, this tooling supports the [dotenv](https://www.npmjs.com/package/dotenv)  file format for loading environment variables specified in a .env file.
+
 * If you have a `staging` project alias, you can deploy environment variables from a `.env.staging` file.
 * If you have a `production` project alias, you can deploy environment variables from a `.env.production` file.
 * If you have a project with id `PROJECT_ID`, you can deploy environment variables from a `.env.PROJECT_ID` file.
