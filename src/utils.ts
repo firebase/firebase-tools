@@ -218,7 +218,6 @@ export function logLabeledWarning(
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
-
 /**
  * Log an error statement with a red bullet at the start of the line.
  */
