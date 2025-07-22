@@ -35,7 +35,10 @@ import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { emulators } from "../init/features";
 import { GCAToolClient } from "./ai-tools/gca-tool";
 import { GeminiToolController } from "./ai-tools/tool-controller";
-import { writeToGeminiConfig } from "./ai-tools/firebase-mcp";
+import {
+  registerFirebaseMCP,
+  writeToGeminiConfig,
+} from "./ai-tools/firebase-mcp";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -160,17 +163,6 @@ export function registerFdc(
     context,
   );
 
-  /** Gemini Related activations */
-  broker.on("firebase.activate.gemini", async () => {
-    analyticsLogger.logger.logUsage(
-      DATA_CONNECT_EVENT_NAME.TRY_FIREBASE_AGENT_CLICKED,
-    );
-    writeToGeminiConfig();
-    await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
-    await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // opens a new chat when an old one exists;
-  });
-  /** End Gemini activations */
-
   // register codelens
   const operationCodeLensProvider = new OperationCodeLensProvider(
     emulatorController,
@@ -244,6 +236,7 @@ export function registerFdc(
     registerFdcDeploy(broker, analyticsLogger),
     registerFdcSdkGeneration(broker, analyticsLogger),
     registerTerminalTasks(broker, analyticsLogger),
+    registerFirebaseMCP(broker, analyticsLogger),
     operationCodeLensProvider,
 
     vscode.languages.registerCodeLensProvider(

@@ -167,7 +167,9 @@ function DataConnect() {
         </a>
       </Label>
       <Spacer size="xlarge"></Spacer>
-      <Label level={2}>Develop your app with the Firebase Agent in Gemini (Preview)</Label>
+      <Label level={2}>
+        Develop your app with the Firebase Agent in Gemini (Preview)
+      </Label>
       <Spacer size="medium"></Spacer>
       <VSCodeButton
         appearance="secondary"
@@ -179,17 +181,26 @@ function DataConnect() {
       </VSCodeButton>
       <Spacer size="small" />
       <Label level={3}>
-        <a href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data">
+        <a
+          href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data"
+          onClick={() => {
+            broker.send("docs.tos.clicked");
+          }}
+        >
           Gemini in Firebase Usage and Terms
         </a>
       </Label>
       <Label level={3}>
         See also:{" "}
-        <a href="https://firebase.google.com/docs/cli/mcp-server">
+        <a
+          href="https://firebase.google.com/docs/cli/mcp-server"
+          onClick={() => {
+            broker.send("docs.mcp.clicked");
+          }}
+        >
           Learn more about Firebase MCP
         </a>
       </Label>
-
     </>
   );
 }
