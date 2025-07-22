@@ -21,6 +21,7 @@ export async function registerCore(
   context: ExtensionContext,
   analyticsLogger: AnalyticsLogger,
 ): Promise<[EmulatorsController, vscode.Disposable]> {
+  const settings = getSettings();
 
   // Wrap the runTerminalTask function to allow for e2e testing.
   const initSpy = createE2eMockable(
@@ -30,12 +31,11 @@ export async function registerCore(
     "init",
     async () => {},
   );
-
-  if (getSettings().npmPath) {
-    process.env.PATH += `:${getSettings().npmPath}`;
+  if (settings.npmPath) {
+    process.env.PATH += `:${settings.npmPath}`;
   }
 
-  if (getSettings().useFrameworks) {
+  if (settings.useFrameworks) {
     setEnabled("webframeworks", true);
   }
 
@@ -65,9 +65,11 @@ export async function registerCore(
       );
       return;
     }
+
+    const settings = getSettings(); // ensure updated values
     const initCommand = currentProjectId.value
-      ? `${getSettings().firebasePath} init dataconnect --project ${currentProjectId.value}`
-      : `${getSettings().firebasePath} init dataconnect`;
+      ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
+      : `${settings.firebasePath} init dataconnect`;
 
     initSpy.call("firebase init", initCommand, { focus: true });
   });

@@ -12,11 +12,12 @@ const executionOptions: vscode.ShellExecutionOptions = {
 };
 
 export function setTerminalEnvVars(env: Record<string, string>) {
-  environmentVariables = {...environmentVariables, ...env};
+  environmentVariables = { ...environmentVariables, ...env };
 }
 
 export function runCommand(command: string) {
-  setTerminalEnvVars(getSettings().extraEnv ?? {});
+  const settings = getSettings();
+  setTerminalEnvVars(settings.extraEnv ?? {});
   const terminalOptions: TerminalOptions = {
     name: "Data Connect Terminal",
     env: environmentVariables,
@@ -30,7 +31,7 @@ export function runCommand(command: string) {
   if (currentProjectId.value) {
     command = `${command} --project ${currentProjectId.value}`;
   }
-  if (getSettings().debug) {
+  if (settings.debug) {
     command = `${command} --debug`;
   }
   terminal.sendText(command);
@@ -64,7 +65,10 @@ export function runTerminalTask(
       vscode.TaskScope.Workspace,
       taskName,
       "firebase",
-      new vscode.ShellExecution(`${command}${getSettings().debug ? " --debug" : ""}`, executionOptions),
+      new vscode.ShellExecution(
+        `${command}${getSettings().debug ? " --debug" : ""}`,
+        executionOptions,
+      ),
     );
     task.presentationOptions = presentationOptions;
     await vscode.tasks.executeTask(task);
@@ -75,7 +79,6 @@ export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
-
   const loginTaskBroker = broker.on("executeLogin", () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
     runTerminalTask(
@@ -97,12 +100,10 @@ export function registerTerminalTasks(
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
-    vscode.window.showInformationMessage("Starting emulators... Please see terminal.");
-    runTerminalTask(
-      "firebase emulators",
-      cmd,
-      { focus: true },
+    vscode.window.showInformationMessage(
+      "Starting emulators... Please see terminal.",
     );
+    runTerminalTask("firebase emulators", cmd, { focus: true });
   };
   const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
     startEmulatorsTask();
