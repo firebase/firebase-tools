@@ -185,8 +185,8 @@ function DataConnect() {
       </Label>
       <Label level={3}>
         See also:{" "}
-        <a href="https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data">
-          Working with Firebase MCP
+        <a href="https://firebase.google.com/docs/cli/mcp-server">
+          Learn more about Firebase MCP
         </a>
       </Label>
 
