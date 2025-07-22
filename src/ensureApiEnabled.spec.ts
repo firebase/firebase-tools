@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as nock from "nock";
 import * as sinon from "sinon";
 import { configstore } from "./configstore";
-
 import { check, ensure, POLL_SETTINGS } from "./ensureApiEnabled";
 
 const FAKE_PROJECT_ID = "my_project";
