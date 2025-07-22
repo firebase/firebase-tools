@@ -2,3 +2,9 @@
 - Added analytics to track runtime config usage in functions deployments (#8870).
 - Fixed issue where `__name__` fields with DESCENDING order were incorrectly filtered from index listings, causing duplicate index issues (#7629) and deployment conflicts (#8859). The fix now preserves `__name__` fields with explicit DESCENDING order while filtering out implicit ASCENDING `__name__` fields.
 - Add service account and service enablement to `firebase init apptesting`
+- Updated the Firebase Data Connect local toolkit to v2.10.1, which includes the following changes: (#8884)
+  - [fixed] Dart codegen: Issue where list enums weren't properly serialized and deserialized.
+  - [fixed] Dart codegen: Issue where if a Variable class has a field that is a custom scalar type, and that field has an enum, the enum is set to the incorrect type.
+  - [fixed] Swift codegen: For enum cases that are not known to the SDK in advance, Swift generates a `_UNKNOWN` case with a string associated value. The fix changes that case name from `UNKNOWN` to `_UNKNOWN`. If you have existing generated enums, you may need to rebuild your project.
+  - [fixed] Kotlin codegen: Add `value` property to the `EnumValue` base interface.
+  - [fixed] Dart codegen: Issue where nullable enum fields weren't setting the field itself as nullable.
