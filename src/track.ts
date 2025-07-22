@@ -4,6 +4,7 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
+import { isFirebaseStudio } from "./env";
 const pkg = require("../package.json");
 
 type cliEventNames =
@@ -78,7 +79,7 @@ const GA4_USER_PROPS = {
     value: process.env.FIREPIT_VERSION || "none",
   },
   is_firebase_studio: {
-    value: process.env.MONOSPACE_ENV ?? "false",
+    value: isFirebaseStudio().toString(),
   },
 };
 
