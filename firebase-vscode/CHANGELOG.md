@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Emulator settings updates are now properly recognized
+
 ## 1.5.1
 
 - Update internal `firebase-tools` dependency to 14.11.0
