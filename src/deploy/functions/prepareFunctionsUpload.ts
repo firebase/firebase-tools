@@ -13,6 +13,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
+import { logFunctionsConfigDeprecationWarning } from "../../functions/deprecationWarnings";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -99,6 +100,9 @@ async function packageSource(
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
       });
+
+      // Log deprecation warning when runtime config is being packaged
+      logFunctionsConfigDeprecationWarning();
     }
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
