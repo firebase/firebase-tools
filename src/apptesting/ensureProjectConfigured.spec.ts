@@ -1,7 +1,7 @@
-import * as ensureApiEnabled from "../ensureApiEnabled";
-import * as iam from "../gcp/iam";
 import * as sinon from "sinon";
 import { expect } from "chai";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import * as iam from "../gcp/iam";
 import * as rm from "../gcp/resourceManager";
 import * as prompt from "../prompt";
 import * as utils from "../utils";
