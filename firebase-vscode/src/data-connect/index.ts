@@ -167,7 +167,7 @@ export function registerFdc(
     );
     writeToGeminiConfig();
     await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
-    await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // doesn't work as intended; only opens a new chat when an old one exists
+    await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // opens a new chat when an old one exists;
   });
   /** End Gemini activations */
 

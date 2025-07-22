@@ -13,5 +13,5 @@ export function writeToGeminiConfig() {
     return;
   }
 
-  geminiToolModule.configure(config, "" , [/** TODO: Create "dataconnect" .md file */]);
+  geminiToolModule.configure(config,  config.projectDir, [/** TODO: Create "dataconnect" .md file */]);
 }
