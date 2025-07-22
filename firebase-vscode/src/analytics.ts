@@ -224,6 +224,5 @@ export function getAnalyticsContext(context: vscode.ExtensionContext) {
 }
 
 function addFirebaseBinaryMetadata(data?: Record<string, any> | undefined) {
-  const settings = getSettings();
-  return { ...data, binary_kind: settings.firebaseBinaryKind };
+  return { ...data, binary_kind: getSettings().firebaseBinaryKind };
 }

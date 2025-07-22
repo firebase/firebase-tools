@@ -31,7 +31,6 @@ export async function registerCore(
     "init",
     async () => {},
   );
-
   if (settings.npmPath) {
     process.env.PATH += `:${settings.npmPath}`;
   }
@@ -66,6 +65,8 @@ export async function registerCore(
       );
       return;
     }
+
+    const settings = getSettings(); // ensure updated values
     const initCommand = currentProjectId.value
       ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
       : `${settings.firebasePath} init dataconnect`;

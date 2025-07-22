@@ -168,8 +168,7 @@ export class EmulatorsController implements Disposable {
   }
 
   async exportEmulatorData(): Promise<void> {
-    const settings = getSettings();
-    const exportDir = settings.exportPath;
+    const exportDir = getSettings().exportPath;
     const hubClient = this.getHubClient();
     if (hubClient) {
       // TODO: Make exportDir configurable

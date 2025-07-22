@@ -37,7 +37,6 @@ export class DataConnectToolkit implements vscode.Disposable {
   // special function to start FDC emulator with special flags & port
   async startFDCToolkit(configDir: string, config: Config, RC: RC) {
     const port = await findOpenPort(DEFAULT_PORT);
-    const settings = getSettings();
 
     const toolkitArgs: DataConnectEmulatorArgs = {
       projectId: "toolkit",
@@ -48,7 +47,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       autoconnectToPostgres: false,
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
-      extraEnv: settings.extraEnv,
+      extraEnv: getSettings().extraEnv,
     };
     pluginLogger.info(`Starting Data Connect toolkit (version ${DataConnectToolkitController.getVersion()}) on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);

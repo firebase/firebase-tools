@@ -29,7 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   await setupFirebasePath(analyticsLogger);
-  const settings = getSettings();
   logSetup();
   pluginLogger.debug("Activating Firebase extension.");
 
@@ -42,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const authService = new AuthService(broker);
 
   // show IDX data collection notice
-  if (settings.shouldShowIdxMetricNotice && env.value.isMonospace) {
+  if (getSettings().shouldShowIdxMetricNotice && env.value.isMonospace) {
     // don't await/block on this
     vscode.window.showInformationMessage(IDX_METRIC_NOTICE, "Ok").then(() => {
       updateIdxSetting(false); // don't show message again
