@@ -1,5 +1,7 @@
 ## NEXT
 
+## 1.6.0
+
 - [Changed] Now integrates with GCA in its agentic mode, powered by the Gemini CLI. This brings the Firebase MCP Server directly into the VS Code environment, enabling developers to use natural language to generate application schemas and queries without manually invoking explicit tools.
 
 ## 1.5.1
