@@ -64,7 +64,7 @@ async function provisionServiceAccount(projectId: string, serviceAccount: string
   } catch (err: unknown) {
     if (getErrStatus(err) === 400) {
       logWarning(
-        "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+        "Your App Testing runner service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
       );
     } else {
       throw err;
