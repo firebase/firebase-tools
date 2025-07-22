@@ -220,7 +220,7 @@ export interface ExecuteGraphqlRequest {
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };
-  extensions?: { impersonate?: Impersonation; };
+  extensions?: { impersonate?: Impersonation };
 }
 
 export interface GraphqlResponse {
