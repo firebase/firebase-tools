@@ -39,6 +39,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   GEMINI_SCHEMA_CALL = "gemini_schema_call",
   GEMINI_SUCCESS = "gemini_success",
   TRY_GEMINI_CLICKED = "try_gemini_clicked",
+  TRY_FIREBASE_AGENT_CLICKED = "try_firebase_agent_in_gemini_clicked",
 }
 
 export class AnalyticsLogger {

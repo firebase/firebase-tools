@@ -161,21 +161,14 @@ export function registerFdc(
   );
 
   /** Gemini Related activations */
-  const toolController = new GeminiToolController(
-    analyticsLogger,
-    fdcService,
-    dataConnectConfigs,
-  );
-  const gcaToolClient = new GCAToolClient(context, toolController);
-
-  gcaToolClient.activate();
-
-  broker.on("firebase.activate.gemini", () => {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.TRY_GEMINI_CLICKED);
+  broker.on("firebase.activate.gemini", async () => {
+    analyticsLogger.logger.logUsage(
+      DATA_CONNECT_EVENT_NAME.TRY_FIREBASE_AGENT_CLICKED,
+    );
     writeToGeminiConfig();
-    vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+    await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+    await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // doesn't work as intended; only opens a new chat when an old one exists
   });
-
   /** End Gemini activations */
 
   // register codelens
@@ -278,7 +271,6 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
-    toolController,
     {
       dispose: () => {
         client.stop();
