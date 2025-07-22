@@ -36,7 +36,7 @@ export function writeToGeminiConfig() {
   const config = firebaseConfig.value?.tryReadValue;
   if (!config) {
     vscode.window.showErrorMessage("Could not read firebase.json");
-    // Consider writing to HOME_DIR in case of this failure
+    // TODO: Consider writing to HOME_DIR in case of this failure
     return;
   }
 
