@@ -29,8 +29,8 @@ export async function ensureProjectConfigured(projectId: string) {
       logBullet(
         "You, or your project administrator, should run the following command to grant the required role:\n\n" +
           `\tgcloud projects add-iam-policy-binding ${projectId} \\\n` +
-          `\t  --member="serviceAccount:${serviceAccount} \\\n` +
-          `\t  --role="${TEST_RUNNER_ROLE}\n`,
+          `\t  --member="serviceAccount:${serviceAccount}" \\\n` +
+          `\t  --role="${TEST_RUNNER_ROLE}"\n`,
       );
       throw new FirebaseError(
         `Firebase App Testing requires a service account with the "${TEST_RUNNER_ROLE}" role to execute tests using Cloud Run`,
