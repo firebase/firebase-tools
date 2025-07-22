@@ -138,7 +138,7 @@ describe("ensureProjectConfigured", () => {
 
     expect(addServiceAccountToRolesStub).to.be.calledOnce;
     expect(logWarningStub).to.be.calledWith(
-      "Your App Testing runner service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      `Your App Testing runner service account, "${serviceAccount}", is still being provisioned in the background. If you encounter an error, please try again after a few moments.`,
     );
   });
 });

@@ -23,7 +23,7 @@ export async function ensureProjectConfigured(projectId: string) {
   );
   if (!serviceAccountExistsAndIsRunner) {
     const grant = await confirm(
-      "Firebase App Testing runs tests in Cloud Run using a service account, create the account?",
+      `Firebase App Testing runs tests in Cloud Run using a service account, provision an account, "${serviceAccount}", with the role "${TEST_RUNNER_ROLE}"?`,
     );
     if (!grant) {
       logBullet(
@@ -33,7 +33,7 @@ export async function ensureProjectConfigured(projectId: string) {
           `\t  --role="${TEST_RUNNER_ROLE}"\n`,
       );
       throw new FirebaseError(
-        `Firebase App Testing requires a service account with the "${TEST_RUNNER_ROLE}" role to execute tests using Cloud Run`,
+        `Firebase App Testing requires a service account named "${serviceAccount}" with the "${TEST_RUNNER_ROLE}" role to execute tests using Cloud Run`,
       );
     }
     await provisionServiceAccount(projectId, serviceAccount);
@@ -64,7 +64,7 @@ async function provisionServiceAccount(projectId: string, serviceAccount: string
   } catch (err: unknown) {
     if (getErrStatus(err) === 400) {
       logWarning(
-        "Your App Testing runner service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+        `Your App Testing runner service account, "${serviceAccount}", is still being provisioned in the background. If you encounter an error, please try again after a few moments.`,
       );
     } else {
       throw err;
