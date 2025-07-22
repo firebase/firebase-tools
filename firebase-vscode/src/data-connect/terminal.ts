@@ -16,8 +16,7 @@ export function setTerminalEnvVars(env: Record<string, string>) {
 }
 
 export function runCommand(command: string) {
-  const settings = getSettings();
-  setTerminalEnvVars(settings.extraEnv ?? {});
+  setTerminalEnvVars(getSettings().extraEnv ?? {});
   const terminalOptions: TerminalOptions = {
     name: "Data Connect Terminal",
     env: environmentVariables,
@@ -31,7 +30,7 @@ export function runCommand(command: string) {
   if (currentProjectId.value) {
     command = `${command} --project ${currentProjectId.value}`;
   }
-  if (settings.debug) {
+  if (getSettings().debug) {
     command = `${command} --debug`;
   }
   terminal.sendText(command);
@@ -42,8 +41,7 @@ export function runTerminalTask(
   command: string,
   presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
-  const settings = getSettings();
-  setTerminalEnvVars(settings.extraEnv ?? {});
+  setTerminalEnvVars(getSettings().extraEnv ?? {});
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
     vscode.tasks.onDidEndTaskProcess(async (e) => {
@@ -66,7 +64,7 @@ export function runTerminalTask(
       vscode.TaskScope.Workspace,
       taskName,
       "firebase",
-      new vscode.ShellExecution(`${command}${settings.debug ? " --debug" : ""}`, executionOptions),
+      new vscode.ShellExecution(`${command}${getSettings().debug ? " --debug" : ""}`, executionOptions),
     );
     task.presentationOptions = presentationOptions;
     await vscode.tasks.executeTask(task);
@@ -77,13 +75,12 @@ export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
-  const settings = getSettings();
 
   const loginTaskBroker = broker.on("executeLogin", () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
     runTerminalTask(
       "firebase login",
-      `${settings.firebasePath} login --no-localhost`,
+      `${getSettings().firebasePath} login --no-localhost`,
     ).then(() => {
       checkLogin();
     });
@@ -91,7 +88,7 @@ export function registerTerminalTasks(
 
   const startEmulatorsTask = () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
-
+    const settings = getSettings();
     let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
 
     if (settings.importPath) {

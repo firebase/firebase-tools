@@ -22,8 +22,6 @@ export function registerFdcSdkGeneration(
   broker: ExtensionBrokerImpl,
   analyticsLogger: AnalyticsLogger,
 ): vscode.Disposable {
-  const settings = getSettings();
-
   // For testing purposes.
   const selectFolderSpy = createE2eMockable(
     async () => {
@@ -43,7 +41,7 @@ export function registerFdcSdkGeneration(
       const e: Record<string, string> = {}
       e[FDC_APP_FOLDER] = args.appFolder;
       setTerminalEnvVars(e);
-      runCommand(`${settings.firebasePath} init dataconnect:sdk`);
+      runCommand(`${getSettings().firebasePath} init dataconnect:sdk`);
     },
   );
 
