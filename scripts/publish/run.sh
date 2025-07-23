@@ -12,7 +12,7 @@ VERSION=$1
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
-elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major" || $VERSION == "'artifactsOnly") ]]; then
+elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major" || $VERSION == "artifactsOnly") ]]; then
   printusage
   exit 1
 fi
