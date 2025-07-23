@@ -5,7 +5,7 @@ printusage() {
   echo "run.sh <version>"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', 'major', or 'artifactsOnly"
+  echo "  version: 'patch', 'minor', 'major', or 'artifactsOnly'"
 }
 
 VERSION=$1
