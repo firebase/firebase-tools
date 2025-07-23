@@ -128,7 +128,7 @@ steps:
     entrypoint: "sh"
     args:
       - "-c"
-      - "docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ."
+      - "docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ./firebase-docker-image"
 
 images:
   - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
@@ -141,7 +141,7 @@ options:
       path: /root/.ssh
 
 substitutions:
-  _VERSION: ""
+  # _VERSION: ""
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
