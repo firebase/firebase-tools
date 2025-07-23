@@ -141,7 +141,7 @@ options:
       path: /root/.ssh
 
 substitutions:
-  # _VERSION: ""
+  _VERSION: ""
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
