@@ -123,6 +123,10 @@ export interface WebviewToExtensionParamsMap {
 
   // called from execution panel
   rerunExecution: void;
+
+  /** Docs clicked for analytics */
+  "docs.mcp.clicked": void;
+  "docs.tos.clicked": void;
 }
 
 export interface DataConnectResults {
