@@ -291,15 +291,23 @@ export class ParamValue {
   }
 
   asList(): string[] {
-    // Handle something like "['a', 'b', 'c']"
-    if (this.rawValue.includes("[")) {
-      // Convert quotes to apostrophes
-      const unquoted = this.rawValue.replace(/'/g, '"');
-      return JSON.parse(unquoted);
+    let modifiedValue = this.rawValue;
+
+    // Handle something like "["a", "b", "c"]"
+    if (modifiedValue.startsWith("[") && modifiedValue.endsWith("]")) {
+      try {
+        return JSON.parse(modifiedValue);
+      } catch (e) {
+        // Remove the brackets
+        // Handles scenarios like "[a, b, c]"
+        modifiedValue = modifiedValue.replace(/[\[\]]/g, "");
+
+        // Not a valid JSON array, fall through to splitting by delimiter.
+      }
     }
 
     // Continue to handle something like "a,b,c"
-    return this.rawValue.split(this.delimiter);
+    return modifiedValue.split(this.delimiter);
   }
 
   asNumber(): number {
