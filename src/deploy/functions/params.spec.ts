@@ -380,17 +380,17 @@ describe("ParamValue.asList()", () => {
 
     it("should handle JSON array with numbers", () => {
       const paramValue = new params.ParamValue("[1, 2, 3]", false, { list: true });
-      expect(paramValue.asList()).to.deep.equal([1, 2, 3]);
+      expect(paramValue.asList()).to.deep.equal(["1", "2", "3"]);
     });
 
     it("should handle JSON array with booleans", () => {
       const paramValue = new params.ParamValue("[true, false, true]", false, { list: true });
-      expect(paramValue.asList()).to.deep.equal([true, false, true]);
+      expect(paramValue.asList()).to.deep.equal(["true", "false", "true"]);
     });
 
     it("should handle JSON array with nulls", () => {
       const paramValue = new params.ParamValue('["a", null, "b"]', false, { list: true });
-      expect(paramValue.asList()).to.deep.equal(["a", null, "b"]);
+      expect(paramValue.asList()).to.deep.equal(["a", "null", "b"]);
     });
 
     it("should handle trailing delimiter", () => {
@@ -425,12 +425,12 @@ describe("ParamValue.asList()", () => {
 
     it("should handle JSON array with nested arrays", () => {
       const paramValue = new params.ParamValue('[["a", "b"], ["c"]]', false, { list: true });
-      expect(paramValue.asList()).to.deep.equal([["a", "b"], ["c"]]);
+      expect(paramValue.asList()).to.deep.equal(['["a","b"]', '["c"]']);
     });
 
     it("should handle JSON array with objects", () => {
       const paramValue = new params.ParamValue('[{"foo":1}, {"bar":2}]', false, { list: true });
-      expect(paramValue.asList()).to.deep.equal([{ foo: 1 }, { bar: 2 }]);
+      expect(paramValue.asList()).to.deep.equal(['{"foo":1}', '{"bar":2}']);
     });
   });
 });

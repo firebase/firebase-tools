@@ -296,13 +296,27 @@ export class ParamValue {
     // Handle something like "["a", "b", "c"]"
     if (modifiedValue.startsWith("[") && modifiedValue.endsWith("]")) {
       try {
-        return JSON.parse(modifiedValue);
+        const parsed = JSON.parse(modifiedValue);
+        if (Array.isArray(parsed)) {
+          // The return type is string[], so we must convert all elements to strings.
+          return parsed.map((elem: any) => {
+            if (elem === null) {
+              // String(null) is "null", which is what we want.
+              return "null";
+            }
+            if (typeof elem === "object") {
+              // String(obj) is "[object Object]", JSON.stringify is more useful.
+              // Avoid inserting spaces after commas for objects/arrays
+              return JSON.stringify(elem);
+            }
+            return String(elem);
+          });
+        }
+        // It's valid JSON but not an array (e.g. a string literal "foo,bar").
+        // Fall through to splitting by delimiter.
       } catch (e) {
-        // Remove the brackets
-        // Handles scenarios like "[a, b, c]"
-        modifiedValue = modifiedValue.replace(/[\[\]]/g, "");
-
-        // Not a valid JSON array, fall through to splitting by delimiter.
+        // Malformed JSON, e.g. "[a, b, c]". Remove brackets and fall through.
+        modifiedValue = modifiedValue.slice(1, -1);
       }
     }
 
