@@ -7,13 +7,16 @@ printusage() {
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', or 'major'."
+  echo "  version: 'patch', 'minor', 'major', or 'artifactsOnly'"
 }
 
 VERSION=$1
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
+elif [[ $VERSION == "artifactsOnly" ]]; then
+  echo "Skipping npm package publish since VERSION is artifactsOnly."
+  exit 0
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
   printusage
   exit 1
