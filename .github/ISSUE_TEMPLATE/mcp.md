@@ -23,4 +23,4 @@ template_path=.github/ISSUE_TEMPLATE/mcp.md
 
 ### Steps to Reproduce
 
-<!-- write a detailed description of how to reproduce>
+<!-- write a detailed description of how to reproduce -->
