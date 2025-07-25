@@ -291,6 +291,14 @@ export class ParamValue {
   }
 
   asList(): string[] {
+    // Handle something like "['a', 'b', 'c']"
+    if (this.rawValue.includes("[")) {
+      // Convert quotes to apostrophes
+      const unquoted = this.rawValue.replace(/'/g, '"');
+      return JSON.parse(unquoted);
+    }
+
+    // Continue to handle something like "a,b,c"
     return this.rawValue.split(this.delimiter);
   }
 

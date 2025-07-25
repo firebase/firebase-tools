@@ -46,6 +46,18 @@ live site:
 1. Run `firebase deploy` from the terminal.
 2. Check your website on: `SITE_ID.web.app` or `PROJECT_ID.web.app` (or your custom domain, if you set one up).
 
+## Configure different environments
+
+You can deploy multiple sets of environment variables for different project environments, such as staging and production.
+
+Like Cloud Functions for Firebase, this tooling supports the [dotenv](https://www.npmjs.com/package/dotenv)  file format for loading environment variables specified in a .env file.
+
+* If you have a `staging` project alias, you can deploy environment variables from a `.env.staging` file.
+* If you have a `production` project alias, you can deploy environment variables from a `.env.production` file.
+* If you have a project with id `PROJECT_ID`, you can deploy environment variables from a `.env.PROJECT_ID` file.
+
+See the [Cloud Functions documentation](https://firebase.google.com/docs/functions/config-env?gen=2nd#deploying_multiple_sets_of_environment_variables) for a detailed guide.
+
 ## Next steps
 
 See the detailed guide for your preferred framework:

@@ -10,8 +10,11 @@ import { Config } from "../../../config";
 import { confirm } from "../../../prompt";
 import * as utils from "../../../utils";
 import { logger } from "../../../logger";
+import { isVSCodeExtension } from "../../../vsCodeUtils";
 
-const PROMPTS_DIR = path.join(__dirname, "../../../../prompts");
+const CLI_PROMPTS_DIR = path.join(__dirname, "../../../../prompts");
+const VSCODE_PROMPTS_DIR = path.join(__dirname, "./prompts"); // vscode sits in firebase-vscode/dist/ folder
+
 const FIREBASE_TAG_REGEX = /<firebase_prompts(?:\s+hash="([^"]+)")?>([\s\S]*?)<\/firebase_prompts>/;
 
 const PROMPT_FILES: Record<string, string> = {
@@ -149,6 +152,7 @@ export function getFeatureContent(feature: string): string {
   const filename = PROMPT_FILES[feature];
   if (!filename) return "";
 
+  const PROMPTS_DIR = isVSCodeExtension() ? VSCODE_PROMPTS_DIR : CLI_PROMPTS_DIR;
   const content = fs.readFileSync(path.join(PROMPTS_DIR, filename), "utf8");
   return content;
 }
