@@ -5,7 +5,9 @@ import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logError } from "../logError";
 import { FirebaseError } from "../error";
+import { execSync } from "child_process";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
 import * as experiments from "../experiments";
@@ -26,6 +28,7 @@ import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
+import { confirm } from "../prompt";
 
 const TARGETS = {
   hosting: HostingTarget,
