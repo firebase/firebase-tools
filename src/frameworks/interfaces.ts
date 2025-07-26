@@ -1,6 +1,11 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EmulatorInfo } from "../emulator/types";
-import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
+import {
+  FrameworksBackendOptions,
+  HostingHeaders,
+  HostingRedirects,
+  HostingRewrites,
+} from "../firebaseConfig";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
 
@@ -54,6 +59,15 @@ export type FrameworkContext = {
   site?: string;
 };
 
+export type CodegenFunctionDirectoryResult = {
+  bootstrapScript?: string;
+  packageJson: any;
+  frameworksEntry?: string;
+  dotEnv?: Record<string, string>;
+  rewriteSource?: string;
+  frameworksBackend?: FrameworksBackendOptions;
+};
+
 export interface Framework {
   supportedRange?: string;
   discover: (dir: string) => Promise<Discovery | undefined>;
@@ -82,13 +96,7 @@ export interface Framework {
     dest: string,
     target: string,
     context?: FrameworkContext,
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-    dotEnv?: Record<string, string>;
-    rewriteSource?: string;
-  }>;
+  ) => Promise<CodegenFunctionDirectoryResult>;
   getValidBuildTargets?: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
   shouldUseDevModeHandle?: (target: string, dir: string) => Promise<boolean>;
 }
