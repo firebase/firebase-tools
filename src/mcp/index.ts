@@ -169,7 +169,7 @@ export class FirebaseMcpServer {
 
   async getEmulatorHubClient(): Promise<EmulatorHubClient | undefined> {
     // Single initilization
-    if (this.emulatorHubClient) {
+    if (this.emulatorHubClient && this.emulatorHubClient.foundHub()) {
       return this.emulatorHubClient;
     }
     const projectId = await this.getProjectId();
