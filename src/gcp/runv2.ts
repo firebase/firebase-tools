@@ -22,6 +22,14 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
+export interface Scaling {
+  // N.B. Intentionally omitting revision min/max instance; we should
+  // never use them.
+  overflowScaling?: boolean;
+  minInstanceCount?: number;
+  maxInstanceCount?: number;
+}
+
 export interface Container {
   name: string;
   image: string;
@@ -35,6 +43,8 @@ export interface Container {
       ["nvidia.com/gpu"]?: string;
     };
     startupCpuBoost?: boolean; // If true, the container will get a CPU boost during startup.
+    // N.B. This defaults to true if resources is not set and must manually be set to true if it is set.
+    cpuIdle?: boolean; // If true, the container will be allowed to idle CPU when not processing requests.
   };
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
@@ -42,11 +52,10 @@ export interface RevisionTemplate {
   revision?: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
-  scaling?: {
-    // N.B. Intentionally omitting revision min/max instance; we should
-    // never use them.
-    overflowScaling?: boolean;
-  };
+  // N.B. NEVER set minInstanceCount on this version of scaling or the instances will always be running
+  // if there is any traffic tag that points to the revision. Service-level scaling divides the min instances
+  // proportionally by traffic percentage.
+  scaling?: Scaling;
   vpcAccess?: {
     connector?: string;
     egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
@@ -88,6 +97,8 @@ export interface Service {
   creator: string;
   lastModifier: string;
   launchStage?: string;
+
+  scaling?: Scaling;
 
   // In the proto definition, but not what we use to actually track this it seems?
   client?: string;
@@ -255,20 +266,168 @@ function functionNameToServiceName(id: string): string {
  * Notable differences from the Functions interface though is that "goog-managed-by" should be firebase-functions and
  * "run.googleapis.com/client-name" should be "cli-firebase" on eject.
  */
+// EDIT: Turns out all the above is BS from Pantheon and you can't actually use it because it requires protected read-only fields in V1
+// Intead here's the same function in V2.
+/**
+ * {
+ *  "buildConfig": {
+ *    "name": "projects/92611791981/locations/us-central1/builds/4d41c5e1-9ab9-4889-826b-c64a0d58c99a", 
+ *    "enableAutomaticUpdates": true, 
+ *    "environmentVariables": {
+ *      "GOOGLE_NODE_RUN_SCRIPTS": ""
+ *    }, 
+ *    "imageUri": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1", 
+ *    "baseImage": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22", 
+ *    "sourceLocation": "gs://gcf-v2-sources-92611791981-us-central1/ejectRequest/function-source.zip#1749833196570851", 
+ *    "functionTarget": "ejectRequest"
+ *  }, 
+ *  "updateTime": "2025-06-13T21:23:05.883496Z", 
+ *  "uid": "2946ee66-76ec-493c-a853-2f126dabef73", 
+ *  "creator": "service-92611791981@gcf-admin-robot.iam.gserviceaccount.com", 
+ *  "generation": "2", 
+ *  "labels": {
+ *    "firebase-functions-hash": "3653cb61dcf8e18a4a8706251b627485a5e83cd0", 
+ *    "goog-cloudfunctions-runtime": "nodejs22", 
+ *    "goog-drz-cloudfunctions-id": "ejectrequest", 
+ *    "firebase-functions-codebase": "js", 
+ *    "goog-managed-by": "", 
+ *    "goog-drz-cloudfunctions-location": "us-central1"
+ *  }, 
+ *  "ingress": "INGRESS_TRAFFIC_ALL", 
+ *  "terminalCondition": {
+ *    "lastTransitionTime": "2025-06-13T21:23:12.232110Z", 
+ *    "state": "CONDITION_SUCCEEDED", 
+ *    "type": "Ready"
+ *  }, 
+ *  "trafficStatuses": [
+ *    {
+ *      "percent": 100, 
+ *      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+ *    }
+ *  ], 
+ *  "launchStage": "GA", 
+ *  "observedGeneration": "2", 
+ *  "etag": "\"CLmtssIGEMCopKUD/cHJvamVjdHMvaW5saW5lZC1qdW5rZHJhd2VyL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9lamVjdHJlcXVlc3Q\"", 
+ *  "latestCreatedRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh", 
+ *  "template": {
+ *    "maxInstanceRequestConcurrency": 80, 
+ *    "labels": {
+ *      "firebase-functions-codebase": "js", 
+ *      "firebase-functions-hash": "3653cb61dcf8e18a4a8706251b627485a5e83cd0"
+ *    }, 
+ *    "serviceAccount": "92611791981-compute@developer.gserviceaccount.com", 
+ *    "scaling": {
+ *      "maxInstanceCount": 100
+ *    }, 
+ *    "timeout": "60s", 
+ *    "annotations": {
+ *      "cloudfunctions.googleapis.com/trigger-type": "HTTP_TRIGGER"
+ *    }, 
+ *    "containers": [
+ *      {
+ *        "name": "worker", 
+ *        "image": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1", 
+ *        "env": [
+ *          {
+ *            "name": "FIREBASE_CONFIG", 
+ *            "value": "{\"projectId\":\"inlined-junkdrawer\",\"databaseURL\":\"https://inlined-junkdrawer.firebaseio.com\",\"storageBucket\":\"inlined-junkdrawer.appspot.com\",\"locationId\":\"us-central\"}"
+ *          }, 
+ *          {
+ *            "name": "GCLOUD_PROJECT", 
+ *            "value": "inlined-junkdrawer"
+ *          }, 
+ *          {
+ *            "name": "EVENTARC_CLOUD_EVENT_SOURCE", 
+ *            "value": "projects/inlined-junkdrawer/locations/us-central1/services/ejectRequest"
+ *          }, 
+ *          {
+ *            "name": "FUNCTION_TARGET", 
+ *            "value": "ejectRequest"
+ *          }, 
+ *          {
+ *            "name": "LOG_EXECUTION_ID", 
+ *            "value": "true"
+ *          }, 
+ *          {
+ *            "name": "FUNCTION_SIGNATURE_TYPE", 
+ *            "value": "http"
+ *          }
+ *        ], 
+ *        "baseImageUri": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22", 
+ *        "startupProbe": {
+ *          "failureThreshold": 1, 
+ *          "tcpSocket": {
+ *            "port": 8080
+ *          }, 
+ *          "timeoutSeconds": 240, 
+ *          "periodSeconds": 240
+ *        }, 
+ *        "ports": [
+ *          {
+ *            "name": "http1", 
+ *            "containerPort": 8080
+ *          }
+ *        ], 
+ *        "resources": {
+ *          "startupCpuBoost": true, 
+ *          "cpuIdle": true, 
+ *          "limits": {
+ *            "cpu": "1", 
+ *            "memory": "256Mi"
+ *          }
+ *        }
+ *      }
+ *    ], 
+ *    "revision": "ejectrequest-00002-ruh"
+ *  }, 
+ *  "conditions": [
+ *    {
+ *      "lastTransitionTime": "2025-06-13T21:23:12.186199Z", 
+ *      "state": "CONDITION_SUCCEEDED", 
+ *      "type": "RoutesReady"
+ *    }, 
+ *    {
+ *      "lastTransitionTime": "2025-06-13T21:23:10.904451Z", 
+ *      "state": "CONDITION_SUCCEEDED", 
+ *      "type": "ConfigurationsReady"
+ *    }
+ *  ], 
+ *  "annotations": {
+ *    "cloudfunctions.googleapis.com/function-id": "ejectRequest"
+ *  }, 
+ *  "customAudiences": [
+ *    "https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest"
+ *  ], 
+ *  "traffic": [
+ *    {
+ *      "percent": 100, 
+ *      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+ *    }
+ *  ], 
+ *  "createTime": "2025-06-13T16:47:35.642129Z", 
+ *  "name": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest", 
+ *  "latestReadyRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh", 
+ *  "uri": "https://ejectrequest-uvb3o4q2mq-uc.a.run.app", 
+ *  "client": "cli-firebase", 
+ *  "urls": [
+ *    "https://ejectrequest-92611791981.us-central1.run.app", 
+ *    "https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest", 
+ *    "https://ejectrequest-uvb3o4q2mq-uc.a.run.app"
+ *  ], 
+ *  "lastModifier": "service-92611791981@gcf-admin-robot.iam.gserviceaccount.com"
+ *}
+ */
 
 // NOTE: I'm seeing different values for functions that were ejected vs functions created in the Cloud Console directly with CRF.
 // E.g. build-function-target may be a scalar like "ejectRequest" or a JSON object like '{"worker":"ejectRequest"}' where
 // the key is the container name. Tinkering may be necessary to see if one or the other is better.
 export const RUNTIME_LABEL = "goog-cloudfunctions-runtime";
 export const CLIENT_NAME_LABEL = "goog-managed-by";
-export const CLIENT_NAME_ANNOTATION = "run.googleapis.com/client-name";
 export const CPU_BOOST_ANNOTATION = "run.googleapis.com/startup-cpu-boost";
 export const TRIGGER_TYPE_ANNOTATION = "cloudfunctions.googleapis.com/trigger-type";
 export const FUNCTION_TARGET_ANNOTATION = "run.googleapis.com/build-function-target"; // e.g. '{"worker":"triggerTest"}'
 export const FUNCTION_ID_ANNOTATION = "cloudfunctions.googleapis.com/function-id"; // e.g. "triggerTest"
 export const BASE_IMAGE_ANNOTATION = "run.googleapis.com/base-images"; // : '{"worker":"us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22"}'
-export const MAX_INSTANCES_ANNOTATION = "autoscaling.knative.dev/maxScale";
-export const MIN_INSTANCES_ANNOTATION = "autoscaling.knative.dev/minScale";
 export const DEFAULT_FUNCTION_CONTAINER_NAME = "worker";
 // Partial implementation. A full implementation may require more refactoring.
 // E.g. server-side we need to know the actual names of the resources we're
@@ -307,12 +466,8 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
-  if (service.annotations?.[MIN_INSTANCES_ANNOTATION]) {
-    endpoint.minInstances = Number(service.annotations[MIN_INSTANCES_ANNOTATION]);
-  }
-  if (service.annotations?.[MAX_INSTANCES_ANNOTATION]) {
-    endpoint.maxInstances = Number(service.annotations[MAX_INSTANCES_ANNOTATION]);
-  }
+  proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
+  proto.renameIfPresent(endpoint, service.scaling || {}, "maxInstances", "maxInstanceCount");
 
   const [env, secretEnv] = partition(
     service.template.containers![0]!.env || [],
@@ -356,19 +511,13 @@ export function serviceFromEndpoint(
   }
 
   const annotations: Record<string, string> = {
-    [CLIENT_NAME_ANNOTATION]: "cli-firebase",
     [FUNCTION_TARGET_ANNOTATION]: endpoint.id,
     [FUNCTION_ID_ANNOTATION]: endpoint.id,
     [CPU_BOOST_ANNOTATION]: "true",
     // TODO: Add run.googleapis.com/base-images: {'worker': <image>} for the runtime and set
     // template.runtimeClassName: run.googleapis.com/linux-base-image-update
   };
-  if (endpoint.minInstances) {
-    annotations[MIN_INSTANCES_ANNOTATION] = String(endpoint.minInstances);
-  }
-  if (endpoint.maxInstances) {
-    annotations[MAX_INSTANCES_ANNOTATION] = String(endpoint.maxInstances);
-  }
+
   const template: RevisionTemplate = {
     containers: [
       {
@@ -394,6 +543,7 @@ export function serviceFromEndpoint(
             cpu: String((endpoint.cpu as Number) || 1),
             memory: `${endpoint.availableMemoryMb || 256}Mi`,
           },
+          cpuIdle: true,
           startupCpuBoost: true,
         },
       },
@@ -401,11 +551,23 @@ export function serviceFromEndpoint(
     containerConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
   };
   proto.renameIfPresent(template, endpoint, "containerConcurrency", "concurrency");
-  // TODO: other trigger types, service accounts, concurrency, etc.
-  return {
-    name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(endpoint.id)}`,
+
+  const service: Omit<Service, ServiceOutputFields> = {
+    name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(
+      endpoint.id,
+    )}`,
     labels,
     annotations,
     template,
+    client: "cli-firebase",
   };
+
+  if (endpoint.minInstances || endpoint.maxInstances) {
+    service.scaling = {};
+    proto.renameIfPresent(service.scaling, endpoint, "minInstanceCount", "minInstances");
+    proto.renameIfPresent(service.scaling, endpoint, "maxInstanceCount", "maxInstances");
+  }
+
+  // TODO: other trigger types, service accounts, concurrency, etc.
+  return service;
 }

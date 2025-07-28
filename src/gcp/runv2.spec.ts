@@ -30,7 +30,6 @@ describe("runv2", () => {
       [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
     },
     annotations: {
-      [runv2.CLIENT_NAME_ANNOTATION]: "cli-firebase",
       [runv2.FUNCTION_TARGET_ANNOTATION]: FUNCTION_ID,
       [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID,
       [runv2.CPU_BOOST_ANNOTATION]: "true",
@@ -47,11 +46,13 @@ describe("runv2", () => {
               memory: "256Mi",
             },
             startupCpuBoost: true,
+            cpuIdle: true,
           },
         },
       ],
       containerConcurrency: backend.DEFAULT_CONCURRENCY,
     },
+    client: "cli-firebase",
   };
 
   describe("serviceFromEndpoint", () => {
@@ -134,8 +135,10 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.annotations[runv2.MIN_INSTANCES_ANNOTATION] = "1";
-      expectedServiceInput.annotations[runv2.MAX_INSTANCES_ANNOTATION] = "10";
+      expectedServiceInput.scaling = {
+        minInstanceCount: 1,
+        maxInstanceCount: 10,
+      };
 
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
@@ -210,6 +213,8 @@ describe("runv2", () => {
                   cpu: "1",
                   memory: "256Mi",
                 },
+                cpuIdle: true,
+                startupCpuBoost: true, 
               },
             },
           ],
@@ -360,8 +365,10 @@ describe("runv2", () => {
     it("should copy concurrency, min/max instances", () => {
       const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containerConcurrency = 10;
-      service.annotations![runv2.MIN_INSTANCES_ANNOTATION] = "2";
-      service.annotations![runv2.MAX_INSTANCES_ANNOTATION] = "5";
+      service.scaling = {
+        minInstanceCount: 2,
+        maxInstanceCount: 5,
+      }
 
       const result = runv2.endpointFromService(service);
       expect(result.concurrency).to.equal(10);
