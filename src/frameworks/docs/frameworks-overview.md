@@ -15,10 +15,6 @@ and Next.js. Using {{firebase_hosting}} and {{cloud_functions_full}} with these
 frameworks, you can develop apps and microservices in your preferred framework
 environment, and then deploy them in a managed, secure server environment.
 
-Note: Experimental support for Flask and Django is under development, and will be
-available soon. To stay up to date on the latest releases, sign up as a
-trusted tester at [https://goo.gle/41enW5X](//goo.gle/41enW5X).
-
 Support during this early preview includes the following functionality:
 
 * Deploy Web apps comprised of static web content
@@ -67,6 +63,6 @@ See the [Cloud Functions documentation](https://firebase.google.com/docs/functio
 See the detailed guide for your preferred framework:
 
 * [Angular](/docs/hosting/frameworks/angular)
-* [Next.js] (/docs/hosting/frameworks/nextjs)
-* [Flutter Web] (/docs/hosting/frameworks/flutter)
+* [Next.js](/docs/hosting/frameworks/nextjs)
+* [Flutter Web](/docs/hosting/frameworks/flutter)
 * [Frameworks with Express.js](/docs/hosting/frameworks/express)
