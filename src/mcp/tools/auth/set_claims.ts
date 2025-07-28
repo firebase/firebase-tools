@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { setCustomClaim } from "../../../gcp/auth.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { setCustomClaim } from "../../../gcp/auth";
 
 export const set_claim = tool(
   {

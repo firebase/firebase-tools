@@ -9,27 +9,27 @@ import {
   ListToolsRequestSchema,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkFeatureActive, mcpError } from "./util.js";
-import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types.js";
-import { availableTools } from "./tools/index.js";
-import { ServerTool, ServerToolContext } from "./tool.js";
-import { configstore } from "../configstore.js";
-import { Command } from "../command.js";
-import { requireAuth } from "../requireAuth.js";
-import { Options } from "../options.js";
-import { getProjectId } from "../projectUtils.js";
-import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors.js";
-import { trackGA4 } from "../track.js";
-import { Config } from "../config.js";
-import { loadRC } from "../rc.js";
-import { EmulatorHubClient } from "../emulator/hubClient.js";
-import { Emulators } from "../emulator/types.js";
+import { checkFeatureActive, mcpError } from "./util";
+import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types";
+import { availableTools } from "./tools/index";
+import { ServerTool, ServerToolContext } from "./tool";
+import { configstore } from "../configstore";
+import { Command } from "../command";
+import { requireAuth } from "../requireAuth";
+import { Options } from "../options";
+import { getProjectId } from "../projectUtils";
+import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors";
+import { trackGA4 } from "../track";
+import { Config } from "../config";
+import { loadRC } from "../rc";
+import { EmulatorHubClient } from "../emulator/hubClient";
+import { Emulators } from "../emulator/types";
 import { existsSync } from "node:fs";
-import { ensure, check } from "../ensureApiEnabled.js";
-import * as api from "../api.js";
-import { LoggingStdioServerTransport } from "./logging-transport.js";
-import { isFirebaseStudio } from "../env.js";
-import { timeoutFallback } from "../timeout.js";
+import { ensure, check } from "../ensureApiEnabled";
+import * as api from "../api";
+import { LoggingStdioServerTransport } from "./logging-transport";
+import { isFirebaseStudio } from "../env";
+import { timeoutFallback } from "../timeout";
 
 const SERVER_VERSION = "0.2.0";
 

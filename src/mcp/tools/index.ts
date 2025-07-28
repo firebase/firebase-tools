@@ -1,14 +1,14 @@
-import { ServerTool } from "../tool.js";
-import { ServerFeature } from "../types.js";
-import { authTools } from "./auth/index.js";
-import { dataconnectTools } from "./dataconnect/index.js";
-import { firestoreTools } from "./firestore/index.js";
-import { coreTools } from "./core/index.js";
-import { storageTools } from "./storage/index.js";
-import { messagingTools } from "./messaging/index.js";
-import { remoteConfigTools } from "./remoteconfig/index.js";
-import { crashlyticsTools } from "./crashlytics/index.js";
-import { appHostingTools } from "./apphosting/index.js";
+import { ServerTool } from "../tool";
+import { ServerFeature } from "../types";
+import { authTools } from "./auth/index";
+import { dataconnectTools } from "./dataconnect/index";
+import { firestoreTools } from "./firestore/index";
+import { coreTools } from "./core/index";
+import { storageTools } from "./storage/index";
+import { messagingTools } from "./messaging/index";
+import { remoteConfigTools } from "./remoteconfig/index";
+import { crashlyticsTools } from "./crashlytics/index";
+import { appHostingTools } from "./apphosting/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {

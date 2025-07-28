@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { Backend, getBackend, getTraffic, listBuilds, Traffic } from "../../../gcp/apphosting.js";
-import { last } from "../../../utils.js";
-import { FirebaseError } from "../../../error.js";
-import { fetchServiceLogs } from "../../../gcp/run.js";
-import { listEntries } from "../../../gcp/cloudlogging.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { Backend, getBackend, getTraffic, listBuilds, Traffic } from "../../../gcp/apphosting";
+import { last } from "../../../utils";
+import { FirebaseError } from "../../../error";
+import { fetchServiceLogs } from "../../../gcp/run";
+import { listEntries } from "../../../gcp/cloudlogging";
 
 export const fetch_logs = tool(
   {
