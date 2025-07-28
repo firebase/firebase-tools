@@ -233,7 +233,7 @@ export class FirebaseMcpServer {
       this.log("debug", `calling requireAuth`);
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
       this.log("debug", `detected authenticated account: ${email || "<none>"}`);
-      return email ?? skipAutoAuth ? null : "Application Default Credentials";
+      return email ?? (skipAutoAuth ? null : "Application Default Credentials");
     } catch (e) {
       this.log("debug", `error in requireAuth: ${e}`);
       return null;
