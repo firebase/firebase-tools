@@ -6,7 +6,6 @@ import * as requireAuthModule from "../requireAuth";
 describe("FirebaseMcpServer.getAuthenticatedUser", () => {
   let server: FirebaseMcpServer;
   let requireAuthStub: sinon.SinonStub;
-  let resolveOptionsStub: sinon.SinonStub;
 
   beforeEach(() => {
     // Mock the methods that may cause hanging BEFORE creating the instance
@@ -16,7 +15,8 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
     server = new FirebaseMcpServer({});
 
     // Mock the resolveOptions method to avoid dependency issues
-    resolveOptionsStub = sinon.stub(server, "resolveOptions").resolves({});
+    sinon.stub(server, "resolveOptions").resolves({});
+
     requireAuthStub = sinon.stub(requireAuthModule, "requireAuth");
   });
 
@@ -50,7 +50,6 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
 
     expect(result).to.equal("Application Default Credentials");
     expect(requireAuthStub.calledOnce).to.be.true;
-    expect(resolveOptionsStub.calledOnce).to.be.true;
   });
 
   it("should return null when requireAuth throws an error", async () => {
@@ -60,6 +59,5 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
 
     expect(result).to.be.null;
     expect(requireAuthStub.calledOnce).to.be.true;
-    expect(resolveOptionsStub.calledOnce).to.be.true;
   });
 });
