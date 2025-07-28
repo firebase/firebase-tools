@@ -1,0 +1,1 @@
+- Fixed an issue where the MCP server could not successfully use Application Default Credentials. (#8896)

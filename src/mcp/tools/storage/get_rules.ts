@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
 
 export const get_rules = tool(
   {

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { createAndroidApp, createIosApp, createWebApp } from "../../../management/apps.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { createAndroidApp, createIosApp, createWebApp } from "../../../management/apps";
 
 const CREATE_APP_OUTUT_PREFIX = "Created app with the following details:\n\n";
 const CREATE_APP_OUTUT_SUFFIX =
