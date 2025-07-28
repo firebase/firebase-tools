@@ -1,1 +1,2 @@
+- Fixed ext:export command so that it correctly returns system params in the .env file (#8881)
 - Fixed an issue where the MCP server could not successfully use Application Default Credentials. (#8896)
