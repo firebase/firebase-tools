@@ -583,24 +583,26 @@ export interface StudioWorkspaceInfo {
   firebaseProjectId: string;
 }
 
-export async function getStudioWorkspace(workspaceId: string): Promise<StudioWorkspaceInfo | undefined> {
-  console.log(`Fetching workspace from ID ${workspaceId}`);
+export async function getStudioWorkspace(): Promise<StudioWorkspaceInfo | undefined> {
+  const workspaceId = process.env.WORKSPACE_SLUG;
+  if (!workspaceId) {
+    logger.error(`Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty`);
+    return undefined;
+  }
   try {
     const res = await studioWorkspaceClient.request<void, StudioWorkspaceInfo>({
       method: "GET",
       path: `/workspaces/${workspaceId}`,
       timeout: TIMEOUT_MILLIS,
     });
-    console.log(`res ${res}`);
     return res.body;
   } catch (err: any) {
     let message = err.message;
     if (err.original) {
       message += ` (original: ${err.original.message})`;
     }
-    logger.debug(message);
+    logger.error(`Failed to fetch Firebase Project from current Studio Workspace: ${message}`);
     // We're going to fail gracefully so that the caller can handle the error
-    console.error(`message ${message}`);
     return undefined;
   }
 }

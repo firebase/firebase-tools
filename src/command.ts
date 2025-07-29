@@ -340,7 +340,7 @@ export class Command {
 
     // Only apply if we're running in Firebase Studio
     if (process.env.MONOSPACE_ENV) {
-      await this.applyStudioWorkspace(options)
+      await this.applyStudioWorkspace(options);
     }
     this.applyRC(options);
     if (options.project) {
@@ -350,12 +350,11 @@ export class Command {
   }
 
   private async applyStudioWorkspace(options: Options) {
-    // TODO: Fetch the workspace ID
-    // TODO: Fetch the workspace ID
-    // TODO: Fetch the workspace ID
-    // TODO: Fetch the workspace ID
-    // TODO: Fetch the workspace ID
-    let studioWorkspace = await getStudioWorkspace("studio-74855340");
+    // If the user passes the project via --project, it should take priority
+    if (options.project) {
+      return;
+    }
+    const studioWorkspace = await getStudioWorkspace();
     // Fail gracefully and resolve with the existing configs
     if (!studioWorkspace) {
       return;
