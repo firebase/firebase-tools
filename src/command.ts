@@ -293,14 +293,6 @@ export class Command {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async prepare(options: any): Promise<void> {
-
-      console.log("[SAM] RUNNING LOCALLY");
-      console.log("[SAM] RUNNING LOCALLY");
-      console.log("[SAM] RUNNING LOCALLY");
-      console.log("[SAM] RUNNING LOCALLY");
-      console.log("[SAM] RUNNING LOCALLY");
-      console.log("[SAM] RUNNING LOCALLY");
-
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
@@ -348,12 +340,6 @@ export class Command {
 
     // Only apply if we're running in Firebase Studio
     if (process.env.MONOSPACE_ENV) {
-      console.log("[SAM] HELLO MONOSPACE");
-      console.log("[SAM] HELLO MONOSPACE");
-      console.log("[SAM] HELLO MONOSPACE");
-      console.log("[SAM] HELLO MONOSPACE");
-      console.log("[SAM] HELLO MONOSPACE");
-      console.log("[SAM] HELLO MONOSPACE");
       await this.applyStudioWorkspace(options)
     }
     this.applyRC(options);
