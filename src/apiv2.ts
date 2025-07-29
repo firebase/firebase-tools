@@ -413,7 +413,6 @@ export class Client {
           }
           this.logRequest(options);
           try {
-            console.log(`fetchURL: ${fetchURL}`);
             res = await fetch(fetchURL, fetchOptions);
           } catch (thrown: any) {
             const err = thrown instanceof Error ? thrown : new Error(thrown);
