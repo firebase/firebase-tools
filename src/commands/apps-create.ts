@@ -18,7 +18,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { select } from "../prompt";
 
-function logPostAppCreationInformation(
+export function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
   appPlatform: AppPlatform,
 ): void {

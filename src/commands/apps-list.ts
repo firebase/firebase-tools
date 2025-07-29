@@ -10,7 +10,7 @@ import { logger } from "../logger";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
-function logAppsList(apps: AppMetadata[]): void {
+export function logAppsList(apps: AppMetadata[]): void {
   if (apps.length === 0) {
     logger.info(clc.bold("No apps found."));
     return;
@@ -24,7 +24,7 @@ function logAppsList(apps: AppMetadata[]): void {
   logger.info(table.toString());
 }
 
-function logAppCount(count: number = 0): void {
+export function logAppCount(count: number = 0): void {
   if (count === 0) {
     return;
   }
