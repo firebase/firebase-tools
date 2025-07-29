@@ -586,7 +586,9 @@ export interface StudioWorkspaceInfo {
 export async function getStudioWorkspace(): Promise<StudioWorkspaceInfo | undefined> {
   const workspaceId = process.env.WORKSPACE_SLUG;
   if (!workspaceId) {
-    logger.error(`Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty`);
+    logger.error(
+      `Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty`,
+    );
     return undefined;
   }
   try {
