@@ -271,149 +271,149 @@ function functionNameToServiceName(id: string): string {
 /**
  * {
  *  "buildConfig": {
- *    "name": "projects/92611791981/locations/us-central1/builds/4d41c5e1-9ab9-4889-826b-c64a0d58c99a", 
- *    "enableAutomaticUpdates": true, 
+ *    "name": "projects/92611791981/locations/us-central1/builds/4d41c5e1-9ab9-4889-826b-c64a0d58c99a",
+ *    "enableAutomaticUpdates": true,
  *    "environmentVariables": {
  *      "GOOGLE_NODE_RUN_SCRIPTS": ""
- *    }, 
- *    "imageUri": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1", 
- *    "baseImage": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22", 
- *    "sourceLocation": "gs://gcf-v2-sources-92611791981-us-central1/ejectRequest/function-source.zip#1749833196570851", 
+ *    },
+ *    "imageUri": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1",
+ *    "baseImage": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22",
+ *    "sourceLocation": "gs://gcf-v2-sources-92611791981-us-central1/ejectRequest/function-source.zip#1749833196570851",
  *    "functionTarget": "ejectRequest"
- *  }, 
- *  "updateTime": "2025-06-13T21:23:05.883496Z", 
- *  "uid": "2946ee66-76ec-493c-a853-2f126dabef73", 
- *  "creator": "service-92611791981@gcf-admin-robot.iam.gserviceaccount.com", 
- *  "generation": "2", 
+ *  },
+ *  "updateTime": "2025-06-13T21:23:05.883496Z",
+ *  "uid": "2946ee66-76ec-493c-a853-2f126dabef73",
+ *  "creator": "service-92611791981@gcf-admin-robot.iam.gserviceaccount.com",
+ *  "generation": "2",
  *  "labels": {
- *    "firebase-functions-hash": "3653cb61dcf8e18a4a8706251b627485a5e83cd0", 
- *    "goog-cloudfunctions-runtime": "nodejs22", 
- *    "goog-drz-cloudfunctions-id": "ejectrequest", 
- *    "firebase-functions-codebase": "js", 
- *    "goog-managed-by": "", 
+ *    "firebase-functions-hash": "3653cb61dcf8e18a4a8706251b627485a5e83cd0",
+ *    "goog-cloudfunctions-runtime": "nodejs22",
+ *    "goog-drz-cloudfunctions-id": "ejectrequest",
+ *    "firebase-functions-codebase": "js",
+ *    "goog-managed-by": "",
  *    "goog-drz-cloudfunctions-location": "us-central1"
- *  }, 
- *  "ingress": "INGRESS_TRAFFIC_ALL", 
+ *  },
+ *  "ingress": "INGRESS_TRAFFIC_ALL",
  *  "terminalCondition": {
- *    "lastTransitionTime": "2025-06-13T21:23:12.232110Z", 
- *    "state": "CONDITION_SUCCEEDED", 
+ *    "lastTransitionTime": "2025-06-13T21:23:12.232110Z",
+ *    "state": "CONDITION_SUCCEEDED",
  *    "type": "Ready"
- *  }, 
+ *  },
  *  "trafficStatuses": [
  *    {
- *      "percent": 100, 
+ *      "percent": 100,
  *      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
  *    }
- *  ], 
- *  "launchStage": "GA", 
- *  "observedGeneration": "2", 
- *  "etag": "\"CLmtssIGEMCopKUD/cHJvamVjdHMvaW5saW5lZC1qdW5rZHJhd2VyL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9lamVjdHJlcXVlc3Q\"", 
- *  "latestCreatedRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh", 
+ *  ],
+ *  "launchStage": "GA",
+ *  "observedGeneration": "2",
+ *  "etag": "\"CLmtssIGEMCopKUD/cHJvamVjdHMvaW5saW5lZC1qdW5rZHJhd2VyL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9lamVjdHJlcXVlc3Q\"",
+ *  "latestCreatedRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh",
  *  "template": {
- *    "maxInstanceRequestConcurrency": 80, 
+ *    "maxInstanceRequestConcurrency": 80,
  *    "labels": {
- *      "firebase-functions-codebase": "js", 
+ *      "firebase-functions-codebase": "js",
  *      "firebase-functions-hash": "3653cb61dcf8e18a4a8706251b627485a5e83cd0"
- *    }, 
- *    "serviceAccount": "92611791981-compute@developer.gserviceaccount.com", 
+ *    },
+ *    "serviceAccount": "92611791981-compute@developer.gserviceaccount.com",
  *    "scaling": {
  *      "maxInstanceCount": 100
- *    }, 
- *    "timeout": "60s", 
+ *    },
+ *    "timeout": "60s",
  *    "annotations": {
  *      "cloudfunctions.googleapis.com/trigger-type": "HTTP_TRIGGER"
- *    }, 
+ *    },
  *    "containers": [
  *      {
- *        "name": "worker", 
- *        "image": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1", 
+ *        "name": "worker",
+ *        "image": "us-central1-docker.pkg.dev/inlined-junkdrawer/gcf-artifacts/inlined--junkdrawer__us--central1__eject_request:version_1",
  *        "env": [
  *          {
- *            "name": "FIREBASE_CONFIG", 
+ *            "name": "FIREBASE_CONFIG",
  *            "value": "{\"projectId\":\"inlined-junkdrawer\",\"databaseURL\":\"https://inlined-junkdrawer.firebaseio.com\",\"storageBucket\":\"inlined-junkdrawer.appspot.com\",\"locationId\":\"us-central\"}"
- *          }, 
+ *          },
  *          {
- *            "name": "GCLOUD_PROJECT", 
+ *            "name": "GCLOUD_PROJECT",
  *            "value": "inlined-junkdrawer"
- *          }, 
+ *          },
  *          {
- *            "name": "EVENTARC_CLOUD_EVENT_SOURCE", 
+ *            "name": "EVENTARC_CLOUD_EVENT_SOURCE",
  *            "value": "projects/inlined-junkdrawer/locations/us-central1/services/ejectRequest"
- *          }, 
+ *          },
  *          {
- *            "name": "FUNCTION_TARGET", 
+ *            "name": "FUNCTION_TARGET",
  *            "value": "ejectRequest"
- *          }, 
+ *          },
  *          {
- *            "name": "LOG_EXECUTION_ID", 
+ *            "name": "LOG_EXECUTION_ID",
  *            "value": "true"
- *          }, 
+ *          },
  *          {
- *            "name": "FUNCTION_SIGNATURE_TYPE", 
+ *            "name": "FUNCTION_SIGNATURE_TYPE",
  *            "value": "http"
  *          }
- *        ], 
- *        "baseImageUri": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22", 
+ *        ],
+ *        "baseImageUri": "us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22",
  *        "startupProbe": {
- *          "failureThreshold": 1, 
+ *          "failureThreshold": 1,
  *          "tcpSocket": {
  *            "port": 8080
- *          }, 
- *          "timeoutSeconds": 240, 
+ *          },
+ *          "timeoutSeconds": 240,
  *          "periodSeconds": 240
- *        }, 
+ *        },
  *        "ports": [
  *          {
- *            "name": "http1", 
+ *            "name": "http1",
  *            "containerPort": 8080
  *          }
- *        ], 
+ *        ],
  *        "resources": {
- *          "startupCpuBoost": true, 
- *          "cpuIdle": true, 
+ *          "startupCpuBoost": true,
+ *          "cpuIdle": true,
  *          "limits": {
- *            "cpu": "1", 
+ *            "cpu": "1",
  *            "memory": "256Mi"
  *          }
  *        }
  *      }
- *    ], 
+ *    ],
  *    "revision": "ejectrequest-00002-ruh"
- *  }, 
+ *  },
  *  "conditions": [
  *    {
- *      "lastTransitionTime": "2025-06-13T21:23:12.186199Z", 
- *      "state": "CONDITION_SUCCEEDED", 
+ *      "lastTransitionTime": "2025-06-13T21:23:12.186199Z",
+ *      "state": "CONDITION_SUCCEEDED",
  *      "type": "RoutesReady"
- *    }, 
+ *    },
  *    {
- *      "lastTransitionTime": "2025-06-13T21:23:10.904451Z", 
- *      "state": "CONDITION_SUCCEEDED", 
+ *      "lastTransitionTime": "2025-06-13T21:23:10.904451Z",
+ *      "state": "CONDITION_SUCCEEDED",
  *      "type": "ConfigurationsReady"
  *    }
- *  ], 
+ *  ],
  *  "annotations": {
  *    "cloudfunctions.googleapis.com/function-id": "ejectRequest"
- *  }, 
+ *  },
  *  "customAudiences": [
  *    "https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest"
- *  ], 
+ *  ],
  *  "traffic": [
  *    {
- *      "percent": 100, 
+ *      "percent": 100,
  *      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
  *    }
- *  ], 
- *  "createTime": "2025-06-13T16:47:35.642129Z", 
- *  "name": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest", 
- *  "latestReadyRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh", 
- *  "uri": "https://ejectrequest-uvb3o4q2mq-uc.a.run.app", 
- *  "client": "cli-firebase", 
+ *  ],
+ *  "createTime": "2025-06-13T16:47:35.642129Z",
+ *  "name": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest",
+ *  "latestReadyRevision": "projects/inlined-junkdrawer/locations/us-central1/services/ejectrequest/revisions/ejectrequest-00002-ruh",
+ *  "uri": "https://ejectrequest-uvb3o4q2mq-uc.a.run.app",
+ *  "client": "cli-firebase",
  *  "urls": [
- *    "https://ejectrequest-92611791981.us-central1.run.app", 
- *    "https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest", 
+ *    "https://ejectrequest-92611791981.us-central1.run.app",
+ *    "https://us-central1-inlined-junkdrawer.cloudfunctions.net/ejectRequest",
  *    "https://ejectrequest-uvb3o4q2mq-uc.a.run.app"
- *  ], 
+ *  ],
  *  "lastModifier": "service-92611791981@gcf-admin-robot.iam.gserviceaccount.com"
  *}
  */
@@ -421,14 +421,28 @@ function functionNameToServiceName(id: string): string {
 // NOTE: I'm seeing different values for functions that were ejected vs functions created in the Cloud Console directly with CRF.
 // E.g. build-function-target may be a scalar like "ejectRequest" or a JSON object like '{"worker":"ejectRequest"}' where
 // the key is the container name. Tinkering may be necessary to see if one or the other is better.
+
+// Note this runtime seems to be somewhat redundant with containers.baseImage
 export const RUNTIME_LABEL = "goog-cloudfunctions-runtime";
+
+// In GCF 2nd gen this is cloudfunctions but is the empty string after ejecting. We can use a new value to detect how much
+// of the fleet has migrated.
 export const CLIENT_NAME_LABEL = "goog-managed-by";
-export const CPU_BOOST_ANNOTATION = "run.googleapis.com/startup-cpu-boost";
+
+// NOTE: Any annotation with a google domain prefix is read-only and a holdover from the GCF API.
 export const TRIGGER_TYPE_ANNOTATION = "cloudfunctions.googleapis.com/trigger-type";
 export const FUNCTION_TARGET_ANNOTATION = "run.googleapis.com/build-function-target"; // e.g. '{"worker":"triggerTest"}'
 export const FUNCTION_ID_ANNOTATION = "cloudfunctions.googleapis.com/function-id"; // e.g. "triggerTest"
-export const BASE_IMAGE_ANNOTATION = "run.googleapis.com/base-images"; // : '{"worker":"us-central1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/nodejs22"}'
-export const DEFAULT_FUNCTION_CONTAINER_NAME = "worker";
+
+export const FUNCTION_TARGET_ENV = "FUNCTION_TARGET";
+export const FUNCTION_SIGNATURE_TYPE_ENV = "FUNCTION_SIGNATURE_TYPE";
+
+export const FIREBASE_FUNCTION_METADTA_ANNOTATION = "firebase-functions-metadata";
+export interface FirebaseFunctionMetadata {
+  functionId: string;
+  // TODO: Trigger type since we cannot set cloudfunctions.googleapis.com/trigger-type
+}
+
 // Partial implementation. A full implementation may require more refactoring.
 // E.g. server-side we need to know the actual names of the resources we're
 // referencing. So maybe endpointFromSerivce should be async and fetch the
@@ -438,9 +452,21 @@ export const DEFAULT_FUNCTION_CONTAINER_NAME = "worker";
 export function endpointFromService(service: Omit<Service, ServiceOutputFields>): backend.Endpoint {
   const [, /* projects*/ project /* locations*/, , location /* services*/, , svcId] =
     service.name.split("/");
+
+  const metadata = JSON.parse(
+    service.annotations?.[FIREBASE_FUNCTION_METADTA_ANNOTATION] || "{}",
+  ) as FirebaseFunctionMetadata;
+
+  const [env, secretEnv] = partition(
+    service.template.containers![0]!.env || [],
+    (e) => "value" in e,
+  ) as [PlaintextEnvVar[], SecretEnvVar[]];
+
   const id =
+    metadata.functionId ||
     service.annotations?.[FUNCTION_ID_ANNOTATION] ||
     service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
+    env.find((e) => e.name === FUNCTION_TARGET_ENV)?.value ||
     svcId;
   const memory = mebibytes(service.template.containers![0]!.resources!.limits!.memory!);
   if (!backend.isValidMemoryOption(memory)) {
@@ -457,6 +483,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     availableMemoryMb: memory as backend.MemoryOptions,
     cpu: cpu,
     entryPoint:
+      env.find((e) => e.name === FUNCTION_TARGET_ENV)?.value ||
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
@@ -469,10 +496,6 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
   proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, service.scaling || {}, "maxInstances", "maxInstanceCount");
 
-  const [env, secretEnv] = partition(
-    service.template.containers![0]!.env || [],
-    (e) => "value" in e,
-  ) as [PlaintextEnvVar[], SecretEnvVar[]];
   endpoint.environmentVariables = env.reduce<Record<string, string>>((acc, e) => {
     acc[e.name] = e.value;
     return acc;
@@ -511,11 +534,9 @@ export function serviceFromEndpoint(
   }
 
   const annotations: Record<string, string> = {
-    [FUNCTION_TARGET_ANNOTATION]: endpoint.id,
-    [FUNCTION_ID_ANNOTATION]: endpoint.id,
-    [CPU_BOOST_ANNOTATION]: "true",
-    // TODO: Add run.googleapis.com/base-images: {'worker': <image>} for the runtime and set
-    // template.runtimeClassName: run.googleapis.com/linux-base-image-update
+    [FIREBASE_FUNCTION_METADTA_ANNOTATION]: JSON.stringify({
+      functionId: endpoint.id,
+    }),
   };
 
   const template: RevisionTemplate = {
@@ -537,6 +558,14 @@ export function serviceFromEndpoint(
               },
             },
           })),
+          {
+            name: FUNCTION_TARGET_ENV,
+            value: endpoint.entryPoint,
+          },
+          {
+            name: FUNCTION_SIGNATURE_TYPE_ENV,
+            value: backend.isEventTriggered(endpoint) ? "cloudevent" : "http",
+          },
         ],
         resources: {
           limits: {
