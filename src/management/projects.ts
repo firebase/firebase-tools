@@ -99,6 +99,11 @@ const resourceManagerClient = new Client({
   apiVersion: "v1",
 });
 
+const studioWorkspaceClient = new Client({
+  urlPrefix: api.studioWorkspaceApiOrigin(),
+  apiVersion: "v1",
+});
+
 /**
  * Create a new Google Cloud Platform project and add Firebase resources to it
  */
@@ -570,5 +575,32 @@ export async function checkFirebaseEnabledForCloudProject(
         "Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err },
     );
+  }
+}
+
+export interface StudioWorkspaceInfo {
+  name: string;
+  firebaseProjectId: string;
+}
+
+export async function getStudioWorkspace(workspaceId: string): Promise<StudioWorkspaceInfo | undefined> {
+  console.log(`Fetching workspace from ID ${workspaceId}`);
+  try {
+    const res = await studioWorkspaceClient.request<void, StudioWorkspaceInfo>({
+      method: "GET",
+      path: `/workspaces/${workspaceId}`,
+      timeout: TIMEOUT_MILLIS,
+    });
+    console.log(`res ${res}`);
+    return res.body;
+  } catch (err: any) {
+    let message = err.message;
+    if (err.original) {
+      message += ` (original: ${err.original.message})`;
+    }
+    logger.debug(message);
+    // We're going to fail gracefully so that the caller can handle the error
+    console.error(`message ${message}`);
+    return undefined;
   }
 }
