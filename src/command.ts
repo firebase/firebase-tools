@@ -10,7 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getProject } from "./management/projects";
+import { getProject, getStudioWorkspace } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
@@ -293,6 +293,14 @@ export class Command {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async prepare(options: any): Promise<void> {
+
+      console.log("[SAM] RUNNING LOCALLY");
+      console.log("[SAM] RUNNING LOCALLY");
+      console.log("[SAM] RUNNING LOCALLY");
+      console.log("[SAM] RUNNING LOCALLY");
+      console.log("[SAM] RUNNING LOCALLY");
+      console.log("[SAM] RUNNING LOCALLY");
+
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
@@ -338,11 +346,35 @@ export class Command {
       setActiveAccount(options, activeAccount);
     }
 
+    // Only apply if we're running in Firebase Studio
+    if (process.env.MONOSPACE_ENV) {
+      console.log("[SAM] HELLO MONOSPACE");
+      console.log("[SAM] HELLO MONOSPACE");
+      console.log("[SAM] HELLO MONOSPACE");
+      console.log("[SAM] HELLO MONOSPACE");
+      console.log("[SAM] HELLO MONOSPACE");
+      console.log("[SAM] HELLO MONOSPACE");
+      await this.applyStudioWorkspace(options)
+    }
     this.applyRC(options);
     if (options.project) {
       await this.resolveProjectIdentifiers(options);
       validateProjectId(options.projectId);
     }
+  }
+
+  private async applyStudioWorkspace(options: Options) {
+    // TODO: Fetch the workspace ID
+    // TODO: Fetch the workspace ID
+    // TODO: Fetch the workspace ID
+    // TODO: Fetch the workspace ID
+    // TODO: Fetch the workspace ID
+    let studioWorkspace = await getStudioWorkspace("studio-74855340");
+    // Fail gracefully and resolve with the existing configs
+    if (!studioWorkspace) {
+      return;
+    }
+    options.project = studioWorkspace.firebaseProjectId;
   }
 
   /**
