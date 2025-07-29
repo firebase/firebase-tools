@@ -6,18 +6,17 @@ import * as apps from "../management/apps";
 import { ShaCertificateType } from "../management/apps";
 import * as utils from "../utils";
 import { command, getCertHashType } from "./apps-android-sha-create";
-import * as auth from "../auth";
+import * as auth from "../requireAuth";
 
 describe("apps:android:sha:create", () => {
   let sandbox: sinon.SinonSandbox;
   let needProjectIdStub: sinon.SinonStub;
   let createAppAndroidShaStub: sinon.SinonStub;
   let promiseWithSpinnerStub: sinon.SinonStub;
-  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
+    sandbox.stub(auth, "requireAuth").resolves();
     needProjectIdStub = sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     createAppAndroidShaStub = sandbox
       .stub(apps, "createAppAndroidSha")
