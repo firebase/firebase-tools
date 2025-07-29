@@ -99,8 +99,8 @@ const resourceManagerClient = new Client({
   apiVersion: "v1",
 });
 
-const studioWorkspaceClient = new Client({
-  urlPrefix: api.studioWorkspaceApiOrigin(),
+const studioClient = new Client({
+  urlPrefix: api.studioApiOrigin(),
   apiVersion: "v1",
 });
 
@@ -578,12 +578,12 @@ export async function checkFirebaseEnabledForCloudProject(
   }
 }
 
-export interface StudioWorkspaceInfo {
+export interface StudioWorkspace {
   name: string;
   firebaseProjectId: string;
 }
 
-export async function getStudioWorkspace(): Promise<StudioWorkspaceInfo | undefined> {
+export async function getStudioWorkspace(): Promise<StudioWorkspace | undefined> {
   const workspaceId = process.env.WORKSPACE_SLUG;
   if (!workspaceId) {
     logger.error(
@@ -592,7 +592,7 @@ export async function getStudioWorkspace(): Promise<StudioWorkspaceInfo | undefi
     return undefined;
   }
   try {
-    const res = await studioWorkspaceClient.request<void, StudioWorkspaceInfo>({
+    const res = await studioClient.request<void, StudioWorkspace>({
       method: "GET",
       path: `/workspaces/${workspaceId}`,
       timeout: TIMEOUT_MILLIS,
