@@ -50,14 +50,14 @@ describe("ensureProjectConfigured", () => {
     );
     expect(ensureApiEnabledStub).to.be.calledWith(
       projectId,
-      "https://storage.googleapis.com",
-      "Cloud Storage",
+      "https://run.googleapis.com",
+      "Cloud Run",
       false,
     );
     expect(ensureApiEnabledStub).to.be.calledWith(
       projectId,
-      "https://run.googleapis.com",
-      "Cloud Run",
+      "https://storage.googleapis.com",
+      "Cloud Storage",
       false,
     );
     expect(ensureApiEnabledStub).to.be.calledWith(

@@ -12,7 +12,7 @@ const TEST_RUNNER_SERVICE_ACCOUNT_NAME = "firebaseapptesting-test-runner";
 export async function ensureProjectConfigured(projectId: string) {
   await ensure(projectId, appTestingOrigin(), "Firebase App Testing", false);
   await ensure(projectId, cloudRunApiOrigin(), "Cloud Run", false);
-  await ensure(projectId, storageOrigin(), "Storage", false);
+  await ensure(projectId, storageOrigin(), "Cloud Storage", false);
   await ensure(projectId, artifactRegistryDomain(), "Artifact Registry", false);
   const serviceAccount = runnerServiceAccount(projectId);
 
