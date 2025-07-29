@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { queryCollection, StructuredQuery } from "../../../gcp/firestore.js";
-import { convertInputToValue, firestoreDocumentToJson } from "./converter.js";
-import { Emulators } from "../../../emulator/types.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { queryCollection, StructuredQuery } from "../../../gcp/firestore";
+import { convertInputToValue, firestoreDocumentToJson } from "./converter";
+import { Emulators } from "../../../emulator/types";
 
 export const query_collection = tool(
   {

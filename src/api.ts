@@ -91,8 +91,6 @@ export const functionsDefaultRegion = () =>
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
-export const cloudCompanionOrigin = () =>
-  utils.envOverride("CLOUD_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
 export const cloudschedulerOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDSCHEDULER_URL", "https://cloudscheduler.googleapis.com");
 export const cloudTasksOrigin = () =>
@@ -171,6 +169,9 @@ export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 export const cloudAiCompanionOrigin = () =>
   utils.envOverride("CLOUD_AI_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
+
+export const appTestingOrigin = () =>
+  utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {

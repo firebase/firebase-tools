@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { listCollectionIds } from "../../../gcp/firestore.js";
-import { NO_PROJECT_ERROR } from "../../errors.js";
-import { Emulators } from "../../../emulator/types.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { listCollectionIds } from "../../../gcp/firestore";
+import { NO_PROJECT_ERROR } from "../../errors";
+import { Emulators } from "../../../emulator/types";
 
 export const list_collections = tool(
   {

@@ -7,13 +7,16 @@ printusage() {
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', or 'major'."
+  echo "  version: 'patch', 'minor', 'major', or 'artifactsOnly'"
 }
 
 VERSION=$1
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
+elif [[ $VERSION == "artifactsOnly" ]]; then
+  echo "Skipping npm package publish since VERSION is artifactsOnly."
+  exit 0
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
   printusage
   exit 1
@@ -92,10 +95,14 @@ echo "Publishing to npm..."
 npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
 echo "Published to npm."
 
+echo "Updating package-lock.json for Docker image..."
+npm --prefix ./scripts/publish/firebase-docker-image install
+echo "Updated package-lock.json for Docker image."
+
 echo "Cleaning up release notes..."
 rm CHANGELOG.md
 touch CHANGELOG.md
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md 
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."

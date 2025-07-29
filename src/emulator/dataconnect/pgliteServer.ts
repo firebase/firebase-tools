@@ -16,10 +16,12 @@ import {
   PostgresConnection,
   type PostgresConnectionOptions,
   FrontendMessageCode,
+  BackendMessageCode,
 } from "pg-gateway";
 import { logger } from "../../logger";
 import { hasMessage, FirebaseError } from "../../error";
 import { moveAll } from "../../fsutils";
+import { StringDecoder } from "node:string_decoder";
 
 export const TRUNCATE_TABLES_SQL = `
 DO $do$
@@ -34,6 +36,8 @@ BEGIN
 END
 $do$;`;
 
+const decoder = new StringDecoder();
+
 export class PostgresServer {
   private baseDataDirectory?: string;
   private importPath?: string;
@@ -46,7 +50,7 @@ export class PostgresServer {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
-      await fromNodeSocket(socket, {
+      const connection = await fromNodeSocket(socket, {
         serverVersion: "17.4 (PGlite 0.3.3)",
         auth: { method: "trust" },
 
@@ -62,13 +66,16 @@ export class PostgresServer {
             await db.query("DEALLOCATE ALL");
           }
           const response = await db.execProtocolRaw(data);
-
-          for await (const message of getMessages(response)) {
+          for await (const message of extendedQueryPatch.filterResponse(data, response)) {
             yield message;
           }
+
+          // Extended query patch removes the extra Ready for Query messages that
+          // pglite wrongly sends.
         },
       });
 
+      const extendedQueryPatch: PGliteExtendedQueryPatch = new PGliteExtendedQueryPatch(connection);
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
       });
@@ -247,7 +254,7 @@ export class PostgresServer {
   constructor(args: { dataDirectory?: string; importPath?: string; debug?: boolean }) {
     this.baseDataDirectory = args.dataDirectory;
     this.importPath = args.importPath;
-    this.debug = args.debug ? 5 : 0;
+    this.debug = args.debug ? 1 : 0;
   }
 }
 
@@ -270,4 +277,55 @@ export async function fromNodeSocket(socket: net.Socket, options?: PostgresConne
     : undefined;
 
   return new PostgresConnection({ readable: rs, writable: ws }, opts);
+}
+
+export class PGliteExtendedQueryPatch {
+  isExtendedQuery = false;
+  eqpErrored = false;
+  pgliteDebugLog: fs.WriteStream;
+
+  constructor(public connection: PostgresConnection) {
+    this.pgliteDebugLog = fs.createWriteStream("pglite-debug.log");
+  }
+
+  async *filterResponse(message: Uint8Array, response: Uint8Array) {
+    // 'Parse' indicates the start of an extended query
+    const pipelineStartMessages: number[] = [
+      FrontendMessageCode.Parse,
+      FrontendMessageCode.Bind,
+      FrontendMessageCode.Close,
+    ];
+    const decoded = decoder.write(message as any as Buffer);
+
+    this.pgliteDebugLog.write("Front: " + decoded);
+
+    if (pipelineStartMessages.includes(message[0])) {
+      this.isExtendedQuery = true;
+    }
+
+    // 'Sync' indicates the end of an extended query
+    if (message[0] === FrontendMessageCode.Sync) {
+      this.isExtendedQuery = false;
+      this.eqpErrored = false;
+    }
+
+    // A PGlite response can contain multiple messages
+    for await (const bm of getMessages(response)) {
+      // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
+      // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
+      if (this.eqpErrored) {
+        continue;
+      }
+      if (this.isExtendedQuery && bm[0] === BackendMessageCode.ErrorMessage) {
+        this.eqpErrored = true;
+      }
+      // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
+      if (this.isExtendedQuery && bm[0] === BackendMessageCode.ReadyForQuery) {
+        this.pgliteDebugLog.write("Filtered: " + decoder.write(bm as any as Buffer));
+        continue;
+      }
+      this.pgliteDebugLog.write("Sent: " + decoder.write(bm as any as Buffer));
+      yield bm;
+    }
+  }
 }

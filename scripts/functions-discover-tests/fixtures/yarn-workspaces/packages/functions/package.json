@@ -2,12 +2,12 @@
   "name": "simple",
   "version": "0.0.1",
   "dependencies": {
-    "firebase-functions": "5.1.0",
+    "firebase-functions": "^6.4.0",
     "firebase-admin": "^11.2.0",
     "@firebase/a-test-pkg": "0.0.1"
   },
   "engines": {
-    "node": "20"
+    "node": ">=20"
   },
   "private": true
 }

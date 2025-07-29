@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { publishTemplate } from "../../../remoteconfig/publish.js";
-import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { publishTemplate } from "../../../remoteconfig/publish";
+import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
 export const publish_template = tool(
   {

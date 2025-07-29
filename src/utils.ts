@@ -199,6 +199,14 @@ export function logWarning(
 }
 
 /**
+ * Log a warning statement to stderr, regardless of logger configuration.
+ */
+export function logWarningToStderr(message: string): void {
+  const prefix = clc.bold(`${WARNING_CHAR} `);
+  process.stderr.write(clc.yellow(prefix + message) + "\n");
+}
+
+/**
  * Log an info statement with a gray bullet at the start of the line.
  */
 export function logLabeledWarning(
@@ -922,4 +930,34 @@ export async function promptForDirectory(args: {
     }
   }
   return dir;
+}
+
+/*
+ * Deeply compares two JSON-serializable objects.
+ * It's a simplified version of a deep equal function, sufficient for comparing the structure
+ * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
+ */
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
+    return false;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
 }

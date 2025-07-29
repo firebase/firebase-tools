@@ -30,28 +30,36 @@ describe("runv2", () => {
       [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
     },
     annotations: {
-      [runv2.CLIENT_NAME_ANNOTATION]: "cli-firebase",
-      [runv2.FUNCTION_TARGET_ANNOTATION]: FUNCTION_ID,
-      [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID,
-      [runv2.CPU_BOOST_ANNOTATION]: "true",
+      [runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]: `{"functionId":"${FUNCTION_ID}"}`,
     },
     template: {
       containers: [
         {
-          name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+          name: "worker",
           image: IMAGE_URI,
-          env: [],
+          env: [
+            {
+              name: runv2.FUNCTION_TARGET_ENV,
+              value: FUNCTION_ID,
+            },
+            {
+              name: runv2.FUNCTION_SIGNATURE_TYPE_ENV,
+              value: "http",
+            },
+          ],
           resources: {
             limits: {
               cpu: "1",
               memory: "256Mi",
             },
             startupCpuBoost: true,
+            cpuIdle: true,
           },
         },
       ],
       containerConcurrency: backend.DEFAULT_CONCURRENCY,
     },
+    client: "cli-firebase",
   };
 
   describe("serviceFromEndpoint", () => {
@@ -93,7 +101,7 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.template.containers[0].env = [{ name: "FOO", value: "bar" }];
+      expectedServiceInput.template.containers[0].env.unshift({ name: "FOO", value: "bar" });
 
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
@@ -112,12 +120,10 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.template.containers[0].env = [
-        {
-          name: "MY_SECRET",
-          valueSource: { secretKeyRef: { secret: "secret-name", version: "1" } },
-        },
-      ];
+      expectedServiceInput.template.containers[0].env.unshift({
+        name: "MY_SECRET",
+        valueSource: { secretKeyRef: { secret: "secret-name", version: "1" } },
+      });
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
 
@@ -134,8 +140,10 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.annotations[runv2.MIN_INSTANCES_ANNOTATION] = "1";
-      expectedServiceInput.annotations[runv2.MAX_INSTANCES_ANNOTATION] = "10";
+      expectedServiceInput.scaling = {
+        minInstanceCount: 1,
+        maxInstanceCount: 10,
+      };
 
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
@@ -197,19 +205,22 @@ describe("runv2", () => {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
         },
         annotations: {
+          ...BASE_RUN_SERVICE.annotations,
           [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
           [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
         },
         template: {
           containers: [
             {
-              name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+              name: "worker",
               image: IMAGE_URI,
               resources: {
                 limits: {
                   cpu: "1",
                   memory: "256Mi",
                 },
+                cpuIdle: true,
+                startupCpuBoost: true, 
               },
             },
           ],
@@ -245,13 +256,14 @@ describe("runv2", () => {
           [runv2.CLIENT_NAME_LABEL]: "cloud-functions", // This indicates it's GCF managed
         },
         annotations: {
+          ...BASE_RUN_SERVICE.annotations,
           [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
           [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
         },
         template: {
           containers: [
             {
-              name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+              name: "worker",
               image: IMAGE_URI,
               resources: {
                 limits: {
@@ -285,6 +297,33 @@ describe("runv2", () => {
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
     });
 
+    it("should derive id from FIREBASE_FUNCTIONS_METADATA if present", () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        labels: {
+          [runv2.RUNTIME_LABEL]: latest("nodejs"),
+        },
+        annotations: {
+          [runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]: `{"functionId":"firebaseMetadataId"}`,
+          [runv2.FUNCTION_TARGET_ANNOTATION]: "targetId",
+          [runv2.FUNCTION_ID_ANNOTATION]: "annotationId",
+        },
+        template: {
+          containers: [
+            {
+              name: "worker",
+              image: IMAGE_URI,
+              resources: { limits: { cpu: "1", memory: "256Mi" } },
+            },
+          ],
+        },
+      };
+      const result = runv2.endpointFromService(service);
+      expect(result.id).to.equal("firebaseMetadataId");
+      expect(result.entryPoint).to.equal("targetId");
+    });
+
     it("should derive id from FUNCTION_TARGET_ANNOTATION if FUNCTION_ID_ANNOTATION is missing", () => {
       const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
         ...BASE_RUN_SERVICE,
@@ -293,12 +332,13 @@ describe("runv2", () => {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
         },
         annotations: {
+          ...BASE_RUN_SERVICE.annotations,
           [runv2.FUNCTION_TARGET_ANNOTATION]: FUNCTION_ID, // This will be used for id and entryPoint
         },
         template: {
           containers: [
             {
-              name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+              name: "worker",
               image: IMAGE_URI,
               resources: { limits: { cpu: "1", memory: "256Mi" } },
             },
@@ -323,7 +363,7 @@ describe("runv2", () => {
         template: {
           containers: [
             {
-              name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+              name: "worker",
               image: IMAGE_URI,
               resources: { limits: { cpu: "1", memory: "256Mi" } },
             },
@@ -360,8 +400,10 @@ describe("runv2", () => {
     it("should copy concurrency, min/max instances", () => {
       const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containerConcurrency = 10;
-      service.annotations![runv2.MIN_INSTANCES_ANNOTATION] = "2";
-      service.annotations![runv2.MAX_INSTANCES_ANNOTATION] = "5";
+      service.scaling = {
+        minInstanceCount: 2,
+        maxInstanceCount: 5,
+      }
 
       const result = runv2.endpointFromService(service);
       expect(result.concurrency).to.equal(10);
@@ -376,7 +418,7 @@ describe("runv2", () => {
         template: {
           containers: [
             {
-              name: runv2.DEFAULT_FUNCTION_CONTAINER_NAME,
+              name: "worker",
               image: IMAGE_URI,
               resources: { limits: { memory: "128Mi", cpu: "0.5" } }, // Minimal resources
             },

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { generateOperation } from "../../../gemini/fdcExperience.js";
-import { pickService } from "../../../dataconnect/fileUtils.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { generateOperation } from "../../../gemini/fdcExperience";
+import { pickService } from "../../../dataconnect/fileUtils";
 
 export const generate_operation = tool(
   {
@@ -30,7 +30,7 @@ export const generate_operation = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      requiresGemini: true,
     },
   },
   async ({ prompt, service_id }, { projectId, config }) => {

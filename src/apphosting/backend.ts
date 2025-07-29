@@ -14,7 +14,7 @@ import {
   secretManagerOrigin,
 } from "../api";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
-import { addServiceAccountToRoles, getIamPolicy } from "../gcp/resourceManager";
+import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
 import { input, confirm, select, checkbox, search, Choice } from "../prompt";
@@ -246,13 +246,12 @@ export async function createGitRepoLink(
 /**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
- * check fails, this returns an error. If the permission check fails with a
- * "not found" error, this attempts to provision the service account.
+ * check fails, this returns an error. Otherwise, it attempts to provision the
+ * service account.
  */
 export async function ensureAppHostingComputeServiceAccount(
   projectId: string,
   serviceAccount: string | null,
-  deployFromSource = false,
 ): Promise<void> {
   const sa = serviceAccount || defaultComputeServiceAccountEmail(projectId);
   const name = `projects/${projectId}/serviceAccounts/${sa}`;
@@ -268,38 +267,19 @@ export async function ensureAppHostingComputeServiceAccount(
     if (!(err instanceof FirebaseError)) {
       throw err;
     }
-    if (err.status === 404) {
-      await provisionDefaultComputeServiceAccount(projectId);
-    } else if (err.status === 403) {
+    if (err.status === 403) {
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
       );
-    }
-  }
-  // N.B. To deploy from source, the App Hosting Compute Service Account must have
-  // the storage.objectViewer IAM role. For firebase-tools <= 14.3.0, the CLI does
-  // not add the objectViewer role, which means all existing customers will need to
-  // add it before deploying from source.
-  if (deployFromSource) {
-    const policy = await getIamPolicy(projectId);
-    const objectViewerBinding = policy.bindings.find(
-      (binding) => binding.role === "roles/storage.objectViewer",
-    );
-    if (
-      !objectViewerBinding ||
-      !objectViewerBinding.members.includes(
-        `serviceAccount:${defaultComputeServiceAccountEmail(projectId)}`,
-      )
-    ) {
-      await addServiceAccountToRoles(
-        projectId,
-        defaultComputeServiceAccountEmail(projectId),
-        ["roles/storage.objectViewer"],
-        /* skipAccountLookup= */ true,
+    } else if (err.status !== 404) {
+      throw new FirebaseError(
+        "Unexpected error occurred while testing for IAM service account permissions",
+        { original: err },
       );
     }
   }
+  await provisionDefaultComputeServiceAccount(projectId);
 }
 
 /**
@@ -384,17 +364,27 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       throw err;
     }
   }
-  await addServiceAccountToRoles(
-    projectId,
-    defaultComputeServiceAccountEmail(projectId),
-    [
-      "roles/firebaseapphosting.computeRunner",
-      "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.readTokenAccessor",
-      "roles/storage.objectViewer",
-    ],
-    /* skipAccountLookup= */ true,
-  );
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      defaultComputeServiceAccountEmail(projectId),
+      [
+        "roles/firebaseapphosting.computeRunner",
+        "roles/firebase.sdkAdminServiceAgent",
+        "roles/developerconnect.readTokenAccessor",
+        "roles/storage.objectViewer",
+      ],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 400) {
+      logWarning(
+        "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      );
+    } else {
+      throw err;
+    }
+  }
 }
 
 /**

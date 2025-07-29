@@ -27,3 +27,4 @@ scripts/*.json
 lib/
 dev/
 clean/
+.gemini/

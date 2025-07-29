@@ -57,6 +57,14 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  dangerouslyAllowFunctionsConfig: {
+    shortDescription: "Allows the use of deprecated functions.config() API",
+    fullDescription:
+      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
+      "This experiment allows continued use of the API during the migration period.",
+    default: true,
+    public: true,
+  },
   runfunctions: {
     shortDescription:
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
@@ -138,6 +146,10 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
     default: true,
     public: false,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
   },
 });
 

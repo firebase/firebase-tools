@@ -51,6 +51,7 @@ export interface Context {
   unreachableRegions?: {
     gcfV1: string[];
     gcfV2: string[];
+    run: string[];
   };
 
   // Tracks metrics about codebase deployments to send to GA4
@@ -58,6 +59,9 @@ export interface Context {
 
   // Tracks context for extension deploy
   extensions?: ExtContext;
+
+  // True if functions deploy is using runtime config
+  hasRuntimeConfig?: boolean;
 }
 
 export interface CodebaseDeployEvent {

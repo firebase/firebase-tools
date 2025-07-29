@@ -1,2 +1,2 @@
-- Updated the Data Connect emulator to use pglite 0.3.x and Postgres 17, which fixes some crashes related to wire protocol inconsistencies. (#8679, #8658)
-- Fixed an issue where the IAM enablement for GenKit monitoring would try to change an invalid service account. (#8756)
+- Fixed ext:export command so that it correctly returns system params in the .env file (#8881)
+- Fixed an issue where the MCP server could not successfully use Application Default Credentials. (#8896)

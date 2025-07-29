@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { generateSchema } from "../../../gemini/fdcExperience.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { generateSchema } from "../../../gemini/fdcExperience";
 
 export const generate_schema = tool(
   {
@@ -18,7 +18,7 @@ export const generate_schema = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      requiresGemini: true,
     },
   },
   async ({ prompt }, { projectId }) => {
