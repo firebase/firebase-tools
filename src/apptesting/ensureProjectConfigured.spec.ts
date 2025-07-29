@@ -42,12 +42,22 @@ describe("ensureProjectConfigured", () => {
     await apptesting.ensureProjectConfigured(projectId);
 
     expect(ensureApiEnabledStub).to.be.calledThrice;
-    expect(ensureApiEnabledStub).to.be.calledWith(projectId, sinon.match.any, "storage", false);
-    expect(ensureApiEnabledStub).to.be.calledWith(projectId, sinon.match.any, "run", false);
     expect(ensureApiEnabledStub).to.be.calledWith(
       projectId,
-      sinon.match.any,
-      "artifactregistry",
+      "https://storage.googleapis.com",
+      "apptesting",
+      false,
+    );
+    expect(ensureApiEnabledStub).to.be.calledWith(
+      projectId,
+      "https://run.googleapis.com",
+      "apptesting",
+      false,
+    );
+    expect(ensureApiEnabledStub).to.be.calledWith(
+      projectId,
+      "https://artifactregistry.googleapis.com",
+      "apptesting",
       false,
     );
   });
