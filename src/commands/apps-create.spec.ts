@@ -7,6 +7,7 @@ import * as apps from "../management/apps";
 import { AppPlatform } from "../management/apps";
 import * as prompt from "../prompt";
 import { command, logPostAppCreationInformation } from "./apps-create";
+import * as auth from "../auth";
 
 describe("apps:create", () => {
   let sandbox: sinon.SinonSandbox;
@@ -14,9 +15,11 @@ describe("apps:create", () => {
   let getAppPlatformStub: sinon.SinonStub;
   let sdkInitStub: sinon.SinonStub;
   let selectStub: sinon.SinonStub;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
     needProjectIdStub = sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     getAppPlatformStub = sandbox.stub(apps, "getAppPlatform");
     sdkInitStub = sandbox.stub(apps, "sdkInit").resolves({

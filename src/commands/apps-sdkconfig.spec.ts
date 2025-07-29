@@ -9,6 +9,7 @@ import * as projects from "../management/projects";
 import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import { command } from "./apps-sdkconfig";
+import * as auth from "../auth";
 
 import { logger } from "../logger";
 
@@ -24,9 +25,11 @@ describe("apps:sdkconfig", () => {
   let writeFileSyncStub: sinon.SinonStub;
   let existsSyncStub: sinon.SinonStub;
   let loggerInfoStub: sinon.SinonStub;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
     needProjectIdStub = sandbox.stub(projectUtils, "needProjectId");
     getAppConfigStub = sandbox.stub(apps, "getAppConfig");
     getAppConfigFileStub = sandbox.stub(apps, "getAppConfigFile");

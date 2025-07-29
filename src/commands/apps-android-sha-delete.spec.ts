@@ -5,15 +5,18 @@ import * as projectUtils from "../projectUtils";
 import * as apps from "../management/apps";
 import * as utils from "../utils";
 import { command } from "./apps-android-sha-delete";
+import * as auth from "../auth";
 
 describe("apps:android:sha:delete", () => {
   let sandbox: sinon.SinonSandbox;
   let needProjectIdStub: sinon.SinonStub;
   let deleteAppAndroidShaStub: sinon.SinonStub;
   let promiseWithSpinnerStub: sinon.SinonStub;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
     needProjectIdStub = sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     deleteAppAndroidShaStub = sandbox.stub(apps, "deleteAppAndroidSha").resolves();
     promiseWithSpinnerStub = sandbox.stub(utils, "promiseWithSpinner").callThrough();

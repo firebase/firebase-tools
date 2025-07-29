@@ -7,6 +7,7 @@ import * as projectUtils from "../projectUtils";
 import * as apps from "../management/apps";
 import { AppMetadata, AppPlatform } from "../management/apps";
 import { command, logAppsList, logAppCount } from "./apps-list";
+import * as auth from "../auth";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
@@ -14,9 +15,11 @@ describe("apps:list", () => {
   let sandbox: sinon.SinonSandbox;
   let listFirebaseAppsStub: sinon.SinonStub;
   let getAppPlatformStub: sinon.SinonStub;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     listFirebaseAppsStub = sandbox.stub(apps, "listFirebaseApps");
     getAppPlatformStub = sandbox.stub(apps, "getAppPlatform");

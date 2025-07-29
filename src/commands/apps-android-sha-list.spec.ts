@@ -7,13 +7,16 @@ import * as apps from "../management/apps";
 import { AppAndroidShaData, ShaCertificateType } from "../management/apps";
 import * as utils from "../utils";
 import { command, logCertificatesList, logCertificatesCount } from "./apps-android-sha-list";
+import * as auth from "../auth";
 
 describe("apps:android:sha:list", () => {
   let sandbox: sinon.SinonSandbox;
   let promiseWithSpinnerStub: sinon.SinonStub;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(auth, "requireAuth").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     sandbox.stub(apps, "listAppAndroidSha");
     promiseWithSpinnerStub = sandbox.stub(utils, "promiseWithSpinner");
