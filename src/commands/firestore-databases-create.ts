@@ -17,7 +17,10 @@ export const command = new Command("firestore:databases:create <database>")
     "--location <locationId>",
     "region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations (required)",
   )
-  .option("--enterprise-edition", "create a database with enterprise capabilities")
+  .option(
+    "--edition <edition>",
+    "the edition of the database to create, for example 'standard' or 'enterprise'. If not provided, 'standard' is used as a default.",
+  )
   .option(
     "--delete-protection <deleteProtectionState>",
     "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
@@ -45,9 +48,17 @@ export const command = new Command("firestore:databases:create <database>")
     }
     // Type is always Firestore Native since Firebase does not support Datastore Mode
     const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
-    const databaseEdition: types.DatabaseEdition | undefined = options.enterpriseEdition
-      ? types.DatabaseEdition.ENTERPRISE
-      : undefined;
+    if (options.edition &&
+      options.edition !== "standard" &&
+      options.edition !== "enterprise"
+    ) {
+      throw new FirebaseError(`Invalid value for flag --edition. ${helpCommandText}`);
+    }
+    const databaseEdition: types.DatabaseEdition =
+      options.edition === "enterprise"
+        ? types.DatabaseEdition.ENTERPRISE
+        : types.DatabaseEdition.STANDARD;
+   
     if (
       options.deleteProtection &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
