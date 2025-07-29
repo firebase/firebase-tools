@@ -608,3 +608,36 @@ export async function getStudioWorkspace(): Promise<StudioWorkspace | undefined>
     return undefined;
   }
 }
+
+export async function updateStudioFirebaseProject(projectId: string): Promise<void> {
+  const workspaceId = process.env.WORKSPACE_SLUG;
+  if (!workspaceId) {
+    logger.error(
+      `Failed to update Firebase Project for Studio Workspace because WORKSPACE_SLUG environment variable is empty`,
+    );
+    return;
+  }
+  try {
+    await studioClient.request({
+      method: "PATCH",
+      path: `/v1/workspaces/${workspaceId}`,
+      body: {
+        firebase_project_id: projectId,
+      },
+      queryParams: {
+        updateMask: "firebase_project_id",
+      },
+      timeout: TIMEOUT_MILLIS,
+    });
+    return;
+  } catch (err: any) {
+    let message = err.message;
+    if (err.original) {
+      message += ` (original: ${err.original.message})`;
+    }
+    logger.error(
+      `Failed to update active Firebase Project for current Studio Workspace: ${message}`,
+    );
+    return;
+  }
+}
