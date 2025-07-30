@@ -283,9 +283,10 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     // Check if the user is logged in.
-    const accountEmail = await this.getAuthenticatedUser();
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
-      return mcpAuthError();
+      return mcpAuthError(skipAutoAuthForStudio);
     }
 
     // Check if the tool requires Gemini in Firebase API.

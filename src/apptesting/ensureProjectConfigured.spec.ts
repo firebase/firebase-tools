@@ -41,13 +41,29 @@ describe("ensureProjectConfigured", () => {
 
     await apptesting.ensureProjectConfigured(projectId);
 
-    expect(ensureApiEnabledStub).to.be.calledThrice;
-    expect(ensureApiEnabledStub).to.be.calledWith(projectId, sinon.match.any, "storage", false);
-    expect(ensureApiEnabledStub).to.be.calledWith(projectId, sinon.match.any, "run", false);
+    expect(ensureApiEnabledStub).to.be.callCount(4);
     expect(ensureApiEnabledStub).to.be.calledWith(
       projectId,
-      sinon.match.any,
-      "artifactregistry",
+      "https://firebaseapptesting.googleapis.com",
+      "Firebase App Testing",
+      false,
+    );
+    expect(ensureApiEnabledStub).to.be.calledWith(
+      projectId,
+      "https://run.googleapis.com",
+      "Cloud Run",
+      false,
+    );
+    expect(ensureApiEnabledStub).to.be.calledWith(
+      projectId,
+      "https://storage.googleapis.com",
+      "Cloud Storage",
+      false,
+    );
+    expect(ensureApiEnabledStub).to.be.calledWith(
+      projectId,
+      "https://artifactregistry.googleapis.com",
+      "Artifact Registry",
       false,
     );
   });
