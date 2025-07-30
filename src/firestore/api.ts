@@ -31,7 +31,10 @@ export class FirestoreApi {
       let fields = index.fields;
       const lastField = index.fields?.[index.fields.length - 1];
       if (lastField?.fieldPath === "__name__") {
-        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
+        const lastOrderedField = [...fields]
+          .reverse()
+          .find((f) => f.fieldPath !== "__name__" && f.order);
+        const defaultDirection = lastOrderedField?.order;
         if (lastField?.order === defaultDirection) {
           fields = fields.slice(0, -1);
         }
