@@ -9,7 +9,7 @@ import { messagingTools } from "./messaging/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
-import { realtimeDatabaseTools } from "./database/index.js";
+import { realtimeDatabaseTools } from "./database/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
