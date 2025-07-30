@@ -1,5 +1,11 @@
 {
   "name": "yarn-workspace",
   "private": true,
-  "workspaces": ["packages/functions", "packages/a-test-pkg"]
+  "workspaces": [
+    "packages/functions",
+    "packages/a-test-pkg"
+  ],
+  "dependencies": {
+    "brace-expansion": "^4.0.1"
+  }
 }

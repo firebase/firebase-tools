@@ -2,6 +2,7 @@
   "name": "dist",
   "version": "0.0.1",
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "firebase-functions": "^6.4.0"
   }
 }

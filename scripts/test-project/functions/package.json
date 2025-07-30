@@ -2,6 +2,7 @@
   "name": "functions",
   "description": "Firebase Functions",
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^4.9.0"
   },

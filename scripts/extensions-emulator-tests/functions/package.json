@@ -6,6 +6,7 @@
     "node": "20"
   },
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "firebase-admin": "^12.1.0",
     "firebase-functions": "^5.1.0",
     "fs-extra": "^5.0.0"

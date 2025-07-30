@@ -232,6 +232,7 @@
     "@vscode/codicons": "0.0.30",
     "@vscode/vsce": "^2.25.0",
     "@vscode/webview-ui-toolkit": "^1.2.1",
+    "brace-expansion": "^4.0.1",
     "classnames": "^2.3.2",
     "exponential-backoff": "3.1.1",
     "graphql-language-service": "file:graphql-language-service-5.4.0.tgz",

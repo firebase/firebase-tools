@@ -11,6 +11,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "shelljs": "^0.8.5",
     "yargs": "^13.3.0"
   }

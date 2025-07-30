@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@firebase/database-compat": "0.1.2",
+    "brace-expansion": "^4.0.1",
     "firebase-admin": "^11.0.0",
     "firebase-functions": "^5.1.0"
   },
