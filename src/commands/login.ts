@@ -53,7 +53,7 @@ export const command = new Command("login")
       if (geminiUsage || collectUsage) {
         logger.info();
         utils.logBullet(
-          "To change your the preferences at any time, run `firebase logout` and `firebase login` again.",
+          "To change your preferences at any time, run `firebase logout` and `firebase login` again.",
         );
       }
     }
