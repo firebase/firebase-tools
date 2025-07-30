@@ -544,6 +544,7 @@ export async function startAll(
         functionsDir,
         runtime,
         codebase: cfg.codebase,
+        prefix: cfg.prefix,
         env: {
           ...options.extDevEnv,
         },

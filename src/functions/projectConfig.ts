@@ -76,8 +76,16 @@ export function assertUnique(
  * Validate functions config.
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
+  if (config.length > 1) {
+    for (const c of config) {
+      if (!c.codebase) {
+        throw new FirebaseError(
+          "Each functions config must have a unique 'codebase' field when defining multiple functions.",
+        );
+      }
+    }
+  }
   const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
-  assertUnique(validated, "source");
   assertUnique(validated, "codebase");
   return validated;
 }

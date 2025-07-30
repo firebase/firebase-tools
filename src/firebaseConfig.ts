@@ -170,6 +170,7 @@ export type FunctionConfig = {
   ignore?: string[];
   runtime?: ActiveRuntime;
   codebase?: string;
+  prefix?: string;
 } & Deployable;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];

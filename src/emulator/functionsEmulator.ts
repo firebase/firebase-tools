@@ -87,6 +87,7 @@ export interface EmulatableBackend {
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
+  prefix?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   runtime?: Runtime;
   bin?: string;
@@ -570,6 +571,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         userEnvs,
         nonInteractive: false,
         isEmulator: true,
+        prefix: emulatableBackend.prefix,
       });
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);

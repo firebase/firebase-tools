@@ -42,10 +42,22 @@ describe("projectConfig", () => {
       );
     });
 
-    it("fails validation given config w/ duplicate source", () => {
-      expect(() =>
-        projectConfig.validate([TEST_CONFIG_0, { ...TEST_CONFIG_0, codebase: "unique-codebase" }]),
-      ).to.throw(FirebaseError, /source must be unique/);
+    it("passes validation for multi-instance config with same source", () => {
+      const config = [
+        { source: "foo", codebase: "bar" },
+        { source: "foo", codebase: "baz" },
+      ];
+      expect(projectConfig.validate(config as projectConfig.NormalizedConfig)).to.deep.equal(
+        config,
+      );
+    });
+
+    it("fails validation for multi-instance config with missing codebase", () => {
+      const config = [{ source: "foo", codebase: "bar" }, { source: "foo" }];
+      expect(() => projectConfig.validate(config as projectConfig.NormalizedConfig)).to.throw(
+        FirebaseError,
+        /Each functions config must have a unique 'codebase' field/,
+      );
     });
 
     it("fails validation given codebase name with capital letters", () => {
@@ -71,6 +83,14 @@ describe("projectConfig", () => {
           },
         ]),
       ).to.throw(FirebaseError, /Invalid codebase name/);
+    });
+
+    it("should allow a single function in an array to have a default codebase", () => {
+      const config = [{ source: "foo" }];
+      const expected = [{ source: "foo", codebase: "default" }];
+      expect(projectConfig.validate(config as projectConfig.NormalizedConfig)).to.deep.equal(
+        expected,
+      );
     });
   });
 
@@ -101,13 +121,6 @@ describe("projectConfig", () => {
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
         /codebase source must be specified/,
-      );
-    });
-
-    it("fails validation given config w/ duplicate source", () => {
-      expect(() => projectConfig.normalizeAndValidate([TEST_CONFIG_0, TEST_CONFIG_0])).to.throw(
-        FirebaseError,
-        /functions.source must be unique/,
       );
     });
 

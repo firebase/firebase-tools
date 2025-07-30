@@ -287,6 +287,7 @@ interface ResolveBackendOpts {
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  prefix?: string;
 }
 
 /**
@@ -316,7 +317,7 @@ export async function resolveBackend(
   }
   writeUserEnvs(toWrite, opts.userEnvOpt);
 
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+  return { backend: toBackend(opts.build, paramValues, opts.prefix), envs: paramValues };
 }
 
 // Exported for testing
@@ -446,6 +447,7 @@ class Resolver {
 export function toBackend(
   build: Build,
   paramValues: Record<string, params.ParamValue>,
+  prefix?: string,
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
@@ -481,7 +483,7 @@ export function toBackend(
         throw new FirebaseError("platform can't be undefined");
       }
       const bkEndpoint: backend.Endpoint = {
-        id: endpointId,
+        id: prefix ? `${prefix}-${endpointId}` : endpointId,
         project: bdEndpoint.project,
         region: region,
         entryPoint: bdEndpoint.entryPoint,

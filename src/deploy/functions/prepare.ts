@@ -135,6 +135,7 @@ export async function prepare(
       userEnvs,
       nonInteractive: options.nonInteractive,
       isEmulator: false,
+      prefix: config.prefix,
     });
 
     let hasEnvsFromParams = false;

@@ -224,6 +224,27 @@ describe("toBackend", () => {
       expect(endpointDef.func.serviceAccount).to.equal("service-account-1@");
     }
   });
+
+  it("should apply the prefix to the function name", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {}, "my-prefix");
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const regionalEndpoints = Object.values(backend.endpoints)[0];
+    const endpoint = Object.values(regionalEndpoints)[0];
+    expect(endpoint).to.not.equal(undefined);
+    if (endpoint) {
+      expect(endpoint.id).to.equal("my-prefix-func");
+    }
+  });
 });
 
 describe("envWithType", () => {
