@@ -564,6 +564,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
+      if (emulatableBackend.prefix) {
+        const newEndpoints: Record<string, backend.Endpoint> = {};
+        for (const id of Object.keys(discoveredBuild.endpoints)) {
+          newEndpoints[`${emulatableBackend.prefix}-${id}`] = discoveredBuild.endpoints[id];
+        }
+        discoveredBuild.endpoints = newEndpoints;
+      }
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
@@ -571,7 +578,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         userEnvs,
         nonInteractive: false,
         isEmulator: true,
-        prefix: emulatableBackend.prefix,
       });
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
