@@ -676,7 +676,12 @@ async function writeStudioProjectToConfigStore(studioProjectId: string) {
   // TODO write to firebase-tools.json
 }
 
-async function updateStudioFirebaseProject(projectId: string): Promise<void> {
+/**
+ * Sets the active project for the current Firebase Studio Workspace
+ * @param projectId The project ID saved in spanner
+ * @return A promise that resolves when complete
+ */
+export async function updateStudioFirebaseProject(projectId: string): Promise<void> {
   logger.info(`Updating Studio Workspace active project to match Firebase CLI '${projectId}'`);
   const workspaceId = process.env.WORKSPACE_SLUG;
   if (!workspaceId) {
