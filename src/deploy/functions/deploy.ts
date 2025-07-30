@@ -1,9 +1,14 @@
 import { setGracefulCleanup } from "tmp";
 import * as clc from "colorette";
 import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import { createWriteStream } from "fs";
+import * as archiver from "archiver";
 
 import { checkHttpIam } from "./checkIam";
 import { logLabeledWarning, logSuccess, logWarning } from "../../utils";
+import { logger } from "../../logger";
 import { Options } from "../../options";
 import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
@@ -13,6 +18,8 @@ import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
+import { Delegate as DartDelegate } from "./runtimes/dart";
+import { archiveDirectory } from "../../archiveDirectory";
 
 setGracefulCleanup();
 
@@ -73,13 +80,118 @@ async function uploadSourceV2(
   return res.storageSource;
 }
 
+async function uploadSourceCloudRun(
+  projectId: string,
+  source: args.Source,
+  wantBackend: backend.Backend,
+  sourceDir: string,
+): Promise<string | undefined> {
+  const runEndpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "run");
+  if (runEndpoints.length === 0) {
+    return;
+  }
+
+  // TODO: Handle multiple regions - for now just use first endpoint's region
+  const endpoint = runEndpoints[0];
+  const region = endpoint.region;
+  const runtime = endpoint.runtime;
+
+  // Create temp directory for build artifacts
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "functions-build-"));
+
+  try {
+    // Compile Dart to native executable
+    logLabeledWarning("functions", `Compiling Dart to native executable...`);
+    // Note: sourceDir is already the absolute path to the source directory
+    const projectDir = path.resolve("."); // Get project root
+    logger.debug(`Project directory: ${projectDir}`);
+    logger.debug(`Source directory: ${sourceDir}`);
+    const delegate = new DartDelegate(projectId, projectDir, sourceDir, runtime);
+    await delegate.compileToExecutable(tempDir);
+
+    // Create tar.gz with the executable
+    const exePath = path.join(tempDir, "server");
+    
+    // Use existing archiveDirectory but with just our binary
+    const binaryDir = path.join(tempDir, "archive");
+    await fs.promises.mkdir(binaryDir);
+    await fs.promises.copyFile(exePath, path.join(binaryDir, "server"));
+    
+    const archive = await archiveDirectory(binaryDir);
+
+    // Upload to GCS bucket for Cloud Run
+    const bucketName = `run-sources-${projectId}-${region}`;
+    const timestamp = Date.now();
+    const objectPath = `functions/${endpoint.id}/${timestamp}/source.tar.gz`;
+    
+    logLabeledWarning("functions", `Uploading to gs://${bucketName}/${objectPath}`);
+    
+    // Ensure the bucket exists
+    try {
+      await gcs.getBucket(bucketName);
+    } catch (err: any) {
+      if (err?.status === 404) {
+        logLabeledWarning("functions", `Creating Cloud Storage bucket ${bucketName}...`);
+        await gcs.createBucket(projectId, {
+          name: bucketName,
+          location: region,
+          lifecycle: {
+            rule: [
+              {
+                action: {
+                  type: "Delete",
+                },
+                condition: {
+                  age: 30,
+                },
+              },
+            ],
+          },
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    // Upload the tar.gz archive
+    const { object } = await gcs.uploadObject(
+      {
+        file: objectPath,
+        stream: archive.stream,
+      },
+      bucketName,
+    );
+
+    return `gs://${bucketName}/${objectPath}`;
+  } finally {
+    // Cleanup temp directory
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 async function uploadCodebase(
   context: args.Context,
   codebase: string,
   wantBackend: backend.Backend,
 ): Promise<void> {
   const source = context.sources?.[codebase];
-  if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
+  if (!source) {
+    return;
+  }
+
+  const config = configForCodebase(context.config!, codebase);
+  const sourceDir = path.resolve(config.source);
+
+  // Handle Cloud Run deployments separately
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "run")) {
+    const cloudRunUrl = await uploadSourceCloudRun(context.projectId, source, wantBackend, sourceDir);
+    if (cloudRunUrl) {
+      source.sourceUrl = cloudRunUrl;
+    }
+    return;
+  }
+
+  if (!source.functionsSourceV1 && !source.functionsSourceV2) {
     return;
   }
 
@@ -96,10 +208,9 @@ async function uploadCodebase(
       source.storage = storage as gcfv2.StorageSource;
     }
 
-    const sourceDir = configForCodebase(context.config!, codebase).source;
     if (uploads.length) {
       logSuccess(
-        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`,
+        `${clc.green(clc.bold("functions:"))} ${clc.bold(config.source)} folder uploaded successfully`,
       );
     }
   } catch (err: any) {

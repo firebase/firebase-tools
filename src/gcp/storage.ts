@@ -245,7 +245,8 @@ export async function upload(
 }
 
 /**
- * Uploads a zip file to the specified bucket using the firebasestorage api.
+ * Uploads a file to the specified bucket using the firebasestorage api.
+ * Supports .zip, .tar.gz, and other file types.
  */
 export async function uploadObject(
   /** Source with file (name) to upload, and stream of file. */
@@ -257,23 +258,31 @@ export async function uploadObject(
   object: string;
   generation: string | null;
 }> {
-  if (path.extname(source.file) !== ".zip") {
-    throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
+  const ext = path.extname(source.file);
+  let contentType = "application/octet-stream";
+  
+  // Set appropriate content type based on file extension
+  if (ext === ".zip") {
+    contentType = "application/zip";
+  } else if (ext === ".gz" || source.file.endsWith(".tar.gz")) {
+    contentType = "application/gzip";
   }
+  
   const localAPIClient = new Client({ urlPrefix: storageOrigin() });
-  const location = `/${bucketName}/${path.basename(source.file)}`;
+  // Use the full file path, not just the basename
+  const location = `/${bucketName}/${source.file}`;
   const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
-      "Content-Type": "application/zip",
+      "Content-Type": contentType,
       "x-goog-content-length-range": "0,123289600",
     },
     body: source.stream,
   });
   return {
     bucket: bucketName,
-    object: path.basename(source.file),
+    object: source.file,
     generation: res.response.headers.get("x-goog-generation"),
   };
 }

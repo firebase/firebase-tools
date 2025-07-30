@@ -9,7 +9,7 @@ export type RuntimeStatus = "experimental" | "beta" | "GA" | "deprecated" | "dec
 type Day = `${number}-${number}-${number}`;
 
 /** Supported languages. All Runtime are a language + version. */
-export type Language = "nodejs" | "python";
+export type Language = "nodejs" | "python" | "dart";
 
 /**
  * Helper type that is more friendlier than string interpolation everywhere.
@@ -112,6 +112,12 @@ export const RUNTIMES = runtimes({
     status: "GA",
     deprecationDate: "2029-10-10",
     decommissionDate: "2030-04-10",
+  },
+  dart3: {
+    friendly: "Dart 3",
+    status: "experimental",
+    deprecationDate: "2099-12-31",
+    decommissionDate: "2099-12-31",
   },
 });
 

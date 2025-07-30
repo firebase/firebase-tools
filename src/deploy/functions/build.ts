@@ -209,7 +209,7 @@ export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 |
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
@@ -224,7 +224,7 @@ export type Endpoint = Triggered & {
   omit?: Field<boolean>;
 
   // Defaults to "gcfv2". "Run" will be an additional option defined later
-  platform?: "gcfv1" | "gcfv2";
+  platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
   // Will become optional once "run" is supported as a platform

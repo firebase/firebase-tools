@@ -567,6 +567,15 @@ export function isRunningInWSL(): boolean {
 }
 
 /**
+ * Detects if the CLI is running in an AI agent environment
+ * Currently supports Claude Code and Gemini CLI
+ * @returns true if running in an AI agent environment
+ */
+export function isRunningInAIAgent(): boolean {
+  return process.env.CLAUDECODE === "1" || process.env.GEMINI_CLI === "1";
+}
+
+/**
  * Generates a date that is 30 days from Date.now()
  */
 export function thirtyDaysFromNow(): Date {

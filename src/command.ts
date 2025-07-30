@@ -3,7 +3,7 @@ import { CommanderStatic } from "commander";
 import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, withTimeout } from "./utils";
+import { getInheritedOption, withTimeout, isRunningInAIAgent } from "./utils";
 import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
@@ -46,6 +46,7 @@ export class Command {
   private helpText = "";
   private client?: CLIClient;
   private positionalArgs: { name: string; required: boolean }[] = [];
+  private commanderCmd?: any; // Commander command instance
 
   /**
    * @param cmd the command to create.
@@ -147,6 +148,7 @@ export class Command {
     this.client = client;
     const program = client.cli;
     const cmd = program.command(this.cmd);
+    this.commanderCmd = cmd; // Store reference to Commander command
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
     }
@@ -295,8 +297,12 @@ export class Command {
   public async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
+    
+    // Store reference to the command for use in before hooks
+    options._command = this;
+    options._commanderCmd = this.commanderCmd;
 
-    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
+    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive") || isRunningInAIAgent()) {
       options.nonInteractive = true;
     }
     // allow override of detected non-interactive with --interactive flag

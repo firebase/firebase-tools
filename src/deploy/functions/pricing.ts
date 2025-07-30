@@ -169,6 +169,7 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   const usage: Record<backend.FunctionsPlatform, Record<tier, Usage>> = {
     gcfv1: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
     gcfv2: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
+    run: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
   };
 
   for (const endpoint of endpoints) {

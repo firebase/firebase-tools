@@ -359,6 +359,9 @@ export async function updateEndpointSecret(
       operationResourceName: op.name,
     });
     return gcfV2.endpointFromFunction(cfn);
+  } else if (endpoint.platform === "run") {
+    // Cloud Run doesn't use the same secret binding mechanism
+    throw new FirebaseError("Secret binding is not yet implemented for Cloud Run functions");
   } else {
     assertExhaustive(endpoint.platform);
   }

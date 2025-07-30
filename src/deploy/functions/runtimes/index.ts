@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
 import * as python from "./python";
+import * as dart from "./dart";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 import * as supported from "./supported";
@@ -70,7 +71,7 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate, dart.tryCreateDelegate];
 
 /**
  * Gets the delegate object responsible for discovering, building, and hosting

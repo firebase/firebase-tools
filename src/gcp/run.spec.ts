@@ -309,7 +309,7 @@ describe("run", () => {
                       containerPort: 8080,
                     },
                   ],
-                  env: {},
+                  env: [],
                   resources: {
                     limits: {
                       memory: "256M",
@@ -383,7 +383,7 @@ describe("run", () => {
                       containerPort: 8080,
                     },
                   ],
-                  env: {},
+                  env: [],
                   resources: {
                     limits: {
                       memory: "256M",

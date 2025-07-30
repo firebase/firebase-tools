@@ -249,6 +249,16 @@ export async function jobFromEndpoint(
           endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
       },
     };
+  } else if (endpoint.platform === "run") {
+    // Cloud Run uses the same HTTP target as gcfv2
+    job.httpTarget = {
+      uri: endpoint.uri!,
+      httpMethod: "POST",
+      oidcToken: {
+        serviceAccountEmail:
+          endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
+      },
+    };
   } else {
     assertExhaustive(endpoint.platform);
   }

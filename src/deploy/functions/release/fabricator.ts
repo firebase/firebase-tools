@@ -183,6 +183,8 @@ export class Fabricator {
       await this.createV1Function(endpoint, scraperV1);
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
+    } else if (endpoint.platform === "run") {
+      await this.createCloudRunService(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -206,6 +208,8 @@ export class Fabricator {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
+    } else if (update.endpoint.platform === "run") {
+      await this.updateCloudRunService(update.endpoint);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -217,8 +221,12 @@ export class Fabricator {
     await this.deleteTrigger(endpoint);
     if (endpoint.platform === "gcfv1") {
       await this.deleteV1Function(endpoint);
-    } else {
+    } else if (endpoint.platform === "gcfv2") {
       await this.deleteV2Function(endpoint);
+    } else if (endpoint.platform === "run") {
+      await this.deleteCloudRunService(endpoint);
+    } else {
+      assertExhaustive(endpoint.platform);
     }
   }
 
@@ -591,6 +599,105 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  async createCloudRunService(endpoint: backend.Endpoint): Promise<void> {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
+      logger.debug("Precondition failed. Cannot create a Cloud Run service without sourceUrl");
+      throw new Error("Precondition failed");
+    }
+
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+    const service = run.serviceFromEndpoint(endpoint, sourceUrl);
+
+    await this.functionExecutor
+      .run(async () => {
+        await run.createService(serviceName, service);
+        // Get the service to get the URL
+        const createdService = await run.getService(serviceName);
+        endpoint.uri = createdService.status?.url;
+      })
+      .catch(rethrowAs(endpoint, "create"));
+
+    // Set IAM policy - following the same pattern as gcfv2
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
+  async updateCloudRunService(endpoint: backend.Endpoint): Promise<void> {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
+      logger.debug("Precondition failed. Cannot update a Cloud Run service without sourceUrl");
+      throw new Error("Precondition failed");
+    }
+
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+    
+    await this.functionExecutor
+      .run(async () => {
+        const service = await run.getService(serviceName);
+        
+        // Update the source annotation
+        service.spec.template.metadata = service.spec.template.metadata || {};
+        service.spec.template.metadata.annotations = service.spec.template.metadata.annotations || {};
+        service.spec.template.metadata.annotations["run.googleapis.com/sources"] = JSON.stringify({ "": sourceUrl });
+        
+        // Update configuration
+        service.spec.template.spec.containerConcurrency = endpoint.concurrency;
+        service.spec.template.spec.containers[0].env = Object.entries(endpoint.environmentVariables || {}).map(
+          ([name, value]) => ({ name, value })
+        );
+        service.spec.template.spec.containers[0].resources.limits.cpu = endpoint.cpu === "gcf_gen1" ? "1" : `${endpoint.cpu}`;
+        service.spec.template.spec.containers[0].resources.limits.memory = `${endpoint.availableMemoryMb}Mi`;
+        
+        // Without this there will be a conflict creating the new spec from the template
+        delete service.spec.template.metadata.name;
+        
+        await run.updateService(serviceName, service);
+        
+        // Get the updated service to get the URL
+        const updatedService = await run.getService(serviceName);
+        endpoint.uri = updatedService.status?.url;
+      })
+      .catch(rethrowAs(endpoint, "update"));
+
+    // Update IAM policy - following the same pattern as gcfv2
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isCallableTriggered(endpoint)) {
+      invoker = ["public"];
+    }
+    
+    if (invoker) {
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
+  async deleteCloudRunService(endpoint: backend.Endpoint): Promise<void> {
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+    
+    await this.functionExecutor
+      .run(async () => {
+        // Delete the service - Cloud Run doesn't have a delete API in the current implementation
+        // We would need to add it to run.ts
+        throw new Error("Cloud Run service deletion not yet implemented");
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
@@ -630,6 +737,9 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.upsertScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        // TODO: Implement schedule triggers for Cloud Run
+        throw new Error("Schedule triggers not yet implemented for Cloud Run");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
@@ -646,6 +756,9 @@ export class Fabricator {
         return;
       } else if (endpoint.platform === "gcfv2") {
         await this.deleteScheduleV2(endpoint);
+        return;
+      } else if (endpoint.platform === "run") {
+        // TODO: Implement schedule trigger deletion for Cloud Run
         return;
       }
       assertExhaustive(endpoint.platform);

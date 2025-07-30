@@ -6,6 +6,7 @@ import * as iam from "./iam";
 import { backoff } from "../throttler/throttler";
 import { logger } from "../logger";
 import { listEntries, LogEntry } from "./cloudlogging";
+import * as backend from "../deploy/functions/backend";
 
 const API_VERSION = "v1";
 
@@ -27,6 +28,7 @@ export interface ObjectMetadata {
   namespace: string;
 
   labels?: Record<string, string>;
+  annotations?: Record<string, string>;
 
   // Not supported in Cloud Run:
   generate_name?: string;
@@ -87,18 +89,20 @@ export interface Service {
 export interface Container {
   image: string;
   ports: Array<{ name: string; containerPort: number }>;
-  env: Record<string, string>;
+  env?: Array<{ name: string; value: string }>;
   resources: {
     limits: {
       cpu: string;
       memory: string;
     };
   };
+  command?: string[];
 }
 
 export interface RevisionSpec {
   containerConcurrency?: number | null;
   containers: Container[];
+  runtimeClassName?: string;
 }
 
 export interface RevisionTemplate {
@@ -153,6 +157,36 @@ export async function getService(name: string): Promise<Service> {
     return response.body;
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch Run service ${name}`, {
+      original: err,
+      status: err?.context?.response?.statusCode,
+    });
+  }
+}
+
+/**
+ * Creates a new Cloud Run service.
+ */
+export async function createService(name: string, service: Service): Promise<Service> {
+  try {
+    // Let's try using the standard v1 API like the other operations
+    // Extract the parent path (everything except the service name)
+    const parentMatch = name.match(/^(projects\/[^\/]+\/locations\/[^\/]+)\/services\/([^\/]+)$/);
+    if (!parentMatch) {
+      throw new FirebaseError(`Invalid service name format: ${name}`);
+    }
+    const [, parent, serviceId] = parentMatch;
+    
+    // Ensure service name is set in metadata and converted to lowercase for Cloud Run
+    service.metadata.name = serviceId.toLowerCase();
+    
+    // Use the standard client and POST to the parent path
+    const response = await client.post<Service, Service>(
+      `${parent}/services`,
+      service
+    );
+    return response.body;
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to create Run service ${name}`, {
       original: err,
       status: err?.context?.response?.statusCode,
     });
@@ -366,4 +400,73 @@ export async function fetchServiceLogs(projectId: string, serviceId: string): Pr
       status: (err as any)?.context?.response?.statusCode,
     });
   }
+}
+
+/**
+ * Generate a Cloud Run Service spec from a versionless Endpoint object.
+ * This is specifically for Dart/compiled functions that run on Cloud Run.
+ */
+export function serviceFromEndpoint(endpoint: backend.Endpoint, sourceUrl: string): Service {
+  if (endpoint.platform !== "run") {
+    throw new FirebaseError(
+      "Trying to create a Cloud Run service for non-Cloud Run platform. This should never happen",
+    );
+  }
+
+  const service: Service = {
+    apiVersion: "serving.knative.dev/v1",
+    kind: "Service",
+    metadata: {
+      name: endpoint.id,
+      namespace: endpoint.project,
+      labels: {
+        [LOCATION_LABEL]: endpoint.region,
+        "firebase-functions": "true",
+        "firebase-functions-runtime": endpoint.runtime,
+        ...endpoint.labels,
+      },
+      annotations: {
+        "run.googleapis.com/launch-stage": "BETA",
+      },
+    },
+    spec: {
+      template: {
+        metadata: {
+          annotations: {
+            "run.googleapis.com/execution-environment": "gen2",
+            "run.googleapis.com/sources": JSON.stringify({ "": sourceUrl }),
+            "run.googleapis.com/base-images": JSON.stringify({ "": "go123" }),
+          },
+        },
+        spec: {
+          runtimeClassName: "run.googleapis.com/linux-base-image-update",
+          containerConcurrency: endpoint.concurrency,
+          containers: [
+            {
+              image: "scratch",
+              command: ["./server"],
+              ports: [{ name: "http1", containerPort: 8080 }],
+              env: Object.entries(endpoint.environmentVariables || {}).map(
+                ([name, value]) => ({ name, value }),
+              ),
+              resources: {
+                limits: {
+                  cpu: endpoint.cpu === "gcf_gen1" ? "1" : `${endpoint.cpu}`,
+                  memory: `${endpoint.availableMemoryMb || backend.DEFAULT_MEMORY}Mi`,
+                },
+              },
+            },
+          ],
+        },
+      },
+      traffic: [
+        {
+          latestRevision: true,
+          percent: 100,
+        },
+      ],
+    },
+  };
+
+  return service;
 }

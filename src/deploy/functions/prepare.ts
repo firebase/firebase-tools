@@ -155,7 +155,7 @@ export async function prepare(
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
         // more restrictive character set). We'll need to reimplement that here.
@@ -164,6 +164,12 @@ export async function prepare(
         assertExhaustive(endpoint.platform);
       }
       endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
+      
+      // Add FUNCTION_TARGET for Dart/Cloud Run runtime
+      if (endpoint.platform === "run") {
+        endpoint.environmentVariables["FUNCTION_TARGET"] = endpoint.id;
+      }
+      
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
@@ -217,6 +223,7 @@ export async function prepare(
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }
+    // For Cloud Run platform, source compilation and upload is handled during deployment
     context.sources[codebase] = source;
   }
 
