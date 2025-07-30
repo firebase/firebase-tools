@@ -2,7 +2,7 @@ import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-export type ValidatedSingle = FunctionConfig & { source:string; codebase: string };
+export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
@@ -92,10 +92,14 @@ export function assertUnique(
 function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
   const sourcePrefixPairs = new Set<string>();
   for (const c of config) {
-    const key = `${c.source || ""}-${c.prefix || ""}`;
+    const key = `${c.source}-${c.prefix || ""}`;
     if (sourcePrefixPairs.has(key)) {
       throw new FirebaseError(
-        `More than one functions config specifies the same source directory ('${c.source}') and function name prefix ('${c.prefix || ""}').`,
+        `More than one functions config specifies the same source directory ('${
+          c.source
+        }') and prefix ('${
+          c.prefix ?? ""
+        }'). Please add a unique 'prefix' to each function configuration that shares this source to resolve the conflict.`,
       );
     }
     sourcePrefixPairs.add(key);

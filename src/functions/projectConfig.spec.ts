@@ -43,37 +43,39 @@ describe("projectConfig", () => {
     });
 
     it("passes validation for multi-instance config with same source", () => {
-      const config = [
+      const config: projectConfig.NormalizedConfig = [
         { source: "foo", codebase: "bar" },
         { source: "foo", codebase: "baz", prefix: "prefix-two" },
       ];
-      expect(projectConfig.validate(config as projectConfig.NormalizedConfig)).to.deep.equal(
-        config,
-      );
+      expect(projectConfig.validate(config)).to.deep.equal(config);
     });
 
     it("passes validation for multi-instance config with one missing codebase", () => {
-      const config = [{ source: "foo", codebase: "bar", prefix: "bar-prefix" }, { source: "foo" }];
+      const config: projectConfig.NormalizedConfig = [
+        { source: "foo", codebase: "bar", prefix: "bar-prefix" },
+        { source: "foo" },
+      ];
       const expected = [
         { source: "foo", codebase: "bar", prefix: "bar-prefix" },
         { source: "foo", codebase: "default" },
       ];
-      expect(projectConfig.validate(config as projectConfig.NormalizedConfig)).to.deep.equal(
-        expected,
-      );
+      expect(projectConfig.validate(config)).to.deep.equal(expected);
     });
 
     it("fails validation for multi-instance config with missing codebase and a default codebase", () => {
-      const config = [{ source: "foo", codebase: "default" }, { source: "foo" }];
-      expect(() => projectConfig.validate(config as projectConfig.NormalizedConfig)).to.throw(
+      const config: projectConfig.NormalizedConfig = [
+        { source: "foo", codebase: "default" },
+        { source: "foo" },
+      ];
+      expect(() => projectConfig.validate(config)).to.throw(
         FirebaseError,
         /functions.codebase must be unique but 'default' was used more than once./,
       );
     });
 
     it("fails validation for multi-instance config with multiple missing codebases", () => {
-      const config = [{ source: "foo" }, { source: "foo" }];
-      expect(() => projectConfig.validate(config as projectConfig.NormalizedConfig)).to.throw(
+      const config: projectConfig.NormalizedConfig = [{ source: "foo" }, { source: "foo" }];
+      expect(() => projectConfig.validate(config)).to.throw(
         FirebaseError,
         /functions.codebase must be unique but 'default' was used more than once./,
       );
@@ -119,22 +121,31 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given a duplicate source/prefix pair", () => {
-      const config = [
+      const config: projectConfig.NormalizedConfig = [
         { source: "foo", codebase: "bar", prefix: "a" },
         { source: "foo", codebase: "baz", prefix: "a" },
       ];
-      expect(() => projectConfig.validate(config as projectConfig.NormalizedConfig)).to.throw(
+      expect(() => projectConfig.validate(config)).to.throw(
         FirebaseError,
-        /More than one functions config specifies the same source directory/,
+        /More than one functions config specifies the same source directory \('foo'\) and prefix \('a'\)/,
+      );
+    });
+
+    it("fails validation for multi-instance config with same source and no prefixes", () => {
+      const config: projectConfig.NormalizedConfig = [
+        { source: "foo", codebase: "bar" },
+        { source: "foo", codebase: "baz" },
+      ];
+      expect(() => projectConfig.validate(config)).to.throw(
+        FirebaseError,
+        /More than one functions config specifies the same source directory \('foo'\) and prefix \(''\)/,
       );
     });
 
     it("should allow a single function in an array to have a default codebase", () => {
-      const config = [{ source: "foo" }];
+      const config: projectConfig.NormalizedConfig = [{ source: "foo" }];
       const expected = [{ source: "foo", codebase: "default" }];
-      expect(projectConfig.validate(config as projectConfig.NormalizedConfig)).to.deep.equal(
-        expected,
-      );
+      expect(projectConfig.validate(config)).to.deep.equal(expected);
     });
   });
 
