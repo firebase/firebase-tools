@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { disableUser } from "../../../gcp/auth.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { disableUser } from "../../../gcp/auth";
 
 export const disable_user = tool(
   {

@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client.js";
-import { pickService } from "../../../dataconnect/fileUtils.js";
-import { schemaToText } from "./converter.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import * as client from "../../../dataconnect/client";
+import { pickService } from "../../../dataconnect/fileUtils";
+import { schemaToText } from "./converter";
 
 export const get_schema = tool(
   {

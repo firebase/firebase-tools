@@ -1,3 +1,3 @@
-- Added a deprecation warning for functions.config() to stderr on deploy and all functions:config commands. (#8808)
-- Added analytics to track runtime config usage in functions deployments (#8870).
-- Fixed issue where `__name__` fields with DESCENDING order were incorrectly filtered from index listings, causing duplicate index issues (#7629) and deployment conflicts (#8859). The fix now preserves `__name__` fields with explicit DESCENDING order while filtering out implicit ASCENDING `__name__` fields.
+- Fixed ext:export command so that it correctly returns system params in the .env file (#8881)
+- Fixed an issue where the MCP server could not successfully use Application Default Credentials. (#8896)
+- Fixed an issue where the incorrect API was enabled for `apptesting` commands.
