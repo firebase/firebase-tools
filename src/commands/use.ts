@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
+import { getProject, listFirebaseProjects, ProjectInfo, updateStudioFirebaseProject } from "../management/projects";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { input, select } from "../prompt";
@@ -47,6 +47,11 @@ export async function setNewActive(
     project = await getProject(resolvedProject);
   } catch {
     throw new FirebaseError("Invalid project selection, " + verifyMessage(projectOrAlias));
+  }
+
+  // Only update if running in Firebase Studio
+  if (process.env.MONOSPACE_ENV) {
+    await updateStudioFirebaseProject(resolvedProject);
   }
 
   if (aliasOpt) {
