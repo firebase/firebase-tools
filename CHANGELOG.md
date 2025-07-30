@@ -1,3 +1,4 @@
 - Fixed ext:export command so that it correctly returns system params in the .env file (#8881)
 - Fixed an issue where the MCP server could not successfully use Application Default Credentials. (#8896)
 - Fixed an issue where the incorrect API was enabled for `apptesting` commands.
+- Fixed an issue where indexes with fields with no order would be handled incorrectly. (#8910)

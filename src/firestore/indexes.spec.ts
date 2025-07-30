@@ -585,6 +585,33 @@ describe("IndexListingWithNameFields", () => {
     expect(result[0].fields[0].fieldPath).to.equal("foo");
     expect(result[0].fields[1].fieldPath).to.equal("bar");
   });
+
+  it("should filter out __name__ fields when the previous field is a vector", () => {
+    const mockIndexes: API.Index[] = [
+      {
+        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+        queryScope: API.QueryScope.COLLECTION,
+        fields: [
+          { fieldPath: "foo", order: API.Order.ASCENDING },
+          {
+            fieldPath: "bar",
+            vectorConfig: {
+              dimension: 100,
+              flat: {},
+            },
+          },
+          { fieldPath: "__name__", order: API.Order.ASCENDING },
+        ],
+        state: API.State.READY,
+      },
+    ];
+
+    const result = FirestoreApi.processIndexes(mockIndexes);
+
+    expect(result[0].fields).to.have.length(2);
+    expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result[0].fields[1].fieldPath).to.equal("bar");
+  });
 });
 
 describe("IndexSorting", () => {
