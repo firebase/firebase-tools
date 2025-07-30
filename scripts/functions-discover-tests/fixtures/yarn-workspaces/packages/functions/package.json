@@ -2,9 +2,10 @@
   "name": "simple",
   "version": "0.0.1",
   "dependencies": {
-    "firebase-functions": "^6.4.0",
+    "@firebase/a-test-pkg": "0.0.1",
+    "brace-expansion": "^4.0.1",
     "firebase-admin": "^11.2.0",
-    "@firebase/a-test-pkg": "0.0.1"
+    "firebase-functions": "^6.4.0"
   },
   "engines": {
     "node": ">=20"

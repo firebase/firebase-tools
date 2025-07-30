@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.5",
+    "brace-expansion": "^4.0.1",
     "tsx": "^4.19.4"
   },
   "devDependencies": {

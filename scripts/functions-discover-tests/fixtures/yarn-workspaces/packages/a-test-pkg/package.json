@@ -1,5 +1,8 @@
 {
   "name": "@firebase/a-test-pkg",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "brace-expansion": "^4.0.1"
+  }
 }

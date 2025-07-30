@@ -7,6 +7,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "firebase-admin": "^11.0.0",
     "firebase-functions": "^4.1.0"
   },

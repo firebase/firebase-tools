@@ -21,6 +21,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "debug": "^4.3.4",
     "google-auth-library": "^8.2.0",
     "minimist": "^1.2.6"

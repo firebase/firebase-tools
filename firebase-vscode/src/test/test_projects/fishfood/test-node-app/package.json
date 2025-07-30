@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@firebasegen/a-connector": "file:dataconnect-generated/js/a-connector"
+    "@firebasegen/a-connector": "file:dataconnect-generated/js/a-connector",
+    "brace-expansion": "^4.0.1"
   }
 }

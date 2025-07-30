@@ -2,6 +2,7 @@
   "name": "esm",
   "type": "module",
   "dependencies": {
+    "brace-expansion": "^4.0.1",
     "firebase-functions": "^6.4.0"
   }
 }
