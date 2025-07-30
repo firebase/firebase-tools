@@ -665,7 +665,9 @@ async function getStudioWorkspace(): Promise<StudioWorkspace | undefined> {
 }
 
 async function writeStudioProjectToConfigStore(studioProjectId: string) {
-  logger.info(`Updating Firebase CLI active project to match Studio Workspace '${studioProjectId}'`);
+  logger.info(
+    `Updating Firebase CLI active project to match Studio Workspace '${studioProjectId}'`,
+  );
   // TODO write to firebase-tools.json
   // TODO write to firebase-tools.json
   // TODO write to firebase-tools.json
@@ -687,7 +689,7 @@ async function updateStudioFirebaseProject(projectId: string): Promise<void> {
     await studioClient.request({
       method: "PATCH",
       path: `/workspaces/${workspaceId}`,
-      responseType: 'json',
+      responseType: "json",
       body: {
         firebaseProjectId: projectId,
       },
