@@ -220,7 +220,7 @@ describe("runv2", () => {
                   memory: "256Mi",
                 },
                 cpuIdle: true,
-                startupCpuBoost: true, 
+                startupCpuBoost: true,
               },
             },
           ],
@@ -403,7 +403,7 @@ describe("runv2", () => {
       service.scaling = {
         minInstanceCount: 2,
         maxInstanceCount: 5,
-      }
+      };
 
       const result = runv2.endpointFromService(service);
       expect(result.concurrency).to.equal(10);
