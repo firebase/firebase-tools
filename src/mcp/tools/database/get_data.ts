@@ -4,6 +4,7 @@ import { mcpError, toContent } from "../../util";
 import * as url from "node:url";
 import { Client } from "../../../apiv2";
 import { text } from "node:stream/consumers";
+import path from "node:path";
 
 export const get_data = tool(
   {
@@ -14,7 +15,7 @@ export const get_data = tool(
         .string()
         .optional()
         .describe(
-          "connect to the database at url. If omitted, use default database instance <project>-default-rtdb.firebaseio.com. Can point to emulator URL (e.g. localhost:6000/<instance>)",
+          "connect to the database at url. If omitted, use default database instance <project>-default-rtdb.firebasedatabase.app. Can point to emulator URL (e.g. localhost:6000/<instance>)",
         ),
       path: z.string().describe("The path to the data to read. (ex: /my/cool/path)"),
     }),
@@ -32,15 +33,18 @@ export const get_data = tool(
       requiresProject: false,
     },
   },
-  async ({ path, databaseUrl }, { projectId, host }) => {
-    if (!path.startsWith("/")) {
-      return mcpError(`paths must start with '/' (you passed ''${path}')`);
+  async ({ path: getPath, databaseUrl }, { projectId, host }) => {
+    if (!getPath.startsWith("/")) {
+      return mcpError(`paths must start with '/' (you passed ''${getPath}')`);
     }
 
     const dbUrl = new url.URL(
       databaseUrl
-        ? `${databaseUrl}/${path}.json`
-        : `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app/${path}.json`,
+        ? `${databaseUrl}/${getPath}.json`
+        : path.join(
+            `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app`,
+            `${getPath}.json`,
+          ),
     );
 
     const client = new Client({
@@ -48,7 +52,7 @@ export const get_data = tool(
       auth: true,
     });
 
-    host.logger.debug(`sending read request to path '${path}' for url '${dbUrl.toString()}'`);
+    host.logger.debug(`sending read request to path '${getPath}' for url '${dbUrl.toString()}'`);
 
     const res = await client.request<unknown, NodeJS.ReadableStream>({
       method: "GET",

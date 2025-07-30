@@ -5,6 +5,7 @@ import * as url from "node:url";
 import { stringToStream } from "../../../utils";
 import { Client } from "../../../apiv2";
 import { getErrMsg } from "../../../error";
+import path from "node:path";
 
 export const set_data = tool(
   {
@@ -15,7 +16,7 @@ export const set_data = tool(
         .string()
         .optional()
         .describe(
-          "connect to the database at url. If omitted, use default database instance <project>-default-rtdb.firebaseio.com. Can point to emulator URL (e.g. localhost:6000/<instance>)",
+          "connect to the database at url. If omitted, use default database instance <project>-default-rtdb.us-central1.firebasedatabase.app. Can point to emulator URL (e.g. localhost:6000/<instance>)",
         ),
       path: z.string().describe("The path to the data to read. (ex: /my/cool/path)"),
       data: z.string().describe('The JSON to write. (ex: {"alphabet": ["a", "b", "c"]})'),
@@ -31,15 +32,18 @@ export const set_data = tool(
       requiresProject: false,
     },
   },
-  async ({ path, databaseUrl, data }, { projectId, host }) => {
-    if (!path.startsWith("/")) {
-      return mcpError(`paths must start with '/' (you passed ''${path}')`);
+  async ({ path: setPath, databaseUrl, data }, { projectId, host }) => {
+    if (!setPath.startsWith("/")) {
+      return mcpError(`paths must start with '/' (you passed ''${setPath}')`);
     }
 
     const dbUrl = new url.URL(
       databaseUrl
-        ? `${databaseUrl}/${path}.json`
-        : `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app/${path}.json`,
+        ? `${databaseUrl}/${setPath}.json`
+        : path.join(
+            `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app`,
+            `${setPath}.json`,
+          ),
     );
 
     const client = new Client({
@@ -49,7 +53,7 @@ export const set_data = tool(
 
     const inStream = stringToStream(data);
 
-    host.logger.debug(`sending write request to path '${path}' for url '${dbUrl.toString()}'`);
+    host.logger.debug(`sending write request to path '${setPath}' for url '${dbUrl.toString()}'`);
 
     try {
       await client.request({
