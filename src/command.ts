@@ -10,7 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getProject, getStudioWorkspace } from "./management/projects";
+import { getProject, reconcileStudioFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
@@ -338,28 +338,11 @@ export class Command {
       setActiveAccount(options, activeAccount);
     }
 
-    // Only apply if we're running in Firebase Studio
-    if (process.env.MONOSPACE_ENV) {
-      await this.applyStudioWorkspace(options);
-    }
-    this.applyRC(options);
+    await this.applyRC(options);
     if (options.project) {
       await this.resolveProjectIdentifiers(options);
       validateProjectId(options.projectId);
     }
-  }
-
-  private async applyStudioWorkspace(options: Options) {
-    // If the user passes the project via --project, it should take priority
-    if (options.project) {
-      return;
-    }
-    const studioWorkspace = await getStudioWorkspace();
-    // Fail gracefully and resolve with the existing configs
-    if (!studioWorkspace) {
-      return;
-    }
-    options.project = studioWorkspace.firebaseProjectId;
   }
 
   /**
@@ -367,12 +350,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: Options): void {
+  private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    const activeProject = options.projectRoot
+    let activeProject = options.projectRoot
       ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
       : undefined;
+
+    // Only fetch the Studio Workspace project if we're running in Firebase
+    // Studio. If the user passes the project via --project, it should take
+    // priority
+    if (process.env.MONOSPACE_ENV && !options.project) {
+      activeProject = await reconcileStudioFirebaseProject(activeProject);
+    }
+
     options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {

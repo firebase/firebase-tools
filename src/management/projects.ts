@@ -580,10 +580,10 @@ export async function checkFirebaseEnabledForCloudProject(
 
 export interface StudioWorkspace {
   name: string;
-  firebaseProjectId: string;
+  firebaseProjectId: string | undefined;
 }
 
-export async function getStudioWorkspace(): Promise<StudioWorkspace | undefined> {
+async function getStudioWorkspace(): Promise<StudioWorkspace | undefined> {
   const workspaceId = process.env.WORKSPACE_SLUG;
   if (!workspaceId) {
     logger.error(
@@ -609,7 +609,64 @@ export async function getStudioWorkspace(): Promise<StudioWorkspace | undefined>
   }
 }
 
-export async function updateStudioFirebaseProject(projectId: string): Promise<void> {
+
+export async function reconcileStudioFirebaseProject(
+  activeProjectFromConfig: string | undefined,
+): Promise<string | undefined> {
+  const studioWorkspace = await getStudioWorkspace();
+  // Fail gracefully and resolve with the existing configs
+  if (!studioWorkspace) {
+    return activeProjectFromConfig;
+  }
+  if (!studioWorkspace.firebaseProjectId) {
+    if (activeProjectFromConfig) {
+      await updateStudioFirebaseProject(activeProjectFromConfig);
+    }
+    return activeProjectFromConfig;
+  }
+  if (!activeProjectFromConfig) {
+    await writeStudioProjectToConfigStore(studioWorkspace.firebaseProjectId);
+    return studioWorkspace.firebaseProjectId;
+  }
+  if (studioWorkspace.firebaseProjectId !== activeProjectFromConfig) {
+    const choices = [
+      {
+        name: `Set ${studioWorkspace.firebaseProjectId} from Firebase Studio as my active project in both places`,
+        value: false as any,
+      },
+      {
+        name: `Set ${activeProjectFromConfig} from Firebase CLI as my active project in both places`,
+        value: true as any,
+      },
+    ];
+    const useCliProject = await prompt.select({
+      message:
+        "Found different active Firebase Projects in the Firebase CLI and your Firebase Studio Workspace. Which project would you like to set as your active project?",
+      choices,
+    });
+    if (useCliProject) {
+      await updateStudioFirebaseProject(activeProjectFromConfig);
+      return activeProjectFromConfig;
+    } else {
+      await writeStudioProjectToConfigStore(studioWorkspace.firebaseProjectId);
+      return studioWorkspace.firebaseProjectId;
+    }
+  }
+  return studioWorkspace.firebaseProjectId;
+}
+
+async function writeStudioProjectToConfigStore(studioProjectId: string) {
+  logger.info(`Updating Firebase CLI active project to match Studio Workspace '${studioProjectId}'`);
+  // TODO write to firebase-tools.json
+  // TODO write to firebase-tools.json
+  // TODO write to firebase-tools.json
+  // TODO write to firebase-tools.json
+  // TODO write to firebase-tools.json
+  // TODO write to firebase-tools.json
+}
+
+async function updateStudioFirebaseProject(projectId: string): Promise<void> {
+  logger.info(`Updating Studio Workspace active project to match Firebase CLI '${projectId}'`);
   const workspaceId = process.env.WORKSPACE_SLUG;
   if (!workspaceId) {
     logger.error(
@@ -618,14 +675,13 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
     return;
   }
   try {
-    await studioClient.request({
+    let res = await studioClient.request({
       method: "PATCH",
-      path: `/v1/workspaces/${workspaceId}`,
-      body: {
-        firebase_project_id: projectId,
-      },
+      path: `/workspaces/${workspaceId}`,
+      responseType: 'json',
       queryParams: {
-        updateMask: "firebase_project_id",
+        firebaseProjectId: projectId,
+        updateMask: "workspace.firebaseProjectId",
       },
       timeout: TIMEOUT_MILLIS,
     });
