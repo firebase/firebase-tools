@@ -41,7 +41,7 @@ export const validate_rules = tool(
     try {
       await updateRulesWithClient(client, rules, { dryRun: true });
     } catch (e: unknown) {
-      host.logger.debug(`failed to update rules at url ${dbUrl}`);
+      host.logger.debug(`failed to validate rules at url ${dbUrl}`);
       return mcpError(getErrMsg(e));
     }
 
