@@ -28,7 +28,7 @@ export const command = new Command("login")
     const user = options.user as User | undefined;
     const tokens = options.tokens as Tokens | undefined;
 
-    if (user && tokens && !options.reauth) {
+    if (user && tokens?.refresh_token && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));
       return user;
     }
@@ -53,7 +53,7 @@ export const command = new Command("login")
       if (geminiUsage || collectUsage) {
         logger.info();
         utils.logBullet(
-          "To change your the preference at any time, run `firebase logout` and `firebase login` again.",
+          "To change your preferences at any time, run `firebase logout` and `firebase login` again.",
         );
       }
     }
