@@ -12,6 +12,7 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
+  realtimeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -59,6 +60,10 @@ export function mcpError(message: Error | string | unknown, code?: string): Call
   };
 }
 
+/*
+ * Wraps a throwing function with a safe conversion to mcpError.
+ */
+
 /**
  * Checks if a command exists in the system.
  */
@@ -90,6 +95,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
   apphosting: apphostingOrigin(),
+  database: realtimeOrigin(),
 };
 
 /**
