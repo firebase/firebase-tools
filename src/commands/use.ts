@@ -1,7 +1,12 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import { getProject, listFirebaseProjects, ProjectInfo, updateStudioFirebaseProject } from "../management/projects";
+import {
+  getProject,
+  listFirebaseProjects,
+  ProjectInfo,
+  updateStudioFirebaseProject,
+} from "../management/projects";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { input, select } from "../prompt";
@@ -10,6 +15,7 @@ import { validateProjectId } from "../command";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";
+import { isFirebaseStudio } from "../env";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {
@@ -50,7 +56,7 @@ export async function setNewActive(
   }
 
   // Only update if running in Firebase Studio
-  if (process.env.MONOSPACE_ENV) {
+  if (isFirebaseStudio()) {
     await updateStudioFirebaseProject(resolvedProject);
   }
 
