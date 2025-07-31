@@ -585,6 +585,7 @@ export async function checkFirebaseEnabledForCloudProject(
  * @return A promise that resolves with the reconciled active project
  */
 export async function reconcileStudioFirebaseProject(
+  options: Options,
   activeProjectFromConfig: string | undefined,
 ): Promise<string | undefined> {
   const studioWorkspace = await getStudioWorkspace();
@@ -601,11 +602,11 @@ export async function reconcileStudioFirebaseProject(
   }
   // If the CLI has no project, update the CLI with what Studio has
   if (!activeProjectFromConfig) {
-    await writeStudioProjectToConfigStore(studioWorkspace.firebaseProjectId);
+    await writeStudioProjectToConfigStore(options, studioWorkspace.firebaseProjectId);
     return studioWorkspace.firebaseProjectId;
   }
   // If both have an active project, allow the user to choose
-  if (studioWorkspace.firebaseProjectId !== activeProjectFromConfig) {
+  if (studioWorkspace.firebaseProjectId !== activeProjectFromConfig && !options.nonInteractive) {
     const choices = [
       {
         name: `Set ${studioWorkspace.firebaseProjectId} from Firebase Studio as my active project in both places`,
@@ -625,7 +626,7 @@ export async function reconcileStudioFirebaseProject(
       await updateStudioFirebaseProject(activeProjectFromConfig);
       return activeProjectFromConfig;
     } else {
-      await writeStudioProjectToConfigStore(studioWorkspace.firebaseProjectId);
+      await writeStudioProjectToConfigStore(options, studioWorkspace.firebaseProjectId);
       return studioWorkspace.firebaseProjectId;
     }
   }
@@ -664,16 +665,13 @@ async function getStudioWorkspace(): Promise<StudioWorkspace | undefined> {
   }
 }
 
-async function writeStudioProjectToConfigStore(studioProjectId: string) {
-  logger.info(
-    `Updating Firebase CLI active project to match Studio Workspace '${studioProjectId}'`,
-  );
-  // TODO write to firebase-tools.json
-  // TODO write to firebase-tools.json
-  // TODO write to firebase-tools.json
-  // TODO write to firebase-tools.json
-  // TODO write to firebase-tools.json
-  // TODO write to firebase-tools.json
+async function writeStudioProjectToConfigStore(options: Options, studioProjectId: string) {
+  if (options.projectRoot) {
+    logger.info(
+      `Updating Firebase CLI active project to match Studio Workspace '${studioProjectId}'`,
+    );
+    utils.makeActiveProject(options.projectRoot, studioProjectId);
+  }
 }
 
 /**

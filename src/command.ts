@@ -14,6 +14,7 @@ import { getProject, reconcileStudioFirebaseProject } from "./management/project
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
+import { isFirebaseStudio } from "./env";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -359,9 +360,11 @@ export class Command {
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
-    // priority
-    if (process.env.MONOSPACE_ENV && !options.project) {
-      activeProject = await reconcileStudioFirebaseProject(activeProject);
+    // priority.
+    // If this is the firebase use command, don't worry about reconciling - the user is changing it anyway
+    const isUseCommand = process.argv.includes("use");
+    if (isFirebaseStudio() && !options.project && !isUseCommand) {
+      activeProject = await reconcileStudioFirebaseProject(options, activeProject);
     }
 
     options.project = options.project ?? activeProject;
