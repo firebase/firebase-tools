@@ -87,6 +87,7 @@ export interface EmulatableBackend {
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
+  prefix?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   runtime?: Runtime;
   bin?: string;
@@ -562,6 +563,13 @@ export class FunctionsEmulator implements EmulatorInstance {
           discoveredBuild,
         );
         await this.loadDynamicExtensionBackends();
+      }
+      if (emulatableBackend.prefix) {
+        const newEndpoints: Record<string, backend.Endpoint> = {};
+        for (const id of Object.keys(discoveredBuild.endpoints)) {
+          newEndpoints[`${emulatableBackend.prefix}-${id}`] = discoveredBuild.endpoints[id];
+        }
+        discoveredBuild.endpoints = newEndpoints;
       }
       const resolution = await resolveBackend({
         build: discoveredBuild,

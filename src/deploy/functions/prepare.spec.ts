@@ -1,13 +1,18 @@
 import { expect } from "chai";
-
-import * as backend from "./backend";
+import * as sinon from "sinon";
+import * as build from "./build";
 import * as prepare from "./prepare";
+import * as runtimes from "./runtimes";
+import { RuntimeDelegate } from "./runtimes";
+import { RUNTIMES } from "./runtimes/supported";
+import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { ValidatedConfig } from "../../functions/projectConfig";
+import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as serviceusage from "../../gcp/serviceusage";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
-import * as sinon from "sinon";
 import * as prompt from "../../prompt";
-import { FirebaseError } from "../../error";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -16,13 +21,67 @@ describe("prepare", () => {
     region: "region",
     project: "project",
     entryPoint: "entry",
-    runtime: "nodejs16",
+    runtime: "nodejs22",
   };
 
   const ENDPOINT: backend.Endpoint = {
     ...ENDPOINT_BASE,
     httpsTrigger: {},
   };
+
+  describe("loadCodebases", () => {
+    let sandbox: sinon.SinonSandbox;
+    let runtimeDelegateStub: RuntimeDelegate;
+    let discoverBuildStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      discoverBuildStub = sandbox.stub();
+      runtimeDelegateStub = {
+        language: "nodejs",
+        runtime: "nodejs22",
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: discoverBuildStub,
+      };
+      discoverBuildStub.resolves(
+        build.of({
+          test: {
+            platform: "gcfv2",
+            entryPoint: "test",
+            project: "project",
+            runtime: "nodejs22",
+            httpsTrigger: {},
+          },
+        }),
+      );
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves(runtimeDelegateStub);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should apply the prefix to the function name", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", prefix: "my-prefix", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
+    });
+  });
 
   describe("inferDetailsFromExisting", () => {
     it("merges env vars if .env is not used", () => {
@@ -304,7 +363,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: "nodejs22",
       httpsTrigger: {},
     };
 
@@ -314,7 +373,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: "nodejs22",
       callableTrigger: {
         genkitAction: "action",
       },
@@ -333,7 +392,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: "nodejs22",
       callableTrigger: {
         genkitAction: "action",
       },
