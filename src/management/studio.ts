@@ -133,7 +133,7 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
         firebaseProjectId: projectId,
       },
       queryParams: {
-        updateMask: "firebaseProjectId",
+        updateMask: "workspace.firebaseProjectId",
       },
       timeout: TIMEOUT_MILLIS,
     });
