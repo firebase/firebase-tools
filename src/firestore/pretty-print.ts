@@ -59,11 +59,17 @@ export class PrettyPrint {
       colWidths: [30, colValueWidth],
     });
 
+    const edition =
+      !database.databaseEdition ||
+      database.databaseEdition === types.DatabaseEdition.DATABASE_EDITION_UNSPECIFIED
+        ? types.DatabaseEdition.STANDARD
+        : database.databaseEdition;
     table.push(
       ["Name", clc.yellow(database.name)],
       ["Create Time", clc.yellow(database.createTime)],
       ["Last Update Time", clc.yellow(database.updateTime)],
       ["Type", clc.yellow(database.type)],
+      ["Edition", clc.yellow(edition)],
       ["Location", clc.yellow(database.locationId)],
       ["Delete Protection State", clc.yellow(database.deleteProtectionState)],
       ["Point In Time Recovery", clc.yellow(database.pointInTimeRecoveryEnablement)],

@@ -121,6 +121,12 @@ export enum PointInTimeRecoveryEnablement {
   DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
 }
 
+export enum DatabaseEdition {
+  DATABASE_EDITION_UNSPECIFIED = "DATABASE_EDITION_UNSPECIFIED",
+  STANDARD = "STANDARD",
+  ENTERPRISE = "ENTERPRISE",
+}
+
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
@@ -155,6 +161,7 @@ export interface DatabaseResp {
   versionRetentionPeriod: string;
   earliestVersionTime: string;
   cmekConfig?: CmekConfig;
+  databaseEdition?: DatabaseEdition;
 }
 
 export interface RestoreDatabaseReq {

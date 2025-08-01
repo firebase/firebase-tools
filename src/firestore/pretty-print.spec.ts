@@ -1,6 +1,8 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import * as API from "./api-types";
 import { PrettyPrint } from "./pretty-print";
+import { logger } from "../logger";
 
 const printer = new PrettyPrint();
 
@@ -90,5 +92,79 @@ describe("prettyStringArray", () => {
 
   it("should print nothing if the array is empty", () => {
     expect(printer.prettyStringArray([])).to.equal("");
+  });
+});
+
+describe("prettyPrintDatabase", () => {
+  let loggerInfoStub: sinon.SinonStub;
+
+  const BASE_DATABASE: API.DatabaseResp = {
+    name: "projects/my-project/databases/(default)",
+    uid: "uid",
+    createTime: "2020-01-01T00:00:00Z",
+    updateTime: "2020-01-01T00:00:00Z",
+    locationId: "us-central1",
+    type: API.DatabaseType.FIRESTORE_NATIVE,
+    concurrencyMode: "OPTIMISTIC",
+    appEngineIntegrationMode: "ENABLED",
+    keyPrefix: "prefix",
+    deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
+    pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
+    etag: "etag",
+    versionRetentionPeriod: "1h",
+    earliestVersionTime: "2020-01-01T00:00:00Z",
+  };
+
+  beforeEach(() => {
+    loggerInfoStub = sinon.stub(logger, "info");
+  });
+
+  afterEach(() => {
+    loggerInfoStub.restore();
+  });
+
+  it("should display STANDARD edition when databaseEdition is not provided", () => {
+    const database: API.DatabaseResp = { ...BASE_DATABASE };
+
+    printer.prettyPrintDatabase(database);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
+  });
+
+  it("should display STANDARD edition when databaseEdition is UNSPECIFIED", () => {
+    const database: API.DatabaseResp = {
+      ...BASE_DATABASE,
+      databaseEdition: API.DatabaseEdition.DATABASE_EDITION_UNSPECIFIED,
+    };
+
+    printer.prettyPrintDatabase(database);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
+  });
+
+  it("should display ENTERPRISE edition when databaseEdition is ENTERPRISE", () => {
+    const database: API.DatabaseResp = {
+      ...BASE_DATABASE,
+      databaseEdition: API.DatabaseEdition.ENTERPRISE,
+    };
+
+    printer.prettyPrintDatabase(database);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("ENTERPRISE");
+  });
+
+  it("should display STANDARD edition when databaseEdition is STANDARD", () => {
+    const database: API.DatabaseResp = {
+      ...BASE_DATABASE,
+      databaseEdition: API.DatabaseEdition.STANDARD,
+    };
+
+    printer.prettyPrintDatabase(database);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
   });
 });
