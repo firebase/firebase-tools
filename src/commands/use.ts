@@ -5,8 +5,8 @@ import {
   getProject,
   listFirebaseProjects,
   ProjectInfo,
-  updateStudioFirebaseProject,
 } from "../management/projects";
+import { updateStudioFirebaseProject } from "../management/studio";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { input, select } from "../prompt";
