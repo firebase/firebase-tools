@@ -142,7 +142,7 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
     if (err.original) {
       message += ` (original: ${err.original.message})`;
     }
-    logger.error(
+    logger.warn(
       `Failed to update active Firebase Project for current Studio Workspace: ${message}`,
     );
   }
@@ -151,7 +151,7 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
 
 /**
  * Records the last time we synced the Studio project in Configstore.
- * Conviently, this triggers the file watcher.
+ * This is important to trigger a file watcher in Firebase Studio that keeps the UI in sync.
  */
 function recordStudioProjectSyncTime() {
   configstore.set("firebaseStudioProjectLastSynced", Date.now());
