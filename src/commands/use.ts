@@ -1,11 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
-import {
-  getProject,
-  listFirebaseProjects,
-  ProjectInfo,
-} from "../management/projects";
+import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
 import { updateStudioFirebaseProject } from "../management/studio";
 import { logger } from "../logger";
 import { Options } from "../options";

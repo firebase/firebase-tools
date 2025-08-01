@@ -10,7 +10,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
-import { getProject,  } from "./management/projects";
+import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";

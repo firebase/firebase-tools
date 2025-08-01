@@ -6,7 +6,6 @@ import * as utils from "../utils";
 import { Options } from "../options";
 import { configstore } from "../configstore";
 
-
 const TIMEOUT_MILLIS = 30000;
 
 const studioClient = new Client({
@@ -154,6 +153,6 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
  * Records the last time we synced the Studio project in Configstore.
  * Conviently, this triggers the file watcher.
  */
-function recordStudioProjectSyncTime(){
+function recordStudioProjectSyncTime() {
   configstore.set("firebaseStudioProjectLastSynced", Date.now());
 }
