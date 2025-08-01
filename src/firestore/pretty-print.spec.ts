@@ -155,4 +155,16 @@ describe("prettyPrintDatabase", () => {
     expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
     expect(loggerInfoStub.firstCall.args[0]).to.include("ENTERPRISE");
   });
+
+  it("should display STANDARD edition when databaseEdition is STANDARD", () => {
+    const database: API.DatabaseResp = {
+      ...BASE_DATABASE,
+      databaseEdition: API.DatabaseEdition.STANDARD,
+    };
+
+    printer.prettyPrintDatabase(database);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
+  });
 });
