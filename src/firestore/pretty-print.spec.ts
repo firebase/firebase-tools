@@ -98,6 +98,23 @@ describe("prettyStringArray", () => {
 describe("prettyPrintDatabase", () => {
   let loggerInfoStub: sinon.SinonStub;
 
+  const BASE_DATABASE: API.DatabaseResp = {
+    name: "projects/my-project/databases/(default)",
+    uid: "uid",
+    createTime: "2020-01-01T00:00:00Z",
+    updateTime: "2020-01-01T00:00:00Z",
+    locationId: "us-central1",
+    type: API.DatabaseType.FIRESTORE_NATIVE,
+    concurrencyMode: "OPTIMISTIC",
+    appEngineIntegrationMode: "ENABLED",
+    keyPrefix: "prefix",
+    deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
+    pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
+    etag: "etag",
+    versionRetentionPeriod: "1h",
+    earliestVersionTime: "2020-01-01T00:00:00Z",
+  };
+
   beforeEach(() => {
     loggerInfoStub = sinon.stub(logger, "info");
   });
@@ -107,22 +124,7 @@ describe("prettyPrintDatabase", () => {
   });
 
   it("should display STANDARD edition when databaseEdition is not provided", () => {
-    const database: API.DatabaseResp = {
-      name: "projects/my-project/databases/(default)",
-      uid: "uid",
-      createTime: "2020-01-01T00:00:00Z",
-      updateTime: "2020-01-01T00:00:00Z",
-      locationId: "us-central1",
-      type: API.DatabaseType.FIRESTORE_NATIVE,
-      concurrencyMode: "OPTIMISTIC",
-      appEngineIntegrationMode: "ENABLED",
-      keyPrefix: "prefix",
-      deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
-      pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
-      etag: "etag",
-      versionRetentionPeriod: "1h",
-      earliestVersionTime: "2020-01-01T00:00:00Z",
-    };
+    const database: API.DatabaseResp = { ...BASE_DATABASE };
 
     printer.prettyPrintDatabase(database);
 
@@ -132,20 +134,7 @@ describe("prettyPrintDatabase", () => {
 
   it("should display STANDARD edition when databaseEdition is UNSPECIFIED", () => {
     const database: API.DatabaseResp = {
-      name: "projects/my-project/databases/(default)",
-      uid: "uid",
-      createTime: "2020-01-01T00:00:00Z",
-      updateTime: "2020-01-01T00:00:00Z",
-      locationId: "us-central1",
-      type: API.DatabaseType.FIRESTORE_NATIVE,
-      concurrencyMode: "OPTIMISTIC",
-      appEngineIntegrationMode: "ENABLED",
-      keyPrefix: "prefix",
-      deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
-      pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
-      etag: "etag",
-      versionRetentionPeriod: "1h",
-      earliestVersionTime: "2020-01-01T00:00:00Z",
+      ...BASE_DATABASE,
       databaseEdition: API.DatabaseEdition.DATABASE_EDITION_UNSPECIFIED,
     };
 
@@ -157,20 +146,7 @@ describe("prettyPrintDatabase", () => {
 
   it("should display ENTERPRISE edition when databaseEdition is ENTERPRISE", () => {
     const database: API.DatabaseResp = {
-      name: "projects/my-project/databases/(default)",
-      uid: "uid",
-      createTime: "2020-01-01T00:00:00Z",
-      updateTime: "2020-01-01T00:00:00Z",
-      locationId: "us-central1",
-      type: API.DatabaseType.FIRESTORE_NATIVE,
-      concurrencyMode: "OPTIMISTIC",
-      appEngineIntegrationMode: "ENABLED",
-      keyPrefix: "prefix",
-      deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
-      pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
-      etag: "etag",
-      versionRetentionPeriod: "1h",
-      earliestVersionTime: "2020-01-01T00:00:00Z",
+      ...BASE_DATABASE,
       databaseEdition: API.DatabaseEdition.ENTERPRISE,
     };
 
