@@ -99,8 +99,6 @@ const resourceManagerClient = new Client({
   apiVersion: "v1",
 });
 
-
-
 /**
  * Create a new Google Cloud Platform project and add Firebase resources to it
  */
