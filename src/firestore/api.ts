@@ -244,6 +244,10 @@ export class FirestoreApi {
         collectionGroup: util.parseIndexName(index.name).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
+        apiScope: index.apiScope,
+        density: index.density,
+        multiKey: index.multiKey,
+        unique: index.unique,
       };
     });
 
@@ -266,6 +270,10 @@ export class FirestoreApi {
             order: firstField.order,
             arrayConfig: firstField.arrayConfig,
             queryScope: index.queryScope,
+            apiScope: index.apiScope,
+            density: index.density,
+            multiKey: index.multiKey,
+            unique: index.unique,
           };
         }),
       };

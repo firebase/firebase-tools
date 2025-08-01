@@ -15,6 +15,19 @@ export enum QueryScope {
   COLLECTION_GROUP = "COLLECTION_GROUP",
 }
 
+export enum ApiScope {
+  ANY_API = "ANY_API",
+  DATASTORE_MODE_API = "DATASTORE_MODE_API",
+  MONGODB_COMPAT_API = "MONGODB_COMPAT_API",
+}
+
+export enum Density {
+  UNSPECIFIED = "UNSPECIFIED",
+  SPARSE_ALL = "SPARSE_ALL",
+  SPARSE_ANY = "SPARSE_ANY",
+  DENSE = "DENSE",
+}
+
 export enum Order {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -49,6 +62,10 @@ export interface Index {
   queryScope: QueryScope;
   fields: IndexField[];
   state?: State;
+  apiScope?: ApiScope;
+  density?: Density;
+  multiKey?: boolean;
+  unique?: boolean;
 }
 
 /**

@@ -10,6 +10,17 @@
   //       { "fieldPath": "bar", "mode": "DESCENDING" }
   //     ]
   //   },
+  //   {
+  //     "collectionGroup": "reviews",
+  //     "queryScope": "COLLECTION_GROUP",
+  //     "apiScope": "MONGODB_COMPAT_API",
+  //     "density": "SPARSE_ANY",
+  //     "multikey": false,
+  //     "unique": false,
+  //     "fields": [
+  //       { "fieldPath": "baz", "mode": "ASCENDING" }
+  //     ]
+  //   },
   //
   //  "fieldOverrides": [
   //    {
