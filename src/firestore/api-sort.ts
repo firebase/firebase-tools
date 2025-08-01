@@ -12,7 +12,7 @@ const QUERY_SCOPE_SEQUENCE = [
 const API_SCOPE_SEQUENCE = [
   API.ApiScope.ANY_API,
   API.ApiScope.DATASTORE_MODE_API,
-  API.ApiScope.MONGODB_COMPAT_API,
+  API.ApiScope.MONGODB_COMPATIBLE_API,
   undefined,
 ];
 
@@ -64,7 +64,7 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
     return cmp;
   }
 
-  cmp = compareBoolean(a.multiKey, b.multiKey);
+  cmp = compareBoolean(a.multikey, b.multikey);
   if (cmp !== 0) {
     return cmp;
   }
@@ -115,7 +115,7 @@ export function compareApiIndex(a: API.Index, b: API.Index): number {
     return cmp;
   }
 
-  cmp = compareBoolean(a.multiKey, b.multiKey);
+  cmp = compareBoolean(a.multikey, b.multikey);
   if (cmp !== 0) {
     return cmp;
   }
@@ -288,7 +288,7 @@ function compareFieldIndex(a: Spec.FieldIndex, b: Spec.FieldIndex): number {
     return cmp;
   }
 
-  cmp = compareBoolean(a.multiKey, b.multiKey);
+  cmp = compareBoolean(a.multikey, b.multikey);
   if (cmp !== 0) {
     return cmp;
   }

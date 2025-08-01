@@ -246,7 +246,7 @@ export class FirestoreApi {
         fields: index.fields,
         apiScope: index.apiScope,
         density: index.density,
-        multiKey: index.multiKey,
+        multikey: index.multikey,
         unique: index.unique,
       };
     });
@@ -272,7 +272,7 @@ export class FirestoreApi {
             queryScope: index.queryScope,
             apiScope: index.apiScope,
             density: index.density,
-            multiKey: index.multiKey,
+            multikey: index.multikey,
             unique: index.unique,
           };
         }),
@@ -381,6 +381,10 @@ export class FirestoreApi {
     const indexes = spec.indexes.map((index) => {
       return {
         queryScope: index.queryScope,
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
         fields: [
           {
             fieldPath: spec.fieldPath,
@@ -428,6 +432,10 @@ export class FirestoreApi {
     return this.apiClient.post(url, {
       fields: index.fields,
       queryScope: index.queryScope,
+      apiScope: index.apiScope,
+      density: index.density,
+      multikey: index.multikey,
+      unique: index.unique,
     });
   }
 
@@ -557,10 +565,14 @@ export class FirestoreApi {
     }
 
     result.indexes = spec.indexes.map((index: any) => {
-      const i = {
+      const i: Spec.Index = {
         collectionGroup: index.collectionGroup || index.collectionId,
         queryScope: index.queryScope || types.QueryScope.COLLECTION,
         fields: [],
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
       };
 
       if (index.fields) {

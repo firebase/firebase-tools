@@ -15,7 +15,7 @@ export interface Index {
   fields: API.IndexField[];
   apiScope?: API.ApiScope;
   density?: API.Density;
-  multiKey?: boolean;
+  multikey?: boolean;
   unique?: boolean;
 }
 
@@ -38,7 +38,7 @@ export interface FieldIndex {
   arrayConfig?: API.ArrayConfig;
   apiScope?: API.ApiScope;
   density?: API.Density;
-  multiKey?: boolean;
+  multikey?: boolean;
   unique?: boolean;
 }
 

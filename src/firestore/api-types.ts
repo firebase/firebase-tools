@@ -18,11 +18,11 @@ export enum QueryScope {
 export enum ApiScope {
   ANY_API = "ANY_API",
   DATASTORE_MODE_API = "DATASTORE_MODE_API",
-  MONGODB_COMPAT_API = "MONGODB_COMPAT_API",
+  MONGODB_COMPATIBLE_API = "MONGODB_COMPATIBLE_API",
 }
 
 export enum Density {
-  UNSPECIFIED = "UNSPECIFIED",
+  UNSPECIFIED = "DENSITY_UNSPECIFIED",
   SPARSE_ALL = "SPARSE_ALL",
   SPARSE_ANY = "SPARSE_ANY",
   DENSE = "DENSE",
@@ -64,7 +64,7 @@ export interface Index {
   state?: State;
   apiScope?: ApiScope;
   density?: Density;
-  multiKey?: boolean;
+  multikey?: boolean;
   unique?: boolean;
 }
 
