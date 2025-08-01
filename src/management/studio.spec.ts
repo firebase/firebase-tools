@@ -176,7 +176,7 @@ describe("Studio Management", () => {
           firebaseProjectId: "new-project",
         },
         queryParams: {
-          updateMask: "firebaseProjectId",
+          updateMask: "workspace.firebaseProjectId",
         },
         timeout: 30000,
       });
