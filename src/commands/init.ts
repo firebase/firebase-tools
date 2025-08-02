@@ -15,7 +15,6 @@ import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
-import { trackGA4 } from "../track";
 
 const homeDir = os.homedir();
 
@@ -150,8 +149,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
     );
   }
 
-  const start = process.uptime();
-
   const cwd = options.cwd || process.cwd();
 
   const warnings = [];
@@ -249,7 +246,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
     setup.features = setup.features.filter((f) => f !== "hosting:github");
   }
 
-  const productsInitialized = setup.features?.join(",") || "";
   await init(setup, config, options);
 
   logger.info();
@@ -258,9 +254,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
     config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
   }
-
-  const duration = Math.floor((process.uptime() - start) * 1000);
-  await trackGA4("product_init", { products_initialized: productsInitialized }, duration);
 
   logger.info();
   utils.logSuccess("Firebase initialization complete!");
