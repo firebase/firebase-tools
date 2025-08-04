@@ -12,7 +12,7 @@ import { get_environment } from "./get_environment";
 import { update_environment } from "./update_environment";
 import { list_projects } from "./list_projects";
 import { consult_assistant } from "./consult_assistant";
-import { instrument_with_analytics } from "./instrument_with_analytics";
+import { add_analytics } from "../analytics/add_analytics";
 
 export const coreTools: ServerTool[] = [
   get_project,
@@ -27,5 +27,5 @@ export const coreTools: ServerTool[] = [
   get_environment,
   update_environment,
   init,
-  instrument_with_analytics,
+  add_analytics,
 ];
