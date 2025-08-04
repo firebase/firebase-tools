@@ -10,7 +10,7 @@ import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
-import { isFirebaseMcp, isFirebaseStudio } from './env';
+import { isFirebaseMcp, isFirebaseStudio } from "./env";
 import { timeoutError } from "./timeout";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
