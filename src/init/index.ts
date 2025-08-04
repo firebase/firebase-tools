@@ -8,7 +8,6 @@ import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
 import { Options } from "../options";
-import { trackGA4 } from "../track";
 
 export interface Setup {
   config: FirebaseConfig;
@@ -94,8 +93,6 @@ const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
-    const start = process.uptime();
-
     const f = featureMap.get(nextFeature);
     if (!f) {
       const availableFeatures = Object.keys(features)
@@ -123,10 +120,6 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
     if (f.postSetup) {
       await f.postSetup(setup, config, options);
     }
-
-    const duration = Math.floor((process.uptime() - start) * 1000);
-    await trackGA4("product_init", { products_initialized: nextFeature }, duration);
-
     return init(setup, config, options);
   }
 }
