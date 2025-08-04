@@ -10,7 +10,7 @@ import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
-import { isFirebaseMcp, isFirebaseStudio } from "./env";
+import { isFirebaseMcp, isFirebaseStudio } from './env';
 import { timeoutError } from "./timeout";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
@@ -96,7 +96,11 @@ export async function requireAuth(
   skipAutoAuth: boolean = false,
 ): Promise<string | null> {
   lastOptions = options;
-  api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
+  const requiredScopes = [scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]; 
+  if (isFirebaseStudio()) {
+    requiredScopes.push(scopes.USERINFO_EMAIL);
+  }
+  api.setScopes(requiredScopes);
   options.authScopes = api.getScopes();
 
   const tokens = options.tokens as Tokens | undefined;
