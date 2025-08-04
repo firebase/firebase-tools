@@ -1,5 +1,5 @@
 {
-  // Example:
+  // Example (Standard Edition):
   //
   // "indexes": [
   //   {
@@ -8,17 +8,6 @@
   //     "fields": [
   //       { "fieldPath": "foo", "arrayConfig": "CONTAINS" },
   //       { "fieldPath": "bar", "mode": "DESCENDING" }
-  //     ]
-  //   },
-  //   {
-  //     "collectionGroup": "reviews",
-  //     "queryScope": "COLLECTION_GROUP",
-  //     "apiScope": "MONGODB_COMPAT_API",
-  //     "density": "SPARSE_ANY",
-  //     "multikey": false,
-  //     "unique": false,
-  //     "fields": [
-  //       { "fieldPath": "baz", "mode": "ASCENDING" }
   //     ]
   //   },
   //
@@ -31,6 +20,33 @@
   //      ]
   //    },
   //   ]
+  // ]
+  //
+  // Example (Enterprise Edition):
+  //
+  // "indexes": [
+  //   {
+  //     "collectionGroup": "reviews",
+  //     "queryScope": "COLLECTION_GROUP",
+  //     "apiScope": "MONGODB_COMPATIBLE_API",
+  //     "density": "DENSE",
+  //     "multikey": false,
+  //     "unique": false,
+  //     "fields": [
+  //       { "fieldPath": "baz", "mode": "ASCENDING" }
+  //     ]
+  //   },
+  //   {
+  //     "collectionGroup": "items",
+  //     "queryScope": "COLLECTION_GROUP",
+  //     "apiScope": "MONGODB_COMPATIBLE_API",
+  //     "density": "SPARSE_ANY",
+  //     "multikey": true,
+  //     "unique": false,
+  //     "fields": [
+  //       { "fieldPath": "baz", "mode": "ASCENDING" }
+  //     ]
+  //   },
   // ]
   "indexes": [],
   "fieldOverrides": []
