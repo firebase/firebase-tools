@@ -460,11 +460,13 @@ export async function loginPrototyper(): Promise<PrototyperRes> {
           codeVerifier,
         );
 
-        return {
+        const creds = {
           user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
           tokens: tokens,
           scopes: SCOPES,
         };
+        recordCredentials(creds);
+        return creds;
       } catch (e) {
         throw new FirebaseError(
           "Unable to authenticate using the provided code. Please try again.",
@@ -472,6 +474,16 @@ export async function loginPrototyper(): Promise<PrototyperRes> {
       }
     },
   };
+}
+
+// recordCredentials saves credentials to configstore to be used in future command runs.
+export function recordCredentials(creds: UserCredentials) {
+  configstore.set("user", creds.user);
+  configstore.set("tokens", creds.tokens);
+  // store login scopes in case mandatory scopes grow over time
+  configstore.set("loginScopes", creds.scopes);
+  // remove old session token, if it exists
+  configstore.delete("session");
 }
 
 async function loginRemotely(): Promise<UserCredentials> {

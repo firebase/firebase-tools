@@ -74,12 +74,7 @@ export const command = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : !!options.localhost;
     const result = await auth.loginGoogle(useLocalhost, user?.email);
-    configstore.set("user", result.user);
-    configstore.set("tokens", result.tokens);
-    // store login scopes in case mandatory scopes grow over time
-    configstore.set("loginScopes", result.scopes);
-    // remove old session token, if it exists
-    configstore.delete("session");
+    auth.recordCredentials(result);
 
     logger.info();
     if (typeof result.user !== "string") {
