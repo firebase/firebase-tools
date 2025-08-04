@@ -425,6 +425,55 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
+interface PrototyperRes {
+  uri: string;
+  sessionId: string;
+  authorize: (authorizationCode: string) => Promise<UserCredentials>;
+}
+
+export async function loginPrototyper(): Promise<PrototyperRes> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: authProxyOrigin(),
+    auth: false,
+  });
+
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body?.token;
+
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  return {
+    uri: loginUrl,
+    sessionId: sessionId.substring(0, 5).toUpperCase(),
+    authorize: async (code: string) => {
+      try {
+        const tokens = await getTokensFromAuthorizationCode(
+          code,
+          `${authProxyOrigin()}/complete`,
+          codeVerifier,
+        );
+
+        return {
+          user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+          tokens: tokens,
+          scopes: SCOPES,
+        };
+      } catch (e) {
+        throw new FirebaseError(
+          "Unable to authenticate using the provided code. Please try again.",
+        );
+      }
+    },
+  };
+}
+
 async function loginRemotely(): Promise<UserCredentials> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin(),
