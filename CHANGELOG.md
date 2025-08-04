@@ -1,0 +1,1 @@
+- Fixed an issue where `firebase init dataconnect` didn't enable the Data Connect API by default (#8927).
