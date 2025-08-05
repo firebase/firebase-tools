@@ -31,10 +31,18 @@ describe("apps:android:sha:delete", () => {
 
   describe("action", () => {
     it("should delete a SHA certificate", async () => {
-      await command.runner()("test-app-id", "test-sha-id", {});
+      const options = {
+        user: { email: "test@example.com" },
+        tokens: { access_token: "an_access_token" },
+      };
+      await command.runner()("test-app-id", "test-sha-id", options);
 
       expect(needProjectIdStub).to.have.been.calledOnce;
-      expect(deleteAppAndroidShaStub).to.have.been.calledOnce;
+      expect(deleteAppAndroidShaStub).to.have.been.calledOnceWith(
+        "test-project-id",
+        "test-app-id",
+        "test-sha-id",
+      );
       const spinnerText = promiseWithSpinnerStub.getCall(0).args[1];
       expect(spinnerText).to.include("Deleting Android SHA certificate hash");
     });

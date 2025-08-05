@@ -5,20 +5,21 @@ import { Command } from "../command";
 import * as projectUtils from "../projectUtils";
 import * as apps from "../management/apps";
 import { AppAndroidShaData, ShaCertificateType } from "../management/apps";
-import * as utils from "../utils";
 import { command, logCertificatesList, logCertificatesCount } from "./apps-android-sha-list";
 import * as auth from "../requireAuth";
+import { logger } from "../logger";
 
 describe("apps:android:sha:list", () => {
   let sandbox: sinon.SinonSandbox;
-  let promiseWithSpinnerStub: sinon.SinonStub;
+  let listAppAndroidShaStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     sandbox.stub(auth, "requireAuth").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
-    sandbox.stub(apps, "listAppAndroidSha");
-    promiseWithSpinnerStub = sandbox.stub(utils, "promiseWithSpinner");
+    listAppAndroidShaStub = sandbox.stub(apps, "listAppAndroidSha");
+    loggerInfoStub = sandbox.stub(logger, "info");
   });
 
   afterEach(() => {
@@ -30,6 +31,11 @@ describe("apps:android:sha:list", () => {
   });
 
   describe("action", () => {
+    const options = {
+      user: { email: "test@example.com" },
+      tokens: { access_token: "an_access_token" },
+    };
+
     it("should list SHA certificates", async () => {
       const certificates: AppAndroidShaData[] = [
         {
@@ -43,21 +49,22 @@ describe("apps:android:sha:list", () => {
           certType: ShaCertificateType.SHA_256,
         },
       ];
-      promiseWithSpinnerStub.resolves(certificates);
+      listAppAndroidShaStub.resolves(certificates);
 
-      await command.runner()("test-app-id", {});
+      await command.runner()("test-app-id", options);
 
-      expect(promiseWithSpinnerStub).to.have.been.calledOnce;
-      const spinnerText = promiseWithSpinnerStub.getCall(0).args[1];
-      expect(spinnerText).to.include("Preparing the list");
+      expect(listAppAndroidShaStub).to.have.been.calledOnceWith("test-project-id", "test-app-id");
+      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("s1"));
+      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("s2"));
     });
 
     it('should display "No SHA certificate hashes found." if no certificates exist', async () => {
-      promiseWithSpinnerStub.resolves([]);
+      listAppAndroidShaStub.resolves([]);
 
-      await command.runner()("test-app-id", {});
+      await command.runner()("test-app-id", options);
 
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(listAppAndroidShaStub).to.have.been.calledOnceWith("test-project-id", "test-app-id");
+      expect(loggerInfoStub).to.have.been.calledWith("No SHA certificate hashes found.");
     });
   });
 
@@ -92,17 +99,23 @@ describe("apps:android:sha:list", () => {
         ShaCertificateType.SHA_256,
       ]);
     });
+
+    it('should print "No SHA certificate hashes found." if no certificates exist', () => {
+      logCertificatesList([]);
+      expect(loggerInfoStub).to.have.been.calledWith("No SHA certificate hashes found.");
+    });
   });
 
   describe("logCertificatesCount", () => {
     it("should print the total number of certificates", () => {
       logCertificatesCount(5);
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(loggerInfoStub).to.have.been.calledWith("");
+      expect(loggerInfoStub).to.have.been.calledWith("5 SHA hash(es) total.");
     });
 
     it("should not print if count is 0", () => {
       logCertificatesCount(0);
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(loggerInfoStub).to.not.have.been.called;
     });
   });
 });

@@ -8,6 +8,7 @@ import { AppPlatform } from "../management/apps";
 import * as prompt from "../prompt";
 import { command, logPostAppCreationInformation } from "./apps-create";
 import * as auth from "../requireAuth";
+import { logger } from "../logger";
 
 describe("apps:create", () => {
   let sandbox: sinon.SinonSandbox;
@@ -15,6 +16,7 @@ describe("apps:create", () => {
   let getAppPlatformStub: sinon.SinonStub;
   let sdkInitStub: sinon.SinonStub;
   let selectStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -29,6 +31,7 @@ describe("apps:create", () => {
       displayName: "test-display-name",
     });
     selectStub = sandbox.stub(prompt, "select");
+    loggerInfoStub = sandbox.stub(logger, "info");
   });
 
   afterEach(() => {
@@ -40,10 +43,16 @@ describe("apps:create", () => {
   });
 
   describe("action", () => {
+    const options = {
+      nonInteractive: false,
+      user: { email: "test@example.com" },
+      tokens: { access_token: "an_access_token" },
+    };
+
     it("should throw if platform is not provided in non-interactive mode", async () => {
       getAppPlatformStub.returns(AppPlatform.ANY);
-      const options = { nonInteractive: true };
-      await expect(command.runner()("", undefined, options)).to.be.rejectedWith(
+      const nonInteractiveOptions = { ...options, nonInteractive: true };
+      await expect(command.runner()("", undefined, nonInteractiveOptions)).to.be.rejectedWith(
         FirebaseError,
         "App platform must be provided",
       );
@@ -54,7 +63,6 @@ describe("apps:create", () => {
       getAppPlatformStub.withArgs("").returns(AppPlatform.ANY);
       getAppPlatformStub.withArgs("IOS").returns(AppPlatform.IOS);
       selectStub.resolves("IOS");
-      const options = { nonInteractive: false };
       await command.runner()("", "test-display-name", options);
       expect(selectStub).to.have.been.calledOnce;
       expect(sdkInitStub).to.have.been.calledOnceWith(
@@ -68,8 +76,8 @@ describe("apps:create", () => {
 
     it("should create an iOS app", async () => {
       getAppPlatformStub.returns(AppPlatform.IOS);
-      const options = { bundleId: "test-bundle-id" };
-      await command.runner()("IOS", "test-display-name", options);
+      const iosOptions = { ...options, bundleId: "test-bundle-id" };
+      await command.runner()("IOS", "test-display-name", iosOptions);
       expect(sdkInitStub).to.have.been.calledOnceWith(
         AppPlatform.IOS,
         sinon.match({
@@ -81,8 +89,8 @@ describe("apps:create", () => {
 
     it("should create an Android app", async () => {
       getAppPlatformStub.returns(AppPlatform.ANDROID);
-      const options = { packageName: "test-package-name" };
-      await command.runner()("ANDROID", "test-display-name", options);
+      const androidOptions = { ...options, packageName: "test-package-name" };
+      await command.runner()("ANDROID", "test-display-name", androidOptions);
       expect(sdkInitStub).to.have.been.calledOnceWith(
         AppPlatform.ANDROID,
         sinon.match({
@@ -94,7 +102,6 @@ describe("apps:create", () => {
 
     it("should create a Web app", async () => {
       getAppPlatformStub.returns(AppPlatform.WEB);
-      const options = {};
       await command.runner()("WEB", "test-display-name", options);
       expect(sdkInitStub).to.have.been.calledOnceWith(
         AppPlatform.WEB,
@@ -115,7 +122,7 @@ describe("apps:create", () => {
         displayName: "test-display-name",
       };
       logPostAppCreationInformation(appMetadata, AppPlatform.WEB);
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("App ID: test-app-id"));
     });
 
     it("should log iOS specific information", () => {
@@ -129,7 +136,10 @@ describe("apps:create", () => {
         appStoreId: "test-app-store-id",
       };
       logPostAppCreationInformation(appMetadata, AppPlatform.IOS);
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("Bundle ID: test-bundle-id"));
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match("App Store ID: test-app-store-id"),
+      );
     });
 
     it("should log Android specific information", () => {
@@ -142,7 +152,9 @@ describe("apps:create", () => {
         packageName: "test-package-name",
       };
       logPostAppCreationInformation(appMetadata, AppPlatform.ANDROID);
-      // No assertion needed here, we are just checking that it does not throw.
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match("Package name: test-package-name"),
+      );
     });
   });
 });
