@@ -29,7 +29,7 @@ describe("apps:sdkconfig", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     sandbox.stub(auth, "requireAuth").resolves();
-    needProjectIdStub = sandbox.stub(projectUtils, "needProjectId");
+    needProjectIdStub = sandbox.stub(projectUtils, "needProjectId").returns("test-project-id");
     getAppConfigStub = sandbox.stub(apps, "getAppConfig");
     getAppConfigFileStub = sandbox.stub(apps, "getAppConfigFile");
     listFirebaseAppsStub = sandbox.stub(apps, "listFirebaseApps");
@@ -61,7 +61,6 @@ describe("apps:sdkconfig", () => {
     });
 
     it("should get config for the only app when no app id is provided", async () => {
-      needProjectIdStub.returns("test-project-id");
       listFirebaseAppsStub.resolves([
         { name: "n1", projectId: "p1", appId: "test-app-id", platform: AppPlatform.ANDROID },
       ]);
@@ -78,7 +77,6 @@ describe("apps:sdkconfig", () => {
     });
 
     it("should prompt for app if multiple apps exist", async () => {
-      needProjectIdStub.returns("test-project-id");
       const app1 = {
         name: "n1",
         projectId: "p1",
@@ -105,7 +103,6 @@ describe("apps:sdkconfig", () => {
     });
 
     it("should throw if multiple apps exist in non-interactive mode", async () => {
-      needProjectIdStub.returns("test-project-id");
       const app1 = { name: "n1", projectId: "p1", appId: "app1", platform: AppPlatform.IOS };
       const app2 = { name: "n2", projectId: "p2", appId: "app2", platform: AppPlatform.IOS };
       listFirebaseAppsStub.resolves([app1, app2]);
@@ -117,7 +114,6 @@ describe("apps:sdkconfig", () => {
     });
 
     it("should throw if no apps exist", async () => {
-      needProjectIdStub.returns("test-project-id");
       listFirebaseAppsStub.resolves([]);
 
       await expect(command.runner()("IOS", "", {})).to.be.rejectedWith(
