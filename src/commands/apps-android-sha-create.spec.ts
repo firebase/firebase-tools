@@ -42,10 +42,14 @@ describe("apps:android:sha:create", () => {
       await command.runner()("test-app-id", shaHash, options);
 
       expect(needProjectIdStub).to.have.been.calledOnce;
-      expect(createAppAndroidShaStub).to.have.been.calledOnceWith("test-project-id", "test-app-id", {
-        shaHash: shaHash,
-        certType: ShaCertificateType.SHA_1,
-      });
+      expect(createAppAndroidShaStub).to.have.been.calledOnceWith(
+        "test-project-id",
+        "test-app-id",
+        {
+          shaHash: shaHash,
+          certType: ShaCertificateType.SHA_1,
+        },
+      );
       const spinnerText = promiseWithSpinnerStub.getCall(0).args[1];
       expect(spinnerText).to.include("Creating Android SHA certificate");
     });

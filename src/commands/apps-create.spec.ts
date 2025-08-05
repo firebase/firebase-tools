@@ -137,7 +137,9 @@ describe("apps:create", () => {
       };
       logPostAppCreationInformation(appMetadata, AppPlatform.IOS);
       expect(loggerInfoStub).to.have.been.calledWith(sinon.match("Bundle ID: test-bundle-id"));
-      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("App Store ID: test-app-store-id"));
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match("App Store ID: test-app-store-id"),
+      );
     });
 
     it("should log Android specific information", () => {
@@ -150,7 +152,9 @@ describe("apps:create", () => {
         packageName: "test-package-name",
       };
       logPostAppCreationInformation(appMetadata, AppPlatform.ANDROID);
-      expect(loggerInfoStub).to.have.been.calledWith(sinon.match("Package name: test-package-name"));
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match("Package name: test-package-name"),
+      );
     });
   });
 });
