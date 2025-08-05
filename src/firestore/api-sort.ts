@@ -17,7 +17,7 @@ const API_SCOPE_SEQUENCE = [
 ];
 
 const DENSITY_SEQUENCE = [
-  API.Density.UNSPECIFIED,
+  API.Density.DENSITY_UNSPECIFIED,
   API.Density.SPARSE_ALL,
   API.Density.SPARSE_ANY,
   API.Density.DENSE,
@@ -301,10 +301,28 @@ function compareQueryScope(a: API.QueryScope, b: API.QueryScope): number {
 }
 
 function compareApiScope(a?: API.ApiScope, b?: API.ApiScope): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
   return API_SCOPE_SEQUENCE.indexOf(a) - API_SCOPE_SEQUENCE.indexOf(b);
 }
 
 function compareDensity(a?: API.Density, b?: API.Density): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
   return DENSITY_SEQUENCE.indexOf(a) - DENSITY_SEQUENCE.indexOf(b);
 }
 
@@ -313,14 +331,14 @@ function compareOrder(a?: API.Order, b?: API.Order): number {
 }
 
 function compareBoolean(a?: boolean, b?: boolean) {
+  if (a === b) {
+    return 0;
+  }
   if (a === undefined) {
-    if (b === undefined) {
-      return 0;
-    } else {
-      return 1;
-    }
-  } else if (b === undefined) {
     return -1;
+  }
+  if (b === undefined) {
+    return 1;
   }
   return Number(a) - Number(b);
 }

@@ -313,6 +313,26 @@ export class FirestoreApi {
     validator.assertHas(index, "queryScope");
     validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
 
+    if (index.apiScope) {
+      validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+    }
+
+    if (index.density) {
+      validator.assertEnum(index, "density", Object.keys(types.Density));
+    }
+
+    if (index.multikey) {
+      validator.assertType("multikey", index.multikey, "boolean");
+    }
+
+    if (index.unique) {
+      validator.assertType("unique", index.unique, "boolean");
+    }
+
+    if (index.density) {
+      validator.assertEnum(index, "density", Object.keys(types.Density));
+    }
+
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {
@@ -360,6 +380,22 @@ export class FirestoreApi {
 
       if (index.queryScope) {
         validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
+      }
+
+      if (index.apiScope) {
+        validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+      }
+
+      if (index.density) {
+        validator.assertEnum(index, "density", Object.keys(types.Density));
+      }
+
+      if (index.multikey) {
+        validator.assertType("multikey", index.multikey, "boolean");
+      }
+
+      if (index.unique) {
+        validator.assertType("unique", index.unique, "boolean");
       }
     });
   }
@@ -460,6 +496,22 @@ export class FirestoreApi {
       return false;
     }
 
+    if (index.apiScope !== spec.apiScope) {
+      return false;
+    }
+
+    if (index.density !== spec.density) {
+      return false;
+    }
+
+    if (index.multikey !== spec.multikey) {
+      return false;
+    }
+
+    if (index.unique !== spec.unique) {
+      return false;
+    }
+
     if (index.fields.length !== spec.fields.length) {
       return false;
     }
@@ -478,6 +530,10 @@ export class FirestoreApi {
       }
 
       if (iField.arrayConfig !== sField.arrayConfig) {
+        return false;
+      }
+
+      if (iField.vectorConfig !== sField.vectorConfig) {
         return false;
       }
 
@@ -565,15 +621,23 @@ export class FirestoreApi {
     }
 
     result.indexes = spec.indexes.map((index: any) => {
-      const i: Spec.Index = {
+      const i: any = {
         collectionGroup: index.collectionGroup || index.collectionId,
         queryScope: index.queryScope || types.QueryScope.COLLECTION,
-        fields: [],
-        apiScope: index.apiScope,
-        density: index.density,
-        multikey: index.multikey,
-        unique: index.unique,
       };
+
+      if (index.apiScope) {
+        i.apiScope = index.apiScope;
+      }
+      if (index.density) {
+        i.density = index.density;
+      }
+      if (index.multikey !== undefined) {
+        i.multikey = index.multikey;
+      }
+      if (index.unique !== undefined) {
+        i.unique = index.unique;
+      }
 
       if (index.fields) {
         i.fields = index.fields.map((field: any) => {
