@@ -3602,6 +3602,18 @@
         "node": ">=6.0.0"
       }
     },
+    "node_modules/@jridgewell/source-map": {
+      "version": "0.3.2",
+      "resolved": "https://registry.npmjs.org/@jridgewell/source-map/-/source-map-0.3.2.tgz",
+      "integrity": "sha512-m7O9o2uR8k2ObDysZYzdfhb08VuEml5oWGiosa1VdaPZ/A6QyPkAJuwN0Q1lhULOf6B7MtQmHENS743hWtCrgw==",
+      "dev": true,
+      "optional": true,
+      "peer": true,
+      "dependencies": {
+        "@jridgewell/gen-mapping": "^0.3.0",
+        "@jridgewell/trace-mapping": "^0.3.9"
+      }
+    },
     "node_modules/@jridgewell/sourcemap-codec": {
       "version": "1.4.14",
       "resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.4.14.tgz",
@@ -4543,6 +4555,40 @@
       "resolved": "https://registry.npmjs.org/@sinonjs/text-encoding/-/text-encoding-0.7.1.tgz",
       "integrity": "sha512-+iTbntw2IZPb/anVDbypzfQa+ay64MW0Zo8aJ8gZPWMMK6/OubMVb6lUPMagqjOPnmtauXnFCACVl3O7ogjeqQ==",
       "dev": true
+    },
+    "node_modules/@swc/core": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/@swc/core/-/core-1.3.0.tgz",
+      "integrity": "sha512-0mshAzMvdhL0v3lNMJowzMd8Du0bJf+PUTxhVm4uIb/h8qCDQjFERXj0RGejcDFSL7fJzLI3MzS5WR45KDrrLA==",
+      "dev": true,
+      "hasInstallScript": true,
+      "optional": true,
+      "peer": true,
+      "bin": {
+        "swcx": "run_swcx.js"
+      },
+      "engines": {
+        "node": ">=10"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/swc"
+      },
+      "optionalDependencies": {
+        "@swc/core-android-arm-eabi": "1.3.0",
+        "@swc/core-android-arm64": "1.3.0",
+        "@swc/core-darwin-arm64": "1.3.0",
+        "@swc/core-darwin-x64": "1.3.0",
+        "@swc/core-freebsd-x64": "1.3.0",
+        "@swc/core-linux-arm-gnueabihf": "1.3.0",
+        "@swc/core-linux-arm64-gnu": "1.3.0",
+        "@swc/core-linux-arm64-musl": "1.3.0",
+        "@swc/core-linux-x64-gnu": "1.3.0",
+        "@swc/core-linux-x64-musl": "1.3.0",
+        "@swc/core-win32-arm64-msvc": "1.3.0",
+        "@swc/core-win32-ia32-msvc": "1.3.0",
+        "@swc/core-win32-x64-msvc": "1.3.0"
+      }
     },
     "node_modules/@swc/helpers": {
       "version": "0.5.2",
@@ -20042,6 +20088,34 @@
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
+    "node_modules/terser": {
+      "version": "5.15.0",
+      "resolved": "https://registry.npmjs.org/terser/-/terser-5.15.0.tgz",
+      "integrity": "sha512-L1BJiXVmheAQQy+as0oF3Pwtlo4s3Wi1X2zNZ2NxOB4wx9bdS9Vk67XQENLFdLYGCK/Z2di53mTj/hBafR+dTA==",
+      "dev": true,
+      "optional": true,
+      "peer": true,
+      "dependencies": {
+        "@jridgewell/source-map": "^0.3.2",
+        "acorn": "^8.5.0",
+        "commander": "^2.20.0",
+        "source-map-support": "~0.5.20"
+      },
+      "bin": {
+        "terser": "bin/terser"
+      },
+      "engines": {
+        "node": ">=10"
+      }
+    },
+    "node_modules/terser/node_modules/commander": {
+      "version": "2.20.3",
+      "resolved": "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz",
+      "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==",
+      "dev": true,
+      "optional": true,
+      "peer": true
+    },
     "node_modules/test-exclude": {
       "version": "6.0.0",
       "resolved": "https://registry.npmjs.org/test-exclude/-/test-exclude-6.0.0.tgz",
@@ -24366,6 +24440,18 @@
       "integrity": "sha512-xnkseuNADM0gt2bs+BvhO0p78Mk762YnZdsuzFV018NoG1Sj1SCQvpSqa7XUaTam5vAGasABV9qXASMKnFMwMw==",
       "dev": true
     },
+    "@jridgewell/source-map": {
+      "version": "0.3.2",
+      "resolved": "https://registry.npmjs.org/@jridgewell/source-map/-/source-map-0.3.2.tgz",
+      "integrity": "sha512-m7O9o2uR8k2ObDysZYzdfhb08VuEml5oWGiosa1VdaPZ/A6QyPkAJuwN0Q1lhULOf6B7MtQmHENS743hWtCrgw==",
+      "dev": true,
+      "optional": true,
+      "peer": true,
+      "requires": {
+        "@jridgewell/gen-mapping": "^0.3.0",
+        "@jridgewell/trace-mapping": "^0.3.9"
+      }
+    },
     "@jridgewell/sourcemap-codec": {
       "version": "1.4.14",
       "resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.4.14.tgz",
@@ -25001,6 +25087,29 @@
       "resolved": "https://registry.npmjs.org/@sinonjs/text-encoding/-/text-encoding-0.7.1.tgz",
       "integrity": "sha512-+iTbntw2IZPb/anVDbypzfQa+ay64MW0Zo8aJ8gZPWMMK6/OubMVb6lUPMagqjOPnmtauXnFCACVl3O7ogjeqQ==",
       "dev": true
+    },
+    "@swc/core": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/@swc/core/-/core-1.3.0.tgz",
+      "integrity": "sha512-0mshAzMvdhL0v3lNMJowzMd8Du0bJf+PUTxhVm4uIb/h8qCDQjFERXj0RGejcDFSL7fJzLI3MzS5WR45KDrrLA==",
+      "dev": true,
+      "optional": true,
+      "peer": true,
+      "requires": {
+        "@swc/core-android-arm-eabi": "1.3.0",
+        "@swc/core-android-arm64": "1.3.0",
+        "@swc/core-darwin-arm64": "1.3.0",
+        "@swc/core-darwin-x64": "1.3.0",
+        "@swc/core-freebsd-x64": "1.3.0",
+        "@swc/core-linux-arm-gnueabihf": "1.3.0",
+        "@swc/core-linux-arm64-gnu": "1.3.0",
+        "@swc/core-linux-arm64-musl": "1.3.0",
+        "@swc/core-linux-x64-gnu": "1.3.0",
+        "@swc/core-linux-x64-musl": "1.3.0",
+        "@swc/core-win32-arm64-msvc": "1.3.0",
+        "@swc/core-win32-ia32-msvc": "1.3.0",
+        "@swc/core-win32-x64-msvc": "1.3.0"
+      }
     },
     "@swc/helpers": {
       "version": "0.5.2",
@@ -36569,6 +36678,30 @@
       "resolved": "https://registry.npmjs.org/term-size/-/term-size-2.2.0.tgz",
       "integrity": "sha512-a6sumDlzyHVJWb8+YofY4TW112G6p2FCPEAFk+59gIYHv3XHRhm9ltVQ9kli4hNWeQBwSpe8cRN25x0ROunMOw==",
       "dev": true
+    },
+    "terser": {
+      "version": "5.15.0",
+      "resolved": "https://registry.npmjs.org/terser/-/terser-5.15.0.tgz",
+      "integrity": "sha512-L1BJiXVmheAQQy+as0oF3Pwtlo4s3Wi1X2zNZ2NxOB4wx9bdS9Vk67XQENLFdLYGCK/Z2di53mTj/hBafR+dTA==",
+      "dev": true,
+      "optional": true,
+      "peer": true,
+      "requires": {
+        "@jridgewell/source-map": "^0.3.2",
+        "acorn": "^8.5.0",
+        "commander": "^2.20.0",
+        "source-map-support": "~0.5.20"
+      },
+      "dependencies": {
+        "commander": {
+          "version": "2.20.3",
+          "resolved": "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz",
+          "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==",
+          "dev": true,
+          "optional": true,
+          "peer": true
+        }
+      }
     },
     "test-exclude": {
       "version": "6.0.0",
