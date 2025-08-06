@@ -439,18 +439,15 @@ describe("prepare", () => {
     });
 
     it("should load runtime config when experiment is enabled", async () => {
-      // Stub experiments
       sandbox
         .stub(experiments, "isEnabled")
         .withArgs("dangerouslyAllowFunctionsConfig")
         .returns(true);
 
-      // Stub the getFunctionsConfig to track if it's called
       const getFunctionsConfigStub = sandbox
         .stub(prepareFunctionsUploadModule, "getFunctionsConfig")
         .resolves({ someConfig: "value" });
 
-      // Stub loadCodebases to track calls
       const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
         codebase: {
           endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
@@ -472,7 +469,6 @@ describe("prepare", () => {
         undefined,
       );
 
-      // Verify runtime config was loaded upfront
       expect(getFunctionsConfigStub).to.have.been.calledOnce;
       expect(loadCodebasesStub).to.have.been.calledOnce;
       expect(result.runtimeConfig).to.deep.include({ someConfig: "value" });
@@ -509,7 +505,6 @@ describe("prepare", () => {
         undefined,
       );
 
-      // Verify runtime config was NOT loaded
       expect(getFunctionsConfigStub).to.not.have.been.called;
       expect(loadCodebasesStub).to.have.been.calledOnce;
       expect(result.runtimeConfig).to.deep.equal({ firebase: firebaseConfig });
@@ -546,7 +541,6 @@ describe("prepare", () => {
         undefined,
       );
 
-      // Verify two-pass: runtime config loaded after finding v1
       expect(getFunctionsConfigStub).to.have.been.calledOnce;
       expect(loadCodebasesStub).to.have.been.calledTwice;
       expect(result.runtimeConfig).to.deep.include({ someConfig: "value" });
@@ -583,7 +577,6 @@ describe("prepare", () => {
         undefined,
       );
 
-      // Should not load runtime config even with v1 functions when API is disabled
       expect(getFunctionsConfigStub).to.not.have.been.called;
       expect(loadCodebasesStub).to.have.been.calledOnce;
       expect(result.runtimeConfig).to.deep.equal({ firebase: firebaseConfig });

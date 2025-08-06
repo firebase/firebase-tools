@@ -29,7 +29,6 @@ export const command = new Command("internaltesting:functions:discover")
       /* silent=*/ true,
     );
 
-    // Use the new function that respects the experiment flag
     const { wantBuilds } = await maybeLoadCodebasesWithConfig(
       projectId,
       fnConfig,
