@@ -7,7 +7,7 @@ import {
   GraphqlResponse,
   isGraphQLResponse,
 } from "../../../dataconnect/types";
-import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { mcpError } from "../../util";
 
 export function schemaToText(s: Schema): string {

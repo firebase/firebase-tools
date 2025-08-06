@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { tool } from "../../tool.js";
-import * as dataplane from "../../../dataconnect/dataplaneClient.js";
-import { pickService } from "../../../dataconnect/fileUtils.js";
-import { graphqlResponseToToolResponse, parseVariables } from "./converter.js";
-import { Client } from "../../../apiv2.js";
-import { getDataConnectEmulatorClient } from "./emulator.js";
+import { tool } from "../../tool";
+import * as dataplane from "../../../dataconnect/dataplaneClient";
+import { pickService } from "../../../dataconnect/fileUtils";
+import { graphqlResponseToToolResponse, parseVariables } from "./converter";
+import { Client } from "../../../apiv2";
+import { getDataConnectEmulatorClient } from "./emulator";
 
 export const execute_graphql_read = tool(
   {

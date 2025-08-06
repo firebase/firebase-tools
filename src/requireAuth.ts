@@ -10,6 +10,8 @@ import * as scopes from "./scopes";
 import { Tokens, TokensWithExpiration, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
+import { isFirebaseMcp, isFirebaseStudio } from "./env";
+import { timeoutError } from "./timeout";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",
@@ -44,13 +46,20 @@ async function autoAuth(options: Options, authScopes: string[]): Promise<null | 
 
   let clientEmail;
   try {
-    const credentials = await client.getCredentials();
+    const timeoutMillis = isFirebaseMcp() ? 5000 : 15000;
+    const credentials = await timeoutError(
+      client.getCredentials(),
+      new FirebaseError(
+        `Authenticating with default credentials timed out after ${timeoutMillis / 1000} seconds. Please try running \`firebase login\` instead.`,
+      ),
+      timeoutMillis,
+    );
     clientEmail = credentials.client_email;
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
-  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+  if (isFirebaseStudio() && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
     const activeAccount = {
       user: { email: clientEmail },
@@ -82,9 +91,16 @@ export async function refreshAuth(): Promise<Tokens> {
  * if the user is not authenticated
  * @param options CLI options.
  */
-export async function requireAuth(options: any): Promise<string | null> {
+export async function requireAuth(
+  options: any,
+  skipAutoAuth: boolean = false,
+): Promise<string | null> {
   lastOptions = options;
-  api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
+  const requiredScopes = [scopes.CLOUD_PLATFORM];
+  if (isFirebaseStudio()) {
+    requiredScopes.push(scopes.USERINFO_EMAIL);
+  }
+  api.setScopes(requiredScopes);
   options.authScopes = api.getScopes();
 
   const tokens = options.tokens as Tokens | undefined;
@@ -104,6 +120,8 @@ export async function requireAuth(options: any): Promise<string | null> {
     );
   } else if (user && (!isExpired(tokens) || tokens?.refresh_token)) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
+  } else if (skipAutoAuth) {
+    return null;
   } else {
     try {
       return await autoAuth(options, options.authScopes);

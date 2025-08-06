@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { getProject } from "../../../management/projects.js";
-import { toContent } from "../../util.js";
+import { tool } from "../../tool";
+import { getProject } from "../../../management/projects";
+import { toContent } from "../../util";
 
 export const get_project = tool(
   {

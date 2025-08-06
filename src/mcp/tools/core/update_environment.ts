@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { setNewActive } from "../../../commands/use.js";
-import { assertAccount, setProjectAccount } from "../../../auth.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { setNewActive } from "../../../commands/use";
+import { assertAccount, setProjectAccount } from "../../../auth";
 import { existsSync } from "node:fs";
 
 export const update_environment = tool(

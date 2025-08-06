@@ -9,7 +9,6 @@ import * as sinon from "sinon";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
 import * as experiments from "../../experiments";
-import * as functionsConfig from "../../functionsConfig";
 import * as prepareFunctionsUploadModule from "./prepareFunctionsUpload";
 import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";

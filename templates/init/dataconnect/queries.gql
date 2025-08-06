@@ -2,7 +2,7 @@
 
 # # @auth() directives control who can call each operation.
 # # Anyone should be able to list all movies, so the auth level is set to PUBLIC
-# query ListMovies @auth(level: PUBLIC) {
+# query ListMovies @auth(level: PUBLIC, insecureReason: "Anyone can list all movies.") {
 #   movies {
 #     id
 #     title
@@ -40,7 +40,7 @@
 # }
 
 # # Get movie by id
-# query GetMovieById($id: UUID!) @auth(level: PUBLIC) {
+# query GetMovieById($id: UUID!) @auth(level: PUBLIC, insecureReason: "Anyone can get a movie by id.") {
 #   movie(id: $id) {
 #     id
 #     title
@@ -64,7 +64,7 @@
 # }
 
 # # Search for movies, actors, and reviews
-# query SearchMovie($titleInput: String, $genre: String) @auth(level: PUBLIC) {
+# query SearchMovie($titleInput: String, $genre: String) @auth(level: PUBLIC, insecureReason: "Anyone can search for movies.") {
 #   movies(
 #     where: {
 #       _and: [{ genre: { eq: $genre } }, { title: { contains: $titleInput } }]

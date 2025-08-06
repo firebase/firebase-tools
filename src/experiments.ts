@@ -57,6 +57,14 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  dangerouslyAllowFunctionsConfig: {
+    shortDescription: "Allows the use of deprecated functions.config() API",
+    fullDescription:
+      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
+      "This experiment allows continued use of the API during the migration period.",
+    default: true,
+    public: true,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -136,14 +144,6 @@ export const ALL_EXPERIMENTS = experiments({
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
-    public: true,
-  },
-  dangerouslyAllowFunctionsConfig: {
-    shortDescription: "Load functions.config() values from Runtime Config API on function deploys",
-    fullDescription:
-      "When enabled, fetch config stored in Runtime Config API during function deployments. " +
-      "When disabled, skip loading config from Runtime Config API, making functions.config() API non-functional.",
-    default: true,
     public: true,
   },
 });
