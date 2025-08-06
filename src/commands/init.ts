@@ -116,6 +116,13 @@ if (isEnabled("apptesting")) {
   });
 }
 
+choices.push({
+  value: "aitools",
+  name: "AI Tools: Configure AI coding assistants to work with your Firebase project",
+  checked: false,
+  hidden: true,
+});
+
 const featureNames = choices.map((choice) => choice.value);
 
 const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
