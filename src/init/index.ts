@@ -131,6 +131,7 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
   }
 }
 
+/** Actuate the feature init flow from firebase_init MCP tool. */
 export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
