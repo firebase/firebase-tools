@@ -2,8 +2,8 @@ import { Config } from "../../../config";
 import { AIToolModule, AIToolConfigResult } from "./types";
 import { updateFirebaseSection } from "./promptUpdater";
 
-const CLAUDE_SETTINGS_PATH = ".claude/settings.local.json";
-const CLAUDE_PROMPT_PATH = "CLAUDE.local.md";
+const MCP_CONFIG_PATH = ".mcp.json";
+const CLAUDE_PROMPT_PATH = "CLAUDE.md";
 
 export const claude: AIToolModule = {
   name: "claude",
@@ -12,8 +12,8 @@ export const claude: AIToolModule = {
   /**
    * Configures Claude Code with Firebase context.
    *
-   * - .claude/settings.local.json: Merges with existing config (preserves user settings)
-   * - CLAUDE.local.md: Updates Firebase section only (preserves user content)
+   * - .mcp.json: Merges with existing MCP server config (preserves user settings)
+   * - CLAUDE.md: Updates Firebase section only (preserves user content)
    */
   async configure(
     config: Config,
@@ -22,11 +22,11 @@ export const claude: AIToolModule = {
   ): Promise<AIToolConfigResult> {
     const files: AIToolConfigResult["files"] = [];
 
-    // Handle MCP configuration - merge with existing if present
-    let existingConfig: any = {};
-    let settingsUpdated = false;
+    // Handle MCP configuration in .mcp.json - merge with existing if present
+    let existingConfig: { mcpServers?: Record<string, { command: string; args: string[] }> } = {};
+    let mcpUpdated = false;
     try {
-      const existingContent = config.readProjectFile(CLAUDE_SETTINGS_PATH);
+      const existingContent = config.readProjectFile(MCP_CONFIG_PATH);
       if (existingContent) {
         existingConfig = JSON.parse(existingContent);
       }
@@ -43,11 +43,11 @@ export const claude: AIToolModule = {
         command: "npx",
         args: ["-y", "firebase-tools", "experimental:mcp", "--dir", projectPath],
       };
-      config.writeProjectFile(CLAUDE_SETTINGS_PATH, JSON.stringify(existingConfig, null, 2));
-      settingsUpdated = true;
+      config.writeProjectFile(MCP_CONFIG_PATH, JSON.stringify(existingConfig, null, 2));
+      mcpUpdated = true;
     }
 
-    files.push({ path: CLAUDE_SETTINGS_PATH, updated: settingsUpdated });
+    files.push({ path: MCP_CONFIG_PATH, updated: mcpUpdated });
 
     const { updated } = await updateFirebaseSection(config, CLAUDE_PROMPT_PATH, enabledFeatures, {
       interactive: true,
