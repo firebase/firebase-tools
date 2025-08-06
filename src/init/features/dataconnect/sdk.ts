@@ -26,7 +26,7 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet, envOverride, logWarning } from "../../../utils";
+import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
@@ -68,8 +68,17 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
   }
 
   // First, lets check if we are in an app directory
-  const appDir = process.env[FDC_APP_FOLDER] || process.cwd();
+  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
   let targetPlatform = await getPlatformFromFolder(appDir);
+  if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
+    // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
+    appDir = await promptForDirectory({
+      config,
+      message:
+        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
+    });
+    targetPlatform = await getPlatformFromFolder(appDir);
+  }
   if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
     if (targetPlatform === Platform.NONE) {
       logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
