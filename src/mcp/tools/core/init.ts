@@ -150,7 +150,7 @@ export const init = tool(
         isNewInstance: false, // not used by actuate
         isNewDatabase: false, // not used by actuate
         schemaGql: [], // TODO populate with GiF
-        shouldProvisionCSQL: true, // Always provision Cloud SQL for MCP tool-based init.
+        shouldProvisionCSQL: true, // Always try to provision Cloud SQL for MCP tool init.
       };
     }
     const setup: Setup = {
