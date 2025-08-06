@@ -134,6 +134,8 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
 export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
+    const start = process.uptime();
+
     const f = lookupFeature(nextFeature);
     logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
 
@@ -146,6 +148,10 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
         await f.actuate(setup, config, options);
       }
     }
+
+    const duration = Math.floor((process.uptime() - start) * 1000);
+    await trackGA4("product_init_mcp", { products_initialized: nextFeature }, duration);
+
     return actuate(setup, config, options);
   }
 }
