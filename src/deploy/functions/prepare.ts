@@ -93,7 +93,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
   const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
-  
+
   // Load runtime config if experiment allows it and API is enabled
   if (allowFunctionsConfig && checkAPIsEnabled[1]) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };

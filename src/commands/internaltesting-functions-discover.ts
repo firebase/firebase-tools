@@ -25,7 +25,7 @@ export const command = new Command("internaltesting:functions:discover")
 
     let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
     const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
-    
+
     if (allowFunctionsConfig) {
       try {
         const runtimeConfigApiEnabled = await ensureApiEnabled.check(
@@ -34,7 +34,7 @@ export const command = new Command("internaltesting:functions:discover")
           "runtimeconfig",
           /* silent=*/ true,
         );
-        
+
         if (runtimeConfigApiEnabled) {
           runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
         }

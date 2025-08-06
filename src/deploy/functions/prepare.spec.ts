@@ -422,7 +422,6 @@ describe("prepare", () => {
     });
   });
 
-
   describe("ensureAllRequiredAPIsEnabled", () => {
     let sinonSandbox: sinon.SinonSandbox;
     let ensureApiStub: sinon.SinonStub;
