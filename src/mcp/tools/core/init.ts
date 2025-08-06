@@ -147,8 +147,8 @@ export const init = tool(
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
         connectors: [], // TODO populate with GiF,
-        isNewInstance: true, // not used by actuate
-        isNewDatabase: true, // not used by actuate
+        isNewInstance: false, // not used by actuate
+        isNewDatabase: false, // not used by actuate
         schemaGql: [], // TODO populate with GiF
         shouldProvisionCSQL: true,
       };
