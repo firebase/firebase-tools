@@ -26,7 +26,7 @@ import {
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
-import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
+import { logSuccess, logBullet, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 
 export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
