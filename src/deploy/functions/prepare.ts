@@ -419,7 +419,7 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 /**
  * Helper function that implements the two-pass discovery strategy for runtime config.
  *
- * When dangerouslyAllowFunctionsConfig exp is enabled (default true), runtime config is
+ * When dangerouslyAllowFunctionsConfig exp is enabled (default true) and the runtime config API is enabled, runtime config is
  * always loaded upfront. When disabled, it will:
  *
  * 1. First discover without loading the runtime config
