@@ -90,13 +90,20 @@ export async function prepare(
 
   context.codebaseDeployEvents = {};
 
-  // ===Phase 1. Load codebases from source with runtime config handling.
-  const { wantBuilds, runtimeConfig } = await maybeLoadCodebasesWithConfig(
-    projectId,
+  // ===Phase 1. Load codebases from source with optional runtime config.
+  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
+  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
+  
+  // Load runtime config if experiment allows it and API is enabled
+  if (allowFunctionsConfig && checkAPIsEnabled[1]) {
+    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
+  }
+
+  const wantBuilds = await loadCodebases(
     context.config,
     options,
     firebaseConfig,
-    checkAPIsEnabled[1],
+    runtimeConfig,
     context.filters,
   );
 
@@ -414,67 +421,6 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
   }
-}
-
-/**
- * Helper function that implements the two-pass discovery strategy for runtime config.
- *
- * When dangerouslyAllowFunctionsConfig exp is enabled (default true) and the runtime config API is enabled, runtime config is
- * always loaded upfront. When disabled, it will:
- *
- * 1. First discover without loading the runtime config
- * 2. If v1 functions are found, reload with runtime config (two-pass)
- *
- * @internal - exported for testing
- */
-export async function maybeLoadCodebasesWithConfig(
-  projectId: string,
-  config: ValidatedConfig,
-  options: Options,
-  firebaseConfig: args.FirebaseConfig,
-  runtimeConfigApiEnabled: boolean,
-  filters?: EndpointFilter[],
-): Promise<{ wantBuilds: Record<string, build.Build>; runtimeConfig: Record<string, unknown> }> {
-  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
-
-  // Load runtime config upfront if experiment allows it (default behavior)
-  if (allowFunctionsConfig && runtimeConfigApiEnabled) {
-    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
-  }
-
-  let wantBuilds: Record<string, build.Build> = await module.exports.loadCodebases(
-    config,
-    options,
-    firebaseConfig,
-    runtimeConfig,
-    filters,
-  );
-
-  // Second pass: reload with runtime config if experiment is disabled and v1 functions found.
-  // Only worth doing if the API is actually enabled
-  if (!allowFunctionsConfig && runtimeConfigApiEnabled) {
-    const hasV1Functions = Object.values(wantBuilds).some((wantBuild) =>
-      build.someEndpoint(wantBuild, (ep) => ep.platform === "gcfv1"),
-    );
-
-    if (hasV1Functions) {
-      logLabeledBullet(
-        "functions",
-        "Detected 1st gen functions, re-loading with runtime config...",
-      );
-      runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
-      wantBuilds = await module.exports.loadCodebases(
-        config,
-        options,
-        firebaseConfig,
-        runtimeConfig,
-        filters,
-      );
-    }
-  }
-
-  return { wantBuilds, runtimeConfig };
 }
 
 /**
