@@ -125,7 +125,7 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
     }
 
     const duration = Math.floor((process.uptime() - start) * 1000);
-    await trackGA4("product_init", { products_initialized: nextFeature }, duration);
+    await trackGA4("product_init", { feature: nextFeature }, duration);
 
     return init(setup, config, options);
   }
@@ -151,7 +151,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     }
 
     const duration = Math.floor((process.uptime() - start) * 1000);
-    await trackGA4("product_init_mcp", { products_initialized: nextFeature }, duration);
+    await trackGA4("product_init_mcp", { feature: nextFeature }, duration);
 
     return actuate(setup, config, options);
   }
