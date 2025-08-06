@@ -21,13 +21,17 @@ export const command = new Command("internaltesting:functions:discover")
       );
     }
 
-    // Check if runtime config API is enabled
-    const runtimeConfigApiEnabled = await ensureApiEnabled.check(
-      projectId,
-      runtimeconfigOrigin(),
-      "runtimeconfig",
-      /* silent=*/ true,
-    );
+    let runtimeConfigApiEnabled = false;
+    try {
+      runtimeConfigApiEnabled = await ensureApiEnabled.check(
+        projectId,
+        runtimeconfigOrigin(),
+        "runtimeconfig",
+        /* silent=*/ true,
+      );
+    } catch (err) {
+      logger.debug("Could not check Runtime Config API status, assuming disabled:", err);
+    }
 
     const { wantBuilds } = await maybeLoadCodebasesWithConfig(
       projectId,
