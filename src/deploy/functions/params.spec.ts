@@ -338,7 +338,9 @@ describe("ParamValue.asList()", () => {
 
   describe("robustness", () => {
     it("should handle values with commas inside JSON array", () => {
-      const paramValue = new params.ParamValue('["hello, world", "foo, bar"]', false, { list: true });
+      const paramValue = new params.ParamValue('["hello, world", "foo, bar"]', false, {
+        list: true,
+      });
       expect(paramValue.asList()).to.deep.equal(["hello, world", "foo, bar"]);
     });
 
@@ -365,7 +367,7 @@ describe("ParamValue.asList()", () => {
 
     it("should handle quotes, apostrophes, and backticks in the middle of the string", () => {
       const paramValue = new params.ParamValue('["a\\"b", "c`d", "e\'f"]', false, { list: true });
-      expect(paramValue.asList()).to.deep.equal(["a\"b", "c`d", "e'f"]);
+      expect(paramValue.asList()).to.deep.equal(['a"b', "c`d", "e'f"]);
     });
 
     it("should handle empty string", () => {
