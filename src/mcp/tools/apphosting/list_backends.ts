@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
 import {
   Backend,
   Domain,
@@ -9,7 +9,7 @@ import {
   listDomains,
   parseBackendName,
   Traffic,
-} from "../../../gcp/apphosting.js";
+} from "../../../gcp/apphosting";
 
 export const list_backends = tool(
   {

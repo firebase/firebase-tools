@@ -88,8 +88,8 @@ Tool files should be named `<product>/<foo_tool>`. The tool will then be listed 
 
 ```typescript
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
 
 export const foo_bar = tool(
   {
@@ -156,7 +156,7 @@ export const <product>Tools = [
 If this is the first tool for this product, also go to `src/mcp/tools/index.ts` and add your product:
 
 ```typescript
-import { <product>Tools } from "./<product>/index.js"
+import { <product>Tools } from "./<product>/index"
 
 const tools: Record<ServerFeature, ServerTool[]> = {
   // Exisitng tools here...

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { getDownloadUrl } from "../../../gcp/storage.js";
-import { Emulators } from "../../../emulator/types.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { getDownloadUrl } from "../../../gcp/storage";
+import { Emulators } from "../../../emulator/types";
 
 export const get_object_download_url = tool(
   {

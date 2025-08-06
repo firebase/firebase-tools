@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { DEFAULT_RULES } from "../../../init/features/database.js";
-import { actuate, Setup, SetupInfo } from "../../../init/index.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { DEFAULT_RULES } from "../../../init/features/database";
+import { actuate, Setup, SetupInfo } from "../../../init/index";
 
 export const init = tool(
   {
@@ -147,10 +147,10 @@ export const init = tool(
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
         connectors: [], // TODO populate with GiF,
-        isNewInstance: false,
-        isNewDatabase: false,
+        isNewInstance: false, // not used by actuate
+        isNewDatabase: false, // not used by actuate
         schemaGql: [], // TODO populate with GiF
-        shouldProvisionCSQL: false,
+        shouldProvisionCSQL: true, // Always try to provision Cloud SQL for MCP tool init.
       };
     }
     const setup: Setup = {

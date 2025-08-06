@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
 import {
   checkFirebaseEnabledForCloudProject,
   createFirebaseProjectAndLog,
   addFirebaseToCloudProject,
   getProject,
   ProjectInfo,
-} from "../../../management/projects.js";
-import { getErrStatus } from "../../../error.js";
+} from "../../../management/projects";
+import { getErrStatus } from "../../../error";
 
 /**
  * Checks if a Cloud project exists and the user has access to it

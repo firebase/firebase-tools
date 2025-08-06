@@ -36,3 +36,4 @@ export {
   RequiredInfo as ApptestingInfo,
   actuate as apptestingAcutate,
 } from "./apptesting";
+export { doSetup as aitools } from "./aitools";

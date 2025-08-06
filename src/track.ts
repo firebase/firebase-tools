@@ -11,6 +11,7 @@ type cliEventNames =
   | "command_execution"
   | "product_deploy"
   | "product_init"
+  | "product_init_mcp"
   | "error"
   | "login"
   | "api_enabled"

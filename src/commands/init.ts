@@ -15,7 +15,6 @@ import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
-import { trackGA4 } from "../track";
 
 const homeDir = os.homedir();
 
@@ -112,10 +111,17 @@ if (isEnabled("genkit")) {
 if (isEnabled("apptesting")) {
   choices.push({
     value: "apptesting",
-    name: "App Testing: create a smoke test",
+    name: "App Testing: create a smoke test, enable Cloud APIs (storage, run, & artifactregistry), and add a service account.",
     checked: false,
   });
 }
+
+choices.push({
+  value: "aitools",
+  name: "AI Tools: Configure AI coding assistants to work with your Firebase project",
+  checked: false,
+  hidden: true,
+});
 
 const featureNames = choices.map((choice) => choice.value);
 
@@ -149,8 +155,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
         ".",
     );
   }
-
-  const start = process.uptime();
 
   const cwd = options.cwd || process.cwd();
 
@@ -257,9 +261,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
     config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
   }
-  const duration = Math.floor((process.uptime() - start) * 1000);
-
-  await trackGA4("product_init", { products_initialized: setup.features?.join(",") }, duration);
 
   logger.info();
   utils.logSuccess("Firebase initialization complete!");
