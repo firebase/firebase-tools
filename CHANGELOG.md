@@ -1,3 +1,8 @@
 - Fixed issue where `__name__` fields with DESCENDING order were incorrectly filtered from index listings, causing duplicate index issues (#7629) and deployment conflicts (#8859). The fix now preserves `__name__` fields with explicit DESCENDING order while filtering out implicit ASCENDING `__name__` fields.
 - Fixed an issue where `firebase init dataconnect` didn't enable the Data Connect API by default (#8927).
 - Add firebase init aitools to help developers set up Firebase AI tools in their projects (#8949).
+- Updated the Firebase Data Connect local toolkit to v2.11.0, which includes the following changes (#8948):
+  - [Fixed] Kotlin code generation with enums
+  - [Fixed] Deploying schemas with enums would report false breaking changes
+  - [Added] Support for ordering results by aggregate fields (min/max/count/sum/avg).
+  - [Added] Support for built-in and user-defined enums to LLM Tools generation.
