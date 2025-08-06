@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { listUsers } from "../../../gcp/auth.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { listUsers } from "../../../gcp/auth";
 
 export const list_users = tool(
   {

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { listTopIssues } from "../../../crashlytics/listTopIssues.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { listTopIssues } from "../../../crashlytics/listTopIssues";
 
 export const list_top_issues = tool(
   {

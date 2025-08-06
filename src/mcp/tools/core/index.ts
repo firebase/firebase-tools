@@ -1,17 +1,17 @@
-import type { ServerTool } from "../../tool.js";
+import type { ServerTool } from "../../tool";
 
-import { get_project } from "./get_project.js";
-import { get_sdk_config } from "./get_sdk_config.js";
-import { list_apps } from "./list_apps.js";
-import { create_project } from "./create_project.js";
-import { create_app } from "./create_app.js";
-import { get_admin_sdk_config } from "./get_admin_sdk_config.js";
-import { create_android_sha } from "./create_android_sha.js";
-import { init } from "./init.js";
-import { get_environment } from "./get_environment.js";
-import { update_environment } from "./update_environment.js";
-import { list_projects } from "./list_projects.js";
-import { consult_assistant } from "./consult_assistant.js";
+import { get_project } from "./get_project";
+import { get_sdk_config } from "./get_sdk_config";
+import { list_apps } from "./list_apps";
+import { create_project } from "./create_project";
+import { create_app } from "./create_app";
+import { get_admin_sdk_config } from "./get_admin_sdk_config";
+import { create_android_sha } from "./create_android_sha";
+import { init } from "./init";
+import { get_environment } from "./get_environment";
+import { update_environment } from "./update_environment";
+import { list_projects } from "./list_projects";
+import { consult_assistant } from "./consult_assistant";
 
 export const coreTools: ServerTool[] = [
   get_project,

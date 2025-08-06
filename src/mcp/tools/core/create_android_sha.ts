@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { createAppAndroidSha, ShaCertificateType } from "../../../management/apps.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { createAppAndroidSha, ShaCertificateType } from "../../../management/apps";
 
 /**
  * Determines the certificate type based on the SHA hash length

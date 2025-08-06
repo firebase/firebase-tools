@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { rollbackTemplate } from "../../../remoteconfig/rollback.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { rollbackTemplate } from "../../../remoteconfig/rollback";
 
 export const rollback_template = tool(
   {

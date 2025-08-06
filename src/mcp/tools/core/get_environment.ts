@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { getAliases } from "../../../projectUtils.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { getAliases } from "../../../projectUtils";
 import { dump } from "js-yaml";
-import { getAllAccounts } from "../../../auth.js";
+import { getAllAccounts } from "../../../auth";
 
 export const get_environment = tool(
   {

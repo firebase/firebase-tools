@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getProjectAdminSdkConfigOrCached } from "../../../emulator/adminSdkConfig.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getProjectAdminSdkConfigOrCached } from "../../../emulator/adminSdkConfig";
 
 export const get_admin_sdk_config = tool(
   {
