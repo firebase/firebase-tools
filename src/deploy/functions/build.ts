@@ -39,6 +39,16 @@ export function of(endpoints: Record<string, Endpoint>): Build {
   return build;
 }
 
+/** A helper utility for checking whether an endpoint matches a predicate. */
+export function someEndpoint(build: Build, predicate: (endpoint: Endpoint) => boolean): boolean {
+  for (const endpoints of Object.values(build.endpoints)) {
+    if (Object.values(endpoints).some(predicate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)

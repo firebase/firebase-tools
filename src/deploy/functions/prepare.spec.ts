@@ -8,6 +8,12 @@ import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/event
 import * as sinon from "sinon";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
+import * as experiments from "../../experiments";
+import * as functionsConfig from "../../functionsConfig";
+import * as prepareFunctionsUploadModule from "./prepareFunctionsUpload";
+import { Options } from "../../options";
+import { ValidatedConfig } from "../../functions/projectConfig";
+import { FirebaseConfig } from "./args";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -419,6 +425,161 @@ describe("prepare", () => {
           {} as any,
         ),
       ).to.be.rejectedWith(FirebaseError);
+    });
+  });
+
+  describe("maybeLoadCodebasesWithConfig", () => {
+    let sandbox: sinon.SinonSandbox;
+    
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should load runtime config when experiment is enabled", async () => {
+      // Stub experiments
+      sandbox.stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig").returns(true);
+      
+      // Stub the getFunctionsConfig to track if it's called
+      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+        .resolves({ someConfig: "value" });
+      
+      // Stub loadCodebases to track calls
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
+        .resolves({ 
+          codebase: {
+            endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
+            requiredAPIs: [],
+            params: [],
+          }
+        });
+
+      const config = {} as unknown as ValidatedConfig;
+      const options = { projectId: "test-project" } as unknown as Options;
+      const firebaseConfig = { projectId: "test-project" } as unknown as FirebaseConfig;
+
+      const result = await prepare.maybeLoadCodebasesWithConfig(
+        "test-project",
+        config,
+        options,
+        firebaseConfig,
+        true, // runtimeConfigApiEnabled
+        undefined,
+      );
+
+      // Verify runtime config was loaded upfront
+      expect(getFunctionsConfigStub).to.have.been.calledOnce;
+      expect(loadCodebasesStub).to.have.been.calledOnce;
+      expect(result.runtimeConfig).to.deep.include({ someConfig: "value" });
+    });
+
+    it("should skip runtime config for v2-only when experiment is disabled", async () => {
+      sandbox.stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
+      
+      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+        .resolves({ someConfig: "value" });
+      
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
+        .resolves({ 
+          codebase: {
+            endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
+            requiredAPIs: [],
+            params: [],
+          }
+        });
+
+      const config = {} as unknown as ValidatedConfig;
+      const options = { projectId: "test-project" } as unknown as Options;
+      const firebaseConfig = { projectId: "test-project" } as unknown as FirebaseConfig;
+
+      const result = await prepare.maybeLoadCodebasesWithConfig(
+        "test-project",
+        config,
+        options,
+        firebaseConfig,
+        true, // runtimeConfigApiEnabled
+        undefined,
+      );
+
+      // Verify runtime config was NOT loaded
+      expect(getFunctionsConfigStub).to.not.have.been.called;
+      expect(loadCodebasesStub).to.have.been.calledOnce;
+      expect(result.runtimeConfig).to.deep.equal({ firebase: firebaseConfig });
+    });
+
+    it("should do two-pass for v1 functions when experiment is disabled", async () => {
+      sandbox.stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
+      
+      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+        .resolves({ someConfig: "value" });
+      
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
+        .resolves({ 
+          codebase: {
+            endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
+            requiredAPIs: [],
+            params: [],
+          }
+        });
+
+      const config = {} as unknown as ValidatedConfig;
+      const options = { projectId: "test-project" } as unknown as Options;
+      const firebaseConfig = { projectId: "test-project" } as unknown as FirebaseConfig;
+
+      const result = await prepare.maybeLoadCodebasesWithConfig(
+        "test-project",
+        config,
+        options,
+        firebaseConfig,
+        true, // runtimeConfigApiEnabled
+        undefined,
+      );
+
+      // Verify two-pass: runtime config loaded after finding v1
+      expect(getFunctionsConfigStub).to.have.been.calledOnce;
+      expect(loadCodebasesStub).to.have.been.calledTwice;
+      expect(result.runtimeConfig).to.deep.include({ someConfig: "value" });
+    });
+
+    it("should skip runtime config entirely when API is disabled", async () => {
+      sandbox.stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
+      
+      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+        .resolves({ someConfig: "value" });
+      
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
+        .resolves({ 
+          codebase: {
+            endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
+            requiredAPIs: [],
+            params: [],
+          }
+        });
+
+      const config = {} as unknown as ValidatedConfig;
+      const options = { projectId: "test-project" } as unknown as Options;
+      const firebaseConfig = { projectId: "test-project" } as unknown as FirebaseConfig;
+
+      const result = await prepare.maybeLoadCodebasesWithConfig(
+        "test-project",
+        config,
+        options,
+        firebaseConfig,
+        false, // runtimeConfigApiEnabled = false
+        undefined,
+      );
+
+      // Should not load runtime config even with v1 functions when API is disabled
+      expect(getFunctionsConfigStub).to.not.have.been.called;
+      expect(loadCodebasesStub).to.have.been.calledOnce;
+      expect(result.runtimeConfig).to.deep.equal({ firebase: firebaseConfig });
     });
   });
 

@@ -138,6 +138,14 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
+  dangerouslyAllowFunctionsConfig: {
+    shortDescription: "Load functions.config() values from Runtime Config API on function deploys",
+    fullDescription:
+      "When enabled, fetch config stored in Runtime Config API during function deployments. " +
+      "When disabled, skip loading config from Runtime Config API, making functions.config() API non-functional.",
+    default: true,
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
