@@ -6,6 +6,7 @@ import * as init from "./index";
 import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
+import * as cloudbilling from "../../../gcp/cloudbilling";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
@@ -23,6 +24,7 @@ describe("init dataconnect", () => {
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
+      sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
     });
 
     afterEach(() => {
