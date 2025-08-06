@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { AppPlatform, listFirebaseApps } from "../../../management/apps";
 
 export const list_apps = tool(
   {

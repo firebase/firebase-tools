@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getDocuments } from "../../../gcp/firestore.js";
-import { firestoreDocumentToJson } from "./converter.js";
-import { Emulators } from "../../../emulator/types.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getDocuments } from "../../../gcp/firestore";
+import { firestoreDocumentToJson } from "./converter";
+import { Emulators } from "../../../emulator/types";
 
 export const get_documents = tool(
   {

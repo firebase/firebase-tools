@@ -199,6 +199,14 @@ export function logWarning(
 }
 
 /**
+ * Log a warning statement to stderr, regardless of logger configuration.
+ */
+export function logWarningToStderr(message: string): void {
+  const prefix = clc.bold(`${WARNING_CHAR} `);
+  process.stderr.write(clc.yellow(prefix + message) + "\n");
+}
+
+/**
  * Log an info statement with a gray bullet at the start of the line.
  */
 export function logLabeledWarning(

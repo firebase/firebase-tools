@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getDocuments } from "../../../gcp/firestore.js";
-import { FirestoreDelete } from "../../../firestore/delete.js";
-import { Emulators } from "../../../emulator/types.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getDocuments } from "../../../gcp/firestore";
+import { FirestoreDelete } from "../../../firestore/delete";
+import { Emulators } from "../../../emulator/types";
 
 export const delete_document = tool(
   {

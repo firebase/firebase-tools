@@ -1,9 +1,9 @@
-import { ServerTool } from "../../tool.js";
-import { get_user } from "./get_user.js";
-import { disable_user } from "./disable_user.js";
-import { set_claim } from "./set_claims.js";
-import { set_sms_region_policy } from "./set_sms_region_policy.js";
-import { list_users } from "./list_users.js";
+import { ServerTool } from "../../tool";
+import { get_user } from "./get_user";
+import { disable_user } from "./disable_user";
+import { set_claim } from "./set_claims";
+import { set_sms_region_policy } from "./set_sms_region_policy";
+import { list_users } from "./list_users";
 
 export const authTools: ServerTool[] = [
   get_user,

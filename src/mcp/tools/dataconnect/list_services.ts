@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import * as client from "../../../dataconnect/client.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import * as client from "../../../dataconnect/client";
 
 export const list_services = tool(
   {
