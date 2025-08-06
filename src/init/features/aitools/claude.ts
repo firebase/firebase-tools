@@ -23,7 +23,7 @@ export const claude: AIToolModule = {
     const files: AIToolConfigResult["files"] = [];
 
     // Handle MCP configuration in .mcp.json - merge with existing if present
-    let existingConfig: any = {};
+let existingConfig: { mcpServers?: Record<string, { command: string; args: string[] }> } = {};
     let mcpUpdated = false;
     try {
       const existingContent = config.readProjectFile(MCP_CONFIG_PATH);
