@@ -87,6 +87,7 @@ const featuresList: Feature[] = [
     askQuestions: features.apptestingAskQuestions,
     actuate: features.apptestingAcutate,
   },
+  { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));

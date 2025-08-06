@@ -32,8 +32,7 @@ firebase deploy --except functions
 
 firebase use staging
 firebase use production
-
-````
+```
 </example>
 
 ## Local Development
