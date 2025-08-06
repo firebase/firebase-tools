@@ -20,15 +20,15 @@ export const command = new Command("internaltesting:functions:discover")
         "Admin SDK config unexpectedly undefined - have you run firebase init?",
       );
     }
-    
+
     // Check if runtime config API is enabled
     const runtimeConfigApiEnabled = await ensureApiEnabled.check(
       projectId,
       runtimeconfigOrigin(),
       "runtimeconfig",
-      /* silent=*/ true
+      /* silent=*/ true,
     );
-    
+
     // Use the new function that respects the experiment flag
     const { wantBuilds } = await maybeLoadCodebasesWithConfig(
       projectId,
@@ -38,7 +38,7 @@ export const command = new Command("internaltesting:functions:discover")
       runtimeConfigApiEnabled,
       undefined, // no filters
     );
-    
+
     logger.info(JSON.stringify(wantBuilds, null, 2));
     return wantBuilds;
   });

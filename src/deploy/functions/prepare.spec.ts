@@ -430,7 +430,7 @@ describe("prepare", () => {
 
   describe("maybeLoadCodebasesWithConfig", () => {
     let sandbox: sinon.SinonSandbox;
-    
+
     beforeEach(() => {
       sandbox = sinon.createSandbox();
     });
@@ -441,22 +441,24 @@ describe("prepare", () => {
 
     it("should load runtime config when experiment is enabled", async () => {
       // Stub experiments
-      sandbox.stub(experiments, "isEnabled")
-        .withArgs("dangerouslyAllowFunctionsConfig").returns(true);
-      
+      sandbox
+        .stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig")
+        .returns(true);
+
       // Stub the getFunctionsConfig to track if it's called
-      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+      const getFunctionsConfigStub = sandbox
+        .stub(prepareFunctionsUploadModule, "getFunctionsConfig")
         .resolves({ someConfig: "value" });
-      
+
       // Stub loadCodebases to track calls
-      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
-        .resolves({ 
-          codebase: {
-            endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
-            requiredAPIs: [],
-            params: [],
-          }
-        });
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
+        codebase: {
+          endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
+          requiredAPIs: [],
+          params: [],
+        },
+      });
 
       const config = {} as unknown as ValidatedConfig;
       const options = { projectId: "test-project" } as unknown as Options;
@@ -478,20 +480,22 @@ describe("prepare", () => {
     });
 
     it("should skip runtime config for v2-only when experiment is disabled", async () => {
-      sandbox.stub(experiments, "isEnabled")
-        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
-      
-      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+      sandbox
+        .stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig")
+        .returns(false);
+
+      const getFunctionsConfigStub = sandbox
+        .stub(prepareFunctionsUploadModule, "getFunctionsConfig")
         .resolves({ someConfig: "value" });
-      
-      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
-        .resolves({ 
-          codebase: {
-            endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
-            requiredAPIs: [],
-            params: [],
-          }
-        });
+
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
+        codebase: {
+          endpoints: { "fn-v2": { ...ENDPOINT, platform: "gcfv2" as const } },
+          requiredAPIs: [],
+          params: [],
+        },
+      });
 
       const config = {} as unknown as ValidatedConfig;
       const options = { projectId: "test-project" } as unknown as Options;
@@ -513,20 +517,22 @@ describe("prepare", () => {
     });
 
     it("should do two-pass for v1 functions when experiment is disabled", async () => {
-      sandbox.stub(experiments, "isEnabled")
-        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
-      
-      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+      sandbox
+        .stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig")
+        .returns(false);
+
+      const getFunctionsConfigStub = sandbox
+        .stub(prepareFunctionsUploadModule, "getFunctionsConfig")
         .resolves({ someConfig: "value" });
-      
-      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
-        .resolves({ 
-          codebase: {
-            endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
-            requiredAPIs: [],
-            params: [],
-          }
-        });
+
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
+        codebase: {
+          endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
+          requiredAPIs: [],
+          params: [],
+        },
+      });
 
       const config = {} as unknown as ValidatedConfig;
       const options = { projectId: "test-project" } as unknown as Options;
@@ -548,20 +554,22 @@ describe("prepare", () => {
     });
 
     it("should skip runtime config entirely when API is disabled", async () => {
-      sandbox.stub(experiments, "isEnabled")
-        .withArgs("dangerouslyAllowFunctionsConfig").returns(false);
-      
-      const getFunctionsConfigStub = sandbox.stub(prepareFunctionsUploadModule, "getFunctionsConfig")
+      sandbox
+        .stub(experiments, "isEnabled")
+        .withArgs("dangerouslyAllowFunctionsConfig")
+        .returns(false);
+
+      const getFunctionsConfigStub = sandbox
+        .stub(prepareFunctionsUploadModule, "getFunctionsConfig")
         .resolves({ someConfig: "value" });
-      
-      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases")
-        .resolves({ 
-          codebase: {
-            endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
-            requiredAPIs: [],
-            params: [],
-          }
-        });
+
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
+        codebase: {
+          endpoints: { "fn-v1": { ...ENDPOINT, platform: "gcfv1" as const } },
+          requiredAPIs: [],
+          params: [],
+        },
+      });
 
       const config = {} as unknown as ValidatedConfig;
       const options = { projectId: "test-project" } as unknown as Options;
