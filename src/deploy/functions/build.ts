@@ -41,12 +41,7 @@ export function of(endpoints: Record<string, Endpoint>): Build {
 
 /** A helper utility for checking whether an endpoint matches a predicate. */
 export function someEndpoint(build: Build, predicate: (endpoint: Endpoint) => boolean): boolean {
-  for (const endpoints of Object.values(build.endpoints)) {
-    if (Object.values(endpoints).some(predicate)) {
-      return true;
-    }
-  }
-  return false;
+  return Object.values(build.endpoints).some(predicate);
 }
 
 export interface RequiredApi {

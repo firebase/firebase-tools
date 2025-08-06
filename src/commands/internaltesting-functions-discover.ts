@@ -1,11 +1,13 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
-import { loadCodebases } from "../deploy/functions/prepare";
+import { maybeLoadCodebasesWithConfig } from "../deploy/functions/prepare";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import { runtimeconfigOrigin } from "../api";
 
 export const command = new Command("internaltesting:functions:discover")
   .description("discover function triggers defined in the current project directory")
@@ -18,9 +20,25 @@ export const command = new Command("internaltesting:functions:discover")
         "Admin SDK config unexpectedly undefined - have you run firebase init?",
       );
     }
-    const builds = await loadCodebases(fnConfig, options, firebaseConfig, {
-      firebase: firebaseConfig,
-    });
-    logger.info(JSON.stringify(builds, null, 2));
-    return builds;
+    
+    // Check if runtime config API is enabled
+    const runtimeConfigApiEnabled = await ensureApiEnabled.check(
+      projectId,
+      runtimeconfigOrigin(),
+      "runtimeconfig",
+      /* silent=*/ true
+    );
+    
+    // Use the new function that respects the experiment flag
+    const { wantBuilds } = await maybeLoadCodebasesWithConfig(
+      projectId,
+      fnConfig,
+      options,
+      firebaseConfig,
+      runtimeConfigApiEnabled,
+      undefined, // no filters
+    );
+    
+    logger.info(JSON.stringify(wantBuilds, null, 2));
+    return wantBuilds;
   });
