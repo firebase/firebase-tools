@@ -72,11 +72,11 @@ export async function readGQLFiles(sourceDir: string): Promise<File[]> {
     return [];
   }
   const files = await glob(`${sourceDir}/**/*.{gql,graphql}`);
-  return files.map((f) => toFile(sourceDir, path.relative(sourceDir, f)));
+  return files.map((f) => toFile(sourceDir, f));
 }
 
-function toFile(sourceDir: string, relPath: string): File {
-  const fullPath = path.join(sourceDir, relPath);
+function toFile(sourceDir: string, fullPath: string): File {
+  const relPath = path.relative(sourceDir, fullPath);
   if (!fs.existsSync(fullPath)) {
     throw new FirebaseError(`file ${fullPath} not found`);
   }
