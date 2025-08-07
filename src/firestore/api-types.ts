@@ -129,6 +129,7 @@ export enum PointInTimeRecoveryEnablement {
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
   cmekConfig?: CmekConfig;

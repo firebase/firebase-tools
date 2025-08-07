@@ -17,7 +17,7 @@ describe("firestore:databases:create", () => {
   beforeEach(() => {
     command = firestoreDatabasesCreate;
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
-    sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub as any);
+    sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
   });
 
   afterEach(() => {

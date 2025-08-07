@@ -48,17 +48,23 @@ export const command = new Command("firestore:databases:create <database>")
     }
     // Type is always Firestore Native since Firebase does not support Datastore Mode
     const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
-    if (options.edition &&
-      options.edition !== "standard" &&
-      options.edition !== "enterprise"
-    ) {
-      throw new FirebaseError(`Invalid value for flag --edition. ${helpCommandText}`);
+
+    // Figure out the database edition.
+    let databaseEdition: types.DatabaseEdition = types.DatabaseEdition.STANDARD;
+    if (options.edition) {
+      const edition = options.edition.toUpperCase();
+      if (
+        edition !== types.DatabaseEdition.STANDARD &&
+        edition !== types.DatabaseEdition.ENTERPRISE
+      ) {
+        throw new FirebaseError(`Invalid value for flag --edition. ${helpCommandText}`);
+      }
+      databaseEdition =
+        edition === types.DatabaseEdition.ENTERPRISE
+          ? types.DatabaseEdition.ENTERPRISE
+          : types.DatabaseEdition.STANDARD;
     }
-    const databaseEdition: types.DatabaseEdition =
-      options.edition === "enterprise"
-        ? types.DatabaseEdition.ENTERPRISE
-        : types.DatabaseEdition.STANDARD;
-   
+
     if (
       options.deleteProtection &&
       options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
