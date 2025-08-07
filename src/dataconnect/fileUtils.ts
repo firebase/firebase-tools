@@ -1,6 +1,7 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as clc from "colorette";
+import { glob } from "glob";
 
 import { FirebaseError } from "../error";
 import {
@@ -70,11 +71,8 @@ export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   if (!fs.existsSync(sourceDir)) {
     return [];
   }
-  const files = await fs.readdir(sourceDir);
-  // TODO: Handle files in subdirectories such as `foo/a.gql` and `bar/baz/b.gql`.
-  return files
-    .filter((f) => f.endsWith(".gql") || f.endsWith(".graphql"))
-    .map((f) => toFile(sourceDir, f));
+  const files = await glob(`${sourceDir}/**/*.{gql,graphql}`);
+  return files.map((f) => toFile(sourceDir, path.relative(sourceDir, f)));
 }
 
 function toFile(sourceDir: string, relPath: string): File {
