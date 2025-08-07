@@ -101,11 +101,6 @@ export enum DatabaseType {
   FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
 }
 
-export enum DatabaseEdition {
-  STANDARD = "STANDARD",
-  ENTERPRISE = "ENTERPRISE",
-}
-
 export enum DatabaseDeleteProtectionStateOption {
   ENABLED = "ENABLED",
   DISABLED = "DISABLED",
@@ -159,7 +154,6 @@ export interface DatabaseResp {
   updateTime: string;
   locationId: string;
   type: DatabaseType;
-  databaseEdition: DatabaseEdition;
   concurrencyMode: string;
   appEngineIntegrationMode: string;
   keyPrefix: string;
