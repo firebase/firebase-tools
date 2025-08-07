@@ -21,13 +21,7 @@ describe("buildToolsJarHelper", () => {
 
   const jarVersion = "3.0.3";
   const fakeHomeDir = "/fake/home";
-  const cacheDir = path.join(
-    fakeHomeDir,
-    ".cache",
-    "firebase",
-    "crashlytics",
-    "buildtools",
-  );
+  const cacheDir = path.join(fakeHomeDir, ".cache", "firebase", "crashlytics", "buildtools");
   const jarPath = path.join(cacheDir, `crashlytics-buildtools-${jarVersion}.jar`);
 
   let downloadStub: sinon.SinonStub;

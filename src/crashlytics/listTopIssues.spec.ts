@@ -26,7 +26,7 @@ describe("listTopIssues", () => {
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topIssues`)
       .query({
-        "page_size": `${issueCount}`,
+        page_size: `${issueCount}`,
         "filter.issue.error_types": issueType,
       })
       .reply(200, mockResponse);
