@@ -5,6 +5,7 @@ import { command as firestoreDatabasesCreate } from "./firestore-databases-creat
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { FirebaseError } from "../error";
+import * as requireAuthModule from "../requireAuth";
 
 describe("firestore:databases:create", () => {
   const PROJECT = "test-project";
@@ -13,11 +14,14 @@ describe("firestore:databases:create", () => {
 
   let command: Command;
   let firestoreApiStub: sinon.SinonStubbedInstance<fsi.FirestoreApi>;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     command = firestoreDatabasesCreate;
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
+    requireAuthStub = sinon.stub(requireAuthModule, "requireAuth");
     sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
+    requireAuthStub.resolves("a@b.com");
   });
 
   afterEach(() => {
