@@ -150,7 +150,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   await writeFiles(config, info, options);
 
-  if (setup.projectId && info.shouldProvisionCSQL) {
+  if (setup.projectId && info.shouldProvisionCSQL && (await isBillingEnabled(setup))) {
     await provisionCloudSql({
       projectId: setup.projectId,
       location: info.locationId,
