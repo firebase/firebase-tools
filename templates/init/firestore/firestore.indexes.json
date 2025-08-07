@@ -31,7 +31,6 @@
   //     "apiScope": "MONGODB_COMPATIBLE_API",
   //     "density": "DENSE",
   //     "multikey": false,
-  //     "unique": false,
   //     "fields": [
   //       { "fieldPath": "baz", "mode": "ASCENDING" }
   //     ]
@@ -42,7 +41,6 @@
   //     "apiScope": "MONGODB_COMPATIBLE_API",
   //     "density": "SPARSE_ANY",
   //     "multikey": true,
-  //     "unique": false,
   //     "fields": [
   //       { "fieldPath": "baz", "mode": "ASCENDING" }
   //     ]
