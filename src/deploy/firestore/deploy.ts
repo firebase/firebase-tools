@@ -27,21 +27,17 @@ async function createDatabase(context: any, options: Options): Promise<void> {
   }
 
   let edition: types.DatabaseEdition = types.DatabaseEdition.STANDARD;
-  if (!firestoreCfg.edition) {
-    edition = types.DatabaseEdition.STANDARD;
-  } else {
+  if (firestoreCfg.edition) {
+    const upperEdition = firestoreCfg.edition.toUpperCase();
     if (
-      firestoreCfg.edition !== types.DatabaseEdition.STANDARD &&
-      firestoreCfg.edition !== types.DatabaseEdition.ENTERPRISE
+      upperEdition !== types.DatabaseEdition.STANDARD &&
+      upperEdition !== types.DatabaseEdition.ENTERPRISE
     ) {
       throw new FirebaseError(
         `Invalid edition specified for database in firebase.json: ${firestoreCfg.edition}`,
       );
     }
-    edition =
-      firestoreCfg.edition.toUpperCase() === types.DatabaseEdition.ENTERPRISE
-        ? types.DatabaseEdition.ENTERPRISE
-        : types.DatabaseEdition.STANDARD;
+    edition = upperEdition as types.DatabaseEdition;
   }
 
   const api = new FirestoreApi();

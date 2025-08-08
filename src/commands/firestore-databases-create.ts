@@ -59,10 +59,7 @@ export const command = new Command("firestore:databases:create <database>")
       ) {
         throw new FirebaseError(`Invalid value for flag --edition. ${helpCommandText}`);
       }
-      databaseEdition =
-        edition === types.DatabaseEdition.ENTERPRISE
-          ? types.DatabaseEdition.ENTERPRISE
-          : types.DatabaseEdition.STANDARD;
+      databaseEdition = edition as types.DatabaseEdition;
     }
 
     if (
