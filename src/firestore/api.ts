@@ -329,10 +329,6 @@ export class FirestoreApi {
       validator.assertType("unique", index.unique, "boolean");
     }
 
-    if (index.density) {
-      validator.assertEnum(index, "density", Object.keys(types.Density));
-    }
-
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {

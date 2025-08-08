@@ -330,7 +330,7 @@ function compareOrder(a?: API.Order, b?: API.Order): number {
   return ORDER_SEQUENCE.indexOf(a) - ORDER_SEQUENCE.indexOf(b);
 }
 
-function compareBoolean(a?: boolean, b?: boolean) {
+function compareBoolean(a?: boolean, b?: boolean): number {
   if (a === b) {
     return 0;
   }
