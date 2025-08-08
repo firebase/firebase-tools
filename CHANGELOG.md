@@ -1,0 +1,1 @@
+- [Added] Support for Firestore Enterprise database index configurations. (#8939)
