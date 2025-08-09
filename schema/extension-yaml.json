@@ -1,5 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "extension.yaml",
+  "description": "extension.yaml declares the resources and configurable parameters for a Firebase Extension.",
   "additionalProperties": false,
   "definitions": {
     "author": {
@@ -336,8 +338,11 @@
       "properties": {
         "attribute": {
           "type": "string",
-          "description": "The event attribute to filter on",
-          "value": "The value to filter for"
+          "description": "The event attribute to filter on"
+        },
+        "value": {
+          "type": "string",
+          "description": "The value to filter for"
         }
       }
     }

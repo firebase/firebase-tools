@@ -123,4 +123,7 @@ export type DecommissionedRuntime = {
     : never;
 }[keyof typeof RUNTIMES];
 
+/**
+ * The Cloud Functions runtimes that currently can be deployed by `firebase deploy`.
+ */
 export type ActiveRuntime = Exclude<Runtime, DecommissionedRuntime>;
