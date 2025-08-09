@@ -36,6 +36,103 @@ describe("IndexValidation", () => {
     idx.validateSpec(VALID_SPEC);
   });
 
+  it("should accept a valid index spec with apiScope, density, multikey, and unique", () => {
+    const spec = {
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          apiScope: "ANY_API",
+          density: "DENSE",
+          multikey: true,
+          unique: true,
+          fields: [
+            { fieldPath: "foo", order: "ASCENDING" },
+            { fieldPath: "bar", order: "DESCENDING" },
+            { fieldPath: "baz", arrayConfig: "CONTAINS" },
+          ],
+        },
+      ],
+    };
+    idx.validateSpec(spec);
+  });
+
+  it("should reject an index spec with invalid apiScope", () => {
+    const spec = {
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          apiScope: "UNKNOWN",
+          fields: [],
+        },
+      ],
+    };
+    expect(() => {
+      idx.validateSpec(spec);
+    }).to.throw(
+      FirebaseError,
+      /Field "apiScope" must be one of ANY_API, DATASTORE_MODE_API, MONGODB_COMPATIBLE_API/,
+    );
+  });
+
+  it("should reject an index spec with invalid density", () => {
+    const spec = {
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          apiScope: "ANY_API",
+          density: "UNKNOWN",
+          fields: [],
+        },
+      ],
+    };
+    expect(() => {
+      idx.validateSpec(spec);
+    }).to.throw(
+      FirebaseError,
+      /Field "density" must be one of DENSITY_UNSPECIFIED, SPARSE_ALL, SPARSE_ANY, DENSE/,
+    );
+  });
+
+  it("should reject an index spec with invalid multikey", () => {
+    const spec = {
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          apiScope: "ANY_API",
+          density: "DENSE",
+          multikey: "multikey",
+          fields: [],
+        },
+      ],
+    };
+    expect(() => {
+      idx.validateSpec(spec);
+    }).to.throw(FirebaseError, /Property "multikey" must be of type boolean/);
+  });
+
+  it("should reject an index spec with invalid unique", () => {
+    const spec = {
+      indexes: [
+        {
+          collectionGroup: "collection",
+          queryScope: "COLLECTION",
+          apiScope: "ANY_API",
+          density: "DENSE",
+          multikey: true,
+          unique: "true",
+          fields: [],
+        },
+      ],
+    };
+    expect(() => {
+      idx.validateSpec(spec);
+    }).to.throw(FirebaseError, /Property "unique" must be of type boolean/);
+  });
+
   it("should not change a valid v1beta2 index spec after upgrade", () => {
     const upgraded = idx.upgradeOldSpec(VALID_SPEC);
     expect(upgraded).to.eql(VALID_SPEC);
@@ -227,6 +324,177 @@ describe("IndexSpecMatching", () => {
     } as Spec.Index;
 
     expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(true);
+  });
+
+  it("should identify a positive index spec match with apiScope, density, multikey, and unique", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      apiScope: API.ApiScope.ANY_API,
+      density: API.Density.DENSE,
+      multikey: true,
+      unique: true,
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
+      ],
+      state: API.State.READY,
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      apiScope: "ANY_API",
+      density: "DENSE",
+      multikey: true,
+      unique: true,
+      fields: [
+        { fieldPath: "foo", order: "ASCENDING" },
+        { fieldPath: "bar", arrayConfig: "CONTAINS" },
+      ],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(true);
+  });
+
+  it("should identify a negative index spec match with different apiScope", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      apiScope: API.ApiScope.ANY_API,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      apiScope: "DATASTORE_MODE_API",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with missing apiScope", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      apiScope: "DATASTORE_MODE_API",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with different density", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      density: API.Density.DENSE,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      density: "SPARSE_ALL",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with missing density", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      density: API.Density.DENSE,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with different multikey", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      multikey: true,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      multikey: false,
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with missing multikey", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      multikey: false,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with different unique", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      unique: true,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      unique: false,
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with missing unique", () => {
+    const apiIndex: API.Index = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      queryScope: API.QueryScope.COLLECTION,
+      unique: false,
+      fields: [],
+    };
+
+    const specIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
   });
 
   it("should identify a negative index spec match", () => {
@@ -659,6 +927,121 @@ describe("IndexSorting", () => {
     };
 
     expect([b, a, e, d, c].sort(sort.compareSpecIndex)).to.eql([a, b, c, d, e]);
+  });
+
+  it("should correctly sort an array of Spec indexes with apiScope, density, multikey, and unique", () => {
+    const a: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.ANY_API,
+    };
+
+    const b: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.ANY_API,
+    };
+
+    const c: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.DATASTORE_MODE_API,
+    };
+
+    const d: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+    };
+
+    const e: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSITY_UNSPECIFIED,
+    };
+
+    const f: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.SPARSE_ALL,
+    };
+
+    const g: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.SPARSE_ANY,
+    };
+
+    const h: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSE,
+    };
+
+    const i: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSE,
+      multikey: false,
+    };
+
+    const j: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSE,
+      multikey: true,
+    };
+
+    const k: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSE,
+      multikey: true,
+      unique: false,
+    };
+
+    const l: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+      apiScope: API.ApiScope.MONGODB_COMPATIBLE_API,
+      density: API.Density.DENSE,
+      multikey: true,
+      unique: true,
+    };
+
+    expect([l, k, j, i, h, g, f, e, d, c, b, a].sort(sort.compareSpecIndex)).to.eql([
+      a,
+      b,
+      c,
+      d,
+      e,
+      f,
+      g,
+      h,
+      i,
+      j,
+      k,
+      l,
+    ]);
   });
 
   it("should correcty sort an array of Spec field overrides", () => {
