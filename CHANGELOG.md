@@ -1,0 +1,1 @@
+- [Added] Support for creating Firestore Enterprise databases using `firestore:databases:create --edition enterprise`. (#8952)
