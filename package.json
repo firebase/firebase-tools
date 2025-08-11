@@ -25,7 +25,7 @@
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
     "mocha": "nyc mocha 'src/**/*.spec.{ts,js}'",
     "prepare": "npm run clean && npm run build:publish",
-    "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
+    "test": "npm run lint:quiet && npm run test:compile && npm run mocha && rm -rf dataconnect clean",
     "test:apptesting": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/apptesting/*.spec.{ts,js}'",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
