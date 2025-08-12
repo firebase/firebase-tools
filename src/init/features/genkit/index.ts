@@ -377,7 +377,11 @@ function getPluginInfo(option?: ModelOption): PluginInfo {
   if (option?.plugin) {
     return pluginToInfo[option.plugin];
   }
-  return pluginToInfo["none"];
+  return {
+    plugin: "",
+    imports: "",
+    init: "",
+  };
 }
 
 /** Basic packages required to use Genkit. */
@@ -586,7 +590,7 @@ function generateSampleFile(
 ): void {
   let modelImport = "";
   const pluginInfo = getPluginInfo(modelOption);
-  if (pluginInfo.model) {
+  if (pluginInfo.imports) {
     modelImport = "\n" + generateImportStatement(pluginInfo) + "\n";
   }
   let modelImportComment = "";
