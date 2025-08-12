@@ -573,8 +573,10 @@ async function installNpmPackages(
 
 /**
  * Generates a sample index.ts file.
- * @param modelPlugin Model plugin name.
- * @param configPlugins config plugins.
+ * @param modelOption Information about the model/plugin
+ * @param projectDir Where to put the sample
+ * @param templateVersion Which template the use
+ * @param enableTelemetry If telemetry is enabled or not.
  */
 function generateSampleFile(
   modelOption: ModelOption | undefined,
