@@ -25,6 +25,21 @@ async function createDatabase(context: any, options: Options): Promise<void> {
   if (!firestoreCfg.database) {
     firestoreCfg.database = "(default)";
   }
+
+  let edition: types.DatabaseEdition = types.DatabaseEdition.STANDARD;
+  if (firestoreCfg.edition) {
+    const upperEdition = firestoreCfg.edition.toUpperCase();
+    if (
+      upperEdition !== types.DatabaseEdition.STANDARD &&
+      upperEdition !== types.DatabaseEdition.ENTERPRISE
+    ) {
+      throw new FirebaseError(
+        `Invalid edition specified for database in firebase.json: ${firestoreCfg.edition}`,
+      );
+    }
+    edition = upperEdition as types.DatabaseEdition;
+  }
+
   const api = new FirestoreApi();
   try {
     await api.getDatabase(options.projectId, firestoreCfg.database);
@@ -40,6 +55,7 @@ async function createDatabase(context: any, options: Options): Promise<void> {
         databaseId: firestoreCfg.database,
         locationId: firestoreCfg.location || "nam5", // Default to 'nam5' if location is not specified
         type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: edition,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
       };
