@@ -1,0 +1,1 @@
+- genkit: support for new unified plugin during init

@@ -39,6 +39,7 @@ import {
 interface GenkitInfo {
   genkitVersion: string;
   cliVersion: string;
+  genaiVersion: string;
   vertexVersion: string;
   googleAiVersion: string;
   templateVersion: string;
@@ -47,7 +48,7 @@ interface GenkitInfo {
 
 // This is the next breaking change version past the latest template.
 const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
-const MIN_VERSION = "0.6.0";
+const MIN_VERSION = "1.0.0-rc.1";
 
 // This is the latest template. It is the default.
 const LATEST_TEMPLATE = "1.0.0";
@@ -92,6 +93,7 @@ async function getGenkitInfo(): Promise<GenkitInfo> {
 
   const genkitVersion = await getPackageVersion("genkit", "GENKIT_DEV_VERSION");
   const cliVersion = await getPackageVersion("genkit-cli", "GENKIT_CLI_DEV_VERSION");
+  const genaiVersion = await getPackageVersion("@genkit-ai/google-genai", "GENKIT_GENAI_VERSION");
   const vertexVersion = await getPackageVersion("@genkit-ai/vertexai", "GENKIT_VERTEX_VERSION");
   const googleAiVersion = await getPackageVersion("@genkit-ai/googleai", "GENKIT_GOOGLEAI_VERSION");
 
@@ -110,11 +112,11 @@ async function getGenkitInfo(): Promise<GenkitInfo> {
     if (!continueInstall) {
       stopInstall = true;
     }
-  } else if (semver.gte(genkitVersion, "1.0.0-rc.1")) {
-    // 1.0.0-rc.1 < 1.0.0
-    templateVersion = "1.0.0";
+  } else if (semver.gte(genkitVersion, "1.17.0") && semver.gte(genaiVersion, "0.0.2-rc.1")) {
+    // Unified plugin template
+    templateVersion = "1.17.0";
   } else if (semver.gte(genkitVersion, MIN_VERSION)) {
-    templateVersion = "0.9.0";
+    templateVersion = "1.0.0";
   } else {
     throw new FirebaseError(
       `The requested version of Genkit (${genkitVersion}) is no ` +
@@ -127,6 +129,7 @@ async function getGenkitInfo(): Promise<GenkitInfo> {
     cliVersion,
     vertexVersion,
     googleAiVersion,
+    genaiVersion,
     templateVersion,
     stopInstall,
   };
@@ -241,21 +244,23 @@ export async function ensureVertexApiEnabled(options: Options): Promise<void> {
 }
 
 interface PluginInfo {
+  // The name of the plugin
+  plugin: string;
   // Imported items from `name` (can be comma list).
   imports: string;
   // Comment for 'the model import line.
   modelImportComment?: string;
   // Initializer call.
   init: string;
-  // Model name as an imported reference.
+  // Model definition
   model?: string;
-  // Model name as a string reference.
-  modelStr?: string;
 }
 
-interface PromptOption {
+interface ModelOption {
   // Label for prompt option.
   label: string;
+  // Provider (e.g. googleAI, vertexAI)
+  provider?: string;
   // Plugin name.
   plugin?: string;
   // Package including version
@@ -263,33 +268,81 @@ interface PromptOption {
 }
 
 /** Model to plugin name. */
-function getModelOptions(genkitInfo: GenkitInfo): Record<ModelProvider, PromptOption> {
-  const modelOptions: Record<ModelProvider, PromptOption> = {
-    vertexai: {
-      label: "Google Cloud Vertex AI",
-      plugin: "@genkit-ai/vertexai",
-      package: `@genkit-ai/vertexai@${genkitInfo.vertexVersion}`,
-    },
-    googleai: {
-      label: "Google AI",
-      plugin: "@genkit-ai/googleai",
-      package: `@genkit-ai/googleai@${genkitInfo.googleAiVersion}`,
-    },
-    none: { label: "None", plugin: undefined, package: undefined },
-  };
+function getModelOptions(genkitInfo: GenkitInfo): Record<ModelProvider, ModelOption> {
+  let modelOptions: Record<ModelProvider, ModelOption>;
+  if (semver.gte(genkitInfo.templateVersion, "1.17.0")) {
+    modelOptions = {
+      vertexai: {
+        label: "Google Cloud Vertex AI",
+        provider: "vertexai",
+        plugin: "@genkit-ai/google-genai",
+        package: `@genkit-ai/google-genai@${genkitInfo.genaiVersion}`,
+      },
+      googleai: {
+        label: "Google AI",
+        provider: "googleai",
+        plugin: "@genkit-ai/google-genai",
+        package: `@genkit-ai/google-genai@${genkitInfo.genaiVersion}`,
+      },
+      none: { label: "None" },
+    };
+  } else {
+    modelOptions = {
+      vertexai: {
+        label: "Google Cloud Vertex AI",
+        plugin: "@genkit-ai/vertexai",
+        package: `@genkit-ai/vertexai@${genkitInfo.vertexVersion}`,
+      },
+      googleai: {
+        label: "Google AI",
+        plugin: "@genkit-ai/googleai",
+        package: `@genkit-ai/googleai@${genkitInfo.googleAiVersion}`,
+      },
+      none: { label: "None" },
+    };
+  }
+
   return modelOptions;
 }
 
 /** Plugin name to descriptor. */
 const pluginToInfo: Record<string, PluginInfo> = {
   "@genkit-ai/firebase": {
+    plugin: "@genkit-ai/firebase",
     imports: "firebase",
     init: `
     // Load the Firebase plugin, which provides integrations with several
     // Firebase services.
     firebase()`.trimStart(),
   },
+  "@genkit-ai/google-genai(vertexai)": {
+    plugin: "@genkit-ai/google-genai",
+    imports: "vertexAI",
+    modelImportComment: `
+// Import vertexAI provider from the unified plugin. The Vertex AI API provides
+// access to many models.`,
+    init: `    // Load the VertexAI provider. You can optionally specify your location
+    // and projectID by passing in a config object; if you don't, the provider
+    // uses the value from environment variables like GCLOUD_PROJECT and GCLOUD_LOCATION.
+    // If you want to use Vertex Express Mode, you can specify apiKey instead.
+    vertexAI({location: "global"})`,
+    model: 'vertexAI.model("gemini-2.5-flash")',
+  },
+  "@genkit-ai/google-genai(googleai)": {
+    plugin: "@genkit-ai/google-genai",
+    imports: "googleAI",
+    modelImportComment: `
+// Import googleAI provider from the unified plugin. The Gemini Developer API
+// provides access to several generative models.`,
+    init: `    // Load the GoogleAI provider. You can optionally specify your API key by
+    // passing in a config object; if you don't, the provider uses the value
+    // from the GOOGLE_GENAI_API_KEY environment variable, which is the
+    // recommended practice.
+    googleAI()`,
+    model: 'googleAI.model("gemini-2.5-flash")',
+  },
   "@genkit-ai/vertexai": {
+    plugin: "@genkit-ai/vertexai",
     imports: "vertexAI",
     modelImportComment: `
 // Import models from the Vertex AI plugin. The Vertex AI API provides access to
@@ -302,6 +355,7 @@ const pluginToInfo: Record<string, PluginInfo> = {
     model: "gemini20Flash",
   },
   "@genkit-ai/googleai": {
+    plugin: "@genkit-ai/googleai",
     imports: "googleAI",
     modelImportComment: `
 // Import models from the Google AI plugin. The Google AI API provides access to
@@ -315,6 +369,16 @@ const pluginToInfo: Record<string, PluginInfo> = {
     model: "gemini20Flash",
   },
 };
+
+function getPluginInfo(option?: ModelOption): PluginInfo {
+  if (option?.provider && option.plugin) {
+    return pluginToInfo[`${option.plugin}(${option.provider})`];
+  }
+  if (option?.plugin) {
+    return pluginToInfo[option.plugin];
+  }
+  return pluginToInfo["none"];
+}
 
 /** Basic packages required to use Genkit. */
 function getBasePackages(genkitVersion: string): string[] {
@@ -352,13 +416,8 @@ export async function genkitSetup(
   }
 
   // Compile plugins list.
-  const plugins: string[] = [];
   const pluginPackages: string[] = [];
   pluginPackages.push(`@genkit-ai/firebase@${genkitInfo.genkitVersion}`);
-
-  if (modelOptions[model]?.plugin) {
-    plugins.push(modelOptions[model].plugin || "");
-  }
   if (modelOptions[model]?.package) {
     pluginPackages.push(modelOptions[model].package || "");
   }
@@ -393,8 +452,7 @@ export async function genkitSetup(
       }));
 
     generateSampleFile(
-      modelOptions[model].plugin,
-      plugins,
+      modelOptions[model],
       projectDir,
       genkitInfo.templateVersion,
       enableTelemetry,
@@ -519,21 +577,19 @@ async function installNpmPackages(
  * @param configPlugins config plugins.
  */
 function generateSampleFile(
-  modelPlugin: string | undefined,
-  configPlugins: string[],
+  modelOption: ModelOption | undefined,
   projectDir: string,
   templateVersion: string,
   enableTelemetry: boolean,
 ): void {
   let modelImport = "";
-  if (modelPlugin && pluginToInfo[modelPlugin].model) {
-    const modelInfo = pluginToInfo[modelPlugin].model || "";
-    modelImport = "\n" + generateImportStatement(modelInfo, modelPlugin) + "\n";
+  const pluginInfo = getPluginInfo(modelOption);
+  if (pluginInfo.model) {
+    modelImport = "\n" + generateImportStatement(pluginInfo) + "\n";
   }
   let modelImportComment = "";
-  if (modelPlugin && pluginToInfo[modelPlugin].modelImportComment) {
-    const comment = pluginToInfo[modelPlugin].modelImportComment || "";
-    modelImportComment = `\n${comment}`;
+  if (pluginInfo.modelImportComment) {
+    modelImportComment = `\n${pluginInfo.modelImportComment}`;
   }
   const commentedModelImport = `${modelImportComment}${modelImport}`;
   const templatePath = path.join(
@@ -542,15 +598,10 @@ function generateSampleFile(
   );
   const template = fs.readFileSync(templatePath, "utf8");
   const sample = renderConfig(
-    configPlugins,
+    pluginInfo,
     template
       .replace("$GENKIT_MODEL_IMPORT\n", commentedModelImport)
-      .replace(
-        "$GENKIT_MODEL",
-        modelPlugin
-          ? pluginToInfo[modelPlugin].model || pluginToInfo[modelPlugin].modelStr || ""
-          : "'' /* TODO: Set a model. */",
-      ),
+      .replace("$GENKIT_MODEL", pluginInfo.model ?? "'' /* TODO: Set a model. */"),
     enableTelemetry,
   );
   logLabeledBullet("genkit", "Generating sample file");
@@ -640,21 +691,19 @@ async function updatePackageJson(nonInteractive: boolean, projectDir: string): P
   }
 }
 
-function renderConfig(pluginNames: string[], template: string, enableTelemetry: boolean): string {
-  const imports = pluginNames
-    .map((pluginName) => generateImportStatement(pluginToInfo[pluginName].imports, pluginName))
-    .join("\n");
-  const plugins =
-    pluginNames.map((pluginName) => `    ${pluginToInfo[pluginName].init},`).join("\n") ||
-    "    /* Add your plugins here. */";
+function renderConfig(pluginInfo: PluginInfo, template: string, enableTelemetry: boolean): string {
+  const plugins = pluginInfo.init || "    /* Add your plugins here. */";
   return template
-    .replace("$GENKIT_CONFIG_IMPORTS", imports)
+    .replace("$GENKIT_CONFIG_IMPORTS", generateImportStatement(pluginInfo))
     .replace("$GENKIT_CONFIG_PLUGINS", plugins)
     .replaceAll("$TELEMETRY_COMMENT", enableTelemetry ? "" : "// ");
 }
 
-function generateImportStatement(imports: string, name: string): string {
-  return `import {${imports}} from "${name}";`;
+function generateImportStatement(pluginInfo: PluginInfo): string {
+  if (pluginInfo.imports && pluginInfo.plugin) {
+    return `import {${pluginInfo.imports}} from "${pluginInfo.plugin}";`;
+  }
+  return "";
 }
 
 /**
