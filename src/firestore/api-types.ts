@@ -147,6 +147,7 @@ export enum DatabaseEdition {
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
   cmekConfig?: CmekConfig;
@@ -157,6 +158,7 @@ export interface CreateDatabaseReq {
   databaseId: string;
   locationId: string;
   type: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
   cmekConfig?: CmekConfig;

@@ -1,1 +1,2 @@
+- [Added] Support for creating Firestore Enterprise databases using `firestore:databases:create --edition enterprise`. (#8952)
 - [Added] Support for Firestore Enterprise database index configurations. (#8939)

@@ -718,6 +718,7 @@ export class FirestoreApi {
     const payload: types.DatabaseReq = {
       locationId: req.locationId,
       type: req.type,
+      databaseEdition: req.databaseEdition,
       deleteProtectionState: req.deleteProtectionState,
       pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
       cmekConfig: req.cmekConfig,
