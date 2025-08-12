@@ -856,6 +856,34 @@ export function generateId(n = 6): string {
 }
 
 /**
+ * Generate a password meeting the following criterias:
+ *  - At least one lowercase, one uppercase, one number, and one special character.
+ */
+export function generatePassword(n = 20): string {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const all = lower + upper + numbers + special;
+
+  let pw = "";
+  pw += lower[Math.floor(Math.random() * lower.length)];
+  pw += upper[Math.floor(Math.random() * upper.length)];
+  pw += numbers[Math.floor(Math.random() * numbers.length)];
+  pw += special[Math.floor(Math.random() * special.length)];
+
+  for (let i = 4; i < n; i++) {
+    pw += all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Shuffle the password to randomize character order
+  return pw
+    .split("")
+    .sort(() => 0.5 - Math.random())
+    .join("");
+}
+
+/**
  * Reads a secret value from either a file or a prompt.
  * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
  * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
