@@ -248,11 +248,9 @@ export async function generateSdkYaml(
 export async function actuate(sdkInfo: SDKInfo, config: Config) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
-  await config.askWriteProjectFile(
+  config.writeProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     sdkInfo.connectorYamlContents,
-    /* force=*/ false,
-    /* confirmByDefault=*/ true,
   );
 
   const account = getGlobalDefaultAccount();

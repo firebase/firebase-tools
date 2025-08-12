@@ -96,7 +96,11 @@ export async function requireAuth(
   skipAutoAuth: boolean = false,
 ): Promise<string | null> {
   lastOptions = options;
-  api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
+  const requiredScopes = [scopes.CLOUD_PLATFORM];
+  if (isFirebaseStudio()) {
+    requiredScopes.push(scopes.USERINFO_EMAIL);
+  }
+  api.setScopes(requiredScopes);
   options.authScopes = api.getScopes();
 
   const tokens = options.tokens as Tokens | undefined;

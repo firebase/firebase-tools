@@ -1,6 +1,6 @@
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "../gcp/resourceManager";
 import { ensure } from "../ensureApiEnabled";
-import { appTestingOrigin } from "../api";
+import { appTestingOrigin, artifactRegistryDomain, cloudRunApiOrigin, storageOrigin } from "../api";
 import { logBullet, logWarning } from "../utils";
 import { FirebaseError, getErrStatus } from "../error";
 import * as iam from "../gcp/iam";
@@ -10,9 +10,10 @@ const TEST_RUNNER_ROLE = "roles/firebaseapptesting.testRunner";
 const TEST_RUNNER_SERVICE_ACCOUNT_NAME = "firebaseapptesting-test-runner";
 
 export async function ensureProjectConfigured(projectId: string) {
-  await ensure(projectId, appTestingOrigin(), "storage", false);
-  await ensure(projectId, appTestingOrigin(), "run", false);
-  await ensure(projectId, appTestingOrigin(), "artifactregistry", false);
+  await ensure(projectId, appTestingOrigin(), "Firebase App Testing", false);
+  await ensure(projectId, cloudRunApiOrigin(), "Cloud Run", false);
+  await ensure(projectId, storageOrigin(), "Cloud Storage", false);
+  await ensure(projectId, artifactRegistryDomain(), "Artifact Registry", false);
   const serviceAccount = runnerServiceAccount(projectId);
 
   const serviceAccountExistsAndIsRunner = await serviceAccountHasRoles(
