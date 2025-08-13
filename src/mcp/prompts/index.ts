@@ -26,7 +26,7 @@ function addFeaturePrefixToPrompts(feature: string, prompts: ServerPrompt[]): Se
 }
 
 export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts: ServerPrompt[] = prompts["core"];
+  const allPrompts: ServerPrompt[] = [...prompts["core"]];
   if (!features) {
     features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
   }
