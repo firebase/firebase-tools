@@ -19,6 +19,7 @@ export interface ServerPrompt<InputSchema extends ZodTypeAny = ZodTypeAny> {
     name: string;
     description?: string;
     inputSchema: any;
+    omitPrefix?: boolean;
     annotations?: {
       title?: string;
     };
@@ -31,8 +32,10 @@ export interface ServerPrompt<InputSchema extends ZodTypeAny = ZodTypeAny> {
 }
 
 export function prompt<InputSchema extends ZodTypeAny>(
-  options: Omit<ServerPrompt<InputSchema>["mcp"], "inputSchema"> & {
+  options: Omit<ServerPrompt<InputSchema>["mcp"], "inputSchema" | "name"> & {
+    name: string;
     inputSchema: InputSchema;
+    omitPrefix?: boolean;
   },
   fn: ServerPrompt<InputSchema>["fn"],
 ): ServerPrompt {
