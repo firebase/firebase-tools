@@ -1,2 +1,3 @@
+- [Fixed] Runtime config deprecation warning no longer shows for v1 functions that only use default Firebase config. (#8963)
 - [Added] Support for creating Firestore Enterprise databases using `firestore:databases:create --edition enterprise`. (#8952)
 - [Added] Support for Firestore Enterprise database index configurations. (#8939)
