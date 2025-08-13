@@ -103,10 +103,7 @@ async function packageSource(
 
       // Only warn about deprecated runtime config if there are user-defined values
       // (i.e., keys other than the default 'firebase' key)
-      const configKeys = Object.keys(runtimeConfig);
-      const hasUserConfig =
-        configKeys.length > 1 || (configKeys.length === 1 && configKeys[0] !== "firebase");
-      if (hasUserConfig) {
+      if (Object.keys(runtimeConfig).some((k) => k !== "firebase")) {
         logFunctionsConfigDeprecationWarning();
       }
     }
