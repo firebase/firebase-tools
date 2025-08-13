@@ -101,8 +101,11 @@ async function packageSource(
         mode: 420 /* 0o644 */,
       });
 
-      // Log deprecation warning when runtime config is being packaged
-      logFunctionsConfigDeprecationWarning();
+      // Only warn about deprecated runtime config if there are user-defined values
+      // (i.e., keys other than the default 'firebase' key)
+      if (Object.keys(runtimeConfig).some((k) => k !== "firebase")) {
+        logFunctionsConfigDeprecationWarning();
+      }
     }
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
