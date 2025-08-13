@@ -1,1 +1,1 @@
-- genkit: support for new unified plugin during init
+- Added support for new google-genai plugin during `init genkit`

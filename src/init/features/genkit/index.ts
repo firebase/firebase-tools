@@ -49,6 +49,7 @@ interface GenkitInfo {
 // This is the next breaking change version past the latest template.
 const UNKNOWN_VERSION_TOO_HIGH = "2.0.0";
 const MIN_VERSION = "1.0.0-rc.1";
+const UNIFIED_PLUGIN_VERSION = "1.18.0"; // also rename template if you change this
 
 // This is the latest template. It is the default.
 const LATEST_TEMPLATE = "1.0.0";
@@ -112,9 +113,12 @@ async function getGenkitInfo(): Promise<GenkitInfo> {
     if (!continueInstall) {
       stopInstall = true;
     }
-  } else if (semver.gte(genkitVersion, "1.17.0") && semver.gte(genaiVersion, "0.0.2-rc.1")) {
+  } else if (
+    semver.gte(genkitVersion, UNIFIED_PLUGIN_VERSION) &&
+    semver.gte(genaiVersion, "0.0.2-rc.1")
+  ) {
     // Unified plugin template
-    templateVersion = "1.17.0";
+    templateVersion = UNIFIED_PLUGIN_VERSION;
   } else if (semver.gte(genkitVersion, MIN_VERSION)) {
     templateVersion = "1.0.0";
   } else {
@@ -270,7 +274,7 @@ interface ModelOption {
 /** Model to plugin name. */
 function getModelOptions(genkitInfo: GenkitInfo): Record<ModelProvider, ModelOption> {
   let modelOptions: Record<ModelProvider, ModelOption>;
-  if (semver.gte(genkitInfo.templateVersion, "1.17.0")) {
+  if (semver.gte(genkitInfo.templateVersion, UNIFIED_PLUGIN_VERSION)) {
     modelOptions = {
       vertexai: {
         label: "Google Cloud Vertex AI",
@@ -352,7 +356,7 @@ const pluginToInfo: Record<string, PluginInfo> = {
     // by passing in a config object; if you don't, the Vertex AI plugin uses
     // the value from the GCLOUD_PROJECT environment variable.
     vertexAI({location: "us-central1"})`.trimStart(),
-    model: "gemini20Flash",
+    model: 'vertexAI.model("gemini-2.5-flash")',
   },
   "@genkit-ai/googleai": {
     plugin: "@genkit-ai/googleai",
@@ -366,7 +370,7 @@ const pluginToInfo: Record<string, PluginInfo> = {
     // the value from the GOOGLE_GENAI_API_KEY environment variable, which is
     // the recommended practice.
     googleAI()`.trimStart(),
-    model: "gemini20Flash",
+    model: 'googleAI.model("gemini-2.5-flash")',
   },
 };
 
