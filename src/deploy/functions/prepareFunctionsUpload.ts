@@ -101,8 +101,14 @@ async function packageSource(
         mode: 420 /* 0o644 */,
       });
 
-      // Log deprecation warning when runtime config is being packaged
-      logFunctionsConfigDeprecationWarning();
+      // Only warn about deprecated runtime config if there are user-defined values
+      // (i.e., keys other than the default 'firebase' key)
+      const configKeys = Object.keys(runtimeConfig);
+      const hasUserConfig =
+        configKeys.length > 1 || (configKeys.length === 1 && configKeys[0] !== "firebase");
+      if (hasUserConfig) {
+        logFunctionsConfigDeprecationWarning();
+      }
     }
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
