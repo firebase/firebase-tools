@@ -2,7 +2,7 @@ import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { FirebaseMcpServer } from "./index";
-import { Config } from "../config";
+import type { Config } from "../config";
 import { RC } from "../rc";
 import { cleanSchema } from "./util";
 

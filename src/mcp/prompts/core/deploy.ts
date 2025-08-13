@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { prompt } from "../../prompt";
-import type { Config } from "../../../config";
 
 export const deploy = prompt(
   {
