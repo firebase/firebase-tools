@@ -384,18 +384,10 @@ export class FirebaseMcpServer {
     }
 
     let projectId = await this.getProjectId();
-    // TODO: add requiresProject to prompts
-    // if (prompt.mcp._meta?.requiresProject && !projectId) {
-    //   return NO_PROJECT_ERROR;
-    // }
     projectId = projectId || "";
 
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
-    // TODO: add requiresAuth to prompts
-    // if (prompt.mcp._meta?.requiresAuth && !accountEmail) {
-    //   return mcpAuthError(skipAutoAuthForStudio);
-    // }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
     const promptsCtx: ServerPromptContext = {
