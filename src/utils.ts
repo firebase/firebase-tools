@@ -3,6 +3,7 @@ import * as tty from "tty";
 import * as path from "node:path";
 import * as yaml from "yaml";
 import { Socket } from "node:net";
+import * as crypto from "node:crypto";
 
 import * as _ from "lodash";
 import * as url from "url";
@@ -867,20 +868,22 @@ export function generatePassword(n = 20): string {
   const all = lower + upper + numbers + special;
 
   let pw = "";
-  pw += lower[Math.floor(Math.random() * lower.length)];
-  pw += upper[Math.floor(Math.random() * upper.length)];
-  pw += numbers[Math.floor(Math.random() * numbers.length)];
-  pw += special[Math.floor(Math.random() * special.length)];
+  pw += lower[crypto.randomInt(lower.length)];
+  pw += upper[crypto.randomInt(upper.length)];
+  pw += numbers[crypto.randomInt(numbers.length)];
+  pw += special[crypto.randomInt(special.length)];
 
   for (let i = 4; i < n; i++) {
-    pw += all[Math.floor(Math.random() * all.length)];
+    pw += all[crypto.randomInt(all.length)];
   }
 
-  // Shuffle the password to randomize character order
-  return pw
-    .split("")
-    .sort(() => 0.5 - Math.random())
-    .join("");
+  // Shuffle the password to randomize character order using Fisher-Yates shuffle
+  const pwArray = pw.split("");
+  for (let i = pwArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
+  }
+  return pwArray.join("");
 }
 
 /**
