@@ -1,4 +1,5 @@
 export const SERVER_FEATURES = [
+  "core",
   "firestore",
   "storage",
   "dataconnect",
