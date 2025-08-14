@@ -310,11 +310,22 @@ FOO=foo
     it("never affects the filesystem if the list of keys to write is empty", () => {
       env.writeUserEnvs(
         {},
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        },
       );
       env.writeUserEnvs(
         {},
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+          codebase: "default",
+        },
       );
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
@@ -322,7 +333,10 @@ FOO=foo
     });
 
     it("touches .env.projectId if it doesn't already exist", () => {
-      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir, codebase: "default" });
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", functionsSource: tmpdir, codebase: "default" },
+      );
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
       expect(() => fs.statSync(path.join(tmpdir, ".env.local"))).to.throw;
@@ -343,7 +357,10 @@ FOO=foo
         [".env.project"]: "FOO=foo",
       });
       expect(() =>
-        env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir, codebase: "default" }),
+        env.writeUserEnvs(
+          { FOO: "bar" },
+          { projectId: "project", functionsSource: tmpdir, codebase: "default" },
+        ),
       ).to.throw(FirebaseError);
     });
 
@@ -373,7 +390,12 @@ FOO=foo
       expect(() =>
         env.writeUserEnvs(
           { FOO: "baz" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            functionsSource: tmpdir,
+            codebase: "default",
+          },
         ),
       ).to.throw(FirebaseError);
     });
@@ -384,7 +406,13 @@ FOO=foo
       });
       env.writeUserEnvs(
         { FOO: "baz" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+          codebase: "default",
+        },
       );
       expect(
         env.loadUserEnvs({
@@ -413,19 +441,34 @@ FOO=foo
       expect(() =>
         env.writeUserEnvs(
           { lowercase: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            functionsSource: tmpdir,
+            codebase: "default",
+          },
         ),
       ).to.throw(env.KeyValidationError);
       expect(() =>
         env.writeUserEnvs(
           { GCP_PROJECT: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            functionsSource: tmpdir,
+            codebase: "default",
+          },
         ),
       ).to.throw(env.KeyValidationError);
       expect(() =>
         env.writeUserEnvs(
           { FIREBASE_KEY: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            functionsSource: tmpdir,
+            codebase: "default",
+          },
         ),
       ).to.throw(env.KeyValidationError);
     });
@@ -433,12 +476,20 @@ FOO=foo
     it("writes the specified key to a .env.projectId that it created", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" })[
-          "FOO"
-        ],
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        })["FOO"],
       ).to.equal("bar");
     });
 
@@ -448,19 +499,32 @@ FOO=foo
       });
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" })[
-          "FOO"
-        ],
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        })["FOO"],
       ).to.equal("bar");
     });
 
     it("writes multiple keys at once", () => {
       env.writeUserEnvs(
         { FOO: "foo", BAR: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        },
       );
       const envs = env.loadUserEnvs({
         projectId: "project",
@@ -479,7 +543,12 @@ FOO=foo
           WITH_SLASHES: "\n\\\r\\\t\\\v",
           QUOTES: "'\"'",
         },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, codebase: "default" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          codebase: "default",
+        },
       );
       const envs = env.loadUserEnvs({
         projectId: "project",
@@ -501,8 +570,11 @@ FOO=foo
       } catch (err: any) {
         // no-op
       }
-      expect(env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir, codebase: "default" })["FOO"]).to.be
-        .undefined;
+      expect(
+        env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir, codebase: "default" })[
+          "FOO"
+        ],
+      ).to.be.undefined;
     });
   });
 
@@ -721,9 +793,9 @@ FOO=foo
         });
 
         expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
-          FOO: "project",      // project overrides codebase
-          BAR: "codebase",     // codebase overrides global
-          BAZ: "global",       // only defined in global
+          FOO: "project", // project overrides codebase
+          BAR: "codebase", // codebase overrides global
+          BAZ: "global", // only defined in global
         });
       });
 
@@ -735,9 +807,9 @@ FOO=foo
         });
 
         expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
-          FOO: "alias",        // alias overrides codebase
-          BAR: "codebase",     // codebase overrides global
-          BAZ: "global",       // only defined in global
+          FOO: "alias", // alias overrides codebase
+          BAR: "codebase", // codebase overrides global
+          BAZ: "global", // only defined in global
         });
       });
 
@@ -748,7 +820,9 @@ FOO=foo
           ".env.profile-pics-resizer": "FOO=custom-codebase\nCUSTOM=value",
         });
 
-        expect(env.loadUserEnvs({ ...customProjectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+        expect(
+          env.loadUserEnvs({ ...customProjectInfo, functionsSource: tmpdir }),
+        ).to.be.deep.equal({
           FOO: "custom-codebase",
           CUSTOM: "value",
         });
@@ -765,12 +839,11 @@ FOO=foo
         expect(
           env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
         ).to.be.deep.equal({
-          FOO: "local",        // .env.local has highest precedence in emulator
-          BAR: "codebase",     // codebase overrides global
-          BAZ: "global",       // only defined in global
+          FOO: "local", // .env.local has highest precedence in emulator
+          BAR: "codebase", // codebase overrides global
+          BAZ: "global", // only defined in global
         });
       });
-
     });
   });
 
