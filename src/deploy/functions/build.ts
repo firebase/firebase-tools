@@ -650,3 +650,17 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
   }
   assertExhaustive(endpoint);
 }
+
+/**
+ * Prefixes all endpoint IDs in a build with a given prefix.
+ */
+export function applyPrefix(build: Build, prefix: string): void {
+  if (!prefix) {
+    return;
+  }
+  const newEndpoints: Record<string, Endpoint> = {};
+  for (const id of Object.keys(build.endpoints)) {
+    newEndpoints[`${prefix}-${id}`] = build.endpoints[id];
+  }
+  build.endpoints = newEndpoints;
+}

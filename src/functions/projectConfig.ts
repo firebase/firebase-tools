@@ -92,7 +92,7 @@ export function assertUnique(
 function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
   const sourcePrefixPairs = new Set<string>();
   for (const c of config) {
-    const key = `${c.source}-${c.prefix || ""}`;
+    const key = JSON.stringify({ source: c.source, prefix: c.prefix || "" });
     if (sourcePrefixPairs.has(key)) {
       throw new FirebaseError(
         `More than one functions config specifies the same source directory ('${

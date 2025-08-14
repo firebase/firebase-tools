@@ -293,3 +293,40 @@ describe("envWithType", () => {
     expect(out.WHOOPS_SECRET.asString()).to.equal("super-secret");
   });
 });
+
+describe("applyPrefix", () => {
+  it("updates endpoint keys with prefix and handles empty prefix", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+        func2: {
+          region: "us-west1",
+          project: "test-project",
+          platform: "gcfv1",
+          runtime: "nodejs16",
+          entryPoint: "func2",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+
+    // Test with prefix
+    build.applyPrefix(testBuild, "test");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
+    expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
+    expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
+
+    // Test empty prefix does nothing
+    build.applyPrefix(testBuild, "");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
+  });
+});
