@@ -220,10 +220,12 @@ export function parseStrict(data: string): Record<string, string> {
 function findEnvfiles(
   functionsSource: string,
   projectId: string,
+  codebase: string,
   projectAlias?: string,
   isEmulator?: boolean,
 ): string[] {
   const files: string[] = [".env"];
+  files.push(`.env.${codebase}`);
   files.push(`.env.${projectId}`);
   if (projectAlias) {
     files.push(`.env.${projectAlias}`);
@@ -243,6 +245,7 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  codebase: string;
 }
 
 /**
@@ -255,8 +258,9 @@ export function hasUserEnvs({
   projectId,
   projectAlias,
   isEmulator,
+  codebase,
 }: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+  return findEnvfiles(functionsSource, projectId, codebase, projectAlias, isEmulator).length > 0;
 }
 
 /**
@@ -269,10 +273,10 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const { functionsSource, projectId, projectAlias, isEmulator, codebase } = envOpts;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const allEnvFiles = findEnvfiles(functionsSource, projectId, codebase, projectAlias, isEmulator);
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
@@ -356,8 +360,9 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * .env files are searched and merged in the following order:
  *
- *   1. .env
- *   2. .env.<project or alias>
+ *   1. .env (global defaults for all functions in source)
+ *   2. .env.<codebase> (codebase-specific settings)
+ *   3. .env.<project or alias> (project-specific overrides)
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
  *
@@ -368,8 +373,9 @@ export function loadUserEnvs({
   projectId,
   projectAlias,
   isEmulator,
+  codebase,
 }: UserEnvsOpts): Record<string, string> {
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const envFiles = findEnvfiles(functionsSource, projectId, codebase, projectAlias, isEmulator);
   if (envFiles.length === 0) {
     return {};
   }
