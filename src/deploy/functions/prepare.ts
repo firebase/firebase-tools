@@ -10,6 +10,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import * as experiments from "../../experiments";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -86,17 +87,18 @@ export async function prepare(
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   context.firebaseConfig = firebaseConfig;
-  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  if (checkAPIsEnabled[1]) {
-    // If runtime config API is enabled, load the runtime config.
-    const config = await getFunctionsConfig(projectId);
-    runtimeConfig = { ...runtimeConfig, ...config };
-    context.hasRuntimeConfig = Object.keys(config).length > 0;
-  }
 
   context.codebaseDeployEvents = {};
 
-  // ===Phase 1. Load codebases from source.
+  // ===Phase 1. Load codebases from source with optional runtime config.
+  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
+  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
+
+  // Load runtime config if experiment allows it and API is enabled
+  if (allowFunctionsConfig && checkAPIsEnabled[1]) {
+    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
+  }
+
   const wantBuilds = await loadCodebases(
     context.config,
     options,

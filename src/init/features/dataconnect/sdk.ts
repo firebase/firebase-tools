@@ -116,8 +116,7 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
     if (unusedFrameworks.length > 0) {
       const additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
         message:
-          "Which frameworks would you like to generate SDKs for? " +
-          "Press Space to select features, then Enter to confirm your choices.",
+          "Which frameworks would you like to generate SDKs for in addition to the TypeScript SDK? Press Enter to skip.\n",
         choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
           value: frameworkStr,
           checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
@@ -249,11 +248,9 @@ export async function generateSdkYaml(
 export async function actuate(sdkInfo: SDKInfo, config: Config) {
   const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
   logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
-  await config.askWriteProjectFile(
+  config.writeProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     sdkInfo.connectorYamlContents,
-    /* force=*/ false,
-    /* confirmByDefault=*/ true,
   );
 
   const account = getGlobalDefaultAccount();
