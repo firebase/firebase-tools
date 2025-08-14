@@ -484,7 +484,6 @@ export async function loadCodebases(
     });
     build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
     wantBuilds[codebase] = discoveredBuild;
-    wantBuilds[codebase].runtime = discoveredBuild.runtime;
   }
   return wantBuilds;
 }
