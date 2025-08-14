@@ -53,8 +53,9 @@ import {
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
-import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
+import * as runtimes from "../deploy/functions/runtimes";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
@@ -565,7 +566,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         await this.loadDynamicExtensionBackends();
       }
       if (emulatableBackend.prefix) {
-        const newEndpoints: Record<string, backend.Endpoint> = {};
+        const newEndpoints: Record<string, build.Endpoint> = {};
         for (const id of Object.keys(discoveredBuild.endpoints)) {
           newEndpoints[`${emulatableBackend.prefix}-${id}`] = discoveredBuild.endpoints[id];
         }
