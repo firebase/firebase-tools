@@ -793,9 +793,12 @@ export class FirestoreApi {
     project: string,
     databaseId: string,
     collectionIds: string[],
-  ): Promise<boolean> {
+  ): Promise<{
+    success: boolean;
+    jobName: string;
+  }> {
     const name = `/projects/${project}/databases/${databaseId}`;
-    const url = `/projects/${project}/databases/${databaseId}:bulkDeleteDocuments`;
+    const url = `${name}:bulkDeleteDocuments`;
     const payload: types.BulkDeleteDocumentsRequest = {
       name,
       collectionIds,
@@ -804,10 +807,10 @@ export class FirestoreApi {
       types.BulkDeleteDocumentsRequest,
       types.BulkDeleteDocumentsResponse
     >(url, payload);
-    console.log(res.response);
-    console.log(res.body);
-    console.log(res.status);
-    return true;
+    return {
+      success: res.status === 200,
+      jobName: res.status === 200 ? res.body.name : "",
+    };
   }
 
   /**

@@ -8,6 +8,7 @@ import { FirestoreOptions } from "../firestore/options";
 import { confirm } from "../prompt";
 import * as utils from "../utils";
 import * as clc from "colorette";
+import {logBullet, logLabeledError, logSuccess} from "../utils";
 
 function confirmationMessage(
   options: FirestoreOptions,
@@ -35,7 +36,7 @@ function confirmationMessage(
 }
 
 export const command = new Command("firestore:bulk-delete")
-  .description("Managed bulk delete service to delete data from one or more collection groups")
+  .description("managed bulk delete service to delete data from one or more collection groups")
   .option(
     "--database <databaseName>",
     'Database ID for database to delete from. "(default)" if none is provided.',
@@ -70,10 +71,18 @@ export const command = new Command("firestore:bulk-delete")
     if (options.json) {
       logger.info(JSON.stringify(op, undefined, 2));
     } else {
-      logger.info(`Successfully started bulk delete operation.`);
-      logger.info(
-        "You can monitor the operation's progress using the 'firebase firestore:operations:describe' command.",
-      );
+      if (op.success) {
+        logSuccess(`Successfully started bulk delete operation.`);
+        logBullet(`Operation name: ` + clc.cyan(op.jobName));
+        // TODO: Update this message to 'firebase firestore:operations:describe' command once it's implemented.
+        logBullet(
+          "You can monitor the operation's progress using the " +
+            clc.cyan(`gcloud firestore operations describe`) +
+            ` command.`,
+        );
+      } else {
+        logLabeledError(`Bulk Delete:`, `Failed to start a bulk delete operation.`);
+      }
     }
 
     return op;
