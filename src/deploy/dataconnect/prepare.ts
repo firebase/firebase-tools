@@ -69,7 +69,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
       await diffSchema(
         options,
         si.schema,
-        si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+        si.dataConnectYaml.schema?.datasource?.postgresql?.schemaValidation,
       );
     }
     utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
