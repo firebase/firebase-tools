@@ -8,7 +8,8 @@ import { FirestoreOptions } from "../firestore/options";
 import { confirm } from "../prompt";
 import * as utils from "../utils";
 import * as clc from "colorette";
-import {logBullet, logLabeledError, logSuccess} from "../utils";
+import { logBullet, logLabeledError, logSuccess } from "../utils";
+import { FirebaseError } from "../error";
 
 function confirmationMessage(
   options: FirestoreOptions,
@@ -49,12 +50,25 @@ export const command = new Command("firestore:bulk-delete")
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
   .action(async (options: FirestoreOptions) => {
-    const api = new fsi.FirestoreApi();
+    if (!options.collectionIds) {
+      throw new FirebaseError(
+        "Missing required flag --collection-ids=[comma separated list of collection groups]",
+      );
+    }
+    let collectionIds: string[] = [];
+    try {
+      collectionIds = (options.collectionIds as string)
+        .split(",")
+        .filter((id: string) => id.trim() !== "");
+    } catch (e) {
+      throw new FirebaseError(
+        "The value for --collection-ids must a list of comma separated collection group names",
+      );
+    }
 
     const databaseId = options.database || "(default)";
-    const collectionIds = ((options.collectionIds as string) || "")
-      .split(",")
-      .filter((id: string) => id.trim() !== "");
+
+    const api = new fsi.FirestoreApi();
 
     const confirmed = await confirm({
       message: confirmationMessage(options, databaseId, collectionIds),
@@ -71,9 +85,9 @@ export const command = new Command("firestore:bulk-delete")
     if (options.json) {
       logger.info(JSON.stringify(op, undefined, 2));
     } else {
-      if (op.success) {
+      if (op.name) {
         logSuccess(`Successfully started bulk delete operation.`);
-        logBullet(`Operation name: ` + clc.cyan(op.jobName));
+        logBullet(`Operation name: ` + clc.cyan(op.name));
         // TODO: Update this message to 'firebase firestore:operations:describe' command once it's implemented.
         logBullet(
           "You can monitor the operation's progress using the " +

@@ -193,7 +193,7 @@ export interface BulkDeleteDocumentsRequest {
 }
 
 export type BulkDeleteDocumentsResponse = {
-  name: string;
+  name?: string;
 };
 
 export interface RestoreDatabaseReq {
