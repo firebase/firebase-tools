@@ -401,14 +401,14 @@ export class FirebaseMcpServer {
     try {
       const messages = await prompt.fn(promptArgs, promptsCtx);
       await this.trackGA4("mcp_get_prompt", {
-        prompt_name: promptName,
+        tool_name: promptName,
       });
       return {
         messages,
       };
     } catch (err: unknown) {
       await this.trackGA4("mcp_get_prompt", {
-        prompt_name: promptName,
+        tool_name: promptName,
         error: 1,
       });
       // TODO: should we return mcpError here?
