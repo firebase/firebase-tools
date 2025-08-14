@@ -183,6 +183,17 @@ export interface DatabaseResp {
   databaseEdition?: DatabaseEdition;
 }
 
+export interface BulkDeleteDocumentsRequest {
+  // Database to operate. Should be of the form:
+  // `projects/{project_id}/databases/{database_id}`.
+  name: string;
+  // IDs of the collection groups to delete. Unspecified means *all* collection groups.
+  // Each collection group in this list must be unique.
+  collectionIds?: string[];
+}
+
+export type BulkDeleteDocumentsResponse = {};
+
 export interface RestoreDatabaseReq {
   databaseId: string;
   backup: string;

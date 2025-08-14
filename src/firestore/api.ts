@@ -784,6 +784,33 @@ export class FirestoreApi {
   }
 
   /**
+   * Bulk delete documents from a Firestore database.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param collectionIds the collection IDs to delete.
+   */
+  async bulkDeleteDocuments(
+    project: string,
+    databaseId: string,
+    collectionIds: string[],
+  ): Promise<boolean> {
+    const name = `/projects/${project}/databases/${databaseId}`;
+    const url = `/projects/${project}/databases/${databaseId}:bulkDeleteDocuments`;
+    const payload: types.BulkDeleteDocumentsRequest = {
+      name,
+      collectionIds,
+    };
+    const res = await this.apiClient.post<
+      types.BulkDeleteDocumentsRequest,
+      types.BulkDeleteDocumentsResponse
+    >(url, payload);
+    console.log(res.response);
+    console.log(res.body);
+    console.log(res.status);
+    return true;
+  }
+
+  /**
    * Restore a Firestore Database from a backup.
    * @param project the Firebase project id.
    * @param databaseId the ID of the Firestore Database to be restored into
