@@ -4,7 +4,6 @@ import * as build from "./build";
 import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import { RuntimeDelegate } from "./runtimes";
-import { RUNTIMES } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
