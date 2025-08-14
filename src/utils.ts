@@ -880,7 +880,7 @@ export function generatePassword(n = 20): string {
   // Shuffle the password to randomize character order using Fisher-Yates shuffle
   const pwArray = pw.split("");
   for (let i = pwArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = crypto.randomInt(i + 1);
     [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
   }
   return pwArray.join("");
