@@ -116,7 +116,7 @@ module.exports = {
   ],
   globals: {},
   parserOptions: {
-    ecmaVersion: 2017,
+    ecmaVersion: "2017",
     project: ["tsconfig.json", "tsconfig.dev.json"],
     sourceType: "module",
     warnOnUnsupportedTypeScriptVersion: false,
