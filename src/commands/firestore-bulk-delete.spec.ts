@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import * as requireAuthModule from "../requireAuth";
 import { BulkDeleteDocumentsResponse } from "../firestore/api-types";
 
-describe("firestore:databases:bulk-delete", () => {
+describe("firestore:bulk-delete", () => {
   const PROJECT = "test-project";
   const DATABASE = "test-database";
   const COLLECTION_IDS = ["collection1", "collection2"];
