@@ -3,6 +3,7 @@ import * as tty from "tty";
 import * as path from "node:path";
 import * as yaml from "yaml";
 import { Socket } from "node:net";
+import * as crypto from "node:crypto";
 
 import * as _ from "lodash";
 import * as url from "url";
@@ -853,6 +854,36 @@ export function generateId(n = 6): string {
     id += allChars[idx];
   }
   return id;
+}
+
+/**
+ * Generate a password meeting the following criterias:
+ *  - At least one lowercase, one uppercase, one number, and one special character.
+ */
+export function generatePassword(n = 20): string {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const all = lower + upper + numbers + special;
+
+  let pw = "";
+  pw += lower[crypto.randomInt(lower.length)];
+  pw += upper[crypto.randomInt(upper.length)];
+  pw += numbers[crypto.randomInt(numbers.length)];
+  pw += special[crypto.randomInt(special.length)];
+
+  for (let i = 4; i < n; i++) {
+    pw += all[crypto.randomInt(all.length)];
+  }
+
+  // Shuffle the password to randomize character order using Fisher-Yates shuffle
+  const pwArray = pw.split("");
+  for (let i = pwArray.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i);
+    [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
+  }
+  return pwArray.join("");
 }
 
 /**

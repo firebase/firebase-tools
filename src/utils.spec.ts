@@ -491,6 +491,19 @@ describe("utils", () => {
     });
   });
 
+  describe("generatePassword", () => {
+    it("should generate a password with the correct properties", () => {
+      for (let i = 0; i < 100; i++) {
+        const pw = utils.generatePassword(20);
+        expect(pw.length).to.equal(20);
+        expect(pw).to.match(/[a-z]/);
+        expect(pw).to.match(/[A-Z]/);
+        expect(pw).to.match(/[0-9]/);
+        expect(pw).to.match(/[!@#$%^&*()_+~`|}{[\]:;?><,./-=]/);
+      }
+    });
+  });
+
   describe("deepEqual", () => {
     it("should return true for identical primitives", () => {
       expect(utils.deepEqual(1, 1)).to.be.true;
