@@ -5,3 +5,4 @@
 - [Added] Support for creating Firestore Enterprise databases using `firestore:databases:create --edition enterprise`. (#8952)
 - [Added] Support for Firestore Enterprise database index configurations. (#8939)
 - [fixed] MCP: The `get_sdk_config` tool now properly returns decoded file content for Android and iOS.
+- [added] MCP: prompts are now supported with a `deploy` prompt as the first available.
