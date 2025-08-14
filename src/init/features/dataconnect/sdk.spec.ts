@@ -1,4 +1,4 @@
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as sinon from "sinon";
 import { expect } from "chai";
 
@@ -21,6 +21,7 @@ describe("init dataconnect:sdk", () => {
 
     beforeEach(() => {
       fsStub = sandbox.stub(fs, "writeFileSync");
+      sandbox.stub(fs, "ensureFileSync").returns();
       generateStub = sandbox.stub(DataConnectEmulator, "generate");
       emptyConfig = new Config({}, { projectDir: process.cwd() });
     });
