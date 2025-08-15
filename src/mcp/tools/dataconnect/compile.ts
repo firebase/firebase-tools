@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { pickService } from "../../../dataconnect/fileUtils";
-import { compileErrors } from "../../lib/dataconnect/compile";
+import { compileErrors } from "../../util/dataconnect/compile";
 
 export const compile = tool(
   {

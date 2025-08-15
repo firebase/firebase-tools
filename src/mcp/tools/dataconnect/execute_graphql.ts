@@ -3,9 +3,9 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
 import { pickService } from "../../../dataconnect/fileUtils";
-import { graphqlResponseToToolResponse, parseVariables } from "../../lib/dataconnect/converter";
+import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
 import { Client } from "../../../apiv2";
-import { getDataConnectEmulatorClient } from "../../lib/dataconnect/emulator";
+import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 
 export const execute_graphql = tool(
   {

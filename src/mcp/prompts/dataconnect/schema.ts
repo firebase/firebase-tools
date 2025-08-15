@@ -2,8 +2,8 @@ import { z } from "zod";
 import { prompt } from "../../prompt";
 import { loadAll } from "../../../dataconnect/loadAll";
 import type { ServiceInfo } from "../../../dataconnect/types";
-import { BUILTIN_SDL, MAIN_INSTRUCTIONS } from "../../lib/dataconnect/content";
-import { compileErrors } from "../../lib/dataconnect/compile";
+import { BUILTIN_SDL, MAIN_INSTRUCTIONS } from "../../util/dataconnect/content";
+import { compileErrors } from "../../util/dataconnect/compile";
 
 function renderServices(fdcServices: ServiceInfo[]) {
   if (!fdcServices.length) return "Data Connect Status: <UNCONFIGURED>";
