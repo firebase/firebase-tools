@@ -11,7 +11,7 @@ export const command = new Command("firestore:operations:list")
   .description("list pending Cloud Firestore admin operations and their status")
   .option(
     "--database <databaseName>",
-    'Database ID for database to list operations fo. "(default)" if none is provided.',
+    'Database ID for database to list operations for. "(default)" if none is provided.',
   )
   .option("--limit <number>", "The maximum number of operations to list. Uses 100 by default.")
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

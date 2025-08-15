@@ -13,7 +13,6 @@ import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
-import { ListOperationsResponse } from "./api-types";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
@@ -827,11 +826,27 @@ export class FirestoreApi {
     limit: number,
   ): Promise<types.ListOperationsResponse> {
     const url = `/projects/${project}/databases/${databaseId}/operations`;
-    const res = await this.apiClient.get<ListOperationsResponse>(url, {
+    const res = await this.apiClient.get<types.ListOperationsResponse>(url, {
       queryParams: {
         pageSize: limit,
       },
     });
+    return res.body;
+  }
+
+  /**
+   * The information related to the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async describeOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}`;
+    const res = await this.apiClient.get<types.Operation>(url);
     return res.body;
   }
 }

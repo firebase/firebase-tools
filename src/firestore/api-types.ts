@@ -188,6 +188,12 @@ export interface Operation {
   done: boolean;
   metadata: Record<string, any>;
   response?: Record<string, any>;
+  error?: {
+    name: string;
+    message: string;
+    code: number;
+    details?: any[];
+  };
 }
 
 export interface ListOperationsResponse {
