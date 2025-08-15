@@ -25,6 +25,7 @@ import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import { extractCodeBlock, generateSchema } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
+import { Options } from "../../../options";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -162,12 +163,12 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   }
 }
 
-export async function postSetup(setup: Setup, config: Config): Promise<void> {
+export async function postSetup(setup: Setup, config: Config, options: Options): Promise<void> {
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
   // If a platform can be detected or a connector is chosen via env var, always
   // setup SDK. FDC_CONNECTOR is used for scripts under https://firebase.tools/.
   if (cwdPlatformGuess !== Platform.NONE || envOverride("FDC_CONNECTOR", "")) {
-    await sdk.doSetup(setup, config);
+    await sdk.doSetup(setup, config, options);
   } else {
     logBullet(
       `If you'd like to add the generated SDK to your app later, run ${clc.bold("firebase init dataconnect:sdk")}`,
