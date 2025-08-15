@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { prompt } from "../../prompt";
 
 export const deploy = prompt(
@@ -6,12 +5,13 @@ export const deploy = prompt(
     name: "deploy",
     omitPrefix: true,
     description: "Use this command to deploy resources to Firebase.",
-    inputSchema: z.object({
-      prompt: z
-        .string()
-        .describe("any specific instructions you wish to provide about deploying")
-        .optional(),
-    }),
+    arguments: [
+      {
+        name: "prompt",
+        description: "any specific instructions you wish to provide about deploying",
+        required: false,
+      },
+    ],
     annotations: {
       title: "Deploy to Firebase",
     },
