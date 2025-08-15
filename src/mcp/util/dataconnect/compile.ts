@@ -1,5 +1,4 @@
 import { prettify } from "../../../dataconnect/graphqlError";
-import { ServiceInfo } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 
 export async function compileErrors(

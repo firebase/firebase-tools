@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { prompt } from "../../prompt";
 import { loadAll } from "../../../dataconnect/loadAll";
 import type { ServiceInfo } from "../../../dataconnect/types";
