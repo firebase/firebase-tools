@@ -147,6 +147,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: false,
+  },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
     public: true,

@@ -4,9 +4,9 @@ import { tool } from "../../tool";
 import { mcpError } from "../../util";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
 import { pickService } from "../../../dataconnect/fileUtils";
-import { graphqlResponseToToolResponse, parseVariables } from "./converter";
+import { graphqlResponseToToolResponse, parseVariables } from "../../lib/dataconnect/converter";
 import { Client } from "../../../apiv2";
-import { getDataConnectEmulatorClient } from "./emulator";
+import { getDataConnectEmulatorClient } from "../../lib/dataconnect/emulator";
 
 export const execute_query = tool(
   {
