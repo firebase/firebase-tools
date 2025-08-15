@@ -1,4 +1,5 @@
 export const SERVER_FEATURES = [
+  "core",
   "firestore",
   "storage",
   "dataconnect",
@@ -7,6 +8,7 @@ export const SERVER_FEATURES = [
   "remoteconfig",
   "crashlytics",
   "apphosting",
+  "database",
 ] as const;
 export type ServerFeature = (typeof SERVER_FEATURES)[number];
 

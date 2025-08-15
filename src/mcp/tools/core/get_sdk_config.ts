@@ -43,7 +43,17 @@ export const get_sdk_config = tool(
         `Could not find an app for platform '${inputPlatform}' in project '${projectId}'`,
       );
     const sdkConfig = await getAppConfig(appId, platform);
-    // TODO: return as string with comment about filename for ios and android
+    if ("configFilename" in sdkConfig) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `SDK config content for \`${sdkConfig.configFilename}\`:\n\n\`\`\`\n${Buffer.from(sdkConfig.configFileContents, "base64").toString("utf-8")}\n\`\`\``,
+          },
+        ],
+      };
+    }
+
     return toContent(sdkConfig, { format: "json" });
   },
 );

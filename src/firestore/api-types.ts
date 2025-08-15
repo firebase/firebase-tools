@@ -15,6 +15,19 @@ export enum QueryScope {
   COLLECTION_GROUP = "COLLECTION_GROUP",
 }
 
+export enum ApiScope {
+  ANY_API = "ANY_API",
+  DATASTORE_MODE_API = "DATASTORE_MODE_API",
+  MONGODB_COMPATIBLE_API = "MONGODB_COMPATIBLE_API",
+}
+
+export enum Density {
+  DENSITY_UNSPECIFIED = "DENSITY_UNSPECIFIED",
+  SPARSE_ALL = "SPARSE_ALL",
+  SPARSE_ANY = "SPARSE_ANY",
+  DENSE = "DENSE",
+}
+
 export enum Order {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -49,6 +62,10 @@ export interface Index {
   queryScope: QueryScope;
   fields: IndexField[];
   state?: State;
+  apiScope?: ApiScope;
+  density?: Density;
+  multikey?: boolean;
+  unique?: boolean;
 }
 
 /**
@@ -130,6 +147,7 @@ export enum DatabaseEdition {
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
   cmekConfig?: CmekConfig;
@@ -140,6 +158,7 @@ export interface CreateDatabaseReq {
   databaseId: string;
   locationId: string;
   type: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
   cmekConfig?: CmekConfig;

@@ -1,5 +1,6 @@
 import * as backend from "./backend";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -130,8 +131,12 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 export function getHumanFriendlyPlatformName(platform: backend.Endpoint["platform"]): string {
   if (platform === "gcfv1") {
     return "1st Gen";
+  } else if (platform === "gcfv2") {
+    return "2nd Gen";
+  } else if (platform === "run") {
+    return "Cloud Run";
   }
-  return "2nd Gen";
+  assertExhaustive(platform);
 }
 
 /**
