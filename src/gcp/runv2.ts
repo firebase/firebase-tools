@@ -569,7 +569,7 @@ export function serviceFromEndpoint(
         ],
         resources: {
           limits: {
-            cpu: String((endpoint.cpu as Number) || 1),
+            cpu: String(endpoint.cpu || 1),
             memory: `${endpoint.availableMemoryMb || 256}Mi`,
           },
           cpuIdle: true,

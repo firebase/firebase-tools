@@ -300,8 +300,8 @@ export interface ServiceConfiguration {
   serviceAccount?: string | null;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2" | "run";
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms = ["gcfv1", "gcfv2", "run"] as const;
+export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
