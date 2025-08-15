@@ -7,10 +7,10 @@ export const compile = tool(
   {
     name: "compile",
     description:
-      "Use this to compile Firebase Data Connect schema and/or operations and check for build errors.",
+      "Use this to compile Firebase Data Connect schema, operations, and/or connectors and check for build errors.",
     inputSchema: z.object({
       error_filter: z
-        .enum(["all", "schema", "operations"])
+        .enum(["all", "schema", "connectors"])
         .describe("filter errors to a specific type only. defaults to `all` if omitted.")
         .optional(),
       service_id: z

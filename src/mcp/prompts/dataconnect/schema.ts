@@ -62,7 +62,7 @@ ${prompt}
 
 1. If Data Connect is marked as \`<UNCONFIGURED>\`, first run the \`firebase_init\` tool with \`{dataconnect: {}}\` arguments to initialize it.
 2. If there is not an existing schema to work with (or the existing schema is the commented-out default schema about a movie app), follow the user's prompt to generate a robust schema meeting the specified requirements.
-3. If there is already a schema, perform edits to the existing schema file(s) based on the user's instructions. If schema build errors are present and seem relevant to your
+3. If there is already a schema, perform edits to the existing schema file(s) based on the user's instructions. If schema build errors are present and seem relevant to your changes, attempt to fix them.
 4. After you have performed edits on the schema, run the \`dataconnect_compile\` tool to build the schema and see if there are any errors. Fix errors that are related to the user's prompt or your changes.
 5. If there are errors, attempt to fix them. If you have attempted to fix them 3 times without success, ask the user for help.
 6. If there are no errors, write a brief paragraph summarizing your changes.`,
