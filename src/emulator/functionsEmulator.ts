@@ -53,8 +53,9 @@ import {
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
-import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
+import * as runtimes from "../deploy/functions/runtimes";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
@@ -87,6 +88,7 @@ export interface EmulatableBackend {
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
+  prefix?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   runtime?: Runtime;
   bin?: string;
@@ -563,6 +565,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
+      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
