@@ -331,4 +331,50 @@ describe("applyPrefix", () => {
     build.applyPrefix(testBuild, "");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
   });
+
+  it("should prefix secret names in secretEnvironmentVariables", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "api-secret", projectId: "test-project" },
+            { key: "DB_PASSWORD", secret: "db-secret", projectId: "test-project" },
+          ],
+        },
+        func2: {
+          region: "us-west1",
+          project: "test-project",
+          platform: "gcfv1",
+          runtime: "nodejs16",
+          entryPoint: "func2",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "SERVICE_TOKEN", secret: "service-secret", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+
+    build.applyPrefix(testBuild, "staging");
+
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal([
+      "staging-func1",
+      "staging-func2",
+    ]);
+    expect(testBuild.endpoints["staging-func1"].secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "staging-api-secret", projectId: "test-project" },
+      { key: "DB_PASSWORD", secret: "staging-db-secret", projectId: "test-project" },
+    ]);
+    expect(testBuild.endpoints["staging-func2"].secretEnvironmentVariables).to.deep.equal([
+      { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
+    ]);
+  });
 });

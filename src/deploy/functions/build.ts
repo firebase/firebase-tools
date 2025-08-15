@@ -660,7 +660,15 @@ export function applyPrefix(build: Build, prefix: string): void {
   }
   const newEndpoints: Record<string, Endpoint> = {};
   for (const id of Object.keys(build.endpoints)) {
-    newEndpoints[`${prefix}-${id}`] = build.endpoints[id];
+    const endpoint = build.endpoints[id];
+    newEndpoints[`${prefix}-${id}`] = endpoint;
+
+    if (endpoint.secretEnvironmentVariables) {
+      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
+        ...secret,
+        secret: `${prefix}-${secret.secret}`,
+      }));
+    }
   }
   build.endpoints = newEndpoints;
 }

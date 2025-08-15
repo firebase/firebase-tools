@@ -482,6 +482,7 @@ export async function loadCodebases(
       // in order for .init() calls to succeed.
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
+    discoveredBuild.runtime = codebaseConfig.runtime;
     build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
     wantBuilds[codebase] = discoveredBuild;
   }

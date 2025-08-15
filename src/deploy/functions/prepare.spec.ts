@@ -80,6 +80,24 @@ describe("prepare", () => {
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
     });
+
+    it("should preserve runtime from codebase config", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs20" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(builds.codebase.runtime).to.equal("nodejs20");
+    });
   });
 
   describe("inferDetailsFromExisting", () => {
