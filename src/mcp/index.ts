@@ -361,14 +361,6 @@ export class FirebaseMcpServer {
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_prompts");
     const skipAutoAuthForStudio = isFirebaseStudio();
-    this.log(
-      "debug",
-      `availablePrompts: ${this.availablePrompts.map((p) => p.mcp.name).join(", ")}`,
-    );
-    this.log(
-      "debug",
-      `availablePrompts: ${this.availablePrompts.map((p) => p.mcp.name).join(", ")}`,
-    );
     return {
       prompts: this.availablePrompts.map((p) => ({
         name: p.mcp.name,
