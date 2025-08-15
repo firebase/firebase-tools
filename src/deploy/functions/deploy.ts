@@ -93,8 +93,7 @@ export async function uploadSourceV2(
   }
 
   // New behavior: BYO bucket since we're moving away from the GCF API.
-  // Using "func-" as the prefix to balance clarity and avoid name lenght limits.
-  // TODO: can wire project number through to ensure we fit in the 63 char limit.
+  // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
   const bucketName = `firebase-functions-src-${projectNumber}`;
   const bucketOptions: gcs.CreateBucketRequest = {
     name: bucketName,
