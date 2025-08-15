@@ -15,6 +15,10 @@ import { Options } from "../options";
 
 export interface LoginOptions extends Options {
   prototyperLogin?: boolean;
+  consent?: {
+    metrics?: boolean,
+    gemini?: boolean,
+  }
 }
 
 export const command = new Command("login")
@@ -39,7 +43,10 @@ export const command = new Command("login")
       return user;
     }
 
-    if (!options.reauth && !options.prototyperLogin) {
+    if (options.consent) {
+      options.consent?.metrics ?? configstore.set("usage", options.consent.metrics);
+      options.consent?.gemini ?? configstore.set("gemini", options.consent.gemini);
+    } else if (!options.reauth && !options.prototyperLogin) {
       utils.logBullet(
         "The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. " +
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",

@@ -448,7 +448,7 @@ export async function loginPrototyper(): Promise<PrototyperRes> {
     })
   ).body?.token;
 
-  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}&studio_prototyper=true}`;
   return {
     uri: loginUrl,
     sessionId: sessionId.substring(0, 5).toUpperCase(),
