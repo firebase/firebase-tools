@@ -83,8 +83,15 @@ describe("EmulatorController", () => {
     });
 
     it("should not start an emulator if it's not in the only string", () => {
-      const options = createMockOptions("functions,hosting", {
+      const options = createMockOptions("functions", {
         functions: { source: "functions" },
+        hosting: {},
+      });
+      expect(shouldStart(options, Emulators.HOSTING)).to.be.false;
+    });
+
+    it("should not start an emulator if it's in the only string but has no config", () => {
+      const options = createMockOptions("hosting,functions", {
         hosting: {},
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
