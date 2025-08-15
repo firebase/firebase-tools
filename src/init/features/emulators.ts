@@ -66,6 +66,22 @@ export async function doSetup(setup: Setup, config: Config) {
     }
   }
 
+  // Prompt for global dataDir
+  if (selections.emulators.length > 0) {
+    const persistData = await confirm({
+      message: "Would you like to automatically save emulator data between runs?",
+      default: true, // Default to Yes
+    });
+
+    if (persistData) {
+      const dataDir = await input({
+        message: "What directory would you like to save your emulator data to?",
+        default: "./emulatorData",
+      });
+      setup.config.emulators.dataDir = dataDir;
+    }
+  }
+
   if (selections.emulators.length) {
     const uiDesc = Constants.description(Emulators.UI);
     if (setup.config.emulators.ui && setup.config.emulators.ui.enabled !== false) {

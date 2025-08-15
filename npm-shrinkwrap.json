@@ -20501,6 +20501,7 @@
       "resolved": "https://registry.npmjs.org/typescript-json-schema/-/typescript-json-schema-0.65.1.tgz",
       "integrity": "sha512-tuGH7ff2jPaUYi6as3lHyHcKpSmXIqN7/mu50x3HlYn0EHzLpmt3nplZ7EuhUkO0eqDRc9GqWNkfjgBPIS9kxg==",
       "dev": true,
+      "license": "BSD-3-Clause",
       "dependencies": {
         "@types/json-schema": "^7.0.9",
         "@types/node": "^18.11.9",
