@@ -13,6 +13,7 @@ import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
+import { ListOperationsResponse } from "./api-types";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
@@ -22,7 +23,7 @@ export class FirestoreApi {
    * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
    * Keeps explicit __name__ fields with DESCENDING order.
    * @param indexes Array of indexes to process
-   * @returns Processed array of indexes with filtered fields
+   * @return Processed array of indexes with filtered fields
    */
   public static processIndexes(indexes: types.Index[]): types.Index[] {
     return indexes.map((index: types.Index): types.Index => {
@@ -813,5 +814,24 @@ export class FirestoreApi {
     }
 
     return database;
+  }
+
+  /**
+   * List the long-running Firestore operations.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   */
+  async listOperations(
+    project: string,
+    databaseId: string,
+    limit: number,
+  ): Promise<types.ListOperationsResponse> {
+    const url = `/projects/${project}/databases/${databaseId}/operations`;
+    const res = await this.apiClient.get<ListOperationsResponse>(url, {
+      queryParams: {
+        pageSize: limit,
+      },
+    });
+    return res.body;
   }
 }
