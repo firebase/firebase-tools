@@ -142,7 +142,7 @@ interface GetDefaultBucketResponse {
   };
 }
 
-interface CreateBucketRequest {
+export interface CreateBucketRequest {
   name: string;
   location: string;
   lifecycle: {
@@ -150,7 +150,7 @@ interface CreateBucketRequest {
   };
 }
 
-interface LifecycleRule {
+export interface LifecycleRule {
   action: {
     type: string;
   };
@@ -223,9 +223,10 @@ export async function upload(
   uploadUrl: string,
   extraHeaders?: Record<string, string>,
   ignoreQuotaProject?: boolean,
-): Promise<any> {
-  const url = new URL(uploadUrl);
-  const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
+): Promise<{ generation: string | null }> {
+  const url = new URL(uploadUrl, storageOrigin());
+  const signedUrl = url.searchParams.has("GoogleAccessId");
+  const localAPIClient = new Client({ urlPrefix: url.origin, auth: !signedUrl });
   const res = await localAPIClient.request({
     method: "PUT",
     path: url.pathname,
@@ -329,17 +330,24 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
 export async function createBucket(
   projectId: string,
   req: CreateBucketRequest,
+  projectPrivate?: boolean,
 ): Promise<BucketResponse> {
+  const queryParams: Record<string, string> = {
+    project: projectId,
+  };
+  // TODO: This should probably be always on, but we need to audit the other cases of this method to
+  // make sure we don't break anything.
+  if (projectPrivate) {
+    queryParams["predefinedAcl"] = "projectPrivate";
+    queryParams["predefinedDefaultObjectAcl"] = "projectPrivate";
+  }
+
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.post<CreateBucketRequest, BucketResponse>(
       `/storage/v1/b`,
       req,
-      {
-        queryParams: {
-          project: projectId,
-        },
-      },
+      { queryParams },
     );
     return result.body;
   } catch (err: any) {
@@ -347,6 +355,25 @@ export async function createBucket(
     throw new FirebaseError("Failed to create the storage bucket", {
       original: err,
     });
+  }
+}
+
+/**
+ * Creates a storage bucket on GCP if it does not already exist.
+ * @param {string} projectId
+ * @param {CreateBucketRequest} req
+ */
+export async function upsertBucket(projectId: string, req: CreateBucketRequest): Promise<void> {
+  try {
+    await getBucket(req.name);
+    return;
+  } catch (err: any) {
+    // If the bucket doesn't exist, create it.
+    if (err.original?.status === 404) {
+      await createBucket(projectId, req, true /* projectPrivate */);
+      return;
+    }
+    throw err;
   }
 }
 
