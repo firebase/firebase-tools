@@ -362,7 +362,7 @@ export class FirebaseMcpServer {
         name: p.mcp.name,
         description: p.mcp.description,
         annotations: p.mcp.annotations,
-        inputSchema: p.mcp.inputSchema,
+        arguments: p.mcp.arguments,
       })),
       _meta: {
         projectRoot: this.cachedProjectRoot,
@@ -377,7 +377,7 @@ export class FirebaseMcpServer {
   async mcpGetPrompt(req: GetPromptRequest): Promise<GetPromptResult> {
     await this.detectProjectRoot();
     const promptName = req.params.name;
-    const promptArgs = req.params.arguments;
+    const promptArgs = req.params.arguments || {};
     const prompt = this.getPrompt(promptName);
     if (!prompt) {
       throw new Error(`Prompt '${promptName}' could not be found.`);

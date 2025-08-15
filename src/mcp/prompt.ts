@@ -1,10 +1,7 @@
 import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
-import { z, ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import type { FirebaseMcpServer } from "./index";
 import type { Config } from "../config";
 import { RC } from "../rc";
-import { cleanSchema } from "./util";
 
 export interface ServerPromptContext {
   projectId: string;
@@ -14,11 +11,11 @@ export interface ServerPromptContext {
   rc: RC;
 }
 
-export interface ServerPrompt<InputSchema extends ZodTypeAny = ZodTypeAny> {
+export interface ServerPrompt {
   mcp: {
     name: string;
     description?: string;
-    inputSchema: any;
+    arguments?: { name: string; description?: string; required?: boolean }[];
     omitPrefix?: boolean;
     annotations?: {
       title?: string;
@@ -28,19 +25,12 @@ export interface ServerPrompt<InputSchema extends ZodTypeAny = ZodTypeAny> {
       feature?: string;
     };
   };
-  fn: (input: z.infer<InputSchema>, ctx: ServerPromptContext) => Promise<PromptMessage[]>;
+  fn: (args: Record<string, string>, ctx: ServerPromptContext) => Promise<PromptMessage[]>;
 }
 
-export function prompt<InputSchema extends ZodTypeAny>(
-  options: Omit<ServerPrompt<InputSchema>["mcp"], "inputSchema" | "name"> & {
-    name: string;
-    inputSchema: InputSchema;
-    omitPrefix?: boolean;
-  },
-  fn: ServerPrompt<InputSchema>["fn"],
-): ServerPrompt {
+export function prompt(options: ServerPrompt["mcp"], fn: ServerPrompt["fn"]): ServerPrompt {
   return {
-    mcp: { ...options, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: options,
     fn,
   };
 }
