@@ -37,7 +37,7 @@ export const compile = tool(
         content: [
           {
             type: "text",
-            text: `The following errors were encountered while compiling Data Connect from directory \`${serviceInfo.sourceDirectory}\`:\n\n${errors}}`,
+            text: `The following errors were encountered while compiling Data Connect from directory \`${serviceInfo.sourceDirectory}\`:\n\n${errors}`,
           },
         ],
         isError: true,
