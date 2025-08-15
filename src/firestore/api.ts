@@ -835,7 +835,7 @@ export class FirestoreApi {
   }
 
   /**
-   * The information related to the LRO with the given name.
+   * Retrieves the information related to the LRO with the given name.
    * @param project the Firebase project id.
    * @param databaseId the id of the Firestore Database.
    * @param operationName the name of the LRO.
@@ -848,5 +848,37 @@ export class FirestoreApi {
     const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}`;
     const res = await this.apiClient.get<types.Operation>(url);
     return res.body;
+  }
+
+  /**
+   * Cancels the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async cancelOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<{ success: boolean }> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}:cancel`;
+    try {
+      const res = await this.apiClient.post<void, void>(url);
+      console.log(res.body);
+      console.log(res.response);
+      console.log(res.status);
+      return { success: res.status === 200 };
+    } catch (error) {
+      // For the cases when the user is trying to cancel an operation that has
+      // already completed, the response is not very useful. The error message is
+      // "Precondition check failed.". And one has to parse the details of the error
+      // stack to find out the real reason. We try to improve the error message here.
+      const reason = "Cannot cancel an operation that is completed.";
+      if (JSON.stringify(error).includes(reason)) {
+        throw new FirebaseError(reason);
+      } else {
+        throw error;
+      }
+    }
   }
 }
