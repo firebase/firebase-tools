@@ -11,8 +11,10 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
+import * as experiments from "../../experiments";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
+import { getProjectNumber } from "../../getProjectNumber";
 
 setGracefulCleanup();
 
@@ -48,33 +50,80 @@ async function uploadSourceV1(
   return uploadUrl;
 }
 
-async function uploadSourceV2(
+// Trampoline to allow tests to mock out createStream.
+export function createReadStream(filePath: string): NodeJS.ReadableStream {
+  return fs.createReadStream(filePath);
+}
+
+export async function uploadSourceV2(
   projectId: string,
+  projectNumber: string,
   source: args.Source,
   wantBackend: backend.Backend,
 ): Promise<gcfv2.StorageSource | undefined> {
-  const v2Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv2");
+  const v2Endpoints = backend
+    .allEndpoints(wantBackend)
+    .filter((e) => e.platform === "gcfv2" || e.platform === "run");
   if (v2Endpoints.length === 0) {
     return;
   }
+  // N.B. Should we upload to multiple regions? For now, just pick the first one.
+  // Uploading to multiple regions might slow upload and cost the user money if they
+  // pay their ISP for bandwidth, but having a bucket per region would avoid cross-region
+  // fees from GCP.
   const region = v2Endpoints[0].region; // Just pick a region to upload the source.
-  const res = await gcfv2.generateUploadUrl(projectId, region);
   const uploadOpts = {
     file: source.functionsSourceV2!,
-    stream: fs.createReadStream(source.functionsSourceV2!),
+    stream: (exports as { createReadStream: typeof createReadStream }).createReadStream(
+      source.functionsSourceV2!,
+    ),
   };
-  if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
-    logLabeledWarning(
-      "functions",
-      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
-    );
+
+  // Legacy behavior: use the GCF API
+  if (!experiments.isEnabled("runfunctions")) {
+    if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
+      logLabeledWarning(
+        "functions",
+        "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
+      );
+    }
+    const res = await gcfv2.generateUploadUrl(projectId, region);
+    await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
+    return res.storageSource;
   }
-  await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
-  return res.storageSource;
+
+  // New behavior: BYO bucket since we're moving away from the GCF API.
+  // Using "func-" as the prefix to balance clarity and avoid name lenght limits.
+  // TODO: can wire project number through to ensure we fit in the 63 char limit.
+  const bucketName = `firebase-functions-src-${projectNumber}`;
+  const bucketOptions: gcs.CreateBucketRequest = {
+    name: bucketName,
+    location: region,
+    lifecycle: {
+      rule: [
+        {
+          action: { type: "Delete" },
+          condition: { age: 1 }, // Delete objects after 1 day
+        },
+      ],
+    },
+  };
+  await gcs.upsertBucket(projectId, bucketOptions);
+  await gcs.upload(
+    uploadOpts,
+    `${bucketName}/${source.functionsSourceV2Hash}.zip`,
+    undefined,
+    true /* ignoreQuotaProject */,
+  );
+  return {
+    bucket: bucketName,
+    object: source.functionsSourceV2Hash + ".zip",
+  };
 }
 
 async function uploadCodebase(
   context: args.Context,
+  projectNumber: string,
   codebase: string,
   wantBackend: backend.Backend,
 ): Promise<void> {
@@ -86,7 +135,7 @@ async function uploadCodebase(
   const uploads: Promise<unknown>[] = [];
   try {
     uploads.push(uploadSourceV1(context.projectId, source, wantBackend));
-    uploads.push(uploadSourceV2(context.projectId, source, wantBackend));
+    uploads.push(uploadSourceV2(context.projectId, projectNumber, source, wantBackend));
 
     const [sourceUrl, storage] = await Promise.all(uploads);
     if (sourceUrl) {
@@ -132,7 +181,8 @@ export async function deploy(
       if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
         continue;
       }
-      uploads.push(uploadCodebase(context, codebase, wantBackend));
+      const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
+      uploads.push(uploadCodebase(context, projectNumber, codebase, wantBackend));
     }
     await Promise.all(uploads);
   }
