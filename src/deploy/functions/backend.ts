@@ -300,8 +300,8 @@ export interface ServiceConfiguration {
   serviceAccount?: string | null;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2";
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms = ["gcfv1", "gcfv2", "run"] as const;
+export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
@@ -534,6 +534,7 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
   ctx.unreachableRegions = {
     gcfV1: [],
     gcfV2: [],
+    run: [],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
@@ -621,6 +622,15 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "The following Cloud Functions V2 regions are currently unreachable:\n" +
         context.unreachableRegions.gcfV2.join("\n") +
         "\nCloud Functions in these regions won't be deleted.",
+    );
+  }
+
+  if (context.unreachableRegions?.run.length) {
+    utils.logLabeledWarning(
+      "functions",
+      "The following Cloud Run regions are currently unreachable:\n" +
+        context.unreachableRegions.run.join("\n") +
+        "\nCloud Run services in these regions won't be deleted.",
     );
   }
 }
