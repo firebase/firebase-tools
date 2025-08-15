@@ -1,6 +1,7 @@
 import { ServerFeature } from "../types";
 import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
+import { crashlyticsPrompts } from "./crashlytics";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: corePrompts,
@@ -10,7 +11,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   auth: [],
   messaging: [],
   remoteconfig: [],
-  crashlytics: [],
+  crashlytics: crashlyticsPrompts,
   apphosting: [],
   database: [],
 };
@@ -35,7 +36,8 @@ function namespacePrompts(
 }
 
 export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts: ServerPrompt[] = namespacePrompts(prompts["core"], "core");
+  const allPrompts = namespacePrompts(prompts["core"], "core");
+
   if (!features) {
     features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
   }

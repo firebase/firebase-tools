@@ -18,6 +18,7 @@ export const list_top_issues = tool(
       issue_type: z
         .enum(["FATAL", "NON-FATAL", "ANR"])
         .optional()
+        .default("FATAL")
         .describe(
           "Types of issues that can be fetched comma-separated. Defaults to `FATAL` (Crashes). Other values include NON-FATAL (Non-fatal issues), ANR (Application not responding).",
         ),
@@ -32,6 +33,10 @@ export const list_top_issues = tool(
   },
   async ({ app_id, issue_type, issue_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
+
+    if (!project_id && !projectId) return mcpError(`Must specify 'project_id' parameter or be run from a Firebase project directory.`);
+    
+    const project = project_id || projectId;
 
     issue_type ??= "FATAL";
     issue_count ??= 10;
