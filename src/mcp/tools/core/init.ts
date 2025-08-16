@@ -3,7 +3,6 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
-import { app } from "firebase-admin";
 
 export const init = tool(
   {
@@ -154,8 +153,6 @@ export const init = tool(
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
-        connectors: [], // TODO populate with GiF,
-        schemaGql: [], // TODO populate with GiF
       };
     }
     const setup: Setup = {

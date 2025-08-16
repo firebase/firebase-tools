@@ -74,12 +74,15 @@ describe("init dataconnect", () => {
       {
         desc: "should write schema files",
         requiredInfo: mockRequiredInfo({
-          schemaGql: [
-            {
-              path: "schema.gql",
-              content: "## Fake GQL",
-            },
-          ],
+          serviceGql: {
+            schemaGql: [
+              {
+                path: "schema.gql",
+                content: "## Fake GQL",
+              },
+            ],
+            connectors: [],
+          },
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
@@ -90,18 +93,21 @@ describe("init dataconnect", () => {
       {
         desc: "should write connector files",
         requiredInfo: mockRequiredInfo({
-          connectors: [
-            {
-              id: "my-connector",
-              path: "hello",
-              files: [
-                {
-                  path: "queries.gql",
-                  content: "## Fake GQL",
-                },
-              ],
-            },
-          ],
+          serviceGql: {
+            schemaGql: [],
+            connectors: [
+              {
+                id: "my-connector",
+                path: "hello",
+                files: [
+                  {
+                    path: "queries.gql",
+                    content: "## Fake GQL",
+                  },
+                ],
+              },
+            ],
+          },
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
@@ -131,19 +137,21 @@ describe("init dataconnect", () => {
       {
         desc: "should handle schema with no files",
         requiredInfo: mockRequiredInfo({
-          schemaGql: [],
-          connectors: [
-            {
-              id: "my-connector",
-              path: "hello",
-              files: [
-                {
-                  path: "queries.gql",
-                  content: "## Fake GQL",
-                },
-              ],
-            },
-          ],
+          serviceGql: {
+            schemaGql: [],
+            connectors: [
+              {
+                id: "my-connector",
+                path: "hello",
+                files: [
+                  {
+                    path: "queries.gql",
+                    content: "## Fake GQL",
+                  },
+                ],
+              },
+            ],
+          },
         }),
         config: mockConfig({
           dataconnect: {
@@ -227,14 +235,11 @@ function mockConfig(data: Record<string, any> = {}): Config {
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
+    appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",
     cloudSqlInstanceId: "csql-instance",
     cloudSqlDatabase: "csql-db",
-    isNewDatabase: false,
-    isNewInstance: false,
-    connectors: [],
-    schemaGql: [],
     ...info,
   };
 }

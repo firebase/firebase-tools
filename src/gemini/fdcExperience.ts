@@ -16,6 +16,9 @@ const OPERATION_GENERATION_EXPERIENCE = "/appeco/firebase/fdc-query-generator";
 const FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME =
   "type.googleapis.com/google.cloud.cloudaicompanion.v1main.FirebaseChatRequestContext";
 
+export const PROMPT_GENERATE_CONNECTOR =
+  "Create 4 operations for an app using the instance schema with proper authentication.";
+
 /**
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.

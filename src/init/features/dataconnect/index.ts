@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { confirm, input, select } from "../../../prompt";
+import { input, select } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -14,8 +14,10 @@ import {
   listAllServices,
   getSchema,
   listConnectors,
+  createService,
+  upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, Platform } from "../../../dataconnect/types";
+import { Schema, Service, File, Platform, SCHEMA_ID } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -23,7 +25,12 @@ import { logBullet, logWarning, envOverride, promiseWithSpinner } from "../../..
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
-import { extractCodeBlock, generateSchema } from "../../../gemini/fdcExperience";
+import {
+  extractCodeBlock,
+  generateOperation,
+  generateSchema,
+  PROMPT_GENERATE_CONNECTOR,
+} from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
@@ -38,12 +45,17 @@ export interface RequiredInfo {
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
+  // If present, initialize the workspace with sources of the existing service.
+  serviceGql?: ServiceGQL;
+}
+
+export interface ServiceGQL {
+  schemaGql: File[];
   connectors: {
     id: string;
     path: string;
     files: File[];
   }[];
-  schemaGql: File[];
 }
 
 const emptyConnector = {
@@ -78,8 +90,6 @@ export async function askQuestions(setup: Setup): Promise<void> {
     locationId: "",
     cloudSqlInstanceId: "",
     cloudSqlDatabase: "",
-    connectors: [],
-    schemaGql: [],
   };
   const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
@@ -94,17 +104,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
     }
   }
 
-  const requiredConfigUnset =
-    info.serviceId === "" ||
-    info.cloudSqlInstanceId === "" ||
-    info.locationId === "" ||
-    info.cloudSqlDatabase === "";
-  const shouldConfigureBackend = hasBilling && requiredConfigUnset;
-  if (shouldConfigureBackend) {
-    info = await promptForSchema(setup, info);
-    if (hasBilling) {
-      info = await promptForCloudSQL(setup, info);
-    }
+  info = await promptForSchema(setup, info);
+  if (hasBilling) {
+    info = await promptForCloudSQL(setup, info);
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -122,32 +124,73 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   if (!info) {
     throw new Error("Data Connect feature RequiredInfo is not provided");
   }
+
   // Populate the default values of required fields.
-  const defaultServiceId = toDNSCompatibleId(basename(process.cwd()));
-  info.serviceId = info.serviceId || defaultServiceId;
-  info.cloudSqlInstanceId =
-    info.cloudSqlInstanceId || `${info.serviceId.toLowerCase() || "app"}-fdc`;
+  info.serviceId = info.serviceId || toDNSCompatibleId(basename(process.cwd()));
+  info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
-  // Make sure to add some GQL files.
-  // Use the template if it starts from scratch or the existing service has no GQL source.
-  if (!info.schemaGql.length && !info.connectors.flatMap((r) => r.files).length) {
-    info.schemaGql = [defaultSchema];
-    info.connectors = [defaultConnector];
+
+  if (!info.appDescription || !setup.projectId) {
+    // Download an existing service to a local workspace.
+    if (info.serviceGql) {
+      return await writeFiles(config, info, info.serviceGql, options);
+    }
+    // Use the template if it starts from scratch or the existing service has no GQL source.
+    return await writeFiles(
+      config,
+      info,
+      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
+      options,
+    );
   }
 
-  await writeFiles(config, info, options);
+  configstore.set("gemini", true);
+  await ensureGIFApis(setup.projectId);
+  const schemaGql = await promiseWithSpinner(
+    () => generateSchema(info.appDescription, setup.projectId!),
+    "Generating the Data Connect Schema...",
+  );
+  const schemaFiles = [{ path: "schema.gql", content: extractCodeBlock(schemaGql) }];
+  await createService(setup.projectId, info.locationId, info.serviceId);
+  const serviceName = `projects/${setup.projectId}/locations/${info.locationId}/services/${info.serviceId}`;
+  const schema = {
+    name: `${serviceName}/schemas/${SCHEMA_ID}`,
+    datasources: [
+      {
+        postgresql: {},
+      },
+    ],
+    source: {
+      files: schemaFiles,
+    },
+  };
+  await upsertSchema(schema);
+  const operationGql = await promiseWithSpinner(
+    () => generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, setup.projectId!),
+    "Generating the Data Connect Schema...",
+  );
+  const connectors = [
+    {
+      id: "default",
+      path: "./connector",
+      files: [
+        {
+          path: "default.gql",
+          content: operationGql,
+        },
+      ],
+    },
+  ];
 
-  if (setup.projectId && (await isBillingEnabled(setup))) {
-    await provisionCloudSql({
-      projectId: setup.projectId,
-      location: info.locationId,
-      instanceId: info.cloudSqlInstanceId,
-      databaseId: info.cloudSqlDatabase,
-      enableGoogleMlIntegration: false,
-      waitForCreation: false,
-    });
-  }
+  await provisionCloudSql({
+    projectId: setup.projectId,
+    location: info.locationId,
+    instanceId: info.cloudSqlInstanceId,
+    databaseId: info.cloudSqlDatabase,
+    enableGoogleMlIntegration: false,
+    waitForCreation: false,
+  });
 }
 
 export async function postSetup(setup: Setup, config: Config): Promise<void> {
@@ -166,11 +209,16 @@ export async function postSetup(setup: Setup, config: Config): Promise<void> {
   }
 }
 
-async function writeFiles(config: Config, info: RequiredInfo, options: any): Promise<void> {
+async function writeFiles(
+  config: Config,
+  info: RequiredInfo,
+  serviceGql: ServiceGQL,
+  options: any,
+): Promise<void> {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
   const subbedDataconnectYaml = subDataconnectYamlValues({
     ...info,
-    connectorDirs: info.connectors.map((c) => c.path),
+    connectorDirs: serviceGql.connectors.map((c) => c.path),
   });
   config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(
@@ -182,8 +230,8 @@ async function writeFiles(config: Config, info: RequiredInfo, options: any): Pro
     true,
   );
 
-  if (info.schemaGql.length) {
-    for (const f of info.schemaGql) {
+  if (serviceGql.schemaGql.length) {
+    for (const f of serviceGql.schemaGql) {
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content, !!options.force);
     }
   } else {
@@ -191,7 +239,7 @@ async function writeFiles(config: Config, info: RequiredInfo, options: any): Pro
     fs.ensureFileSync(join(dir, "schema", "schema.gql"));
   }
 
-  for (const c of info.connectors) {
+  for (const c of serviceGql.connectors) {
     await writeConnectorFiles(config, c);
   }
 }
@@ -252,31 +300,33 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!setup.projectId) {
     return info;
   }
-  const existingServices = await listAllServices(setup.projectId);
-  const existingServicesAndSchemas = await Promise.all(
-    existingServices.map(async (s) => {
+  const serviceGqls = await listAllServices(setup.projectId);
+  const serviceGqlsAndSchemas = await Promise.all(
+    serviceGqls.map(async (s) => {
       return { service: s, schema: await getSchema(s.name) };
     }),
   );
-  if (existingServicesAndSchemas.length) {
-    const choice = await chooseExistingService(existingServicesAndSchemas);
+  if (serviceGqlsAndSchemas.length) {
+    const choice = await chooseserviceGql(serviceGqlsAndSchemas);
     if (choice) {
       const serviceName = parseServiceName(choice.service.name);
       info.serviceId = serviceName.serviceId;
       info.locationId = serviceName.location;
       // If the existing service has no schema, don't override any gql files.
-      info.schemaGql = [];
-      info.connectors = [emptyConnector];
+      info.serviceGql = {
+        schemaGql: [],
+        connectors: [emptyConnector],
+      };
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-        if (primaryDatasource?.postgresql?.cloudSql.instance) {
+        if (primaryDatasource?.postgresql?.cloudSql?.instance) {
           const instanceName = parseCloudSQLInstanceName(
             primaryDatasource.postgresql.cloudSql.instance,
           );
           info.cloudSqlInstanceId = instanceName.instanceId;
         }
         if (choice.schema.source.files?.length) {
-          info.schemaGql = choice.schema.source.files;
+          info.serviceGql.schemaGql = choice.schema.source.files;
         }
         info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
         const connectors = await listConnectors(choice.service.name, [
@@ -284,7 +334,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
           "connectors.source.files",
         ]);
         if (connectors.length) {
-          info.connectors = connectors.map((c) => {
+          info.serviceGql.connectors = connectors.map((c) => {
             const id = c.name.split("/").pop()!;
             return {
               id,
@@ -308,14 +358,14 @@ interface serviceAndSchema {
  * Picks create new service or an existing service from the list of services.
  *
  * Firebase Console can provide `FDC_CONNECTOR` or `FDC_SERVICE` environment variable.
- * If either is present, chooseExistingService try to match it with any existing service
+ * If either is present, chooseserviceGql try to match it with any existing service
  * and short-circuit the prompt.
  *
  * `FDC_SERVICE` should have the format `<location>/<serviceId>`.
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param existing
  */
-async function chooseExistingService(
+async function chooseserviceGql(
   existing: serviceAndSchema[],
 ): Promise<serviceAndSchema | undefined> {
   const serviceEnvVar = envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
@@ -354,7 +404,7 @@ async function chooseExistingService(
 }
 
 async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
-  // Check for existing Cloud SQL instances, if we didn't already set one.
+  // Check for existing Cloud SQL instances if it's not configured already.
   if (info.cloudSqlInstanceId === "" && setup.projectId) {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
@@ -383,24 +433,18 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
     }
   }
 
-  // No existing instance found or choose to create new instance.
-  if (info.cloudSqlInstanceId === "") {
-    info.cloudSqlInstanceId = await input({
-      message: `What ID would you like to use for your new CloudSQL instance?`,
-      default: `${info.serviceId.toLowerCase() || "app"}-fdc`,
-    });
-  }
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
+      default: "us-central1",
     });
   }
 
   // Look for existing databases within the picked instance.
   // Best effort since the picked `info.cloudSqlInstanceId` may not exists or is still being provisioned.
-  if (info.cloudSqlDatabase === "" && setup.projectId) {
+  if (info.cloudSqlInstanceId !== "" && info.cloudSqlDatabase === "" && setup.projectId) {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
       const choices = dbs.map((d) => {
@@ -419,15 +463,6 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
       logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
     }
   }
-
-  // No existing database found or cannot access the instance.
-  // Prompt for a name.
-  if (info.cloudSqlDatabase === "") {
-    info.cloudSqlDatabase = await input({
-      message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
-      default: `fdcdb`,
-    });
-  }
   return info;
 }
 
@@ -440,25 +475,9 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      if (
-        await confirm({
-          message: `Do you want Gemini in Firebase to generate a schema for your Data Connect service (${clc.bold(info.serviceId)})?`,
-          default: true,
-        })
-      ) {
-        configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
-        const prompt = await input({
-          message: "Describe the app you are building:",
-          default: "movie rating app",
-        });
-        const schema = await promiseWithSpinner(
-          () => generateSchema(prompt, setup.projectId!),
-          "Generating the Data Connect Schema...",
-        );
-        info.schemaGql = [{ path: "schema.gql", content: extractCodeBlock(schema) }];
-        info.connectors = [emptyConnector];
-      }
+      info.appDescription = await input({
+        message: `Describe your app to automatically generate a schema [Enter to skip]:`,
+      });
     }
   }
   return info;

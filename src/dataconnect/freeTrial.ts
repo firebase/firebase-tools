@@ -12,7 +12,6 @@ const FREE_TRIAL_METRIC = "sqladmin.googleapis.com/fdc_lifetime_free_trial_per_p
 
 // Checks whether there is already a free trial instance on a project.
 export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boolean> {
-  utils.logLabeledBullet("dataconnect", "Checking Cloud SQL no cost trial eligibility...");
   const past7d = new Date();
   past7d.setDate(past7d.getDate() - 7);
   const query: CmQuery = {
@@ -20,24 +19,25 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
     "interval.endTime": new Date().toJSON(),
     "interval.startTime": past7d.toJSON(),
   };
+  let used = true;
   try {
     const ts = await queryTimeSeries(query, projectId);
-    let used = true;
     if (ts.length) {
       used = ts[0].points.some((p) => p.value.int64Value);
     }
-    if (used) {
-      utils.logLabeledWarning(
-        "dataconnect",
-        "CloudSQL no cost trial has already been used on this project.",
-      );
-    }
-    return used;
   } catch (err: any) {
     // If the metric doesn't exist, free trial is not used.
-    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
-    return false;
+    used = false;
   }
+  if (used) {
+    utils.logLabeledWarning(
+      "dataconnect",
+      "CloudSQL no cost trial has already been used on this project.",
+    );
+  } else {
+    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
+  }
+  return used;
 }
 
 export async function getFreeTrialInstanceId(projectId: string): Promise<string | undefined> {
