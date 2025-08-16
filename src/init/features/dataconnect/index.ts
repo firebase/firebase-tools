@@ -45,7 +45,7 @@ export interface RequiredInfo {
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
-  // If present, initialize the workspace with sources of the existing service.
+  // If present, this is downloaded from an existing deployed service.
   serviceGql?: ServiceGQL;
 }
 
@@ -84,29 +84,42 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
-  let info: RequiredInfo = {
+  const info: RequiredInfo = {
     appDescription: "",
     serviceId: "",
     locationId: "",
     cloudSqlInstanceId: "",
     cloudSqlDatabase: "",
   };
-  const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
+    const hasBilling = await isBillingEnabled(setup);
     if (hasBilling || (await isApiEnabled(setup.projectId))) {
       await ensureApis(setup.projectId);
       // Query backend and pick up any existing services quickly.
-      info = await promptForExistingServices(setup, info);
+      await promptForExistingServices(setup, info);
     } else {
       // New Spark project. Don't wait for API enablement.
       // Write the template and show them instructions right away.
       void ensureApis(setup.projectId);
     }
-  }
-
-  info = await promptForSchema(setup, info);
-  if (hasBilling) {
-    info = await promptForCloudSQL(setup, info);
+    if (hasBilling && !info.serviceGql) {
+      // TODO: Consider use Gemini to generate schema for Spark project as well.
+      if (!configstore.get("gemini")) {
+        logBullet(
+          "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
+        );
+      }
+      info.appDescription = await input({
+        message: `Describe your app to automatically generate a schema [Enter to skip]:`,
+      });
+      if (info.appDescription) {
+        configstore.set("gemini", true);
+        await ensureGIFApis(setup.projectId);
+      }
+    }
+    if (hasBilling) {
+      await promptForCloudSQL(setup, info);
+    }
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -131,7 +144,18 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
-  if (!info.appDescription || !setup.projectId) {
+  if (setup.projectId && (await isBillingEnabled(setup))) {
+    // Kicks off Cloud SQL provisioning if we can.
+    await provisionCloudSql({
+      projectId: setup.projectId,
+      location: info.locationId,
+      instanceId: info.cloudSqlInstanceId,
+      databaseId: info.cloudSqlDatabase,
+      enableGoogleMlIntegration: false,
+      waitForCreation: false,
+    });
+  }
+  if (!setup.projectId || !info.appDescription) {
     // Download an existing service to a local workspace.
     if (info.serviceGql) {
       return await writeFiles(config, info, info.serviceGql, options);
@@ -144,15 +168,22 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       options,
     );
   }
-
-  configstore.set("gemini", true);
-  await ensureGIFApis(setup.projectId);
+  // Use Gemini to generate schema, connector and seed_data.gql.
   const schemaGql = await promiseWithSpinner(
     () => generateSchema(info.appDescription, setup.projectId!),
     "Generating the Data Connect Schema...",
   );
   const schemaFiles = [{ path: "schema.gql", content: extractCodeBlock(schemaGql) }];
-  await createService(setup.projectId, info.locationId, info.serviceId);
+  try {
+    await createService(setup.projectId, info.locationId, info.serviceId);
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+    // The serviceId we are initializing already exists in the backend. Fallback to only generate schema.
+    // This should only happen from `firebase_init` MCP tool. CLI init should pick a new service ID.
+    return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: []}, options);
+  }
   const serviceName = `projects/${setup.projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   const schema = {
     name: `${serviceName}/schemas/${SCHEMA_ID}`,
@@ -182,15 +213,12 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       ],
     },
   ];
-
-  await provisionCloudSql({
-    projectId: setup.projectId,
-    location: info.locationId,
-    instanceId: info.cloudSqlInstanceId,
-    databaseId: info.cloudSqlDatabase,
-    enableGoogleMlIntegration: false,
-    waitForCreation: false,
-  });
+  return await writeFiles(
+    config,
+    info,
+    { schemaGql: schemaFiles, connectors: connectors },
+    options,
+  );
 }
 
 export async function postSetup(setup: Setup, config: Config): Promise<void> {
@@ -295,58 +323,69 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForExistingServices(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
+async function promptForExistingServices(setup: Setup, info: RequiredInfo): Promise<void> {
   // Check for existing Firebase Data Connect services.
   if (!setup.projectId) {
-    return info;
+    return;
   }
-  const serviceGqls = await listAllServices(setup.projectId);
-  const serviceGqlsAndSchemas = await Promise.all(
-    serviceGqls.map(async (s) => {
+  const existingServices = await listAllServices(setup.projectId);
+  if (!existingServices.length) {
+    return;
+  }
+  const existingServicesAndSchemas = await Promise.all(
+    existingServices.map(async (s) => {
       return { service: s, schema: await getSchema(s.name) };
     }),
   );
-  if (serviceGqlsAndSchemas.length) {
-    const choice = await chooseserviceGql(serviceGqlsAndSchemas);
-    if (choice) {
-      const serviceName = parseServiceName(choice.service.name);
-      info.serviceId = serviceName.serviceId;
-      info.locationId = serviceName.location;
-      // If the existing service has no schema, don't override any gql files.
-      info.serviceGql = {
-        schemaGql: [],
-        connectors: [emptyConnector],
-      };
-      if (choice.schema) {
-        const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-        if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-          const instanceName = parseCloudSQLInstanceName(
-            primaryDatasource.postgresql.cloudSql.instance,
-          );
-          info.cloudSqlInstanceId = instanceName.instanceId;
-        }
-        if (choice.schema.source.files?.length) {
-          info.serviceGql.schemaGql = choice.schema.source.files;
-        }
-        info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
-        const connectors = await listConnectors(choice.service.name, [
-          "connectors.name",
-          "connectors.source.files",
-        ]);
-        if (connectors.length) {
-          info.serviceGql.connectors = connectors.map((c) => {
-            const id = c.name.split("/").pop()!;
-            return {
-              id,
-              path: connectors.length === 1 ? "./connector" : `./${id}`,
-              files: c.source.files || [],
-            };
-          });
-        }
-      }
+  const choice = await chooseExistingService(existingServicesAndSchemas);
+  if (!choice) {
+    // Choose to create a new service.
+    // Let's find a serviceId that doesn't collide with any existing services.
+    const recommendServiceId = basename(process.cwd());
+    info.serviceId = recommendServiceId;
+    let i = 1;
+    while (existingServices.some((s) => s.name.endsWith("/" + info.serviceId))) {
+      info.serviceId = `${recommendServiceId}-${i}`;
+      i++;
+    }
+    return;
+  }
+  // Choose to use an existing service.
+  const serviceName = parseServiceName(choice.service.name);
+  info.serviceId = serviceName.serviceId;
+  info.locationId = serviceName.location;
+  info.serviceGql = {
+    schemaGql: [],
+    connectors: [emptyConnector],
+  };
+  if (choice.schema) {
+    const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
+    if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+      const instanceName = parseCloudSQLInstanceName(
+        primaryDatasource.postgresql.cloudSql.instance,
+      );
+      info.cloudSqlInstanceId = instanceName.instanceId;
+    }
+    if (choice.schema.source.files?.length) {
+      info.serviceGql.schemaGql = choice.schema.source.files;
+    }
+    info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+    const connectors = await listConnectors(choice.service.name, [
+      "connectors.name",
+      "connectors.source.files",
+    ]);
+    if (connectors.length) {
+      info.serviceGql.connectors = connectors.map((c) => {
+        const id = c.name.split("/").pop()!;
+        return {
+          id,
+          path: connectors.length === 1 ? "./connector" : `./${id}`,
+          files: c.source.files || [],
+        };
+      });
     }
   }
-  return info;
+  return;
 }
 
 interface serviceAndSchema {
@@ -358,14 +397,14 @@ interface serviceAndSchema {
  * Picks create new service or an existing service from the list of services.
  *
  * Firebase Console can provide `FDC_CONNECTOR` or `FDC_SERVICE` environment variable.
- * If either is present, chooseserviceGql try to match it with any existing service
+ * If either is present, chooseExistingService try to match it with any existing service
  * and short-circuit the prompt.
  *
  * `FDC_SERVICE` should have the format `<location>/<serviceId>`.
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param existing
  */
-async function chooseserviceGql(
+async function chooseExistingService(
   existing: serviceAndSchema[],
 ): Promise<serviceAndSchema | undefined> {
   const serviceEnvVar = envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
@@ -403,9 +442,12 @@ async function chooseserviceGql(
   });
 }
 
-async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
-  // Check for existing Cloud SQL instances if it's not configured already.
-  if (info.cloudSqlInstanceId === "" && setup.projectId) {
+async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void> {
+  if (!setup.projectId) {
+    return;
+  }
+  // Check for existing Cloud SQL instances, if we didn't already set one.
+  if (info.cloudSqlInstanceId === "") {
     const instances = await cloudsql.listInstances(setup.projectId);
     let choices = instances.map((i) => {
       let display = `${i.name} (${i.region})`;
@@ -444,7 +486,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
 
   // Look for existing databases within the picked instance.
   // Best effort since the picked `info.cloudSqlInstanceId` may not exists or is still being provisioned.
-  if (info.cloudSqlInstanceId !== "" && info.cloudSqlDatabase === "" && setup.projectId) {
+  if (info.cloudSqlInstanceId !== "" && info.cloudSqlDatabase === "") {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
       const choices = dbs.map((d) => {
@@ -463,24 +505,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
       logger.debug(`[dataconnect] Cannot list databases during init: ${err}`);
     }
   }
-  return info;
-}
-
-async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
-  if (info.serviceId === "") {
-    info.serviceId = basename(process.cwd());
-    if (setup.projectId) {
-      if (!configstore.get("gemini")) {
-        logBullet(
-          "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
-        );
-      }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema [Enter to skip]:`,
-      });
-    }
-  }
-  return info;
+  return;
 }
 
 async function locationChoices(setup: Setup) {
