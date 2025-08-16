@@ -87,10 +87,12 @@ export async function askQuestions(setup: Setup): Promise<void> {
   };
   const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
-    if (await isApiEnabled(setup.projectId)) {
+    if (hasBilling || (await isApiEnabled(setup.projectId))) {
       await ensureApis(setup.projectId);
       info = await promptForExistingServices(setup, info);
     } else {
+      // New Spark project. Don't wait for API enablement.
+      // Write the template and show them instructions right away.
       void ensureApis(setup.projectId);
     }
   }
