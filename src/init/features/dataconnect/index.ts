@@ -33,6 +33,7 @@ const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 export interface RequiredInfo {
+  appDescription: string;
   serviceId: string;
   locationId: string;
   cloudSqlInstanceId: string;
@@ -42,10 +43,7 @@ export interface RequiredInfo {
     path: string;
     files: File[];
   }[];
-  isNewInstance: boolean;
-  isNewDatabase: boolean;
   schemaGql: File[];
-  shouldProvisionCSQL: boolean;
 }
 
 const emptyConnector = {
@@ -75,20 +73,19 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   let info: RequiredInfo = {
+    appDescription: "",
     serviceId: "",
     locationId: "",
     cloudSqlInstanceId: "",
-    isNewInstance: false,
     cloudSqlDatabase: "",
-    isNewDatabase: false,
     connectors: [],
     schemaGql: [],
-    shouldProvisionCSQL: false,
   };
   const hasBilling = await isBillingEnabled(setup);
   if (setup.projectId) {
     if (hasBilling || (await isApiEnabled(setup.projectId))) {
       await ensureApis(setup.projectId);
+      // Query backend and pick up any existing services quickly.
       info = await promptForExistingServices(setup, info);
     } else {
       // New Spark project. Don't wait for API enablement.
@@ -96,33 +93,18 @@ export async function askQuestions(setup: Setup): Promise<void> {
       void ensureApis(setup.projectId);
     }
   }
-  // Query backend and pick up any existing services quickly.
 
   const requiredConfigUnset =
     info.serviceId === "" ||
     info.cloudSqlInstanceId === "" ||
     info.locationId === "" ||
     info.cloudSqlDatabase === "";
-  const shouldConfigureBackend =
-    hasBilling &&
-    requiredConfigUnset &&
-    (await confirm({
-      message: `Would you like to configure your Cloud SQL datasource now?`,
-      default: true,
-    }));
+  const shouldConfigureBackend = hasBilling && requiredConfigUnset;
   if (shouldConfigureBackend) {
     info = await promptForSchema(setup, info);
-    info = await promptForCloudSQL(setup, info);
-
-    info.shouldProvisionCSQL = !!(
-      setup.projectId &&
-      (info.isNewInstance || info.isNewDatabase) &&
-      hasBilling &&
-      (await confirm({
-        message: `Would you like to provision your Cloud SQL instance and database now?${info.isNewInstance ? " This will take several minutes." : ""}.`,
-        default: true,
-      }))
-    );
+    if (hasBilling) {
+      info = await promptForCloudSQL(setup, info);
+    }
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -156,7 +138,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   await writeFiles(config, info, options);
 
-  if (setup.projectId && info.shouldProvisionCSQL && (await isBillingEnabled(setup))) {
+  if (setup.projectId && (await isBillingEnabled(setup))) {
     await provisionCloudSql({
       projectId: setup.projectId,
       location: info.locationId,
@@ -403,7 +385,6 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
 
   // No existing instance found or choose to create new instance.
   if (info.cloudSqlInstanceId === "") {
-    info.isNewInstance = true;
     info.cloudSqlInstanceId = await input({
       message: `What ID would you like to use for your new CloudSQL instance?`,
       default: `${info.serviceId.toLowerCase() || "app"}-fdc`,
@@ -442,7 +423,6 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
   // No existing database found or cannot access the instance.
   // Prompt for a name.
   if (info.cloudSqlDatabase === "") {
-    info.isNewDatabase = true;
     info.cloudSqlDatabase = await input({
       message: `What ID would you like to use for your new database in ${info.cloudSqlInstanceId}?`,
       default: `fdcdb`,
@@ -453,10 +433,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<Requ
 
 async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<RequiredInfo> {
   if (info.serviceId === "") {
-    info.serviceId = await input({
-      message: "What ID would you like to use for this service?",
-      default: basename(process.cwd()),
-    });
+    info.serviceId = basename(process.cwd());
     if (setup.projectId) {
       if (!configstore.get("gemini")) {
         logBullet(
@@ -465,8 +442,8 @@ async function promptForSchema(setup: Setup, info: RequiredInfo): Promise<Requir
       }
       if (
         await confirm({
-          message: `Do you want Gemini in Firebase to help generate a schema for your service?`,
-          default: false,
+          message: `Do you want Gemini in Firebase to generate a schema for your Data Connect service (${clc.bold(info.serviceId)})?`,
+          default: true,
         })
       ) {
         configstore.set("gemini", true);

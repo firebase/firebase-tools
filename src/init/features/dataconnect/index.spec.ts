@@ -115,9 +115,7 @@ describe("init dataconnect", () => {
       },
       {
         desc: "should provision cloudSQL resources ",
-        requiredInfo: mockRequiredInfo({
-          shouldProvisionCSQL: true,
-        }),
+        requiredInfo: mockRequiredInfo({}),
         config: mockConfig({}),
         expectedSource: "dataconnect",
         expectedFiles: [
@@ -235,7 +233,6 @@ function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredI
     cloudSqlDatabase: "csql-db",
     isNewDatabase: false,
     isNewInstance: false,
-    shouldProvisionCSQL: false,
     connectors: [],
     schemaGql: [],
     ...info,
