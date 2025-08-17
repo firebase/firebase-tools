@@ -66,14 +66,12 @@ function processField<T>(value: T): T {
 }
 
 /**
- * Minimal endpoint creation leveraging existing utilities
- * Most of the heavy lifting is done by existing helpers
+ * Convert an extension resource to a functions deployment endpoint
  */
 function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
   const runtime = getResourceRuntime(resource) || DEFAULT_RUNTIME;
   const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
 
-  // Type-safe property access
   const v1Resource = resource as Resource & {
     properties?: FunctionResourceProperties["properties"];
   };
@@ -81,10 +79,7 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
     properties?: FunctionV2ResourceProperties["properties"];
   };
 
-  // Get location based on version
   const location = isV2 ? v2Resource.properties?.location : v1Resource.properties?.location;
-
-  // Base endpoint properties common to all triggers
   const baseEndpoint = {
     entryPoint: resource.entryPoint || resource.name,
     platform: (isV2 ? "gcfv2" : "gcfv1") as "gcfv1" | "gcfv2",
@@ -93,7 +88,6 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
     region: [processField(location || api.functionsDefaultRegion())],
   };
 
-  // Determine trigger and create the appropriate endpoint
   let endpoint: build.Endpoint;
 
   if (isV2 && v2Resource.properties) {
@@ -104,7 +98,6 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
         retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
       };
 
-      // V2 event filters
       if (props.eventTrigger.eventFilters) {
         eventTrigger.eventFilters = {};
         for (const filter of props.eventTrigger.eventFilters) {
@@ -120,7 +113,6 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
 
       endpoint = { ...baseEndpoint, eventTrigger };
     } else {
-      // Default to HTTPS trigger for v2
       endpoint = { ...baseEndpoint, httpsTrigger: {} };
     }
   } else if (!isV2 && v1Resource.properties) {
@@ -131,7 +123,6 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
         retry: false,
       };
 
-      // V1 event filters
       if (props.eventTrigger.resource || props.eventTrigger.service) {
         eventTrigger.eventFilters = {};
         if (props.eventTrigger.resource) {
@@ -161,17 +152,13 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
       }
       endpoint = { ...baseEndpoint, taskQueueTrigger };
     } else {
-      // Default to HTTPS trigger for v1
       endpoint = { ...baseEndpoint, httpsTrigger: {} };
     }
   } else {
-    // No properties, default to HTTPS trigger
     endpoint = { ...baseEndpoint, httpsTrigger: {} };
   }
 
-  // Handle memory/timeout/instances
   if (!isV2 && v1Resource.properties) {
-    // V1 properties
     if (v1Resource.properties.timeout) {
       const timeout = v1Resource.properties.timeout;
       if (typeof timeout === "string" && (timeout.includes("${param:") || timeout.includes("${"))) {
@@ -184,28 +171,28 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
       endpoint.availableMemoryMb = processField(v1Resource.properties.availableMemoryMb);
     }
   } else if (isV2 && v2Resource.properties?.serviceConfig) {
-    // V2 serviceConfig
     const serviceConfig = v2Resource.properties.serviceConfig;
-    if (serviceConfig.timeoutSeconds !== undefined) {
-      endpoint.timeoutSeconds = processField(serviceConfig.timeoutSeconds);
+    proto.copyIfPresent(endpoint, serviceConfig, "timeoutSeconds");
+    if (endpoint.timeoutSeconds !== undefined) {
+      endpoint.timeoutSeconds = processField(endpoint.timeoutSeconds);
     }
     if (serviceConfig.availableMemory !== undefined) {
-      // Parse memory but preserve parameter references
       const mem = serviceConfig.availableMemory;
       if (typeof mem === "string" && (mem.includes("${param:") || mem.includes("${"))) {
         endpoint.availableMemoryMb = processField(mem);
       } else if (typeof mem === "string") {
-        // Use parseInt like triggerHelper does
         endpoint.availableMemoryMb = parseInt(mem);
       } else {
         endpoint.availableMemoryMb = mem;
       }
     }
-    if (serviceConfig.minInstanceCount !== undefined) {
-      endpoint.minInstances = processField(serviceConfig.minInstanceCount);
+    proto.renameIfPresent(endpoint, serviceConfig, "minInstances", "minInstanceCount");
+    proto.renameIfPresent(endpoint, serviceConfig, "maxInstances", "maxInstanceCount");
+    if (endpoint.minInstances !== undefined) {
+      endpoint.minInstances = processField(endpoint.minInstances);
     }
-    if (serviceConfig.maxInstanceCount !== undefined) {
-      endpoint.maxInstances = processField(serviceConfig.maxInstanceCount);
+    if (endpoint.maxInstances !== undefined) {
+      endpoint.maxInstances = processField(endpoint.maxInstances);
     }
   }
 
@@ -287,7 +274,7 @@ function convertParam(param: Param): params.Param {
 }
 
 /**
- * Minimal extension detection and adaptation
+ * Detect and convert extension.yaml to functions Build format for deployment
  */
 export async function detectAndAdaptExtension(
   projectDir: string,
@@ -301,7 +288,6 @@ export async function detectAndAdaptExtension(
     return undefined;
   }
 
-  // Use readExtensionYaml from specHelper - it handles all the parsing and defaults
   const extensionSpec = await readExtensionYaml(projectDir);
 
   if (!extensionSpec.name || !extensionSpec.version) {
@@ -320,7 +306,6 @@ export async function detectAndAdaptExtension(
 
   const functionsBuild = build.empty();
 
-  // Convert only function resources
   functionsBuild.endpoints = {};
   for (const resource of extensionSpec.resources) {
     if (validFunctionTypes.includes(resource.type)) {
@@ -334,10 +319,8 @@ export async function detectAndAdaptExtension(
 
   logger.info(`Found ${Object.keys(functionsBuild.endpoints).length} function(s) in extension`);
 
-  // Convert params
   functionsBuild.params = (extensionSpec.params || []).map(convertParam);
 
-  // Add required APIs
   if (extensionSpec.apis) {
     functionsBuild.requiredAPIs = extensionSpec.apis.map((api) => ({
       api: api.apiName,
