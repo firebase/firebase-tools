@@ -85,7 +85,7 @@ export default async function (
       .map(async (s) => {
         const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
         if (postgresDatasource) {
-          const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+          const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
           const databaseId = postgresDatasource.postgresql?.database;
           if (!instanceId || !databaseId) {
             return Promise.resolve();
