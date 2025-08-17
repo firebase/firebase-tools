@@ -2,13 +2,12 @@ import * as path from "path";
 import * as fs from "fs";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
-import * as backend from "./backend";
 import * as build from "./build";
 import * as params from "./params";
 import * as api from "../../api";
 import * as proto from "../../gcp/proto";
-import * as k8s from "../../gcp/k8s";
-import { readExtensionYaml } from "../../extensions/emulator/specHelper";
+import { readExtensionYaml, DEFAULT_RUNTIME } from "../../extensions/emulator/specHelper";
+import { getResourceRuntime } from "../../extensions/utils";
 import {
   Resource,
   Param,
@@ -18,21 +17,12 @@ import {
   FunctionV2ResourceProperties,
 } from "../../extensions/types";
 
-// Constants
-const DEFAULT_RESOURCE_TYPE = "storage.googleapis.com/Bucket";
-
-/**
- * Check if extension.yaml exists at project root
- */
-async function hasExtensionYaml(projectDir: string): Promise<boolean> {
-  const extensionYamlPath = path.join(projectDir, "extension.yaml");
-  try {
-    await fs.promises.access(extensionYamlPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Reuse validFunctionTypes from specHelper
+const validFunctionTypes = [
+  FUNCTIONS_RESOURCE_TYPE,
+  FUNCTIONS_V2_RESOURCE_TYPE,
+  "firebaseextensions.v1beta.scheduledFunction",
+];
 
 /**
  * Convert extension parameter references to CEL format
@@ -41,8 +31,8 @@ async function hasExtensionYaml(projectDir: string): Promise<boolean> {
  */
 function convertParamReference(value: string): string {
   return value
-    .replace(/\$\{param:([^}]+)\}/g, "{{ params.$1 }}")
-    .replace(/\$\{([^:}]+)\}/g, "{{ params.$1 }}");
+    .replace(/\${param:([^}]+)}/g, "{{ params.$1 }}")
+    .replace(/\${([^:}]+)}/g, "{{ params.$1 }}");
 }
 
 /**
@@ -54,7 +44,6 @@ function processField<T>(value: T): T {
   }
 
   if (typeof value === "string") {
-    // Check directly for parameter references
     if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
       return convertParamReference(value) as T;
     }
@@ -77,285 +66,156 @@ function processField<T>(value: T): T {
 }
 
 /**
- * Process a memory field that might be a number, memory string, or parameter reference
- * Returns a Field<number> which can be either a number or a CEL expression string
- */
-function processMemoryField(value: string | number | undefined): build.Field<number> | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value === "number") {
-    if (!backend.isValidMemoryOption(value)) {
-      throw new FirebaseError(`Invalid memory option: ${value}MB`);
-    }
-    return value;
-  }
-
-  // Check for parameter references
-  if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
-    return convertParamReference(value);
-  }
-
-  // Use k8s.mebibytes to parse memory strings
-  try {
-    const memMb = Math.round(k8s.mebibytes(value));
-    if (!backend.isValidMemoryOption(memMb)) {
-      throw new FirebaseError(`Invalid memory option: ${memMb}MB`);
-    }
-    return memMb;
-  } catch (err) {
-    throw new FirebaseError(`Invalid memory format: ${value}`);
-  }
-}
-
-/**
- * Process a timeout field that might be a duration string or parameter reference
- * Returns a Field<number> which can be either seconds or a CEL expression string
- */
-function processTimeoutField(value: string | undefined): build.Field<number> | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  // Check for parameter references
-  if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
-    return convertParamReference(value);
-  }
-
-  return proto.secondsFromDuration(value);
-}
-
-/**
- * Build trigger for v1 functions
- */
-function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.Triggered {
-  if (props?.httpsTrigger) {
-    return { httpsTrigger: {} };
-  }
-
-  if (props?.eventTrigger) {
-    const eventTrigger: build.EventTrigger = {
-      eventType: props.eventTrigger.eventType,
-      retry: false,
-    };
-    if (props.eventTrigger.resource) {
-      eventTrigger.eventFilters = {
-        resource: processField(props.eventTrigger.resource),
-      };
-    }
-    if (props.eventTrigger.service) {
-      eventTrigger.eventFilters = {
-        ...eventTrigger.eventFilters,
-        service: processField(props.eventTrigger.service),
-      };
-    }
-    return { eventTrigger };
-  }
-
-  if (props?.scheduleTrigger) {
-    return {
-      scheduleTrigger: {
-        schedule: processField(props.scheduleTrigger.schedule) || "",
-        timeZone: processField(props.scheduleTrigger.timeZone) || null,
-      },
-    };
-  }
-
-  if (props?.taskQueueTrigger) {
-    const taskQueue: build.TaskQueueTrigger = {};
-    if (props.taskQueueTrigger.rateLimits) {
-      const rateLimits: build.TaskQueueRateLimits = {};
-      const maxConcurrent = processField(props.taskQueueTrigger.rateLimits.maxConcurrentDispatches);
-      if (maxConcurrent !== undefined) {
-        rateLimits.maxConcurrentDispatches = maxConcurrent;
-      }
-      const maxPerSecond = processField(props.taskQueueTrigger.rateLimits.maxDispatchesPerSecond);
-      if (maxPerSecond !== undefined) {
-        rateLimits.maxDispatchesPerSecond = maxPerSecond;
-      }
-      if (Object.keys(rateLimits).length > 0) {
-        taskQueue.rateLimits = rateLimits;
-      }
-    }
-    if (props.taskQueueTrigger.retryConfig) {
-      taskQueue.retryConfig = processField(props.taskQueueTrigger.retryConfig);
-    }
-    return { taskQueueTrigger: taskQueue };
-  }
-
-  // Default to https trigger
-  return { httpsTrigger: {} };
-}
-
-/**
- * Build trigger for v2 functions
- */
-function buildV2Trigger(props: FunctionV2ResourceProperties["properties"]): build.Triggered {
-  if (props?.eventTrigger) {
-    const eventTrigger: build.EventTrigger = {
-      eventType: props.eventTrigger.eventType,
-      retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
-    };
-
-    // Convert event filters
-    if (props.eventTrigger.eventFilters) {
-      eventTrigger.eventFilters = {};
-      for (const filter of props.eventTrigger.eventFilters) {
-        eventTrigger.eventFilters[filter.attribute] = processField(filter.value);
-      }
-    }
-
-    if (props.eventTrigger.triggerRegion) {
-      eventTrigger.region = processField(props.eventTrigger.triggerRegion);
-    }
-
-    if (props.eventTrigger.channel) {
-      eventTrigger.channel = processField(props.eventTrigger.channel);
-    }
-
-    return { eventTrigger };
-  }
-
-  // Default to https trigger for v2
-  return { httpsTrigger: {} };
-}
-
-/**
- * Create endpoint with unified logic for v1 and v2
+ * Minimal endpoint creation leveraging existing utilities
+ * Most of the heavy lifting is done by existing helpers
  */
 function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
+  const runtime = getResourceRuntime(resource) || DEFAULT_RUNTIME;
   const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
 
-  if (isV2) {
-    const v2Resource = resource as Resource & FunctionV2ResourceProperties;
-    const props = v2Resource.properties || {};
-    const triggered = buildV2Trigger(props);
-    
-    if (!props.buildConfig?.runtime) {
-      throw new FirebaseError(`v2 function ${v2Resource.name} missing buildConfig.runtime`);
-    }
-
-    const endpoint: build.Endpoint = {
-      entryPoint: v2Resource.entryPoint || v2Resource.name,
-      platform: "gcfv2",
-      project: projectId,
-      runtime: props.buildConfig.runtime,
-      region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
-      ...triggered,
-    };
-
-    // Handle v2 service config
-    if (props.serviceConfig) {
-      const memResult = processMemoryField(props.serviceConfig.availableMemory);
-      if (memResult !== undefined) {
-        endpoint.availableMemoryMb = memResult;
-      }
-
-      if (props.serviceConfig.timeoutSeconds) {
-        endpoint.timeoutSeconds = processField(props.serviceConfig.timeoutSeconds);
-      }
-      if (props.serviceConfig.minInstanceCount) {
-        endpoint.minInstances = processField(props.serviceConfig.minInstanceCount);
-      }
-      if (props.serviceConfig.maxInstanceCount) {
-        endpoint.maxInstances = processField(props.serviceConfig.maxInstanceCount);
-      }
-    }
-
-    return endpoint;
-  } else {
-    const v1Resource = resource as Resource & FunctionResourceProperties;
-    const props = v1Resource.properties || {};
-    const triggered = buildV1Trigger(props);
-    
-    if (!props.runtime) {
-      throw new FirebaseError(`v1 function ${v1Resource.name} missing runtime`);
-    }
-
-    const endpoint: build.Endpoint = {
-      entryPoint: v1Resource.entryPoint || v1Resource.name,
-      platform: "gcfv1",
-      project: projectId,
-      runtime: props.runtime,
-      region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
-      ...triggered,
-    };
-
-    // Handle v1 memory and timeout
-    const memResult = processMemoryField(props.availableMemoryMb);
-    if (memResult !== undefined) {
-      endpoint.availableMemoryMb = memResult;
-    }
-
-    const timeoutResult = processTimeoutField(props.timeout);
-    if (timeoutResult !== undefined) {
-      endpoint.timeoutSeconds = timeoutResult;
-    }
-
-    return endpoint;
-  }
-}
-
-/**
- * Convert extension resources to function endpoints
- */
-function convertResources(resources: Resource[], projectId: string): Record<string, build.Endpoint> {
-  const endpoints: Record<string, build.Endpoint> = {};
-
-  for (const resource of resources) {
-    const resourceName = resource.name;
-    const resourceType = resource.type;
-
-    // Only handle function resources
-    if (resourceType === FUNCTIONS_RESOURCE_TYPE || resourceType === FUNCTIONS_V2_RESOURCE_TYPE) {
-      endpoints[resourceName] = createEndpoint(resource, projectId);
-    } else {
-      logger.debug(`Skipping non-function resource: ${resourceName}`);
-    }
-  }
-
-  return endpoints;
-}
-
-
-/**
- * Build options array for select/multiSelect params
- */
-function buildOptions(options: Array<{ label?: string; value: string | number }>) {
-  return options.map((opt) => ({
-    label: opt.label || String(opt.value),
-    value: String(opt.value),
-  }));
-}
-
-/**
- * Build text input for params with validation
- */
-function buildTextInput(param: Param): params.TextInput<string> | undefined {
-  if (!param.validationRegex) {
-    return undefined;
-  }
-
-  const text: params.TextInput<string>["text"] = {
-    validationRegex: param.validationRegex,
+  // Type-safe property access
+  const v1Resource = resource as Resource & {
+    properties?: FunctionResourceProperties["properties"];
+  };
+  const v2Resource = resource as Resource & {
+    properties?: FunctionV2ResourceProperties["properties"];
   };
 
-  if (param.validationErrorMessage !== undefined) {
-    text.validationErrorMessage = param.validationErrorMessage;
-  }
-  if (param.example !== undefined) {
-    text.example = param.example;
+  // Get location based on version
+  const location = isV2 ? v2Resource.properties?.location : v1Resource.properties?.location;
+
+  // Base endpoint properties common to all triggers
+  const baseEndpoint = {
+    entryPoint: resource.entryPoint || resource.name,
+    platform: (isV2 ? "gcfv2" : "gcfv1") as "gcfv1" | "gcfv2",
+    project: projectId,
+    runtime,
+    region: [processField(location || api.functionsDefaultRegion())],
+  };
+
+  // Determine trigger and create the appropriate endpoint
+  let endpoint: build.Endpoint;
+
+  if (isV2 && v2Resource.properties) {
+    const props = v2Resource.properties;
+    if (props.eventTrigger) {
+      const eventTrigger: build.EventTrigger = {
+        eventType: props.eventTrigger.eventType,
+        retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
+      };
+
+      // V2 event filters
+      if (props.eventTrigger.eventFilters) {
+        eventTrigger.eventFilters = {};
+        for (const filter of props.eventTrigger.eventFilters) {
+          eventTrigger.eventFilters[filter.attribute] = processField(filter.value);
+        }
+      }
+      if (props.eventTrigger.channel) {
+        eventTrigger.channel = processField(props.eventTrigger.channel);
+      }
+      if (props.eventTrigger.triggerRegion) {
+        eventTrigger.region = processField(props.eventTrigger.triggerRegion);
+      }
+
+      endpoint = { ...baseEndpoint, eventTrigger };
+    } else {
+      // Default to HTTPS trigger for v2
+      endpoint = { ...baseEndpoint, httpsTrigger: {} };
+    }
+  } else if (!isV2 && v1Resource.properties) {
+    const props = v1Resource.properties;
+    if (props.eventTrigger) {
+      const eventTrigger: build.EventTrigger = {
+        eventType: props.eventTrigger.eventType,
+        retry: false,
+      };
+
+      // V1 event filters
+      if (props.eventTrigger.resource || props.eventTrigger.service) {
+        eventTrigger.eventFilters = {};
+        if (props.eventTrigger.resource) {
+          eventTrigger.eventFilters.resource = processField(props.eventTrigger.resource);
+        }
+        if (props.eventTrigger.service) {
+          eventTrigger.eventFilters.service = processField(props.eventTrigger.service);
+        }
+      }
+
+      endpoint = { ...baseEndpoint, eventTrigger };
+    } else if (props.scheduleTrigger) {
+      endpoint = {
+        ...baseEndpoint,
+        scheduleTrigger: {
+          schedule: processField(props.scheduleTrigger.schedule) || "",
+          timeZone: processField(props.scheduleTrigger.timeZone) || null,
+        },
+      };
+    } else if (props.taskQueueTrigger) {
+      const taskQueueTrigger: build.TaskQueueTrigger = {};
+      if (props.taskQueueTrigger.rateLimits) {
+        taskQueueTrigger.rateLimits = processField(props.taskQueueTrigger.rateLimits);
+      }
+      if (props.taskQueueTrigger.retryConfig) {
+        taskQueueTrigger.retryConfig = processField(props.taskQueueTrigger.retryConfig);
+      }
+      endpoint = { ...baseEndpoint, taskQueueTrigger };
+    } else {
+      // Default to HTTPS trigger for v1
+      endpoint = { ...baseEndpoint, httpsTrigger: {} };
+    }
+  } else {
+    // No properties, default to HTTPS trigger
+    endpoint = { ...baseEndpoint, httpsTrigger: {} };
   }
 
-  return { text };
+  // Handle memory/timeout/instances
+  if (!isV2 && v1Resource.properties) {
+    // V1 properties
+    if (v1Resource.properties.timeout) {
+      const timeout = v1Resource.properties.timeout;
+      if (typeof timeout === "string" && (timeout.includes("${param:") || timeout.includes("${"))) {
+        endpoint.timeoutSeconds = processField(timeout);
+      } else {
+        endpoint.timeoutSeconds = proto.secondsFromDuration(timeout);
+      }
+    }
+    if (v1Resource.properties.availableMemoryMb !== undefined) {
+      endpoint.availableMemoryMb = processField(v1Resource.properties.availableMemoryMb);
+    }
+  } else if (isV2 && v2Resource.properties?.serviceConfig) {
+    // V2 serviceConfig
+    const serviceConfig = v2Resource.properties.serviceConfig;
+    if (serviceConfig.timeoutSeconds !== undefined) {
+      endpoint.timeoutSeconds = processField(serviceConfig.timeoutSeconds);
+    }
+    if (serviceConfig.availableMemory !== undefined) {
+      // Parse memory but preserve parameter references
+      const mem = serviceConfig.availableMemory;
+      if (typeof mem === "string" && (mem.includes("${param:") || mem.includes("${"))) {
+        endpoint.availableMemoryMb = processField(mem);
+      } else if (typeof mem === "string") {
+        // Use parseInt like triggerHelper does
+        endpoint.availableMemoryMb = parseInt(mem);
+      } else {
+        endpoint.availableMemoryMb = mem;
+      }
+    }
+    if (serviceConfig.minInstanceCount !== undefined) {
+      endpoint.minInstances = processField(serviceConfig.minInstanceCount);
+    }
+    if (serviceConfig.maxInstanceCount !== undefined) {
+      endpoint.maxInstances = processField(serviceConfig.maxInstanceCount);
+    }
+  }
+
+  return endpoint;
 }
 
 /**
- * Convert a single extension param to build param
+ * Convert extension params to build params
  */
 function convertParam(param: Param): params.Param {
-  // Secret params are handled separately
   if (param.type === "secret") {
     return {
       type: "secret",
@@ -363,55 +223,63 @@ function convertParam(param: Param): params.Param {
     };
   }
 
-  // Build base string param
   const stringParam: params.StringParam = {
     type: "string",
     name: param.param,
     label: param.label,
   };
 
-  // Add optional fields only if defined
-  if (param.description !== undefined) {
-    stringParam.description = param.description;
-  }
-  if (param.immutable !== undefined) {
-    stringParam.immutable = param.immutable;
-  }
-  if (param.default !== undefined) {
-    stringParam.default = processField(String(param.default));
-  }
+  if (param.description !== undefined) stringParam.description = param.description;
+  if (param.immutable !== undefined) stringParam.immutable = param.immutable;
+  if (param.default !== undefined) stringParam.default = processField(String(param.default));
 
-  // Add input based on param type
+  // Handle different input types
   switch (param.type) {
-    case "select":
+    case "select": {
       if (param.options) {
         stringParam.input = {
-          select: { options: buildOptions(param.options) },
+          select: {
+            options: param.options.map((opt) => ({
+              label: opt.label || String(opt.value),
+              value: String(opt.value),
+            })),
+          },
         };
       }
       break;
-
-    case "multiSelect":
+    }
+    case "multiSelect": {
       if (param.options) {
         stringParam.input = {
-          multiSelect: { options: buildOptions(param.options) },
+          multiSelect: {
+            options: param.options.map((opt) => ({
+              label: opt.label || String(opt.value),
+              value: String(opt.value),
+            })),
+          },
         };
       }
       break;
-
+    }
     case "selectResource":
       stringParam.input = {
         resource: {
-          type: param.resourceType || DEFAULT_RESOURCE_TYPE,
+          type: param.resourceType || "storage.googleapis.com/Bucket",
         },
       };
       break;
-
     default:
-      // Check for text input with validation
-      const textInput = buildTextInput(param);
-      if (textInput) {
-        stringParam.input = textInput;
+      if (param.validationRegex) {
+        const text: any = {
+          validationRegex: param.validationRegex,
+        };
+        if (param.validationErrorMessage !== undefined) {
+          text.validationErrorMessage = param.validationErrorMessage;
+        }
+        if (param.example !== undefined) {
+          text.example = param.example;
+        }
+        stringParam.input = { text };
       }
   }
 
@@ -419,27 +287,27 @@ function convertParam(param: Param): params.Param {
 }
 
 /**
- * Convert extension params to build params
- * Extension params will be resolved during build.resolveBackend() just like regular function params
+ * Minimal extension detection and adaptation
  */
-function convertParams(extensionParams: Param[]): params.Param[] {
-  return extensionParams.map(convertParam);
-}
+export async function detectAndAdaptExtension(
+  projectDir: string,
+  projectId: string,
+): Promise<build.Build | undefined> {
+  const extensionYamlPath = path.join(projectDir, "extension.yaml");
 
-/**
- * Convert extension.yaml to functions Build
- */
-async function adaptExtensionToBuild(projectDir: string, projectId: string): Promise<build.Build> {
-  // Load extension.yaml
+  try {
+    await fs.promises.access(extensionYamlPath);
+  } catch {
+    return undefined;
+  }
+
+  // Use readExtensionYaml from specHelper - it handles all the parsing and defaults
   const extensionSpec = await readExtensionYaml(projectDir);
-  
-  // Basic validation for deployment (not as strict as publishing requirements)
-  if (!extensionSpec.name) {
-    throw new FirebaseError("extension.yaml is missing required field: name");
+
+  if (!extensionSpec.name || !extensionSpec.version) {
+    throw new FirebaseError("extension.yaml is missing required fields: name or version");
   }
-  if (!extensionSpec.version) {
-    throw new FirebaseError("extension.yaml is missing required field: version");
-  }
+
   if (!extensionSpec.resources || extensionSpec.resources.length === 0) {
     throw new FirebaseError("extension.yaml must contain at least one resource");
   }
@@ -447,29 +315,18 @@ async function adaptExtensionToBuild(projectDir: string, projectId: string): Pro
   logger.info(`Detected extension "${extensionSpec.name}" v${extensionSpec.version}`);
   logger.info("Adapting extension.yaml for functions deployment...");
 
-  // TODO: Properly handle IAM roles
-  // Extensions can require specific IAM roles for their service account to function properly
-  // For now, we're ignoring this but should integrate with the IAM system in the future
-  if (extensionSpec.roles && extensionSpec.roles.length > 0) {
-    logger.info(`Note: This extension requires ${extensionSpec.roles.length} IAM role(s) to function properly`);
-  }
+  // TODO: Handle IAM roles - extensions can require specific IAM roles for their service account
+  // TODO: Support lifecycle events (onInstall, onUpdate, onConfigure) - these are task queue functions
 
-  // TODO: Support lifecycle events (onInstall, onUpdate, onConfigure)
-  // These are task queue functions that run at specific extension lifecycle stages
-  // For now, warn the user that they're not supported
-  if (extensionSpec.lifecycleEvents && extensionSpec.lifecycleEvents.length > 0) {
-    logger.warn("⚠️  Lifecycle events are not supported in functions deployment.");
-    logger.warn("   The following lifecycle events will be ignored:");
-    for (const event of extensionSpec.lifecycleEvents) {
-      logger.warn(`   - ${event.stage}: ${event.taskQueueTriggerFunction}`);
-    }
-  }
-
-  // Start with an empty build
   const functionsBuild = build.empty();
 
-  // Convert resources to endpoints
-  functionsBuild.endpoints = convertResources(extensionSpec.resources, projectId);
+  // Convert only function resources
+  functionsBuild.endpoints = {};
+  for (const resource of extensionSpec.resources) {
+    if (validFunctionTypes.includes(resource.type)) {
+      functionsBuild.endpoints[resource.name] = createEndpoint(resource, projectId);
+    }
+  }
 
   if (Object.keys(functionsBuild.endpoints).length === 0) {
     throw new FirebaseError("No function resources found in extension.yaml");
@@ -478,7 +335,7 @@ async function adaptExtensionToBuild(projectDir: string, projectId: string): Pro
   logger.info(`Found ${Object.keys(functionsBuild.endpoints).length} function(s) in extension`);
 
   // Convert params
-  functionsBuild.params = convertParams(extensionSpec.params || []);
+  functionsBuild.params = (extensionSpec.params || []).map(convertParam);
 
   // Add required APIs
   if (extensionSpec.apis) {
@@ -488,36 +345,5 @@ async function adaptExtensionToBuild(projectDir: string, projectId: string): Pro
     }));
   }
 
-  // Don't set a Build-level runtime since each endpoint has its own
-  // functionsBuild.runtime is left undefined
-
   return functionsBuild;
-}
-
-/**
- * Detects and adapts a Firebase Extension (extension.yaml) to Functions Build format.
- * 
- * This adapter enables deployment of Firebase Extensions using the Functions deployment
- * pipeline, allowing `firebase deploy --only functions` to work with extensions.
- * 
- * @param projectDir - The root directory of the project containing extension.yaml
- * @param projectId - The Firebase project ID for deployment
- * @returns A Build object if extension.yaml exists and is valid, undefined otherwise
- * 
- * @example
- * const build = await detectAndAdaptExtension('/path/to/extension', 'my-project');
- * if (build) {
- *   // Extension detected and converted to Functions format
- *   console.log(`Found ${Object.keys(build.endpoints).length} functions`);
- * }
- */
-export async function detectAndAdaptExtension(
-  projectDir: string,
-  projectId: string,
-): Promise<build.Build | undefined> {
-  if (!(await hasExtensionYaml(projectDir))) {
-    return undefined;
-  }
-
-  return adaptExtensionToBuild(projectDir, projectId);
 }
