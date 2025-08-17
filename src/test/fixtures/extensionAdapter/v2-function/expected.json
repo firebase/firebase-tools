@@ -11,11 +11,13 @@
         "retry": true,
         "region": "us-central1",
         "eventFilters": {
-          "database": "(default)",
+          "database": "(default)"
+        },
+        "eventFilterPathPatterns": {
           "document": "users/{userId}"
         }
       },
-      "availableMemoryMb": 512,
+      "availableMemoryMb": 1024,
       "timeoutSeconds": 120,
       "minInstances": 1,
       "maxInstances": 10

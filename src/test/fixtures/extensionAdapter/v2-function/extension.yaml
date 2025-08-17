@@ -11,7 +11,7 @@ resources:
       buildConfig:
         runtime: nodejs20
       serviceConfig:
-        availableMemory: 512Mi
+        availableMemory: 1GiB
         timeoutSeconds: 120
         minInstanceCount: 1
         maxInstanceCount: 10
@@ -23,6 +23,7 @@ resources:
             value: "(default)"
           - attribute: document
             value: "users/{userId}"
+            operator: match-path-pattern
         retryPolicy: RETRY_POLICY_RETRY
 
 params:

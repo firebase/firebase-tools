@@ -6,6 +6,7 @@ import * as build from "./build";
 import * as params from "./params";
 import * as api from "../../api";
 import * as proto from "../../gcp/proto";
+import * as k8s from "../../gcp/k8s";
 import { readExtensionYaml, DEFAULT_RUNTIME } from "../../extensions/emulator/specHelper";
 import { getResourceRuntime } from "../../extensions/utils";
 import {
@@ -99,9 +100,15 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
       };
 
       if (props.eventTrigger.eventFilters) {
-        eventTrigger.eventFilters = {};
         for (const filter of props.eventTrigger.eventFilters) {
-          eventTrigger.eventFilters[filter.attribute] = processField(filter.value);
+          const value = processField(filter.value);
+          if (filter.operator === "match-path-pattern") {
+            eventTrigger.eventFilterPathPatterns = eventTrigger.eventFilterPathPatterns || {};
+            eventTrigger.eventFilterPathPatterns[filter.attribute] = value as string;
+          } else {
+            eventTrigger.eventFilters = eventTrigger.eventFilters || {};
+            eventTrigger.eventFilters[filter.attribute] = value as string;
+          }
         }
       }
       if (props.eventTrigger.channel) {
@@ -161,7 +168,10 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
   if (!isV2 && v1Resource.properties) {
     if (v1Resource.properties.timeout) {
       const timeout = v1Resource.properties.timeout;
-      if (typeof timeout === "string" && (timeout.includes("${param:") || timeout.includes("${"))) {
+      if (
+        typeof timeout === "string" &&
+        (timeout.includes("${param:") || (timeout.includes("${") && timeout.includes("}")))
+      ) {
         endpoint.timeoutSeconds = processField(timeout);
       } else {
         endpoint.timeoutSeconds = proto.secondsFromDuration(timeout);
@@ -178,10 +188,21 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
     }
     if (serviceConfig.availableMemory !== undefined) {
       const mem = serviceConfig.availableMemory;
-      if (typeof mem === "string" && (mem.includes("${param:") || mem.includes("${"))) {
+      if (
+        typeof mem === "string" &&
+        (mem.includes("${param:") || (mem.includes("${") && mem.includes("}")))
+      ) {
         endpoint.availableMemoryMb = processField(mem);
       } else if (typeof mem === "string") {
-        endpoint.availableMemoryMb = parseInt(mem);
+        // Parse memory strings like "1GiB", "512MiB", etc.
+        // Extensions use IEC notation (GiB), k8s.mebibytes expects Kubernetes notation (Gi)
+        // Both represent the same binary values (1024-based), just different notation
+        const k8sFormat = mem.replace(/([0-9.]+)([KMGT])iB$/i, "$1$2i");
+        try {
+          endpoint.availableMemoryMb = Math.round(k8s.mebibytes(k8sFormat));
+        } catch (e: any) {
+          throw new FirebaseError(`Failed to parse memory value "${mem}": ${e.message}`);
+        }
       } else {
         endpoint.availableMemoryMb = mem;
       }
@@ -257,7 +278,7 @@ function convertParam(param: Param): params.Param {
       break;
     default:
       if (param.validationRegex) {
-        const text: any = {
+        const text: params.TextInput<string>["text"] = {
           validationRegex: param.validationRegex,
         };
         if (param.validationErrorMessage !== undefined) {
