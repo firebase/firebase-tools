@@ -12,7 +12,6 @@ import { readExtensionYaml } from "../../extensions/emulator/specHelper";
 import {
   Resource,
   Param,
-  Role,
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
   FunctionResourceProperties,
@@ -319,31 +318,6 @@ function convertResources(resources: Resource[], projectId: string): Record<stri
   return endpoints;
 }
 
-/**
- * Display IAM roles that the extension requires
- */
-function displayIAMRoles(roles: Role[] | undefined, projectId: string): void {
-  if (!roles || roles.length === 0) {
-    return;
-  }
-
-  const serviceAccount = `${projectId}@appspot.gserviceaccount.com`;
-
-  logger.info("");
-  logger.info("⚠️  This extension requires the following IAM roles:");
-  for (const role of roles) {
-    logger.info(`   • ${role.role}: ${role.reason}`);
-  }
-
-  logger.info("");
-  logger.info("To grant these roles to the default service account, run:");
-  for (const role of roles) {
-    logger.info(`gcloud projects add-iam-policy-binding ${projectId} \\`);
-    logger.info(`  --member=serviceAccount:${serviceAccount} \\`);
-    logger.info(`  --role=${role.role}`);
-  }
-  logger.info("");
-}
 
 /**
  * Build options array for select/multiSelect params
@@ -473,10 +447,16 @@ async function adaptExtensionToBuild(projectDir: string, projectId: string): Pro
   logger.info(`Detected extension "${extensionSpec.name}" v${extensionSpec.version}`);
   logger.info("Adapting extension.yaml for functions deployment...");
 
-  // Display IAM roles (just for information)
-  displayIAMRoles(extensionSpec.roles, projectId);
+  // TODO: Properly handle IAM roles
+  // Extensions can require specific IAM roles for their service account to function properly
+  // For now, we're ignoring this but should integrate with the IAM system in the future
+  if (extensionSpec.roles && extensionSpec.roles.length > 0) {
+    logger.info(`Note: This extension requires ${extensionSpec.roles.length} IAM role(s) to function properly`);
+  }
 
-  // Handle lifecycle events
+  // TODO: Support lifecycle events (onInstall, onUpdate, onConfigure)
+  // These are task queue functions that run at specific extension lifecycle stages
+  // For now, warn the user that they're not supported
   if (extensionSpec.lifecycleEvents && extensionSpec.lifecycleEvents.length > 0) {
     logger.warn("⚠️  Lifecycle events are not supported in functions deployment.");
     logger.warn("   The following lifecycle events will be ignored:");
