@@ -132,7 +132,7 @@ function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.
   if (props?.httpsTrigger) {
     return { httpsTrigger: {} };
   }
-  
+
   if (props?.eventTrigger) {
     const eventTrigger: build.EventTrigger = {
       eventType: props.eventTrigger.eventType,
@@ -151,7 +151,7 @@ function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.
     }
     return { eventTrigger };
   }
-  
+
   if (props?.scheduleTrigger) {
     return {
       scheduleTrigger: {
@@ -160,7 +160,7 @@ function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.
       },
     };
   }
-  
+
   if (props?.taskQueueTrigger) {
     const taskQueue: build.TaskQueueTrigger = {};
     if (props.taskQueueTrigger.rateLimits) {
@@ -182,7 +182,7 @@ function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.
     }
     return { taskQueueTrigger: taskQueue };
   }
-  
+
   // Default to https trigger
   return { httpsTrigger: {} };
 }
@@ -215,7 +215,7 @@ function buildV2Trigger(props: FunctionV2ResourceProperties["properties"]): buil
 
     return { eventTrigger };
   }
-  
+
   // Default to https trigger for v2
   return { httpsTrigger: {} };
 }
@@ -223,18 +223,14 @@ function buildV2Trigger(props: FunctionV2ResourceProperties["properties"]): buil
 /**
  * Create endpoint with unified logic for v1 and v2
  */
-function createEndpoint(
-  resource: Resource,
-  projectId: string,
-  runtime: Runtime,
-): build.Endpoint {
+function createEndpoint(resource: Resource, projectId: string, runtime: Runtime): build.Endpoint {
   const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
-  
+
   if (isV2) {
     const v2Resource = resource as Resource & FunctionV2ResourceProperties;
     const props = v2Resource.properties || {};
     const triggered = buildV2Trigger(props);
-    
+
     const endpoint: build.Endpoint = {
       entryPoint: v2Resource.entryPoint || v2Resource.name,
       platform: "gcfv2",
@@ -243,14 +239,14 @@ function createEndpoint(
       region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
       ...triggered,
     };
-    
+
     // Handle v2 service config
     if (props.serviceConfig) {
       const memResult = processMemoryField(props.serviceConfig.availableMemory);
       if (memResult !== undefined) {
         endpoint.availableMemoryMb = memResult;
       }
-      
+
       if (props.serviceConfig.timeoutSeconds) {
         endpoint.timeoutSeconds = processField(props.serviceConfig.timeoutSeconds);
       }
@@ -261,13 +257,13 @@ function createEndpoint(
         endpoint.maxInstances = processField(props.serviceConfig.maxInstanceCount);
       }
     }
-    
+
     return endpoint;
   } else {
     const v1Resource = resource as Resource & FunctionResourceProperties;
     const props = v1Resource.properties || {};
     const triggered = buildV1Trigger(props);
-    
+
     const endpoint: build.Endpoint = {
       entryPoint: v1Resource.entryPoint || v1Resource.name,
       platform: "gcfv1",
@@ -276,18 +272,18 @@ function createEndpoint(
       region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
       ...triggered,
     };
-    
+
     // Handle v1 memory and timeout
     const memResult = processMemoryField(props.availableMemoryMb);
     if (memResult !== undefined) {
       endpoint.availableMemoryMb = memResult;
     }
-    
+
     const timeoutResult = processTimeoutField(props.timeout);
     if (timeoutResult !== undefined) {
       endpoint.timeoutSeconds = timeoutResult;
     }
-    
+
     return endpoint;
   }
 }
@@ -344,85 +340,110 @@ function displayIAMRoles(roles: Role[] | undefined, projectId: string): void {
 }
 
 /**
+ * Build options array for select/multiSelect params
+ */
+function buildOptions(options: Array<{ label?: string; value: string | number }>) {
+  return options.map((opt) => ({
+    label: opt.label || String(opt.value),
+    value: String(opt.value),
+  }));
+}
+
+/**
+ * Build text input for params with validation
+ */
+function buildTextInput(param: Param): params.TextInput<string> | undefined {
+  if (!param.validationRegex) {
+    return undefined;
+  }
+
+  const text: params.TextInput<string>["text"] = {
+    validationRegex: param.validationRegex,
+  };
+
+  if (param.validationErrorMessage !== undefined) {
+    text.validationErrorMessage = param.validationErrorMessage;
+  }
+  if (param.example !== undefined) {
+    text.example = param.example;
+  }
+
+  return { text };
+}
+
+/**
+ * Convert a single extension param to build param
+ */
+function convertParam(param: Param): params.Param {
+  // Secret params are handled separately
+  if (param.type === "secret") {
+    return {
+      type: "secret",
+      name: param.param,
+    };
+  }
+
+  // Build base string param
+  const stringParam: params.StringParam = {
+    type: "string",
+    name: param.param,
+    label: param.label,
+  };
+
+  // Add optional fields only if defined
+  if (param.description !== undefined) {
+    stringParam.description = param.description;
+  }
+  if (param.immutable !== undefined) {
+    stringParam.immutable = param.immutable;
+  }
+  if (param.default !== undefined) {
+    stringParam.default = processField(String(param.default));
+  }
+
+  // Add input based on param type
+  switch (param.type) {
+    case "select":
+      if (param.options) {
+        stringParam.input = {
+          select: { options: buildOptions(param.options) },
+        };
+      }
+      break;
+
+    case "multiSelect":
+      if (param.options) {
+        stringParam.input = {
+          multiSelect: { options: buildOptions(param.options) },
+        };
+      }
+      break;
+
+    case "selectResource":
+      stringParam.input = {
+        resource: {
+          type: param.resourceType || "storage.googleapis.com/Bucket",
+        },
+      };
+      break;
+
+    default:
+      // Check for text input with validation
+      const textInput = buildTextInput(param);
+      if (textInput) {
+        stringParam.input = textInput;
+      }
+  }
+
+  return stringParam;
+}
+
+/**
  * Convert extension params to build params
  * Extension params will be resolved during build.resolveBackend() just like regular function params
  */
 function convertParams(extensionParams: Param[]): params.Param[] {
-  const buildParams: params.Param[] = [];
-
-  for (const param of extensionParams) {
-    // Handle different param types
-    // Extension YAML uses lowercase/camelCase (SpecParamType)
-    if (param.type === "secret") {
-      // Secret params have a different structure
-      const secretParam: params.SecretParam = {
-        type: "secret",
-        name: param.param,
-      };
-      buildParams.push(secretParam);
-    } else {
-      // String-based params (including select, multiSelect, etc.)
-      const stringParam: params.StringParam = {
-        type: "string",
-        name: param.param,
-        label: param.label,
-      } as params.StringParam;
-
-      if (param.description !== undefined) {
-        stringParam.description = param.description;
-      }
-      if (param.immutable !== undefined) {
-        stringParam.immutable = param.immutable;
-      }
-
-      // Convert default value if present
-      if (param.default !== undefined) {
-        stringParam.default = processField(String(param.default));
-      }
-
-      // Handle different input types
-      if (param.type === "select" && param.options) {
-        stringParam.input = {
-          select: {
-            options: param.options.map((opt) => ({
-              label: opt.label || String(opt.value),
-              value: String(opt.value),
-            })),
-          },
-        };
-      } else if (param.type === "multiSelect" && param.options) {
-        stringParam.input = {
-          multiSelect: {
-            options: param.options.map((opt) => ({
-              label: opt.label || String(opt.value),
-              value: String(opt.value),
-            })),
-          },
-        };
-      } else if (param.type === "selectResource") {
-        stringParam.input = {
-          resource: {
-            type: param.resourceType || "storage.googleapis.com/Bucket",
-          },
-        };
-      } else if (param.validationRegex) {
-        const text: params.TextInput<string>["text"] = {
-          validationRegex: param.validationRegex,
-        };
-        if (param.validationErrorMessage !== undefined) {
-          text.validationErrorMessage = param.validationErrorMessage;
-        }
-        if (param.example !== undefined) {
-          text.example = param.example;
-        }
-        stringParam.input = { text };
-      }
-
-      buildParams.push(stringParam);
-    }
-  }
-
-  return buildParams;
+  return extensionParams.map(convertParam);
 }
 
 /**
