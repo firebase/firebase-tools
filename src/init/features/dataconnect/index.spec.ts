@@ -52,7 +52,7 @@ describe("init dataconnect", () => {
           "dataconnect/connector/queries.gql",
           "dataconnect/connector/mutations.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
@@ -68,7 +68,7 @@ describe("init dataconnect", () => {
           "not-dataconnect/connector/queries.gql",
           "not-dataconnect/connector/mutations.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
@@ -87,7 +87,7 @@ describe("init dataconnect", () => {
         config: mockConfig({}),
         expectedSource: "dataconnect",
         expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
@@ -116,7 +116,7 @@ describe("init dataconnect", () => {
           "dataconnect/hello/connector.yaml",
           "dataconnect/hello/queries.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
@@ -164,7 +164,7 @@ describe("init dataconnect", () => {
           "dataconnect/hello/connector.yaml",
           "dataconnect/hello/queries.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: true,
       },
     ];
