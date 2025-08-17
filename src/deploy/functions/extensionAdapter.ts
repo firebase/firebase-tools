@@ -8,7 +8,6 @@ import * as params from "./params";
 import * as api from "../../api";
 import * as proto from "../../gcp/proto";
 import * as k8s from "../../gcp/k8s";
-import { Runtime } from "./runtimes/supported";
 import { readExtensionYaml } from "../../extensions/emulator/specHelper";
 import {
   Resource,
@@ -223,19 +222,23 @@ function buildV2Trigger(props: FunctionV2ResourceProperties["properties"]): buil
 /**
  * Create endpoint with unified logic for v1 and v2
  */
-function createEndpoint(resource: Resource, projectId: string, runtime: Runtime): build.Endpoint {
+function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
   const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
 
   if (isV2) {
     const v2Resource = resource as Resource & FunctionV2ResourceProperties;
     const props = v2Resource.properties || {};
     const triggered = buildV2Trigger(props);
+    
+    if (!props.buildConfig?.runtime) {
+      throw new FirebaseError(`v2 function ${v2Resource.name} missing buildConfig.runtime`);
+    }
 
     const endpoint: build.Endpoint = {
       entryPoint: v2Resource.entryPoint || v2Resource.name,
       platform: "gcfv2",
       project: projectId,
-      runtime: props.buildConfig?.runtime || runtime,
+      runtime: props.buildConfig.runtime,
       region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
       ...triggered,
     };
@@ -263,12 +266,16 @@ function createEndpoint(resource: Resource, projectId: string, runtime: Runtime)
     const v1Resource = resource as Resource & FunctionResourceProperties;
     const props = v1Resource.properties || {};
     const triggered = buildV1Trigger(props);
+    
+    if (!props.runtime) {
+      throw new FirebaseError(`v1 function ${v1Resource.name} missing runtime`);
+    }
 
     const endpoint: build.Endpoint = {
       entryPoint: v1Resource.entryPoint || v1Resource.name,
       platform: "gcfv1",
       project: projectId,
-      runtime: props.runtime || runtime,
+      runtime: props.runtime,
       region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
       ...triggered,
     };
@@ -291,11 +298,7 @@ function createEndpoint(resource: Resource, projectId: string, runtime: Runtime)
 /**
  * Convert extension resources to function endpoints
  */
-function convertResources(
-  resources: Resource[],
-  projectId: string,
-  runtime: Runtime,
-): Record<string, build.Endpoint> {
+function convertResources(resources: Resource[], projectId: string): Record<string, build.Endpoint> {
   const endpoints: Record<string, build.Endpoint> = {};
 
   for (const resource of resources) {
@@ -304,7 +307,7 @@ function convertResources(
 
     // Only handle function resources
     if (resourceType === FUNCTIONS_RESOURCE_TYPE || resourceType === FUNCTIONS_V2_RESOURCE_TYPE) {
-      endpoints[resourceName] = createEndpoint(resource, projectId, runtime);
+      endpoints[resourceName] = createEndpoint(resource, projectId);
     } else {
       logger.debug(`Skipping non-function resource: ${resourceName}`);
     }
@@ -449,11 +452,7 @@ function convertParams(extensionParams: Param[]): params.Param[] {
 /**
  * Convert extension.yaml to functions Build
  */
-async function adaptExtensionToBuild(
-  projectDir: string,
-  projectId: string,
-  runtime: Runtime,
-): Promise<build.Build> {
+async function adaptExtensionToBuild(projectDir: string, projectId: string): Promise<build.Build> {
   // Load extension.yaml
   const extensionSpec = await readExtensionYaml(projectDir);
 
@@ -476,7 +475,7 @@ async function adaptExtensionToBuild(
   const functionsBuild = build.empty();
 
   // Convert resources to endpoints
-  functionsBuild.endpoints = convertResources(extensionSpec.resources, projectId, runtime);
+  functionsBuild.endpoints = convertResources(extensionSpec.resources, projectId);
 
   if (Object.keys(functionsBuild.endpoints).length === 0) {
     throw new FirebaseError("No function resources found in extension.yaml");
@@ -495,8 +494,8 @@ async function adaptExtensionToBuild(
     }));
   }
 
-  // Set runtime
-  functionsBuild.runtime = runtime;
+  // Don't set a Build-level runtime since each endpoint has its own
+  // functionsBuild.runtime is left undefined
 
   return functionsBuild;
 }
@@ -508,11 +507,10 @@ export async function detectAndAdaptExtension(
   projectDir: string,
   sourceDir: string,
   projectId: string,
-  runtime: Runtime,
 ): Promise<build.Build | undefined> {
   if (!(await hasExtensionYaml(projectDir))) {
     return undefined;
   }
 
-  return adaptExtensionToBuild(projectDir, projectId, runtime);
+  return adaptExtensionToBuild(projectDir, projectId);
 }

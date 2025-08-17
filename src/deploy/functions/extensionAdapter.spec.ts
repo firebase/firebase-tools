@@ -29,7 +29,6 @@ describe("extensionAdapter golden tests", () => {
         fixtureDir,
         path.join(fixtureDir, "functions"),
         "test-project",
-        "nodejs20",
       );
 
       expect(result).to.not.be.undefined;
@@ -42,7 +41,6 @@ describe("extensionAdapter golden tests", () => {
       "/tmp/no-extension",
       "/tmp/no-extension/functions",
       "test-project",
-      "nodejs20",
     );
 
     expect(result).to.be.undefined;

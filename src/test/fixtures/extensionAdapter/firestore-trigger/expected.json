@@ -16,6 +16,5 @@
       }
     }
   },
-  "params": [],
-  "runtime": "nodejs20"
+  "params": []
 }

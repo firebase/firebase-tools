@@ -25,6 +25,5 @@
     }
   },
   "params": [],
-  "requiredAPIs": [],
-  "runtime": "nodejs20"
+  "requiredAPIs": []
 }
