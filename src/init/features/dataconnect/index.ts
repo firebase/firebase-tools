@@ -356,6 +356,8 @@ async function writeFiles(
       join(dir, "seed_data.gql"),
       serviceGql.seedDataGql,
       !!options.force,
+      // Default to override seed_data.gql, which shouldn't contain sensitive information.
+      true,
     );
   }
 
@@ -568,7 +570,10 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       } else {
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
-          default: `${defaultServiceId()}-fdc`,
+          default: newUniqueId(
+            `${defaultServiceId()}-fdc`,
+            instances.map((i) => i.name),
+          ),
         });
       }
     }
