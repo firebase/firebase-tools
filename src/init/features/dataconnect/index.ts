@@ -281,7 +281,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
       info.connectors = [emptyConnector];
       if (choice.schema) {
         const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-        if (primaryDatasource?.postgresql?.cloudSql.instance) {
+        if (primaryDatasource?.postgresql?.cloudSql?.instance) {
           const instanceName = parseCloudSQLInstanceName(
             primaryDatasource.postgresql.cloudSql.instance,
           );
