@@ -7,6 +7,7 @@ import * as build from "./build";
 import * as params from "./params";
 import * as api from "../../api";
 import * as proto from "../../gcp/proto";
+import * as k8s from "../../gcp/k8s";
 import { Runtime } from "./runtimes/supported";
 import { readExtensionYaml } from "../../extensions/emulator/specHelper";
 import {
@@ -33,13 +34,6 @@ async function hasExtensionYaml(projectDir: string): Promise<boolean> {
 }
 
 /**
- * Type guard to check if a string contains extension parameter references
- */
-function hasParamReference(value: string): value is string & { __hasParam: true } {
-  return value.includes("${param:") || (value.includes("${") && value.includes("}"));
-}
-
-/**
  * Convert extension parameter references to CEL format
  * ${param:NAME} -> {{ params.NAME }}
  * ${NAME} -> {{ params.NAME }} (some extensions use this shorthand)
@@ -57,19 +51,19 @@ function processField<T>(value: T): T {
   if (value === null || value === undefined) {
     return value;
   }
-  
+
   if (typeof value === "string") {
-    if (hasParamReference(value)) {
-      const converted = convertParamReference(value);
-      return converted as T;
+    // Check directly for parameter references
+    if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
+      return convertParamReference(value) as T;
     }
     return value;
   }
-  
+
   if (Array.isArray(value)) {
     return value.map(processField) as T;
   }
-  
+
   if (typeof value === "object") {
     const processed: any = {};
     for (const [key, val] of Object.entries(value)) {
@@ -77,7 +71,7 @@ function processField<T>(value: T): T {
     }
     return processed as T;
   }
-  
+
   return value;
 }
 
@@ -89,40 +83,29 @@ function processMemoryField(value: string | number | undefined): build.Field<num
   if (value === undefined) {
     return undefined;
   }
-  
+
   if (typeof value === "number") {
     if (!backend.isValidMemoryOption(value)) {
       throw new FirebaseError(`Invalid memory option: ${value}MB`);
     }
     return value;
   }
-  
-  if (hasParamReference(value)) {
+
+  // Check for parameter references
+  if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
     return convertParamReference(value);
   }
-  
-  const match = value.match(/^(\d+)(Mi|Gi|M|G)?$/);
-  if (!match) {
+
+  // Use k8s.mebibytes to parse memory strings
+  try {
+    const memMb = Math.round(k8s.mebibytes(value));
+    if (!backend.isValidMemoryOption(memMb)) {
+      throw new FirebaseError(`Invalid memory option: ${memMb}MB`);
+    }
+    return memMb;
+  } catch (err) {
     throw new FirebaseError(`Invalid memory format: ${value}`);
   }
-
-  const num = parseInt(match[1]);
-  const unit = match[2];
-
-  let memMb: number;
-  if (!unit || unit === "Mi" || unit === "M") {
-    memMb = num;
-  } else if (unit === "Gi" || unit === "G") {
-    memMb = num * 1024;
-  } else {
-    throw new FirebaseError(`Unknown memory unit: ${unit}`);
-  }
-
-  if (!backend.isValidMemoryOption(memMb)) {
-    throw new FirebaseError(`Invalid memory option: ${memMb}MB`);
-  }
-
-  return memMb;
 }
 
 /**
@@ -133,54 +116,13 @@ function processTimeoutField(value: string | undefined): build.Field<number> | u
   if (value === undefined) {
     return undefined;
   }
-  
-  if (hasParamReference(value)) {
+
+  // Check for parameter references
+  if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
     return convertParamReference(value);
   }
-  
+
   return proto.secondsFromDuration(value);
-}
-
-/**
- * Parse memory string like "256Mi" to MB number
- * Extensions use "256Mi" format while functions use MB numbers
- * Returns a Field<number> which can be either a number or a CEL expression string
- */
-function parseMemory(memory: string | number): build.Field<number> {
-  // If it's already a number, validate and return
-  if (typeof memory === "number") {
-    if (!backend.isValidMemoryOption(memory)) {
-      throw new FirebaseError(`Invalid memory option: ${memory}MB`);
-    }
-    return memory;
-  }
-  
-  // Try to parse memory string format
-  const match = memory.match(/^(\d+)(Mi|Gi|M|G)?$/);
-  if (!match) {
-    // If it doesn't match memory format, it must be a CEL expression
-    // (already converted from ${param:X} to {{ params.X }})
-    return memory;
-  }
-
-  const value = parseInt(match[1]);
-  const unit = match[2];
-
-  let memMb: number;
-  if (!unit || unit === "Mi" || unit === "M") {
-    memMb = value;
-  } else if (unit === "Gi" || unit === "G") {
-    memMb = value * 1024;
-  } else {
-    throw new FirebaseError(`Unknown memory unit: ${unit}`);
-  }
-
-  // Validate it's a supported memory option
-  if (!backend.isValidMemoryOption(memMb)) {
-    throw new FirebaseError(`Invalid memory option: ${memMb}MB`);
-  }
-
-  return memMb;
 }
 
 /**
@@ -226,15 +168,11 @@ function createV1Endpoint(
     const taskQueue: build.TaskQueueTrigger = {};
     if (props.taskQueueTrigger.rateLimits) {
       const rateLimits: build.TaskQueueRateLimits = {};
-      const maxConcurrent = processField(
-        props.taskQueueTrigger.rateLimits.maxConcurrentDispatches
-      );
+      const maxConcurrent = processField(props.taskQueueTrigger.rateLimits.maxConcurrentDispatches);
       if (maxConcurrent !== undefined) {
         rateLimits.maxConcurrentDispatches = maxConcurrent;
       }
-      const maxPerSecond = processField(
-        props.taskQueueTrigger.rateLimits.maxDispatchesPerSecond
-      );
+      const maxPerSecond = processField(props.taskQueueTrigger.rateLimits.maxDispatchesPerSecond);
       if (maxPerSecond !== undefined) {
         rateLimits.maxDispatchesPerSecond = maxPerSecond;
       }
@@ -265,7 +203,7 @@ function createV1Endpoint(
   if (memResult !== undefined) {
     endpoint.availableMemoryMb = memResult;
   }
-  
+
   const timeoutResult = processTimeoutField(props.timeout);
   if (timeoutResult !== undefined) {
     endpoint.timeoutSeconds = timeoutResult;
@@ -331,7 +269,7 @@ function createV2Endpoint(
     if (memResult !== undefined) {
       endpoint.availableMemoryMb = memResult;
     }
-    
+
     if (props.serviceConfig.timeoutSeconds) {
       endpoint.timeoutSeconds = processField(props.serviceConfig.timeoutSeconds);
     }
@@ -434,7 +372,7 @@ function convertParams(extensionParams: Param[]): params.Param[] {
         name: param.param,
         label: param.label,
       } as params.StringParam;
-      
+
       if (param.description !== undefined) {
         stringParam.description = param.description;
       }
