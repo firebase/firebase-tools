@@ -218,34 +218,42 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     }
   }, "Saving the Data Connect Schema...");
 
-  // Generate the example Data Connect Connector and seed_data.gql with Gemini.
-  // Save them to local file, but don't deploy it because they may have errors.
-  const [operationGql, seedDataGql] = await promiseWithSpinner(
-    () =>
-      Promise.all([
-        generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, projectId),
-        generateOperation(PROMPT_GENERATE_SEED_DATA, serviceName, projectId),
-      ]),
-    "Generating the Data Connect Operations...",
-  );
-  const connectors = [
-    {
-      id: "default",
-      path: "./connector",
-      files: [
-        {
-          path: "default.gql",
-          content: operationGql,
-        },
-      ],
-    },
-  ];
-  await writeFiles(
-    config,
-    info,
-    { schemaGql: schemaFiles, connectors: connectors, seedDataGql: seedDataGql },
-    options,
-  );
+  try {
+    // Generate the example Data Connect Connector and seed_data.gql with Gemini.
+    // Save them to local file, but don't deploy it because they may have errors.
+    const [operationGql, seedDataGql] = await promiseWithSpinner(
+      () =>
+        Promise.all([
+          generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, projectId),
+          generateOperation(PROMPT_GENERATE_SEED_DATA, serviceName, projectId),
+        ]),
+      "Generating the Data Connect Operations...",
+    );
+    const connectors = [
+      {
+        id: "default",
+        path: "./connector",
+        files: [
+          {
+            path: "default.gql",
+            content: operationGql,
+          },
+        ],
+      },
+    ];
+    await writeFiles(
+      config,
+      info,
+      { schemaGql: schemaFiles, connectors: connectors, seedDataGql: seedDataGql },
+      options,
+    );
+  } catch (err: any) {
+    logLabeledError("dataconnect", `Operation Generation failed...`);
+    // GiF generate operation API has stability concerns.
+    // Fallback to save only the generated schema.
+    await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
+    throw err;
+  }
   logLabeledSuccess(
     "dataconnect",
     `You can visualize the Data Connect Schema in Firebase Console:
@@ -356,8 +364,6 @@ async function writeFiles(
       join(dir, "seed_data.gql"),
       serviceGql.seedDataGql,
       !!options.force,
-      // Default to override seed_data.gql, which shouldn't contain sensitive information.
-      true,
     );
   }
 
@@ -371,7 +377,7 @@ async function writeFiles(
   }
 
   for (const c of serviceGql.connectors) {
-    await writeConnectorFiles(config, c);
+    await writeConnectorFiles(config, c, options);
   }
 }
 
@@ -382,15 +388,21 @@ async function writeConnectorFiles(
     path: string;
     files: File[];
   },
+  options: any,
 ) {
   const subbedConnectorYaml = subConnectorYamlValues({ connectorId: connectorInfo.id });
   const dir: string = config.get("dataconnect.source") || "dataconnect";
   await config.askWriteProjectFile(
     join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
+    !!options.force,
   );
   for (const f of connectorInfo.files) {
-    await config.askWriteProjectFile(join(dir, connectorInfo.path, f.path), f.content);
+    await config.askWriteProjectFile(
+      join(dir, connectorInfo.path, f.path),
+      f.content,
+      !!options.force,
+    );
   }
 }
 
