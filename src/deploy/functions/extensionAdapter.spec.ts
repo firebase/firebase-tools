@@ -25,11 +25,7 @@ describe("extensionAdapter golden tests", () => {
       const expectedPath = path.join(fixtureDir, "expected.json");
       const expected = JSON.parse(fs.readFileSync(expectedPath, "utf8"));
 
-      const result = await detectAndAdaptExtension(
-        fixtureDir,
-        path.join(fixtureDir, "functions"),
-        "test-project",
-      );
+      const result = await detectAndAdaptExtension(fixtureDir, "test-project");
 
       expect(result).to.not.be.undefined;
       expect(result).to.deep.equal(expected);
@@ -37,11 +33,7 @@ describe("extensionAdapter golden tests", () => {
   });
 
   it("should return undefined for directory without extension.yaml", async () => {
-    const result = await detectAndAdaptExtension(
-      "/tmp/no-extension",
-      "/tmp/no-extension/functions",
-      "test-project",
-    );
+    const result = await detectAndAdaptExtension("/tmp/no-extension", "test-project");
 
     expect(result).to.be.undefined;
   });

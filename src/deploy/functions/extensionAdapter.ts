@@ -19,6 +19,9 @@ import {
   FunctionV2ResourceProperties,
 } from "../../extensions/types";
 
+// Constants
+const DEFAULT_RESOURCE_TYPE = "storage.googleapis.com/Bucket";
+
 /**
  * Check if extension.yaml exists at project root
  */
@@ -425,7 +428,7 @@ function convertParam(param: Param): params.Param {
     case "selectResource":
       stringParam.input = {
         resource: {
-          type: param.resourceType || "storage.googleapis.com/Bucket",
+          type: param.resourceType || DEFAULT_RESOURCE_TYPE,
         },
       };
       break;
@@ -455,6 +458,17 @@ function convertParams(extensionParams: Param[]): params.Param[] {
 async function adaptExtensionToBuild(projectDir: string, projectId: string): Promise<build.Build> {
   // Load extension.yaml
   const extensionSpec = await readExtensionYaml(projectDir);
+  
+  // Basic validation for deployment (not as strict as publishing requirements)
+  if (!extensionSpec.name) {
+    throw new FirebaseError("extension.yaml is missing required field: name");
+  }
+  if (!extensionSpec.version) {
+    throw new FirebaseError("extension.yaml is missing required field: version");
+  }
+  if (!extensionSpec.resources || extensionSpec.resources.length === 0) {
+    throw new FirebaseError("extension.yaml must contain at least one resource");
+  }
 
   logger.info(`Detected extension "${extensionSpec.name}" v${extensionSpec.version}`);
   logger.info("Adapting extension.yaml for functions deployment...");
@@ -501,11 +515,24 @@ async function adaptExtensionToBuild(projectDir: string, projectId: string): Pro
 }
 
 /**
- * Check if extension.yaml exists at project root and adapt it to a Build
+ * Detects and adapts a Firebase Extension (extension.yaml) to Functions Build format.
+ * 
+ * This adapter enables deployment of Firebase Extensions using the Functions deployment
+ * pipeline, allowing `firebase deploy --only functions` to work with extensions.
+ * 
+ * @param projectDir - The root directory of the project containing extension.yaml
+ * @param projectId - The Firebase project ID for deployment
+ * @returns A Build object if extension.yaml exists and is valid, undefined otherwise
+ * 
+ * @example
+ * const build = await detectAndAdaptExtension('/path/to/extension', 'my-project');
+ * if (build) {
+ *   // Extension detected and converted to Functions format
+ *   console.log(`Found ${Object.keys(build.endpoints).length} functions`);
+ * }
  */
 export async function detectAndAdaptExtension(
   projectDir: string,
-  sourceDir: string,
   projectId: string,
 ): Promise<build.Build | undefined> {
   if (!(await hasExtensionYaml(projectDir))) {
