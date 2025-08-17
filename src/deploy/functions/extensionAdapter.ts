@@ -65,7 +65,7 @@ function processField<T>(value: T): T {
   }
 
   if (typeof value === "object") {
-    const processed: any = {};
+    const processed: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       processed[key] = processField(val);
     }
@@ -126,22 +126,14 @@ function processTimeoutField(value: string | undefined): build.Field<number> | u
 }
 
 /**
- * Create v1 endpoint with trigger
+ * Build trigger for v1 functions
  */
-function createV1Endpoint(
-  resource: Resource & FunctionResourceProperties,
-  projectId: string,
-  runtime: Runtime,
-): build.Endpoint {
-  // Convert all parameter references in properties first
-  const props = resource.properties || {};
-
-  // Build the trigger-specific part
-  let triggered: build.Triggered;
-
-  if (props.httpsTrigger) {
-    triggered = { httpsTrigger: {} };
-  } else if (props.eventTrigger) {
+function buildV1Trigger(props: FunctionResourceProperties["properties"]): build.Triggered {
+  if (props?.httpsTrigger) {
+    return { httpsTrigger: {} };
+  }
+  
+  if (props?.eventTrigger) {
     const eventTrigger: build.EventTrigger = {
       eventType: props.eventTrigger.eventType,
       retry: false,
@@ -157,14 +149,19 @@ function createV1Endpoint(
         service: processField(props.eventTrigger.service),
       };
     }
-    triggered = { eventTrigger };
-  } else if (props.scheduleTrigger) {
-    const scheduleTrigger: build.ScheduleTrigger = {
-      schedule: processField(props.scheduleTrigger.schedule) || "",
-      timeZone: processField(props.scheduleTrigger.timeZone) || null,
+    return { eventTrigger };
+  }
+  
+  if (props?.scheduleTrigger) {
+    return {
+      scheduleTrigger: {
+        schedule: processField(props.scheduleTrigger.schedule) || "",
+        timeZone: processField(props.scheduleTrigger.timeZone) || null,
+      },
     };
-    triggered = { scheduleTrigger };
-  } else if (props.taskQueueTrigger) {
+  }
+  
+  if (props?.taskQueueTrigger) {
     const taskQueue: build.TaskQueueTrigger = {};
     if (props.taskQueueTrigger.rateLimits) {
       const rateLimits: build.TaskQueueRateLimits = {};
@@ -183,49 +180,18 @@ function createV1Endpoint(
     if (props.taskQueueTrigger.retryConfig) {
       taskQueue.retryConfig = processField(props.taskQueueTrigger.retryConfig);
     }
-    triggered = { taskQueueTrigger: taskQueue };
-  } else {
-    // Default to https trigger if none specified
-    triggered = { httpsTrigger: {} };
+    return { taskQueueTrigger: taskQueue };
   }
-
-  // Create endpoint with all required fields and spread triggered
-  const endpoint: build.Endpoint = {
-    entryPoint: resource.entryPoint || resource.name,
-    platform: "gcfv1" as const,
-    project: projectId,
-    runtime: props.runtime || runtime,
-    region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
-    ...triggered,
-  };
-
-  const memResult = processMemoryField(props.availableMemoryMb);
-  if (memResult !== undefined) {
-    endpoint.availableMemoryMb = memResult;
-  }
-
-  const timeoutResult = processTimeoutField(props.timeout);
-  if (timeoutResult !== undefined) {
-    endpoint.timeoutSeconds = timeoutResult;
-  }
-
-  return endpoint;
+  
+  // Default to https trigger
+  return { httpsTrigger: {} };
 }
 
 /**
- * Create v2 endpoint with trigger
+ * Build trigger for v2 functions
  */
-function createV2Endpoint(
-  resource: Resource & FunctionV2ResourceProperties,
-  projectId: string,
-  runtime: Runtime,
-): build.Endpoint {
-  const props = resource.properties || {};
-
-  // Build the trigger-specific part
-  let triggered: build.Triggered;
-
-  if (props.eventTrigger) {
+function buildV2Trigger(props: FunctionV2ResourceProperties["properties"]): build.Triggered {
+  if (props?.eventTrigger) {
     const eventTrigger: build.EventTrigger = {
       eventType: props.eventTrigger.eventType,
       retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
@@ -247,41 +213,83 @@ function createV2Endpoint(
       eventTrigger.channel = processField(props.eventTrigger.channel);
     }
 
-    triggered = { eventTrigger };
-  } else {
-    // Default to https trigger if none specified for v2
-    triggered = { httpsTrigger: {} };
+    return { eventTrigger };
   }
+  
+  // Default to https trigger for v2
+  return { httpsTrigger: {} };
+}
 
-  // Create endpoint with all required fields and spread triggered
-  const endpoint: build.Endpoint = {
-    entryPoint: resource.entryPoint || resource.name,
-    platform: "gcfv2" as const,
-    project: projectId,
-    runtime: props.buildConfig?.runtime || runtime,
-    region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
-    ...triggered,
-  };
-
-  // Handle service config
-  if (props.serviceConfig) {
-    const memResult = processMemoryField(props.serviceConfig.availableMemory);
+/**
+ * Create endpoint with unified logic for v1 and v2
+ */
+function createEndpoint(
+  resource: Resource,
+  projectId: string,
+  runtime: Runtime,
+): build.Endpoint {
+  const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
+  
+  if (isV2) {
+    const v2Resource = resource as Resource & FunctionV2ResourceProperties;
+    const props = v2Resource.properties || {};
+    const triggered = buildV2Trigger(props);
+    
+    const endpoint: build.Endpoint = {
+      entryPoint: v2Resource.entryPoint || v2Resource.name,
+      platform: "gcfv2",
+      project: projectId,
+      runtime: props.buildConfig?.runtime || runtime,
+      region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
+      ...triggered,
+    };
+    
+    // Handle v2 service config
+    if (props.serviceConfig) {
+      const memResult = processMemoryField(props.serviceConfig.availableMemory);
+      if (memResult !== undefined) {
+        endpoint.availableMemoryMb = memResult;
+      }
+      
+      if (props.serviceConfig.timeoutSeconds) {
+        endpoint.timeoutSeconds = processField(props.serviceConfig.timeoutSeconds);
+      }
+      if (props.serviceConfig.minInstanceCount) {
+        endpoint.minInstances = processField(props.serviceConfig.minInstanceCount);
+      }
+      if (props.serviceConfig.maxInstanceCount) {
+        endpoint.maxInstances = processField(props.serviceConfig.maxInstanceCount);
+      }
+    }
+    
+    return endpoint;
+  } else {
+    const v1Resource = resource as Resource & FunctionResourceProperties;
+    const props = v1Resource.properties || {};
+    const triggered = buildV1Trigger(props);
+    
+    const endpoint: build.Endpoint = {
+      entryPoint: v1Resource.entryPoint || v1Resource.name,
+      platform: "gcfv1",
+      project: projectId,
+      runtime: props.runtime || runtime,
+      region: [props.location ? processField(props.location) : api.functionsDefaultRegion()],
+      ...triggered,
+    };
+    
+    // Handle v1 memory and timeout
+    const memResult = processMemoryField(props.availableMemoryMb);
     if (memResult !== undefined) {
       endpoint.availableMemoryMb = memResult;
     }
-
-    if (props.serviceConfig.timeoutSeconds) {
-      endpoint.timeoutSeconds = processField(props.serviceConfig.timeoutSeconds);
+    
+    const timeoutResult = processTimeoutField(props.timeout);
+    if (timeoutResult !== undefined) {
+      endpoint.timeoutSeconds = timeoutResult;
     }
-    if (props.serviceConfig.minInstanceCount) {
-      endpoint.minInstances = processField(props.serviceConfig.minInstanceCount);
-    }
-    if (props.serviceConfig.maxInstanceCount) {
-      endpoint.maxInstances = processField(props.serviceConfig.maxInstanceCount);
-    }
+    
+    return endpoint;
   }
-
-  return endpoint;
 }
 
 /**
@@ -295,25 +303,12 @@ function convertResources(
   const endpoints: Record<string, build.Endpoint> = {};
 
   for (const resource of resources) {
-    // Resource type guard - we know all resources have these properties
     const resourceName = resource.name;
     const resourceType = resource.type;
 
     // Only handle function resources
-    if (resourceType === FUNCTIONS_RESOURCE_TYPE) {
-      const endpoint = createV1Endpoint(
-        resource as Resource & FunctionResourceProperties,
-        projectId,
-        runtime,
-      );
-      endpoints[resourceName] = endpoint;
-    } else if (resourceType === FUNCTIONS_V2_RESOURCE_TYPE) {
-      const endpoint = createV2Endpoint(
-        resource as Resource & FunctionV2ResourceProperties,
-        projectId,
-        runtime,
-      );
-      endpoints[resourceName] = endpoint;
+    if (resourceType === FUNCTIONS_RESOURCE_TYPE || resourceType === FUNCTIONS_V2_RESOURCE_TYPE) {
+      endpoints[resourceName] = createEndpoint(resource, projectId, runtime);
     } else {
       logger.debug(`Skipping non-function resource: ${resourceName}`);
     }
