@@ -21,15 +21,22 @@ import { Schema, Service, File, Platform, SCHEMA_ID } from "../../../dataconnect
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
-import { logBullet, logWarning, envOverride, promiseWithSpinner } from "../../../utils";
+import {
+  logBullet,
+  logWarning,
+  envOverride,
+  promiseWithSpinner,
+  logLabeledSuccess,
+  logLabeledError,
+} from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
 import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import {
-  extractCodeBlock,
   generateOperation,
   generateSchema,
   PROMPT_GENERATE_CONNECTOR,
+  PROMPT_GENERATE_SEED_DATA,
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 
@@ -56,6 +63,7 @@ export interface ServiceGQL {
     path: string;
     files: File[];
   }[];
+  seedDataGql?: string;
 }
 
 const emptyConnector = {
@@ -137,25 +145,27 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   if (!info) {
     throw new Error("Data Connect feature RequiredInfo is not provided");
   }
-
   // Populate the default values of required fields.
-  info.serviceId = info.serviceId || toDNSCompatibleId(basename(process.cwd()));
+  info.serviceId = info.serviceId || defaultServiceId();
   info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
-  if (setup.projectId && (await isBillingEnabled(setup))) {
+  const projectId = setup.projectId;
+  let hasProvisionedCloudSQL = false;
+  if (projectId && (await isBillingEnabled(setup))) {
     // Kicks off Cloud SQL provisioning if we can.
     await provisionCloudSql({
-      projectId: setup.projectId,
+      projectId: projectId,
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
+    hasProvisionedCloudSQL = true;
   }
-  if (!setup.projectId || !info.appDescription) {
+  if (!projectId || !info.appDescription) {
     // Download an existing service to a local workspace.
     if (info.serviceGql) {
       return await writeFiles(config, info, info.serviceGql, options);
@@ -168,38 +178,55 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       options,
     );
   }
-  // Use Gemini to generate schema, connector and seed_data.gql.
+
+  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
+  const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
+
+  // Use Gemini to generate schema.
   const schemaGql = await promiseWithSpinner(
-    () => generateSchema(info.appDescription, setup.projectId!),
+    () => generateSchema(info.appDescription, projectId),
     "Generating the Data Connect Schema...",
   );
-  const schemaFiles = [{ path: "schema.gql", content: extractCodeBlock(schemaGql) }];
-  try {
-    await createService(setup.projectId, info.locationId, info.serviceId);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw err;
-    }
-    // The serviceId we are initializing already exists in the backend. Fallback to only generate schema.
-    // This should only happen from `firebase_init` MCP tool. CLI init should pick a new service ID.
-    return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: []}, options);
+  const schemaFiles = [{ path: "schema.gql", content: schemaGql }];
+
+  if (serviceAlreadyExists) {
+    // `firebase init dataconnect` should never override an existing FDC service.
+    // Fallback to only generating schema and saving them to the workspace.
+    // Later customer can run `firebase deploy` to override the existing service.
+    //
+    // This shouldn't happen in `firebase init dataconnect` because it picks an non-conflicting new service ID.
+    // However, this could happen in `firebase_init` MCP tool.
+    logLabeledError(
+      "dataconnect",
+      `Data Connect Service ${serviceName} already exists. Skip saving them...`,
+    );
+    return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
-  const serviceName = `projects/${setup.projectId}/locations/${info.locationId}/services/${info.serviceId}`;
-  const schema = {
-    name: `${serviceName}/schemas/${SCHEMA_ID}`,
-    datasources: [
-      {
-        postgresql: {},
-      },
-    ],
-    source: {
-      files: schemaFiles,
-    },
-  };
-  await upsertSchema(schema);
-  const operationGql = await promiseWithSpinner(
-    () => generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, setup.projectId!),
-    "Generating the Data Connect Schema...",
+
+  // Create the initial Data Connect Service and Schema generated by Gemini.
+  await promiseWithSpinner(async () => {
+    const [saveSchemaGql, waitForCloudSQLProvision] = schemasDeploySequence(
+      projectId,
+      info,
+      schemaFiles,
+      hasProvisionedCloudSQL,
+    );
+    await upsertSchema(saveSchemaGql);
+    if (waitForCloudSQLProvision) {
+      // Kicks off the LRO in the background. It will take about 10min. Don't wait for it.
+      void upsertSchema(waitForCloudSQLProvision);
+    }
+  }, "Saving the Data Connect Schema...");
+
+  // Generate the example Data Connect Connector and seed_data.gql with Gemini.
+  // Save them to local file, but don't deploy it because they may have errors.
+  const [operationGql, seedDataGql] = await promiseWithSpinner(
+    () =>
+      Promise.all([
+        generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, projectId),
+        generateOperation(PROMPT_GENERATE_SEED_DATA, serviceName, projectId),
+      ]),
+    "Generating the Data Connect Operations...",
   );
   const connectors = [
     {
@@ -213,12 +240,79 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       ],
     },
   ];
-  return await writeFiles(
+  await writeFiles(
     config,
     info,
-    { schemaGql: schemaFiles, connectors: connectors },
+    { schemaGql: schemaFiles, connectors: connectors, seedDataGql: seedDataGql },
     options,
   );
+  logLabeledSuccess(
+    "dataconnect",
+    `You can visualize the Data Connect Schema in Firebase Console:
+
+   https://console.firebase.google.com/project/${projectId}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema
+`,
+  );
+}
+
+function schemasDeploySequence(
+  projectId: string,
+  info: RequiredInfo,
+  schemaFiles: File[],
+  hasProvisionedCloudSQL: boolean,
+): Schema[] {
+  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
+  if (!hasProvisionedCloudSQL) {
+    // No Cloud SQL is being provisioned, just deploy the schema sources as a unlinked schema.
+    return [
+      {
+        name: `${serviceName}/schemas/${SCHEMA_ID}`,
+        datasources: [{ postgresql: {} }],
+        source: {
+          files: schemaFiles,
+        },
+      },
+    ];
+  }
+  // Cloud SQL is being provisioned at the same time.
+  // Persist the Cloud SQL schema associated with this FDC service, then start a LRO (`MIGRATE_COMPATIBLE`)
+  // wait for Cloud SQL provision to finish and setup its initial SQL schemas.
+  return [
+    {
+      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      datasources: [
+        {
+          postgresql: {
+            database: info.cloudSqlDatabase,
+            cloudSql: {
+              instance: `projects/${projectId}/locations/${info.locationId}/instances/${info.cloudSqlInstanceId}`,
+            },
+            schemaValidation: "NONE",
+          },
+        },
+      ],
+      source: {
+        files: schemaFiles,
+      },
+    },
+    {
+      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      datasources: [
+        {
+          postgresql: {
+            database: info.cloudSqlDatabase,
+            cloudSql: {
+              instance: `projects/${projectId}/locations/${info.locationId}/instances/${info.cloudSqlInstanceId}`,
+            },
+            schemaMigration: "MIGRATE_COMPATIBLE",
+          },
+        },
+      ],
+      source: {
+        files: schemaFiles,
+      },
+    },
+  ];
 }
 
 export async function postSetup(setup: Setup, config: Config): Promise<void> {
@@ -257,6 +351,13 @@ async function writeFiles(
     // Sole purpose of `firebase init dataconnect` is to update `dataconnect.yaml`.
     true,
   );
+  if (serviceGql.seedDataGql) {
+    await config.askWriteProjectFile(
+      join(dir, "seed_data.gql"),
+      serviceGql.seedDataGql,
+      !!options.force,
+    );
+  }
 
   if (serviceGql.schemaGql.length) {
     for (const f of serviceGql.schemaGql) {
@@ -339,15 +440,8 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   );
   const choice = await chooseExistingService(existingServicesAndSchemas);
   if (!choice) {
-    // Choose to create a new service.
-    // Let's find a serviceId that doesn't collide with any existing services.
-    const recommendServiceId = basename(process.cwd());
-    info.serviceId = recommendServiceId;
-    let i = 1;
-    while (existingServices.some((s) => s.name.endsWith("/" + info.serviceId))) {
-      info.serviceId = `${recommendServiceId}-${i}`;
-      i++;
-    }
+    const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
+    info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
     return;
   }
   // Choose to use an existing service.
@@ -471,6 +565,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       if (info.cloudSqlInstanceId !== "") {
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
+      } else {
+        info.cloudSqlInstanceId = await input({
+          message: `What ID would you like to use for your new CloudSQL instance?`,
+          default: `${defaultServiceId()}-fdc`,
+        });
       }
     }
   }
@@ -484,21 +583,13 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     });
   }
 
-  // Look for existing databases within the picked instance.
-  // Best effort since the picked `info.cloudSqlInstanceId` may not exists or is still being provisioned.
+  // The Gemini generated schema will override any SQL schema in this Postgres database.
+  // To avoid accidental data loss, we pick a new database ID if `listDatabases` is available.
   if (info.cloudSqlInstanceId !== "" && info.cloudSqlDatabase === "") {
     try {
       const dbs = await cloudsql.listDatabases(setup.projectId, info.cloudSqlInstanceId);
-      const choices = dbs.map((d) => {
-        return { name: d.name, value: d.name };
-      });
-      choices.push({ name: "Create a new database", value: "" });
-      if (dbs.length) {
-        info.cloudSqlDatabase = await select<string>({
-          message: `Which database in ${info.cloudSqlInstanceId} would you like to use?`,
-          choices,
-        });
-      }
+      const existing = dbs.map((d) => d.name);
+      info.cloudSqlDatabase = newUniqueId("fdcdb", existing);
     } catch (err) {
       // Show existing databases in a list is optional, ignore any errors from ListDatabases.
       // This often happen when the Cloud SQL instance is still being created.
@@ -530,18 +621,36 @@ async function locationChoices(setup: Setup) {
 }
 
 /**
+ * Returns a unique ID that's either `recommended` or `recommended-{i}`.
+ * Avoid existing IDs.
+ */
+function newUniqueId(recommended: string, existingIDs: string[]): string {
+  let id = recommended;
+  let i = 1;
+  while (existingIDs.includes(id)) {
+    id = `${recommended}-${i}`;
+    i++;
+  }
+  return id;
+}
+
+function defaultServiceId(): string {
+  return toDNSCompatibleId(basename(process.cwd()));
+}
+
+/**
  * Converts any string to a DNS friendly service ID.
  */
 export function toDNSCompatibleId(id: string): string {
-  let defaultServiceId = basename(id)
+  id = basename(id)
     .toLowerCase()
     .replaceAll(/[^a-z0-9-]/g, "")
     .slice(0, 63);
-  while (defaultServiceId.endsWith("-") && defaultServiceId.length) {
-    defaultServiceId = defaultServiceId.slice(0, defaultServiceId.length - 1);
+  while (id.endsWith("-") && id.length) {
+    id = id.slice(0, id.length - 1);
   }
-  while (defaultServiceId.startsWith("-") && defaultServiceId.length) {
-    defaultServiceId = defaultServiceId.slice(1, defaultServiceId.length);
+  while (id.startsWith("-") && id.length) {
+    id = id.slice(1, id.length);
   }
-  return defaultServiceId || "app";
+  return id || "app";
 }

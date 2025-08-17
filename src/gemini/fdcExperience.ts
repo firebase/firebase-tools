@@ -19,6 +19,9 @@ const FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME =
 export const PROMPT_GENERATE_CONNECTOR =
   "Create 4 operations for an app using the instance schema with proper authentication.";
 
+export const PROMPT_GENERATE_SEED_DATA =
+  "Create a mutation to populate the database with some seed data.";
+
 /**
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.
@@ -39,7 +42,7 @@ export async function generateSchema(
       },
     },
   );
-  return res.body.output.messages[0].content;
+  return extractCodeBlock(res.body.output.messages[0].content);
 }
 
 /**
@@ -93,7 +96,7 @@ export async function generateOperation(
       },
     },
   );
-  return res.body.output.messages[0].content;
+  return extractCodeBlock(res.body.output.messages[0].content);
 }
 
 /**

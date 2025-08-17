@@ -32,7 +32,8 @@ export async function provisionCloudSql(args: {
   } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-    silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
+    silent ||
+      utils.logLabeledBullet("dataconnect", `Found existing Cloud SQL instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
     const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
@@ -94,7 +95,7 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+            "Cloud SQL instance creation started. Meanwhile, your data are saved in a temporary database and will be migrated once complete.",
           );
         return connectionName;
       }
@@ -110,17 +111,11 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            `Database ${databaseId} not found. It will be created on your next deploy.`,
+            `Postgres Database ${databaseId} not found. It will be created on your next deploy.`,
           );
       } else {
-        // Create the database if not found.
-        silent ||
-          utils.logLabeledBullet(
-            "dataconnect",
-            `Database ${databaseId} not found, creating it now...`,
-          );
         await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-        silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+        silent || utils.logLabeledBullet("dataconnect", `Postgres Database ${databaseId} created.`);
       }
     } else {
       // Skip it if the database is not accessible.
