@@ -120,6 +120,13 @@ describe("projectConfig", () => {
       );
     });
 
+    it("fails validation given prefix starting with a digit", () => {
+      expect(() => projectConfig.validate([{ ...TEST_CONFIG_0, prefix: "1abc" }])).to.throw(
+        FirebaseError,
+        /Invalid prefix/,
+      );
+    });
+
     it("fails validation given a duplicate source/prefix pair", () => {
       const config: projectConfig.NormalizedConfig = [
         { source: "foo", codebase: "bar", prefix: "a" },

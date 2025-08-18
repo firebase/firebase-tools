@@ -377,4 +377,36 @@ describe("applyPrefix", () => {
       { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
     ]);
   });
+
+  it("throws if combined function id exceeds 63 characters", () => {
+    const longId = "a".repeat(34); // with 30-char prefix + dash = 65 total
+    const testBuild: build.Build = build.of({
+      [longId]: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: longId,
+        httpsTrigger: {},
+      },
+    });
+    const longPrefix = "p".repeat(30);
+    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+  });
+
+  it("throws if prefix makes function id invalid (must start with a letter)", () => {
+    const testBuild: build.Build = build.of({
+      func: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+      /Function names must start with a letter/,
+    );
+  });
 });

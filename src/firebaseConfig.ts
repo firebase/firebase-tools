@@ -171,6 +171,9 @@ export type FunctionConfig = {
   ignore?: string[];
   runtime?: ActiveRuntime;
   codebase?: string;
+  // Optional: Applies a prefix to all function IDs (and secret names) discovered for this codebase.
+  // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
+  // cannot start or end with a dash; maximum length 30 characters.
   prefix?: string;
 } & Deployable;
 

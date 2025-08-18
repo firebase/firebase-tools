@@ -44,9 +44,10 @@ export function validatePrefix(prefix: string): void {
   if (prefix.length > 30) {
     throw new FirebaseError("Invalid prefix. Prefix must be 30 characters or less.");
   }
-  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(prefix)) {
+  // Must start with a letter so that the resulting function id also starts with a letter.
+  if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(prefix)) {
     throw new FirebaseError(
-      "Invalid prefix. Prefix can contain only lowercase letters, numeric characters, and dashes, and cannot start or end with a dash.",
+      "Invalid prefix. Prefix must start with a lowercase letter, can contain only lowercase letters, numeric characters, and dashes, and cannot start or end with a dash.",
     );
   }
 }
