@@ -1,0 +1,107 @@
+
+> firebase-tools@14.12.1 test:emulator
+> bash ./scripts/emulator-tests/run.sh
+
++ rm -rf dev
++ tsc --build scripts/emulator-tests/tsconfig.dev.json
++ trap cleanup EXIT
++ cp package.json dev/package.json
++ cd scripts/emulator-tests/functions
++ npm ci
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'test-fns@0.0.1',
+npm warn EBADENGINE   required: { node: '20' },
+npm warn EBADENGINE   current: { node: 'v22.12.0', npm: '10.9.0' }
+npm warn EBADENGINE }
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@8.1.0: Glob versions prior to v9 are no longer supported
+npm warn deprecated google-p12-pem@4.0.1: Package is no longer maintained
+
+added 273 packages, and audited 274 packages in 2s
+
+23 packages are looking for funding
+  run `npm fund` for details
+
+13 vulnerabilities (5 low, 1 moderate, 3 high, 4 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
++ mocha dev/scripts/emulator-tests/functionsEmulator.spec.js dev/scripts/emulator-tests/functionsEmulatorRuntime.spec.js dev/scripts/emulator-tests/unzipEmulators.spec.js
+
+
+  FunctionsEmulator
+    ✔ should enforce timeout (1852ms)
+    Hub
+      ✔ should route requests to /:project_id/us-central1/:trigger_id to default region HTTPS Function (822ms)
+      ✔ should route requests to /:project_id/:other-region/:trigger_id to the region's HTTPS Function (822ms)
+      ✔ should 404 when a function doesn't exist in the region
+      ✔ should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function (717ms)
+      ✔ should 404 when a function does not exist
+      ✔ should properly route to a namespaced/grouped HTTPs function (822ms)
+      ✔ should route requests to /:project_id/:region/:trigger_id/a/b to HTTPS Function (820ms)
+      ✔ should reject requests to a non-emulator path
+      ✔ should rewrite req.path to hide /:project_id/:region/:trigger_id (823ms)
+      ✔ should return the correct url, baseUrl, originalUrl for the root route (824ms)
+      ✔ should return the correct url, baseUrl, originalUrl with query params (820ms)
+      ✔ should return the correct url, baseUrl, originalUrl for a subroute (827ms)
+      ✔ should return the correct url, baseUrl, originalUrl for any region (825ms)
+      ✔ should route request body (850ms)
+      ✔ should route query parameters (822ms)
+      ✔ should override callable auth (825ms)
+      ✔ should override callable auth with unicode (825ms)
+      ✔ should override callable auth with a poorly padded ID Token (719ms)
+      ✔ should preserve the Authorization header for callable auth (724ms)
+      ✔ should respond to requests to /backends to with info about the running backends
+      1) should support multiple codebases with the same source and apply prefixes
+      2) "after each" hook for "should support multiple codebases with the same source and apply prefixes"
+
+  FunctionsEmulator-Runtime
+    Stubs, Mocks, and Helpers
+      _InitializeNetworkFiltering
+        ✔ should log outgoing unknown HTTP requests via 'http' (917ms)
+        3) should support multiple codebases with the same source and apply prefixes
+        ✔ should log outgoing unknown HTTP requests via 'https' (1826ms)
+        ✔ should log outgoing Google API requests (922ms)
+      _InitializeFirebaseAdminStubs(...)
+        ✔ should provide stubbed default app from initializeApp (824ms)
+        ✔ should provide a stubbed app with custom options (719ms)
+        ✔ should provide non-stubbed non-default app from initializeApp (721ms)
+        ✔ should route all sub-fields accordingly (719ms)
+        ✔ should expose Firestore prod when the emulator is not running (713ms)
+        ✔ should expose a stubbed Firestore when the emulator is running (715ms)
+        ✔ should expose RTDB prod when the emulator is not running (718ms)
+        ✔ should expose a stubbed RTDB when the emulator is running (717ms)
+    _InitializeFunctionsConfigHelper()
+      ✔ should tell the user if they've accessed a non-existent function field (720ms)
+    Runtime
+      HTTPS
+        ✔ should handle a GET request (715ms)
+        ✔ should handle a POST request with form data (717ms)
+        ✔ should handle a POST request with JSON data (719ms)
+        ✔ should handle a POST request with text data (724ms)
+        ✔ should handle a POST request with any other type (714ms)
+        ✔ should handle a POST request and store rawBody (716ms)
+        ✔ should forward request to Express app (817ms)
+        ✔ should handle `x-forwarded-host` (715ms)
+      Cloud Firestore
+        ✔ should provide Change for firestore.onWrite() (719ms)
+        ✔ should provide Change for firestore.onUpdate() (717ms)
+        ✔ should provide Change for firestore.onDelete() (721ms)
+        ✔ should provide Change for firestore.onCreate() (722ms)
+      Error handling
+        ✔ Should handle regular functions for Express handlers (713ms)
+        ✔ Should handle async functions for Express handlers (715ms)
+        ✔ Should handle async/runWith functions for Express handlers (713ms)
+    Debug
+      ✔ handles debug message to change function target (714ms)
+      ✔ disables configured timeout when in debug mode (3721ms)
+
+  unzipEmulators
+    ✔ should unzip a ui emulator zip file (266ms)
+++ cleanup
+++ rm -rf dev

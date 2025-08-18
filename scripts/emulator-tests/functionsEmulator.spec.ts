@@ -790,7 +790,7 @@ describe("FunctionsEmulator", function () {
         };
       });
 
-      await emu.start();
+      await registry.EmulatorRegistry.start(emu);
       await emu.connect();
 
       await supertest(emu.createHubServer())
