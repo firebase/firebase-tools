@@ -40,7 +40,8 @@ function convertParamReference(value: string): string {
  * Check if a string contains parameter references
  */
 function hasParamReference(value: string): boolean {
-  return value.includes("${param:") || (value.includes("${") && value.includes("}"));
+  // More robust regex to detect parameter references
+  return /\${param:[^}]+}|\${[^:}]+}/.test(value);
 }
 
 /**
@@ -51,15 +52,15 @@ function parseMemoryToMb(mem: string | number | undefined): build.Field<number> 
   if (mem === undefined) {
     return null;
   }
-  
+
   if (typeof mem === "number") {
     return mem;
   }
-  
+
   if (hasParamReference(mem)) {
     return processField(mem);
   }
-  
+
   // Extensions use IEC notation (GiB), k8s.mebibytes expects Kubernetes notation (Gi)
   const k8sFormat = mem.replace(/([0-9.]+)([KMGT])iB$/i, "$1$2i");
   try {
@@ -77,11 +78,11 @@ function parseTimeout(timeout: string | undefined): build.Field<number> {
   if (timeout === undefined) {
     return null;
   }
-  
+
   if (hasParamReference(timeout)) {
     return processField(timeout);
   }
-  
+
   return proto.secondsFromDuration(timeout);
 }
 
@@ -120,12 +121,12 @@ function processField<T>(value: T): T {
  */
 function createV1Endpoint(
   resource: Resource & { properties?: FunctionResourceProperties["properties"] },
-  projectId: string
+  projectId: string,
 ): build.Endpoint {
   const runtime = getResourceRuntime(resource) || supported.latest("nodejs");
   const props = resource.properties;
   const location = props?.location || api.functionsDefaultRegion();
-  
+
   // Common fields for all endpoints
   const baseFields = {
     entryPoint: resource.entryPoint || resource.name,
@@ -137,7 +138,7 @@ function createV1Endpoint(
 
   // Build the specific trigger type and combine with base fields
   let endpoint: build.Endpoint;
-  
+
   if (props?.eventTrigger) {
     const eventTrigger: build.EventTrigger = {
       eventType: props.eventTrigger.eventType,
@@ -177,16 +178,8 @@ function createV1Endpoint(
   }
 
   // Add optional service config
-  proto.convertIfPresent(endpoint, props || {}, "timeoutSeconds", "timeout", (timeout) => {
-    if (hasParamReference(timeout)) {
-      return processField(timeout);
-    }
-    return proto.secondsFromDuration(timeout);
-  });
-  proto.copyIfPresent(endpoint, props || {}, "availableMemoryMb");
-  if (endpoint.availableMemoryMb !== undefined) {
-    endpoint.availableMemoryMb = processField(endpoint.availableMemoryMb);
-  }
+  proto.convertIfPresent(endpoint, props || {}, "timeoutSeconds", "timeout", parseTimeout);
+  proto.convertIfPresent(endpoint, props || {}, "availableMemoryMb", "availableMemoryMb", processField);
 
   return endpoint;
 }
@@ -196,12 +189,12 @@ function createV1Endpoint(
  */
 function createV2Endpoint(
   resource: Resource & { properties?: FunctionV2ResourceProperties["properties"] },
-  projectId: string
+  projectId: string,
 ): build.Endpoint {
   const runtime = getResourceRuntime(resource) || supported.latest("nodejs");
   const props = resource.properties;
   const location = props?.location || api.functionsDefaultRegion();
-  
+
   // Common fields for all endpoints
   const baseFields = {
     entryPoint: resource.entryPoint || resource.name,
@@ -213,7 +206,7 @@ function createV2Endpoint(
 
   // Build the specific trigger type and combine with base fields
   let endpoint: build.Endpoint;
-  
+
   if (props?.eventTrigger) {
     const eventTrigger: build.EventTrigger = {
       eventType: props.eventTrigger.eventType,
@@ -251,15 +244,15 @@ function createV2Endpoint(
     if (endpoint.timeoutSeconds !== undefined) {
       endpoint.timeoutSeconds = processField(endpoint.timeoutSeconds);
     }
-    proto.convertIfPresent(endpoint, serviceConfig, "availableMemoryMb", "availableMemory", parseMemoryToMb);
-    proto.renameIfPresent(endpoint, serviceConfig, "minInstances", "minInstanceCount");
-    proto.renameIfPresent(endpoint, serviceConfig, "maxInstances", "maxInstanceCount");
-    if (endpoint.minInstances !== undefined) {
-      endpoint.minInstances = processField(endpoint.minInstances);
-    }
-    if (endpoint.maxInstances !== undefined) {
-      endpoint.maxInstances = processField(endpoint.maxInstances);
-    }
+    proto.convertIfPresent(
+      endpoint,
+      serviceConfig,
+      "availableMemoryMb",
+      "availableMemory",
+      parseMemoryToMb,
+    );
+    proto.convertIfPresent(endpoint, serviceConfig, "minInstances", "minInstanceCount", processField);
+    proto.convertIfPresent(endpoint, serviceConfig, "maxInstances", "maxInstanceCount", processField);
   }
 
   return endpoint;
@@ -326,9 +319,12 @@ function convertParam(param: Param): params.Param {
       break;
     }
     case "selectResource":
+      if (!param.resourceType) {
+        throw new FirebaseError(`Parameter ${param.param} has type selectResource but missing required resourceType field`);
+      }
       stringParam.input = {
         resource: {
-          type: param.resourceType || "storage.googleapis.com/Bucket",
+          type: param.resourceType,
         },
       };
       break;
