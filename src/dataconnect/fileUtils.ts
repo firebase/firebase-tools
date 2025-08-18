@@ -71,7 +71,7 @@ export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   if (!fs.existsSync(sourceDir)) {
     return [];
   }
-  const files = await glob(`${sourceDir}/**/*.{gql,graphql}`);
+  const files = await glob("**/*.{gql,graphql}", { cwd: sourceDir, absolute: true, nodir: true });
   return files.map((f) => toFile(sourceDir, f));
 }
 
