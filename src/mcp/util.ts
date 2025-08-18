@@ -87,6 +87,7 @@ export function commandExistsSync(command: string): boolean {
 }
 
 const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
+  core: "",
   firestore: firestoreOrigin(),
   storage: storageOrigin(),
   dataconnect: dataconnectOrigin(),

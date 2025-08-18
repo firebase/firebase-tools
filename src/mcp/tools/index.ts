@@ -13,8 +13,7 @@ import { realtimeDatabaseTools } from "./database/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
-  // Core tools are always present.
-  const toolDefs: ServerTool[] = addFeaturePrefix("firebase", coreTools);
+  const toolDefs: ServerTool[] = [];
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
@@ -25,6 +24,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
+  core: addFeaturePrefix("firebase", coreTools),
   firestore: addFeaturePrefix("firestore", firestoreTools),
   auth: addFeaturePrefix("auth", authTools),
   dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
