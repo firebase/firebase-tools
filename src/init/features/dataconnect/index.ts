@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis, ensureSparkApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApis, isApiEnabled } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -74,10 +74,6 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
-  const hasBilling = await isBillingEnabled(setup);
-  if (setup.projectId) {
-    hasBilling ? await ensureApis(setup.projectId) : await ensureSparkApis(setup.projectId);
-  }
   let info: RequiredInfo = {
     serviceId: "",
     locationId: "",
@@ -89,8 +85,21 @@ export async function askQuestions(setup: Setup): Promise<void> {
     schemaGql: [],
     shouldProvisionCSQL: false,
   };
+  const hasBilling = await isBillingEnabled(setup);
+  if (setup.projectId) {
+    if (hasBilling || (await isApiEnabled(setup.projectId))) {
+      await ensureApis(setup.projectId);
+      info = await promptForExistingServices(setup, info);
+    } else {
+      // New Spark project. Don't wait for API enablement.
+      // Write the template and show them instructions right away.
+      void ensureApis(setup.projectId).catch((err) => {
+        // Log for debugging, but don't block the init flow.
+        logger.debug(`[dataconnect] Background API enablement failed: ${err.message}`);
+      });
+    }
+  }
   // Query backend and pick up any existing services quickly.
-  info = await promptForExistingServices(setup, info);
 
   const requiredConfigUnset =
     info.serviceId === "" ||
