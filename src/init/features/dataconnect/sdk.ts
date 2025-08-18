@@ -79,7 +79,7 @@ async function askQuestions(setup: Setup, config: Config, options: Options): Pro
     (await getPlatformFromFolder(appDir)) || Platform.NONE,
   ) as Platform;
 
-  if (options.nonInteractive && targetPlatform == Platform.NONE) {
+  if (options.nonInteractive && targetPlatform === Platform.NONE) {
     throw new FirebaseError(
       `In non-interactive mode, the target platform and app directory must be specified using environment variables if they cannot be automatically detected.
 Please set the FDC_SDK_PLATFORM_ENV and FDC_APP_FOLDER environment variables.
