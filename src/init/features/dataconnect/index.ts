@@ -93,7 +93,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     } else {
       // New Spark project. Don't wait for API enablement.
       // Write the template and show them instructions right away.
-      ensureApis(setup.projectId).catch((err) => {
+      void ensureApis(setup.projectId).catch((err) => {
         // Log for debugging, but don't block the init flow.
         logger.debug(`[dataconnect] Background API enablement failed: ${err.message}`);
       });
