@@ -231,9 +231,19 @@ export class PrettyPrint {
    * Print Firestore operations as an ASCII table.
    */
   prettyPrintOperations(operations: Operation[]) {
-    for (const op of operations) {
-      this.prettyPrintOperation(op);
+    if (operations.length === 0) {
+      logger.info("No operations found.");
+      return;
     }
+    const table = new Table({
+      head: ["Operation Name", "Done"],
+    });
+
+    for (const op of operations) {
+      table.push([clc.yellow(op.name), op.done ? clc.green("YES") : clc.yellow("NO")]);
+    }
+
+    logger.info(table.toString());
   }
 
   /**
