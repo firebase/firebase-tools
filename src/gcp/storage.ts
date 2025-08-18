@@ -4,9 +4,10 @@ import * as clc from "colorette";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
+import * as utils from "../utils";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -360,18 +361,41 @@ export async function createBucket(
 
 /**
  * Creates a storage bucket on GCP if it does not already exist.
- * @param {string} projectId
- * @param {CreateBucketRequest} req
  */
-export async function upsertBucket(projectId: string, req: CreateBucketRequest): Promise<void> {
+export async function upsertBucket(opts: {
+  product: string;
+  createMessage: string;
+  projectId: string;
+  req: CreateBucketRequest;
+}): Promise<void> {
   try {
-    await getBucket(req.name);
+    await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
     return;
-  } catch (err: any) {
-    // If the bucket doesn't exist, create it.
-    if (err.original?.status === 404) {
-      await createBucket(projectId, req, true /* projectPrivate */);
-      return;
+  } catch (err) {
+    const errStatus = getErrStatus((err as FirebaseError).original);
+    // Unfortunately, requests for a non-existent bucket from the GCS API sometimes return 403 responses as well as 404s.
+    // We must attempt to create a new bucket on both 403s and 404s.
+    if (errStatus !== 403 && errStatus !== 404) {
+      throw err;
+    }
+  }
+
+  utils.logLabeledBullet(opts.product, opts.createMessage);
+  try {
+    await (exports as { createBucket: typeof createBucket }).createBucket(
+      opts.projectId,
+      opts.req,
+      true /* projectPrivate */,
+    );
+  } catch (err) {
+    if (getErrStatus((err as FirebaseError).original) === 403) {
+      utils.logLabeledWarning(
+        opts.product,
+        "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
+          "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
+          "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
+          "to grant you one of those roles.",
+      );
     }
     throw err;
   }

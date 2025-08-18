@@ -95,19 +95,23 @@ export async function uploadSourceV2(
   // New behavior: BYO bucket since we're moving away from the GCF API.
   // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
   const bucketName = `firebase-functions-src-${projectNumber}`;
-  const bucketOptions: gcs.CreateBucketRequest = {
-    name: bucketName,
-    location: region,
-    lifecycle: {
-      rule: [
-        {
-          action: { type: "Delete" },
-          condition: { age: 1 }, // Delete objects after 1 day
-        },
-      ],
+  await gcs.upsertBucket({
+    product: "functions",
+    projectId,
+    createMessage: `Creating Cloud Storage bucket in ${region} to store Functions source code uploads at ${bucketName}...`,
+    req: {
+      name: bucketName,
+      location: region,
+      lifecycle: {
+        rule: [
+          {
+            action: { type: "Delete" },
+            condition: { age: 1 }, // Delete objects after 1 day
+          },
+        ],
+      },
     },
-  };
-  await gcs.upsertBucket(projectId, bucketOptions);
+  });
   await gcs.upload(
     uploadOpts,
     `${bucketName}/${source.functionsSourceV2Hash}.zip`,

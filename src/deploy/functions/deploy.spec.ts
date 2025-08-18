@@ -153,6 +153,8 @@ describe("deploy", () => {
       functionsSourceV2: "source.zip",
       functionsSourceV2Hash: "source-hash",
     };
+    const CREATE_MESSAGE =
+      "Creating Cloud Storage bucket in region to store Functions source code uploads at firebase-functions-src-123456...";
 
     before(() => {
       experimentEnabled = experiments.isEnabled("runfunctions");
@@ -184,10 +186,15 @@ describe("deploy", () => {
 
         await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
 
-        expect(gcsUpsertBucketStub).to.be.calledOnceWith("project", {
-          name: "firebase-functions-src-123456",
-          location: "region",
-          lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+        expect(gcsUpsertBucketStub).to.be.calledOnceWith({
+          product: "functions",
+          projectId: "project",
+          createMessage: CREATE_MESSAGE,
+          req: {
+            name: "firebase-functions-src-123456",
+            location: "region",
+            lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+          },
         });
         expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
         expect(gcsUploadStub).to.be.calledOnceWith(
@@ -204,10 +211,15 @@ describe("deploy", () => {
 
         await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
 
-        expect(gcsUpsertBucketStub).to.be.calledOnceWith("project", {
-          name: "firebase-functions-src-123456",
-          location: "region",
-          lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+        expect(gcsUpsertBucketStub).to.be.calledOnceWith({
+          product: "functions",
+          projectId: "project",
+          createMessage: CREATE_MESSAGE,
+          req: {
+            name: "firebase-functions-src-123456",
+            location: "region",
+            lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+          },
         });
         expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
         expect(gcsUploadStub).to.be.calledOnceWith(
