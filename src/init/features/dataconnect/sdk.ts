@@ -30,9 +30,8 @@ import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } fr
 import { getGlobalDefaultAccount } from "../../../auth";
 import { Options } from "../../../options";
 
-export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
+export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
-export const FDC_SDK_DIR_ENV = "FDC_SDK_DIR";
 export const FDC_SDK_PLATFORM_ENV = "FDC_SDK_PLATFORM";
 
 export type SDKInfo = {
@@ -73,7 +72,7 @@ async function askQuestions(setup: Setup, config: Config, options: Options): Pro
   }
 
   // First, lets check if we are in an app directory
-  let appDir = envOverride(FDC_SDK_DIR_ENV, process.env[FDC_APP_FOLDER] || process.cwd());
+  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
   let targetPlatform = envOverride(
     FDC_SDK_PLATFORM_ENV,
     (await getPlatformFromFolder(appDir)) || Platform.NONE,
@@ -85,11 +84,11 @@ async function askQuestions(setup: Setup, config: Config, options: Options): Pro
 Please set the FDC_SDK_PLATFORM_ENV and FDC_APP_FOLDER environment variables.
 For example:
 ${clc.bold(
-  `${FDC_SDK_PLATFORM_ENV}=WEB ${FDC_SDK_DIR_ENV}=app-dir ${FDC_SDK_FRAMEWORKS_ENV}=react firebase init dataconnect:sdk --non-interactive`,
+  `${FDC_SDK_PLATFORM_ENV}=WEB ${FDC_APP_FOLDER}=app-dir ${FDC_SDK_FRAMEWORKS_ENV}=react firebase init dataconnect:sdk --non-interactive`,
 )}`,
     );
   }
-  if (targetPlatform === Platform.NONE && !appDir) {
+  if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
     appDir = await promptForDirectory({
       config,
