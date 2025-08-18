@@ -39,3 +39,11 @@ export async function fetchIssueDetails(
     );
   }
 }
+
+function parseProjectId(appId: string): string | undefined {
+  const appIdParts = appId.split(":");
+  if (appIdParts.length > 1) {
+    return appIdParts[1];
+  }
+  return undefined;
+}
