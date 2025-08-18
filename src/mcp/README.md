@@ -1,5 +1,7 @@
 # Firebase MCP Server
 
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwiZXhwZXJpbWVudGFsOm1jcCIsIi0tZGlyIiwiLiJdfQ==)
+
 > [!NOTE]  
 > The Firebase MCP Server is considered **experimental** and subject to breaking changes in _minor_ version updates of the Firebase CLI.
 
