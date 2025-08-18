@@ -69,7 +69,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
       await diffSchema(
         options,
         si.schema,
-        si.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+        si.dataConnectYaml.schema?.datasource?.postgresql?.schemaValidation,
       );
     }
     utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");
@@ -81,7 +81,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
         .map(async (s) => {
           const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
           if (postgresDatasource) {
-            const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+            const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
             const databaseId = postgresDatasource.postgresql?.database;
             if (!instanceId || !databaseId) {
               return Promise.resolve();

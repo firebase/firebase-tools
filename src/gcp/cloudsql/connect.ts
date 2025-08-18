@@ -155,7 +155,7 @@ export async function executeSqlCmdsAsSuperUser(
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
+  const temporaryPassword = utils.generatePassword(20);
   await cloudSqlAdminClient.createUser(
     projectId,
     instanceId,
