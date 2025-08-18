@@ -44,7 +44,7 @@ export async function getSampleCrash(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the issue details for the Firebase Project ${projectId}, AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
+      `Failed to fetch the same crash for the Firebase Project ${projectId}, AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
       { original: err },
     );
   }
