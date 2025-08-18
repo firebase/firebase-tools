@@ -1,7 +1,6 @@
 import { logger } from "./logger";
 import * as clc from "colorette";
 
-/* istanbul ignore next */
 export function logError(error: any): void {
   if (error.children && error.children.length) {
     logger.error(clc.bold(clc.red("Error:")), clc.underline(error.message) + ":");
