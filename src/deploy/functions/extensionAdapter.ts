@@ -12,6 +12,7 @@ import {
   Resource,
   Param,
   ExtensionSpec,
+  isExtensionSpec,
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
   FunctionResourceProperties,
@@ -93,7 +94,7 @@ function processField<T>(value: T): T {
   }
 
   if (typeof value === "string") {
-    if (value.includes("${param:") || (value.includes("${") && value.includes("}"))) {
+    if (hasParamReference(value)) {
       return convertParamReference(value) as T;
     }
     return value;
@@ -223,6 +224,13 @@ function createV2Endpoint(
           eventTrigger.eventFilters[filter.attribute] = value;
         }
       }
+    }
+
+    if (props.eventTrigger.eventType.includes("google.cloud.firestore")) {
+      eventTrigger.eventFilters = eventTrigger.eventFilters || {};
+      eventTrigger.eventFilters["database"] = eventTrigger.eventFilters["database"] ?? "(default)";
+      eventTrigger.eventFilters["namespace"] =
+        eventTrigger.eventFilters["namespace"] ?? "(default)";
     }
     if (props.eventTrigger.channel) {
       eventTrigger.channel = processField(props.eventTrigger.channel);
@@ -370,27 +378,25 @@ export async function detectAndAdaptExtension(
   try {
     extensionSpec = await readExtensionYaml(projectDir);
   } catch (err) {
-    // If extension.yaml doesn't exist, return undefined (not an extension project)
     if (err instanceof FirebaseError && err.message.includes('Could not find "extension.yaml"')) {
       return undefined;
     }
-    // Wrap other errors with context
     const originalError = err instanceof Error ? err : new Error(String(err));
     throw new FirebaseError(`Failed to read extension.yaml in ${projectDir}`, {
       original: originalError,
     });
   }
 
-  if (!extensionSpec.name || !extensionSpec.version) {
-    throw new FirebaseError("extension.yaml is missing required fields: name or version");
+  if (!isExtensionSpec(extensionSpec)) {
+    throw new FirebaseError("extension.yaml does not contain a valid extension specification");
   }
 
   if (!extensionSpec.resources || extensionSpec.resources.length === 0) {
     throw new FirebaseError("extension.yaml must contain at least one resource");
   }
 
-  logger.info(`Detected extension "${extensionSpec.name}" v${extensionSpec.version}`);
-  logger.info("Adapting extension.yaml for functions deployment...");
+  logger.debug(`Detected extension "${extensionSpec.name}" v${extensionSpec.version}`);
+  logger.debug("Adapting extension.yaml for functions deployment...");
 
   // TODO: Handle IAM roles - extensions can require specific IAM roles for their service account
   // TODO: Support lifecycle events (onInstall, onUpdate, onConfigure) - these are task queue functions
@@ -408,7 +414,7 @@ export async function detectAndAdaptExtension(
     throw new FirebaseError("No function resources found in extension.yaml");
   }
 
-  logger.info(`Found ${Object.keys(functionsBuild.endpoints).length} function(s) in extension`);
+  logger.debug(`Found ${Object.keys(functionsBuild.endpoints).length} function(s) in extension`);
 
   functionsBuild.params = (extensionSpec.params || []).map(convertParam);
 
