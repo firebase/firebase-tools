@@ -81,7 +81,7 @@ async function askQuestions(setup: Setup, config: Config, options: Options): Pro
   if (options.nonInteractive && targetPlatform === Platform.NONE) {
     throw new FirebaseError(
       `In non-interactive mode, the target platform and app directory must be specified using environment variables if they cannot be automatically detected.
-Please set the FDC_SDK_PLATFORM_ENV and FDC_APP_FOLDER environment variables.
+Please set the ${FDC_SDK_PLATFORM_ENV} and ${FDC_APP_FOLDER} environment variables.
 For example:
 ${clc.bold(
   `${FDC_SDK_PLATFORM_ENV}=WEB ${FDC_APP_FOLDER}=app-dir ${FDC_SDK_FRAMEWORKS_ENV}=react firebase init dataconnect:sdk --non-interactive`,
@@ -134,9 +134,9 @@ ${clc.bold(
     if (unusedFrameworks.length > 0) {
       let additionalFrameworks: (typeof SUPPORTED_FRAMEWORKS)[number][] = [];
       if (options.nonInteractive) {
-        additionalFrameworks = envOverride(FDC_SDK_FRAMEWORKS_ENV, "").split(
-          ",",
-        ) as (typeof SUPPORTED_FRAMEWORKS)[number][];
+        additionalFrameworks = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
+          .split(",")
+          .filter((f) => f) as (typeof SUPPORTED_FRAMEWORKS)[number][];
       } else {
         additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
           message:
