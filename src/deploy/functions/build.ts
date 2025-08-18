@@ -653,7 +653,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
 }
 
 /**
- * Prefixes all endpoint IDs in a build with a given prefix.
+ * Prefixes all endpoint IDs and secret names in a build with a given prefix.
+ * This ensures that functions and their associated secrets from different codebases
+ * remain isolated and don't conflict when deployed to the same project.
  */
 export function applyPrefix(build: Build, prefix: string): void {
   if (!prefix) {
