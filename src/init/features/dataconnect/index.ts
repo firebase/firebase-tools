@@ -155,9 +155,18 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
   const projectId = setup.projectId;
-  let hasProvisionedCloudSQL = false;
-  if (projectId && (await isBillingEnabled(setup))) {
-    // Kicks off Cloud SQL provisioning if we can.
+  if (!projectId) {
+    // Use the static template if it starts from scratch.
+    return await writeFiles(
+      config,
+      info,
+      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
+      options,
+    );
+  }
+  const hasBilling = await isBillingEnabled(setup);
+  if (hasBilling) {
+    // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await provisionCloudSql({
       projectId: projectId,
       location: info.locationId,
@@ -166,14 +175,13 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       enableGoogleMlIntegration: false,
       waitForCreation: false,
     });
-    hasProvisionedCloudSQL = true;
   }
-  if (!projectId || !info.appDescription) {
+  if (!info.appDescription) {
     // Download an existing service to a local workspace.
     if (info.serviceGql) {
       return await writeFiles(config, info, info.serviceGql, options);
     }
-    // Use the template if it starts from scratch or the existing service has no GQL source.
+    // Use the static template if it starts from scratch or the existing service has no GQL source.
     return await writeFiles(
       config,
       info,
@@ -193,12 +201,11 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   const schemaFiles = [{ path: "schema.gql", content: schemaGql }];
 
   if (serviceAlreadyExists) {
-    // `firebase init dataconnect` should never override an existing FDC service.
-    // Fallback to only generating schema and saving them to the workspace.
+    // If the service already exists, fallback to save only the generated schema.
     // Later customer can run `firebase deploy` to override the existing service.
     //
-    // This shouldn't happen in `firebase init dataconnect` because it picks an non-conflicting new service ID.
-    // However, this could happen in `firebase_init` MCP tool.
+    // `firebase init dataconnect` always picks a new service ID, so it should never hit this case.
+    // However, `firebase_init` MCP tool may pass an existing service ID.
     logLabeledError(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
@@ -212,7 +219,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       projectId,
       info,
       schemaFiles,
-      hasProvisionedCloudSQL,
+      hasBilling,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
@@ -270,10 +277,10 @@ function schemasDeploySequence(
   projectId: string,
   info: RequiredInfo,
   schemaFiles: File[],
-  hasProvisionedCloudSQL: boolean,
+  linkToCloudSql: boolean,
 ): Schema[] {
   const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
-  if (!hasProvisionedCloudSQL) {
+  if (!linkToCloudSql) {
     // No Cloud SQL is being provisioned, just deploy the schema sources as a unlinked schema.
     return [
       {
@@ -586,7 +593,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
-            `${defaultServiceId()}-fdc`,
+            `${defaultServiceId().toLowerCase()}-fdc`,
             instances.map((i) => i.name),
           ),
         });
