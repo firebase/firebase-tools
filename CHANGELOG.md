@@ -1,0 +1,1 @@
+- Make it possible to init a dataconnect project in non interactive mode (#8993)
