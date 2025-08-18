@@ -222,6 +222,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private staticBackends: EmulatableBackend[] = [];
   private dynamicBackends: EmulatableBackend[] = [];
+  private watchers: chokidar.FSWatcher[] = [];
 
   debugMode = false;
 
@@ -484,6 +485,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         persistent: true,
       });
 
+      this.watchers.push(watcher);
+
       const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
       watcher.on("change", (filePath) => {
         this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
@@ -511,6 +514,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const pool of Object.values(this.workerPools)) {
       pool.exit();
     }
+    
+    for (const watcher of this.watchers) {
+      await watcher.close();
+    }
+    this.watchers = [];
+    
     if (this.destroyServer) {
       await this.destroyServer();
     }

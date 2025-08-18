@@ -772,7 +772,7 @@ describe("FunctionsEmulator", function () {
         prefix: "prefix-two",
       };
 
-      emu = new FunctionsEmulator({
+      const prefixEmu = new FunctionsEmulator({
         projectId: TEST_PROJECT_ID,
         projectDir: MODULE_ROOT,
         emulatableBackends: [backend1, backend2],
@@ -790,16 +790,20 @@ describe("FunctionsEmulator", function () {
         };
       });
 
-      await registry.EmulatorRegistry.start(emu);
-      await emu.connect();
+      try {
+        await registry.EmulatorRegistry.start(prefixEmu);
+        await prefixEmu.connect();
 
-      await supertest(emu.createHubServer())
-        .get(`/${TEST_PROJECT_ID}/us-central1/prefix-one-functionId`)
-        .expect(200);
+        await supertest(prefixEmu.createHubServer())
+          .get(`/${TEST_PROJECT_ID}/us-central1/prefix-one-functionId`)
+          .expect(200);
 
-      await supertest(emu.createHubServer())
-        .get(`/${TEST_PROJECT_ID}/us-central1/prefix-two-functionId`)
-        .expect(200);
+        await supertest(prefixEmu.createHubServer())
+          .get(`/${TEST_PROJECT_ID}/us-central1/prefix-two-functionId`)
+          .expect(200);
+      } finally {
+        await registry.EmulatorRegistry.stop(Emulators.FUNCTIONS);
+      }
     });
 
     describe("user-defined environment variables", () => {
