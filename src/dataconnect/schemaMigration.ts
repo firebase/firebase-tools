@@ -342,12 +342,14 @@ export function getIdentifiers(schema: Schema): {
   const postgresDatasource = schema.datasources.find((d) => d.postgresql);
   const databaseId = postgresDatasource?.postgresql?.database;
   if (!databaseId) {
-    throw new FirebaseError("Service does not have a postgres datasource, cannot migrate");
+    throw new FirebaseError(
+      "Data Connect schema must have a postgres datasource with a database name.",
+    );
   }
   const instanceName = postgresDatasource?.postgresql?.cloudSql?.instance;
   if (!instanceName) {
     throw new FirebaseError(
-      "tried to migrate schema but instance name was not provided in dataconnect.yaml",
+      "Data Connect schema must have a postgres datasource with a CloudSQL instance.",
     );
   }
   const instanceId = instanceName.split("/").pop()!;
