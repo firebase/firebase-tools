@@ -1,5 +1,3 @@
-import * as path from "path";
-import * as fs from "fs";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import * as build from "./build";
@@ -13,6 +11,7 @@ import * as supported from "./runtimes/supported";
 import {
   Resource,
   Param,
+  ExtensionSpec,
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
   FunctionResourceProperties,
@@ -40,7 +39,6 @@ function convertParamReference(value: string): string {
  * Check if a string contains parameter references
  */
 function hasParamReference(value: string): boolean {
-  // More robust regex to detect parameter references
   return /\${param:[^}]+}|\${[^:}]+}/.test(value);
 }
 
@@ -127,7 +125,6 @@ function createV1Endpoint(
   const props = resource.properties;
   const location = props?.location || api.functionsDefaultRegion();
 
-  // Common fields for all endpoints
   const baseFields = {
     entryPoint: resource.entryPoint || resource.name,
     platform: "gcfv1" as const,
@@ -136,7 +133,6 @@ function createV1Endpoint(
     region: [processField(location)],
   };
 
-  // Build the specific trigger type and combine with base fields
   let endpoint: build.Endpoint;
 
   if (props?.eventTrigger) {
@@ -177,9 +173,14 @@ function createV1Endpoint(
     endpoint = { ...baseFields, httpsTrigger: {} };
   }
 
-  // Add optional service config
   proto.convertIfPresent(endpoint, props || {}, "timeoutSeconds", "timeout", parseTimeout);
-  proto.convertIfPresent(endpoint, props || {}, "availableMemoryMb", "availableMemoryMb", processField);
+  proto.convertIfPresent(
+    endpoint,
+    props || {},
+    "availableMemoryMb",
+    "availableMemoryMb",
+    processField,
+  );
 
   return endpoint;
 }
@@ -195,7 +196,6 @@ function createV2Endpoint(
   const props = resource.properties;
   const location = props?.location || api.functionsDefaultRegion();
 
-  // Common fields for all endpoints
   const baseFields = {
     entryPoint: resource.entryPoint || resource.name,
     platform: "gcfv2" as const,
@@ -204,7 +204,6 @@ function createV2Endpoint(
     region: [processField(location)],
   };
 
-  // Build the specific trigger type and combine with base fields
   let endpoint: build.Endpoint;
 
   if (props?.eventTrigger) {
@@ -237,7 +236,6 @@ function createV2Endpoint(
     endpoint = { ...baseFields, httpsTrigger: {} };
   }
 
-  // Add optional service config
   if (props?.serviceConfig) {
     const serviceConfig = props.serviceConfig;
     proto.copyIfPresent(endpoint, serviceConfig, "timeoutSeconds");
@@ -251,8 +249,20 @@ function createV2Endpoint(
       "availableMemory",
       parseMemoryToMb,
     );
-    proto.convertIfPresent(endpoint, serviceConfig, "minInstances", "minInstanceCount", processField);
-    proto.convertIfPresent(endpoint, serviceConfig, "maxInstances", "maxInstanceCount", processField);
+    proto.convertIfPresent(
+      endpoint,
+      serviceConfig,
+      "minInstances",
+      "minInstanceCount",
+      processField,
+    );
+    proto.convertIfPresent(
+      endpoint,
+      serviceConfig,
+      "maxInstances",
+      "maxInstanceCount",
+      processField,
+    );
   }
 
   return endpoint;
@@ -320,7 +330,9 @@ function convertParam(param: Param): params.Param {
     }
     case "selectResource":
       if (!param.resourceType) {
-        throw new FirebaseError(`Parameter ${param.param} has type selectResource but missing required resourceType field`);
+        throw new FirebaseError(
+          `Parameter ${param.param} has type selectResource but missing required resourceType field`,
+        );
       }
       stringParam.input = {
         resource: {
@@ -353,15 +365,21 @@ export async function detectAndAdaptExtension(
   projectDir: string,
   projectId: string,
 ): Promise<build.Build | undefined> {
-  const extensionYamlPath = path.join(projectDir, "extension.yaml");
+  let extensionSpec: ExtensionSpec;
 
   try {
-    await fs.promises.access(extensionYamlPath);
-  } catch {
-    return undefined;
+    extensionSpec = await readExtensionYaml(projectDir);
+  } catch (err) {
+    // If extension.yaml doesn't exist, return undefined (not an extension project)
+    if (err instanceof FirebaseError && err.message.includes('Could not find "extension.yaml"')) {
+      return undefined;
+    }
+    // Wrap other errors with context
+    const originalError = err instanceof Error ? err : new Error(String(err));
+    throw new FirebaseError(`Failed to read extension.yaml in ${projectDir}`, {
+      original: originalError,
+    });
   }
-
-  const extensionSpec = await readExtensionYaml(projectDir);
 
   if (!extensionSpec.name || !extensionSpec.version) {
     throw new FirebaseError("extension.yaml is missing required fields: name or version");
