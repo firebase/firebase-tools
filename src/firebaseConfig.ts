@@ -167,9 +167,18 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
 export type FunctionConfig = {
+  // Optional: Directory containing the Cloud Functions source code.
+  // Defaults to "functions" if not specified.
   source?: string;
+  // Optional: List of glob patterns for files and directories to ignore during deployment.
+  // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];
+  // Optional: The Node.js runtime version to use for Cloud Functions.
+  // Example: "nodejs18", "nodejs20". Must be a supported runtime version.
   runtime?: ActiveRuntime;
+  // Optional: A unique identifier for this functions codebase when using multiple codebases.
+  // Allows organizing functions into separate deployment units within the same project.
+  // Must be unique across all codebases in firebase.json.
   codebase?: string;
   // Optional: Applies a prefix to all function IDs (and secret names) discovered for this codebase.
   // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
