@@ -11,7 +11,8 @@
         "retry": true,
         "region": "us-central1",
         "eventFilters": {
-          "database": "(default)"
+          "database": "(default)",
+          "namespace": "(default)"
         },
         "eventFilterPathPatterns": {
           "document": "users/{userId}"
