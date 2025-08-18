@@ -7,8 +7,9 @@ import * as params from "./params";
 import * as api from "../../api";
 import * as proto from "../../gcp/proto";
 import * as k8s from "../../gcp/k8s";
-import { readExtensionYaml, DEFAULT_RUNTIME } from "../../extensions/emulator/specHelper";
+import { readExtensionYaml } from "../../extensions/emulator/specHelper";
 import { getResourceRuntime } from "../../extensions/utils";
+import * as supported from "./runtimes/supported";
 import {
   Resource,
   Param,
@@ -18,7 +19,6 @@ import {
   FunctionV2ResourceProperties,
 } from "../../extensions/types";
 
-// Reuse validFunctionTypes from specHelper
 const validFunctionTypes = [
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
@@ -34,6 +34,55 @@ function convertParamReference(value: string): string {
   return value
     .replace(/\${param:([^}]+)}/g, "{{ params.$1 }}")
     .replace(/\${([^:}]+)}/g, "{{ params.$1 }}");
+}
+
+/**
+ * Check if a string contains parameter references
+ */
+function hasParamReference(value: string): boolean {
+  return value.includes("${param:") || (value.includes("${") && value.includes("}"));
+}
+
+/**
+ * Parse memory value from various formats to MB
+ * Returns a number for literal values, or a string for CEL expressions
+ */
+function parseMemoryToMb(mem: string | number | undefined): build.Field<number> {
+  if (mem === undefined) {
+    return null;
+  }
+  
+  if (typeof mem === "number") {
+    return mem;
+  }
+  
+  if (hasParamReference(mem)) {
+    return processField(mem);
+  }
+  
+  // Extensions use IEC notation (GiB), k8s.mebibytes expects Kubernetes notation (Gi)
+  const k8sFormat = mem.replace(/([0-9.]+)([KMGT])iB$/i, "$1$2i");
+  try {
+    return Math.round(k8s.mebibytes(k8sFormat));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new FirebaseError(`Failed to parse memory value "${mem}": ${message}`);
+  }
+}
+
+/**
+ * Parse timeout value from various formats to seconds
+ */
+function parseTimeout(timeout: string | undefined): build.Field<number> {
+  if (timeout === undefined) {
+    return null;
+  }
+  
+  if (hasParamReference(timeout)) {
+    return processField(timeout);
+  }
+  
+  return proto.secondsFromDuration(timeout);
 }
 
 /**
@@ -67,146 +116,142 @@ function processField<T>(value: T): T {
 }
 
 /**
- * Convert an extension resource to a functions deployment endpoint
+ * Create a v1 function endpoint
  */
-function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
-  const runtime = getResourceRuntime(resource) || DEFAULT_RUNTIME;
-  const isV2 = resource.type === FUNCTIONS_V2_RESOURCE_TYPE;
-
-  const v1Resource = resource as Resource & {
-    properties?: FunctionResourceProperties["properties"];
-  };
-  const v2Resource = resource as Resource & {
-    properties?: FunctionV2ResourceProperties["properties"];
-  };
-
-  const location = isV2 ? v2Resource.properties?.location : v1Resource.properties?.location;
-  const baseEndpoint = {
+function createV1Endpoint(
+  resource: Resource & { properties?: FunctionResourceProperties["properties"] },
+  projectId: string
+): build.Endpoint {
+  const runtime = getResourceRuntime(resource) || supported.latest("nodejs");
+  const props = resource.properties;
+  const location = props?.location || api.functionsDefaultRegion();
+  
+  // Common fields for all endpoints
+  const baseFields = {
     entryPoint: resource.entryPoint || resource.name,
-    platform: (isV2 ? "gcfv2" : "gcfv1") as "gcfv1" | "gcfv2",
+    platform: "gcfv1" as const,
     project: projectId,
     runtime,
-    region: [processField(location || api.functionsDefaultRegion())],
+    region: [processField(location)],
   };
 
+  // Build the specific trigger type and combine with base fields
   let endpoint: build.Endpoint;
+  
+  if (props?.eventTrigger) {
+    const eventTrigger: build.EventTrigger = {
+      eventType: props.eventTrigger.eventType,
+      retry: false,
+    };
 
-  if (isV2 && v2Resource.properties) {
-    const props = v2Resource.properties;
-    if (props.eventTrigger) {
-      const eventTrigger: build.EventTrigger = {
-        eventType: props.eventTrigger.eventType,
-        retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
-      };
-
-      if (props.eventTrigger.eventFilters) {
-        for (const filter of props.eventTrigger.eventFilters) {
-          const value = processField(filter.value);
-          if (filter.operator === "match-path-pattern") {
-            eventTrigger.eventFilterPathPatterns = eventTrigger.eventFilterPathPatterns || {};
-            eventTrigger.eventFilterPathPatterns[filter.attribute] = value as string;
-          } else {
-            eventTrigger.eventFilters = eventTrigger.eventFilters || {};
-            eventTrigger.eventFilters[filter.attribute] = value as string;
-          }
-        }
+    if (props.eventTrigger.resource || props.eventTrigger.service) {
+      eventTrigger.eventFilters = {};
+      if (props.eventTrigger.resource) {
+        eventTrigger.eventFilters.resource = processField(props.eventTrigger.resource);
       }
-      if (props.eventTrigger.channel) {
-        eventTrigger.channel = processField(props.eventTrigger.channel);
+      if (props.eventTrigger.service) {
+        eventTrigger.eventFilters.service = processField(props.eventTrigger.service);
       }
-      if (props.eventTrigger.triggerRegion) {
-        eventTrigger.region = processField(props.eventTrigger.triggerRegion);
-      }
-
-      endpoint = { ...baseEndpoint, eventTrigger };
-    } else {
-      endpoint = { ...baseEndpoint, httpsTrigger: {} };
     }
-  } else if (!isV2 && v1Resource.properties) {
-    const props = v1Resource.properties;
-    if (props.eventTrigger) {
-      const eventTrigger: build.EventTrigger = {
-        eventType: props.eventTrigger.eventType,
-        retry: false,
-      };
 
-      if (props.eventTrigger.resource || props.eventTrigger.service) {
-        eventTrigger.eventFilters = {};
-        if (props.eventTrigger.resource) {
-          eventTrigger.eventFilters.resource = processField(props.eventTrigger.resource);
-        }
-        if (props.eventTrigger.service) {
-          eventTrigger.eventFilters.service = processField(props.eventTrigger.service);
-        }
-      }
-
-      endpoint = { ...baseEndpoint, eventTrigger };
-    } else if (props.scheduleTrigger) {
-      endpoint = {
-        ...baseEndpoint,
-        scheduleTrigger: {
-          schedule: processField(props.scheduleTrigger.schedule) || "",
-          timeZone: processField(props.scheduleTrigger.timeZone) || null,
-        },
-      };
-    } else if (props.taskQueueTrigger) {
-      const taskQueueTrigger: build.TaskQueueTrigger = {};
-      if (props.taskQueueTrigger.rateLimits) {
-        taskQueueTrigger.rateLimits = processField(props.taskQueueTrigger.rateLimits);
-      }
-      if (props.taskQueueTrigger.retryConfig) {
-        taskQueueTrigger.retryConfig = processField(props.taskQueueTrigger.retryConfig);
-      }
-      endpoint = { ...baseEndpoint, taskQueueTrigger };
-    } else {
-      endpoint = { ...baseEndpoint, httpsTrigger: {} };
+    endpoint = { ...baseFields, eventTrigger };
+  } else if (props?.scheduleTrigger) {
+    endpoint = {
+      ...baseFields,
+      scheduleTrigger: {
+        schedule: processField(props.scheduleTrigger.schedule) || "",
+        timeZone: processField(props.scheduleTrigger.timeZone) || null,
+      },
+    };
+  } else if (props?.taskQueueTrigger) {
+    const taskQueueTrigger: build.TaskQueueTrigger = {};
+    if (props.taskQueueTrigger.rateLimits) {
+      taskQueueTrigger.rateLimits = processField(props.taskQueueTrigger.rateLimits);
     }
+    if (props.taskQueueTrigger.retryConfig) {
+      taskQueueTrigger.retryConfig = processField(props.taskQueueTrigger.retryConfig);
+    }
+    endpoint = { ...baseFields, taskQueueTrigger };
   } else {
-    endpoint = { ...baseEndpoint, httpsTrigger: {} };
+    endpoint = { ...baseFields, httpsTrigger: {} };
   }
 
-  if (!isV2 && v1Resource.properties) {
-    if (v1Resource.properties.timeout) {
-      const timeout = v1Resource.properties.timeout;
-      if (
-        typeof timeout === "string" &&
-        (timeout.includes("${param:") || (timeout.includes("${") && timeout.includes("}")))
-      ) {
-        endpoint.timeoutSeconds = processField(timeout);
-      } else {
-        endpoint.timeoutSeconds = proto.secondsFromDuration(timeout);
+  // Add optional service config
+  proto.convertIfPresent(endpoint, props || {}, "timeoutSeconds", "timeout", (timeout) => {
+    if (hasParamReference(timeout)) {
+      return processField(timeout);
+    }
+    return proto.secondsFromDuration(timeout);
+  });
+  proto.copyIfPresent(endpoint, props || {}, "availableMemoryMb");
+  if (endpoint.availableMemoryMb !== undefined) {
+    endpoint.availableMemoryMb = processField(endpoint.availableMemoryMb);
+  }
+
+  return endpoint;
+}
+
+/**
+ * Create a v2 function endpoint
+ */
+function createV2Endpoint(
+  resource: Resource & { properties?: FunctionV2ResourceProperties["properties"] },
+  projectId: string
+): build.Endpoint {
+  const runtime = getResourceRuntime(resource) || supported.latest("nodejs");
+  const props = resource.properties;
+  const location = props?.location || api.functionsDefaultRegion();
+  
+  // Common fields for all endpoints
+  const baseFields = {
+    entryPoint: resource.entryPoint || resource.name,
+    platform: "gcfv2" as const,
+    project: projectId,
+    runtime,
+    region: [processField(location)],
+  };
+
+  // Build the specific trigger type and combine with base fields
+  let endpoint: build.Endpoint;
+  
+  if (props?.eventTrigger) {
+    const eventTrigger: build.EventTrigger = {
+      eventType: props.eventTrigger.eventType,
+      retry: props.eventTrigger.retryPolicy === "RETRY_POLICY_RETRY",
+    };
+
+    if (props.eventTrigger.eventFilters) {
+      for (const filter of props.eventTrigger.eventFilters) {
+        const value = processField(filter.value);
+        if (filter.operator === "match-path-pattern") {
+          eventTrigger.eventFilterPathPatterns = eventTrigger.eventFilterPathPatterns || {};
+          eventTrigger.eventFilterPathPatterns[filter.attribute] = value;
+        } else {
+          eventTrigger.eventFilters = eventTrigger.eventFilters || {};
+          eventTrigger.eventFilters[filter.attribute] = value;
+        }
       }
     }
-    if (v1Resource.properties.availableMemoryMb !== undefined) {
-      endpoint.availableMemoryMb = processField(v1Resource.properties.availableMemoryMb);
+    if (props.eventTrigger.channel) {
+      eventTrigger.channel = processField(props.eventTrigger.channel);
     }
-  } else if (isV2 && v2Resource.properties?.serviceConfig) {
-    const serviceConfig = v2Resource.properties.serviceConfig;
+    if (props.eventTrigger.triggerRegion) {
+      eventTrigger.region = processField(props.eventTrigger.triggerRegion);
+    }
+
+    endpoint = { ...baseFields, eventTrigger };
+  } else {
+    endpoint = { ...baseFields, httpsTrigger: {} };
+  }
+
+  // Add optional service config
+  if (props?.serviceConfig) {
+    const serviceConfig = props.serviceConfig;
     proto.copyIfPresent(endpoint, serviceConfig, "timeoutSeconds");
     if (endpoint.timeoutSeconds !== undefined) {
       endpoint.timeoutSeconds = processField(endpoint.timeoutSeconds);
     }
-    if (serviceConfig.availableMemory !== undefined) {
-      const mem = serviceConfig.availableMemory;
-      if (
-        typeof mem === "string" &&
-        (mem.includes("${param:") || (mem.includes("${") && mem.includes("}")))
-      ) {
-        endpoint.availableMemoryMb = processField(mem);
-      } else if (typeof mem === "string") {
-        // Parse memory strings like "1GiB", "512MiB", etc.
-        // Extensions use IEC notation (GiB), k8s.mebibytes expects Kubernetes notation (Gi)
-        // Both represent the same binary values (1024-based), just different notation
-        const k8sFormat = mem.replace(/([0-9.]+)([KMGT])iB$/i, "$1$2i");
-        try {
-          endpoint.availableMemoryMb = Math.round(k8s.mebibytes(k8sFormat));
-        } catch (e: any) {
-          throw new FirebaseError(`Failed to parse memory value "${mem}": ${e.message}`);
-        }
-      } else {
-        endpoint.availableMemoryMb = mem;
-      }
-    }
+    proto.convertIfPresent(endpoint, serviceConfig, "availableMemoryMb", "availableMemory", parseMemoryToMb);
     proto.renameIfPresent(endpoint, serviceConfig, "minInstances", "minInstanceCount");
     proto.renameIfPresent(endpoint, serviceConfig, "maxInstances", "maxInstanceCount");
     if (endpoint.minInstances !== undefined) {
@@ -218,6 +263,17 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
   }
 
   return endpoint;
+}
+
+/**
+ * Convert an extension resource to a functions deployment endpoint
+ */
+function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
+  if (resource.type === FUNCTIONS_V2_RESOURCE_TYPE) {
+    return createV2Endpoint(resource, projectId);
+  } else {
+    return createV1Endpoint(resource, projectId);
+  }
 }
 
 /**
