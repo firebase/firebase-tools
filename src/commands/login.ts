@@ -16,9 +16,9 @@ import { Options } from "../options";
 export interface LoginOptions extends Options {
   prototyperLogin?: boolean;
   consent?: {
-    metrics?: boolean,
-    gemini?: boolean,
-  }
+    metrics?: boolean;
+    gemini?: boolean;
+  };
 }
 
 export const command = new Command("login")
