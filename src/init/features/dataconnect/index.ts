@@ -525,7 +525,9 @@ interface serviceAndSchema {
 async function chooseExistingService(
   existing: serviceAndSchema[],
 ): Promise<serviceAndSchema | undefined> {
-  const serviceEnvVar = envOverride("FDC_CONNECTOR", "") || envOverride("FDC_SERVICE", "");
+  const fdcConnector = envOverride("FDC_CONNECTOR", "");
+  const fdcService = envOverride("FDC_SERVICE", "");
+  const serviceEnvVar = fdcConnector || fdcService;
   if (serviceEnvVar) {
     const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar.split("/");
     const serviceFromEnvVar = existing.find((s) => {
@@ -541,7 +543,8 @@ async function chooseExistingService(
       );
       return serviceFromEnvVar;
     }
-    logWarning(`Unable to pick up an existing service based on FDC_SERVICE=${serviceEnvVar}.`);
+    const envVarName = fdcConnector ? "FDC_CONNECTOR" : "FDC_SERVICE";
+    logWarning(`Unable to pick up an existing service based on ${envVarName}=${serviceEnvVar}.`);
   }
   const choices: Array<{ name: string; value: serviceAndSchema | undefined }> = existing.map(
     (s) => {
