@@ -1,0 +1,1 @@
+- Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
