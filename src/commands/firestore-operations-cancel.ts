@@ -11,7 +11,7 @@ import { logger } from "../logger";
 import { logSuccess, logWarning } from "../utils";
 
 export const command = new Command("firestore:operations:cancel <operationName>")
-  .description("retrieves information about a Cloud Firestore admin operation")
+  .description("cancels a long-running Cloud Firestore admin operation")
   .option(
     "--database <databaseName>",
     'Database ID for which the operation is running. "(default)" if none is provided.',

@@ -864,9 +864,6 @@ export class FirestoreApi {
     const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}:cancel`;
     try {
       const res = await this.apiClient.post<void, void>(url);
-      console.log(res.body);
-      console.log(res.response);
-      console.log(res.status);
       return { success: res.status === 200 };
     } catch (error) {
       // For the cases when the user is trying to cancel an operation that has

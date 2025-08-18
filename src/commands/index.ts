@@ -105,7 +105,7 @@ export function load(client: any): any {
   client.firestore.locations = loadCommand("firestore-locations");
   client.firestore.operations = {};
   client.firestore.operations.cancel = loadCommand("firestore-operations-cancel");
-  client.firestore.operations.desscribe = loadCommand("firestore-operations-describe");
+  client.firestore.operations.describe = loadCommand("firestore-operations-describe");
   client.firestore.operations.list = loadCommand("firestore-operations-list");
   client.firestore.databases = {};
   client.firestore.databases.list = loadCommand("firestore-databases-list");
