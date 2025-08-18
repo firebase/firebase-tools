@@ -403,7 +403,6 @@ export async function detectAndAdaptExtension(
 
   const functionsBuild = build.empty();
 
-  functionsBuild.endpoints = {};
   for (const resource of extensionSpec.resources) {
     if (validFunctionTypes.includes(resource.type)) {
       functionsBuild.endpoints[resource.name] = createEndpoint(resource, projectId);
