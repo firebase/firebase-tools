@@ -10,7 +10,7 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function fetchIssueDetails(
+export async function getIssueDetails(
   projectId: string,
   appId: string,
   issueId: string,
