@@ -26,7 +26,6 @@ import {
   logWarning,
   envOverride,
   promiseWithSpinner,
-  logLabeledSuccess,
   logLabeledError,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
@@ -114,7 +113,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
         logger.debug(`[dataconnect] Background API enablement failed: ${err?.message}`);
       });
     }
-    if (!info.serviceGql) {
+    // TODO(fredzqm): Remove `hasBilling` to enable Gemini-powered experience for Spark projects.
+    if (hasBilling && !info.serviceGql) {
       // TODO: Consider use Gemini to generate schema for Spark project as well.
       if (!configstore.get("gemini")) {
         logBullet(
@@ -265,13 +265,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
-  logLabeledSuccess(
-    "dataconnect",
-    `You can visualize the Data Connect Schema in Firebase Console:
-
-   https://console.firebase.google.com/project/${projectId}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema
-`,
-  );
 }
 
 function schemasDeploySequence(
@@ -335,18 +328,38 @@ function schemasDeploySequence(
 }
 
 export async function postSetup(setup: Setup, config: Config, options: Options): Promise<void> {
+  const info = setup.featureInfo?.dataconnect;
+  if (!info) {
+    throw new Error("Data Connect feature RequiredInfo is not provided");
+  }
+
+  const instructions: string[] = [];
   const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
   // If a platform can be detected or a connector is chosen via env var, always
   // setup SDK. FDC_CONNECTOR is used for scripts under https://firebase.tools/.
   if (cwdPlatformGuess !== Platform.NONE || envOverride("FDC_CONNECTOR", "")) {
     await sdk.doSetup(setup, config, options);
   } else {
-    logBullet(
-      `To add the generated SDK to your app, run ${clc.bold("firebase init dataconnect:sdk")}\n`,
+    instructions.push(
+      `To add the generated SDK to your app, run ${clc.bold("firebase init dataconnect:sdk")}`,
     );
   }
+
+  if (info.appDescription) {
+    instructions.push(
+      `You can visualize the Data Connect Schema in Firebase Console:
+
+    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
+    );
+  }
+
   if (setup.projectId && !setup.isBillingEnabled) {
-    logBullet(upgradeInstructions(setup.projectId));
+    instructions.push(upgradeInstructions(setup.projectId));
+  }
+
+  logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
+  for (const i of instructions) {
+    logBullet(i + "\n");
   }
 }
 
