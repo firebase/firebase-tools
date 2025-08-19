@@ -24,7 +24,6 @@ export const get_sample_crash = tool(
         .describe("The issue variant Id used as a filter to get sample issues."),
       sample_count: z
         .number()
-        .optional()
         .describe("Number of samples that needs to be fetched. Maximum value is 3. Defaults to 1.")
         .default(1),
     }),
@@ -34,15 +33,15 @@ export const get_sample_crash = tool(
     },
     _meta: {
       requiresAuth: true,
-      requiresProject: true,
+      requiresProject: false,
     },
   },
-  async ({ app_id, issue_id, variant_id, sample_count }, { projectId }) => {
+  async ({ app_id, issue_id, variant_id, sample_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
     if (!issue_id) return mcpError(`Must specify 'issue_id' parameter.`);
 
     if (sample_count > 3) sample_count = 3;
 
-    return toContent(await getSampleCrash(projectId, app_id, issue_id, variant_id, sample_count));
+    return toContent(await getSampleCrash(app_id, issue_id, sample_count, variant_id));
   },
 );

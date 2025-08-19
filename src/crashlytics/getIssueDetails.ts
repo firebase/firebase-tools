@@ -10,14 +10,10 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function getIssueDetails(
-  projectId: string,
-  appId: string,
-  issueId: string,
-): Promise<string> {
+export async function getIssueDetails(appId: string, issueId: string): Promise<string> {
   try {
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
+    const requestProjectNumber = parseProjectNumber(appId);
+    if (requestProjectNumber === undefined) {
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
@@ -26,7 +22,7 @@ export async function getIssueDetails(
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       timeout: TIMEOUT,
     });
 
@@ -34,13 +30,13 @@ export async function getIssueDetails(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the issue details for the Firebase Project ${projectId}, AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
+      `Failed to fetch the issue details for the Firebase AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
       { original: err },
     );
   }
 }
 
-function parseProjectId(appId: string): string | undefined {
+function parseProjectNumber(appId: string): string | undefined {
   const appIdParts = appId.split(":");
   if (appIdParts.length > 1) {
     return appIdParts[1];

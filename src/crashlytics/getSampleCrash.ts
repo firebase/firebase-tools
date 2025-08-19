@@ -11,22 +11,21 @@ const apiClient = new Client({
 });
 
 export async function getSampleCrash(
-  projectId: string,
   appId: string,
   issueId: string,
+  sampleCount: number,
   variantId?: string,
-  sampleCount?: number,
 ): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
-    queryParams.set("filter.issue.id", `${issueId}`);
-    queryParams.set("page_size", String(sampleCount!));
+    queryParams.set("filter.issue.id", issueId);
+    queryParams.set("page_size", String(sampleCount));
     if (variantId) {
-      queryParams.set("filter.issue.variant_id", `${variantId!}`);
+      queryParams.set("filter.issue.variant_id", variantId);
     }
 
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
+    const requestProjectNumber = parseProjectNumber(appId);
+    if (requestProjectNumber === undefined) {
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
@@ -35,7 +34,7 @@ export async function getSampleCrash(
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/events`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });
@@ -44,13 +43,13 @@ export async function getSampleCrash(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the same crash for the Firebase Project ${projectId}, AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
+      `Failed to fetch the same crash for the Firebase AppId ${appId}, IssueId ${issueId}. Error: ${err}.`,
       { original: err },
     );
   }
 }
 
-function parseProjectId(appId: string): string | undefined {
+function parseProjectNumber(appId: string): string | undefined {
   const appIdParts = appId.split(":");
   if (appIdParts.length > 1) {
     return appIdParts[1];
