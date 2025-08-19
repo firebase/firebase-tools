@@ -9,7 +9,7 @@ import * as rules from "./rules";
 import * as indexes from "./indexes";
 import { Setup } from "../..";
 
-describe("firestore index", () => {
+describe("firestore feature init", () => {
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
