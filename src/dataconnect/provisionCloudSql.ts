@@ -111,7 +111,7 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            `Postgres Database ${databaseId} not found. It will be created on your next deploy.`,
+            `Postgres database ${databaseId} not found. It will be created on your next deploy.`,
           );
       } else {
         await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
