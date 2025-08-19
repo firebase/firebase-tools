@@ -133,6 +133,12 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
       logger.debug(`Using project from $FIREBASE_PROJECT: ${projectEnvVar}`);
       projectMetaData = await getFirebaseProject(projectEnvVar);
     } else {
+      if (options.nonInteractive) {
+        logger.info(
+          "No default project found. Continuing without a project in non interactive mode.",
+        );
+        return;
+      }
       projectMetaData = await projectChoicePrompt(options);
       if (!projectMetaData) {
         return;

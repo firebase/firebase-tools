@@ -1,2 +1,3 @@
 - Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
 - Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
+- Make it possible to init a dataconnect project in non interactive mode (#8993)
