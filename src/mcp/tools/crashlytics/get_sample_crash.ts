@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getSampleCrash } from "../../../crashlytics/getSampleCrash.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getSampleCrash } from "../../../crashlytics/getSampleCrash";
 
 export const get_sample_crash = tool(
   {
