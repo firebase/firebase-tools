@@ -477,6 +477,18 @@ export async function detectAndAdaptExtension(
 
   // TODO: Handle IAM roles - extensions can require specific IAM roles for their service account
   // TODO: Support lifecycle events (onInstall, onUpdate, onConfigure) - these are task queue functions
+  
+  // System params note: Extensions automatically get system params like:
+  // - firebaseextensions.v1beta.function/location (defaults to us-central1)
+  // - firebaseextensions.v1beta.function/memory (defaults to 256MB for v1, 256Mi for v2)
+  // - firebaseextensions.v1beta.function/timeoutSeconds (configurable 0-540)
+  // These are marked as "advanced" params and configure resources directly (not env vars).
+  // For local testing, we rely on defaults in resource properties or let the Functions
+  // platform use its defaults. Full system param injection would require:
+  // 1. Detecting which function types are used (v1 vs v2)
+  // 2. Generating appropriate system param definitions
+  // 3. Accepting user values (from env vars or config for testing)
+  // 4. Applying them to endpoints where not already specified in properties
 
   const functionsBuild = build.empty();
 
