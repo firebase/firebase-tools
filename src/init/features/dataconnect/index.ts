@@ -67,14 +67,14 @@ export interface ServiceGQL {
 }
 
 const emptyConnector = {
-  id: "default",
-  path: "./connector",
+  id: "example",
+  path: "./example",
   files: [],
 };
 
 const defaultConnector = {
-  id: "default",
-  path: "./connector",
+  id: "example",
+  path: "./example",
   files: [
     {
       path: "queries.gql",
@@ -241,11 +241,11 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     );
     const connectors = [
       {
-        id: "default",
-        path: "./connector",
+        id: "example",
+        path: "./example",
         files: [
           {
-            path: "default.gql",
+            path: "queries",
             content: operationGql,
           },
         ],
