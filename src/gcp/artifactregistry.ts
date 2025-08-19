@@ -85,12 +85,13 @@ export async function getRepository(repoPath: string): Promise<Repository> {
  * Update an Artifact Registry repository.
  */
 export async function updateRepository(repo: RepositoryInput): Promise<Repository> {
-  const updateMask = proto.fieldMasks(repo, "cleanupPolicies", "cleanupPolicyDryRun", "labels");
+  const { name, ...update } = repo;
+  const updateMask = proto.fieldMasks(update, "cleanupPolicies", "cleanupPolicyDryRun", "labels");
   if (updateMask.length === 0) {
-    const res = await client.get<Repository>(repo.name!);
+    const res = await client.get<Repository>(name!);
     return res.body;
   }
-  const res = await client.patch<RepositoryInput, Repository>(`/${repo.name}`, repo, {
+  const res = await client.patch<Omit<RepositoryInput, "name">, Repository>(`/${name}`, update, {
     queryParams: { updateMask: updateMask.join(",") },
   });
   return res.body;
