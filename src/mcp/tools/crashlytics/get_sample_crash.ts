@@ -21,9 +21,7 @@ export const get_sample_crash = tool(
       variant_id: z
         .string()
         .optional()
-        .describe(
-          "The issue variant Id used as a filter to get sample issues.",
-        ),
+        .describe("The issue variant Id used as a filter to get sample issues."),
       sample_count: z
         .number()
         .optional()
