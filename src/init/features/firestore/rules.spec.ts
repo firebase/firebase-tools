@@ -23,7 +23,9 @@ describe("firestore rules", () => {
       date.setDate(date.getDate() + 30);
       const expectedDate = `${date.getFullYear()}, ${date.getMonth() + 1}, ${date.getDate()}`;
       const rules = getDefaultRules();
-      expect(rules).to.include(`allow read, write: if request.time < timestamp.date(${expectedDate});`);
+      expect(rules).to.include(
+        `allow read, write: if request.time < timestamp.date(${expectedDate});`,
+      );
     });
   });
 
@@ -35,7 +37,7 @@ describe("firestore rules", () => {
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       sandbox.stub(prompt, "input").resolves("firestore.rules");
-      const writeStub = sandbox.stub(cfg, "writeProjectFile");
+      sandbox.stub(cfg, "writeProjectFile");
       const confirmStub = sandbox.stub(cfg, "confirmWriteProjectFile").resolves(true);
 
       await initRules(setup, cfg, {
@@ -59,8 +61,12 @@ describe("firestore rules", () => {
         projectId: "test-project",
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
-      const getRulesetNameStub = sandbox.stub(gcp.rules, "getLatestRulesetName").resolves("ruleset-name");
-      const getRulesetContentStub = sandbox.stub(gcp.rules, "getRulesetContent").resolves([{ name: "file.rules", content: "console rules" }]);
+      const getRulesetNameStub = sandbox
+        .stub(gcp.rules, "getLatestRulesetName")
+        .resolves("ruleset-name");
+      const getRulesetContentStub = sandbox
+        .stub(gcp.rules, "getRulesetContent")
+        .resolves([{ name: "file.rules", content: "console rules" }]);
       const writeStub = sandbox.stub(cfg, "confirmWriteProjectFile").resolves(true);
 
       const info = {

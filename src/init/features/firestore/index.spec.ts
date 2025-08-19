@@ -30,7 +30,15 @@ describe("firestore index", () => {
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       sandbox.stub(ensureApiEnabled, "ensure").resolves();
       sandbox.stub(FirestoreApi.prototype, "listDatabases").resolves([]);
-      sandbox.stub(FirestoreApi.prototype, "locations").resolves([{ name: "projects/test-project/locations/us-central", locationId: "us-central", displayName: "us-central", labels: {}, metadata: {} }]);
+      sandbox.stub(FirestoreApi.prototype, "locations").resolves([
+        {
+          name: "projects/test-project/locations/us-central",
+          locationId: "us-central",
+          displayName: "us-central",
+          labels: {},
+          metadata: {},
+        },
+      ]);
       const selectStub = sandbox.stub(prompt, "select").resolves("us-central");
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
@@ -68,7 +76,8 @@ describe("firestore index", () => {
 
       expect(writeStub.calledTwice).to.be.true;
       expect(writeStub.firstCall.calledWith("firestore.rules", "rules content")).to.be.true;
-      expect(writeStub.secondCall.calledWith("firestore.indexes.json", "indexes content")).to.be.true;
+      expect(writeStub.secondCall.calledWith("firestore.indexes.json", "indexes content")).to.be
+        .true;
     });
   });
 });

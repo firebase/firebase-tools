@@ -50,8 +50,12 @@ describe("firestore indexes", () => {
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       const listIndexesStub = sandbox.stub(FirestoreApi.prototype, "listIndexes").resolves([]);
-      const listFieldOverridesStub = sandbox.stub(FirestoreApi.prototype, "listFieldOverrides").resolves([]);
-      const makeIndexSpecStub = sandbox.stub(FirestoreApi.prototype, "makeIndexSpec").returns({ indexes: [], fieldOverrides: [] });
+      const listFieldOverridesStub = sandbox
+        .stub(FirestoreApi.prototype, "listFieldOverrides")
+        .resolves([]);
+      const makeIndexSpecStub = sandbox
+        .stub(FirestoreApi.prototype, "makeIndexSpec")
+        .returns({ indexes: [], fieldOverrides: [] });
       const writeStub = sandbox.stub(cfg, "confirmWriteProjectFile").resolves(true);
 
       const info = {
@@ -69,7 +73,12 @@ describe("firestore indexes", () => {
       expect(listIndexesStub.calledOnceWith("test-project", "(default)")).to.be.true;
       expect(listFieldOverridesStub.calledOnceWith("test-project", "(default)")).to.be.true;
       expect(makeIndexSpecStub.calledOnceWith([], [])).to.be.true;
-      expect(writeStub.calledOnceWith("firestore.indexes.json", JSON.stringify({ indexes: [], fieldOverrides: [] }, null, 2))).to.be.true;
+      expect(
+        writeStub.calledOnceWith(
+          "firestore.indexes.json",
+          JSON.stringify({ indexes: [], fieldOverrides: [] }, null, 2),
+        ),
+      ).to.be.true;
       expect(info.indexes).to.equal(JSON.stringify({ indexes: [], fieldOverrides: [] }, null, 2));
     });
   });
