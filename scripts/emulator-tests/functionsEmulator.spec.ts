@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as fsp from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 
 import { expect } from "chai";
@@ -49,11 +50,12 @@ const TEST_BACKEND: EmulatableBackend = {
   // bin: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
 };
 
-async function setupEnvFiles(envs: Record<string, string>) {
+async function setupEnvFiles(envs: Record<string, string>, dir?: string) {
   const envFiles: string[] = [];
+  const envDir = dir || FUNCTIONS_DIR;
   for (const [filename, data] of Object.entries(envs)) {
-    const envPath = path.join(FUNCTIONS_DIR, filename);
-    await fsp.writeFile(path.join(FUNCTIONS_DIR, filename), data);
+    const envPath = path.join(envDir, filename);
+    await fsp.writeFile(path.join(envDir, filename), data);
     envFiles.push(envPath);
   }
   return async () => {
@@ -906,6 +908,63 @@ describe("FunctionsEmulator", function () {
           .then((res) => {
             expect(res.body).to.deep.equal({ FOO: "hoo" });
           });
+      });
+
+      context("when configDir is provided", () => {
+        let emuWithConfigDir: FunctionsEmulator;
+        let configDir: string;
+        let cleanupEnvFiles: () => Promise<void>;
+
+        before(async () => {
+          configDir = fs.mkdtempSync(path.join(os.tmpdir(), "configdir-"));
+          cleanupEnvFiles = await setupEnvFiles({ ".env": "FOO=foo\nBAR=bar" }, configDir);
+
+          const backend: EmulatableBackend = {
+            ...TEST_BACKEND,
+            configDir: configDir,
+          };
+
+          emuWithConfigDir = new FunctionsEmulator({
+            projectId: TEST_PROJECT_ID,
+            projectDir: MODULE_ROOT,
+            emulatableBackends: [backend],
+            verbosity: "QUIET",
+            debugPort: false,
+          });
+
+          await useFunction(
+            emuWithConfigDir,
+            "dotenv",
+            () => {
+              return {
+                dotenv: require("firebase-functions").https.onRequest(
+                  (req: express.Request, res: express.Response) => {
+                    res.json({
+                      FOO: process.env.FOO,
+                      BAR: process.env.BAR,
+                    });
+                  },
+                ),
+              };
+            },
+            ["us-central1"],
+          );
+        });
+
+        after(async () => {
+          await emuWithConfigDir.stop();
+          await cleanupEnvFiles();
+          fs.rmSync(configDir, { recursive: true });
+        });
+
+        it("should load environment variables from that directory", async () => {
+          await supertest(emuWithConfigDir.createHubServer())
+            .get(`/${TEST_PROJECT_ID}/us-central1/dotenv`)
+            .expect(200)
+            .then((res) => {
+              expect(res.body).to.deep.equal({ FOO: "foo", BAR: "bar" });
+            });
+        });
       });
     });
 

@@ -85,6 +85,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  */
 export interface EmulatableBackend {
   functionsDir: string;
+  configDir?: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
@@ -1385,12 +1386,15 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
-    const projectInfo = {
+    const projectInfo: functionsEnv.UserEnvsOpts = {
       functionsSource: backend.functionsDir,
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,
     };
+    if (backend.configDir) {
+      projectInfo.configDir = backend.configDir;
+    }
 
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {

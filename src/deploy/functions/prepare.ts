@@ -124,6 +124,7 @@ export async function prepare(
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(config.source),
+      configDir: config.configDir ? options.config.path(config.configDir) : undefined,
       projectId: projectId,
       projectAlias: options.projectAlias,
     };

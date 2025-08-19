@@ -360,6 +360,7 @@ FOO=foo
           projectId: "project",
           projectAlias: "alias",
           functionsSource: tmpdir,
+          configDir: tmpdir,
           isEmulator: true,
         })["FOO"],
       ).to.equal("bar");
@@ -390,6 +391,7 @@ FOO=foo
           projectId: "project",
           projectAlias: "alias",
           functionsSource: tmpdir,
+          configDir: tmpdir,
           isEmulator: true,
         })["FOO"],
       ).to.equal("baz");
@@ -434,9 +436,12 @@ FOO=foo
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
-          "FOO"
-        ],
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          configDir: tmpdir,
+        })["FOO"],
       ).to.equal("bar");
     });
 
@@ -449,9 +454,12 @@ FOO=foo
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
-          "FOO"
-        ],
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          configDir: tmpdir,
+        })["FOO"],
       ).to.equal("bar");
     });
 
@@ -464,6 +472,7 @@ FOO=foo
         projectId: "project",
         projectAlias: "alias",
         functionsSource: tmpdir,
+        configDir: tmpdir,
       });
       expect(envs["FOO"]).to.equal("foo");
       expect(envs["BAR"]).to.equal("bar");
@@ -482,6 +491,7 @@ FOO=foo
         projectId: "project",
         projectAlias: "alias",
         functionsSource: tmpdir,
+        configDir: tmpdir,
       });
       expect(envs["ESCAPES"]).to.equal("\n\r\t\v");
       expect(envs["WITH_SLASHES"]).to.equal("\n\\\r\\\t\\\v");
@@ -492,13 +502,16 @@ FOO=foo
       try {
         env.writeUserEnvs(
           { FOO: "bar", lowercase: "bar" },
-          { projectId: "project", functionsSource: tmpdir },
+          { projectId: "project", functionsSource: tmpdir, configDir: tmpdir },
         );
       } catch (err: any) {
         // no-op
       }
-      expect(env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir })["FOO"]).to.be
-        .undefined;
+      expect(
+        env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir, configDir: tmpdir })[
+          "FOO"
+        ],
+      ).to.be.undefined;
     });
   });
 
@@ -526,7 +539,9 @@ FOO=foo
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
@@ -534,7 +549,9 @@ FOO=foo
         ".env": "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -545,7 +562,9 @@ FOO=foo
         ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -556,7 +575,9 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -567,7 +588,9 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -579,7 +602,9 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=good",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -592,7 +617,12 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({
+          ...projectInfo,
+          functionsSource: tmpdir,
+          configDir: tmpdir,
+          isEmulator: true,
+        }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -605,7 +635,9 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=good",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -618,7 +650,12 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({
+          ...projectInfo,
+          functionsSource: tmpdir,
+          configDir: tmpdir,
+          isEmulator: true,
+        }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -632,7 +669,9 @@ FOO=foo
         ".env.local": "FOO=bad",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir }),
+      ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -646,7 +685,12 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({
+          ...projectInfo,
+          functionsSource: tmpdir,
+          configDir: tmpdir,
+          isEmulator: true,
+        }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -661,7 +705,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir });
       }).to.throw("Can't have both");
     });
 
@@ -671,7 +715,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -682,7 +726,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -692,8 +736,23 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: tmpdir });
       }).to.throw("Failed to load");
+    });
+
+    it("loads envs from a different configDir", () => {
+      const configDir = path.join(tmpdir, "config");
+      fs.mkdirSync(configDir);
+      createEnvFiles(configDir, {
+        ".env": "FOO=foo\nBAR=bar",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: configDir }),
+      ).to.be.deep.equal({
+        FOO: "foo",
+        BAR: "bar",
+      });
     });
   });
 

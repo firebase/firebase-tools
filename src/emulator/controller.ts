@@ -540,6 +540,7 @@ export async function startAll(
       }
       emulatableBackends.push({
         functionsDir,
+        configDir: cfg.configDir ? path.join(projectDir, cfg.configDir) : undefined,
         runtime,
         codebase: cfg.codebase,
         prefix: cfg.prefix,
