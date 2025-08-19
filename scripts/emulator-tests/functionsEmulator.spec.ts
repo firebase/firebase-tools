@@ -83,13 +83,20 @@ async function writeSource(
   };
 }
 
+interface UseFunctionOptions {
+  regions?: string[];
+  backend?: EmulatableBackend;
+  triggerOverrides?: Partial<EmulatedTriggerDefinition>;
+}
+
 async function useFunction(
   emu: FunctionsEmulator,
   triggerName: string,
   triggerSource: () => {},
-  regions: string[] = ["us-central1"],
-  triggerOverrides?: Partial<EmulatedTriggerDefinition>,
+  options: UseFunctionOptions = {},
 ): Promise<void> {
+  const { regions = ["us-central1"], backend = TEST_BACKEND, triggerOverrides } = options;
+
   await writeSource(triggerSource);
   const triggers: EmulatedTriggerDefinition[] = [];
   for (const region of regions) {
@@ -104,7 +111,7 @@ async function useFunction(
       ...triggerOverrides,
     });
   }
-  emu.setTriggersForTesting(triggers, TEST_BACKEND);
+  emu.setTriggersForTesting(triggers, backend);
 }
 
 const TEST_PROJECT_ID = "fake-project-id";
@@ -168,7 +175,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["us-central1", "europe-west2"],
+        { regions: ["us-central1", "europe-west2"] },
       );
 
       await supertest(emu.createHubServer())
@@ -193,7 +200,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["us-central1", "europe-west2"],
+        { regions: ["us-central1", "europe-west2"] },
       );
 
       await supertest(emu.createHubServer())
@@ -404,7 +411,7 @@ describe("FunctionsEmulator", function () {
               }),
           };
         },
-        ["europe-west3"],
+        { regions: ["europe-west3"] },
       );
 
       await supertest(emu.createHubServer())
@@ -821,23 +828,18 @@ describe("FunctionsEmulator", function () {
           ".env": "FOO=foo\nBAR=bar",
         });
 
-        await useFunction(
-          emu,
-          "dotenv",
-          () => {
-            return {
-              dotenv: require("firebase-functions").https.onRequest(
-                (req: express.Request, res: express.Response) => {
-                  res.json({
-                    FOO: process.env.FOO,
-                    BAR: process.env.BAR,
-                  });
-                },
-              ),
-            };
-          },
-          ["us-central1"],
-        );
+        await useFunction(emu, "dotenv", () => {
+          return {
+            dotenv: require("firebase-functions").https.onRequest(
+              (req: express.Request, res: express.Response) => {
+                res.json({
+                  FOO: process.env.FOO,
+                  BAR: process.env.BAR,
+                });
+              },
+            ),
+          };
+        });
 
         await supertest(emu.createHubServer())
           .get(`/${TEST_PROJECT_ID}/us-central1/dotenv`)
@@ -853,22 +855,17 @@ describe("FunctionsEmulator", function () {
           [`.env.${TEST_PROJECT_ID}`]: "FOO=goo",
         });
 
-        await useFunction(
-          emu,
-          "dotenv",
-          () => {
-            return {
-              dotenv: require("firebase-functions").https.onRequest(
-                (req: express.Request, res: express.Response) => {
-                  res.json({
-                    FOO: process.env.FOO,
-                  });
-                },
-              ),
-            };
-          },
-          ["us-central1"],
-        );
+        await useFunction(emu, "dotenv", () => {
+          return {
+            dotenv: require("firebase-functions").https.onRequest(
+              (req: express.Request, res: express.Response) => {
+                res.json({
+                  FOO: process.env.FOO,
+                });
+              },
+            ),
+          };
+        });
 
         await supertest(emu.createHubServer())
           .get(`/${TEST_PROJECT_ID}/us-central1/dotenv`)
@@ -885,22 +882,17 @@ describe("FunctionsEmulator", function () {
           ".env.local": "FOO=hoo",
         });
 
-        await useFunction(
-          emu,
-          "dotenv",
-          () => {
-            return {
-              dotenv: require("firebase-functions").https.onRequest(
-                (req: express.Request, res: express.Response) => {
-                  res.json({
-                    FOO: process.env.FOO,
-                  });
-                },
-              ),
-            };
-          },
-          ["us-central1"],
-        );
+        await useFunction(emu, "dotenv", () => {
+          return {
+            dotenv: require("firebase-functions").https.onRequest(
+              (req: express.Request, res: express.Response) => {
+                res.json({
+                  FOO: process.env.FOO,
+                });
+              },
+            ),
+          };
+        });
 
         await supertest(emu.createHubServer())
           .get(`/${TEST_PROJECT_ID}/us-central1/dotenv`)
@@ -947,7 +939,7 @@ describe("FunctionsEmulator", function () {
                 ),
               };
             },
-            ["us-central1"],
+            { backend },
           );
         });
 
@@ -999,16 +991,17 @@ describe("FunctionsEmulator", function () {
               ),
             };
           },
-          ["us-central1"],
           {
-            secretEnvironmentVariables: [
-              {
-                projectId: TEST_PROJECT_ID,
-                secret: "MY_SECRET",
-                key: "MY_SECRET",
-                version: "1",
-              },
-            ],
+            triggerOverrides: {
+              secretEnvironmentVariables: [
+                {
+                  projectId: TEST_PROJECT_ID,
+                  secret: "MY_SECRET",
+                  key: "MY_SECRET",
+                  version: "1",
+                },
+              ],
+            },
           },
         );
 
@@ -1036,16 +1029,17 @@ describe("FunctionsEmulator", function () {
               ),
             };
           },
-          ["us-central1"],
           {
-            secretEnvironmentVariables: [
-              {
-                projectId: TEST_PROJECT_ID,
-                secret: "MY_SECRET",
-                key: "MY_SECRET",
-                version: "1",
-              },
-            ],
+            triggerOverrides: {
+              secretEnvironmentVariables: [
+                {
+                  projectId: TEST_PROJECT_ID,
+                  secret: "MY_SECRET",
+                  key: "MY_SECRET",
+                  version: "1",
+                },
+              ],
+            },
           },
         );
 
@@ -1162,9 +1156,10 @@ describe("FunctionsEmulator", function () {
             }),
         };
       },
-      ["us-central1"],
       {
-        timeoutSeconds: 1,
+        triggerOverrides: {
+          timeoutSeconds: 1,
+        },
       },
     );
 

@@ -565,6 +565,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
         isEmulator: true,
+        configDir: emulatableBackend.configDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
