@@ -1,7 +1,2 @@
-- Updated untime config deprecation warning to no longer shows for v1 functions that only use default Firebase config. (#8963)
-- Updated Data Connect emulator to v2.11.1, which:
-  - [added] Add an app watch that collects embedded GQL into the connector folder.
-  - [fixed] Handle foreign key constraint error as FailedPrecondition.
-- [Added] Support for creating Firestore Enterprise databases using `firestore:databases:create --edition enterprise`. (#8952)
-- [Added] Support for Firestore Enterprise database index configurations. (#8939)
-- [fixed] MCP: The `get_sdk_config` tool now properly returns decoded file content for Android and iOS.
+- Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
+- Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
