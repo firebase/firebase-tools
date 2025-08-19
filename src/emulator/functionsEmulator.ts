@@ -514,12 +514,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const pool of Object.values(this.workerPools)) {
       pool.exit();
     }
-    
+
     for (const watcher of this.watchers) {
       await watcher.close();
     }
     this.watchers = [];
-    
+
     if (this.destroyServer) {
       await this.destroyServer();
     }
