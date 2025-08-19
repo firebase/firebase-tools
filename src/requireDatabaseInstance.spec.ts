@@ -33,10 +33,10 @@ describe("requireDatabaseInstance", () => {
   });
 
   it("should set options.instance to the value returned by getDefaultDatabaseInstance", async () => {
-    const options = {};
+    const options: { instance?: string } = {};
     getDefaultDatabaseInstanceStub.resolves("default-instance");
     await requireDatabaseInstance(options);
-    expect((options as any).instance).to.equal("default-instance");
+    expect(options.instance).to.equal("default-instance");
   });
 
   it("should throw a FirebaseError if getDefaultDatabaseInstance returns an empty string", async () => {

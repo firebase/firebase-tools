@@ -29,10 +29,10 @@ describe("requireHostingSite", () => {
   });
 
   it("should set options.site to the value returned by getDefaultHostingSite", async () => {
-    const options = {};
+    const options: { site?: string } = {};
     getDefaultHostingSiteStub.resolves("default-site");
     await requireHostingSite(options);
-    expect((options as any).site).to.equal("default-site");
+    expect(options.site).to.equal("default-site");
   });
 
   it("should not throw an error if getDefaultHostingSite resolves", async () => {
