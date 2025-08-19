@@ -21,7 +21,6 @@ describe("artifactRegistry", () => {
   });
 
   describe("deletePackage", () => {
-
     const pkg =
       "projects/test-project/locations/us-central1/repositories/test-repo/packages/test-pkg";
     it("should resolve with Operation on success", async () => {
