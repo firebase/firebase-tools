@@ -165,8 +165,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
-      enableGoogleMlIntegration: false,
-      waitForCreation: false,
+      requireGoogleMlIntegration: false,
     });
   }
 }

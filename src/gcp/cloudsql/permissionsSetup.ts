@@ -121,7 +121,7 @@ export async function setupSQLPermissions(
       `Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`,
     );
   }
-  await setupIAMUsers(instanceId, databaseId, options);
+  await setupIAMUsers(instanceId, options);
 
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {

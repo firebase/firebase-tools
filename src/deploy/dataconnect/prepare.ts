@@ -86,15 +86,13 @@ export default async function (context: any, options: DeployOptions): Promise<vo
             if (!instanceId || !databaseId) {
               return Promise.resolve();
             }
-            const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
             return provisionCloudSql({
               projectId,
               location: parseServiceName(s.serviceName).location,
               instanceId,
               databaseId,
-              enableGoogleMlIntegration,
-              waitForCreation: true,
-              dryRun: options.dryRun,
+              requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+              dryRun: true,
             });
           }
         }),

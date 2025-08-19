@@ -34,7 +34,7 @@ async function setupSchemaIfNecessary(
   databaseId: string,
   options: Options,
 ): Promise<SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField> {
-  await setupIAMUsers(instanceId, databaseId, options);
+  await setupIAMUsers(instanceId, options);
   const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
   if (
     schemaInfo.setupStatus !== SchemaSetupStatus.BrownField &&
@@ -161,7 +161,7 @@ export async function migrateSchema(args: {
     databaseId,
     /* linkIfNotConnected=*/ true,
   );
-  await setupIAMUsers(instanceId, databaseId, options);
+  await setupIAMUsers(instanceId, options);
   let diffs: Diff[] = [];
 
   // Make sure database is setup.
@@ -276,7 +276,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   // Make sure current user can perform this action.
-  await setupIAMUsers(instanceId, databaseId, options);
+  await setupIAMUsers(instanceId, options);
   const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
   if (!userIsCSQLAdmin) {
     throw new FirebaseError(
@@ -578,15 +578,14 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
 // We fix this by upserting the currently deployed schema with schemaValidation=strict,
 export async function ensureServiceIsConnectedToCloudSql(
   serviceName: string,
-  instanceId: string,
+  instanceName: string,
   databaseId: string,
   linkIfNotConnected: boolean,
-) {
+): Promise<void> {
   let currentSchema = await getSchema(serviceName);
   if (!currentSchema) {
     if (!linkIfNotConnected) {
       logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
-      return;
     }
     // TODO: make this prompt
     // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
@@ -599,13 +598,7 @@ export async function ensureServiceIsConnectedToCloudSql(
       },
       datasources: [
         {
-          postgresql: {
-            database: databaseId,
-            schemaValidation: "NONE",
-            cloudSql: {
-              instance: instanceId,
-            },
-          },
+          postgresql: { ephemeral: true },
         },
       ],
     };
@@ -613,24 +606,33 @@ export async function ensureServiceIsConnectedToCloudSql(
 
   const postgresDatasource = currentSchema.datasources.find((d) => d.postgresql);
   const postgresql = postgresDatasource?.postgresql;
-  if (postgresql?.cloudSql?.instance !== instanceId) {
-    logLabeledWarning(
-      "dataconnect",
-      `Switching connected Cloud SQL instance\nFrom ${postgresql?.cloudSql?.instance}\nTo ${instanceId}`,
+  if (!postgresql) {
+    throw new FirebaseError(
+      `cannot find Postgres datasource in schema ${serviceName}/schemas/${SCHEMA_ID}`,
     );
   }
-  if (postgresql?.database !== databaseId) {
+  let alreadyConnected = !postgresql.ephemeral || false;
+  if (postgresql.cloudSql?.instance && postgresql.cloudSql.instance !== instanceName) {
+    alreadyConnected = false;
     logLabeledWarning(
       "dataconnect",
-      `Switching connected Postgres database from ${postgresql?.database} to ${databaseId}`,
+      `Switching connected Cloud SQL instance\nFrom ${postgresql.cloudSql.instance}\nTo ${instanceName}`,
     );
   }
-  if (!postgresql || postgresql.schemaValidation !== "NONE") {
-    // Skip provisioning connectvity if it is already connected.
-    return;
+  if (postgresql.database !== databaseId) {
+    alreadyConnected = false;
+    logLabeledWarning(
+      "dataconnect",
+      `Switching connected Postgres database from ${postgresql.database} to ${databaseId}`,
+    );
   }
-  postgresql.schemaValidation = "STRICT";
+  if (alreadyConnected) {
+    // Skip provisioning connectivity if it is already connected.
+  }
   try {
+    postgresql.schemaValidation = "STRICT";
+    postgresql.database = databaseId;
+    postgresql.cloudSql = { instance: instanceName };
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {
     if (err?.status >= 500) {

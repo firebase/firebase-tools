@@ -90,14 +90,12 @@ export default async function (
           if (!instanceId || !databaseId) {
             return Promise.resolve();
           }
-          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
           return provisionCloudSql({
             projectId,
             location: parseServiceName(s.serviceName).location,
             instanceId,
             databaseId,
-            enableGoogleMlIntegration,
-            waitForCreation: true,
+            requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
           });
         }
       }),
