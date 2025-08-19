@@ -22,7 +22,7 @@ export const get_sample_crash = tool(
         .string()
         .optional()
         .describe(
-          "The variant Id that maps to an issue Id for which the sample crash needs to be fetched.",
+          "The issue variant Id used as a filter to get sample issues.",
         ),
       sample_count: z
         .number()
