@@ -20,9 +20,7 @@ describe("resolveSource", () => {
           publisher: "test-publisher",
         },
       };
-      nock(registryOrigin)
-        .get("/extensions.json")
-        .reply(200, { mods: expectedRegistry });
+      nock(registryOrigin).get("/extensions.json").reply(200, { mods: expectedRegistry });
 
       const registry = await getExtensionRegistry();
 
@@ -58,9 +56,7 @@ describe("resolveSource", () => {
     });
 
     it("should return an empty object if mods are not specified", async () => {
-      nock(registryOrigin)
-        .get("/extensions.json")
-        .reply(200, {});
+      nock(registryOrigin).get("/extensions.json").reply(200, {});
 
       const registry = await getExtensionRegistry();
 
@@ -77,9 +73,7 @@ describe("resolveSource", () => {
           publisher: "test-publisher",
         },
       };
-      nock(registryOrigin)
-        .get("/extensions.json")
-        .reply(200, { mods: registry });
+      nock(registryOrigin).get("/extensions.json").reply(200, { mods: registry });
 
       const filteredRegistry = await getExtensionRegistry(true);
 
