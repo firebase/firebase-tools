@@ -115,7 +115,7 @@ export async function provisionCloudSql(args: {
           );
       } else {
         await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-        silent || utils.logLabeledBullet("dataconnect", `Postgres Database ${databaseId} created.`);
+        silent || utils.logLabeledBullet("dataconnect", `Postgres database ${databaseId} created.`);
       }
     } else {
       // Skip it if the database is not accessible.
