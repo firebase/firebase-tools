@@ -21,9 +21,10 @@ describe("artifactRegistry", () => {
   });
 
   describe("deletePackage", () => {
+
+    const pkg =
+      "projects/test-project/locations/us-central1/repositories/test-repo/packages/test-pkg";
     it("should resolve with Operation on success", async () => {
-      const pkg =
-        "projects/test-project/locations/us-central1/repositories/test-repo/packages/test-pkg";
       const op: artifactRegistry.Operation = {
         name: `projects/test-project/locations/us-central1/operations/long-running-op`,
         done: false,
@@ -39,8 +40,6 @@ describe("artifactRegistry", () => {
     });
 
     it("should reject if api returns error", async () => {
-      const pkg =
-        "projects/test-project/locations/us-central1/repositories/test-repo/packages/test-pkg";
       nock(api.artifactRegistryDomain())
         .delete(`/${artifactRegistry.API_VERSION}/${pkg}`)
         .reply(404, { error: { message: "Not Found" } });
@@ -82,6 +81,7 @@ describe("artifactRegistry", () => {
   });
 
   describe("updateRepository", () => {
+    const UPDATE_MASK = "labels,cleanupPolicies,cleanupPolicyDryRun";
     const REPO_INPUT: artifactRegistry.RepositoryInput = {
       name: REPO_PATH,
       labels: {
@@ -108,9 +108,8 @@ describe("artifactRegistry", () => {
         createTime: "2020-01-01T00:00:00Z",
         updateTime: "2020-01-01T00:00:00Z",
       };
-      const updateMask = "labels,cleanupPolicies,cleanupPolicyDryRun";
       nock(api.artifactRegistryDomain())
-        .patch(`/${artifactRegistry.API_VERSION}/${REPO_PATH}?updateMask=${updateMask}`)
+        .patch(`/${artifactRegistry.API_VERSION}/${REPO_PATH}?updateMask=${UPDATE_MASK}`)
         .reply(200, expectedRepo);
 
       const resp = await artifactRegistry.updateRepository(REPO_INPUT);
@@ -138,9 +137,8 @@ describe("artifactRegistry", () => {
     });
 
     it("should reject if api returns error", async () => {
-      const updateMask = "labels,cleanupPolicies,cleanupPolicyDryRun";
       nock(api.artifactRegistryDomain())
-        .patch(`/${artifactRegistry.API_VERSION}/${REPO_PATH}?updateMask=${updateMask}`)
+        .patch(`/${artifactRegistry.API_VERSION}/${REPO_PATH}?updateMask=${UPDATE_MASK}`)
         .reply(404, { error: { message: "Not Found" } });
 
       await expect(artifactRegistry.updateRepository(REPO_INPUT)).to.be.rejectedWith("Not Found");
