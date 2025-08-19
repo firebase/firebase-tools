@@ -321,6 +321,9 @@ export async function resolveBackend(
 }
 
 // Exported for testing
+/**
+ *
+ */
 export function envWithTypes(
   definedParams: params.Param[],
   rawEnvs: Record<string, string>,
@@ -662,8 +665,7 @@ export function applyPrefix(build: Build, prefix: string): void {
     return;
   }
   const newEndpoints: Record<string, Endpoint> = {};
-  for (const id of Object.keys(build.endpoints)) {
-    const endpoint = build.endpoints[id];
+  for (const [id, endpoint] of Object.entries(build.endpoints)) {
     const newId = `${prefix}-${id}`;
 
     // Enforce function id constraints early for clearer errors.

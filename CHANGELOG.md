@@ -1,0 +1,1 @@
+- Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)

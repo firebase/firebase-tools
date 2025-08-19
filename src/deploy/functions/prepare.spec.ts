@@ -3,15 +3,16 @@ import * as sinon from "sinon";
 import * as build from "./build";
 import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
+import * as backend from "./backend";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as serviceusage from "../../gcp/serviceusage";
+import * as prompt from "../../prompt";
 import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
-import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import * as serviceusage from "../../gcp/serviceusage";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
-import * as prompt from "../../prompt";
+import { latest } from "./runtimes/supported";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -20,7 +21,7 @@ describe("prepare", () => {
     region: "region",
     project: "project",
     entryPoint: "entry",
-    runtime: "nodejs22",
+    runtime: latest("nodejs"),
   };
 
   const ENDPOINT: backend.Endpoint = {
@@ -38,7 +39,7 @@ describe("prepare", () => {
       discoverBuildStub = sandbox.stub();
       runtimeDelegateStub = {
         language: "nodejs",
-        runtime: "nodejs22",
+        runtime: latest("nodejs"),
         bin: "node",
         validate: sandbox.stub().resolves(),
         build: sandbox.stub().resolves(),
@@ -51,7 +52,7 @@ describe("prepare", () => {
             platform: "gcfv2",
             entryPoint: "test",
             project: "project",
-            runtime: "nodejs22",
+            runtime: latest("nodejs"),
             httpsTrigger: {},
           },
         }),
@@ -380,7 +381,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs22",
+      runtime: latest("nodejs"),
       httpsTrigger: {},
     };
 
@@ -390,7 +391,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs22",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -409,7 +410,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs22",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -539,7 +540,7 @@ describe("prepare", () => {
         region: "us-central1",
         project: "project",
         entryPoint: "entry",
-        runtime: "nodejs22",
+        runtime: latest("nodejs"),
         httpsTrigger: {},
         secretEnvironmentVariables: [
           {
@@ -567,7 +568,7 @@ describe("prepare", () => {
         region: "us-central1",
         project: "project",
         entryPoint: "entry",
-        runtime: "nodejs22",
+        runtime: latest("nodejs"),
         httpsTrigger: {},
       };
 
