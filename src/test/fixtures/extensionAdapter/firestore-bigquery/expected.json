@@ -93,24 +93,24 @@
       }
     },
     {
-      "type": "string",
+      "type": "int",
       "name": "FUNCTION_MEMORY",
       "label": "Memory for the export function",
-      "default": "1024",
+      "default": 1024,
       "input": {
         "select": {
           "options": [
             {
               "label": "512 MB",
-              "value": "512"
+              "value": 512
             },
             {
               "label": "1 GB",
-              "value": "1024"
+              "value": 1024
             },
             {
               "label": "2 GB",
-              "value": "2048"
+              "value": 2048
             }
           ]
         }

@@ -288,6 +288,19 @@ function createEndpoint(resource: Resource, projectId: string): build.Endpoint {
 }
 
 /**
+ * Check if all select options are numeric values
+ */
+function hasAllNumericOptions(param: Param): boolean {
+  if (!param.options || param.type !== "select") {
+    return false;
+  }
+  return param.options.every(opt => {
+    const val = String(opt.value);
+    return !isNaN(Number(val)) && val.trim() !== '';
+  });
+}
+
+/**
  * Convert extension params to build params
  */
 function convertParam(param: Param): params.Param {
@@ -296,6 +309,47 @@ function convertParam(param: Param): params.Param {
       type: "secret",
       name: param.param,
     };
+  }
+
+  // Legacy support: Some extensions (e.g., storage-resize-images) use select params with
+  // numeric values for properties like FUNCTION_MEMORY. These should be treated as IntParams
+  // to allow proper type coercion when used in numeric contexts like availableMemoryMb.
+  // This pattern was later replaced by system params, but we need to support existing extensions.
+  // Analysis shows only ~4% of extensions use this pattern, all for FUNCTION_MEMORY.
+  if (param.type === "select" && hasAllNumericOptions(param)) {
+    const intParam: params.IntParam = {
+      type: "int",
+      name: param.param,
+      label: param.label,
+    };
+
+    proto.copyIfPresent(intParam, param, "description");
+    proto.copyIfPresent(intParam, param, "immutable");
+    
+    // Convert default to number
+    if (param.default !== undefined) {
+      const defaultStr = String(param.default);
+      if (hasParamReference(defaultStr)) {
+        // If it's a param reference, keep as CEL expression
+        intParam.default = processField(defaultStr);
+      } else {
+        intParam.default = Number(defaultStr);
+      }
+    }
+
+    // Add select input with numeric values
+    if (param.options) {
+      intParam.input = {
+        select: {
+          options: param.options.map((opt) => ({
+            label: opt.label || String(opt.value),
+            value: Number(opt.value),
+          })),
+        },
+      };
+    }
+
+    return intParam;
   }
 
   if (param.type === "multiSelect") {
