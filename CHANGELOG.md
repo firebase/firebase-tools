@@ -1,2 +1,3 @@
 - Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
 - Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
+- Added 2 new MCP tools for crashlytics `get_sample_crash_for_issue` and `get_issue_details`.
