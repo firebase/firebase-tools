@@ -35,10 +35,10 @@
       }
     },
     {
-      "type": "string",
+      "type": "list",
       "name": "FEATURES",
       "label": "Features to enable",
-      "default": "email,push",
+      "default": ["email", "push"],
       "input": {
         "multiSelect": {
           "options": [

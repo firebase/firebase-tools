@@ -298,19 +298,58 @@ function convertParam(param: Param): params.Param {
     };
   }
 
+  if (param.type === "multiSelect") {
+    const listParam: params.ListParam = {
+      type: "list",
+      name: param.param,
+      label: param.label,
+    };
+
+    proto.copyIfPresent(listParam, param, "description");
+    proto.copyIfPresent(listParam, param, "immutable");
+
+    if (param.default !== undefined) {
+      const defaultStr = String(param.default);
+      if (hasParamReference(defaultStr)) {
+        // TODO: Consider supporting CEL expressions that return arrays
+        listParam.default = [processField(defaultStr)];
+      } else {
+        listParam.default = defaultStr
+          .split(",")
+          .map((v) => v.trim())
+          .filter((v) => v);
+      }
+    }
+
+    if (param.options) {
+      listParam.input = {
+        multiSelect: {
+          options: param.options.map((opt) => ({
+            label: opt.label || String(opt.value),
+            value: String(opt.value),
+          })),
+        },
+      };
+    }
+
+    return listParam;
+  }
+
   const stringParam: params.StringParam = {
     type: "string",
     name: param.param,
     label: param.label,
   };
 
-  if (param.description !== undefined) stringParam.description = param.description;
-  if (param.immutable !== undefined) stringParam.immutable = param.immutable;
-  if (param.default !== undefined) stringParam.default = processField(String(param.default));
+  proto.copyIfPresent(stringParam, param, "description");
+  proto.copyIfPresent(stringParam, param, "immutable");
 
-  // Handle different input types
+  proto.convertIfPresent(stringParam, param, "default", "default", (val) =>
+    processField(String(val)),
+  );
+
   switch (param.type) {
-    case "select": {
+    case "select":
       if (param.options) {
         stringParam.input = {
           select: {
@@ -322,20 +361,7 @@ function convertParam(param: Param): params.Param {
         };
       }
       break;
-    }
-    case "multiSelect": {
-      if (param.options) {
-        stringParam.input = {
-          multiSelect: {
-            options: param.options.map((opt) => ({
-              label: opt.label || String(opt.value),
-              value: String(opt.value),
-            })),
-          },
-        };
-      }
-      break;
-    }
+
     case "selectResource":
       if (!param.resourceType) {
         throw new FirebaseError(
@@ -348,17 +374,14 @@ function convertParam(param: Param): params.Param {
         },
       };
       break;
+
     default:
       if (param.validationRegex) {
         const text: params.TextInput<string>["text"] = {
           validationRegex: param.validationRegex,
         };
-        if (param.validationErrorMessage !== undefined) {
-          text.validationErrorMessage = param.validationErrorMessage;
-        }
-        if (param.example !== undefined) {
-          text.example = param.example;
-        }
+        proto.copyIfPresent(text, param, "validationErrorMessage");
+        proto.copyIfPresent(text, param, "example");
         stringParam.input = { text };
       }
   }
