@@ -95,7 +95,7 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            "Cloud SQL instance creation started. Meanwhile, your data are saved in a temporary database and will be migrated once complete.",
+            "Cloud SQL instance creation started. While it is being set up, your data will be saved in a temporary database. When it is ready, your data will be migrated.",
           );
         return connectionName;
       }
