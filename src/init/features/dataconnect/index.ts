@@ -342,7 +342,7 @@ export async function postSetup(setup: Setup, config: Config, options: Options):
     await sdk.doSetup(setup, config, options);
   } else {
     logBullet(
-      `If you'd like to add the generated SDK to your app later, run ${clc.bold("firebase init dataconnect:sdk")}`,
+      `To add the generated SDK to your app, run ${clc.bold("firebase init dataconnect:sdk")}\n`,
     );
   }
   if (setup.projectId && !setup.isBillingEnabled) {
