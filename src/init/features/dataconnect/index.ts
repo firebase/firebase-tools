@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis, isApiEnabled } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -101,20 +101,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
   };
   if (setup.projectId) {
     const hasBilling = await isBillingEnabled(setup);
-    if (hasBilling || (await isApiEnabled(setup.projectId))) {
-      await ensureApis(setup.projectId);
-      // Query backend and pick up any existing services quickly.
-      await promptForExistingServices(setup, info);
-    } else {
-      // New Spark project. Don't wait for API enablement.
-      // Write the template and show them instructions right away.
-      void ensureApis(setup.projectId).catch((err) => {
-        // Log for debugging, but don't block the init flow.
-        logger.debug(`[dataconnect] Background API enablement failed: ${err?.message}`);
-      });
-    }
-    // TODO(fredzqm): Remove `hasBilling` to enable Gemini-powered experience for Spark projects.
-    if (hasBilling && !info.serviceGql) {
+    await ensureApis(setup.projectId);
+    await promptForExistingServices(setup, info);
+    if (!info.serviceGql) {
       // TODO: Consider use Gemini to generate schema for Spark project as well.
       if (!configstore.get("gemini")) {
         logBullet(
