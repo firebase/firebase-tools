@@ -28,38 +28,31 @@ import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils
 import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
+import { cloudSQLBeingCreated } from "./provisionCloudSql";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
   databaseId: string,
   options: Options,
-): Promise<
-  SchemaSetupStatus.PendingCreate | SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField
-> {
-  const projectId = needProjectId(options);
-  const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-  if (existingInstance.state === "PENDING_CREATE") {
-    return SchemaSetupStatus.PendingCreate;
-  }
+): Promise<SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField> {
+  await setupIAMUsers(instanceId, options);
   const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
-  if (
-    schemaInfo.setupStatus !== SchemaSetupStatus.BrownField &&
-    schemaInfo.setupStatus !== SchemaSetupStatus.GreenField
-  ) {
-    return await setupSQLPermissions(
-      instanceId,
-      databaseId,
-      schemaInfo,
-      options,
-      /* silent=*/ true,
-    );
-  } else {
-    logger.debug(
-      `Detected schema "${schemaInfo.name}" is setup in ${schemaInfo.setupStatus} mode. Skipping Setup.`,
-    );
+  switch (schemaInfo.setupStatus) {
+    case SchemaSetupStatus.BrownField:
+    case SchemaSetupStatus.GreenField:
+      return schemaInfo.setupStatus;
+    case SchemaSetupStatus.NotSetup:
+    case SchemaSetupStatus.NotFound:
+      return await setupSQLPermissions(
+        instanceId,
+        databaseId,
+        schemaInfo,
+        options,
+        /* silent=*/ true,
+      );
+    default:
+      throw new FirebaseError(`Unexpected schema setup status: ${schemaInfo.setupStatus}`);
   }
-
-  return schemaInfo.setupStatus;
 }
 
 export async function diffSchema(
@@ -77,29 +70,22 @@ export async function diffSchema(
     /* linkIfNotConnected=*/ false,
   );
 
-  let diffs: Diff[] = [];
-
-  // Make sure database is setup.
-  switch (await setupSchemaIfNecessary(instanceId, databaseId, options)) {
-    case SchemaSetupStatus.PendingCreate:
-      throw new FirebaseError(`Cloud SQL Instance ${instanceId} is still being created.`);
-  }
-
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
   setSchemaValidationMode(schema, validationMode);
 
+  let diffs: Diff[] = [];
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
     if (validationMode === "STRICT") {
       logLabeledSuccess(
         "dataconnect",
-        `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is up to date.`,
+        `database schema of ${instanceId}:${databaseId} is up to date.`,
       );
     } else {
       logLabeledSuccess(
         "dataconnect",
-        `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is compatible.`,
+        `database schema of ${instanceId}:${databaseId} is compatible.`,
       );
     }
   } catch (err: any) {
@@ -164,47 +150,48 @@ export async function migrateSchema(args: {
   logLabeledBullet("dataconnect", `Generating SQL schema migrations...`);
 
   const { options, schema, validateOnly, schemaValidation } = args;
+  const projectId = needProjectId(options);
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
     databaseId,
-    /* linkIfNotConnected=*/ false,
+    /* linkIfNotConnected=*/ true,
   );
-  let diffs: Diff[] = [];
+
+  // Check if Cloud SQL instance is still being created.
+  const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
+  if (existingInstance.state === "PENDING_CREATE") {
+    const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
+    if (!postgresql) {
+      throw new FirebaseError(
+        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
+      );
+    }
+    postgresql.schemaValidation = "NONE";
+    postgresql.schemaMigration = undefined;
+    await upsertSchema(schema, validateOnly);
+    postgresql.schemaValidation = undefined;
+    postgresql.schemaMigration = "MIGRATE_COMPATIBLE";
+    await upsertSchema(schema, validateOnly, /* async= */ true);
+    logLabeledWarning(
+      "dataconnect",
+      `Skip SQL schema migration because Cloud SQL is still being created`,
+    );
+    return [];
+  }
 
   // Make sure database is setup.
-  switch (await setupSchemaIfNecessary(instanceId, databaseId, options)) {
-    case SchemaSetupStatus.PendingCreate:
-      const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
-      if (!postgresql) {
-        throw new FirebaseError(
-          `Cannot find Postgres datasource in schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}`,
-        );
-      }
-      postgresql.schemaValidation = "NONE";
-      postgresql.schemaMigration = undefined;
-      await upsertSchema(schema, validateOnly);
-      postgresql.schemaValidation = undefined;
-      postgresql.schemaMigration = "MIGRATE_COMPATIBLE";
-      await upsertSchema(schema, validateOnly, /* async= */ true);
-      logLabeledWarning(
-        "dataconnect",
-        `Skip SQL schema migration because Cloud SQL is being provisioned`,
-      );
-      return [];
-  }
+  await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
   setSchemaValidationMode(schema, validationMode);
 
+  let diffs: Diff[] = [];
   try {
     await upsertSchema(schema, validateOnly);
-    logLabeledBullet(
-      "dataconnect",
-      `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is up to date.`,
-    );
+    logLabeledBullet("dataconnect", `Database schema ${instanceId}:${databaseId} is up to date.`);
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
@@ -303,23 +290,11 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const { user, mode } = toDatabaseUser(email);
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
-  // Make sure current user can perform this action.
-  await setupIAMUsers(instanceId, options);
-  const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
-  if (!userIsCSQLAdmin) {
-    throw new FirebaseError(
-      `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${fdcSqlRole} to ${user}`,
-    );
-  }
-
   // Make sure we have the right setup for the requested role grant.
   const schemaSetupStatus = await setupSchemaIfNecessary(instanceId, databaseId, options);
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
-  if (
-    schemaSetupStatus !== SchemaSetupStatus.GreenField &&
-    fdcSqlRole === firebaseowner(databaseId, DEFAULT_SCHEMA)
-  ) {
+  if (schemaSetupStatus !== SchemaSetupStatus.GreenField && role === "owner") {
     throw new FirebaseError(
       `Owner rule isn't available in ${schemaSetupStatus} databases. If you would like Data Connect to manage and own your database schema, run 'firebase dataconnect:sql:setup'`,
     );
@@ -612,19 +587,20 @@ export async function ensureServiceIsConnectedToCloudSql(
 ): Promise<void> {
   let currentSchema = await getSchema(serviceName);
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
-  if (currentSchema?.reconciling) {
-    if (postgresql?.schemaValidation === "NONE") {
-      const [, projectId, , , , instanceId] = instanceName.split("/");
-      throw new FirebaseError(`Cloud SQL Instance ${instanceId} is being created.
-   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
-   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
-  `);
-    }
-    throw new FirebaseError(`The schema currently has a blocking UpdateSchema LRO.`);
+  if (
+    currentSchema?.reconciling &&
+    postgresql?.ephemeral &&
+    postgresql?.schemaValidation === "NONE"
+  ) {
+    // [SPECIAL CASE] Cloud SQL is being created, there is a UpdateSchema LRO  waiting for its creation.
+    // If CLI sends another `UpdateSchema` request, it will get queued and take forever to finish.
+    const [, projectId, , , , instanceId] = instanceName.split("/");
+    throw new FirebaseError(cloudSQLBeingCreated(projectId, instanceId));
   }
   if (!currentSchema || !postgresql) {
     if (!linkIfNotConnected) {
       logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
+      return;
     }
     // TODO: make this prompt
     // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
@@ -641,12 +617,10 @@ export async function ensureServiceIsConnectedToCloudSql(
         },
       ],
     };
+    postgresql = currentSchema.datasources[0].postgresql;
   }
-  postgresql = currentSchema.datasources?.find((d) => d.postgresql)?.postgresql;
   if (!postgresql) {
-    throw new FirebaseError(
-      `In ensureServiceIsConnectedToCloudSql, postgresql must be defined or inferred`,
-    );
+    throw new FirebaseError(`datasources[0].postgresql must be defined or inferred`);
   }
 
   let alreadyConnected = !postgresql.ephemeral || false;
@@ -666,6 +640,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   }
   if (alreadyConnected) {
     // Skip provisioning connectivity if it is already connected.
+    return;
   }
   try {
     postgresql.schemaValidation = "STRICT";

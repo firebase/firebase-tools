@@ -52,37 +52,6 @@ export async function isFreeTrialError(err: any, projectId: string): Promise<boo
     : false;
 }
 
-export function printFreeTrialUnavailable(
-  projectId: string,
-  configYamlPath: string,
-  instanceId?: string,
-): void {
-  if (!instanceId) {
-    utils.logLabeledError(
-      "dataconnect",
-      "The CloudSQL free trial has already been used on this project.",
-    );
-    utils.logLabeledError(
-      "dataconnect",
-      `You may create or use a paid CloudSQL instance by visiting https://console.cloud.google.com/sql/instances`,
-    );
-    return;
-  }
-  utils.logLabeledError(
-    "dataconnect",
-    `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
-  );
-  const reuseHint =
-    `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} and update ${clc.blue("location")} in ` +
-    `${clc.green(configYamlPath)}.`;
-
-  utils.logLabeledError("dataconnect", reuseHint);
-  utils.logLabeledError(
-    "dataconnect",
-    `Alternatively, you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
-  );
-}
-
 export function upgradeInstructions(projectId: string): string {
   return `To provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial:
 

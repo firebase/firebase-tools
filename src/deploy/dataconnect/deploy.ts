@@ -3,7 +3,7 @@ import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
@@ -90,7 +90,7 @@ export default async function (
           if (!instanceId || !databaseId) {
             return Promise.resolve();
           }
-          return provisionCloudSql({
+          return setupCloudSql({
             projectId,
             location: parseServiceName(s.serviceName).location,
             instanceId,

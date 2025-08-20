@@ -8,7 +8,23 @@ import { freeTrialTermsLink, checkFreeTrialInstanceUsed } from "./freeTrial";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
-export async function provisionCloudSql(args: {
+export async function setupCloudSql(args: {
+  projectId: string;
+  location: string;
+  instanceId: string;
+  databaseId: string;
+  requireGoogleMlIntegration: boolean;
+  dryRun?: boolean;
+}): Promise<string | undefined> {
+  const connectionName = await upsertInstance({ ...args });
+  const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
+  if (requireGoogleMlIntegration && !dryRun) {
+    await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
+  }
+  return connectionName;
+}
+
+async function upsertInstance(args: {
   projectId: string;
   location: string;
   instanceId: string;
@@ -33,7 +49,6 @@ export async function provisionCloudSql(args: {
         utils.logLabeledBullet(
           "dataconnect",
           `Cloud SQL instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
-            `Updating Cloud SQL instance. This may take a few minutes...` +
             why,
         );
         await promiseWithSpinner(
@@ -46,24 +61,18 @@ export async function provisionCloudSql(args: {
         );
       }
     }
-    await provisionCloudSQLDatabase({ ...args });
-    if (requireGoogleMlIntegration && !dryRun) {
-      await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
-    }
+    await upsertDatabase({ ...args });
     return existingInstance.connectionName || "";
   } catch (err: any) {
     // We only should catch NOT FOUND errors
     if (err.status !== 404) {
       throw err;
     }
-    await createCloudSQL({ ...args });
-    if (requireGoogleMlIntegration && !dryRun) {
-      await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
-    }
+    await createInstance({ ...args });
   }
 }
 
-async function createCloudSQL(args: {
+async function createInstance(args: {
   projectId: string;
   location: string;
   instanceId: string;
@@ -87,20 +96,33 @@ async function createCloudSQL(args: {
     });
     utils.logLabeledBullet(
       "dataconnect",
-      `Cloud SQL Instance ${instanceId} is being created.` +
-        (freeTrialUsed
-          ? ""
-          : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`) +
-        `
-   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
-
-   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
-`,
+      cloudSQLBeingCreated(projectId, instanceId, !freeTrialUsed),
     );
   }
 }
 
-async function provisionCloudSQLDatabase(args: {
+/**
+ * Returns a message indicating that a Cloud SQL instance is being created.
+ */
+export function cloudSQLBeingCreated(
+  projectId: string,
+  instanceId: string,
+  includeFreeTrialTos?: boolean,
+): string {
+  return (
+    `Cloud SQL Instance ${instanceId} is being created.` +
+    (includeFreeTrialTos
+      ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
+      : "") +
+    `
+   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
+
+   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
+`
+  );
+}
+
+async function upsertDatabase(args: {
   projectId: string;
   instanceId: string;
   databaseId: string;

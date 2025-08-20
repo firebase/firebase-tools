@@ -11,7 +11,7 @@ import { build } from "../../dataconnect/build";
 import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
@@ -85,7 +85,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
             if (!instanceId || !databaseId) {
               return Promise.resolve();
             }
-            return provisionCloudSql({
+            return setupCloudSql({
               projectId,
               location: parseServiceName(s.serviceName).location,
               instanceId,

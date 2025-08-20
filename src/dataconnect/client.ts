@@ -136,7 +136,7 @@ export async function upsertSchema(
   if (validateOnly || async) {
     return;
   }
-  await operationPoller.pollOperation<types.Schema>({
+  return operationPoller.pollOperation<types.Schema>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
