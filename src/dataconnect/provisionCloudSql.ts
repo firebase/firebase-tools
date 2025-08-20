@@ -32,7 +32,8 @@ export async function provisionCloudSql(args: {
   } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-    silent || utils.logLabeledBullet("dataconnect", `Found existing instance ${instanceId}.`);
+    silent ||
+      utils.logLabeledBullet("dataconnect", `Found existing Cloud SQL instance ${instanceId}.`);
     connectionName = existingInstance?.connectionName || "";
     const why = getUpdateReason(existingInstance, enableGoogleMlIntegration);
     if (why) {
@@ -61,7 +62,6 @@ export async function provisionCloudSql(args: {
     if (err.status !== 404) {
       throw err;
     }
-    cmekWarning();
     const cta = dryRun ? "It will be created on your next deploy" : "Creating it now.";
     const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
     silent ||
@@ -95,7 +95,7 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            "Cloud SQL instance creation started - it should be ready shortly. Database and users will be created on your next deploy.",
+            "Cloud SQL instance creation started. While it is being set up, your data will be saved in a temporary database. When it is ready, your data will be migrated.",
           );
         return connectionName;
       }
@@ -111,17 +111,11 @@ export async function provisionCloudSql(args: {
         silent ||
           utils.logLabeledBullet(
             "dataconnect",
-            `Database ${databaseId} not found. It will be created on your next deploy.`,
+            `Postgres database ${databaseId} not found. It will be created on your next deploy.`,
           );
       } else {
-        // Create the database if not found.
-        silent ||
-          utils.logLabeledBullet(
-            "dataconnect",
-            `Database ${databaseId} not found, creating it now...`,
-          );
         await cloudSqlAdminClient.createDatabase(projectId, instanceId, databaseId);
-        silent || utils.logLabeledBullet("dataconnect", `Database ${databaseId} created.`);
+        silent || utils.logLabeledBullet("dataconnect", `Postgres database ${databaseId} created.`);
       }
     } else {
       // Skip it if the database is not accessible.
@@ -170,12 +164,4 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   }
 
   return reason;
-}
-
-function cmekWarning() {
-  const message =
-    "Cloud SQL instances created via the Firebase CLI do not support customer managed encryption keys.\n" +
-    "If you'd like to use a CMEK to encrypt your data, first create a CMEK encrypted instance (https://cloud.google.com/sql/docs/postgres/configure-cmek#createcmekinstance).\n" +
-    "Then, edit your `dataconnect.yaml` file to use the encrypted instance and redeploy.";
-  utils.logLabeledWarning("dataconnect", message);
 }

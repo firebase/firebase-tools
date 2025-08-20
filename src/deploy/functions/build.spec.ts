@@ -293,3 +293,120 @@ describe("envWithType", () => {
     expect(out.WHOOPS_SECRET.asString()).to.equal("super-secret");
   });
 });
+
+describe("applyPrefix", () => {
+  const createTestBuild = (): build.Build => ({
+    endpoints: {
+      func1: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: "func1",
+        httpsTrigger: {},
+      },
+      func2: {
+        region: "us-west1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs16",
+        entryPoint: "func2",
+        httpsTrigger: {},
+      },
+    },
+    params: [],
+    requiredAPIs: [],
+  });
+
+  it("should update endpoint keys with prefix", () => {
+    const testBuild = createTestBuild();
+    build.applyPrefix(testBuild, "test");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
+    expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
+    expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
+  });
+
+  it("should do nothing for an empty prefix", () => {
+    const testBuild = createTestBuild();
+    build.applyPrefix(testBuild, "");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
+  });
+
+  it("should prefix secret names in secretEnvironmentVariables", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "api-secret", projectId: "test-project" },
+            { key: "DB_PASSWORD", secret: "db-secret", projectId: "test-project" },
+          ],
+        },
+        func2: {
+          region: "us-west1",
+          project: "test-project",
+          platform: "gcfv1",
+          runtime: "nodejs16",
+          entryPoint: "func2",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "SERVICE_TOKEN", secret: "service-secret", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+
+    build.applyPrefix(testBuild, "staging");
+
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal([
+      "staging-func1",
+      "staging-func2",
+    ]);
+    expect(testBuild.endpoints["staging-func1"].secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "staging-api-secret", projectId: "test-project" },
+      { key: "DB_PASSWORD", secret: "staging-db-secret", projectId: "test-project" },
+    ]);
+    expect(testBuild.endpoints["staging-func2"].secretEnvironmentVariables).to.deep.equal([
+      { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
+    ]);
+  });
+
+  it("throws if combined function id exceeds 63 characters", () => {
+    const longId = "a".repeat(34); // with 30-char prefix + dash = 65 total
+    const testBuild: build.Build = build.of({
+      [longId]: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: longId,
+        httpsTrigger: {},
+      },
+    });
+    const longPrefix = "p".repeat(30);
+    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+  });
+
+  it("throws if prefix makes function id invalid (must start with a letter)", () => {
+    const testBuild: build.Build = build.of({
+      func: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+      /Function names must start with a letter/,
+    );
+  });
+});
