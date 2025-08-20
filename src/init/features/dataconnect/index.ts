@@ -5,7 +5,7 @@ import * as fs from "fs-extra";
 import { input, select } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
@@ -178,13 +178,12 @@ async function actuateWithInfo(
   const hasBilling = await isBillingEnabled(setup);
   if (hasBilling) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
-    await provisionCloudSql({
+    await setupCloudSql({
       projectId: projectId,
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
-      enableGoogleMlIntegration: false,
-      waitForCreation: false,
+      requireGoogleMlIntegration: false,
     });
   }
   if (!info.appDescription) {
