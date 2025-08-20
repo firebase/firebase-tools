@@ -73,13 +73,13 @@ export const command = new Command("login")
 
     // Special escape hatch for logging in when using firebase-tools as a module.
     if (options.prototyperLogin) {
-      return await auth.loginPrototyper();
+      return auth.loginPrototyper();
     }
 
     // Default to using the authorization code flow when the end
     // user is within a cloud-based environment, and therefore,
     // the authorization callback couldn't redirect to localhost.
-    const useLocalhost = isCloudEnvironment() ? false : !!options.localhost;
+    const useLocalhost = !isCloudEnvironment() && !!options.localhost;
     const result = await auth.loginGoogle(useLocalhost, user?.email);
     auth.recordCredentials(result);
 

@@ -453,25 +453,19 @@ export async function loginPrototyper(): Promise<PrototyperRes> {
     uri: loginUrl,
     sessionId: sessionId.substring(0, 5).toUpperCase(),
     authorize: async (code: string) => {
-      try {
-        const tokens = await getTokensFromAuthorizationCode(
-          code,
-          `${authProxyOrigin()}/complete`,
-          codeVerifier,
-        );
+      const tokens = await getTokensFromAuthorizationCode(
+        code,
+        `${authProxyOrigin()}/complete`,
+        codeVerifier,
+      );
 
-        const creds = {
-          user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
-          tokens: tokens,
-          scopes: SCOPES,
-        };
-        recordCredentials(creds);
-        return creds;
-      } catch (e) {
-        throw new FirebaseError(
-          "Unable to authenticate using the provided code. Please try again.",
-        );
-      }
+      const creds = {
+        user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+        tokens: tokens,
+        scopes: SCOPES,
+      };
+      recordCredentials(creds);
+      return creds;
     },
   };
 }
@@ -501,7 +495,7 @@ async function loginRemotely(): Promise<UserCredentials> {
     await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
       session_id: sessionId,
     })
-  ).body?.token;
+  ).body.token;
 
   const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
