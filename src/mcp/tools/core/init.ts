@@ -148,6 +148,7 @@ export const init = tool(
     if (features.dataconnect) {
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
+        analyticsFlow: "mcp",
         appDescription: features.dataconnect.app_description || "",
         serviceId: features.dataconnect.service_id || "",
         locationId: features.dataconnect.location_id || "",

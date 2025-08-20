@@ -11,7 +11,7 @@ import { build } from "../../dataconnect/build";
 import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
@@ -32,7 +32,6 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const serviceCfgs = readFirebaseJson(options.config);
-  utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   const filters = getResourceFilters(options);
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) => load(projectId, options.config, c.source)),
@@ -63,7 +62,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     serviceInfos,
     filters,
   };
-  utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
+  utils.logLabeledBullet("dataconnect", `Successfully compiled schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
       await diffSchema(
@@ -86,15 +85,13 @@ export default async function (context: any, options: DeployOptions): Promise<vo
             if (!instanceId || !databaseId) {
               return Promise.resolve();
             }
-            const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-            return provisionCloudSql({
+            return setupCloudSql({
               projectId,
               location: parseServiceName(s.serviceName).location,
               instanceId,
               databaseId,
-              enableGoogleMlIntegration,
-              waitForCreation: true,
-              dryRun: options.dryRun,
+              requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+              dryRun: true,
             });
           }
         }),
