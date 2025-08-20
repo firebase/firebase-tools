@@ -93,14 +93,17 @@ export default async function (
     utils.logLabeledBullet("dataconnect", "No connectors to deploy.");
   }
 
-  let consolePath = "dataconnect";
+  let consolePath = "/dataconnect";
   if (serviceInfos.length === 1) {
     const sn = parseServiceName(serviceInfos[0].serviceName);
     consolePath += `/locations/${sn.location}/services/${sn.serviceId}/schema`;
   }
   utils.logLabeledSuccess(
     "dataconnect",
-    `Deployment complete! View your deployed schema and connectors at ${utils.consoleUrl(project, consolePath)}`,
+    `Deployment complete! View your deployed schema and connectors at
+
+    ${utils.consoleUrl(project, consolePath)}
+`,
   );
   return;
 }

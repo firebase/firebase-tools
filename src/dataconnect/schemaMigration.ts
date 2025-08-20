@@ -76,6 +76,7 @@ export async function diffSchema(
     databaseId,
     /* linkIfNotConnected=*/ false,
   );
+
   let diffs: Diff[] = [];
 
   // Make sure database is setup.
@@ -168,7 +169,7 @@ export async function migrateSchema(args: {
     serviceName,
     instanceName,
     databaseId,
-    /* linkIfNotConnected=*/ true,
+    /* linkIfNotConnected=*/ false,
   );
   let diffs: Diff[] = [];
 
@@ -611,6 +612,16 @@ export async function ensureServiceIsConnectedToCloudSql(
 ): Promise<void> {
   let currentSchema = await getSchema(serviceName);
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
+  if (currentSchema?.reconciling) {
+    if (postgresql?.schemaValidation === "NONE") {
+      const [, projectId, , , , instanceId] = instanceName.split("/");
+      throw new FirebaseError(`Cloud SQL Instance ${instanceId} is being created.
+   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
+   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
+  `);
+    }
+    throw new FirebaseError(`The schema currently has a blocking UpdateSchema LRO.`);
+  }
   if (!currentSchema || !postgresql) {
     if (!linkIfNotConnected) {
       logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
