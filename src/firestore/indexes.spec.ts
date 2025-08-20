@@ -404,16 +404,18 @@ describe("IndexSpecMatching", () => {
       expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
     });
 
-    it("should identify a positive index spec match with same apiScope", () => {
-      const apiIndex1 = { ...baseApiIndex, apiScope: API.ApiScope.ANY_API };
-      const specIndex1 = { ...baseSpecIndex, apiScope: "ANY_API" } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same apiScope ANY_API", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: API.ApiScope.ANY_API };
+      const specIndex = { ...baseSpecIndex, apiScope: "ANY_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-      const apiIndex2 = { ...baseApiIndex, apiScope: API.ApiScope.MONGODB_COMPATIBLE_API };
-      const specIndex2 = { ...baseSpecIndex, apiScope: "MONGODB_COMPATIBLE_API" } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same apiScope MONGODB_COMPATIBLE_API", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: API.ApiScope.MONGODB_COMPATIBLE_API };
+      const specIndex = { ...baseSpecIndex, apiScope: "MONGODB_COMPATIBLE_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
     });
 
     it("should identify a positive match, apiScope missing in index, default in spec", () => {
@@ -453,21 +455,25 @@ describe("IndexSpecMatching", () => {
       expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
     });
 
-    it("should identify a positive index spec match with same density", () => {
-      const apiIndex1 = { ...baseApiIndex, density: API.Density.DENSE };
-      const specIndex1 = { ...baseSpecIndex, density: "DENSE" } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same density DENSE", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.DENSE };
+      const specIndex = { ...baseSpecIndex, density: "DENSE" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-      const apiIndex2 = { ...baseApiIndex, density: API.Density.SPARSE_ALL };
-      const specIndex2 = { ...baseSpecIndex, density: "SPARSE_ALL" } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same density SPARSE_ALL", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.SPARSE_ALL };
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ALL" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-      const apiIndex3 = { ...baseApiIndex, density: API.Density.SPARSE_ANY };
-      const specIndex3 = { ...baseSpecIndex, density: "SPARSE_ANY" } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex3, specIndex3, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex3, specIndex3, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same density SPARSE_ANY", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.SPARSE_ANY };
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ANY" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
     });
 
     it("should identify a positive match, density missing in index, default in spec", () => {
@@ -525,16 +531,18 @@ describe("IndexSpecMatching", () => {
       expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
     });
 
-    it("should identify a positive index spec match with same multikey", () => {
-      const apiIndex1 = { ...baseApiIndex, multikey: true };
-      const specIndex1 = { ...baseSpecIndex, multikey: true } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same multikey true", () => {
+      const apiIndex = { ...baseApiIndex, multikey: true };
+      const specIndex = { ...baseSpecIndex, multikey: true } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-      const apiIndex2 = { ...baseApiIndex, multikey: false };
-      const specIndex2 = { ...baseSpecIndex, multikey: false } as Spec.Index;
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.STANDARD)).to.eql(true);
-      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    it("should identify a positive index spec match with same multikey false", () => {
+      const apiIndex = { ...baseApiIndex, multikey: false };
+      const specIndex = { ...baseSpecIndex, multikey: false } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
     });
 
     it("should identify a positive match, multikey missing in index, default in spec", () => {

@@ -2,7 +2,6 @@ import * as clc from "colorette";
 
 import { logger } from "../logger";
 import * as utils from "../utils";
-import { deepEqual } from "../utils";
 import * as validator from "./validator";
 
 import * as types from "./api-types";
@@ -15,6 +14,7 @@ import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
+import { optionalValueMatches } from "../functional";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
@@ -487,17 +487,6 @@ export class FirestoreApi {
   }
 
   /**
-   * Returns true if the given values match. If either one is undefined, the default value is used for comparison.
-   * @param lhs the first value.
-   * @param rhs the second value.
-   */
-  optionalValueMatches<T>(lhs: T | undefined, rhs: T | undefined, defaultValue: T): boolean {
-    lhs = lhs === undefined ? defaultValue : lhs;
-    rhs = rhs === undefined ? defaultValue : rhs;
-    return lhs === rhs;
-  }
-
-  /**
    * Returns true if the given ApiScope values match.
    * If either one is undefined, the default value is used for comparison.
    * @param lhs the first ApiScope value.
@@ -507,7 +496,7 @@ export class FirestoreApi {
     lhs: types.ApiScope | undefined,
     rhs: types.ApiScope | undefined,
   ): boolean {
-    return this.optionalValueMatches<types.ApiScope>(lhs, rhs, types.ApiScope.ANY_API);
+    return optionalValueMatches<types.ApiScope>(lhs, rhs, types.ApiScope.ANY_API);
   }
 
   /**
@@ -524,7 +513,7 @@ export class FirestoreApi {
   ): boolean {
     const defaultValue =
       edition === DatabaseEdition.STANDARD ? types.Density.SPARSE_ALL : types.Density.DENSE;
-    return this.optionalValueMatches<types.Density>(lhs, rhs, defaultValue);
+    return optionalValueMatches<types.Density>(lhs, rhs, defaultValue);
   }
 
   /**
@@ -535,7 +524,7 @@ export class FirestoreApi {
    */
   optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined): boolean {
     const defaultValue = false;
-    return this.optionalValueMatches<boolean>(lhs, rhs, defaultValue);
+    return optionalValueMatches<boolean>(lhs, rhs, defaultValue);
   }
 
   /**
@@ -592,7 +581,7 @@ export class FirestoreApi {
       }
 
       // Note: vectorConfig is an object, and using '!==' should not be used.
-      if (!deepEqual(iField.vectorConfig, sField.vectorConfig)) {
+      if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
         return false;
       }
 
