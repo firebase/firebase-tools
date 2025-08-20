@@ -17,6 +17,7 @@ import {
   setupSQLPermissions,
   getSchemaMetadata,
   SchemaSetupStatus,
+  grantRoleTo,
 } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { select, confirm } from "../prompt";
@@ -29,6 +30,7 @@ import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
 import { cloudSQLBeingCreated } from "./provisionCloudSql";
+import { requireAuth } from "../requireAuth";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
@@ -286,9 +288,6 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   const email = options.email as string;
 
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
-  const projectId = needProjectId(options);
-  const { user, mode } = toDatabaseUser(email);
-  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
 
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
@@ -307,17 +306,8 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
     );
   }
 
-  // Upsert new user account into the database.
-  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
-
   // Grant the role to the user.
-  await executeSqlCmdsAsSuperUser(
-    options,
-    instanceId,
-    databaseId,
-    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
-    /** silent= */ false,
-  );
+  await grantRoleTo(options, instanceId, databaseId, role, email);
 }
 
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
@@ -431,18 +421,23 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     // Test if iam user has access to the roles required for this migration
+    const { user, mode } = await getIAMUser(options);
     if (
       !(await checkSQLRoleIsGranted(
         options,
         instanceId,
         databaseId,
         firebaseowner(databaseId),
-        (await getIAMUser(options)).user,
+        user,
       ))
     ) {
-      throw new FirebaseError(
-        `Command aborted. Only users granted firebaseowner SQL role can run migrations.`,
-      );
+      if (!userIsCSQLAdmin) {
+        throw new FirebaseError(
+          `Command aborted. Only users granted firebaseowner SQL role can run migrations.`,
+        );
+      }
+      logLabeledBullet("dataconnect", `Granting firebaseowner role to myself ${user}...`);
+      await grantRoleTo(options, instanceId, databaseId, "owner", user);
     }
 
     if (commandsToExecuteBySuperUser.length) {
