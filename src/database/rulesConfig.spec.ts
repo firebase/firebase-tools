@@ -1,14 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import {
-  normalizeRulesConfig,
-  getRulesConfig,
-  RulesInstanceConfig,
-} from "./rulesConfig";
+import { normalizeRulesConfig, getRulesConfig, RulesInstanceConfig } from "./rulesConfig";
 import { Options } from "../options";
 import { RC } from "../rc";
-import { Config } from "../config";
-import { FirebaseError } from "../error";
 
 describe("rulesConfig", () => {
   describe("normalizeRulesConfig", () => {
@@ -59,9 +53,7 @@ describe("rulesConfig", () => {
 
       const result = getRulesConfig("projectId", options);
 
-      expect(result).to.deep.equal([
-        { instance: "projectId-default-rtdb", rules: "rules.json" },
-      ]);
+      expect(result).to.deep.equal([{ instance: "projectId-default-rtdb", rules: "rules.json" }]);
     });
 
     it("should get rules config for multiple database configs", () => {
@@ -139,7 +131,7 @@ describe("rulesConfig", () => {
       } as Options;
 
       expect(() => getRulesConfig("projectId", options)).to.throw(
-        "Could not find configurations in firebase.json for the following database targets: target2"
+        "Could not find configurations in firebase.json for the following database targets: target2",
       );
     });
 
@@ -154,7 +146,7 @@ describe("rulesConfig", () => {
       } as Options;
 
       expect(() => getRulesConfig("projectId", options)).to.throw(
-        'Must supply either "target" or "instance" in database config'
+        'Must supply either "target" or "instance" in database config',
       );
     });
   });
