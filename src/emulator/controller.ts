@@ -553,7 +553,7 @@ export async function startAll(
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: cfg.ignore,
       };
-      proto.copyIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
+      proto.convertIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
       emulatableBackends.push(backend);
     }
   }

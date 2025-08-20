@@ -128,7 +128,7 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-    proto.copyIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
+    proto.convertIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
