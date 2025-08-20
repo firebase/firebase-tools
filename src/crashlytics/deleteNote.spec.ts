@@ -10,7 +10,6 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("deleteNote", () => {
-  const projectId = "my-project";
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectId = "1234567890";
   const issueId = "test-issue-id";
@@ -27,7 +26,7 @@ describe("deleteNote", () => {
       )
       .reply(200, {});
 
-    await expect(deleteNote(projectId, appId, issueId, noteId)).to.be.fulfilled;
+    await expect(deleteNote(appId, issueId, noteId)).to.be.fulfilled;
     expect(nock.isDone()).to.be.true;
   });
 
@@ -38,7 +37,7 @@ describe("deleteNote", () => {
       )
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(deleteNote(projectId, appId, issueId, noteId)).to.be.rejectedWith(
+    await expect(deleteNote(appId, issueId, noteId)).to.be.rejectedWith(
       FirebaseError,
       `Failed to delete note ${noteId} from issue ${issueId} for app ${appId}.`,
     );
@@ -47,7 +46,7 @@ describe("deleteNote", () => {
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
-    await expect(deleteNote(projectId, invalidAppId, issueId, noteId)).to.be.rejectedWith(
+    await expect(deleteNote(invalidAppId, issueId, noteId)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );

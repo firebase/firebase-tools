@@ -10,12 +10,7 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function deleteNote(
-  projectId: string,
-  appId: string,
-  issueId: string,
-  noteId: string,
-): Promise<void> {
+export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<void> {
   try {
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {

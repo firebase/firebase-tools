@@ -10,11 +10,7 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function listTopOperatingSystems(
-  projectId: string,
-  appId: string,
-  osCount: number,
-): Promise<string> {
+export async function listTopOperatingSystems(appId: string, osCount: number): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${osCount}`);
@@ -38,7 +34,7 @@ export async function listTopOperatingSystems(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the top operating systems for the Firebase Project ${projectId}, AppId ${appId}. Error: ${err}.`,
+      `Failed to fetch the top operating systems for the Firebase app id: ${appId}. Error: ${err}.`,
       { original: err },
     );
   }

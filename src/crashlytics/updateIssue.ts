@@ -27,7 +27,6 @@ type Issue = {
 };
 
 export async function updateIssue(
-  projectId: string,
   appId: string,
   issueId: string,
   state: IssueState,

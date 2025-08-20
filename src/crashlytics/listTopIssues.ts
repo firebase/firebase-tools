@@ -11,7 +11,6 @@ const apiClient = new Client({
 });
 
 export async function listTopIssues(
-  projectId: string,
   appId: string,
   issueType: string,
   issueCount: number,
@@ -40,7 +39,7 @@ export async function listTopIssues(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the top issues for the Firebase Project ${projectId}, AppId ${appId}. Error: ${err}.`,
+      `Failed to fetch the top issues for the Firebase app id: ${appId}. Error: ${err}.`,
       { original: err },
     );
   }

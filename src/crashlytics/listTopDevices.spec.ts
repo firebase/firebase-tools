@@ -10,7 +10,6 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("listTopDevices", () => {
-  const projectId = "my-project";
   const androidAppId = "1:1234567890:android:abcdef1234567890";
   const appleAppId = "1:1234567890:ios:abcdef1234567890";
 
@@ -31,7 +30,7 @@ describe("listTopDevices", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await listTopDevices(projectId, androidAppId, deviceCount);
+    const result = await listTopDevices(androidAppId, deviceCount);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -48,7 +47,7 @@ describe("listTopDevices", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await listTopDevices(projectId, appleAppId, deviceCount);
+    const result = await listTopDevices(appleAppId, deviceCount);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -61,7 +60,7 @@ describe("listTopDevices", () => {
       .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topDevices`)
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(listTopDevices(projectId, androidAppId, deviceCount)).to.be.rejectedWith(
+    await expect(listTopDevices(androidAppId, deviceCount)).to.be.rejectedWith(
       FirebaseError,
       /Failed to fetch the top devices/,
     );
@@ -71,7 +70,7 @@ describe("listTopDevices", () => {
     const invalidAppId = "invalid-app-id";
     const deviceCount = 10;
 
-    await expect(listTopDevices(projectId, invalidAppId, deviceCount)).to.be.rejectedWith(
+    await expect(listTopDevices(invalidAppId, deviceCount)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );
@@ -81,7 +80,7 @@ describe("listTopDevices", () => {
     const invalidAppId = "1:1234567890";
     const deviceCount = 10;
 
-    await expect(listTopDevices(projectId, invalidAppId, deviceCount)).to.be.rejectedWith(
+    await expect(listTopDevices(invalidAppId, deviceCount)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the platform from the AppId.",
     );
@@ -91,7 +90,7 @@ describe("listTopDevices", () => {
     const invalidAppId = "1:1234567890:web:abcdef1234567890";
     const deviceCount = 10;
 
-    await expect(listTopDevices(projectId, invalidAppId, deviceCount)).to.be.rejectedWith(
+    await expect(listTopDevices(invalidAppId, deviceCount)).to.be.rejectedWith(
       FirebaseError,
       "Only android or ios apps are supported.",
     );

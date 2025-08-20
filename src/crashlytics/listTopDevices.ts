@@ -15,11 +15,7 @@ enum PLATFORM_PATH {
   IOS = "topAppleDevices",
 }
 
-export async function listTopDevices(
-  projectId: string,
-  appId: string,
-  deviceCount: number,
-): Promise<string> {
+export async function listTopDevices(appId: string, deviceCount: number): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${deviceCount}`);
@@ -45,7 +41,7 @@ export async function listTopDevices(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the top devices for the Firebase Project ${projectId}, AppId ${appId}. Error: ${err}.`,
+      `Failed to fetch the top devices for the Firebase app id: ${appId}. Error: ${err}.`,
       { original: err },
     );
   }

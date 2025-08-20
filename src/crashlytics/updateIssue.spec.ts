@@ -10,7 +10,6 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("updateIssue", () => {
-  const projectId = "my-project";
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectId = "1234567890";
   const issueId = "test-issue-id";
@@ -33,7 +32,7 @@ describe("updateIssue", () => {
       .query({ updateMask: "state" })
       .reply(200, mockResponse);
 
-    const result = await updateIssue(projectId, appId, issueId, state);
+    const result = await updateIssue(appId, issueId, state);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -46,7 +45,7 @@ describe("updateIssue", () => {
       .query({ updateMask: "state" })
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(updateIssue(projectId, appId, issueId, state)).to.be.rejectedWith(
+    await expect(updateIssue(appId, issueId, state)).to.be.rejectedWith(
       FirebaseError,
       `Failed to update issue ${issueId} for app ${appId}.`,
     );
@@ -54,8 +53,9 @@ describe("updateIssue", () => {
 
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
-    await expect(
-      updateIssue(projectId, invalidAppId, issueId, IssueState.CLOSED),
-    ).to.be.rejectedWith(FirebaseError, "Unable to get the projectId from the AppId.");
+    await expect(updateIssue(invalidAppId, issueId, IssueState.CLOSED)).to.be.rejectedWith(
+      FirebaseError,
+      "Unable to get the projectId from the AppId.",
+    );
   });
 });

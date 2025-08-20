@@ -10,11 +10,7 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function listTopVersions(
-  projectId: string,
-  appId: string,
-  versionCount: number,
-): Promise<string> {
+export async function listTopVersions(appId: string, versionCount: number): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${versionCount}`);
@@ -38,7 +34,7 @@ export async function listTopVersions(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the top versions for the Firebase Project ${projectId}, AppId ${appId}. Error: ${err}.`,
+      `Failed to fetch the top versions for the Firebase app id: ${appId}. Error: ${err}.`,
       { original: err },
     );
   }

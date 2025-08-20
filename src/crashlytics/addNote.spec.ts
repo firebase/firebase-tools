@@ -9,7 +9,6 @@ import { crashlyticsApiOrigin } from "../api";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 describe("addNote", () => {
-  const projectId = "my-project";
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectId = "1234567890";
   const issueId = "test-issue-id";
@@ -28,7 +27,7 @@ describe("addNote", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await addNote(projectId, appId, issueId, note);
+    const result = await addNote(appId, issueId, note);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -39,7 +38,7 @@ describe("addNote", () => {
       .post(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`)
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(addNote(projectId, appId, issueId, note)).to.be.rejectedWith(
+    await expect(addNote(appId, issueId, note)).to.be.rejectedWith(
       FirebaseError,
       `Failed to add note to issue ${issueId} for app ${appId}.`,
     );
@@ -48,7 +47,7 @@ describe("addNote", () => {
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
-    await expect(addNote(projectId, invalidAppId, issueId, note)).to.be.rejectedWith(
+    await expect(addNote(invalidAppId, issueId, note)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );

@@ -14,12 +14,7 @@ type NoteRequest = {
   body: string;
 };
 
-export async function addNote(
-  projectId: string,
-  appId: string,
-  issueId: string,
-  note: string,
-): Promise<string> {
+export async function addNote(appId: string, issueId: string, note: string): Promise<string> {
   try {
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {

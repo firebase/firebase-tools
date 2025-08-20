@@ -11,11 +11,14 @@ const apiClient = new Client({
 });
 
 export async function listNotes(
-  projectId: string,
   appId: string,
   issueId: string,
+  noteCount: number,
 ): Promise<string> {
   try {
+    const queryParams = new URLSearchParams();
+    queryParams.set("page_size", `${noteCount}`);
+
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {
       throw new FirebaseError("Unable to get the projectId from the AppId.");
@@ -27,6 +30,7 @@ export async function listNotes(
         "Content-Type": "application/json",
       },
       path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`,
+      queryParams: queryParams,
       timeout: TIMEOUT,
     });
 

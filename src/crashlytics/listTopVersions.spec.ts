@@ -10,7 +10,6 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("listTopVersions", () => {
-  const projectId = "my-project";
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectId = "1234567890";
 
@@ -31,7 +30,7 @@ describe("listTopVersions", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await listTopVersions(projectId, appId, versionCount);
+    const result = await listTopVersions(appId, versionCount);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -44,7 +43,7 @@ describe("listTopVersions", () => {
       .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topVersions`)
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(listTopVersions(projectId, appId, versionCount)).to.be.rejectedWith(
+    await expect(listTopVersions(appId, versionCount)).to.be.rejectedWith(
       FirebaseError,
       /Failed to fetch the top versions/,
     );
@@ -54,7 +53,7 @@ describe("listTopVersions", () => {
     const invalidAppId = "invalid-app-id";
     const versionCount = 10;
 
-    await expect(listTopVersions(projectId, invalidAppId, versionCount)).to.be.rejectedWith(
+    await expect(listTopVersions(invalidAppId, versionCount)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );

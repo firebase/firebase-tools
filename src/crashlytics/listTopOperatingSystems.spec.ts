@@ -10,7 +10,6 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("listTopOperatingSystems", () => {
-  const projectId = "my-project";
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectId = "1234567890";
 
@@ -29,7 +28,7 @@ describe("listTopOperatingSystems", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await listTopOperatingSystems(projectId, appId, osCount);
+    const result = await listTopOperatingSystems(appId, osCount);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -42,7 +41,7 @@ describe("listTopOperatingSystems", () => {
       .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`)
       .reply(500, { error: "Internal Server Error" });
 
-    await expect(listTopOperatingSystems(projectId, appId, osCount)).to.be.rejectedWith(
+    await expect(listTopOperatingSystems(appId, osCount)).to.be.rejectedWith(
       FirebaseError,
       /Failed to fetch the top operating systems/,
     );
@@ -52,7 +51,7 @@ describe("listTopOperatingSystems", () => {
     const invalidAppId = "invalid-app-id";
     const osCount = 10;
 
-    await expect(listTopOperatingSystems(projectId, invalidAppId, osCount)).to.be.rejectedWith(
+    await expect(listTopOperatingSystems(invalidAppId, osCount)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );
