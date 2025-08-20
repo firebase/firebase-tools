@@ -75,17 +75,9 @@ async function createCloudSQL(args: {
   if (dryRun) {
     utils.logLabeledBullet(
       "dataconnect",
-      `CloudSQL instance '${instanceId}' not found. It will be created on your next deploy.`,
+      `Cloud SQL Instance ${instanceId} not found. It will be created on your next deploy.`,
     );
   } else {
-    utils.logLabeledBullet(
-      "dataconnect",
-      `CloudSQL instance '${instanceId}' not found. Creating it now...` +
-        (freeTrialUsed
-          ? ""
-          : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`) +
-        `\nMonitor the progress at ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}`,
-    );
     await cloudSqlAdminClient.createInstance({
       projectId,
       location,
@@ -95,7 +87,15 @@ async function createCloudSQL(args: {
     });
     utils.logLabeledBullet(
       "dataconnect",
-      "Cloud SQL instance creation started. Meanwhile, your data are saved in a temporary database and will be migrated once complete.",
+      `Cloud SQL Instance ${instanceId} is being created.` +
+        (freeTrialUsed
+          ? ""
+          : `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`) +
+        `
+   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
+
+   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
+`,
     );
   }
 }
@@ -114,7 +114,7 @@ async function provisionCloudSQLDatabase(args: {
     if (err.status !== 404) {
       // Skip it if the database is not accessible.
       // Possible that the CSQL instance is in the middle of something.
-      logger.debug(`Unexpected error from CloudSQL: ${err}`);
+      logger.debug(`Unexpected error from Cloud SQL: ${err}`);
       utils.logLabeledWarning("dataconnect", `Postgres Database ${databaseId} is not accessible.`);
       return;
     }
@@ -131,12 +131,12 @@ async function provisionCloudSQLDatabase(args: {
 }
 
 /**
- * Validate that existing CloudSQL instances have the necessary settings.
+ * Validate that existing Cloud SQL instances have the necessary settings.
  */
 export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
   let reason = "";
   const settings = instance.settings;
-  // CloudSQL instances must have public IP enabled to be used with Firebase Data Connect.
+  // Cloud SQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
     reason += "\n - to enable public IP.";
   }
@@ -154,7 +154,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     }
   }
 
-  // CloudSQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
+  // Cloud SQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
   const isIamEnabled =
     settings.databaseFlags?.some(
       (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",

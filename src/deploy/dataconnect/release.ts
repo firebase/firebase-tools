@@ -6,6 +6,7 @@ import { Options } from "../../options";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
+import { parseServiceName } from "../../dataconnect/names";
 
 /**
  * Release deploys schemas and connectors.
@@ -91,9 +92,15 @@ export default async function (
   } else {
     utils.logLabeledBullet("dataconnect", "No connectors to deploy.");
   }
+
+  let consolePath = "dataconnect";
+  if (serviceInfos.length === 1) {
+    const sn = parseServiceName(serviceInfos[0].serviceName);
+    consolePath += `/locations/${sn.location}/services/${sn.serviceId}/schema`;
+  }
   utils.logLabeledSuccess(
     "dataconnect",
-    `Deployment complete! View your deployed schema and connectors at ${utils.consoleUrl(project, "/dataconnect")}`,
+    `Deployment complete! View your deployed schema and connectors at ${utils.consoleUrl(project, consolePath)}`,
   );
   return;
 }

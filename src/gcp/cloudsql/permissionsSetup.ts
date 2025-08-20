@@ -29,6 +29,7 @@ export type TableMetadata = {
 };
 
 export enum SchemaSetupStatus {
+  PendingCreate = "pending-create",
   NotSetup = "not-setup",
   GreenField = "greenfield",
   BrownField = "brownfield",
