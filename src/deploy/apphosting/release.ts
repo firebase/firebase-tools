@@ -16,7 +16,7 @@ import { Context } from "./args";
  * Orchestrates rollouts for the backends targeted for deployment.
  */
 export default async function (context: Context, options: Options): Promise<void> {
-  const backendIds = Object.keys(context.backendConfigs);
+  let backendIds = Object.keys(context.backendConfigs);
 
   const missingBackends = backendIds.filter(
     (id) => !context.backendLocations[id] || !context.backendStorageUris[id],
@@ -26,7 +26,7 @@ export default async function (context: Context, options: Options): Promise<void
       "apphosting",
       `Failed to find metadata for backend(s) ${backendIds.join(", ")}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
     );
-    backendIds.filter((id) => !missingBackends.includes(id));
+    backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
   if (backendIds.length === 0) {

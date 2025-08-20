@@ -24,8 +24,6 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
-  // TODO(inlined): We previuosly had a style guide against using Map; why has that changed? Should these be
-  // made Records instead?
   await Promise.all(
     Object.values(context.backendLocations).map(async (loc) => {
       const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
