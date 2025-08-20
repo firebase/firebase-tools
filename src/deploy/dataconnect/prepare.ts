@@ -32,7 +32,6 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const serviceCfgs = readFirebaseJson(options.config);
-  utils.logLabeledBullet("dataconnect", `Preparing to deploy`);
   const filters = getResourceFilters(options);
   const serviceInfos = await Promise.all(
     serviceCfgs.map((c) => load(projectId, options.config, c.source)),
@@ -63,7 +62,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     serviceInfos,
     filters,
   };
-  utils.logLabeledBullet("dataconnect", `Successfully prepared schema and connectors`);
+  utils.logLabeledBullet("dataconnect", `Successfully compiled schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
       await diffSchema(

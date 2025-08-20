@@ -42,8 +42,6 @@ export default async function (
     }));
 
   if (wantSchemas.length) {
-    utils.logLabeledBullet("dataconnect", "Deploying Data Connect schemas...");
-
     // Then, migrate if needed and deploy schemas
     for (const s of wantSchemas) {
       await migrateSchema({
@@ -52,8 +50,8 @@ export default async function (
         validateOnly: false,
         schemaValidation: s.validationMode,
       });
+      utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
     }
-    utils.logLabeledBullet("dataconnect", "Schemas deployed.");
   }
 
   // Next, deploy connectors
@@ -81,7 +79,6 @@ export default async function (
     : haveConnectors.filter((h) => !wantConnectors.some((w) => w.name === h.name));
 
   if (wantConnectors.length) {
-    utils.logLabeledBullet("dataconnect", "Deploying connectors...");
     await Promise.all(
       wantConnectors.map(async (c) => {
         await upsertConnector(c);
@@ -91,7 +88,6 @@ export default async function (
     for (const c of connectorsToDelete) {
       await promptDeleteConnector(options, c.name);
     }
-    utils.logLabeledBullet("dataconnect", "Connectors deployed.");
   } else {
     utils.logLabeledBullet("dataconnect", "No connectors to deploy.");
   }

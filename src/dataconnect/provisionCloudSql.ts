@@ -16,8 +16,8 @@ export async function provisionCloudSql(args: {
   requireGoogleMlIntegration: boolean;
   dryRun?: boolean;
 }): Promise<string | undefined> {
+  const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   try {
-    const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     utils.logLabeledBullet("dataconnect", `Found existing Cloud SQL instance ${instanceId}.`);
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
@@ -57,6 +57,9 @@ export async function provisionCloudSql(args: {
       throw err;
     }
     await createCloudSQL({ ...args });
+    if (requireGoogleMlIntegration && !dryRun) {
+      await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
+    }
   }
 }
 
@@ -106,13 +109,13 @@ async function provisionCloudSQLDatabase(args: {
   const { projectId, instanceId, databaseId, dryRun } = args;
   try {
     await cloudSqlAdminClient.getDatabase(projectId, instanceId, databaseId);
-    utils.logLabeledBullet("dataconnect", `Found existing database ${databaseId}.`);
+    utils.logLabeledBullet("dataconnect", `Found existing Postgres Database ${databaseId}.`);
   } catch (err: any) {
     if (err.status !== 404) {
       // Skip it if the database is not accessible.
       // Possible that the CSQL instance is in the middle of something.
       logger.debug(`Unexpected error from CloudSQL: ${err}`);
-      utils.logLabeledWarning("dataconnect", `Database ${databaseId} is not accessible.`);
+      utils.logLabeledWarning("dataconnect", `Postgres Database ${databaseId} is not accessible.`);
       return;
     }
     if (dryRun) {

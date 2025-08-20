@@ -61,7 +61,7 @@ export async function diffSchema(
   schema: Schema,
   schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
-  logLabeledBullet("dataconnect", `generating required schema changes...`);
+  logLabeledBullet("dataconnect", `Generating SQL schema migrations...`);
 
   const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -84,12 +84,12 @@ export async function diffSchema(
     if (validationMode === "STRICT") {
       logLabeledSuccess(
         "dataconnect",
-        `database schema of ${instanceId}:${databaseId} is up to date.`,
+        `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is up to date.`,
       );
     } else {
       logLabeledSuccess(
         "dataconnect",
-        `database schema of ${instanceId}:${databaseId} is compatible.`,
+        `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is compatible.`,
       );
     }
   } catch (err: any) {
@@ -151,7 +151,7 @@ export async function migrateSchema(args: {
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
 }): Promise<Diff[]> {
-  logLabeledBullet("dataconnect", `generating required schema changes...`);
+  logLabeledBullet("dataconnect", `Generating SQL schema migrations...`);
 
   const { options, schema, validateOnly, schemaValidation } = args;
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
@@ -175,7 +175,7 @@ export async function migrateSchema(args: {
     await upsertSchema(schema, validateOnly);
     logLabeledBullet(
       "dataconnect",
-      `database schema of ${instanceId}:${databaseId} is up to date.`,
+      `Database schema ${clc.bold(`${instanceId}:${databaseId}`)} is up to date.`,
     );
   } catch (err: any) {
     if (err?.status !== 400) {

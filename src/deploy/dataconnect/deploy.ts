@@ -43,7 +43,7 @@ export default async function (
     .filter((si) => {
       return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
     });
-  // When --only filters are passed, don't delete anything.
+
   const servicesToDelete = filters
     ? []
     : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
@@ -56,13 +56,13 @@ export default async function (
   );
 
   if (servicesToDelete.length) {
+    const serviceToDeleteList = servicesToDelete.map((s) => " - " + s.name).join("\n");
     if (
       await confirm({
-        force: options.force,
+        force: false, // Don't delete anything in --force.
         nonInteractive: options.nonInteractive,
-        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
-          .map((s) => s.name)
-          .join("\n")}\nWould you like to delete these services?`,
+        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${serviceToDeleteList}\nWould you like to delete these services?`,
+        default: false,
       })
     ) {
       await Promise.all(
