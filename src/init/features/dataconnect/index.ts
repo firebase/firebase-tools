@@ -167,7 +167,7 @@ async function actuateWithInfo(
   const projectId = setup.projectId;
   if (!projectId) {
     // Use the static template if it starts from scratch.
-    info.analyticsFlow = "_save_template";
+    info.analyticsFlow += "_save_template";
     return await writeFiles(
       config,
       info,
@@ -190,11 +190,11 @@ async function actuateWithInfo(
   if (!info.appDescription) {
     // Download an existing service to a local workspace.
     if (info.serviceGql) {
-      info.analyticsFlow = "_save_downloaded";
+      info.analyticsFlow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
-    info.analyticsFlow = "_save_template";
+    info.analyticsFlow += "_save_template";
     return await writeFiles(
       config,
       info,
@@ -222,7 +222,7 @@ async function actuateWithInfo(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
-    info.analyticsFlow = "_save_gemini_service_already_exists";
+    info.analyticsFlow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -264,7 +264,7 @@ async function actuateWithInfo(
         ],
       },
     ];
-    info.analyticsFlow = "_save_gemini";
+    info.analyticsFlow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -275,7 +275,7 @@ async function actuateWithInfo(
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
-    info.analyticsFlow = "_save_gemini_operation_error";
+    info.analyticsFlow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -485,7 +485,6 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!existingServices.length) {
     return;
   }
-  info.analyticsFlow += "_has_existing";
   const existingServicesAndSchemas = await Promise.all(
     existingServices.map(async (s) => {
       return { service: s, schema: await getSchema(s.name) };
@@ -495,10 +494,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
+    info.analyticsFlow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
-  info.analyticsFlow += "_pick_existing";
+  info.analyticsFlow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.service.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
