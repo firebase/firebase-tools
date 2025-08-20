@@ -170,18 +170,16 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     );
   }
 
-  // Don't start the functions emulator if we can't find the source directory
+  // Don't start the functions emulator if we can't validate the functions config
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: any) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-        "WARN",
+        "ERROR",
         "functions",
-        `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
-          "firebase init functions",
-        )}?`,
+        `Failed to start Functions emulator: ${err.message}`,
       );
       return false;
     }
@@ -544,6 +542,7 @@ export async function startAll(
         functionsDir,
         runtime,
         codebase: cfg.codebase,
+        prefix: cfg.prefix,
         env: {
           ...options.extDevEnv,
         },
