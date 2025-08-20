@@ -1,3 +1,4 @@
+- Fixed a bug when deploying firestore indexes failed due to broken index comparison logic (#8859)
 - Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
 - Make it possible to init a dataconnect project in non interactive mode (#8993)
 - Added 2 new MCP tools for crashlytics `get_sample_crash_for_issue` and `get_issue_details` (#8995)
