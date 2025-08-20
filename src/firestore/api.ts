@@ -521,7 +521,7 @@ export class FirestoreApi {
     lhs: Density | undefined,
     rhs: Density | undefined,
     edition: types.DatabaseEdition,
-  ) {
+  ): boolean {
     const defaultValue =
       edition === DatabaseEdition.STANDARD ? types.Density.SPARSE_ALL : types.Density.DENSE;
     return this.optionalValueMatches<types.Density>(lhs, rhs, defaultValue);
@@ -533,7 +533,7 @@ export class FirestoreApi {
    * @param lhs the first Multikey value.
    * @param rhs the second Multikey value.
    */
-  optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined) {
+  optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined): boolean {
     const defaultValue = false;
     return this.optionalValueMatches<boolean>(lhs, rhs, defaultValue);
   }
