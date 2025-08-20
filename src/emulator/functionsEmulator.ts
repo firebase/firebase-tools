@@ -1389,13 +1389,11 @@ export class FunctionsEmulator implements EmulatorInstance {
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
     const projectInfo: functionsEnv.UserEnvsOpts = {
       functionsSource: backend.functionsDir,
+      configDir: backend.configDir,
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,
     };
-    if (backend.configDir) {
-      projectInfo.configDir = backend.configDir;
-    }
 
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {
