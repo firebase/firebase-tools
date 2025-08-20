@@ -41,24 +41,31 @@ export async function createService(
   projectId: string,
   locationId: string,
   serviceId: string,
-): Promise<types.Service> {
-  const op = await dataconnectClient().post<types.Service, types.Service>(
-    `/projects/${projectId}/locations/${locationId}/services`,
-    {
-      name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-    },
-    {
-      queryParams: {
-        service_id: serviceId,
+): Promise<types.Service | undefined> {
+  try {
+    const op = await dataconnectClient().post<types.Service, types.Service>(
+      `/projects/${projectId}/locations/${locationId}/services`,
+      {
+        name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
       },
-    },
-  );
-  const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin(),
-    apiVersion: DATACONNECT_API_VERSION,
-    operationResourceName: op.body.name,
-  });
-  return pollRes;
+      {
+        queryParams: {
+          service_id: serviceId,
+        },
+      },
+    );
+    const pollRes = await operationPoller.pollOperation<types.Service>({
+      apiOrigin: dataconnectOrigin(),
+      apiVersion: DATACONNECT_API_VERSION,
+      operationResourceName: op.body.name,
+    });
+    return pollRes;
+  } catch (err: any) {
+    if (err.status !== 409) {
+      throw err;
+    }
+    return undefined; // Service already exists
+  }
 }
 
 export async function deleteService(serviceName: string): Promise<types.Service> {
