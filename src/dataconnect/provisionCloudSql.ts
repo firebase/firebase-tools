@@ -8,6 +8,7 @@ import { freeTrialTermsLink, checkFreeTrialInstanceUsed } from "./freeTrial";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
+/** Sets up a Cloud SQL instance, database and its permissions. */
 export async function setupCloudSql(args: {
   projectId: string;
   location: string;
@@ -15,13 +16,12 @@ export async function setupCloudSql(args: {
   databaseId: string;
   requireGoogleMlIntegration: boolean;
   dryRun?: boolean;
-}): Promise<string | undefined> {
-  const connectionName = await upsertInstance({ ...args });
+}): Promise<void> {
+  await upsertInstance({ ...args });
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   if (requireGoogleMlIntegration && !dryRun) {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
   }
-  return connectionName;
 }
 
 async function upsertInstance(args: {
@@ -31,7 +31,7 @@ async function upsertInstance(args: {
   databaseId: string;
   requireGoogleMlIntegration: boolean;
   dryRun?: boolean;
-}): Promise<string | undefined> {
+}): Promise<void> {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
@@ -62,12 +62,11 @@ async function upsertInstance(args: {
       }
     }
     await upsertDatabase({ ...args });
-    return existingInstance.connectionName || "";
   } catch (err: any) {
-    // We only should catch NOT FOUND errors
     if (err.status !== 404) {
       throw err;
     }
+    // Cloud SQL instance is not found, start its creation.
     await createInstance({ ...args });
   }
 }
@@ -107,11 +106,11 @@ async function createInstance(args: {
 export function cloudSQLBeingCreated(
   projectId: string,
   instanceId: string,
-  includeFreeTrialTos?: boolean,
+  includeFreeTrialToS?: boolean,
 ): string {
   return (
     `Cloud SQL Instance ${instanceId} is being created.` +
-    (includeFreeTrialTos
+    (includeFreeTrialToS
       ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
     `

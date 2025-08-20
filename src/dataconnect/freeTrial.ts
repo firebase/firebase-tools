@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
-import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
 
 export function freeTrialTermsLink(): string {
@@ -38,18 +37,6 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
     utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
   }
   return used;
-}
-
-export async function getFreeTrialInstanceId(projectId: string): Promise<string | undefined> {
-  const instances = await listInstances(projectId);
-  return instances.find((i) => i.settings.userLabels?.["firebase-data-connect"] === "ft")?.name;
-}
-
-export async function isFreeTrialError(err: any, projectId: string): Promise<boolean> {
-  // checkFreeTrialInstanceUsed is also called to ensure the request didn't fail due to an unrelated quota issue.
-  return err.message.includes("Quota Exhausted") && (await checkFreeTrialInstanceUsed(projectId))
-    ? true
-    : false;
 }
 
 export function upgradeInstructions(projectId: string): string {
