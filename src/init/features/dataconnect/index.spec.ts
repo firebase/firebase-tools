@@ -22,7 +22,7 @@ describe("init dataconnect", () => {
     let ensureSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
-      provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
+      provisionCSQLStub = sandbox.stub(provison, "setupCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
     });
