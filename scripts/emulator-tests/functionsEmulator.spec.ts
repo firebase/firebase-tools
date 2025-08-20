@@ -946,7 +946,6 @@ describe("FunctionsEmulator", function () {
         after(async () => {
           await emuWithConfigDir.stop();
           await cleanupEnvFiles();
-          fs.rmSync(configDir, { recursive: true });
         });
 
         it("should load environment variables from that directory", async () => {

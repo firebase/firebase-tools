@@ -2,6 +2,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
+import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
 import { trackEmulator, trackGA4 } from "../track";
@@ -538,9 +539,8 @@ export async function startAll(
           `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
-      emulatableBackends.push({
+      const backend: EmulatableBackend = {
         functionsDir,
-        configDir: cfg.configDir ? path.join(projectDir, cfg.configDir) : undefined,
         runtime,
         codebase: cfg.codebase,
         prefix: cfg.prefix,
@@ -552,7 +552,9 @@ export async function startAll(
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: cfg.ignore,
-      });
+      };
+      proto.copyIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
+      emulatableBackends.push(backend);
     }
   }
 
