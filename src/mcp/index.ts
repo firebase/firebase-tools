@@ -8,30 +8,37 @@ import {
   SetLevelRequestSchema,
   ListToolsRequestSchema,
   CallToolResult,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsResult,
+  GetPromptResult,
+  GetPromptRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkFeatureActive, mcpError } from "./util.js";
-import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types.js";
-import { availableTools } from "./tools/index.js";
-import { ServerTool, ServerToolContext } from "./tool.js";
-import { configstore } from "../configstore.js";
-import { Command } from "../command.js";
-import { requireAuth } from "../requireAuth.js";
-import { Options } from "../options.js";
-import { getProjectId } from "../projectUtils.js";
-import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors.js";
-import { trackGA4 } from "../track.js";
-import { Config } from "../config.js";
-import { loadRC } from "../rc.js";
-import { EmulatorHubClient } from "../emulator/hubClient.js";
-import { Emulators } from "../emulator/types.js";
+import { checkFeatureActive, mcpError } from "./util";
+import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types";
+import { availableTools } from "./tools/index";
+import { ServerTool, ServerToolContext } from "./tool";
+import { availablePrompts } from "./prompts/index";
+import { ServerPrompt, ServerPromptContext } from "./prompt";
+import { configstore } from "../configstore";
+import { Command } from "../command";
+import { requireAuth } from "../requireAuth";
+import { Options } from "../options";
+import { getProjectId } from "../projectUtils";
+import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors";
+import { trackGA4 } from "../track";
+import { Config } from "../config";
+import { loadRC } from "../rc";
+import { EmulatorHubClient } from "../emulator/hubClient";
+import { Emulators } from "../emulator/types";
 import { existsSync } from "node:fs";
-import { ensure, check } from "../ensureApiEnabled.js";
-import * as api from "../api.js";
-import { LoggingStdioServerTransport } from "./logging-transport.js";
-import { isFirebaseStudio } from "../env.js";
-import { timeoutFallback } from "../timeout.js";
+import { ensure, check } from "../ensureApiEnabled";
+import * as api from "../api";
+import { LoggingStdioServerTransport } from "./logging-transport";
+import { isFirebaseStudio } from "../env";
+import { timeoutFallback } from "../timeout";
 
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.3.0";
 
 const cmd = new Command("experimental:mcp");
 
@@ -86,9 +93,17 @@ export class FirebaseMcpServer {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
-    this.server.registerCapabilities({ tools: { listChanged: true }, logging: {} });
+    this.server.registerCapabilities({
+      tools: { listChanged: true },
+      logging: {},
+      prompts: { listChanged: true },
+    });
+
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
+    this.server.setRequestHandler(ListPromptsRequestSchema, this.mcpListPrompts.bind(this));
+    this.server.setRequestHandler(GetPromptRequestSchema, this.mcpGetPrompt.bind(this));
+
     this.server.oninitialized = async () => {
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
@@ -211,11 +226,22 @@ export class FirebaseMcpServer {
     return this.availableTools.find((t) => t.mcp.name === name) || null;
   }
 
+  get availablePrompts(): ServerPrompt[] {
+    return availablePrompts(
+      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
+    );
+  }
+
+  getPrompt(name: string): ServerPrompt | null {
+    return this.availablePrompts.find((p) => p.mcp.name === name) || null;
+  }
+
   setProjectRoot(newRoot: string | null): void {
     this.updateStoredClientConfig({ projectRoot: newRoot });
     this.cachedProjectRoot = newRoot || undefined;
     this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
+    void this.server.sendPromptListChanged();
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
@@ -233,7 +259,7 @@ export class FirebaseMcpServer {
       this.log("debug", `calling requireAuth`);
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
       this.log("debug", `detected authenticated account: ${email || "<none>"}`);
-      return email ?? skipAutoAuth ? null : "Application Default Credentials";
+      return email ?? (skipAutoAuth ? null : "Application Default Credentials");
     } catch (e) {
       this.log("debug", `error in requireAuth: ${e}`);
       return null;
@@ -271,7 +297,9 @@ export class FirebaseMcpServer {
       (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
     ) {
       return mcpError(
-        `The current project directory '${this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"}' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
+        `The current project directory '${
+          this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"
+        }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
       );
     }
 
@@ -283,9 +311,10 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     // Check if the user is logged in.
-    const accountEmail = await this.getAuthenticatedUser();
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
-      return mcpAuthError();
+      return mcpAuthError(skipAutoAuthForStudio);
     }
 
     // Check if the tool requires Gemini in Firebase API.
@@ -320,6 +349,70 @@ export class FirebaseMcpServer {
         error: 1,
       });
       return mcpError(err);
+    }
+  }
+
+  async mcpListPrompts(): Promise<ListPromptsResult> {
+    await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
+    const hasActiveProject = !!(await this.getProjectId());
+    await this.trackGA4("mcp_list_prompts");
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    return {
+      prompts: this.availablePrompts.map((p) => ({
+        name: p.mcp.name,
+        description: p.mcp.description,
+        annotations: p.mcp.annotations,
+        arguments: p.mcp.arguments,
+      })),
+      _meta: {
+        projectRoot: this.cachedProjectRoot,
+        projectDetected: hasActiveProject,
+        authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
+        activeFeatures: this.activeFeatures,
+        detectedFeatures: this.detectedFeatures,
+      },
+    };
+  }
+
+  async mcpGetPrompt(req: GetPromptRequest): Promise<GetPromptResult> {
+    await this.detectProjectRoot();
+    const promptName = req.params.name;
+    const promptArgs = req.params.arguments || {};
+    const prompt = this.getPrompt(promptName);
+    if (!prompt) {
+      throw new Error(`Prompt '${promptName}' could not be found.`);
+    }
+
+    let projectId = await this.getProjectId();
+    projectId = projectId || "";
+
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
+
+    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const promptsCtx: ServerPromptContext = {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+      accountEmail,
+    };
+
+    try {
+      const messages = await prompt.fn(promptArgs, promptsCtx);
+      await this.trackGA4("mcp_get_prompt", {
+        tool_name: promptName,
+      });
+      return {
+        messages,
+      };
+    } catch (err: unknown) {
+      await this.trackGA4("mcp_get_prompt", {
+        tool_name: promptName,
+        error: 1,
+      });
+      // TODO: should we return mcpError here?
+      throw err;
     }
   }
 

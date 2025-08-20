@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { execSync } from "child_process";
 import { dump } from "js-yaml";
 import { platform } from "os";
@@ -12,6 +12,7 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
+  realtimeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -59,6 +60,10 @@ export function mcpError(message: Error | string | unknown, code?: string): Call
   };
 }
 
+/*
+ * Wraps a throwing function with a safe conversion to mcpError.
+ */
+
 /**
  * Checks if a command exists in the system.
  */
@@ -82,6 +87,7 @@ export function commandExistsSync(command: string): boolean {
 }
 
 const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
+  core: "",
   firestore: firestoreOrigin(),
   storage: storageOrigin(),
   dataconnect: dataconnectOrigin(),
@@ -90,6 +96,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
   apphosting: apphostingOrigin(),
+  database: realtimeOrigin(),
 };
 
 /**

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
 
 export function getRulesTool(productName: string, releaseName: string) {
   return tool(
@@ -21,7 +21,7 @@ export function getRulesTool(productName: string, releaseName: string) {
     async (_, { projectId }) => {
       const rulesetName = await getLatestRulesetName(projectId, releaseName);
       if (!rulesetName)
-        return mcpError(`No active Firestore rules were found in project '${projectId}'`);
+        return mcpError(`No active ${productName} rules were found in project '${projectId}'`);
       const rules = await getRulesetContent(rulesetName);
       return toContent(rules[0].content);
     },

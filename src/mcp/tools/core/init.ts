@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { DEFAULT_RULES } from "../../../init/features/database.js";
-import { actuate, Setup, SetupInfo } from "../../../init/index.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { DEFAULT_RULES } from "../../../init/features/database";
+import { actuate, Setup, SetupInfo } from "../../../init/index";
 
 export const init = tool(
   {
@@ -58,6 +58,12 @@ export const init = tool(
           .describe("Provide this object to initialize Cloud Firestore in this project directory."),
         dataconnect: z
           .object({
+            app_description: z
+              .string()
+              .optional()
+              .describe(
+                "Provide a description of the app you are trying to build. If present, Gemini will help generate Data Connect Schema, Connector and seed data",
+              ),
             service_id: z
               .string()
               .optional()
@@ -83,7 +89,7 @@ export const init = tool(
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect in this project directory.",
+            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.",
           ),
         storage: z
           .object({
@@ -142,15 +148,11 @@ export const init = tool(
     if (features.dataconnect) {
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
+        appDescription: features.dataconnect.app_description || "",
         serviceId: features.dataconnect.service_id || "",
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
-        connectors: [], // TODO populate with GiF,
-        isNewInstance: false,
-        isNewDatabase: false,
-        schemaGql: [], // TODO populate with GiF
-        shouldProvisionCSQL: false,
       };
     }
     const setup: Setup = {

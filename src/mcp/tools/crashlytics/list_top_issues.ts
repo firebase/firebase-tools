@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { listTopIssues } from "../../../crashlytics/listTopIssues.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { listTopIssues } from "../../../crashlytics/listTopIssues";
 
 export const list_top_issues = tool(
   {
@@ -17,7 +17,8 @@ export const list_top_issues = tool(
       issue_count: z
         .number()
         .optional()
-        .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified."),
+        .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified.")
+        .default(10),
       issue_type: z
         .enum(["FATAL", "NON-FATAL", "ANR"])
         .optional()

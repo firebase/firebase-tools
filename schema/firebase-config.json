@@ -88,6 +88,9 @@
                 "database": {
                     "type": "string"
                 },
+                "edition": {
+                    "type": "string"
+                },
                 "indexes": {
                     "type": "string"
                 },
@@ -275,6 +278,9 @@
                             "type": "string"
                         }
                     ]
+                },
+                "prefix": {
+                    "type": "string"
                 },
                 "runtime": {
                     "enum": [

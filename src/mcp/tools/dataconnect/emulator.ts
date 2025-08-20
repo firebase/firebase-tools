@@ -1,6 +1,6 @@
-import { Emulators } from "../../../emulator/types.js";
-import { Client } from "../../../apiv2.js";
-import { DATACONNECT_API_VERSION } from "../../../dataconnect/dataplaneClient.js";
+import { Emulators } from "../../../emulator/types";
+import { Client } from "../../../apiv2";
+import { DATACONNECT_API_VERSION } from "../../../dataconnect/dataplaneClient";
 import type { FirebaseMcpServer } from "../../index";
 
 export async function getDataConnectEmulatorClient(host: FirebaseMcpServer): Promise<Client> {

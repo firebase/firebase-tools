@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { FirebaseMcpServer } from "./index";
@@ -21,9 +21,19 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
     inputSchema: any;
     annotations?: {
       title?: string;
+
+      // If this tool modifies data or not.
       readOnlyHint?: boolean;
+
+      // this tool can destroy data.
       destructiveHint?: boolean;
+
+      // this tool is safe to run multiple times.
       idempotentHint?: boolean;
+
+      // If this is true, it connects to the internet or other open world
+      // systems. If false, the tool only performs actions in an enclosed
+      // system, such as your project.
       openWorldHint?: boolean;
     };
     _meta?: {

@@ -1,4 +1,4 @@
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as sinon from "sinon";
 import { expect } from "chai";
 
@@ -18,13 +18,12 @@ describe("init dataconnect:sdk", () => {
     let generateStub: sinon.SinonStub;
     let fsStub: sinon.SinonStub;
     let emptyConfig: Config;
-    let askProjectWriteFileStub: sinon.SinonStub;
 
     beforeEach(() => {
       fsStub = sandbox.stub(fs, "writeFileSync");
+      sandbox.stub(fs, "ensureFileSync").returns();
       generateStub = sandbox.stub(DataConnectEmulator, "generate");
       emptyConfig = new Config({}, { projectDir: process.cwd() });
-      askProjectWriteFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
     });
 
     afterEach(() => {
@@ -50,9 +49,6 @@ describe("init dataconnect:sdk", () => {
 
         await sdk.actuate(c.sdkInfo, emptyConfig);
         expect(generateStub.called).to.equal(c.shouldGenerate);
-        expect(askProjectWriteFileStub.args).to.deep.equal([
-          ["dataconnect/connector/connector.yaml", CONNECTOR_YAML_CONTENTS, false, true],
-        ]);
       });
     }
   });

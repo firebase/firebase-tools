@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { getFirebaseProjectPage } from "../../../management/projects.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { getFirebaseProjectPage } from "../../../management/projects";
 
 const PROJECT_LIST_PAGE_SIZE = 20;
 

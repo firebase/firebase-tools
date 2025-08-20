@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { getTemplate } from "../../../remoteconfig/get.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { getTemplate } from "../../../remoteconfig/get";
 
 export const get_template = tool(
   {

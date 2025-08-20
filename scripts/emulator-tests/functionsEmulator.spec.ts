@@ -760,6 +760,52 @@ describe("FunctionsEmulator", function () {
       }).timeout(TIMEOUT_MED);
     });
 
+    it("should support multiple codebases with the same source and apply prefixes", async () => {
+      const backend1: EmulatableBackend = {
+        ...TEST_BACKEND,
+        codebase: "one",
+        prefix: "prefix-one",
+      };
+      const backend2: EmulatableBackend = {
+        ...TEST_BACKEND,
+        codebase: "two",
+        prefix: "prefix-two",
+      };
+
+      const prefixEmu = new FunctionsEmulator({
+        projectId: TEST_PROJECT_ID,
+        projectDir: MODULE_ROOT,
+        emulatableBackends: [backend1, backend2],
+        verbosity: "QUIET",
+        debugPort: false,
+      });
+
+      await writeSource(() => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ path: req.path });
+            },
+          ),
+        };
+      });
+
+      try {
+        await registry.EmulatorRegistry.start(prefixEmu);
+        await prefixEmu.connect();
+
+        await supertest(prefixEmu.createHubServer())
+          .get(`/${TEST_PROJECT_ID}/us-central1/prefix-one-functionId`)
+          .expect(200);
+
+        await supertest(prefixEmu.createHubServer())
+          .get(`/${TEST_PROJECT_ID}/us-central1/prefix-two-functionId`)
+          .expect(200);
+      } finally {
+        await registry.EmulatorRegistry.stop(Emulators.FUNCTIONS);
+      }
+    });
+
     describe("user-defined environment variables", () => {
       let cleanup: (() => Promise<void>) | undefined;
 
