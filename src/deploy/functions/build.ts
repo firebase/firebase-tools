@@ -493,8 +493,15 @@ export function toBackend(
         runtime: bdEndpoint.runtime,
         ...trigger,
         ...proto.pick(bdEndpoint, "environmentVariables", "secretEnvironmentVariables", "labels"),
+        ...proto.convert(bdEndpoint, r.resolveString, {
+          serviceAccount: "serviceAccount",
+        }),
+        ...proto.convert(bdEndpoint, r.resolveInt, {
+          concurrency: "concurrency",
+          minInstances: "minInstances",
+          maxInstances: "maxInstances",
+        }),
       };
-      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {
@@ -572,7 +579,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     const trigger: CallableTriggered = {
       callableTrigger: {
         ...proto.pick(endpoint.callableTrigger, "genkitAction"),
-      }
+      },
     };
     return trigger;
   } else if (isBlockingTriggered(endpoint)) {

@@ -3,7 +3,7 @@ import * as backend from "../../backend";
 import * as params from "../../params";
 import { Runtime } from "../supported";
 
-import { copyIfPresent, convertIfPresent, secondsFromDuration, pick } from "../../../../gcp/proto";
+import { convertIfPresent, secondsFromDuration, pick, convert } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 import { nullsafeVisitor } from "../../../../functional";
@@ -402,25 +402,24 @@ function parseEndpointForBuild(
     runtime,
     entryPoint: ep.entryPoint,
     ...triggered,
+    // Allow "serviceAccountEmail" but prefer "serviceAccount"
+    ...convert(ep, (s) => s, { serviceAccountEmail: "serviceAccount" }),
     ...pick(
       ep,
       "omit",
       "availableMemoryMb",
       "cpu",
-      "maxInstances"
-      ,"minInstances",
+      "maxInstances",
+      "minInstances",
       "concurrency",
       "timeoutSeconds",
       "vpc",
       "labels",
       "ingressSettings",
       "environmentVariables",
-      "serviceAccount")
+      "serviceAccount",
+    ),
   };
-  // Allow "serviceAccountEmail" but prefer "serviceAccount"
-  if ("serviceAccountEmail" in (ep as any)) {
-    parsed.serviceAccount = (ep as any).serviceAccountEmail;
-  }
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {
       return null;
