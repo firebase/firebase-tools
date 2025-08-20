@@ -300,10 +300,6 @@ export class ParamValue {
         if (Array.isArray(parsed)) {
           // The return type is string[], so we must convert all elements to strings.
           return parsed.map((elem: any) => {
-            if (elem === null) {
-              // String(null) is "null", which is what we want.
-              return "null";
-            }
             if (typeof elem === "object") {
               // String(obj) is "[object Object]", JSON.stringify is more useful.
               // Avoid inserting spaces after commas for objects/arrays
