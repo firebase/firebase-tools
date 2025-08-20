@@ -286,6 +286,14 @@ export class PrettyPrint {
       result += `(${field.fieldPath},${configString}) `;
     });
 
+    result += " -- ";
+    if (index.density !== undefined) {
+      result += clc.cyan(`Density:${index.density} `);
+    }
+    if (index.multikey !== undefined) {
+      result += clc.cyan(`Multikey:${index.multikey ? "YES" : "NO"}`);
+    }
+
     return result;
   }
 
