@@ -13,7 +13,6 @@ import {
   FIREBASE_SUPER_USER,
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
-import { setupIAMUsers } from "./connect";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 import { FirebaseError } from "../../error";
@@ -121,7 +120,6 @@ export async function setupSQLPermissions(
       `Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`,
     );
   }
-  await setupIAMUsers(instanceId, databaseId, options);
 
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {

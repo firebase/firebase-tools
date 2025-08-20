@@ -22,7 +22,7 @@ describe("init dataconnect", () => {
     let ensureSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
-      provisionCSQLStub = sandbox.stub(provison, "provisionCloudSql");
+      provisionCSQLStub = sandbox.stub(provison, "setupCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
     });
@@ -235,6 +235,7 @@ function mockConfig(data: Record<string, any> = {}): Config {
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
+    analyticsFlow: "test",
     appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",
