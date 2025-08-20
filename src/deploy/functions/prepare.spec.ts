@@ -1,13 +1,18 @@
 import { expect } from "chai";
-
-import * as backend from "./backend";
+import * as sinon from "sinon";
+import * as build from "./build";
 import * as prepare from "./prepare";
+import * as runtimes from "./runtimes";
+import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as serviceusage from "../../gcp/serviceusage";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
-import * as sinon from "sinon";
 import * as prompt from "../../prompt";
+import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { ValidatedConfig } from "../../functions/projectConfig";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
+import { latest } from "./runtimes/supported";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -16,13 +21,85 @@ describe("prepare", () => {
     region: "region",
     project: "project",
     entryPoint: "entry",
-    runtime: "nodejs16",
+    runtime: latest("nodejs"),
   };
 
   const ENDPOINT: backend.Endpoint = {
     ...ENDPOINT_BASE,
     httpsTrigger: {},
   };
+
+  describe("loadCodebases", () => {
+    let sandbox: sinon.SinonSandbox;
+    let runtimeDelegateStub: RuntimeDelegate;
+    let discoverBuildStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      discoverBuildStub = sandbox.stub();
+      runtimeDelegateStub = {
+        language: "nodejs",
+        runtime: latest("nodejs"),
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: discoverBuildStub,
+      };
+      discoverBuildStub.resolves(
+        build.of({
+          test: {
+            platform: "gcfv2",
+            entryPoint: "test",
+            project: "project",
+            runtime: latest("nodejs"),
+            httpsTrigger: {},
+          },
+        }),
+      );
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves(runtimeDelegateStub);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should apply the prefix to the function name", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", prefix: "my-prefix", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
+    });
+
+    it("should preserve runtime from codebase config", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs20" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(builds.codebase.runtime).to.equal("nodejs20");
+    });
+  });
 
   describe("inferDetailsFromExisting", () => {
     it("merges env vars if .env is not used", () => {
@@ -304,7 +381,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       httpsTrigger: {},
     };
 
@@ -314,7 +391,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -333,7 +410,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -463,7 +540,7 @@ describe("prepare", () => {
         region: "us-central1",
         project: "project",
         entryPoint: "entry",
-        runtime: "nodejs22",
+        runtime: latest("nodejs"),
         httpsTrigger: {},
         secretEnvironmentVariables: [
           {
@@ -491,7 +568,7 @@ describe("prepare", () => {
         region: "us-central1",
         project: "project",
         entryPoint: "entry",
-        runtime: "nodejs22",
+        runtime: latest("nodejs"),
         httpsTrigger: {},
       };
 
