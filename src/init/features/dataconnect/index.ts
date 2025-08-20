@@ -5,7 +5,7 @@ import * as fs from "fs-extra";
 import { input, select } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import { provisionCloudSql } from "../../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
@@ -39,6 +39,7 @@ import {
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 import { Options } from "../../../options";
+import { trackGA4 } from "../../../track";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -47,6 +48,8 @@ const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 
 export interface RequiredInfo {
+  // The GA analytics metric to track how developers go through `init dataconnect`.
+  analyticsFlow: string;
   appDescription: string;
   serviceId: string;
   locationId: string;
@@ -93,6 +96,7 @@ const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
+    analyticsFlow: "cli",
     appDescription: "",
     serviceId: "",
     locationId: "",
@@ -144,9 +148,26 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.locationId = info.locationId || `us-central1`;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  try {
+    await actuateWithInfo(setup, config, info, options);
+  } finally {
+    void trackGA4("dataconnect_init", {
+      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
+      flow: info.analyticsFlow,
+    });
+  }
+}
+
+async function actuateWithInfo(
+  setup: Setup,
+  config: Config,
+  info: RequiredInfo,
+  options: any,
+): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
     // Use the static template if it starts from scratch.
+    info.analyticsFlow += "_save_template";
     return await writeFiles(
       config,
       info,
@@ -157,21 +178,22 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   const hasBilling = await isBillingEnabled(setup);
   if (hasBilling) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
-    await provisionCloudSql({
+    await setupCloudSql({
       projectId: projectId,
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
-      enableGoogleMlIntegration: false,
-      waitForCreation: false,
+      requireGoogleMlIntegration: false,
     });
   }
   if (!info.appDescription) {
     // Download an existing service to a local workspace.
     if (info.serviceGql) {
+      info.analyticsFlow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
+    info.analyticsFlow += "_save_template";
     return await writeFiles(
       config,
       info,
@@ -179,7 +201,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       options,
     );
   }
-
   const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
 
@@ -200,6 +221,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
+    info.analyticsFlow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -241,6 +263,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
         ],
       },
     ];
+    info.analyticsFlow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -251,6 +274,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
+    info.analyticsFlow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -469,9 +493,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
+    info.analyticsFlow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
+  info.analyticsFlow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.service.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
@@ -593,9 +619,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         choices,
       });
       if (info.cloudSqlInstanceId !== "") {
+        info.analyticsFlow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
+        info.analyticsFlow += "_pick_new_csql";
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
