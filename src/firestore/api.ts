@@ -513,8 +513,8 @@ export class FirestoreApi {
   /**
    * Returns true if the given Density values match.
    * If either one is undefined, the default value is used for comparison based on Database Edition.
-   * @param lhs the first ApiScope value.
-   * @param rhs the second ApiScope value.
+   * @param lhs the first Density value.
+   * @param rhs the second Density value.
    * @param edition the database edition used to determine the default value.
    */
   optionalDensityMatches(
@@ -530,8 +530,8 @@ export class FirestoreApi {
   /**
    * Returns true if the given Multikey values match.
    * If either one is undefined, the default value is used for comparison.
-   * @param lhs the first ApiScope value.
-   * @param rhs the second ApiScope value.
+   * @param lhs the first Multikey value.
+   * @param rhs the second Multikey value.
    */
   optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined) {
     const defaultValue = false;
