@@ -65,6 +65,10 @@ export const command = new Command("firestore:bulk-delete")
       );
     }
 
+    if (collectionIds.length === 0) {
+      throw new FirebaseError("Must specify at least one collection ID in --collection-ids.");
+    }
+
     const databaseId = options.database || "(default)";
 
     const api = new fsi.FirestoreApi();
