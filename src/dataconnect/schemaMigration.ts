@@ -41,9 +41,13 @@ async function setupSchemaIfNecessary(
     switch (schemaInfo.setupStatus) {
       case SchemaSetupStatus.BrownField:
       case SchemaSetupStatus.GreenField:
+        logger.debug(
+          `Cloud SQL Database ${instanceId}:${databaseId} is already set up in ${schemaInfo.setupStatus}`,
+        );
         return schemaInfo.setupStatus;
       case SchemaSetupStatus.NotSetup:
       case SchemaSetupStatus.NotFound:
+        logLabeledBullet("dataconnect", "Setting up Cloud SQL Database SQL permissions...");
         return await setupSQLPermissions(
           instanceId,
           databaseId,
@@ -56,7 +60,7 @@ async function setupSchemaIfNecessary(
     }
   } catch (err: any) {
     throw new FirebaseError(
-      `Cannot setup SQL schema permissions of ${instanceId}:${databaseId}\n${err}`,
+      `Cannot setup Postgres SQL permissions of Cloud SQL database ${instanceId}:${databaseId}\n${err}`,
     );
   }
 }
@@ -66,7 +70,10 @@ export async function diffSchema(
   schema: Schema,
   schemaValidation?: SchemaValidation,
 ): Promise<Diff[]> {
-  logLabeledBullet("dataconnect", `Generating SQL schema migrations...`);
+  // If the schema validation mode is unset, we diff in strict mode first.
+  let validationMode: SchemaValidation = schemaValidation ?? "STRICT";
+  setSchemaValidationMode(schema, validationMode);
+  displayStartSchemaDiff(validationMode);
 
   const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -76,74 +83,61 @@ export async function diffSchema(
     /* linkIfNotConnected=*/ false,
   );
 
-  // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-  let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
-  setSchemaValidationMode(schema, validationMode);
-
-  let diffs: Diff[] = [];
+  let incompatible: IncompatibleSqlSchemaError | undefined = undefined;
   try {
     await upsertSchema(schema, /** validateOnly=*/ true);
-    if (validationMode === "STRICT") {
-      logLabeledSuccess(
-        "dataconnect",
-        `database schema of ${instanceId}:${databaseId} is up to date.`,
-      );
-    } else {
-      logLabeledSuccess(
-        "dataconnect",
-        `database schema of ${instanceId}:${databaseId} is compatible.`,
-      );
-    }
+    displayNoSchemaDiff(instanceId, databaseId, validationMode);
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
     }
     const invalidConnectors = errors.getInvalidConnectors(err);
-    const incompatible = errors.getIncompatibleSchemaError(err);
+    incompatible = errors.getIncompatibleSchemaError(err);
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
       throw err;
     }
-
     // Display failed precondition errors nicely.
     if (invalidConnectors.length) {
       displayInvalidConnectors(invalidConnectors);
     }
-    if (incompatible) {
-      displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
-      diffs = incompatible.diffs;
-    }
   }
-
-  // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
-  if (!schemaValidation) {
-    validationMode = "STRICT";
-    setSchemaValidationMode(schema, validationMode);
-    try {
-      logLabeledBullet("dataconnect", `generating schema changes, including optional changes...`);
-      await upsertSchema(schema, /** validateOnly=*/ true);
-      logLabeledSuccess("dataconnect", `no additional optional changes`);
-    } catch (err: any) {
-      if (err?.status !== 400) {
-        throw err;
-      }
-      const incompatible = errors.getIncompatibleSchemaError(err);
-      if (incompatible) {
-        if (!diffsEqual(diffs, incompatible.diffs)) {
-          if (diffs.length === 0) {
-            displaySchemaChanges(incompatible, "STRICT_AFTER_COMPATIBLE", instanceName, databaseId);
-          } else {
-            displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
-          }
-          // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
-          diffs = incompatible.diffs;
-        } else {
-          logLabeledSuccess("dataconnect", `no additional optional changes`);
-        }
-      }
-    }
+  if (!incompatible) {
+    return [];
   }
-  return diffs;
+  // If the schema validation mode is unset, we diff in strict mode first, then diff in compatible if there are any diffs.
+  // It should display both COMPATIBLE and STRICT mode diffs in this order.
+  if (schemaValidation) {
+    displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
+    return incompatible.diffs;
+  }
+  const strictIncompatible = incompatible;
+  let compatibleIncompatible: IncompatibleSqlSchemaError | undefined = undefined;
+  validationMode = "COMPATIBLE";
+  setSchemaValidationMode(schema, validationMode);
+  try {
+    displayStartSchemaDiff(validationMode);
+    await upsertSchema(schema, /** validateOnly=*/ true);
+    displayNoSchemaDiff(instanceId, databaseId, validationMode);
+  } catch (err: any) {
+    if (err?.status !== 400) {
+      throw err;
+    }
+    compatibleIncompatible = errors.getIncompatibleSchemaError(err);
+  }
+  if (!compatibleIncompatible) {
+    // No compatible changes.
+    displaySchemaChanges(strictIncompatible, "STRICT", instanceName, databaseId);
+  } else if (diffsEqual(strictIncompatible.diffs, compatibleIncompatible.diffs)) {
+    // Strict and compatible SQL migrations are the same.
+    displaySchemaChanges(strictIncompatible, "STRICT", instanceName, databaseId);
+  } else {
+    // Strict and compatible SQL migrations are different.
+    displaySchemaChanges(compatibleIncompatible, "COMPATIBLE", instanceName, databaseId);
+    displaySchemaChanges(strictIncompatible, "STRICT_AFTER_COMPATIBLE", instanceName, databaseId);
+  }
+  // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
+  return incompatible.diffs;
 }
 
 export async function migrateSchema(args: {
@@ -153,9 +147,13 @@ export async function migrateSchema(args: {
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
 }): Promise<Diff[]> {
-  logLabeledBullet("dataconnect", `Generating SQL schema migrations...`);
-
   const { options, schema, validateOnly, schemaValidation } = args;
+
+  // If the schema validation mode is unset, we prompt COMPATIBLE SQL diffs and then STRICT diffs.
+  let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
+  setSchemaValidationMode(schema, validationMode);
+  displayStartSchemaDiff(validationMode);
+
   const projectId = needProjectId(options);
   const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
@@ -190,17 +188,10 @@ export async function migrateSchema(args: {
   // Make sure database is setup.
   await setupSchemaIfNecessary(instanceId, databaseId, options);
 
-  // If the schema validation mode is unset, we surface both STRICT and COMPATIBLE mode diffs, starting with COMPATIBLE.
-  let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
-  setSchemaValidationMode(schema, validationMode);
-
   let diffs: Diff[] = [];
   try {
     await upsertSchema(schema, validateOnly);
-    logLabeledSuccess(
-      "dataconnect",
-      `database schema of ${instanceId}:${databaseId} is up to date.`,
-    );
+    displayNoSchemaDiff(instanceId, databaseId, validationMode);
   } catch (err: any) {
     if (err?.status !== 400) {
       throw err;
@@ -248,7 +239,7 @@ export async function migrateSchema(args: {
     }
   }
 
-  // If the validation mode is unset, then we also surface any additional optional STRICT diffs.
+  // If the validation mode is unset, then we also prompt for any additional optional STRICT diffs.
   if (!schemaValidation) {
     validationMode = "STRICT";
     setSchemaValidationMode(schema, validationMode);
@@ -492,26 +483,31 @@ async function promptForSchemaMigration(
   if (!err) {
     return "none";
   }
-  if (validationMode === "STRICT_AFTER_COMPATIBLE" && (options.nonInteractive || options.force)) {
-    // If these are purely optional changes, do not execute them in non-interactive mode or with the `--force` flag.
-    return "none";
-  }
+  const forceMode = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
   displaySchemaChanges(err, validationMode, instanceName, databaseId);
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
       // `firebase dataconnect:sql:migrate --force` performs all migrations.
-      return "all";
+      return forceMode;
+    }
+    if (validationMode === "STRICT_AFTER_COMPATIBLE") {
+      // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
+      // Destructive migrations are too potentially dangerous to not prompt for with --force
+      const message = `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
+      let executeChangePrompt = "Execute optional changes";
+      if (err.destructive) {
+        executeChangePrompt = executeChangePrompt + " (including destructive changes)";
+      }
+      const choices = [
+        { name: executeChangePrompt, value: "all" },
+        { name: "Skip optional changes", value: "none" },
+      ] as const;
+      return await select({ message, choices, default: forceMode });
     }
     // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
     // Destructive migrations are too potentially dangerous to not prompt for with --force
-    const message =
-      validationMode === "STRICT_AFTER_COMPATIBLE"
-        ? `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`
-        : `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
+    const message = `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
     let executeChangePrompt = "Execute changes";
-    if (validationMode === "STRICT_AFTER_COMPATIBLE") {
-      executeChangePrompt = "Execute optional changes";
-    }
     if (err.destructive) {
       executeChangePrompt = executeChangePrompt + " (including destructive changes)";
     }
@@ -519,8 +515,11 @@ async function promptForSchemaMigration(
       { name: executeChangePrompt, value: "all" },
       { name: "Abort changes", value: "none" },
     ] as const;
-    const defaultValue = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
-    return await select({ message, choices, default: defaultValue });
+    const ans = await select<"none" | "all">({ message, choices, default: forceMode });
+    if (ans === "none") {
+      throw new FirebaseError("Command aborted.");
+    }
+    return ans;
   }
   if (!validateOnly) {
     // `firebase deploy --nonInteractive` performs no migrations
@@ -529,10 +528,10 @@ async function promptForSchemaMigration(
     );
   } else if (options.force) {
     // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations.
-    return "all";
+    return forceMode;
   } else if (!err.destructive) {
     // `dataconnect:sql:migrate --nonInteractive` performs only non-destructive migrations.
-    return "all";
+    return forceMode;
   } else {
     // `dataconnect:sql:migrate --nonInteractive` errors out if there are destructive migrations
     throw new FirebaseError(
@@ -675,6 +674,38 @@ export async function ensureServiceIsConnectedToCloudSql(
       throw err;
     }
     logger.debug(`Failed to ensure service is connected to Cloud SQL: ${err.message}`);
+  }
+}
+
+function displayStartSchemaDiff(validationMode: SchemaValidation): void {
+  switch (validationMode) {
+    case "COMPATIBLE":
+      logLabeledBullet("dataconnect", `Generating SQL schema migrations to be compatible...`);
+      break;
+    case "STRICT":
+      logLabeledBullet("dataconnect", `Generating SQL schema migrations to match exactly...`);
+      break;
+  }
+}
+
+function displayNoSchemaDiff(
+  instanceId: string,
+  databaseId: string,
+  validationMode: SchemaValidation,
+): void {
+  switch (validationMode) {
+    case "COMPATIBLE":
+      logLabeledSuccess(
+        "dataconnect",
+        `Database schema of ${instanceId}:${databaseId} is compatible with Data Connect Schema.`,
+      );
+      break;
+    case "STRICT":
+      logLabeledSuccess(
+        "dataconnect",
+        `Database schema of ${instanceId}:${databaseId} matches Data Connect Schema exactly.`,
+      );
+      break;
   }
 }
 
