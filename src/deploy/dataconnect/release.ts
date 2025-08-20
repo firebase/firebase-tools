@@ -38,7 +38,7 @@ export default async function (
     })
     .map((s) => ({
       schema: s.schema,
-      validationMode: s.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+      validationMode: s.dataConnectYaml?.schema?.datasource?.postgresql?.schemaValidation,
     }));
 
   if (wantSchemas.length) {

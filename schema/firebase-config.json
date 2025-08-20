@@ -279,6 +279,9 @@
                         }
                     ]
                 },
+                "prefix": {
+                    "type": "string"
+                },
                 "runtime": {
                     "enum": [
                         "nodejs18",

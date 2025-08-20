@@ -4,7 +4,6 @@ import {
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
 } from "./types";
-import { RegistryEntry } from "./resolveSource";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { Choice } from "../prompt";
 
@@ -19,22 +18,6 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Cho
       value: option.value,
     };
   });
-}
-
-/**
- * Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
- */
-export function convertOfficialExtensionsToList(officialExts: {
-  [key: string]: RegistryEntry;
-}): Choice<string>[] {
-  const l = Object.entries(officialExts).map(([key, entry]) => {
-    return {
-      checked: false,
-      value: `${entry.publisher}/${key}`,
-    };
-  });
-  l.sort((a, b) => a.value.localeCompare(b.value));
-  return l;
 }
 
 /**

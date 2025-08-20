@@ -476,6 +476,7 @@ describe("convertConfig", () => {
         unreachableRegions: {
           gcfV1: [],
           gcfV2: [],
+          run: [],
         },
       };
       const deploy: HostingDeploy = {

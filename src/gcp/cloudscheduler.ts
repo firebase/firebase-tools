@@ -239,7 +239,7 @@ export async function jobFromEndpoint(
         scheduled: "true",
       },
     };
-  } else if (endpoint.platform === "gcfv2") {
+  } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
     job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V2;
     job.httpTarget = {
       uri: endpoint.uri!,

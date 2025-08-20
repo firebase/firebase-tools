@@ -28,22 +28,26 @@ import { FirebaseError } from "../../../error";
 import { camelCase, snakeCase, upperFirst } from "lodash";
 import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
+import { Options } from "../../../options";
 
-export const FDC_APP_FOLDER = "_FDC_APP_FOLDER";
+export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
+export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
+export const FDC_SDK_PLATFORM_ENV = "FDC_SDK_PLATFORM";
+
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
   displayIOSWarning: boolean;
 };
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  const sdkInfo = await askQuestions(setup, config);
+export async function doSetup(setup: Setup, config: Config, options: Options): Promise<void> {
+  const sdkInfo = await askQuestions(setup, config, options);
   await actuate(sdkInfo, config);
   logSuccess(
     `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")} again`,
   );
 }
 
-async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
+async function askQuestions(setup: Setup, config: Config, options: Options): Promise<SDKInfo> {
   const serviceCfgs = readFirebaseJson(config);
   // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
   const serviceInfos = await Promise.all(
@@ -69,7 +73,21 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
 
   // First, lets check if we are in an app directory
   let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
-  let targetPlatform = await getPlatformFromFolder(appDir);
+  let targetPlatform = envOverride(
+    FDC_SDK_PLATFORM_ENV,
+    (await getPlatformFromFolder(appDir)) || Platform.NONE,
+  ) as Platform;
+
+  if (options.nonInteractive && targetPlatform === Platform.NONE) {
+    throw new FirebaseError(
+      `In non-interactive mode, the target platform and app directory must be specified using environment variables if they cannot be automatically detected.
+Please set the ${FDC_SDK_PLATFORM_ENV} and ${FDC_APP_FOLDER} environment variables.
+For example:
+${clc.bold(
+  `${FDC_SDK_PLATFORM_ENV}=WEB ${FDC_APP_FOLDER}=app-dir ${FDC_SDK_FRAMEWORKS_ENV}=react firebase init dataconnect:sdk --non-interactive`,
+)}`,
+    );
+  }
   if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
     appDir = await promptForDirectory({
@@ -114,14 +132,22 @@ async function askQuestions(setup: Setup, config: Config): Promise<SDKInfo> {
       (framework) => !newConnectorYaml!.generate?.javascriptSdk![framework],
     );
     if (unusedFrameworks.length > 0) {
-      const additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
-        message:
-          "Which frameworks would you like to generate SDKs for in addition to the TypeScript SDK? Press Enter to skip.\n",
-        choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
-          value: frameworkStr,
-          checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
-        })),
-      });
+      let additionalFrameworks: (typeof SUPPORTED_FRAMEWORKS)[number][] = [];
+      if (options.nonInteractive) {
+        additionalFrameworks = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
+          .split(",")
+          .filter((f) => f) as (typeof SUPPORTED_FRAMEWORKS)[number][];
+      } else {
+        additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
+          message:
+            "Which frameworks would you like to generate SDKs for in addition to the TypeScript SDK? Press Enter to skip.\n",
+          choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
+            value: frameworkStr,
+            checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
+          })),
+        });
+      }
+
       for (const framework of additionalFrameworks) {
         newConnectorYaml!.generate!.javascriptSdk![framework] = true;
       }
