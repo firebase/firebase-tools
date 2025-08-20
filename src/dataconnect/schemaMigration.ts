@@ -92,7 +92,7 @@ export async function diffSchema(
     }
     const gqlErrs = errors.getGQLErrors(err);
     if (gqlErrs) {
-      throw new FirebaseError(`There are errors in your schema files: ${gqlErrs}`);
+      throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
     }
     incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
@@ -202,7 +202,7 @@ export async function migrateSchema(args: {
     // Parse and handle failed precondition errors, then retry.
     const gqlErrs = errors.getGQLErrors(err);
     if (gqlErrs) {
-      throw new FirebaseError(`There are errors in your schema files: ${gqlErrs}`);
+      throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
     }
     const incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
@@ -440,9 +440,7 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     if (commandsToExecuteBySuperUser.length) {
-      logger.info(
-        `The diffs require CloudSQL superuser permissions, attempting to apply changes as superuser.`,
-      );
+      logLabeledBullet("dataconnect", `Executing admin SQL commands as superuser...`);
       await executeSqlCmdsAsSuperUser(
         options,
         instanceId,

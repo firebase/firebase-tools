@@ -105,7 +105,7 @@ export async function execute(
     sqlStatements.push("COMMIT;");
   }
   for (const s of sqlStatements) {
-    logFn(`Executing: '${s}'`);
+    logFn(`> ${s}`);
     try {
       results.push(await conn.query(s));
     } catch (err) {
