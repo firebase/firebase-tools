@@ -17,7 +17,8 @@ export const list_top_issues = tool(
       issue_count: z
         .number()
         .optional()
-        .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified."),
+        .describe("Number of issues that needs to be fetched. Defaults to 10 if unspecified.")
+        .default(10),
       issue_type: z
         .enum(["FATAL", "NON-FATAL", "ANR"])
         .optional()
