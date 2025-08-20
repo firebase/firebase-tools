@@ -1,3 +1,4 @@
+import { R } from "@electric-sql/pglite/dist/pglite-BPiZge4p";
 import { FirebaseError } from "../error";
 import { RecursiveKeyOf } from "../metaprogramming";
 
@@ -59,6 +60,34 @@ export function copyIfPresent<Dest extends object, Keys extends (keyof Dest)[]>(
     }
     dest[field] = src[field]!;
   }
+}
+
+/**
+ * Form of copyIfPresent that can be run inline and splatted into a literal object.
+ * The two forms are comparable:
+ * 
+ * const dest: D = { a: "b" }
+ * copyIfPresent(dest, src, "foo", "bar");
+ * 
+ * and dest: D = {
+ *  a: "b",
+ *  ...pick(src, "foo", "bar"),
+ * }
+ * 
+ * This is better than raw copying of an optional field because it will not insert a undefined,
+ * which can confuse the difference between "!foo[bar]" vs "foo in bar".
+ */
+// Note: Technically this can do better with literal inlined types, but do we actually care?
+export function pick<Key extends string, O extends { [K in Key]?: unknown }>(
+  src: O, ...fields: Key[]): { [K in Key]?: O[K] } {
+  const dest: { [K in Key]?: O[K] } = {};
+
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(src, field)) {
+      dest[field] = src[field]!;
+    }
+  }
+  return dest;
 }
 
 /**

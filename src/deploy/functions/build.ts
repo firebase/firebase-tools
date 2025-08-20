@@ -492,14 +492,8 @@ export function toBackend(
         platform: bdEndpoint.platform,
         runtime: bdEndpoint.runtime,
         ...trigger,
+        ...proto.pick(bdEndpoint, "environmentVariables", "secretEnvironmentVariables", "labels"),
       };
-      proto.copyIfPresent(
-        bkEndpoint,
-        bdEndpoint,
-        "environmentVariables",
-        "labels",
-        "secretEnvironmentVariables",
-      );
       r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
@@ -574,8 +568,12 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     }
     return { httpsTrigger };
   } else if (isCallableTriggered(endpoint)) {
-    const trigger: CallableTriggered = { callableTrigger: {} };
-    proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
+    // Nit: can't this just be an assignment or deep copy?
+    const trigger: CallableTriggered = {
+      callableTrigger: {
+        ...proto.pick(endpoint.callableTrigger, "genkitAction"),
+      }
+    };
     return trigger;
   } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };

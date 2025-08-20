@@ -233,18 +233,10 @@ export function addResourcesToBuild(
       reason: "Needed for task queue functions.",
     });
     triggered = {
-      taskQueueTrigger: {},
+      taskQueueTrigger: proto.pick(annotation.taskQueueTrigger, "invoker", "rateLimits"),
     };
-    proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "invoker");
-    proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "rateLimits");
     if (annotation.taskQueueTrigger.retryConfig) {
-      triggered.taskQueueTrigger.retryConfig = {};
-      proto.copyIfPresent(
-        triggered.taskQueueTrigger.retryConfig,
-        annotation.taskQueueTrigger.retryConfig,
-        "maxAttempts",
-        "maxDoublings",
-      );
+      triggered.taskQueueTrigger.retryConfig = proto.pick(annotation.taskQueueTrigger.retryConfig, "maxAttempts", "maxDoublings");
       proto.convertIfPresent(
         triggered.taskQueueTrigger.retryConfig,
         annotation.taskQueueTrigger.retryConfig,
@@ -294,13 +286,7 @@ export function addResourcesToBuild(
       },
     };
     if (annotation.schedule.retryConfig) {
-      triggered.scheduleTrigger.retryConfig = {};
-      proto.copyIfPresent(
-        triggered.scheduleTrigger.retryConfig,
-        annotation.schedule.retryConfig,
-        "retryCount",
-        "maxDoublings",
-      );
+      triggered.scheduleTrigger.retryConfig = proto.pick(annotation.schedule.retryConfig, "retryCount", "maxDoublings");
       proto.convertIfPresent(
         triggered.scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
@@ -358,21 +344,13 @@ export function addResourcesToBuild(
     entryPoint: annotation.entryPoint,
     runtime: runtime,
     ...triggered,
+    ...proto.pick(annotation, "concurrency", "labels", "maxInstances", "minInstances", "availableMemoryMb"),
   };
   proto.renameIfPresent(endpoint, annotation, "serviceAccount", "serviceAccountEmail");
   if (annotation.vpcConnector != null) {
     endpoint.vpc = { connector: annotation.vpcConnector };
     proto.renameIfPresent(endpoint.vpc, annotation, "egressSettings", "vpcConnectorEgressSettings");
   }
-  proto.copyIfPresent(
-    endpoint,
-    annotation,
-    "concurrency",
-    "labels",
-    "maxInstances",
-    "minInstances",
-    "availableMemoryMb",
-  );
   proto.convertIfPresent(endpoint, annotation, "ingressSettings", (str) => {
     if (str === null) {
       return null;
