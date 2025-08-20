@@ -17,16 +17,6 @@ function confirmationMessage(
   collectionIds: string[],
 ): string {
   const root = `projects/${options.project}/databases/${databaseId}/documents`;
-  if (collectionIds.length === 0) {
-    return (
-      "You are about to delete " +
-      clc.bold(clc.yellow(clc.underline("ALL COLLECTION GROUPS"))) +
-      " in " +
-      clc.cyan(root) +
-      ". Are you sure?"
-    );
-  }
-
   return (
     "You are about to delete all documents in the following collection groups: " +
     clc.cyan(collectionIds.map((item) => `"${item}"`).join(", ")) +
