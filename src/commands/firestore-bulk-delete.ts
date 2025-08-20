@@ -44,11 +44,10 @@ export const command = new Command("firestore:bulk-delete")
   )
   .option(
     "--collection-ids <collectionIds>",
-    "A comma-separated list of collection group IDs to delete. Deletes all documents in the specified collection groups. If not provided, all collections groups will be deleted.",
+    "A comma-separated list of collection group IDs to delete. Deletes all documents in the specified collection groups.",
   )
   .before(requirePermissions, ["datastore.databases.bulkDeleteDocuments"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
-  .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
   .action(async (options: FirestoreOptions) => {
     if (!options.collectionIds) {
       throw new FirebaseError(

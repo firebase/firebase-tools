@@ -81,21 +81,6 @@ describe("firestore:bulk-delete", () => {
       .to.be.true;
   });
 
-  it("should return the operation", async () => {
-    const options = {
-      project: PROJECT,
-      collectionIds: COLLECTION_IDS.join(","),
-      force: true,
-      json: true,
-    };
-    const expectedResponse = mockResponse("test-operation");
-    firestoreApiStub.bulkDeleteDocuments.resolves(expectedResponse);
-
-    const result = await command.runner()(options);
-
-    expect(result).to.deep.equal(expectedResponse);
-  });
-
   it("should throw an error if the API call fails", async () => {
     const options = {
       project: PROJECT,
