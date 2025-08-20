@@ -8,7 +8,6 @@ import { confirm } from "../prompt";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { logger } from "../logger";
-import { logSuccess, logWarning } from "../utils";
 
 export const command = new Command("firestore:operations:cancel <operationName>")
   .description("cancels a long-running Cloud Firestore admin operation")
@@ -39,9 +38,9 @@ export const command = new Command("firestore:operations:cancel <operationName>"
       logger.info(JSON.stringify(status, undefined, 2));
     } else {
       if (status.success) {
-        logSuccess("Operation cancelled successfully.");
+        utils.logSuccess("Operation cancelled successfully.");
       } else {
-        logWarning("Canceling the operation failed.");
+        utils.logWarning("Canceling the operation failed.");
       }
     }
 

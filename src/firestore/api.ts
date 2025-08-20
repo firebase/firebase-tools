@@ -819,6 +819,7 @@ export class FirestoreApi {
    * List the long-running Firestore operations.
    * @param project the Firebase project id.
    * @param databaseId the id of the Firestore Database.
+   * @param limit The maximum number of operations to list.
    */
   async listOperations(
     project: string,
@@ -871,11 +872,14 @@ export class FirestoreApi {
       // "Precondition check failed.". And one has to parse the details of the error
       // stack to find out the real reason. We try to improve the error message here.
       const reason = "Cannot cancel an operation that is completed.";
-      if (JSON.stringify(error).includes(reason)) {
-        throw new FirebaseError(reason);
-      } else {
-        throw error;
+      const details = (error as any).context?.body?.error?.details || [];
+      for (const detail of details) {
+        if (detail.detail?.includes(reason)) {
+          throw new FirebaseError(reason);
+        }
       }
+      // If we weren't able to provide a better reason, rethrow the original error.
+      throw error;
     }
   }
 }

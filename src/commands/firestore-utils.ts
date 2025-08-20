@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
  * If the input is a short name (with no '/'), it returns the name as-is.
  * If the input is a full name, it returns the short name.
  * If the input is not a valid operation name it throws an exception.
- * @param name the operation name
+ * @param operationName the operation name
  */
 export function getShortOperationName(operationName: string): string {
   let opName = operationName;
