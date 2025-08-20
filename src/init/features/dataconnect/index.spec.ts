@@ -48,11 +48,11 @@ describe("init dataconnect", () => {
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
           "dataconnect/schema/schema.gql",
-          "dataconnect/connector/connector.yaml",
-          "dataconnect/connector/queries.gql",
-          "dataconnect/connector/mutations.gql",
+          "dataconnect/example/connector.yaml",
+          "dataconnect/example/queries.gql",
+          "dataconnect/example/mutations.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
@@ -64,44 +64,50 @@ describe("init dataconnect", () => {
           "not-dataconnect/dataconnect.yaml",
           // Populate the default template.
           "not-dataconnect/schema/schema.gql",
-          "not-dataconnect/connector/connector.yaml",
-          "not-dataconnect/connector/queries.gql",
-          "not-dataconnect/connector/mutations.gql",
+          "not-dataconnect/example/connector.yaml",
+          "not-dataconnect/example/queries.gql",
+          "not-dataconnect/example/mutations.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write schema files",
         requiredInfo: mockRequiredInfo({
-          schemaGql: [
-            {
-              path: "schema.gql",
-              content: "## Fake GQL",
-            },
-          ],
+          serviceGql: {
+            schemaGql: [
+              {
+                path: "schema.gql",
+                content: "## Fake GQL",
+              },
+            ],
+            connectors: [],
+          },
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
         expectedFiles: ["dataconnect/dataconnect.yaml", "dataconnect/schema/schema.gql"],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
         desc: "should write connector files",
         requiredInfo: mockRequiredInfo({
-          connectors: [
-            {
-              id: "my-connector",
-              path: "hello",
-              files: [
-                {
-                  path: "queries.gql",
-                  content: "## Fake GQL",
-                },
-              ],
-            },
-          ],
+          serviceGql: {
+            schemaGql: [],
+            connectors: [
+              {
+                id: "my-connector",
+                path: "hello",
+                files: [
+                  {
+                    path: "queries.gql",
+                    content: "## Fake GQL",
+                  },
+                ],
+              },
+            ],
+          },
         }),
         config: mockConfig({}),
         expectedSource: "dataconnect",
@@ -110,22 +116,20 @@ describe("init dataconnect", () => {
           "dataconnect/hello/connector.yaml",
           "dataconnect/hello/queries.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
       },
       {
         desc: "should provision cloudSQL resources ",
-        requiredInfo: mockRequiredInfo({
-          shouldProvisionCSQL: true,
-        }),
+        requiredInfo: mockRequiredInfo({}),
         config: mockConfig({}),
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
           "dataconnect/schema/schema.gql",
-          "dataconnect/connector/connector.yaml",
-          "dataconnect/connector/queries.gql",
-          "dataconnect/connector/mutations.gql",
+          "dataconnect/example/connector.yaml",
+          "dataconnect/example/queries.gql",
+          "dataconnect/example/mutations.gql",
         ],
         expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: false,
@@ -133,19 +137,21 @@ describe("init dataconnect", () => {
       {
         desc: "should handle schema with no files",
         requiredInfo: mockRequiredInfo({
-          schemaGql: [],
-          connectors: [
-            {
-              id: "my-connector",
-              path: "hello",
-              files: [
-                {
-                  path: "queries.gql",
-                  content: "## Fake GQL",
-                },
-              ],
-            },
-          ],
+          serviceGql: {
+            schemaGql: [],
+            connectors: [
+              {
+                id: "my-connector",
+                path: "hello",
+                files: [
+                  {
+                    path: "queries.gql",
+                    content: "## Fake GQL",
+                  },
+                ],
+              },
+            ],
+          },
         }),
         config: mockConfig({
           dataconnect: {
@@ -158,7 +164,7 @@ describe("init dataconnect", () => {
           "dataconnect/hello/connector.yaml",
           "dataconnect/hello/queries.gql",
         ],
-        expectCSQLProvisioning: false,
+        expectCSQLProvisioning: true,
         expectEnsureSchemaGQL: true,
       },
     ];
@@ -229,15 +235,11 @@ function mockConfig(data: Record<string, any> = {}): Config {
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
+    appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",
     cloudSqlInstanceId: "csql-instance",
     cloudSqlDatabase: "csql-db",
-    isNewDatabase: false,
-    isNewInstance: false,
-    shouldProvisionCSQL: false,
-    connectors: [],
-    schemaGql: [],
     ...info,
   };
 }
