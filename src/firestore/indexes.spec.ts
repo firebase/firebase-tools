@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { FirestoreApi } from "./api";
 import { FirebaseError } from "../error";
 import * as API from "./api-types";
+import { ApiScope, DatabaseEdition, Density } from "./api-types";
 import * as Spec from "./api-spec";
 import * as sort from "./api-sort";
 
@@ -36,7 +37,7 @@ describe("IndexValidation", () => {
     idx.validateSpec(VALID_SPEC);
   });
 
-  it("should accept a valid index spec with apiScope, density, multikey, and unique", () => {
+  it("should accept a valid index spec with apiScope, density, and multikey", () => {
     const spec = {
       indexes: [
         {
@@ -45,7 +46,6 @@ describe("IndexValidation", () => {
           apiScope: "ANY_API",
           density: "DENSE",
           multikey: true,
-          unique: true,
           fields: [
             { fieldPath: "foo", order: "ASCENDING" },
             { fieldPath: "bar", order: "DESCENDING" },
@@ -303,6 +303,18 @@ describe("IndexValidation", () => {
   });
 });
 describe("IndexSpecMatching", () => {
+  const baseApiIndex: API.Index = {
+    name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+    queryScope: API.QueryScope.COLLECTION,
+    fields: [],
+  };
+
+  const baseSpecIndex: Spec.Index = {
+    collectionGroup: "collection",
+    queryScope: "COLLECTION",
+    fields: [],
+  } as Spec.Index;
+
   it("should identify a positive index spec match", () => {
     const apiIndex: API.Index = {
       name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
@@ -310,6 +322,7 @@ describe("IndexSpecMatching", () => {
       fields: [
         { fieldPath: "foo", order: API.Order.ASCENDING },
         { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
+        { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
       ],
       state: API.State.READY,
     };
@@ -320,10 +333,27 @@ describe("IndexSpecMatching", () => {
       fields: [
         { fieldPath: "foo", order: "ASCENDING" },
         { fieldPath: "bar", arrayConfig: "CONTAINS" },
+        { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
       ],
     } as Spec.Index;
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(true);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+  });
+
+  it("should identify a negative index spec match with different vector config dimension", () => {
+    const apiIndex = {
+      ...baseApiIndex,
+      fields: [{ fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } }],
+    };
+
+    const specIndex = {
+      ...baseSpecIndex,
+      fields: [{ fieldPath: "baz", vectorConfig: { dimension: 382, flat: {} } }],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
   });
 
   it("should identify a positive index spec match with apiScope, density, multikey, and unique", () => {
@@ -354,147 +384,194 @@ describe("IndexSpecMatching", () => {
       ],
     } as Spec.Index;
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(true);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
   });
 
-  it("should identify a negative index spec match with different apiScope", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      apiScope: API.ApiScope.ANY_API,
-      fields: [],
-    };
-
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      apiScope: "DATASTORE_MODE_API",
-      fields: [],
-    } as Spec.Index;
-
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+  it("should identify a positive index spec match when missing apiScope and density and multikey in both", () => {
+    expect(idx.indexMatchesSpec(baseApiIndex, baseSpecIndex, DatabaseEdition.STANDARD)).to.eql(
+      true,
+    );
+    expect(idx.indexMatchesSpec(baseApiIndex, baseSpecIndex, DatabaseEdition.ENTERPRISE)).to.eql(
+      true,
+    );
   });
 
-  it("should identify a negative index spec match with missing apiScope", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      fields: [],
-    };
+  describe("ApiScope", () => {
+    it("should identify a negative index spec match with different apiScope", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: API.ApiScope.ANY_API };
+      const specIndex = { ...baseSpecIndex, apiScope: "MONGODB_COMPATIBLE_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
 
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      apiScope: "DATASTORE_MODE_API",
-      fields: [],
-    } as Spec.Index;
+    it("should identify a positive index spec match with same apiScope ANY_API", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: API.ApiScope.ANY_API };
+      const specIndex = { ...baseSpecIndex, apiScope: "ANY_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+    it("should identify a positive index spec match with same apiScope MONGODB_COMPATIBLE_API", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: API.ApiScope.MONGODB_COMPATIBLE_API };
+      const specIndex = { ...baseSpecIndex, apiScope: "MONGODB_COMPATIBLE_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("should identify a positive match, apiScope missing in index, default in spec", () => {
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, apiScope: "ANY_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("should identify a positive match, apiScope missing in spec, default in index", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: ApiScope.ANY_API };
+      const specIndex = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("should identify a negative match, apiScope missing in index, non-default in spec", () => {
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, apiScope: "MONGODB_COMPATIBLE_API" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
+
+    it("should identify a negative match, apiScope missing in spec, non-default in index", () => {
+      const apiIndex = { ...baseApiIndex, apiScope: ApiScope.MONGODB_COMPATIBLE_API };
+      const specIndex = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
   });
 
-  it("should identify a negative index spec match with different density", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      density: API.Density.DENSE,
-      fields: [],
-    };
+  describe("Density", () => {
+    it("should identify a negative index spec match with different density", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.DENSE };
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ALL" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
 
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      density: "SPARSE_ALL",
-      fields: [],
-    } as Spec.Index;
+    it("should identify a positive index spec match with same density DENSE", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.DENSE };
+      const specIndex = { ...baseSpecIndex, density: "DENSE" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+    it("should identify a positive index spec match with same density SPARSE_ALL", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.SPARSE_ALL };
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ALL" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("should identify a positive index spec match with same density SPARSE_ANY", () => {
+      const apiIndex = { ...baseApiIndex, density: API.Density.SPARSE_ANY };
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ANY" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("should identify a positive match, density missing in index, default in spec", () => {
+      // The default value for Enterprise is DENSE
+      const apiIndex1 = baseApiIndex;
+      const specIndex1 = { ...baseSpecIndex, density: "DENSE" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(true);
+
+      // The default value for Standard is SPARSE_ALL
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ALL" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
+
+    it("should identify a positive match, density missing in spec, default in index", () => {
+      // The default value for Enterprise is DENSE
+      const apiIndex1 = { ...baseApiIndex, density: Density.DENSE };
+      const specIndex1 = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(true);
+
+      // The default value for Standard is SPARSE_ALL
+      const apiIndex2 = { ...baseApiIndex, density: Density.SPARSE_ALL };
+      const specIndex2 = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex2, specIndex2, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
+
+    it("should identify a negative match, density missing in index, non-default in spec", () => {
+      // The default value for Enterprise is DENSE, and the default value for Standard is SPARSE_ALL
+      // so using SPARSE_ANY should fail both.
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, density: "SPARSE_ANY" } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
+
+    it("should identify a negative match, density missing in spec, non-default in index", () => {
+      // The default value for Enterprise is DENSE, and the default value for Standard is SPARSE_ALL
+      // so using SPARSE_ANY should fail both.
+      const apiIndex1 = { ...baseApiIndex, density: Density.SPARSE_ANY };
+      const specIndex1 = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex1, specIndex1, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
   });
 
-  it("should identify a negative index spec match with missing density", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      density: API.Density.DENSE,
-      fields: [],
-    };
+  describe("Multikey", () => {
+    it("should identify a negative index spec match with different multikey", () => {
+      const apiIndex = { ...baseApiIndex, multikey: true };
+      const specIndex = { ...baseSpecIndex, multikey: false } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
 
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      fields: [],
-    } as Spec.Index;
+    it("should identify a positive index spec match with same multikey true", () => {
+      const apiIndex = { ...baseApiIndex, multikey: true };
+      const specIndex = { ...baseSpecIndex, multikey: true } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
-  });
+    it("should identify a positive index spec match with same multikey false", () => {
+      const apiIndex = { ...baseApiIndex, multikey: false };
+      const specIndex = { ...baseSpecIndex, multikey: false } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-  it("should identify a negative index spec match with different multikey", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      multikey: true,
-      fields: [],
-    };
+    it("should identify a positive match, multikey missing in index, default in spec", () => {
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, multikey: false } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      multikey: false,
-      fields: [],
-    } as Spec.Index;
+    it("should identify a positive match, multikey missing in spec, default in index", () => {
+      const apiIndex = { ...baseApiIndex, multikey: false };
+      const specIndex = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
 
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
-  });
+    it("should identify a negative match, multikey missing in index, non-default in spec", () => {
+      const apiIndex = baseApiIndex;
+      const specIndex = { ...baseSpecIndex, multikey: true } as Spec.Index;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
 
-  it("should identify a negative index spec match with missing multikey", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      multikey: false,
-      fields: [],
-    };
-
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      fields: [],
-    } as Spec.Index;
-
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
-  });
-
-  it("should identify a negative index spec match with different unique", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      unique: true,
-      fields: [],
-    };
-
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      unique: false,
-      fields: [],
-    } as Spec.Index;
-
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
-  });
-
-  it("should identify a negative index spec match with missing unique", () => {
-    const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: API.QueryScope.COLLECTION,
-      unique: false,
-      fields: [],
-    };
-
-    const specIndex = {
-      collectionGroup: "collection",
-      queryScope: "COLLECTION",
-      fields: [],
-    } as Spec.Index;
-
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+    it("should identify a negative match, multikey missing in spec, non-default in index", () => {
+      const apiIndex = { ...baseApiIndex, multikey: true };
+      const specIndex = baseSpecIndex;
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
   });
 
   it("should identify a negative index spec match", () => {
@@ -518,7 +595,8 @@ describe("IndexSpecMatching", () => {
     } as Spec.Index;
 
     // The second spec contains ASCENDING where the former contains DESCENDING
-    expect(idx.indexMatchesSpec(apiIndex, specIndex)).to.eql(false);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
   });
 
   it("should identify a positive field spec match", () => {
