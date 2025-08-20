@@ -17,7 +17,7 @@ export const command = new Command("firestore:operations:list")
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
     const databaseId = options.database || "(default)";
-    const limit = (options.limit as number) || 100;
+    const limit = options.limit === undefined ? 100 : Number(options.limit);
 
     const api = new fsi.FirestoreApi();
     const { operations } = await api.listOperations(options.project, databaseId, limit);
