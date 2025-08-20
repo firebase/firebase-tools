@@ -3,5 +3,5 @@
 - Make it possible to init a dataconnect project in non interactive mode (#8993)
 - Added 2 new MCP tools for crashlytics `get_sample_crash_for_issue` and `get_issue_details` (#8995)
 - Use Gemini to generate schema and seed_data.gql in `firebase init dataconnect` (#8988)
-- Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
-- Make `firebase deploy` create Cloud SQL instances asynchronously (#9004)
+- Fixed a bug when `firebase deploy --only dataconnect` didn't include GQL files in nested folders (#8981)
+- Changed `firebase deploy` create Cloud SQL instances asynchronously (#9004)
