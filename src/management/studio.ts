@@ -142,7 +142,7 @@ export async function updateStudioFirebaseProject(projectId: string): Promise<vo
     if (err.original) {
       message += ` (original: ${err.original.message})`;
     }
-    logger.warn(
+    logger.debug(
       `Failed to update active Firebase Project for current Studio Workspace: ${message}`,
     );
   }
