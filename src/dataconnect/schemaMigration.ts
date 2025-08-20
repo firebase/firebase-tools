@@ -7,13 +7,11 @@ import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
   executeSqlCmdsAsSuperUser,
-  toDatabaseUser,
   setupIAMUsers,
 } from "../gcp/cloudsql/connect";
 import { needProjectId } from "../projectUtils";
 import {
   checkSQLRoleIsGranted,
-  fdcSqlRoleMap,
   setupSQLPermissions,
   getSchemaMetadata,
   SchemaSetupStatus,
@@ -30,7 +28,6 @@ import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
 import { cloudSQLBeingCreated } from "./provisionCloudSql";
-import { requireAuth } from "../requireAuth";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
@@ -93,8 +90,12 @@ export async function diffSchema(
     if (err?.status !== 400) {
       throw err;
     }
-    const invalidConnectors = errors.getInvalidConnectors(err);
+    const gqlErrs = errors.getGQLErrors(err);
+    if (gqlErrs) {
+      throw new FirebaseError(`There are errors in your schema files: ${gqlErrs}`);
+    }
     incompatible = errors.getIncompatibleSchemaError(err);
+    const invalidConnectors = errors.getInvalidConnectors(err);
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
       throw err;
@@ -110,7 +111,7 @@ export async function diffSchema(
   // If the schema validation mode is unset, we diff in strict mode first, then diff in compatible if there are any diffs.
   // It should display both COMPATIBLE and STRICT mode diffs in this order.
   if (schemaValidation) {
-    displaySchemaChanges(incompatible, validationMode, instanceName, databaseId);
+    displaySchemaChanges(incompatible, validationMode);
     return incompatible.diffs;
   }
   const strictIncompatible = incompatible;
@@ -129,14 +130,14 @@ export async function diffSchema(
   }
   if (!compatibleIncompatible) {
     // No compatible changes.
-    displaySchemaChanges(strictIncompatible, "STRICT", instanceName, databaseId);
+    displaySchemaChanges(strictIncompatible, "STRICT");
   } else if (diffsEqual(strictIncompatible.diffs, compatibleIncompatible.diffs)) {
     // Strict and compatible SQL migrations are the same.
-    displaySchemaChanges(strictIncompatible, "STRICT", instanceName, databaseId);
+    displaySchemaChanges(strictIncompatible, "STRICT");
   } else {
     // Strict and compatible SQL migrations are different.
-    displaySchemaChanges(compatibleIncompatible, "COMPATIBLE", instanceName, databaseId);
-    displaySchemaChanges(strictIncompatible, "STRICT_AFTER_COMPATIBLE", instanceName, databaseId);
+    displaySchemaChanges(compatibleIncompatible, "COMPATIBLE");
+    displaySchemaChanges(strictIncompatible, "STRICT_AFTER_COMPATIBLE");
   }
   // Return STRICT diffs if the --json flag is passed and schemaValidation is unset.
   return incompatible.diffs;
@@ -199,6 +200,10 @@ export async function migrateSchema(args: {
       throw err;
     }
     // Parse and handle failed precondition errors, then retry.
+    const gqlErrs = errors.getGQLErrors(err);
+    if (gqlErrs) {
+      throw new FirebaseError(`There are errors in your schema files: ${gqlErrs}`);
+    }
     const incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
     if (!incompatible && !invalidConnectors.length) {
@@ -208,7 +213,7 @@ export async function migrateSchema(args: {
 
     const migrationMode = await promptForSchemaMigration(
       options,
-      instanceName,
+      instanceId,
       databaseId,
       incompatible,
       validateOnly,
@@ -261,7 +266,7 @@ export async function migrateSchema(args: {
 
       const migrationMode = await promptForSchemaMigration(
         options,
-        instanceName,
+        instanceId,
         databaseId,
         incompatible,
         validateOnly,
@@ -377,12 +382,6 @@ async function handleIncompatibleSchemaError(args: {
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
   const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
-  if (incompatibleSchemaError.destructive && choice === "safe") {
-    throw new FirebaseError(
-      "This schema migration includes potentially destructive changes. If you'd like to execute it anyway, rerun this command with --force",
-    );
-  }
-
   const commandsToExecute = incompatibleSchemaError.diffs
     .filter((d) => {
       switch (choice) {
@@ -421,7 +420,7 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     // Test if iam user has access to the roles required for this migration
-    const { user, mode } = await getIAMUser(options);
+    const { user } = await getIAMUser(options);
     if (
       !(await checkSQLRoleIsGranted(
         options,
@@ -469,49 +468,42 @@ async function handleIncompatibleSchemaError(args: {
 
 async function promptForSchemaMigration(
   options: Options,
-  instanceName: string,
+  instanceId: string,
   databaseId: string,
   err: IncompatibleSqlSchemaError | undefined,
   validateOnly: boolean,
   validationMode: SchemaValidation | "STRICT_AFTER_COMPATIBLE",
-): Promise<"none" | "all"> {
+): Promise<"none" | "safe" | "all"> {
   if (!err) {
     return "none";
   }
-  const forceMode = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
-  displaySchemaChanges(err, validationMode, instanceName, databaseId);
+  const defaultChoice = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
+  displaySchemaChanges(err, validationMode);
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
       // `firebase dataconnect:sql:migrate --force` performs all migrations.
-      return forceMode;
+      return defaultChoice;
+    }
+    let choices: { name: string; value: "none" | "safe" | "all" | "abort" }[] = [
+      { name: "Execute all", value: "all" },
+    ];
+    if (err.destructive) {
+      choices = [
+        { name: `Execute all ${clc.red("(including destructive)")}`, value: "all" },
+        { name: "Execute safe only", value: "safe" },
+      ];
     }
     if (validationMode === "STRICT_AFTER_COMPATIBLE") {
-      // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
-      // Destructive migrations are too potentially dangerous to not prompt for with --force
-      const message = `Would you like to execute these optional changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
-      let executeChangePrompt = "Execute optional changes";
-      if (err.destructive) {
-        executeChangePrompt = executeChangePrompt + " (including destructive changes)";
-      }
-      const choices = [
-        { name: executeChangePrompt, value: "all" },
-        { name: "Skip optional changes", value: "none" },
-      ] as const;
-      return await select({ message, choices, default: forceMode });
+      choices.push({ name: "Skip them", value: "none" });
+    } else {
+      choices.push({ name: "Abort", value: "abort" });
     }
-    // `firebase deploy` and `firebase dataconnect:sql:migrate` always prompt for any SQL migration changes.
-    // Destructive migrations are too potentially dangerous to not prompt for with --force
-    const message = `Would you like to execute these changes against ${databaseId} in your CloudSQL instance ${instanceName}?`;
-    let executeChangePrompt = "Execute changes";
-    if (err.destructive) {
-      executeChangePrompt = executeChangePrompt + " (including destructive changes)";
-    }
-    const choices = [
-      { name: executeChangePrompt, value: "all" },
-      { name: "Abort changes", value: "none" },
-    ] as const;
-    const ans = await select<"none" | "all">({ message, choices, default: forceMode });
-    if (ans === "none") {
+    const ans = await select<"none" | "safe" | "all" | "abort">({
+      message: `Do you want to execute these SQL against ${instanceId}:${databaseId}?`,
+      choices: choices,
+      default: defaultChoice,
+    });
+    if (ans === "abort") {
       throw new FirebaseError("Command aborted.");
     }
     return ans;
@@ -523,10 +515,10 @@ async function promptForSchemaMigration(
     );
   } else if (options.force) {
     // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations.
-    return forceMode;
+    return defaultChoice;
   } else if (!err.destructive) {
     // `dataconnect:sql:migrate --nonInteractive` performs only non-destructive migrations.
-    return forceMode;
+    return defaultChoice;
   } else {
     // `dataconnect:sql:migrate --nonInteractive` errors out if there are destructive migrations
     throw new FirebaseError(
@@ -707,51 +699,53 @@ function displayNoSchemaDiff(
 function displaySchemaChanges(
   error: IncompatibleSqlSchemaError,
   validationMode: SchemaValidation | "STRICT_AFTER_COMPATIBLE",
-  instanceName: string,
-  databaseId: string,
-) {
+): void {
   switch (error.violationType) {
     case "INCOMPATIBLE_SCHEMA":
       {
-        let message;
-        if (validationMode === "COMPATIBLE") {
-          message =
-            "Your PostgreSQL database " +
-            databaseId +
-            " in your CloudSQL instance " +
-            instanceName +
-            " must be migrated in order to be compatible with your application schema. " +
-            "The following SQL statements will migrate your database schema to be compatible with your new Data Connect schema.\n" +
-            error.diffs.map(toString).join("\n");
-        } else if (validationMode === "STRICT_AFTER_COMPATIBLE") {
-          message =
-            "Your new application schema is compatible with the schema of your PostgreSQL database " +
-            databaseId +
-            " in your CloudSQL instance " +
-            instanceName +
-            ", but contains unused tables or columns. " +
-            "The following optional SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
-            error.diffs.map(toString).join("\n");
-        } else {
-          message =
-            "Your PostgreSQL database " +
-            databaseId +
-            " in your CloudSQL instance " +
-            instanceName +
-            " must be migrated in order to match your application schema. " +
-            "The following SQL statements will migrate your database schema to match your new Data Connect schema.\n" +
-            error.diffs.map(toString).join("\n");
+        switch (validationMode) {
+          case "COMPATIBLE":
+            logLabeledWarning(
+              "dataconnect",
+              `PostgreSQL schema is incompatible with the Data Connect Schema.
+Those SQL statements will migrate it to be compatible:
+
+${error.diffs.map(toString).join("\n\n")}
+`,
+            );
+            break;
+          case "STRICT_AFTER_COMPATIBLE":
+            logLabeledBullet(
+              "dataconnect",
+              `PostgreSQL schema contains unused SQL objects not part of the Data Connect Schema.
+Those SQL statements will migrate it to match exactly:
+
+${error.diffs.map(toString).join("\n\n")}
+`,
+            );
+            break;
+          case "STRICT":
+            logLabeledWarning(
+              "dataconnect",
+              `PostgreSQL schema does not match the Data Connect Schema.
+Those SQL statements will migrate it to match exactly:
+
+${error.diffs.map(toString).join("\n\n")}
+`,
+            );
+            break;
         }
-        logLabeledWarning("dataconnect", message);
       }
       break;
     case "INACCESSIBLE_SCHEMA":
       {
-        const message =
-          "Cannot access your CloudSQL database to validate schema. " +
-          "The following SQL statements can setup a new database schema.\n" +
-          error.diffs.map(toString).join("\n");
-        logLabeledWarning("dataconnect", message);
+        logLabeledWarning(
+          "dataconnect",
+          `Cannot access CloudSQL database to validate schema.
+Here is the complete expected SQL schema:
+${error.diffs.map(toString).join("\n\n")}
+`,
+        );
         logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
       }
       break;
