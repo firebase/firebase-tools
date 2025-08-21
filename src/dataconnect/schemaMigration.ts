@@ -124,6 +124,11 @@ export async function diffSchema(
       await upsertSchema(schema, /** validateOnly=*/ true);
       logLabeledSuccess("dataconnect", `no additional optional changes`);
     } catch (err: any) {
+      if (err?.status === 404) {
+        throw new FirebaseError(
+          `Service ${serviceName} not found. You must create a Data Connect service first.`,
+        );
+      }
       if (err?.status !== 400) {
         throw err;
       }
@@ -202,6 +207,11 @@ export async function migrateSchema(args: {
       `database schema of ${instanceId}:${databaseId} is up to date.`,
     );
   } catch (err: any) {
+    if (err?.status === 404) {
+      throw new FirebaseError(
+        `Service ${serviceName} not found. You must create a Data Connect service first.`,
+      );
+    }
     if (err?.status !== 400) {
       throw err;
     }
