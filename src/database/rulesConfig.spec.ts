@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { normalizeRulesConfig, getRulesConfig, RulesInstanceConfig } from "./rulesConfig";
+import { getRulesConfig } from "./rulesConfig";
 import { Options } from "../options";
 import { RC } from "../rc";
 
