@@ -1,4 +1,5 @@
-import { IncompatibleSqlSchemaError } from "./types";
+import { prettify } from "./graphqlError";
+import { IncompatibleSqlSchemaError, GraphqlError } from "./types";
 
 const INCOMPATIBLE_SCHEMA_ERROR_TYPESTRING = "IncompatibleSqlSchemaError";
 const PRECONDITION_ERROR_TYPESTRING = "type.googleapis.com/google.rpc.PreconditionFailure";
@@ -34,6 +35,11 @@ export function getInvalidConnectors(err: any): string[] {
     invalidConns.push(...newConns);
   }
   return invalidConns;
+}
+
+export function getGQLErrors(err: any): string {
+  const gqlErrs: GraphqlError[] = errorDetails(err, "GraphqlError");
+  return gqlErrs.map(prettify).join("\n");
 }
 
 function errorDetails(err: any, ofType: string): any[] {
