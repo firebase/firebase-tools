@@ -10,16 +10,24 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function listTopOperatingSystems(appId: string, osCount: number): Promise<string> {
+export async function listTopOperatingSystems(
+  appId: string,
+  osCount: number,
+  issueId?: string,
+): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${osCount}`);
+    if (issueId) {
+      queryParams.set("filter.issue.id", issueId);
+    }
 
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
+    logger.debug(`[mcp][crashlytics] listTopOperatingSystems query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {

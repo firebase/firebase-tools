@@ -10,6 +10,7 @@ export const list_top_devices = tool(
     description: "List the top devices from Crashlytics for an application.",
     inputSchema: z.object({
       app_id: APP_ID_FIELD,
+      issue_id: z.string().optional().describe("The issue id to filter on"),
       device_count: z
         .number()
         .optional()
@@ -24,10 +25,10 @@ export const list_top_devices = tool(
       requiresAuth: true,
     },
   },
-  async ({ app_id, device_count }) => {
+  async ({ app_id, issue_id, device_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
 
     device_count ??= 10;
-    return toContent(await listTopDevices(app_id, device_count));
+    return toContent(await listTopDevices(app_id, device_count, issue_id));
   },
 );

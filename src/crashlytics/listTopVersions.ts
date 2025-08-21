@@ -10,16 +10,24 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-export async function listTopVersions(appId: string, versionCount: number): Promise<string> {
+export async function listTopVersions(
+  appId: string,
+  versionCount: number,
+  issueId?: string,
+): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${versionCount}`);
+    if (issueId) {
+      queryParams.set("filter.issue.id", issueId);
+    }
 
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
+    logger.debug(`[mcp][crashlytics] listTopVersions query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {

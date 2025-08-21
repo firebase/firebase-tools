@@ -34,6 +34,25 @@ describe("listTopOperatingSystems", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should resolve with the response body on success with issueId", async () => {
+    const osCount = 10;
+    const issueId = "test-issue-id";
+    const mockResponse = { operatingSystems: [{ os: "Android 12" }] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`)
+      .query({
+        page_size: `${osCount}`,
+        "filter.issue.id": issueId,
+      })
+      .reply(200, mockResponse);
+
+    const result = await listTopOperatingSystems(appId, osCount, issueId);
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should throw a FirebaseError if the API call fails", async () => {
     const osCount = 10;
 

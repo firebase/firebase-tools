@@ -36,6 +36,27 @@ describe("listTopVersions", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should resolve with the response body on success with issueId", async () => {
+    const versionCount = 10;
+    const issueId = "test-issue-id";
+    const mockResponse = {
+      groups: [{ metrics: { eventsCount: 1 }, version: { displayName: "1.0.0" } }],
+    };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topVersions`)
+      .query({
+        page_size: `${versionCount}`,
+        "filter.issue.id": issueId,
+      })
+      .reply(200, mockResponse);
+
+    const result = await listTopVersions(appId, versionCount, issueId);
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should throw a FirebaseError if the API call fails", async () => {
     const versionCount = 10;
 

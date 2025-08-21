@@ -29,6 +29,7 @@ export async function getSampleCrash(
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
+    logger.debug(`[mcp][crashlytics] getSampleCrash query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {

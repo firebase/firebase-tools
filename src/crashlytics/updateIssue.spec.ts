@@ -21,7 +21,7 @@ describe("updateIssue", () => {
   it("should resolve with the updated issue on success", async () => {
     const state = IssueState.CLOSED;
     const mockResponse = {
-      id: "1",
+      id: issueId,
       state: state,
     };
 

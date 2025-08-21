@@ -53,11 +53,30 @@ describe("listTopDevices", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("for Android app, should resolve with the response body on success with issueId", async () => {
+    const deviceCount = 10;
+    const issueId = "test-issue-id";
+    const mockResponse = { devices: [{ device: "Pixel 4" }] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topAndroidDevices`)
+      .query({
+        page_size: `${deviceCount}`,
+        "filter.issue.id": issueId,
+      })
+      .reply(200, mockResponse);
+
+    const result = await listTopDevices(androidAppId, deviceCount, issueId);
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should throw a FirebaseError if the API call fails", async () => {
     const deviceCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topDevices`)
+      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topAndroidDevices`)
       .reply(500, { error: "Internal Server Error" });
 
     await expect(listTopDevices(androidAppId, deviceCount)).to.be.rejectedWith(

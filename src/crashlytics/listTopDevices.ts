@@ -15,10 +15,17 @@ enum PLATFORM_PATH {
   IOS = "topAppleDevices",
 }
 
-export async function listTopDevices(appId: string, deviceCount: number): Promise<string> {
+export async function listTopDevices(
+  appId: string,
+  deviceCount: number,
+  issueId?: string,
+): Promise<string> {
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${deviceCount}`);
+    if (issueId) {
+      queryParams.set("filter.issue.id", issueId);
+    }
 
     const requestProjectId = parseProjectId(appId);
     if (requestProjectId === undefined) {
@@ -27,6 +34,7 @@ export async function listTopDevices(appId: string, deviceCount: number): Promis
 
     const platformPath = parsePlatform(appId);
 
+    logger.debug(`[mcp][crashlytics] listTopDevices query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {

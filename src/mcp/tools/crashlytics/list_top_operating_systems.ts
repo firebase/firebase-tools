@@ -10,6 +10,7 @@ export const list_top_operating_systems = tool(
     description: "List the top operating systems from Crashlytics for an application.",
     inputSchema: z.object({
       app_id: APP_ID_FIELD,
+      issue_id: z.string().optional().describe("The issue id to filter on"),
       os_count: z
         .number()
         .optional()
@@ -26,10 +27,10 @@ export const list_top_operating_systems = tool(
       requiresAuth: true,
     },
   },
-  async ({ app_id, os_count }) => {
+  async ({ app_id, issue_id, os_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
 
     os_count ??= 10;
-    return toContent(await listTopOperatingSystems(app_id, os_count));
+    return toContent(await listTopOperatingSystems(app_id, os_count, issue_id));
   },
 );

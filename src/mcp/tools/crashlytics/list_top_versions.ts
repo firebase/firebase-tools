@@ -10,6 +10,7 @@ export const list_top_versions = tool(
     description: "List the top versions from Crashlytics for an application.",
     inputSchema: z.object({
       app_id: APP_ID_FIELD,
+      issue_id: z.string().optional().describe("The issue id to filter on"),
       version_count: z
         .number()
         .optional()
@@ -24,10 +25,10 @@ export const list_top_versions = tool(
       requiresAuth: true,
     },
   },
-  async ({ app_id, version_count }) => {
+  async ({ app_id, issue_id, version_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
 
     version_count ??= 10;
-    return toContent(await listTopVersions(app_id, version_count));
+    return toContent(await listTopVersions(app_id, version_count, issue_id));
   },
 );

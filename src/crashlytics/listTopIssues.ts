@@ -25,6 +25,7 @@ export async function listTopIssues(
       throw new FirebaseError("Unable to get the projectId from the AppId.");
     }
 
+    logger.debug(`[mcp][crashlytics] listTopIssues query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {
