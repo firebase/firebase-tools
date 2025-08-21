@@ -169,7 +169,7 @@ export async function doSetup(
     buildInput: {
       source: {
         codebase: {
-          assertedBranch,
+          branch: assertedBranch,
         },
       },
     },
