@@ -21,7 +21,6 @@ import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 import * as utils from "../../utils";
-// TODO: Update the import path below to the correct location of cloudsqladmin if it exists elsewhere.
 import * as cloudSqlAdminClient from "./cloudsqladmin";
 
 export type TableMetadata = {

@@ -5,3 +5,4 @@
 - Use Gemini to generate schema and seed_data.gql in `firebase init dataconnect` (#8988)
 - Fixed a bug when `firebase deploy --only dataconnect` didn't include GQL files in nested folders (#8981)
 - Changed `firebase deploy` create Cloud SQL instances asynchronously (#9004)
+- Fixed SQL permission bug in `sql:migrate` and improved error handlings (#9018)

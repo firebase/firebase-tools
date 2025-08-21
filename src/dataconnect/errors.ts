@@ -45,8 +45,5 @@ export function getGQLErrors(err: any): string {
 function errorDetails(err: any, ofType: string): any[] {
   const original = err.context?.body?.error || err?.original;
   const details: any[] = original?.details;
-  if (!ofType) {
-    return details || [];
-  }
   return details?.filter((d) => d["@type"]?.includes(ofType)) || [];
 }
