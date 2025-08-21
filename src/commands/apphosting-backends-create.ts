@@ -25,10 +25,7 @@ export const command = new Command("apphosting:backends:create")
     "--primary-region <primaryRegion>",
     "specify the primary region for the backend. Required with --force.",
   )
-  .option(
-    "--root-dir <rootDir>",
-    "specify the root directory for the backend. Defaults to `/`.",
-  )
+  .option("--root-dir <rootDir>", "specify the root directory for the backend. Defaults to `/`.")
   .option("-f, --force", "skip confirmations and connecting to a github repo.")
   .before(requireAuth)
   .before(ensureApiEnabled)
