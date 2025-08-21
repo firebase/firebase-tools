@@ -1,1 +1,2 @@
 - Fixed the SQL permission bug in `sql:migrate`. (#9018)
+- `firebase init dataconnect:sdk` generate consistent fixed package names (#9021)
