@@ -5,7 +5,6 @@ import * as path from "path";
 import { dirExistsSync } from "../../../fsutils";
 import { checkbox, select } from "../../../prompt";
 import {
-  readFirebaseJson,
   getPlatformFromFolder,
   getFrameworksFromPackageJson,
   resolvePackageJson,
@@ -13,7 +12,7 @@ import {
 } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import { load } from "../../../dataconnect/load";
+import { loadAll } from "../../../dataconnect/load";
 import {
   ConnectorInfo,
   ConnectorYaml,
@@ -48,11 +47,7 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
 }
 
 async function askQuestions(setup: Setup, config: Config, options: Options): Promise<SDKInfo> {
-  const serviceCfgs = readFirebaseJson(config);
-  // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
-  const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
-  );
+  const serviceInfos = await loadAll(setup.projectId || "", config);
   const connectorChoices: connectorChoice[] = serviceInfos
     .map((si) => {
       return si.connectorInfo.map((ci) => {

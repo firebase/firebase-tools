@@ -15,7 +15,7 @@ import {
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
-import { load } from "./load";
+import { loadAll } from "./load";
 import { PackageJSON } from "../frameworks/compose/discover/runtime/node";
 
 export function readFirebaseJson(config?: Config): DataConnectMultiple {
@@ -94,34 +94,32 @@ export async function pickService(
   config: Config,
   serviceId?: string,
 ): Promise<ServiceInfo> {
-  const serviceCfgs = readFirebaseJson(config);
-  let serviceInfo: ServiceInfo;
-  if (serviceCfgs.length === 0) {
+  const serviceInfos = await loadAll(projectId, config);
+  if (serviceInfos.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json." +
         `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
-  } else if (serviceCfgs.length === 1) {
-    serviceInfo = await load(projectId, config, serviceCfgs[0].source);
-    if (serviceId && serviceId !== serviceInfo.dataConnectYaml.serviceId) {
+  } else if (serviceInfos.length === 1) {
+    if (serviceId && serviceId !== serviceInfos[0].dataConnectYaml.serviceId) {
       throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${serviceInfo.dataConnectYaml.serviceId}.` +
+        `No service named ${serviceId} declared in firebase.json. Found ${serviceInfos[0].dataConnectYaml.serviceId}.` +
           `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
       );
     }
-    return serviceInfo;
+    return serviceInfos[0];
   } else {
     if (!serviceId) {
       throw new FirebaseError(
         "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
       );
     }
-    const infos = await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
     // TODO: handle cases where there are services with the same ID in 2 locations.
-    const maybe = infos.find((i) => i.dataConnectYaml.serviceId === serviceId);
+    const maybe = serviceInfos.find((i) => i.dataConnectYaml.serviceId === serviceId);
     if (!maybe) {
+      const serviceIds = serviceInfos.map((i) => i.dataConnectYaml.serviceId);
       throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${infos.map((i) => i.dataConnectYaml.serviceId).join(", ")}.` +
+        `No service named ${serviceId} declared in firebase.json. Found ${serviceIds.join(", ")}.` +
           `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
       );
     }
