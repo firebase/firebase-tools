@@ -383,32 +383,26 @@ async function handleIncompatibleSchemaError(args: {
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
   const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
-  const commandsToExecute = incompatibleSchemaError.diffs
-    .filter((d) => {
-      switch (choice) {
-        case "all":
-          return true;
-        case "safe":
-          return !d.destructive;
-        case "none":
-          return false;
-      }
-    })
-    .map((d) => d.sql);
+  const commandsToExecute = incompatibleSchemaError.diffs.filter((d) => {
+    switch (choice) {
+      case "all":
+        return true;
+      case "safe":
+        return !d.destructive;
+      case "none":
+        return false;
+    }
+  });
   if (commandsToExecute.length) {
-    const commandsToExecuteBySuperUser = commandsToExecute.filter(
-      (sql) => sql.startsWith("CREATE EXTENSION") || sql.startsWith("CREATE SCHEMA"),
-    );
-    const commandsToExecuteByOwner = commandsToExecute.filter(
-      (sql) => !commandsToExecuteBySuperUser.includes(sql),
-    );
+    const commandsToExecuteBySuperUser = commandsToExecute.filter(requireSuperUser);
+    const commandsToExecuteByOwner = commandsToExecute.filter((sql) => !requireSuperUser(sql));
 
     const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
 
     if (!userIsCSQLAdmin && commandsToExecuteBySuperUser.length) {
       throw new FirebaseError(`Some SQL commands required for this migration require Admin permissions.\n 
         Please ask a user with 'roles/cloudsql.admin' to apply the following commands.\n
-        ${commandsToExecuteBySuperUser.join("\n")}`);
+        ${diffsToString(commandsToExecuteBySuperUser)}`);
     }
 
     const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
@@ -446,7 +440,7 @@ async function handleIncompatibleSchemaError(args: {
         options,
         instanceId,
         databaseId,
-        commandsToExecuteBySuperUser,
+        commandsToExecuteBySuperUser.map((d) => d.sql),
         /** silent=*/ false,
       );
     }
@@ -456,7 +450,7 @@ async function handleIncompatibleSchemaError(args: {
         options,
         instanceId,
         databaseId,
-        [`SET ROLE "${firebaseowner(databaseId)}"`, ...commandsToExecuteByOwner],
+        [`SET ROLE "${firebaseowner(databaseId)}"`, ...commandsToExecuteByOwner.map((d) => d.sql)],
         /** silent=*/ false,
       );
       return incompatibleSchemaError.diffs;
@@ -480,7 +474,7 @@ async function promptForSchemaMigration(
   displaySchemaChanges(err, validationMode);
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
-      // `firebase dataconnect:sql:migrate --force` performs all migrations.
+      // `firebase dataconnect:sql:migrate --force` performs all compatible migrations.
       return defaultChoice;
     }
     let choices: { name: string; value: "none" | "safe" | "all" | "abort" }[] = [
@@ -710,7 +704,7 @@ function displaySchemaChanges(
               `PostgreSQL schema is incompatible with the Data Connect Schema.
 Those SQL statements will migrate it to be compatible:
 
-${error.diffs.map(diffToString).join("\n\n")}
+${diffsToString(error.diffs)}
 `,
             );
             break;
@@ -720,7 +714,7 @@ ${error.diffs.map(diffToString).join("\n\n")}
               `PostgreSQL schema contains unused SQL objects not part of the Data Connect Schema.
 Those SQL statements will migrate it to match exactly:
 
-${error.diffs.map(diffToString).join("\n\n")}
+${diffsToString(error.diffs)}
 `,
             );
             break;
@@ -730,7 +724,7 @@ ${error.diffs.map(diffToString).join("\n\n")}
               `PostgreSQL schema does not match the Data Connect Schema.
 Those SQL statements will migrate it to match exactly:
 
-${error.diffs.map(diffToString).join("\n\n")}
+${diffsToString(error.diffs)}
 `,
             );
             break;
@@ -743,7 +737,7 @@ ${error.diffs.map(diffToString).join("\n\n")}
           "dataconnect",
           `Cannot access CloudSQL database to validate schema.
 Here is the complete expected SQL schema:
-${error.diffs.map(diffToString).join("\n\n")}
+${diffsToString(error.diffs)}
 `,
         );
         logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
@@ -754,6 +748,14 @@ ${error.diffs.map(diffToString).join("\n\n")}
         `Unknown schema violation type: ${error.violationType}, IncompatibleSqlSchemaError: ${error}`,
       );
   }
+}
+
+function requireSuperUser(diff: Diff): boolean {
+  return diff.sql.startsWith("CREATE EXTENSION") || diff.sql.startsWith("CREATE SCHEMA");
+}
+
+function diffsToString(diffs: Diff[]): string {
+  return diffs.map(diffToString).join("\n\n");
 }
 
 function diffToString(diff: Diff) {
