@@ -487,10 +487,11 @@ async function promptForSchemaMigration(
       { name: "Execute all", value: "all" },
     ];
     if (err.destructive) {
-      choices = [
-        { name: `Execute all ${clc.red("(including destructive)")}`, value: "all" },
-        { name: "Execute safe only", value: "safe" },
-      ];
+      choices = [{ name: `Execute all ${clc.red("(including destructive)")}`, value: "all" }];
+      // Add the "safe only" option if at least one non-destructive change exists.
+      if (err.diffs.some((d) => !d.destructive)) {
+        choices.push({ name: "Execute safe only", value: "safe" });
+      }
     }
     if (validationMode === "STRICT_AFTER_COMPATIBLE") {
       choices.push({ name: "Skip them", value: "none" });
@@ -709,7 +710,7 @@ function displaySchemaChanges(
               `PostgreSQL schema is incompatible with the Data Connect Schema.
 Those SQL statements will migrate it to be compatible:
 
-${error.diffs.map(toString).join("\n\n")}
+${error.diffs.map(diffToString).join("\n\n")}
 `,
             );
             break;
@@ -719,7 +720,7 @@ ${error.diffs.map(toString).join("\n\n")}
               `PostgreSQL schema contains unused SQL objects not part of the Data Connect Schema.
 Those SQL statements will migrate it to match exactly:
 
-${error.diffs.map(toString).join("\n\n")}
+${error.diffs.map(diffToString).join("\n\n")}
 `,
             );
             break;
@@ -729,7 +730,7 @@ ${error.diffs.map(toString).join("\n\n")}
               `PostgreSQL schema does not match the Data Connect Schema.
 Those SQL statements will migrate it to match exactly:
 
-${error.diffs.map(toString).join("\n\n")}
+${error.diffs.map(diffToString).join("\n\n")}
 `,
             );
             break;
@@ -742,7 +743,7 @@ ${error.diffs.map(toString).join("\n\n")}
           "dataconnect",
           `Cannot access CloudSQL database to validate schema.
 Here is the complete expected SQL schema:
-${error.diffs.map(toString).join("\n\n")}
+${error.diffs.map(diffToString).join("\n\n")}
 `,
         );
         logLabeledWarning("dataconnect", "Some SQL resources may already exist.");
@@ -755,6 +756,6 @@ ${error.diffs.map(toString).join("\n\n")}
   }
 }
 
-function toString(diff: Diff) {
+function diffToString(diff: Diff) {
   return `\/** ${diff.destructive ? clc.red("Destructive: ") : ""}${diff.description}*\/\n${format(diff.sql, { language: "postgresql" })}`;
 }
