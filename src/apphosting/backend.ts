@@ -73,8 +73,12 @@ async function awaitTlsReady(url: string): Promise<void> {
  */
 export async function doSetup(
   projectId: string,
+  force: boolean,
   webAppName: string | null,
+  backendId: string | null,
   serviceAccount: string | null,
+  primaryRegion: string | null,
+  rootDir: string | undefined,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -85,30 +89,38 @@ export async function doSetup(
   // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
   // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
   // the variables and API methods we're calling under the hood when fetching "primary region".
-  const location = await promptLocation(
+  const location = primaryRegion ? primaryRegion : await promptLocation(
     projectId,
     "Select a primary region to host your backend:\n",
   );
 
-  const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
-    projectId,
-    location,
-  );
+  if (rootDir == null && !force) {
+    rootDir = await input({
+      default: "/",
+      message: "Specify your app's root directory relative to your repository",
+    });
+  }
 
-  const rootDir = await input({
-    default: "/",
-    message: "Specify your app's root directory relative to your repository",
-  });
+  let gitRepositoryLink: GitRepositoryLink | undefined;
+  let branch: string | undefined;
+  if (!force) {
+    gitRepositoryLink = await githubConnections.linkGitHubRepository(
+      projectId,
+      location,
+    );
 
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
-  logSuccess(`Repo linked successfully!\n`);
+    // TODO: Once tag patterns are implemented, prompt which method the user
+    // prefers. We could reduce the number of questions asked by letting people
+    // enter tag:<pattern>?
+    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+    logSuccess(`Repo linked successfully!\n`);
+  }
 
-  logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location);
-  logSuccess(`Name set to ${backendId}\n`);
+  if (backendId == null) {
+    logBullet(`${clc.yellow("===")} Set up your backend`);
+    backendId = await promptNewBackendId(projectId, location);
+    logSuccess(`Name set to ${backendId}\n`);
+  }
 
   const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (!webApp) {
@@ -127,7 +139,13 @@ export async function doSetup(
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
-  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
+  if (force) {
+    return;
+  }
+
+  const assertedBranch: string = branch as string;
+
+  await setDefaultTrafficPolicy(projectId, location, backendId, assertedBranch);
 
   const confirmRollout = await confirm({
     default: true,
@@ -155,7 +173,7 @@ export async function doSetup(
     buildInput: {
       source: {
         codebase: {
-          branch,
+          assertedBranch,
         },
       },
     },
