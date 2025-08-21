@@ -91,14 +91,14 @@ export async function diffSchema(
     if (err?.status !== 400) {
       throw err;
     }
-    const gqlErrs = errors.getGQLErrors(err);
-    if (gqlErrs) {
-      throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
-    }
     incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
+      const gqlErrs = errors.getGQLErrors(err);
+      if (gqlErrs) {
+        throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
+      }
       throw err;
     }
     // Display failed precondition errors nicely.
@@ -201,14 +201,14 @@ export async function migrateSchema(args: {
       throw err;
     }
     // Parse and handle failed precondition errors, then retry.
-    const gqlErrs = errors.getGQLErrors(err);
-    if (gqlErrs) {
-      throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
-    }
     const incompatible = errors.getIncompatibleSchemaError(err);
     const invalidConnectors = errors.getInvalidConnectors(err);
     if (!incompatible && !invalidConnectors.length) {
       // If we got a different type of error, throw it
+      const gqlErrs = errors.getGQLErrors(err);
+      if (gqlErrs) {
+        throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
+      }
       throw err;
     }
 
@@ -563,7 +563,7 @@ function displayInvalidConnectors(invalidConnectors: string[]) {
   const connectorIds = invalidConnectors.map((i) => i.split("/").pop()).join(", ");
   logLabeledWarning(
     "dataconnect",
-    `The schema you are deploying is incompatible with the following existing connectors: ${connectorIds}.`,
+    `The schema you are deploying is incompatible with the following existing connectors: ${clc.bold(connectorIds)}.`,
   );
   logLabeledWarning(
     "dataconnect",
