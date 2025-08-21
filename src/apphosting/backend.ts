@@ -179,7 +179,7 @@ export async function doSetup(
   ).start();
   await orchestrateRollout({
     projectId,
-    location: location,
+    location,
     backendId,
     buildInput: {
       source: {
