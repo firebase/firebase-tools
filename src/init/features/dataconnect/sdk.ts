@@ -25,7 +25,7 @@ import {
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
-import { camelCase, snakeCase, upperFirst } from "lodash";
+import { snakeCase } from "lodash";
 import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { Options } from "../../../options";
