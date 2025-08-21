@@ -58,10 +58,10 @@ export default async function (
       .map((c) => c.connector),
   );
 
-  // First, try to deploy all connectors on the previous schema.
-  // If the connector relies on fields in the new schema, they will fail.
-  // Those remaining connectors will be deployed after schema migration.
-  const attemptedConnectors = await Promise.all(
+  // Pre-deploy all connectors on the previous schema.
+  // If connectors don't rely on capabilities in the new schema, they will succeed.
+  // The remaining connectors will be deployed after schema migration.
+  const remainingConnectors = await Promise.all(
     wantConnectors.map(async (c) => {
       try {
         await upsertConnector(c);
@@ -74,7 +74,7 @@ export default async function (
     }),
   );
 
-  // First, migrate and deploy schemas
+  // Migrate schemas.
   for (const s of wantSchemas) {
     await migrateSchema({
       options,
@@ -85,9 +85,9 @@ export default async function (
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
   }
 
-  // Next, deploy remaining connectors.
+  // Lastly, deploy the remaining connectors that relies on the latest schema.
   await Promise.all(
-    attemptedConnectors.map(async (c) => {
+    remainingConnectors.map(async (c) => {
       if (c) {
         await upsertConnector(c);
         utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
@@ -95,7 +95,7 @@ export default async function (
     }),
   );
 
-  // Check for unknown connectors.
+  // In the end, check for connectors not tracked in local repositories.
   const allConnectors = await deployedConnectors(serviceInfos);
   const connectorsToDelete = filters
     ? []
@@ -104,6 +104,7 @@ export default async function (
     await promptDeleteConnector(options, c.name);
   }
 
+  // Print the Console link.
   let consolePath = "/dataconnect";
   if (serviceInfos.length === 1) {
     const sn = parseServiceName(serviceInfos[0].serviceName);
