@@ -100,26 +100,29 @@ export async function doSetup(
     if (location === undefined) {
       location = await promptLocation(projectId, "Select a primary region to host your backend:\n");
     }
-    if (rootDir === undefined) {
-      rootDir = await input({
-	default: "/",
-	message: "Specify your app's root directory relative to your repository",
-      });
-    }
-
-    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
-
-    // TODO: Once tag patterns are implemented, prompt which method the user
-    // prefers. We could reduce the number of questions asked by letting people
-    // enter tag:<pattern>?
-    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
-    logSuccess(`Repo linked successfully!\n`);
-
     if (backendId === undefined) {
       logBullet(`${clc.yellow("===")} Set up your backend`);
       backendId = await promptNewBackendId(projectId, location);
       logSuccess(`Name set to ${backendId}\n`);
     }
+    if (rootDir === undefined) {
+      rootDir = await input({
+        default: "/",
+        message: "Specify your app's root directory relative to your repository",
+      });
+    }
+
+    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
+    // TODO: Once tag patterns are implemented, prompt which method the user
+    // prefers. We could reduce the number of questions asked by letting people
+    // enter tag:<pattern>?
+    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+    logSuccess(`Repo linked successfully!\n`);
+  }
+  // Confirm both backendId and location are set at this point
+  if (!location || !backendId) {
+    // This should not happen based on the logic above, but it satisfies the type checker.
+    throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
   const webApp = await webApps.getOrCreateWebApp(
@@ -134,7 +137,7 @@ export async function doSetup(
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
     projectId,
-    location as string,
+    location,
     backendId,
     serviceAccount ? serviceAccount : null,
     gitRepositoryLink,
@@ -153,7 +156,7 @@ export async function doSetup(
     throw new FirebaseError("Branch was not set while connecting to a github repo.");
   }
 
-  await setDefaultTrafficPolicy(projectId, location as string, backendId, branch);
+  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
   const confirmRollout = await confirm({
     default: true,
@@ -176,7 +179,7 @@ export async function doSetup(
   ).start();
   await orchestrateRollout({
     projectId,
-    location: location as string,
+    location: location,
     backendId,
     buildInput: {
       source: {

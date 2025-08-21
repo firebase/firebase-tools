@@ -34,7 +34,7 @@ export const command = new Command("apphosting:backends:create")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     if (options.nonInteractive && (options.backend == null || options.primaryRegion == null)) {
-      throw new FirebaseError(`--force option requires --backend and --primary-region`);
+      throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
     }
 
     await doSetup(
@@ -44,6 +44,6 @@ export const command = new Command("apphosting:backends:create")
       options.backend as string | undefined,
       options.serviceAccount as string | undefined,
       options.primaryRegion as string | undefined,
-      options.rootDir as string | undefined,
+      options.rootDir as string | "/",
     );
   });
