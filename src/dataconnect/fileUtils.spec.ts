@@ -161,7 +161,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/js/default-connector",
-          package: "@firebasegen/default-connector",
+          package: "@dataconnect/generated",
           packageJsonDir: "..",
         },
       },
@@ -170,7 +170,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderDetectable,
         output: {
           outputDir: "../detected/dataconnect-generated/js/default-connector",
-          package: "@firebasegen/default-connector",
+          package: "@dataconnect/generated",
           packageJsonDir: "../detected",
         },
       },
@@ -179,7 +179,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/js/default-connector",
-          package: "@firebasegen/default-connector",
+          package: "@dataconnect/generated",
           packageJsonDir: "belowConnector",
         },
       },
@@ -188,7 +188,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/js/default-connector",
-          package: "@firebasegen/default-connector",
+          package: "@dataconnect/generated",
           packageJsonDir: "../../outside",
         },
       },
@@ -259,7 +259,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/swift",
-          package: "DefaultConnector",
+          package: "DataConnectGenerated",
         },
       },
       {
@@ -267,7 +267,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/swift",
-          package: "DefaultConnector",
+          package: "DataConnectGenerated",
         },
       },
       {
@@ -275,7 +275,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/swift",
-          package: "DefaultConnector",
+          package: "DataConnectGenerated",
         },
       },
     ];
@@ -306,7 +306,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/kotlin",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
       {
@@ -314,7 +314,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasJava,
         output: {
           outputDir: "../has-java/app/src/main/java",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
       {
@@ -322,7 +322,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasKotlin,
         output: {
           outputDir: "../has-kotlin/app/src/main/kotlin",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
       {
@@ -330,7 +330,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderHasBoth,
         output: {
           outputDir: "../has-both/app/src/main/kotlin",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
       {
@@ -338,7 +338,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/kotlin",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
       {
@@ -346,7 +346,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/kotlin",
-          package: "connectors.default",
+          package: "com.google.firebase.dataconnect.generated",
         },
       },
     ];
@@ -380,7 +380,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBase,
         output: {
           outputDir: "../dataconnect-generated/dart/default_connector",
-          package: "default_connector",
+          package: "dataconnect_generated",
         },
       },
       {
@@ -388,7 +388,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderBelowConnector,
         output: {
           outputDir: "belowConnector/dataconnect-generated/dart/default_connector",
-          package: "default_connector",
+          package: "dataconnect_generated",
         },
       },
       {
@@ -396,7 +396,7 @@ describe("generateSdkYaml", () => {
         appDir: appFolderOutside,
         output: {
           outputDir: "../../outside/dataconnect-generated/dart/default_connector",
-          package: "default_connector",
+          package: "dataconnect_generated",
         },
       },
     ];

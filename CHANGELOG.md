@@ -1,4 +1,3 @@
-- Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
-- Fixed a bug when `firebase deploy --only dataconnect` doesn't include GQL in nested folders (#8981)
-- Make it possible to init a dataconnect project in non interactive mode (#8993)
-- Added 2 new MCP tools for crashlytics `get_sample_crash_for_issue` and `get_issue_details` (#8995)
+- Fixed the SQL permission bug in `sql:migrate`. (#9018)
+- `firebase init dataconnect:sdk` generate consistent fixed package names (#9021)
+- Added `configDir` configuration option to specify a custom directory for .env files in Functions (#9000)

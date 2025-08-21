@@ -32,9 +32,11 @@ export interface Datasource {
 export type SchemaValidation = "STRICT" | "COMPATIBLE";
 
 export interface PostgreSql {
+  ephemeral?: boolean;
   database?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaMigration?: "MIGRATE_COMPATIBLE";
 }
 
 export interface CloudSqlInstance {
