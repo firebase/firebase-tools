@@ -3,7 +3,6 @@ import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
-import requireInteractive from "../requireInteractive";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
@@ -15,7 +14,10 @@ export const command = new Command("apphosting:backends:create")
     "-a, --app <webAppId>",
     "specify an existing Firebase web app's ID to associate your App Hosting backend with",
   )
-  .option("--backend <backend>", "specify the name of the new backend. Required with --non-interactive.")
+  .option(
+    "--backend <backend>",
+    "specify the name of the new backend. Required with --non-interactive.",
+  )
   .option(
     "-s, --service-account <serviceAccount>",
     "specify the service account used to run the server",

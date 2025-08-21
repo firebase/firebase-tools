@@ -89,21 +89,24 @@ export async function doSetup(
   // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
   // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
   // the variables and API methods we're calling under the hood when fetching "primary region".
-  const location = primaryRegion
-    ? primaryRegion
-    : await promptLocation(projectId, "Select a primary region to host your backend:\n");
-
-  if (rootDir === undefined && !nonInteractive) {
-    rootDir = await input({
-      default: "/",
-      message: "Specify your app's root directory relative to your repository",
-    });
-  }
-
+  let location = primaryRegion;
   let gitRepositoryLink: GitRepositoryLink | undefined;
   let branch: string | undefined;
-  // Connecting to a github repository requires user interaction. So in non-interactive mode, we skip this step.
-  if (!nonInteractive) {
+  if (nonInteractive) {
+    if (backendId === undefined || primaryRegion === undefined) {
+      throw new FirebaseError("non-interactive mode requires a backendId and primaryRegion");
+    }
+  } else {
+    if (location === undefined) {
+      location = await promptLocation(projectId, "Select a primary region to host your backend:\n");
+    }
+    if (rootDir === undefined) {
+      rootDir = await input({
+	default: "/",
+	message: "Specify your app's root directory relative to your repository",
+      });
+    }
+
     gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
 
     // TODO: Once tag patterns are implemented, prompt which method the user
@@ -111,15 +114,12 @@ export async function doSetup(
     // enter tag:<pattern>?
     branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
     logSuccess(`Repo linked successfully!\n`);
-  }
 
-  if (backendId === undefined) {
-    if (nonInteractive) {
-      throw new FirebaseError("backendId required in non-interactive mode.");
+    if (backendId === undefined) {
+      logBullet(`${clc.yellow("===")} Set up your backend`);
+      backendId = await promptNewBackendId(projectId, location);
+      logSuccess(`Name set to ${backendId}\n`);
     }
-    logBullet(`${clc.yellow("===")} Set up your backend`);
-    backendId = await promptNewBackendId(projectId, location);
-    logSuccess(`Name set to ${backendId}\n`);
   }
 
   const webApp = await webApps.getOrCreateWebApp(
@@ -134,7 +134,7 @@ export async function doSetup(
   const createBackendSpinner = ora("Creating your new backend...").start();
   const backend = await createBackend(
     projectId,
-    location,
+    location as string,
     backendId,
     serviceAccount ? serviceAccount : null,
     gitRepositoryLink,
@@ -144,7 +144,7 @@ export async function doSetup(
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
   // In non-interactive mode, we never connected the backend to a github repo. Return
-  // realy and skip the rollout and setting default traffic policy.
+  // early and skip the rollout and setting default traffic policy.
   if (nonInteractive) {
     return;
   }
@@ -153,7 +153,7 @@ export async function doSetup(
     throw new FirebaseError("Branch was not set while connecting to a github repo.");
   }
 
-  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
+  await setDefaultTrafficPolicy(projectId, location as string, backendId, branch);
 
   const confirmRollout = await confirm({
     default: true,
@@ -176,7 +176,7 @@ export async function doSetup(
   ).start();
   await orchestrateRollout({
     projectId,
-    location,
+    location: location as string,
     backendId,
     buildInput: {
       source: {
