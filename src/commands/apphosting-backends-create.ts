@@ -33,7 +33,7 @@ export const command = new Command("apphosting:backends:create")
     "specify the root direcotry for the backend. Required with --force.",
   )
   .option(
-    "-f, --force", "skip confirmations and gh connection."
+    "-f, --force", "skip confirmations and connecting to a github repo."
   )
   .before(requireAuth)
   .before(ensureApiEnabled)
