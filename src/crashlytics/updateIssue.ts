@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -31,12 +32,8 @@ export async function updateIssue(
   issueId: string,
   state: IssueState,
 ): Promise<Issue> {
+  const requestProjectId = parseProjectNumber(appId);
   try {
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
-
     const response = await apiClient.request<UpdateIssueRequest, Issue>({
       method: "PATCH",
       headers: {
@@ -55,12 +52,4 @@ export async function updateIssue(
       original: err,
     });
   }
-}
-
-function parseProjectId(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }

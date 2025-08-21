@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -15,14 +16,10 @@ export async function listNotes(
   issueId: string,
   noteCount: number,
 ): Promise<string> {
+  const requestProjectId = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${noteCount}`);
-
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
 
     logger.debug(`[mcp][crashlytics] listNotes query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
@@ -43,12 +40,4 @@ export async function listNotes(
       { original: err },
     );
   }
-}
-
-function parseProjectId(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }

@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -16,6 +17,7 @@ export async function getSampleCrash(
   sampleCount: number,
   variantId?: string,
 ): Promise<string> {
+  const requestProjectId = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("filter.issue.id", issueId);
@@ -24,18 +26,13 @@ export async function getSampleCrash(
       queryParams.set("filter.issue.variant_id", variantId);
     }
 
-    const requestProjectNumber = parseProjectNumber(appId);
-    if (requestProjectNumber === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
-
     logger.debug(`[mcp][crashlytics] getSampleCrash query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
+      path: `/projects/${requestProjectId}/apps/${appId}/events`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });
@@ -48,12 +45,4 @@ export async function getSampleCrash(
       { original: err },
     );
   }
-}
-
-function parseProjectNumber(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }

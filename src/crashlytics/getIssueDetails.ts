@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -11,18 +12,14 @@ const apiClient = new Client({
 });
 
 export async function getIssueDetails(appId: string, issueId: string): Promise<string> {
+  const requestProjectId = parseProjectNumber(appId);
   try {
-    const requestProjectNumber = parseProjectNumber(appId);
-    if (requestProjectNumber === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
-
     const response = await apiClient.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
+      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`,
       timeout: TIMEOUT,
     });
 
@@ -34,12 +31,4 @@ export async function getIssueDetails(appId: string, issueId: string): Promise<s
       { original: err },
     );
   }
-}
-
-function parseProjectNumber(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }

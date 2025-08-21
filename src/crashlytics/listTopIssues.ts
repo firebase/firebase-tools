@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -15,15 +16,11 @@ export async function listTopIssues(
   issueType: string,
   issueCount: number,
 ): Promise<string> {
+  const requestProjectId = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${issueCount}`);
     queryParams.set("filter.issue.error_types", `${issueType}`);
-
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
 
     logger.debug(`[mcp][crashlytics] listTopIssues query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
@@ -44,12 +41,4 @@ export async function listTopIssues(
       { original: err },
     );
   }
-}
-
-function parseProjectId(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }

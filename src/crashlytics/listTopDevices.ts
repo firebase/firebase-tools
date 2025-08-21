@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { parsePlatform, parseProjectNumber } from "./utils";
 
 const TIMEOUT = 10000;
 
@@ -10,29 +11,19 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
-enum PLATFORM_PATH {
-  ANDROID = "topAndroidDevices",
-  IOS = "topAppleDevices",
-}
-
 export async function listTopDevices(
   appId: string,
   deviceCount: number,
   issueId?: string,
 ): Promise<string> {
+  const requestProjectId = parseProjectNumber(appId);
+  const platformPath = parsePlatform(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${deviceCount}`);
     if (issueId) {
       queryParams.set("filter.issue.id", issueId);
     }
-
-    const requestProjectId = parseProjectId(appId);
-    if (requestProjectId === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
-
-    const platformPath = parsePlatform(appId);
 
     logger.debug(`[mcp][crashlytics] listTopDevices query paramaters: ${queryParams}`);
     const response = await apiClient.request<void, string>({
@@ -53,24 +44,4 @@ export async function listTopDevices(
       { original: err },
     );
   }
-}
-
-function parseProjectId(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
-}
-
-function parsePlatform(appId: string): PLATFORM_PATH {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length < 3) {
-    throw new FirebaseError("Unable to get the platform from the AppId.");
-  }
-
-  if (appIdParts[2] === "android") {
-    return PLATFORM_PATH.ANDROID;
-  } else if (appIdParts[2] === "ios") return PLATFORM_PATH.IOS;
-  throw new FirebaseError(`Only android or ios apps are supported.`);
 }
