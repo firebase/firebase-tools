@@ -139,9 +139,11 @@ export async function doSetup(
     return;
   }
 
-  const assertedBranch: string = branch as string;
+  if (!branch) {
+    throw new FirebaseError("Branch was not set while connecting to a github repo.");
+  }
 
-  await setDefaultTrafficPolicy(projectId, location, backendId, assertedBranch);
+  await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
   const confirmRollout = await confirm({
     default: true,
@@ -169,7 +171,7 @@ export async function doSetup(
     buildInput: {
       source: {
         codebase: {
-          branch: assertedBranch,
+          branch,
         },
       },
     },

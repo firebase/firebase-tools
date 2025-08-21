@@ -35,7 +35,7 @@ export const command = new Command("apphosting:backends:create")
     const projectId = needProjectId(options);
     if (options.force && (options.backend == null || options.primaryRegion == null)) {
       throw new FirebaseError(
-        `--force option requires --backend, --primary-region, and --root-dir`,
+        `--force option requires --backend and --primary-region`,
       );
     }
 
