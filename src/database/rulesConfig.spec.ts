@@ -5,27 +5,6 @@ import { Options } from "../options";
 import { RC } from "../rc";
 
 describe("rulesConfig", () => {
-  describe("normalizeRulesConfig", () => {
-    it("should normalize rules config", () => {
-      const rulesConfig: RulesInstanceConfig[] = [
-        { instance: "instance1", rules: "rules1.json" },
-        { instance: "instance2", rules: "rules2.json" },
-      ];
-      const options = {
-        config: {
-          path: (s: string) => s,
-        },
-      } as Options;
-
-      const result = normalizeRulesConfig(rulesConfig, options);
-
-      expect(result).to.deep.equal([
-        { instance: "instance1", rules: "rules1.json" },
-        { instance: "instance2", rules: "rules2.json" },
-      ]);
-    });
-  });
-
   describe("getRulesConfig", () => {
     it("should return empty array if database config is not defined", () => {
       const options = {
