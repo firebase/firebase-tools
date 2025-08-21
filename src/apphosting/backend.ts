@@ -73,18 +73,18 @@ async function awaitTlsReady(url: string): Promise<void> {
  */
 export async function doSetup(
   projectId: string,
-  force: boolean,
-  webAppName: string | null,
-  backendId: string | null,
-  serviceAccount: string | null,
-  primaryRegion: string | null,
+  nonInteractive: boolean,
+  webAppName: string | undefined,
+  backendId: string | undefined,
+  serviceAccount: string | undefined,
+  primaryRegion: string | undefined,
   rootDir: string | undefined,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
-  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
+  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount ? serviceAccount : null);
 
   // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
   // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
@@ -93,7 +93,7 @@ export async function doSetup(
     ? primaryRegion
     : await promptLocation(projectId, "Select a primary region to host your backend:\n");
 
-  if (rootDir == null && !force) {
+  if (rootDir === undefined && !nonInteractive) {
     rootDir = await input({
       default: "/",
       message: "Specify your app's root directory relative to your repository",
@@ -102,7 +102,8 @@ export async function doSetup(
 
   let gitRepositoryLink: GitRepositoryLink | undefined;
   let branch: string | undefined;
-  if (!force) {
+  // Connecting to a github repository requires user interaction. So in non-interactive mode, we skip this step.
+  if (!nonInteractive) {
     gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
 
     // TODO: Once tag patterns are implemented, prompt which method the user
@@ -112,13 +113,20 @@ export async function doSetup(
     logSuccess(`Repo linked successfully!\n`);
   }
 
-  if (backendId == null) {
+  if (backendId === undefined) {
+    if (nonInteractive) {
+      throw new FirebaseError("backendId required in non-interactive mode.");
+    }
     logBullet(`${clc.yellow("===")} Set up your backend`);
     backendId = await promptNewBackendId(projectId, location);
     logSuccess(`Name set to ${backendId}\n`);
   }
 
-  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
+  const webApp = await webApps.getOrCreateWebApp(
+    projectId,
+    webAppName ? webAppName : null,
+    backendId,
+  );
   if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
@@ -128,14 +136,16 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    serviceAccount,
+    serviceAccount ? serviceAccount : null,
     gitRepositoryLink,
     webApp?.id,
     rootDir,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
-  if (force) {
+  // In non-interactive mode, we never connected the backend to a github repo. Return
+  // realy and skip the rollout and setting default traffic policy.
+  if (nonInteractive) {
     return;
   }
 

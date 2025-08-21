@@ -15,7 +15,7 @@ export const command = new Command("apphosting:backends:create")
     "-a, --app <webAppId>",
     "specify an existing Firebase web app's ID to associate your App Hosting backend with",
   )
-  .option("--backend <backend>", "specify the name of the new backend. Required with --force.")
+  .option("--backend <backend>", "specify the name of the new backend. Required with --non-interactive.")
   .option(
     "-s, --service-account <serviceAccount>",
     "specify the service account used to run the server",
@@ -23,29 +23,25 @@ export const command = new Command("apphosting:backends:create")
   )
   .option(
     "--primary-region <primaryRegion>",
-    "specify the primary region for the backend. Required with --force.",
+    "specify the primary region for the backend. Required with --non-interactive.",
   )
   .option("--root-dir <rootDir>", "specify the root directory for the backend. Defaults to `/`.")
-  .option("-f, --force", "skip confirmations and connecting to a github repo.")
   .before(requireAuth)
   .before(ensureApiEnabled)
-  .before(requireInteractive)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    if (options.force && (options.backend == null || options.primaryRegion == null)) {
-      throw new FirebaseError(
-        `--force option requires --backend and --primary-region`,
-      );
+    if (options.nonInteractive && (options.backend == null || options.primaryRegion == null)) {
+      throw new FirebaseError(`--force option requires --backend and --primary-region`);
     }
 
     await doSetup(
       projectId,
-      options.force,
-      options.app as string | null,
-      options.backend as string | null,
-      options.serviceAccount as string | null,
-      options.primaryRegion as string | null,
+      options.nonInteractive,
+      options.app as string | undefined,
+      options.backend as string | undefined,
+      options.serviceAccount as string | undefined,
+      options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
     );
   });
