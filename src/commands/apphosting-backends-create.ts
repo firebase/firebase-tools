@@ -27,7 +27,7 @@ export const command = new Command("apphosting:backends:create")
   )
   .option(
     "--root-dir <rootDir>",
-    "specify the root direcotry for the backend. Required with --force.",
+    "specify the root directory for the backend. Defaults to `/`.",
   )
   .option("-f, --force", "skip confirmations and connecting to a github repo.")
   .before(requireAuth)
