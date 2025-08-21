@@ -89,10 +89,9 @@ export async function doSetup(
   // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
   // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
   // the variables and API methods we're calling under the hood when fetching "primary region".
-  const location = primaryRegion ? primaryRegion : await promptLocation(
-    projectId,
-    "Select a primary region to host your backend:\n",
-  );
+  const location = primaryRegion
+    ? primaryRegion
+    : await promptLocation(projectId, "Select a primary region to host your backend:\n");
 
   if (rootDir == null && !force) {
     rootDir = await input({
@@ -104,10 +103,7 @@ export async function doSetup(
   let gitRepositoryLink: GitRepositoryLink | undefined;
   let branch: string | undefined;
   if (!force) {
-    gitRepositoryLink = await githubConnections.linkGitHubRepository(
-      projectId,
-      location,
-    );
+    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
 
     // TODO: Once tag patterns are implemented, prompt which method the user
     // prefers. We could reduce the number of questions asked by letting people

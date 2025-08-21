@@ -15,10 +15,7 @@ export const command = new Command("apphosting:backends:create")
     "-a, --app <webAppId>",
     "specify an existing Firebase web app's ID to associate your App Hosting backend with",
   )
-  .option(
-    "--backend <backend>",
-    "specify the name of the new backend. Required with --force.",
-  )
+  .option("--backend <backend>", "specify the name of the new backend. Required with --force.")
   .option(
     "-s, --service-account <serviceAccount>",
     "specify the service account used to run the server",
@@ -32,9 +29,7 @@ export const command = new Command("apphosting:backends:create")
     "--root-dir <rootDir>",
     "specify the root direcotry for the backend. Required with --force.",
   )
-  .option(
-    "-f, --force", "skip confirmations and connecting to a github repo."
-  )
+  .option("-f, --force", "skip confirmations and connecting to a github repo.")
   .before(requireAuth)
   .before(ensureApiEnabled)
   .before(requireInteractive)
@@ -43,7 +38,7 @@ export const command = new Command("apphosting:backends:create")
     const projectId = needProjectId(options);
     if (options.force && (options.backend == null || options.primaryRegion == null)) {
       throw new FirebaseError(
-	`--force option requires --backend, --primary-region, and --root-dir`
+        `--force option requires --backend, --primary-region, and --root-dir`,
       );
     }
 
