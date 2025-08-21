@@ -67,7 +67,7 @@ export default async function (
         await upsertConnector(c);
       } catch (err: any) {
         logger.debug("Error pre-deploying connector", c.name, err);
-        return c;
+        return c; // will try again after schema deployment.
       }
       utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
       return undefined;
