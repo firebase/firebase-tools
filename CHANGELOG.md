@@ -1,0 +1,1 @@
+- Fixed the SQL permission bug in `sql:migrate`. (#9018)
