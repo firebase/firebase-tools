@@ -27,11 +27,7 @@ export const command = new Command("apphosting:backends:create")
     "--primary-region <primaryRegion>",
     "specify the primary region for the backend. Required with --non-interactive.",
   )
-  .option(
-    "--root-dir <rootDir>",
-    "specify the root directory for the backend. Defaults to `/`.",
-    "/",
-  )
+  .option("--root-dir <rootDir>", "specify the root directory for the backend.")
   .before(requireAuth)
   .before(ensureApiEnabled)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))
@@ -48,6 +44,6 @@ export const command = new Command("apphosting:backends:create")
       options.backend as string | undefined,
       options.serviceAccount as string | undefined,
       options.primaryRegion as string | undefined,
-      options.rootDir as string,
+      options.rootDir as string | undefined,
     );
   });
