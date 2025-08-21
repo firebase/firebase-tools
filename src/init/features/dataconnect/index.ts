@@ -257,7 +257,7 @@ async function actuateWithInfo(
         path: "./example",
         files: [
           {
-            path: "queries",
+            path: "queries.gql",
             content: operationGql,
           },
         ],
