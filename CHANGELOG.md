@@ -1,10 +1,2 @@
-- Updated Data Connect emulator to v2.11.2, which:
-  - [fixed] Fixed an issue causing SQL errors when combining aggregates and full-text search.
-- Fixed a bug when deploying firestore indexes failed due to broken index comparison logic (#8859)
-- Added prefix support for multi-instance Cloud Functions extension parameters. (#8911)
-- Make it possible to init a dataconnect project in non interactive mode (#8993)
-- Added 2 new MCP tools for crashlytics `get_sample_crash_for_issue` and `get_issue_details` (#8995)
+- Fixed the SQL permission bug in `sql:migrate`. (#9018)
 - `firebase init dataconnect:sdk` generate consistent fixed package names (#9021)
-- Use Gemini to generate schema and seed_data.gql in `firebase init dataconnect` (#8988)
-- Fixed a bug when `firebase deploy --only dataconnect` didn't include GQL files in nested folders (#8981)
-- Changed `firebase deploy` create Cloud SQL instances asynchronously (#9004)
