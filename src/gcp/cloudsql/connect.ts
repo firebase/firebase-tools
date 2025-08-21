@@ -117,6 +117,7 @@ export async function execute(
   }
 
   await cleanUpFn();
+  logFn(``);
   return results;
 }
 

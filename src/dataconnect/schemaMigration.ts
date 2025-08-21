@@ -28,6 +28,7 @@ import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
 import { cloudSQLBeingCreated } from "./provisionCloudSql";
+import { requireAuth } from "../requireAuth";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
@@ -420,14 +421,13 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     // Test if iam user has access to the roles required for this migration
-    const { user } = await getIAMUser(options);
     if (
       !(await checkSQLRoleIsGranted(
         options,
         instanceId,
         databaseId,
         firebaseowner(databaseId),
-        user,
+        (await getIAMUser(options)).user,
       ))
     ) {
       if (!userIsCSQLAdmin) {
@@ -435,8 +435,9 @@ async function handleIncompatibleSchemaError(args: {
           `Command aborted. Only users granted firebaseowner SQL role can run migrations.`,
         );
       }
-      logLabeledBullet("dataconnect", `Granting firebaseowner role to myself ${user}...`);
-      await grantRoleTo(options, instanceId, databaseId, "owner", user);
+      const account = (await requireAuth(options))!;
+      logLabeledBullet("dataconnect", `Granting firebaseowner role to myself ${account}...`);
+      await grantRoleTo(options, instanceId, databaseId, "owner", account);
     }
 
     if (commandsToExecuteBySuperUser.length) {
