@@ -47,9 +47,6 @@ export function registerFdcSdkGeneration(
       analyticsLogger.logger.logUsage(
         DATA_CONNECT_EVENT_NAME.INIT_SDK_CODELENSE,
       );
-      const configs = await firstWhereDefined(dataConnectConfigs).then(
-        (c) => c.requireValue,
-      );
       await selectAppFolderAndRunInitSdk();
     },
   );
