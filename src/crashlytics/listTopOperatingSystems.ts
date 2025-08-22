@@ -2,26 +2,28 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
-export async function listTopIssues(
+export async function listTopOperatingSystems(
   appId: string,
-  issueType: string,
-  issueCount: number,
+  osCount: number,
+  issueId?: string,
 ): Promise<string> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
-    queryParams.set("page_size", `${issueCount}`);
-    queryParams.set("filter.issue.error_types", `${issueType}`);
+    queryParams.set("page_size", `${osCount}`);
+    if (issueId) {
+      queryParams.set("filter.issue.id", issueId);
+    }
 
     logger.debug(
-      `[mcp][crashlytics] listTopIssues called with appId: ${appId}, issueType: ${issueType}, issueCount: ${issueCount}`,
+      `[mcp][crashlytics] listTopOperatingSystems called with appId: ${appId}, osCount: ${osCount}, issueId: ${issueId}`,
     );
     const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/topOperatingSystems`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });
@@ -30,7 +32,7 @@ export async function listTopIssues(
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to fetch the top issues for the Firebase app id: ${appId}. Error: ${err}.`,
+      `Failed to fetch the top operating systems for the Firebase app id: ${appId}. Error: ${err}.`,
       { original: err },
     );
   }
