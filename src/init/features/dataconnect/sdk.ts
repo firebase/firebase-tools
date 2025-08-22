@@ -117,7 +117,6 @@ async function chooseApp(): Promise<App[]> {
         checked: a.directory === ".",
       };
     });
-    // Default to the first app.
     const pickedApps = await checkbox<App>({
       message: "Which apps do you want to set up Data Connect SDKs in?",
       choices,
