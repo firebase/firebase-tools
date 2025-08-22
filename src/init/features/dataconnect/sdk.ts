@@ -2,14 +2,8 @@ import * as yaml from "yaml";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dirExistsSync } from "../../../fsutils";
-import { checkbox, select } from "../../../prompt";
-import {
-  getPlatformFromFolder,
-  getFrameworksFromPackageJson,
-  resolvePackageJson,
-  SUPPORTED_FRAMEWORKS,
-} from "../../../dataconnect/fileUtils";
+import { checkbox, confirm } from "../../../prompt";
+import { App, appDescription, detectApps } from "../../../dataconnect/appFinder";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { loadAll } from "../../../dataconnect/load";
@@ -17,143 +11,193 @@ import {
   ConnectorInfo,
   ConnectorYaml,
   DartSDK,
+  Framework,
   JavascriptSDK,
   KotlinSDK,
   Platform,
-  SupportedFrameworks,
 } from "../../../dataconnect/types";
-import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
-import { snakeCase } from "lodash";
-import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
+import { isArray } from "lodash";
+import {
+  logBullet,
+  envOverride,
+  logWarning,
+  promiseWithSpinner,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../../../utils";
+import * as fs from "fs";
+import { newUniqueId } from ".";
+import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
-import { Options } from "../../../options";
+import { executeCommand } from "./exec";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
 export const FDC_SDK_PLATFORM_ENV = "FDC_SDK_PLATFORM";
+
+export interface RequiredInfo {
+  apps: App[];
+}
 
 export type SDKInfo = {
   connectorYamlContents: string;
   connectorInfo: ConnectorInfo;
   displayIOSWarning: boolean;
 };
-export async function doSetup(setup: Setup, config: Config, options: Options): Promise<void> {
-  const sdkInfo = await askQuestions(setup, config, options);
-  await actuate(sdkInfo, config);
-  logSuccess(
-    `If you'd like to add more generated SDKs to your app your later, run ${clc.bold("firebase init dataconnect:sdk")} again`,
-  );
+
+export async function askQuestions(setup: Setup): Promise<void> {
+  const info: RequiredInfo = {
+    apps: [],
+  };
+
+  info.apps = await chooseApp();
+  if (!info.apps.length) {
+    // By default, create an React web app.
+    const existingFilesAndDirs = fs.readdirSync(process.cwd());
+    const webAppId = newUniqueId("web-app", existingFilesAndDirs);
+    const ok = await confirm({
+      message: `Do you want to create a React app template?`,
+    });
+    if (ok) {
+      await promiseWithSpinner(
+        () =>
+          executeCommand("npm", ["create", "vite@latest", webAppId, "--", "--template", "react"]),
+        `Running ${clc.bold(`npm create vite@latest ${webAppId} -- --template react`)}`,
+      );
+      info.apps = [
+        {
+          platform: Platform.WEB,
+          directory: webAppId,
+          frameworks: ["react"],
+        },
+      ];
+    }
+  }
+
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.dataconnectSdk = info;
 }
 
-async function askQuestions(setup: Setup, config: Config, options: Options): Promise<SDKInfo> {
-  const serviceInfos = await loadAll(setup.projectId || "", config);
-  const connectorChoices: connectorChoice[] = serviceInfos
-    .map((si) => {
-      return si.connectorInfo.map((ci) => {
-        return {
-          name: `${si.dataConnectYaml.location}/${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
-          value: ci,
-        };
-      });
-    })
-    .flat();
-  if (!connectorChoices.length) {
-    throw new FirebaseError(
-      `Your config has no connectors to set up SDKs for. Run ${clc.bold(
-        "firebase init dataconnect",
-      )} to set up a service and connectors.`,
+async function chooseApp(): Promise<App[]> {
+  let apps = await detectApps(process.cwd());
+  if (apps.length) {
+    logLabeledSuccess(
+      "dataconnect",
+      `Detected existing apps ${apps.map((a) => appDescription(a)).join(", ")}`,
     );
-  }
-
-  // First, lets check if we are in an app directory
-  let appDir = process.env[FDC_APP_FOLDER] || process.cwd();
-  let targetPlatform = envOverride(
-    FDC_SDK_PLATFORM_ENV,
-    (await getPlatformFromFolder(appDir)) || Platform.NONE,
-  ) as Platform;
-
-  if (options.nonInteractive && targetPlatform === Platform.NONE) {
-    throw new FirebaseError(
-      `In non-interactive mode, the target platform and app directory must be specified using environment variables if they cannot be automatically detected.
-Please set the ${FDC_SDK_PLATFORM_ENV} and ${FDC_APP_FOLDER} environment variables.
-For example:
-${clc.bold(
-  `${FDC_SDK_PLATFORM_ENV}=WEB ${FDC_APP_FOLDER}=app-dir ${FDC_SDK_FRAMEWORKS_ENV}=react firebase init dataconnect:sdk --non-interactive`,
-)}`,
-    );
-  }
-  if (targetPlatform === Platform.NONE && !process.env[FDC_APP_FOLDER]?.length) {
-    // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
-    appDir = await promptForDirectory({
-      config,
-      message:
-        "Where is your app directory? Leave blank to set up a generated SDK in your current directory.",
-    });
-    targetPlatform = await getPlatformFromFolder(appDir);
-  }
-  if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
-    if (targetPlatform === Platform.NONE) {
-      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
-    } else {
-      logSuccess(`Detected multiple app platforms in directory ${appDir}`);
-      // Can only setup one platform at a time, just ask the user
-    }
-    const platforms = [
-      { name: "iOS (Swift)", value: Platform.IOS },
-      { name: "Web (JavaScript)", value: Platform.WEB },
-      { name: "Android (Kotlin)", value: Platform.ANDROID },
-      { name: "Flutter (Dart)", value: Platform.FLUTTER },
-    ];
-    targetPlatform = await select<Platform>({
-      message: "Which platform do you want to set up a generated SDK for?",
-      choices: platforms,
-    });
   } else {
-    logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
+    logLabeledWarning("dataconnect", "No app exists in the current directory.");
+  }
+  // Check for environment variables override.
+  const envAppFolder = envOverride(FDC_APP_FOLDER, "");
+  const envPlatform = envOverride(FDC_SDK_PLATFORM_ENV, Platform.NONE) as Platform;
+  if (envAppFolder) {
+    // Resolve the absolute path to the app directory
+    const envAppAbsDir = path.resolve(process.cwd(), envAppFolder);
+    const matchedApps = apps.filter(
+      (app) =>
+        path.resolve(process.cwd(), app.directory) === envAppAbsDir &&
+        (!app.platform || app.platform === envPlatform),
+    );
+    if (matchedApps.length) {
+      return matchedApps;
+    }
+    return [
+      {
+        platform: envPlatform,
+        directory: envAppAbsDir,
+        frameworks: envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
+          .split(",")
+          .map((f) => f as Framework),
+      },
+    ];
+  }
+  if (apps.length >= 2) {
+    const choices = apps.map((a) => {
+      return {
+        name: appDescription(a),
+        value: a,
+        checked: a.directory === ".",
+      };
+    });
+    // Default to the first app.
+    const pickedApps = await checkbox<App>({
+      message: "Which apps do you want to set up Data Connect SDKs in?",
+      choices,
+    });
+    if (!pickedApps.length) {
+      throw new FirebaseError("Command Aborted. Please choose at least one app.");
+    }
+    apps = pickedApps;
+  }
+  return apps;
+}
+
+export async function actuate(setup: Setup, config: Config) {
+  const info = setup.featureInfo?.dataconnectSdk;
+  if (!info) {
+    throw new Error("Data Connect SDK feature RequiredInfo is not provided");
+  }
+  let apps = info.apps;
+  if (!apps) {
+    // By default, create an React web app.
+    const existingFilesAndDirs = fs.readdirSync(process.cwd());
+    apps = [
+      {
+        platform: Platform.WEB,
+        directory: newUniqueId("web-app", existingFilesAndDirs),
+        frameworks: ["react"],
+      },
+    ];
   }
 
-  const connectorInfo = await chooseExistingConnector(connectorChoices);
-
+  const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
-  const newConnectorYaml = await generateSdkYaml(
-    targetPlatform,
-    connectorYaml,
-    connectorInfo.directory,
-    appDir,
-  );
-  if (targetPlatform === Platform.WEB) {
-    const unusedFrameworks = SUPPORTED_FRAMEWORKS.filter(
-      (framework) => !newConnectorYaml!.generate?.javascriptSdk![framework],
-    );
-    if (unusedFrameworks.length > 0) {
-      let additionalFrameworks: (typeof SUPPORTED_FRAMEWORKS)[number][] = [];
-      if (options.nonInteractive) {
-        additionalFrameworks = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
-          .split(",")
-          .filter((f) => f) as (typeof SUPPORTED_FRAMEWORKS)[number][];
-      } else {
-        additionalFrameworks = await checkbox<(typeof SUPPORTED_FRAMEWORKS)[number]>({
-          message:
-            "Which frameworks would you like to generate SDKs for in addition to the TypeScript SDK? Press Enter to skip.\n",
-          choices: SUPPORTED_FRAMEWORKS.map((frameworkStr) => ({
-            value: frameworkStr,
-            checked: newConnectorYaml?.generate?.javascriptSdk?.[frameworkStr],
-          })),
-        });
-      }
-
-      for (const framework of additionalFrameworks) {
-        newConnectorYaml!.generate!.javascriptSdk![framework] = true;
-      }
-    }
+  for (const app of apps) {
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
   }
 
   // TODO: Prompt user about adding generated paths to .gitignore
-  const connectorYamlContents = yaml.stringify(newConnectorYaml);
-  connectorInfo.connectorYaml = newConnectorYaml;
-  const displayIOSWarning = targetPlatform === Platform.IOS;
-  return { connectorYamlContents, connectorInfo, displayIOSWarning };
+  const connectorYamlContents = yaml.stringify(connectorYaml);
+  connectorInfo.connectorYaml = connectorYaml;
+
+  const connectorYamlPath = `${connectorInfo.directory}/connector.yaml`;
+  logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
+  config.writeProjectFile(
+    path.relative(config.projectDir, connectorYamlPath),
+    connectorYamlContents,
+  );
+
+  const account = getGlobalDefaultAccount();
+  await DataConnectEmulator.generate({
+    configDir: connectorInfo.directory,
+    connectorId: connectorInfo.connectorYaml.connectorId,
+    account,
+  });
+
+  logLabeledSuccess(
+    "dataconnect",
+    `Installed generated SDKs for ${clc.bold(apps.map((a) => appDescription(a)).join(", "))}`,
+  );
+  if (apps.some((a) => a.platform === Platform.IOS)) {
+    logBullet(
+      clc.bold(
+        "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/ios-sdk#set-client",
+      ),
+    );
+  }
+  if (apps.some((a) => a.frameworks?.includes("react"))) {
+    logBullet(
+      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
+    );
+  }
+  if (apps.some((a) => a.frameworks?.includes("angular"))) {
+    // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
+    logBullet(
+      "Run `npm i --save @angular/fire @tanstack-query-firebase/angular @tanstack/angular-query-experimental` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
+    );
+  }
 }
 
 interface connectorChoice {
@@ -171,7 +215,25 @@ interface connectorChoice {
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param choices
  */
-async function chooseExistingConnector(choices: connectorChoice[]): Promise<ConnectorInfo> {
+async function chooseExistingConnector(setup: Setup, config: Config): Promise<ConnectorInfo> {
+  const serviceInfos = await loadAll(setup.projectId || "", config);
+  const choices: connectorChoice[] = serviceInfos
+    .map((si) => {
+      return si.connectorInfo.map((ci) => {
+        return {
+          name: `${si.dataConnectYaml.location}/${si.dataConnectYaml.serviceId}/${ci.connectorYaml.connectorId}`,
+          value: ci,
+        };
+      });
+    })
+    .flat();
+  if (!choices) {
+    throw new FirebaseError(
+      `Your config has no connectors to set up SDKs for. Run ${clc.bold(
+        "firebase init dataconnect",
+      )} to set up a service and connector.`,
+    );
+  }
   if (choices.length === 1) {
     // Only one connector available, use it.
     return choices[0].value;
@@ -187,125 +249,93 @@ async function chooseExistingConnector(choices: connectorChoice[]): Promise<Conn
       `Unable to pick up an existing connector based on FDC_CONNECTOR=${connectorEnvVar}.`,
     );
   }
-  return await select<ConnectorInfo>({
-    message: "Which connector do you want set up a generated SDK for?",
-    choices: choices,
-  });
+  logWarning(
+    `Pick up the first connector ${clc.bold(connectorEnvVar)}. Use FDC_CONNECTOR to override it`,
+  );
+  return choices[0].value;
 }
 
-export async function generateSdkYaml(
-  targetPlatform: Platform,
+export function addSdkGenerateToConnectorYaml(
+  connectorInfo: ConnectorInfo,
   connectorYaml: ConnectorYaml,
-  connectorDir: string,
-  appDir: string,
-): Promise<ConnectorYaml> {
+  app: App,
+): void {
+  const connectorDir = connectorInfo.directory;
+  const appDir = app.directory;
   if (!connectorYaml.generate) {
     connectorYaml.generate = {};
   }
+  const generate = connectorYaml.generate;
 
-  if (targetPlatform === Platform.IOS) {
-    const swiftSdk = {
-      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`)),
-      package: "DataConnectGenerated",
-    };
-    connectorYaml.generate.swiftSdk = swiftSdk;
-  }
-
-  if (targetPlatform === Platform.WEB) {
-    const pkg = `${connectorYaml.connectorId}-connector`;
-    const packageJsonDir = path.relative(connectorDir, appDir);
-    const javascriptSdk: JavascriptSDK = {
-      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
-      package: `@dataconnect/generated`,
-      // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
-      // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
-      // TODO: Explore other platforms that can be automatically installed. Dart? Android?
-      packageJsonDir,
-    };
-    const packageJson = await resolvePackageJson(appDir);
-    if (packageJson) {
-      const frameworksUsed = getFrameworksFromPackageJson(packageJson);
-      for (const framework of frameworksUsed) {
-        logBullet(`Detected ${framework} app. Enabling ${framework} generated SDKs.`);
-        javascriptSdk[framework] = true;
+  switch (app.platform) {
+    case Platform.WEB: {
+      const javascriptSdk: JavascriptSDK = {
+        outputDir: path.relative(connectorDir, path.join(appDir, `src/dataconnect-generated`)),
+        package: `@dataconnect/generated`,
+        packageJsonDir: path.relative(connectorDir, appDir),
+        react: false,
+        angular: false,
+      };
+      for (const f of app.frameworks || []) {
+        javascriptSdk[f] = true;
       }
-    }
-
-    connectorYaml.generate.javascriptSdk = javascriptSdk;
-  }
-
-  if (targetPlatform === Platform.FLUTTER) {
-    const pkg = `${snakeCase(connectorYaml.connectorId)}_connector`;
-    const dartSdk: DartSDK = {
-      outputDir: path.relative(
-        connectorDir,
-        path.join(appDir, `dataconnect-generated/dart/${pkg}`),
-      ),
-      package: "dataconnect_generated",
-    };
-    connectorYaml.generate.dartSdk = dartSdk;
-  }
-
-  if (targetPlatform === Platform.ANDROID) {
-    const kotlinSdk: KotlinSDK = {
-      outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`)),
-      package: `com.google.firebase.dataconnect.generated`,
-    };
-    // app/src/main/kotlin and app/src/main/java are conventional for Android,
-    // but not required or enforced. If one of them is present (preferring the
-    // "kotlin" directory), use it. Otherwise, fall back to the dataconnect-generated dir.
-    for (const candidateSubdir of ["app/src/main/java", "app/src/main/kotlin"]) {
-      const candidateDir = path.join(appDir, candidateSubdir);
-      if (dirExistsSync(candidateDir)) {
-        kotlinSdk.outputDir = path.relative(connectorDir, candidateDir);
+      if (!isArray(generate?.javascriptSdk)) {
+        generate.javascriptSdk = generate.javascriptSdk ? [generate.javascriptSdk] : [];
       }
-    }
-    connectorYaml.generate.kotlinSdk = kotlinSdk;
-  }
-
-  return connectorYaml;
-}
-
-export async function actuate(sdkInfo: SDKInfo, config: Config) {
-  const connectorYamlPath = `${sdkInfo.connectorInfo.directory}/connector.yaml`;
-  logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
-  config.writeProjectFile(
-    path.relative(config.projectDir, connectorYamlPath),
-    sdkInfo.connectorYamlContents,
-  );
-
-  const account = getGlobalDefaultAccount();
-  await DataConnectEmulator.generate({
-    configDir: sdkInfo.connectorInfo.directory,
-    connectorId: sdkInfo.connectorInfo.connectorYaml.connectorId,
-    account,
-  });
-  logBullet(`Generated SDK code for ${sdkInfo.connectorInfo.connectorYaml.connectorId}`);
-  if (sdkInfo.connectorInfo.connectorYaml.generate?.swiftSdk && sdkInfo.displayIOSWarning) {
-    logBullet(
-      clc.bold(
-        "Please follow the instructions here to add your generated sdk to your XCode project:\n\thttps://firebase.google.com/docs/data-connect/ios-sdk#set-client",
-      ),
-    );
-  }
-  if (sdkInfo.connectorInfo.connectorYaml.generate?.javascriptSdk) {
-    for (const framework of SUPPORTED_FRAMEWORKS) {
-      if (sdkInfo.connectorInfo.connectorYaml!.generate!.javascriptSdk![framework]) {
-        logInfoForFramework(framework);
+      if (!generate.javascriptSdk.some((s) => s.outputDir === javascriptSdk.outputDir)) {
+        generate.javascriptSdk.push(javascriptSdk);
       }
+      break;
     }
-  }
-}
-
-function logInfoForFramework(framework: keyof SupportedFrameworks) {
-  if (framework === "react") {
-    logBullet(
-      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
-    );
-  } else if (framework === "angular") {
-    // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
-    logBullet(
-      "Run `npm i --save @angular/fire @tanstack-query-firebase/angular @tanstack/angular-query-experimental` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
-    );
+    case Platform.FLUTTER: {
+      const dartSdk: DartSDK = {
+        outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
+        package: "dataconnect_generated",
+      };
+      if (!isArray(generate?.dartSdk)) {
+        generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
+      }
+      if (!generate.dartSdk.some((s) => s.outputDir === dartSdk.outputDir)) {
+        generate.dartSdk.push(dartSdk);
+      }
+      break;
+    }
+    case Platform.ANDROID: {
+      const kotlinSdk: KotlinSDK = {
+        outputDir: path.relative(connectorDir, path.join(appDir, `src/main/kotlin`)),
+        package: `com.google.firebase.dataconnect.generated`,
+      };
+      if (!isArray(generate?.kotlinSdk)) {
+        generate.kotlinSdk = generate.kotlinSdk ? [generate.kotlinSdk] : [];
+      }
+      if (!generate.kotlinSdk.some((s) => s.outputDir === kotlinSdk.outputDir)) {
+        generate.kotlinSdk.push(kotlinSdk);
+      }
+      break;
+    }
+    case Platform.IOS: {
+      const swiftSdk = {
+        outputDir: path.relative(
+          connectorDir,
+          path.join(app.directory, `../FirebaseDataConnectGenerated`),
+        ),
+        package: "DataConnectGenerated",
+      };
+      if (!isArray(generate?.swiftSdk)) {
+        generate.swiftSdk = generate.swiftSdk ? [generate.swiftSdk] : [];
+      }
+      if (!generate.swiftSdk.some((s) => s.outputDir === swiftSdk.outputDir)) {
+        generate.swiftSdk.push(swiftSdk);
+      }
+      break;
+    }
+    default:
+      throw new FirebaseError(
+        `Unsupported platform ${app.platform} for Data Connect SDK generation. Supported platforms are: ${Object.values(
+          Platform,
+        )
+          .filter((p) => p !== Platform.NONE)
+          .join(", ")}`,
+      );
   }
 }
