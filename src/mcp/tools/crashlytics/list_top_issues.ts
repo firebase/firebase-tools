@@ -33,7 +33,7 @@ export const list_top_issues = tool(
   },
   async ({ app_id, issue_type, issue_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
-    
+
     issue_type ??= "FATAL";
     issue_count ??= 10;
 

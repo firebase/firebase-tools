@@ -21,7 +21,7 @@ export const fix_issue = prompt(
       title: "Prioritize Crashlytics Issues",
     },
   },
-  async ({ app_id, issue_id }, { config, projectId, accountEmail }) => {
+  async ({ app_id, issue_id }, { config, accountEmail }) => {
     return [
       {
         role: "user" as const,

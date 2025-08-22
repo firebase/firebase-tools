@@ -28,7 +28,7 @@ function namespacePrompts(
     } else if (feature === "core") {
       newPrompt.mcp.name = `firebase:${p.mcp.name}`;
     } else {
-      newPrompt.mcp.name = `firebase:${feature}:${p.mcp.name}`;
+      newPrompt.mcp.name = `${feature}:${p.mcp.name}`;
     }
     newPrompt.mcp._meta = { ...p.mcp._meta, feature };
     return newPrompt;
