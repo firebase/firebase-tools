@@ -1,22 +1,13 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function listTopOperatingSystems(
   appId: string,
   osCount: number,
   issueId?: string,
 ): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${osCount}`);
@@ -24,13 +15,15 @@ export async function listTopOperatingSystems(
       queryParams.set("filter.issue.id", issueId);
     }
 
-    logger.debug(`[mcp][crashlytics] listTopOperatingSystems query paramaters: ${queryParams}`);
-    const response = await apiClient.request<void, string>({
+    logger.debug(
+      `[mcp][crashlytics] listTopOperatingSystems called with appId: ${appId}, osCount: ${osCount}, issueId: ${issueId}`,
+    );
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/topOperatingSystems`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });

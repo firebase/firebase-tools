@@ -11,7 +11,7 @@ const expect = chai.expect;
 
 describe("listTopIssues", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
 
   afterEach(() => {
     nock.cleanAll();
@@ -23,7 +23,7 @@ describe("listTopIssues", () => {
     const mockResponse = { issues: [{ id: "1" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topIssues`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
       .query({
         page_size: `${issueCount}`,
         "filter.issue.error_types": issueType,
@@ -41,7 +41,7 @@ describe("listTopIssues", () => {
     const issueCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topIssues`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
       .reply(500, { error: "Internal Server Error" });
 
     await expect(listTopIssues(appId, issueType, issueCount)).to.be.rejectedWith(

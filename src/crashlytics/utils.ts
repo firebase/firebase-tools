@@ -1,4 +1,13 @@
 import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
+import { crashlyticsApiOrigin } from "../api";
+
+export const TIMEOUT = 10000;
+
+export const CRASHLYTICS_API_CLIENT = new Client({
+  urlPrefix: crashlyticsApiOrigin(),
+  apiVersion: "v1alpha",
+});
 
 export enum PLATFORM_PATH {
   ANDROID = "topAndroidDevices",

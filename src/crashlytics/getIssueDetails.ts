@@ -1,25 +1,20 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function getIssueDetails(appId: string, issueId: string): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
+
+  logger.debug(
+    `[mcp][crashlytics] getIssueDetails called with appId: ${appId}, issueId: ${issueId}`,
+  );
   try {
-    const response = await apiClient.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       timeout: TIMEOUT,
     });
 

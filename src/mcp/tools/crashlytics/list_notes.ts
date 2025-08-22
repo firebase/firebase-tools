@@ -18,7 +18,7 @@ export const list_notes = tool(
         .describe("Number of notes that needs to be fetched. Defaults to 10 if unspecified."),
     }),
     annotations: {
-      title: "List Notes for a Crashlytics Issue.",
+      title: "List notes for a Crashlytics issue.",
       readOnlyHint: true,
     },
     _meta: {

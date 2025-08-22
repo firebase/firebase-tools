@@ -1,33 +1,26 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function listNotes(
   appId: string,
   issueId: string,
   noteCount: number,
 ): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${noteCount}`);
 
-    logger.debug(`[mcp][crashlytics] listNotes query paramaters: ${queryParams}`);
-    const response = await apiClient.request<void, string>({
+    logger.debug(
+      `[mcp][crashlytics] listNotes called with appId: ${appId}, issueId: ${issueId}, noteCount: ${noteCount}`,
+    );
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });

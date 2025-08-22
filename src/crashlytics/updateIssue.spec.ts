@@ -11,7 +11,7 @@ const expect = chai.expect;
 
 describe("updateIssue", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
   const issueId = "test-issue-id";
 
   afterEach(() => {
@@ -26,7 +26,7 @@ describe("updateIssue", () => {
     };
 
     nock(crashlyticsApiOrigin())
-      .patch(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`, {
+      .patch(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`, {
         state,
       })
       .query({ updateMask: "state" })
@@ -41,7 +41,7 @@ describe("updateIssue", () => {
   it("should throw a FirebaseError if the API call fails", async () => {
     const state = IssueState.OPEN;
     nock(crashlyticsApiOrigin())
-      .patch(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`)
+      .patch(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`)
       .query({ updateMask: "state" })
       .reply(500, { error: "Internal Server Error" });
 

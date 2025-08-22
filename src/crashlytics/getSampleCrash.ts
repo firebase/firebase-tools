@@ -1,15 +1,6 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function getSampleCrash(
   appId: string,
@@ -17,7 +8,11 @@ export async function getSampleCrash(
   sampleCount: number,
   variantId?: string,
 ): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
+
+  logger.debug(
+    `[mcp][crashlytics] getSampleCrash called with appId: ${appId}, issueId: ${issueId}, sampleCount: ${sampleCount}, variantId: ${variantId}`,
+  );
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("filter.issue.id", issueId);
@@ -27,12 +22,12 @@ export async function getSampleCrash(
     }
 
     logger.debug(`[mcp][crashlytics] getSampleCrash query paramaters: ${queryParams}`);
-    const response = await apiClient.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/events`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });

@@ -13,7 +13,7 @@ describe("listTopDevices", () => {
   const androidAppId = "1:1234567890:android:abcdef1234567890";
   const appleAppId = "1:1234567890:ios:abcdef1234567890";
 
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
 
   afterEach(() => {
     nock.cleanAll();
@@ -24,7 +24,9 @@ describe("listTopDevices", () => {
     const mockResponse = { devices: [{ device: "Pixel 4" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topAndroidDevices`)
+      .get(
+        `/v1alpha/projects/${requestProjectNumber}/apps/${androidAppId}/reports/topAndroidDevices`,
+      )
       .query({
         page_size: `${deviceCount}`,
       })
@@ -41,7 +43,7 @@ describe("listTopDevices", () => {
     const mockResponse = { devices: [{ device: "Pixel 4" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appleAppId}/reports/topAppleDevices`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appleAppId}/reports/topAppleDevices`)
       .query({
         page_size: `${deviceCount}`,
       })
@@ -59,7 +61,9 @@ describe("listTopDevices", () => {
     const mockResponse = { devices: [{ device: "Pixel 4" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topAndroidDevices`)
+      .get(
+        `/v1alpha/projects/${requestProjectNumber}/apps/${androidAppId}/reports/topAndroidDevices`,
+      )
       .query({
         page_size: `${deviceCount}`,
         "filter.issue.id": issueId,
@@ -76,7 +80,9 @@ describe("listTopDevices", () => {
     const deviceCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${androidAppId}/reports/topAndroidDevices`)
+      .get(
+        `/v1alpha/projects/${requestProjectNumber}/apps/${androidAppId}/reports/topAndroidDevices`,
+      )
       .reply(500, { error: "Internal Server Error" });
 
     await expect(listTopDevices(androidAppId, deviceCount)).to.be.rejectedWith(

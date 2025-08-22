@@ -1,22 +1,13 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function listTopVersions(
   appId: string,
   versionCount: number,
   issueId?: string,
 ): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
     queryParams.set("page_size", `${versionCount}`);
@@ -24,13 +15,15 @@ export async function listTopVersions(
       queryParams.set("filter.issue.id", issueId);
     }
 
-    logger.debug(`[mcp][crashlytics] listTopVersions query paramaters: ${queryParams}`);
-    const response = await apiClient.request<void, string>({
+    logger.debug(
+      `[mcp][crashlytics] listTopVersions called with appId: ${appId}, versionCount: ${versionCount}, issueId: ${issueId}`,
+    );
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/reports/topVersions`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });

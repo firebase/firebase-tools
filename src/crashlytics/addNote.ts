@@ -1,29 +1,23 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 type NoteRequest = {
   body: string;
 };
 
 export async function addNote(appId: string, issueId: string, note: string): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
+  logger.debug(
+    `[mcp][crashlytics] addNote called with appId: ${appId}, issueId: ${issueId}, note: ${note}`,
+  );
   try {
-    const response = await apiClient.request<NoteRequest, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<NoteRequest, string>({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
       body: { body: note },
       timeout: TIMEOUT,
     });

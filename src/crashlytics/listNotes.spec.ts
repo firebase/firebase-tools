@@ -11,7 +11,7 @@ const expect = chai.expect;
 
 describe("listNotes", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
   const issueId = "test-issue-id";
 
   afterEach(() => {
@@ -23,7 +23,7 @@ describe("listNotes", () => {
     const noteCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`)
       .query({
         page_size: `${noteCount}`,
       })
@@ -39,7 +39,7 @@ describe("listNotes", () => {
     const noteCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`)
       .query({
         page_size: `${noteCount}`,
       })

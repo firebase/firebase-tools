@@ -1,22 +1,13 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parsePlatform, parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parsePlatform, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function listTopDevices(
   appId: string,
   deviceCount: number,
   issueId?: string,
 ): Promise<string> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
   const platformPath = parsePlatform(appId);
   try {
     const queryParams = new URLSearchParams();
@@ -25,13 +16,15 @@ export async function listTopDevices(
       queryParams.set("filter.issue.id", issueId);
     }
 
-    logger.debug(`[mcp][crashlytics] listTopDevices query paramaters: ${queryParams}`);
-    const response = await apiClient.request<void, string>({
+    logger.debug(
+      `[mcp][crashlytics] listTopDevices called with appId: ${appId}, deviceCount: ${deviceCount}, issueId: ${issueId}`,
+    );
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/reports/${platformPath}`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${platformPath}`,
       queryParams: queryParams,
       timeout: TIMEOUT,
     });

@@ -1,24 +1,20 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
-const TIMEOUT = 10000;
+export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<string> {
+  const requestProjectNumber = parseProjectNumber(appId);
 
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
-
-export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<void> {
-  const requestProjectId = parseProjectNumber(appId);
+  logger.debug(
+    `[mcp][crashlytics] deleteNote called with appId: ${appId}, issueId: ${issueId}, noteId: ${noteId}`,
+  );
   try {
-    await apiClient.request<void, void>({
+    await CRASHLYTICS_API_CLIENT.request<void, void>({
       method: "DELETE",
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
       timeout: TIMEOUT,
     });
+    return `Successfully deleted note ${noteId} from issue ${issueId}.`;
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(

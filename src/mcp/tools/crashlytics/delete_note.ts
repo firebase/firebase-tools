@@ -32,7 +32,6 @@ export const delete_note = tool(
       return mcpError(`Must specify 'note_id' parameter.`);
     }
 
-    await deleteNote(app_id, issue_id, note_id);
-    return toContent(`Successfully deleted note ${note_id} from issue ${issue_id}.`);
+    return toContent(await deleteNote(app_id, issue_id, note_id));
   },
 );

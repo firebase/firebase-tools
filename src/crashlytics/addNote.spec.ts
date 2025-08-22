@@ -10,7 +10,7 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 describe("addNote", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
   const issueId = "test-issue-id";
   const note = "This is a test note.";
 
@@ -22,7 +22,7 @@ describe("addNote", () => {
     const mockResponse = { name: "note1", body: note };
 
     nock(crashlyticsApiOrigin())
-      .post(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`, {
+      .post(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`, {
         body: note,
       })
       .reply(200, mockResponse);
@@ -35,7 +35,7 @@ describe("addNote", () => {
 
   it("should throw a FirebaseError if the API call fails", async () => {
     nock(crashlyticsApiOrigin())
-      .post(`/v1alpha/projects/${requestProjectId}/apps/${appId}/issues/${issueId}/notes`)
+      .post(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`)
       .reply(500, { error: "Internal Server Error" });
 
     await expect(addNote(appId, issueId, note)).to.be.rejectedWith(

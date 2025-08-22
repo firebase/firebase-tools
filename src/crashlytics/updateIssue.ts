@@ -1,15 +1,6 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-import { parseProjectNumber } from "./utils";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export enum IssueState {
   OPEN = "OPEN",
@@ -32,14 +23,17 @@ export async function updateIssue(
   issueId: string,
   state: IssueState,
 ): Promise<Issue> {
-  const requestProjectId = parseProjectNumber(appId);
+  const requestProjectNumber = parseProjectNumber(appId);
   try {
-    const response = await apiClient.request<UpdateIssueRequest, Issue>({
+    logger.debug(
+      `[mcp][crashlytics] updateIssue called with appId: ${appId}, issueId: ${issueId}, state: ${state}`,
+    );
+    const response = await CRASHLYTICS_API_CLIENT.request<UpdateIssueRequest, Issue>({
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      path: `/projects/${requestProjectId}/apps/${appId}/issues/${issueId}`,
+      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       queryParams: { updateMask: "state" },
       body: { state },
       timeout: TIMEOUT,

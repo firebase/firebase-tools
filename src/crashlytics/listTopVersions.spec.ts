@@ -11,7 +11,7 @@ const expect = chai.expect;
 
 describe("listTopVersions", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
 
   afterEach(() => {
     nock.cleanAll();
@@ -24,7 +24,7 @@ describe("listTopVersions", () => {
     };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topVersions`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`)
       .query({
         page_size: `${versionCount}`,
       })
@@ -44,7 +44,7 @@ describe("listTopVersions", () => {
     };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topVersions`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`)
       .query({
         page_size: `${versionCount}`,
         "filter.issue.id": issueId,
@@ -61,7 +61,7 @@ describe("listTopVersions", () => {
     const versionCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topVersions`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`)
       .reply(500, { error: "Internal Server Error" });
 
     await expect(listTopVersions(appId, versionCount)).to.be.rejectedWith(

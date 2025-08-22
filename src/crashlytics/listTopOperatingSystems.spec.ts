@@ -11,7 +11,7 @@ const expect = chai.expect;
 
 describe("listTopOperatingSystems", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
-  const requestProjectId = "1234567890";
+  const requestProjectNumber = "1234567890";
 
   afterEach(() => {
     nock.cleanAll();
@@ -22,7 +22,7 @@ describe("listTopOperatingSystems", () => {
     const mockResponse = { operatingSystems: [{ os: "Android 12" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topOperatingSystems`)
       .query({
         page_size: `${osCount}`,
       })
@@ -40,7 +40,7 @@ describe("listTopOperatingSystems", () => {
     const mockResponse = { operatingSystems: [{ os: "Android 12" }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topOperatingSystems`)
       .query({
         page_size: `${osCount}`,
         "filter.issue.id": issueId,
@@ -57,7 +57,7 @@ describe("listTopOperatingSystems", () => {
     const osCount = 10;
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectId}/apps/${appId}/reports/topOperatingSystems`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topOperatingSystems`)
       .reply(500, { error: "Internal Server Error" });
 
     await expect(listTopOperatingSystems(appId, osCount)).to.be.rejectedWith(
