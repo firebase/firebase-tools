@@ -18,7 +18,8 @@ export const prioritize_issues = prompt(
       },
       {
         name: "issue_count",
-        description: "The number of issues that should be returned in the final list. Defaults to 5.",
+        description:
+          "The number of issues that should be returned in the final list. Defaults to 5.",
         required: false,
       },
     ],
@@ -26,7 +27,7 @@ export const prioritize_issues = prompt(
       title: "Prioritize Crashlytics Issues",
     },
   },
-  async ({ app_id, prompt, issue_count }, { config, projectId, accountEmail }) => {
+  async ({ app_id, prompt, issue_count }, { config, accountEmail }) => {
     return [
       {
         role: "user" as const,

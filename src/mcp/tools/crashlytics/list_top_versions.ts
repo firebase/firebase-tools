@@ -27,7 +27,7 @@ export const list_top_versions = tool(
   },
   async ({ app_id, issue_id, version_count }) => {
     if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
-    
+
     version_count ??= 10;
     return toContent(await listTopVersions(app_id, version_count, issue_id));
   },
