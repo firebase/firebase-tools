@@ -30,7 +30,7 @@ import * as fs from "fs";
 import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
-import { createNextApp } from "./create_app";
+import { createApp } from "./create_app";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -57,10 +57,10 @@ export async function askQuestions(setup: Setup): Promise<void> {
     const existingFilesAndDirs = fs.readdirSync(process.cwd());
     const webAppId = newUniqueId("web-app", existingFilesAndDirs);
     const ok = await confirm({
-      message: `Do you want to create a Next.JS app template?`,
+      message: `Do you want to create a React app template?`,
     });
     if (ok) {
-      await createNextApp(webAppId);
+      await createApp(webAppId);
       info.apps = [
         {
           platform: Platform.WEB,

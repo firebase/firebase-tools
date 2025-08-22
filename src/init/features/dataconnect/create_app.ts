@@ -2,7 +2,8 @@ import { spawn } from "child_process";
 import * as clc from "colorette";
 import { logLabeledBullet } from "../../../utils";
 
-export async function createNextApp(webAppId: string): Promise<void> {
+export async function createApp(webAppId: string): Promise<void> {
+  // Next.JS template.
   const args = [
     "create-next-app@latest",
     webAppId,
@@ -18,6 +19,10 @@ export async function createNextApp(webAppId: string): Promise<void> {
     "--skip-install",
   ];
   await executeCommand("npx", args);
+
+  // Using vite react template.
+  // const args = ["create", "vite@latest", webAppId, "--", "--template", "react"];
+  // await executeCommand("npm", args);
 }
 
 // Function to execute a command asynchronously and pipe I/O
