@@ -179,7 +179,7 @@ describe("init dataconnect", () => {
             projectId: "test-project",
             rcfile: MOCK_RC,
             config: c.config.src,
-            featureInfo: { dataconnect: c.requiredInfo },
+            featureInfo: { dataconnect: c.requiredInfo, dataconnectSdk: { apps: [] } },
           },
           c.config,
           {},
