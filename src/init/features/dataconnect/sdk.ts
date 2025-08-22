@@ -22,15 +22,15 @@ import {
   logBullet,
   envOverride,
   logWarning,
-  promiseWithSpinner,
   logLabeledSuccess,
   logLabeledWarning,
+  logLabeledBullet,
 } from "../../../utils";
 import * as fs from "fs";
 import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
-import { executeCommand } from "./exec";
+import { createNextApp } from "./create_app";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -60,11 +60,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       message: `Do you want to create a React app template?`,
     });
     if (ok) {
-      await promiseWithSpinner(
-        () =>
-          executeCommand("npm", ["create", "vite@latest", webAppId, "--", "--template", "react"]),
-        `Running ${clc.bold(`npm create vite@latest ${webAppId} -- --template react`)}`,
-      );
+      await createNextApp(webAppId);
       info.apps = [
         {
           platform: Platform.WEB,
@@ -163,12 +159,12 @@ export async function actuate(setup: Setup, config: Config) {
   connectorInfo.connectorYaml = connectorYaml;
 
   const connectorYamlPath = `${connectorInfo.directory}/connector.yaml`;
-  logBullet(`Writing your new SDK configuration to ${connectorYamlPath}`);
   config.writeProjectFile(
     path.relative(config.projectDir, connectorYamlPath),
     connectorYamlContents,
   );
 
+  logLabeledBullet("dataconnect", `Installing the generated SDKs ...`);
   const account = getGlobalDefaultAccount();
   await DataConnectEmulator.generate({
     configDir: connectorInfo.directory,
