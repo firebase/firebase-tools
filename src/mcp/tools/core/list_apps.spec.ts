@@ -1,0 +1,55 @@
+import { expect } from "chai";
+import * as sinon from "sinon";
+import { list_apps } from "./list_apps";
+import * as apps from "../../../management/apps";
+import { toContent } from "../../util";
+
+describe("list_apps tool", () => {
+  const projectId = "test-project";
+  const appList = [{ appId: "app1", platform: "WEB" }];
+
+  let listFirebaseAppsStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    listFirebaseAppsStub = sinon.stub(apps, "listFirebaseApps");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should list all apps when no platform is specified", async () => {
+    listFirebaseAppsStub.resolves(appList);
+
+    const result = await (list_apps as any)._fn({}, { projectId });
+
+    expect(listFirebaseAppsStub).to.be.calledWith(projectId, "ANY");
+    expect(result).to.deep.equal(toContent(appList));
+  });
+
+  it("should list apps for a specific platform", async () => {
+    listFirebaseAppsStub.resolves(appList);
+
+    const result = await (list_apps as any)._fn({ platform: "web" }, { projectId });
+
+    expect(listFirebaseAppsStub).to.be.calledWith(projectId, "WEB");
+    expect(result).to.deep.equal(toContent(appList));
+  });
+
+  it("should handle the 'all' platform option", async () => {
+    listFirebaseAppsStub.resolves(appList);
+
+    await (list_apps as any)._fn({ platform: "all" }, { projectId });
+
+    expect(listFirebaseAppsStub).to.be.calledWith(projectId, "ANY");
+  });
+
+  it("should throw a descriptive error on failure", async () => {
+    const originalError = new Error("API call failed");
+    listFirebaseAppsStub.rejects(originalError);
+
+    await expect((list_apps as any)._fn({}, { projectId })).to.be.rejectedWith(
+      `Failed to list Firebase apps`,
+    );
+  });
+});
