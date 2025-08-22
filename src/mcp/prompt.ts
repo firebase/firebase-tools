@@ -1,4 +1,4 @@
-import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
+import { PromptMessage } from "@modelcontextprotocol/sdk/types";
 import type { FirebaseMcpServer } from "./index";
 import type { Config } from "../config";
 import { RC } from "../rc";

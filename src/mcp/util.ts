@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { execSync } from "child_process";
 import { dump } from "js-yaml";
 import { platform } from "os";

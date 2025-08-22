@@ -4,7 +4,7 @@ import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
 import { parseArgs } from "util";
 import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
-import { markdownDocsOfTools } from "../mcp/tools/index.js";
+import { markdownDocsOfTools } from "../mcp/tools/index";
 import { resolve } from "path";
 
 const STARTUP_MESSAGE = `

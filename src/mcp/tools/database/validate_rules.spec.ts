@@ -34,7 +34,10 @@ describe("validate_rules tool", () => {
 
   it("should return a success message for valid rules", async () => {
     updateRulesStub.resolves();
-    await (validate_rules as any)._fn({ rules, databaseUrl }, { projectId, host: mockHost });
+    const result = await (validate_rules as any)._fn(
+      { rules, databaseUrl },
+      { projectId, host: mockHost },
+    );
 
     expect(clientConstructorStub).to.be.calledWith({ urlPrefix: databaseUrl });
     const clientInstance = clientConstructorStub.getCall(0).returnValue;

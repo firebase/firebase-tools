@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { commandExistsSync, mcpError } from "./util";
 
 export const NO_PROJECT_ERROR = mcpError(
