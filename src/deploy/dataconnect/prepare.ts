@@ -1,8 +1,7 @@
 import * as clc from "colorette";
 
 import { DeployOptions } from "../";
-import { load } from "../../dataconnect/load";
-import { readFirebaseJson } from "../../dataconnect/fileUtils";
+import { loadAll } from "../../dataconnect/load";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { needProjectId } from "../../projectUtils";
@@ -31,11 +30,8 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   }
   await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
-  const serviceCfgs = readFirebaseJson(options.config);
   const filters = getResourceFilters(options);
-  const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(projectId, options.config, c.source)),
-  );
+  const serviceInfos = await loadAll(projectId, options.config);
   for (const si of serviceInfos) {
     si.deploymentMetadata = await build(options, si.sourceDirectory, options.dryRun);
   }

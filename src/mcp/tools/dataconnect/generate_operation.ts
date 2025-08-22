@@ -2,7 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { generateOperation } from "../../../gemini/fdcExperience";
-import { pickService } from "../../../dataconnect/fileUtils";
+import { pickService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
   {
