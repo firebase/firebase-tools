@@ -423,6 +423,8 @@ async function writeConnectorFiles(
     join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
     !!options.force,
+    // Default to override connector.yaml
+    true,
   );
   for (const f of connectorInfo.files) {
     await config.askWriteProjectFile(
