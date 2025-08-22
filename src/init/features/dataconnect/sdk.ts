@@ -92,9 +92,7 @@ async function chooseApp(): Promise<App[]> {
     // Resolve the absolute path to the app directory
     const envAppAbsDir = path.resolve(process.cwd(), envAppFolder);
     const matchedApps = apps.filter(
-      (app) =>
-        path.resolve(process.cwd(), app.directory) === envAppAbsDir &&
-        (!app.platform || app.platform === envPlatform),
+      (app) => app.directory === envAppAbsDir && (!app.platform || app.platform === envPlatform),
     );
     if (matchedApps.length) {
       return matchedApps;
