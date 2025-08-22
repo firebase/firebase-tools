@@ -1,1 +1,0 @@
-export const FDC_CONNECTOR_ENV_VAR = "FDC_CONNECTOR";

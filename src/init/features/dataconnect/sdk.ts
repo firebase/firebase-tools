@@ -135,17 +135,10 @@ export async function actuate(setup: Setup, config: Config) {
   if (!info) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
-  let apps = info.apps;
-  if (!apps) {
-    // By default, create an React web app.
-    const existingFilesAndDirs = fs.readdirSync(process.cwd());
-    apps = [
-      {
-        platform: Platform.WEB,
-        directory: newUniqueId("web-app", existingFilesAndDirs),
-        frameworks: ["react"],
-      },
-    ];
+  const apps = info.apps;
+  if (!apps || !apps.length) {
+    logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
+    return;
   }
 
   const connectorInfo = await chooseExistingConnector(setup, config);

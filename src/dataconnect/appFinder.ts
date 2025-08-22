@@ -45,7 +45,7 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   const srcMainFolders = await detectFiles(dirPath, "src/main/");
   const xCodeProjects = await detectFiles(dirPath, "*.xcodeproj/");
   const apps: App[] = [
-    ...(await Promise.all(packageJsonFiles.map(packageJsonToWebApp))),
+    ...(await Promise.all(packageJsonFiles.map((p) => packageJsonToWebApp(dirPath, p)))),
     ...pubSpecYamlFiles.map((f) => ({ platform: Platform.FLUTTER, directory: path.dirname(f) })),
     ...srcMainFolders.map((f) => ({
       platform: Platform.ANDROID,
@@ -56,8 +56,9 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   return apps;
 }
 
-async function packageJsonToWebApp(packageJsonFile: string): Promise<App> {
-  const packageJson = JSON.parse((await fs.readFile(packageJsonFile)).toString());
+async function packageJsonToWebApp(dirPath: string, packageJsonFile: string): Promise<App> {
+  const fullPath = path.join(dirPath, packageJsonFile);
+  const packageJson = JSON.parse((await fs.readFile(fullPath)).toString());
   return {
     platform: Platform.WEB,
     directory: path.dirname(packageJsonFile),
