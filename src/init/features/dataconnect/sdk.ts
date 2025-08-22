@@ -57,7 +57,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     const existingFilesAndDirs = fs.readdirSync(process.cwd());
     const webAppId = newUniqueId("web-app", existingFilesAndDirs);
     const ok = await confirm({
-      message: `Do you want to create a React app template?`,
+      message: `Do you want to create a Next.JS app template?`,
     });
     if (ok) {
       await createNextApp(webAppId);
