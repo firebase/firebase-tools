@@ -8,8 +8,10 @@ import { execute_graphql } from "./execute_graphql";
 import { execute_graphql_read } from "./execute_graphql_read";
 import { execute_query } from "./execute_query";
 import { execute_mutation } from "./execute_mutation";
+import { compile } from "./compile";
 
 export const dataconnectTools: ServerTool[] = [
+  compile,
   list_services,
   generate_schema,
   generate_operation,

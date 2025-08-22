@@ -1,12 +1,13 @@
 import { ServerFeature } from "../types";
 import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
+import { dataconnectPrompts } from "./dataconnect";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: corePrompts,
   firestore: [],
   storage: [],
-  dataconnect: [],
+  dataconnect: dataconnectPrompts,
   auth: [],
   messaging: [],
   remoteconfig: [],
@@ -36,7 +37,7 @@ function namespacePrompts(
 
 export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
   const allPrompts: ServerPrompt[] = namespacePrompts(prompts["core"], "core");
-  if (!features) {
+  if (!features?.length) {
     features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
   }
 
