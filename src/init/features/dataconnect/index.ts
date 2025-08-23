@@ -115,7 +115,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema [Enter to skip]:`,
+        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
@@ -366,9 +366,14 @@ export async function postSetup(setup: Setup, config: Config, options: Options):
     );
   }
 
-  if (setup.projectId && !setup.isBillingEnabled) {
-    instructions.push(upgradeInstructions(setup.projectId));
+  if (setup.projectId) {
+    if (!setup.isBillingEnabled) {
+      instructions.push(upgradeInstructions(setup.projectId));
+    }
   }
+  instructions.push(
+    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite or Cloud SQL Postgres Instance.`,
+  );
 
   if (instructions.length) {
     logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
