@@ -9,7 +9,7 @@ export const logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
 /**
  * Supported package managers. This mirrors production.
  */
-export type PackageManager = "npm" | "yarn" | "pnpm";
+export type PackageManager = "npm" | "yarn" | "pnpm" | "bun";
 
 /**
  * Returns the package manager used by the project
@@ -19,6 +19,10 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
 export async function detectPackageManager(rootdir: string): Promise<PackageManager> {
   if (await pathExists(join(rootdir, "pnpm-lock.yaml"))) {
     return "pnpm";
+  }
+
+  if (await pathExists(join(rootdir, "bun.lock"))) {
+    return "bun";
   }
 
   if (await pathExists(join(rootdir, "yarn.lock"))) {
