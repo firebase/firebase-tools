@@ -370,9 +370,11 @@ export async function postSetup(setup: Setup, config: Config, options: Options):
     instructions.push(upgradeInstructions(setup.projectId));
   }
 
-  logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
-  for (const i of instructions) {
-    logBullet(i + "\n");
+  if (instructions.length) {
+    logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
+    for (const i of instructions) {
+      logBullet(i + "\n");
+    }
   }
 }
 
