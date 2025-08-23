@@ -8,5 +8,8 @@ schema:
       database: __cloudSqlDatabase__
       cloudSql:
         instanceId: __cloudSqlInstanceId__
+      # STRICT mode makes Postgres schema match Data Connect exactly.
+      # schemaValidation: "STRICT"
+      # COMPATIBLE mode makes Postgres schema compatible with Data Connect.
       # schemaValidation: "COMPATIBLE"
 connectorDirs: __connectorDirs__
