@@ -11,12 +11,22 @@ import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
 import { User, Tokens } from "../types/auth";
 
+import { Options } from "../options";
+
+export interface LoginOptions extends Options {
+  prototyperLogin?: boolean;
+  consent?: {
+    metrics?: boolean;
+    gemini?: boolean;
+  };
+}
+
 export const command = new Command("login")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
-  .action(async (options: any) => {
-    if (options.nonInteractive) {
+  .action(async (options: LoginOptions) => {
+    if (options.nonInteractive && !options.prototyperLogin) {
       throw new FirebaseError(
         "Cannot run login in non-interactive mode. See " +
           clc.bold("login:ci") +
@@ -33,7 +43,10 @@ export const command = new Command("login")
       return user;
     }
 
-    if (!options.reauth) {
+    if (options.consent) {
+      options.consent?.metrics ?? configstore.set("usage", options.consent.metrics);
+      options.consent?.gemini ?? configstore.set("gemini", options.consent.gemini);
+    } else if (!options.reauth && !options.prototyperLogin) {
       utils.logBullet(
         "The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. " +
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
@@ -58,18 +71,17 @@ export const command = new Command("login")
       }
     }
 
+    // Special escape hatch for logging in when using firebase-tools as a module.
+    if (options.prototyperLogin) {
+      return auth.loginPrototyper();
+    }
+
     // Default to using the authorization code flow when the end
     // user is within a cloud-based environment, and therefore,
     // the authorization callback couldn't redirect to localhost.
-    const useLocalhost = isCloudEnvironment() ? false : options.localhost;
-
+    const useLocalhost = !isCloudEnvironment() && !!options.localhost;
     const result = await auth.loginGoogle(useLocalhost, user?.email);
-    configstore.set("user", result.user);
-    configstore.set("tokens", result.tokens);
-    // store login scopes in case mandatory scopes grow over time
-    configstore.set("loginScopes", result.scopes);
-    // remove old session token, if it exists
-    configstore.delete("session");
+    auth.recordCredentials(result);
 
     logger.info();
     if (typeof result.user !== "string") {
