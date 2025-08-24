@@ -183,6 +183,23 @@ export interface DatabaseResp {
   databaseEdition?: DatabaseEdition;
 }
 
+export interface Operation {
+  name: string;
+  done: boolean;
+  metadata: Record<string, any>;
+  response?: Record<string, any>;
+  error?: {
+    name: string;
+    message: string;
+    code: number;
+    details?: any[];
+  };
+}
+
+export interface ListOperationsResponse {
+  operations: Operation[];
+}
+
 export interface RestoreDatabaseReq {
   databaseId: string;
   backup: string;
