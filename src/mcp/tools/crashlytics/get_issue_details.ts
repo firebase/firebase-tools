@@ -2,17 +2,14 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getIssueDetails } from "../../../crashlytics/getIssueDetails";
+import { APP_ID_FIELD } from "./constants";
 
 export const get_issue_details = tool(
   {
     name: "get_issue_details",
     description: "Gets the details about a specific crashlytics issue.",
     inputSchema: z.object({
-      app_id: z
-        .string()
-        .describe(
-          "The AppID for which the issues list should be fetched. For an Android application, read the mobilesdk_app_id value specified in the google-services.json file for the current package name. For an iOS Application, read the GOOGLE_APP_ID from GoogleService-Info.plist. If neither is available, use the `firebase_list_apps` tool to find an app_id to pass to this tool.",
-        ),
+      app_id: APP_ID_FIELD,
       issue_id: z
         .string()
         .describe(
@@ -25,7 +22,6 @@ export const get_issue_details = tool(
     },
     _meta: {
       requiresAuth: true,
-      requiresProject: false,
     },
   },
   async ({ app_id, issue_id }) => {
