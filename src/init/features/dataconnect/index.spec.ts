@@ -8,7 +8,6 @@ import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
 import * as cloudbilling from "../../../gcp/cloudbilling";
-import * as load from "../../../dataconnect/load";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
