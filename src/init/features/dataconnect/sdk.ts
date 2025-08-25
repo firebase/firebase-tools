@@ -98,7 +98,7 @@ async function chooseApp(): Promise<App[]> {
   const envFrameworks: Framework[] = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
     .split(",")
     .map((f) => f as Framework);
-  if (envAppFolder) {
+  if (envAppFolder && envPlatform !== Platform.NONE) {
     // Resolve the absolute path to the app directory
     const envAppRelDir = path.relative(process.cwd(), path.resolve(process.cwd(), envAppFolder));
     const matchedApps = apps.filter(
@@ -358,8 +358,8 @@ export function addSdkGenerateToConnectorYaml(
         `Unsupported platform ${app.platform} for Data Connect SDK generation. Supported platforms are: ${Object.values(
           Platform,
         )
-          .filter((p) => p !== Platform.NONE)
-          .join(", ")}`,
+          .filter((p) => p !== Platform.NONE && p !== Platform.MULTIPLE)
+          .join(", ")}\n${JSON.stringify(app)}`,
       );
   }
 }

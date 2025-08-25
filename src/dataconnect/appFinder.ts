@@ -44,16 +44,29 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   const pubSpecYamlFiles = await detectFiles(dirPath, "pubspec.yaml");
   const srcMainFolders = await detectFiles(dirPath, "src/main/");
   const xCodeProjects = await detectFiles(dirPath, "*.xcodeproj/");
-  const apps: App[] = [
-    ...(await Promise.all(packageJsonFiles.map((p) => packageJsonToWebApp(dirPath, p)))),
-    ...pubSpecYamlFiles.map((f) => ({ platform: Platform.FLUTTER, directory: path.dirname(f) })),
-    ...srcMainFolders.map((f) => ({
+  const webApps = await Promise.all(packageJsonFiles.map((p) => packageJsonToWebApp(dirPath, p)));
+  const flutterApps = pubSpecYamlFiles.map((f) => ({
+    platform: Platform.FLUTTER,
+    directory: path.dirname(f),
+  }));
+  const androidApps = srcMainFolders
+    .map((f) => ({
       platform: Platform.ANDROID,
       directory: path.dirname(path.dirname(f)),
-    })),
-    ...xCodeProjects.map((f) => ({ platform: Platform.IOS, directory: path.dirname(f) })),
-  ];
-  return apps;
+    }))
+    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
+  const iosApps = xCodeProjects
+    .map((f) => ({
+      platform: Platform.IOS,
+      directory: path.dirname(f),
+    }))
+    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
+  return [...webApps, ...flutterApps, ...androidApps, ...iosApps];
+}
+
+export function isPathInside(parent: string, child: string): boolean {
+  const relativePath = path.relative(parent, child);
+  return !relativePath.startsWith(`..`);
 }
 
 async function packageJsonToWebApp(dirPath: string, packageJsonFile: string): Promise<App> {
@@ -95,5 +108,5 @@ async function detectFiles(dirPath: string, filePattern: string): Promise<string
     ],
     absolute: false,
   };
-  return glob(`{${filePattern},*/${filePattern},*/*/${filePattern}}`, options);
+  return glob(`**/${filePattern}`, options);
 }
