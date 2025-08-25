@@ -136,7 +136,7 @@ export function readFirebaseJson(config?: Config): DataConnectMultiple {
   }
 }
 
-async function readDataConnectYaml(sourceDirectory: string): Promise<DataConnectYaml> {
+export async function readDataConnectYaml(sourceDirectory: string): Promise<DataConnectYaml> {
   const file = await readFileFromDirectory(sourceDirectory, "dataconnect.yaml");
   const dataconnectYaml = await wrappedSafeLoad(file.source);
   return validateDataConnectYaml(dataconnectYaml);
@@ -150,7 +150,7 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
   return unvalidated as DataConnectYaml;
 }
 
-async function readConnectorYaml(sourceDirectory: string): Promise<ConnectorYaml> {
+export async function readConnectorYaml(sourceDirectory: string): Promise<ConnectorYaml> {
   const file = await readFileFromDirectory(sourceDirectory, "connector.yaml");
   const connectorYaml = await wrappedSafeLoad(file.source);
   return validateConnectorYaml(connectorYaml);
