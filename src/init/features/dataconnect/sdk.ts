@@ -31,6 +31,7 @@ import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createNextApp, createReactApp } from "./create_app";
+import { trackGA4 } from "../../../track";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -68,23 +69,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
     switch (choice) {
       case "react":
         await createReactApp(webAppId);
-        info.apps = [
-          {
-            platform: Platform.WEB,
-            directory: webAppId,
-            frameworks: ["react"],
-          },
-        ];
         break;
       case "next":
         await createNextApp(webAppId);
-        info.apps = [
-          {
-            platform: Platform.WEB,
-            directory: webAppId,
-            frameworks: ["react"],
-          },
-        ];
         break;
       case "skip":
         break;
@@ -157,6 +144,26 @@ export async function actuate(setup: Setup, config: Config) {
   if (!info) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
+  try {
+    await actuateWithInfo(setup, config, info);
+  } finally {
+    let flow = "no_app";
+    if (info.apps.length) {
+      const platforms = info.apps.map((a) => a.platform.toLowerCase()).sort();
+      flow = `${platforms.join("_")}_app`;
+    }
+    if (fdcInfo) {
+      fdcInfo.analyticsFlow += `_${flow}`;
+    } else {
+      void trackGA4("dataconnect_init", {
+        project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
+        flow: `cli_sdk_${flow}`,
+      });
+    }
+  }
+}
+
+async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo) {
   if (!info.apps.length) {
     // If no apps is specified, try to detect it again.
     // In `firebase init dataconnect:sdk`, customer may create the app while the command is running.
@@ -164,17 +171,10 @@ export async function actuate(setup: Setup, config: Config) {
     info.apps = await detectApps(process.cwd());
     if (!info.apps.length) {
       logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
-      if (fdcInfo) {
-        fdcInfo.analyticsFlow += "_no_apps";
-      }
       return;
     }
   }
   const apps = info.apps;
-  if (fdcInfo) {
-    const platforms = apps.map((a) => a.platform.toLowerCase()).sort();
-    fdcInfo.analyticsFlow += `_${platforms.join("_")}_app`;
-  }
 
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
