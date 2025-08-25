@@ -6,6 +6,7 @@ import * as auth from "../../../auth";
 import * as fs from "node:fs";
 import * as util from "../../util";
 import { toContent } from "../../util";
+import { projectID } from "firebase-functions/params";
 
 describe("update_environment tool", () => {
   const projectDir = "/test/dir";
@@ -88,8 +89,7 @@ describe("update_environment tool", () => {
     );
     expect(host.setProjectRoot).to.be.called;
     expect(setNewActiveStub).to.be.called;
-    expect(result.content).to.include(`- Updated project directory to '${projectDir}'\n`);
-    expect(result.content).to.include(`- Updated active project to '${activeProject}'\n`);
+    expect(result).to.deep.equal(toContent(`- Updated project directory to '${projectDir}'\n- Updated active project to '${projectID}'\n`));
   });
 
   it('should return "No changes were made." if no options are provided', async () => {
