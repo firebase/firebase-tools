@@ -1,10 +1,5 @@
-import { z } from "zod";
-
-export const ACTIVE_USER_INSTRUCTION = z
-  .string()
-  .describe(
-    "If there is no active user, prompt the user to run `firebase login` in an interactive terminal before continuing.",
-  );
+export const ACTIVE_USER_INSTRUCTION =
+  "If the Firbase 'Active user' is set to <NONE>, instruct the user to run `firebase login` before continuing. You will know that the user is not logged in if we have nothing in the 'Active user' field.";
 
 export const getAppIdInstruction: (index: number) => string = (
   index: number,

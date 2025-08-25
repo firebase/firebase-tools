@@ -46,20 +46,27 @@ Active app: ${app_id || "<NONE>"}
 
 ${prompt || "<the user didn't supply specific instructions>"}
 
+## Required information
+
+Before fetching and prioritizing issues, secure the following information:
+
+First, and this is INCREDIBLY IMPORTANT, verify the active user. IT IS SO IMPORTANT THAT YOU DO THIS FIRST. NO TOOL CALL WILL WORK WITHOUT IT. ${ACTIVE_USER_INSTRUCTION}
+Then, verify the app id. ${APP_ID_INSTRUCTION}
+
+Both pieces of information are required to successfully prioritize issues.
+
 ## Steps
 
 Follow the steps below taking note of any user instructions provided above.
 
-1. ${ACTIVE_USER_INSTRUCTION}
-2. ${APP_ID_INSTRUCTION}
-3. Use the 'crashlytics_list_top_issues' tool to fetch up to 20 issues.
-4. Use the 'crashlytics_list_top_versions' tool to fetch the top versions for this app.
-5. If the user instructions include statements about prioritization, use those instructions.
-6. If the user instructions do not include statements about prioritization, then prioritize the returned issues using the following criteria:
-  6a. The app versions for the issue include the most recent version of the app.
-  6b. The number of users experiencing the issue across variants
-  6c. The volume of crashes
-7. Return the top ${issue_count || 5} issue ids, with a brief description of the issue in the following format: 
+1. Use the 'crashlytics_list_top_issues' tool to fetch up to 20 issues.
+2. Use the 'crashlytics_list_top_versions' tool to fetch the top versions for this app.
+3. If the user instructions include statements about prioritization, use those instructions.
+4. If the user instructions do not include statements about prioritization, then prioritize the returned issues using the following criteria:
+  4a. The app versions for the issue include the most recent version of the app.
+  4b. The number of users experiencing the issue across variants
+  4c. The volume of crashes
+5. Return the top ${issue_count || 5} issue ids, with a brief description of the issue in the following format: 
    * Issue <issue id>
        * <the issue title>
        * <the issue subtitle>
