@@ -27,10 +27,11 @@ import {
   logLabeledBullet,
 } from "../../../utils";
 import * as fs from "fs";
-import { newUniqueId } from ".";
+import { newUniqueId, RequiredInfo as FdcRequiredInfo } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createNextApp, createReactApp } from "./create_app";
+import { a } from '../../../../clean/src/accountExporter.spec';
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -62,7 +63,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: "React", value: "react" },
         { name: "Next.JS", value: "next" },
         // TODO: Add flutter here.
-        { name: "Skip. Just created my own", value: "skip" },
+        { name: "Skip. Will create my own", value: "skip" },
       ],
     });
     switch (choice) {
@@ -75,6 +76,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
             frameworks: ["react"],
           },
         ];
+        break;
       case "next":
         await createNextApp(webAppId);
         info.apps = [
@@ -84,7 +86,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
             frameworks: ["react"],
           },
         ];
+        break;
       case "skip":
+        break;
     }
   }
 
@@ -149,6 +153,7 @@ async function chooseApp(): Promise<App[]> {
 }
 
 export async function actuate(setup: Setup, config: Config) {
+  const fdcInfo = setup.featureInfo?.dataconnect;
   const info = setup.featureInfo?.dataconnectSdk;
   if (!info) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
@@ -160,10 +165,17 @@ export async function actuate(setup: Setup, config: Config) {
     info.apps = await detectApps(process.cwd());
     if (!info.apps.length) {
       logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
+      if (fdcInfo) {
+        fdcInfo.analyticsFlow += "_no_apps";
+      }
       return;
     }
   }
   const apps = info.apps;
+  if (fdcInfo) {
+    const platforms = apps.map(a => a.platform).sort();
+    fdcInfo.analyticsFlow += `_${Array.from(platforms).join("_")}_app`;
+  }
 
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
