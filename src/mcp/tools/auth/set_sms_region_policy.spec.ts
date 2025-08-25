@@ -22,7 +22,7 @@ describe("set_sms_region_policy tool", () => {
   });
 
   it("should set an ALLOW policy", async () => {
-    setAllowSmsRegionPolicyStub.resolves({ success: true });
+    setAllowSmsRegionPolicyStub.resolves(true);
 
     const result = await set_sms_region_policy.fn({ policy_type: "ALLOW", country_codes }, {
       projectId,
@@ -30,11 +30,11 @@ describe("set_sms_region_policy tool", () => {
 
     expect(setAllowSmsRegionPolicyStub).to.be.calledWith(projectId, upperCaseCountryCodes);
     expect(setDenySmsRegionPolicyStub).to.not.be.called;
-    expect(result).to.deep.equal(toContent({ success: true }));
+    expect(result).to.deep.equal(toContent(true));
   });
 
   it("should set a DENY policy", async () => {
-    setDenySmsRegionPolicyStub.resolves({ success: true });
+    setDenySmsRegionPolicyStub.resolves(true);
 
     const result = await set_sms_region_policy.fn({ policy_type: "DENY", country_codes }, {
       projectId,
@@ -42,6 +42,6 @@ describe("set_sms_region_policy tool", () => {
 
     expect(setDenySmsRegionPolicyStub).to.be.calledWith(projectId, upperCaseCountryCodes);
     expect(setAllowSmsRegionPolicyStub).to.not.be.called;
-    expect(result).to.deep.equal(toContent({ success: true }));
+    expect(result).to.deep.equal(toContent(true));
   });
 });

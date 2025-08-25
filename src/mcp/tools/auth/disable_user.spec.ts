@@ -24,7 +24,7 @@ describe("disable_user tool", () => {
     const result = await disable_user.fn({ uid, disabled: true }, { projectId } as any);
 
     expect(disableUserStub).to.be.calledWith(projectId, uid, true);
-    expect(result).to.deep.equal(toContent(`User ${uid} as been disabled`));
+    expect(result).to.deep.equal(toContent(`User ${uid} has been disabled`));
   });
 
   it("should enable a user successfully", async () => {
@@ -33,11 +33,11 @@ describe("disable_user tool", () => {
     const result = await disable_user.fn({ uid, disabled: false }, { projectId } as any);
 
     expect(disableUserStub).to.be.calledWith(projectId, uid, false);
-    expect(result).to.deep.equal(toContent(`User ${uid} as been enabled`));
+    expect(result).to.deep.equal(toContent(`User ${uid} has been enabled`));
   });
 
   it("should handle failure to disable a user", async () => {
-    disableUserStub.resolves(undefined);
+    disableUserStub.resolves(false);
 
     const result = await disable_user.fn({ uid, disabled: true }, { projectId } as any);
 
