@@ -2,7 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import * as client from "../../../dataconnect/client";
-import { pickService } from "../../../dataconnect/fileUtils";
+import { pickService } from "../../../dataconnect/load";
 import { connectorToText } from "./converter";
 
 export const get_connectors = tool(
