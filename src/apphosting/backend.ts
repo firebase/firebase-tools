@@ -74,11 +74,11 @@ async function awaitTlsReady(url: string): Promise<void> {
 export async function doSetup(
   projectId: string,
   nonInteractive: boolean,
-  webAppName: string | undefined,
-  backendId: string | undefined,
-  serviceAccount: string | undefined,
-  primaryRegion: string | undefined,
-  rootDir: string | undefined,
+  webAppName?: string,
+  backendId?: string,
+  serviceAccount?: string,
+  primaryRegion?: string,
+  rootDir?: string,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -93,19 +93,19 @@ export async function doSetup(
   let gitRepositoryLink: GitRepositoryLink | undefined;
   let branch: string | undefined;
   if (nonInteractive) {
-    if (backendId === undefined || primaryRegion === undefined) {
-      throw new FirebaseError("non-interactive mode requires a backendId and primaryRegion");
+    if (!backendId || !primaryRegion) {
+      throw new FirebaseError("nonInteractive mode requires a backendId and primaryRegion");
     }
   } else {
-    if (location === undefined) {
+    if (!location) {
       location = await promptLocation(projectId, "Select a primary region to host your backend:\n");
     }
-    if (backendId === undefined) {
+    if (!backendId) {
       logBullet(`${clc.yellow("===")} Set up your backend`);
       backendId = await promptNewBackendId(projectId, location);
       logSuccess(`Name set to ${backendId}\n`);
     }
-    if (rootDir === undefined) {
+    if (!rootDir) {
       rootDir = await input({
         default: "/",
         message: "Specify your app's root directory relative to your repository",
