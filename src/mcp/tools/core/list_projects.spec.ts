@@ -63,7 +63,7 @@ describe("list_projects tool", () => {
 
     const result = await list_projects.fn({ page_size: pageSize }, {} as any);
 
-    const content = result.content as any as string;
+    const content = result.content[0].text;
     expect(content).to.not.include("There are more projects available.");
   });
 
