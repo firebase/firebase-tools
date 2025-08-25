@@ -53,6 +53,7 @@ export async function detectApps(dirPath: string): Promise<App[]> {
     })),
     ...xCodeProjects.map((f) => ({ platform: Platform.IOS, directory: path.dirname(f) })),
   ];
+  console.log("Detected apps:", apps);
   return apps;
 }
 

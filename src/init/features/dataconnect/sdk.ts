@@ -2,7 +2,7 @@ import * as yaml from "yaml";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { checkbox, confirm } from "../../../prompt";
+import { checkbox, select } from "../../../prompt";
 import { App, appDescription, detectApps } from "../../../dataconnect/appFinder";
 import { Config } from "../../../config";
 import { Setup } from "../..";
@@ -30,7 +30,7 @@ import * as fs from "fs";
 import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
-import { createApp } from "./create_app";
+import { createNextApp, createReactApp } from "./create_app";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -56,18 +56,35 @@ export async function askQuestions(setup: Setup): Promise<void> {
     // By default, create an React web app.
     const existingFilesAndDirs = fs.readdirSync(process.cwd());
     const webAppId = newUniqueId("web-app", existingFilesAndDirs);
-    const ok = await confirm({
-      message: `Do you want to create a React app template?`,
+    const choice = await select({
+      message: `Do you want to create an app template?`,
+      choices: [
+        { name: "React", value: "react" },
+        { name: "Next.JS", value: "next" },
+        // TODO: Add flutter here.
+        { name: "Skip. Just created my own", value: "skip" },
+      ],
     });
-    if (ok) {
-      await createApp(webAppId);
-      info.apps = [
-        {
-          platform: Platform.WEB,
-          directory: webAppId,
-          frameworks: ["react"],
-        },
-      ];
+    switch (choice) {
+      case "react":
+        await createReactApp(webAppId);
+        info.apps = [
+          {
+            platform: Platform.WEB,
+            directory: webAppId,
+            frameworks: ["react"],
+          },
+        ];
+      case "next":
+        await createNextApp(webAppId);
+        info.apps = [
+          {
+            platform: Platform.WEB,
+            directory: webAppId,
+            frameworks: ["react"],
+          },
+        ];
+      case "skip":
     }
   }
 
@@ -88,22 +105,26 @@ async function chooseApp(): Promise<App[]> {
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
   const envPlatform = envOverride(FDC_SDK_PLATFORM_ENV, Platform.NONE) as Platform;
+  const envFrameworks: Framework[] = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
+    .split(",")
+    .map((f) => f as Framework);
   if (envAppFolder) {
     // Resolve the absolute path to the app directory
-    const envAppAbsDir = path.resolve(process.cwd(), envAppFolder);
+    const envAppRelDir = path.relative(process.cwd(), path.resolve(process.cwd(), envAppFolder));
     const matchedApps = apps.filter(
-      (app) => app.directory === envAppAbsDir && (!app.platform || app.platform === envPlatform),
+      (app) => app.directory === envAppRelDir && (!app.platform || app.platform === envPlatform),
     );
     if (matchedApps.length) {
+      for (const a of matchedApps) {
+        a.frameworks = [...(a.frameworks || []), ...envFrameworks];
+      }
       return matchedApps;
     }
     return [
       {
         platform: envPlatform,
-        directory: envAppAbsDir,
-        frameworks: envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
-          .split(",")
-          .map((f) => f as Framework),
+        directory: envAppRelDir,
+        frameworks: envFrameworks,
       },
     ];
   }
@@ -132,11 +153,17 @@ export async function actuate(setup: Setup, config: Config) {
   if (!info) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
-  const apps = info.apps;
-  if (!apps || !apps.length) {
-    logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
-    return;
+  if (!info.apps.length) {
+    // If no apps is specified, try to detect it again.
+    // In `firebase init dataconnect:sdk`, customer may create the app while the command is running.
+    // The `firebase_init` MCP tool always pass an empty `apps` list, it should setup all apps detected.
+    info.apps = await detectApps(process.cwd());
+    if (!info.apps.length) {
+      logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
+      return;
+    }
   }
+  const apps = info.apps;
 
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
