@@ -13,7 +13,7 @@ import * as prompt from "../prompt";
 import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";
-import { getPlatformFromFolder } from "../dataconnect/fileUtils";
+import { getPlatformFromFolder } from "../dataconnect/appFinder";
 import { logBullet, logSuccess, logWarning, promptForDirectory } from "../utils";
 import { AppsInitOptions } from "../commands/apps-init";
 

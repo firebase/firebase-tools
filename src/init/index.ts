@@ -29,7 +29,9 @@ export interface Setup {
 export interface SetupInfo {
   database?: features.DatabaseInfo;
   firestore?: features.FirestoreInfo;
+  dataconnectAnalyticsFlow?: string;
   dataconnect?: features.DataconnectInfo;
+  dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
 }
@@ -67,7 +69,11 @@ const featuresList: Feature[] = [
     actuate: features.dataconnectActuate,
     postSetup: features.dataconnectPostSetup,
   },
-  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  {
+    name: "dataconnect:sdk",
+    askQuestions: features.dataconnectSdkAskQuestions,
+    actuate: features.dataconnectSdkActuate,
+  },
   { name: "functions", doSetup: features.functions },
   { name: "hosting", doSetup: features.hosting },
   {

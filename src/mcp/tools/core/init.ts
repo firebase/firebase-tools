@@ -89,7 +89,8 @@ export const init = tool(
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.",
+            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
+              "It installs Data Connect Generated SDKs in all detected apps in the folder.",
           ),
         storage: z
           .object({
@@ -154,6 +155,10 @@ export const init = tool(
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
+      };
+      featureInfo.dataconnectSdk = {
+        // Add FDC generated SDKs to all apps detected.
+        apps: [],
       };
     }
     const setup: Setup = {

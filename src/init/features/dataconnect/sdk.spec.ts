@@ -1,72 +1,97 @@
-import * as fs from "fs-extra";
-import * as sinon from "sinon";
-import { expect } from "chai";
+import * as chai from "chai";
+import { addSdkGenerateToConnectorYaml } from "./sdk";
+import { ConnectorInfo, ConnectorYaml, Platform } from "../../../dataconnect/types";
+import { App } from "../../../dataconnect/appFinder";
 
-import * as sdk from "./sdk";
-import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
-import { Config } from "../../../config";
+const expect = chai.expect;
 
-const CONNECTOR_YAML_CONTENTS = "connectorId: blah";
+describe("addSdkGenerateToConnectorYaml", () => {
+  let connectorInfo: ConnectorInfo;
+  let connectorYaml: ConnectorYaml;
+  let app: App;
 
-describe("init dataconnect:sdk", () => {
-  describe.skip("askQuestions", () => {
-    // TODO: Add unit tests for askQuestions
+  beforeEach(() => {
+    connectorInfo = {
+      directory: "/users/test/project/dataconnect",
+      connectorYaml: {
+        connectorId: "test-connector",
+      },
+      connector: {} as any,
+    };
+    connectorYaml = {
+      connectorId: "test-connector",
+    };
+    app = {
+      directory: "/users/test/project/app",
+      platform: Platform.WEB,
+      frameworks: [],
+    };
   });
 
-  describe("actuation", () => {
-    const sandbox = sinon.createSandbox();
-    let generateStub: sinon.SinonStub;
-    let fsStub: sinon.SinonStub;
-    let emptyConfig: Config;
-
-    beforeEach(() => {
-      fsStub = sandbox.stub(fs, "writeFileSync");
-      sandbox.stub(fs, "ensureFileSync").returns();
-      generateStub = sandbox.stub(DataConnectEmulator, "generate");
-      emptyConfig = new Config({}, { projectDir: process.cwd() });
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    const cases: {
-      desc: string;
-      sdkInfo: sdk.SDKInfo;
-      shouldGenerate: boolean;
-    }[] = [
+  it("should add javascriptSdk for web platform", () => {
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.javascriptSdk).to.deep.equal([
       {
-        desc: "should write files and generate code",
-        sdkInfo: mockSDKInfo(),
-        shouldGenerate: true,
+        outputDir: "../app/src/dataconnect-generated",
+        package: "@dataconnect/generated",
+        packageJsonDir: "../app",
+        react: false,
+        angular: false,
       },
-    ];
+    ]);
+  });
 
-    for (const c of cases) {
-      it(c.desc, async () => {
-        generateStub.resolves();
-        fsStub.returns({});
+  it("should add javascriptSdk with react for web platform", () => {
+    app.frameworks = ["react"];
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.javascriptSdk).to.deep.equal([
+      {
+        outputDir: "../app/src/dataconnect-generated",
+        package: "@dataconnect/generated",
+        packageJsonDir: "../app",
+        react: true,
+        angular: false,
+      },
+    ]);
+  });
 
-        await sdk.actuate(c.sdkInfo, emptyConfig);
-        expect(generateStub.called).to.equal(c.shouldGenerate);
-      });
-    }
+  it("should add dartSdk for flutter platform", () => {
+    app.platform = Platform.FLUTTER;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.dartSdk).to.deep.equal([
+      {
+        outputDir: "../app/lib/dataconnect_generated",
+        package: "dataconnect_generated",
+      },
+    ]);
+  });
+
+  it("should add kotlinSdk for android platform", () => {
+    app.platform = Platform.ANDROID;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.kotlinSdk).to.deep.equal([
+      {
+        outputDir: "../app/src/main/kotlin",
+        package: "com.google.firebase.dataconnect.generated",
+      },
+    ]);
+  });
+
+  it("should add swiftSdk for ios platform", () => {
+    app.platform = Platform.IOS;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.swiftSdk).to.deep.equal([
+      {
+        outputDir: "../FirebaseDataConnectGenerated",
+        package: "DataConnectGenerated",
+      },
+    ]);
+  });
+
+  it("should throw error for unsupported platform", () => {
+    app.platform = Platform.NONE;
+    expect(() => addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app)).to.throw(
+      "Unsupported platform",
+    );
   });
 });
-
-function mockSDKInfo(): sdk.SDKInfo {
-  return {
-    connectorYamlContents: CONNECTOR_YAML_CONTENTS,
-    connectorInfo: {
-      connector: {
-        name: "test",
-        source: {},
-      },
-      directory: `${process.cwd()}/dataconnect/connector`,
-      connectorYaml: {
-        connectorId: "app",
-      },
-    },
-    displayIOSWarning: false,
-  };
-}
