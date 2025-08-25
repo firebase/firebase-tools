@@ -35,8 +35,11 @@ function namespacePrompts(
   });
 }
 
+/**
+ * Return available prompts based on the list of registered features.
+ */
 export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts = namespacePrompts(prompts["core"], "core");
+  const allPrompts: ServerPrompt[] = namespacePrompts(prompts["core"], "core");
 
   if (!features) {
     features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
