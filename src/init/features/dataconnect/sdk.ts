@@ -27,11 +27,10 @@ import {
   logLabeledBullet,
 } from "../../../utils";
 import * as fs from "fs";
-import { newUniqueId, RequiredInfo as FdcRequiredInfo } from ".";
+import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createNextApp, createReactApp } from "./create_app";
-import { a } from '../../../../clean/src/accountExporter.spec';
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -63,7 +62,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: "React", value: "react" },
         { name: "Next.JS", value: "next" },
         // TODO: Add flutter here.
-        { name: "Skip. Will create my own", value: "skip" },
+        { name: "will create my own", value: "skip" },
       ],
     });
     switch (choice) {
@@ -173,8 +172,8 @@ export async function actuate(setup: Setup, config: Config) {
   }
   const apps = info.apps;
   if (fdcInfo) {
-    const platforms = apps.map(a => a.platform).sort();
-    fdcInfo.analyticsFlow += `_${Array.from(platforms).join("_")}_app`;
+    const platforms = apps.map((a) => a.platform.toLowerCase()).sort();
+    fdcInfo.analyticsFlow += `_${platforms.join("_")}_app`;
   }
 
   const connectorInfo = await chooseExistingConnector(setup, config);
