@@ -62,6 +62,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     const choice = await select({
       message: `Do you want to create an app template?`,
       choices: [
+        // TODO: Create template tailored to FDC.
         { name: "React", value: "react" },
         { name: "Next.JS", value: "next" },
         // TODO: Add flutter here.
@@ -256,11 +257,9 @@ async function chooseExistingConnector(setup: Setup, config: Config): Promise<Co
       });
     })
     .flat();
-  if (!choices) {
+  if (!choices.length) {
     throw new FirebaseError(
-      `Your config has no connectors to set up SDKs for. Run ${clc.bold(
-        "firebase init dataconnect",
-      )} to set up a service and connector.`,
+      `No Firebase Data Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and connector.`,
     );
   }
   if (choices.length === 1) {
