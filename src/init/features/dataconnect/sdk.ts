@@ -25,9 +25,9 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
   logLabeledBullet,
+  newUniqueId,
 } from "../../../utils";
 import * as fs from "fs";
-import { newUniqueId } from ".";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createNextApp, createReactApp } from "./create_app";
@@ -63,7 +63,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: "React", value: "react" },
         { name: "Next.JS", value: "next" },
         // TODO: Add flutter here.
-        { name: "will create my own", value: "skip" },
+        { name: "no", value: "no" },
       ],
     });
     switch (choice) {
@@ -73,7 +73,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       case "next":
         await createNextApp(webAppId);
         break;
-      case "skip":
+      case "no":
         break;
     }
   }

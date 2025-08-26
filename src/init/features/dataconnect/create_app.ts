@@ -13,7 +13,6 @@ export async function createNextApp(webAppId: string): Promise<void> {
   const args = [
     "create-next-app@latest",
     webAppId,
-    "--empty",
     "--ts",
     "--eslint",
     "--tailwind",

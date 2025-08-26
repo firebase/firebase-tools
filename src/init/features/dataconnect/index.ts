@@ -27,6 +27,7 @@ import {
   envOverride,
   promiseWithSpinner,
   logLabeledError,
+  newUniqueId,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
@@ -680,20 +681,6 @@ async function locationChoices(setup: Setup) {
   }
 }
 
-/**
- * Returns a unique ID that's either `recommended` or `recommended-{i}`.
- * Avoid existing IDs.
- */
-export function newUniqueId(recommended: string, existingIDs: string[]): string {
-  let id = recommended;
-  let i = 1;
-  while (existingIDs.includes(id)) {
-    id = `${recommended}-${i}`;
-    i++;
-  }
-  return id;
-}
-
 function defaultServiceId(): string {
   return toDNSCompatibleId(basename(process.cwd()));
 }
@@ -714,3 +701,4 @@ export function toDNSCompatibleId(id: string): string {
   }
   return id || "app";
 }
+export { newUniqueId };
