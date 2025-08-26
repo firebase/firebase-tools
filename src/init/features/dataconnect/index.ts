@@ -357,13 +357,11 @@ export async function postSetup(setup: Setup): Promise<void> {
     );
   }
 
-  if (setup.projectId) {
-    if (!setup.isBillingEnabled) {
-      instructions.push(upgradeInstructions(setup.projectId));
-    }
+  if (!setup.isBillingEnabled) {
+    instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
   }
   instructions.push(
-    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite or Cloud SQL Postgres Instance.`,
+    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
   );
 
   if (instructions.length) {

@@ -2,6 +2,8 @@ import * as yaml from "yaml";
 import * as clc from "colorette";
 import * as path from "path";
 
+const cwd = process.cwd();
+
 import { checkbox, select } from "../../../prompt";
 import { App, appDescription, detectApps } from "../../../dataconnect/appFinder";
 import { Config } from "../../../config";
@@ -55,7 +57,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
   info.apps = await chooseApp();
   if (!info.apps.length) {
     // By default, create an React web app.
-    const existingFilesAndDirs = listFiles(process.cwd());
+    const existingFilesAndDirs = listFiles(cwd);
     const webAppId = newUniqueId("web-app", existingFilesAndDirs);
     const choice = await select({
       message: `Do you want to create an app template?`,
@@ -83,7 +85,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
 }
 
 async function chooseApp(): Promise<App[]> {
-  let apps = await detectApps(process.cwd());
+  let apps = await detectApps(cwd);
   if (apps.length) {
     logLabeledSuccess(
       "dataconnect",
@@ -100,7 +102,7 @@ async function chooseApp(): Promise<App[]> {
     .map((f) => f as Framework);
   if (envAppFolder && envPlatform !== Platform.NONE) {
     // Resolve the absolute path to the app directory
-    const envAppRelDir = path.relative(process.cwd(), path.resolve(process.cwd(), envAppFolder));
+    const envAppRelDir = path.relative(cwd, path.resolve(cwd, envAppFolder));
     const matchedApps = apps.filter(
       (app) => app.directory === envAppRelDir && (!app.platform || app.platform === envPlatform),
     );
@@ -168,7 +170,7 @@ async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo)
     // If no apps is specified, try to detect it again.
     // In `firebase init dataconnect:sdk`, customer may create the app while the command is running.
     // The `firebase_init` MCP tool always pass an empty `apps` list, it should setup all apps detected.
-    info.apps = await detectApps(process.cwd());
+    info.apps = await detectApps(cwd);
     if (!info.apps.length) {
       logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
       return;
@@ -282,6 +284,7 @@ async function chooseExistingConnector(setup: Setup, config: Config): Promise<Co
   return choices[0].value;
 }
 
+/** add SDK generation configuration to connector.yaml in place */
 export function addSdkGenerateToConnectorYaml(
   connectorInfo: ConnectorInfo,
   connectorYaml: ConnectorYaml,
