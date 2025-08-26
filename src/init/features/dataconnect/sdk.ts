@@ -27,11 +27,11 @@ import {
   logLabeledBullet,
   newUniqueId,
 } from "../../../utils";
-import * as fs from "fs";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
+import { dirExistsSync, listFiles } from "../../../fsutils";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -55,7 +55,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
   info.apps = await chooseApp();
   if (!info.apps.length) {
     // By default, create an React web app.
-    const existingFilesAndDirs = fs.readdirSync(process.cwd());
+    const existingFilesAndDirs = listFiles(process.cwd());
     const webAppId = newUniqueId("web-app", existingFilesAndDirs);
     const choice = await select({
       message: `Do you want to create an app template?`,
@@ -179,6 +179,9 @@ async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo)
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   for (const app of apps) {
+    if (!dirExistsSync(app.directory)) {
+      logLabeledWarning("dataconnect", `App directory ${app.directory} does not exist`);
+    }
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
   }
 
