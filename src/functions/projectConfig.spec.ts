@@ -7,15 +7,22 @@ const TEST_CONFIG_0 = { source: "foo" };
 
 describe("projectConfig", () => {
   describe("normalize", () => {
-    it("normalizes singleton config", () => {
-      expect(projectConfig.normalize(TEST_CONFIG_0)).to.deep.equal([TEST_CONFIG_0]);
+    it("normalizes singleton config and defaults configDir to source", () => {
+      const expectedConfig = { ...TEST_CONFIG_0, configDir: TEST_CONFIG_0.source };
+      expect(projectConfig.normalize(TEST_CONFIG_0)).to.deep.equal([expectedConfig]);
     });
 
-    it("normalizes array config", () => {
+    it("normalizes array config and defaults configDir to source", () => {
+      const expectedConfig = { ...TEST_CONFIG_0, configDir: TEST_CONFIG_0.source };
       expect(projectConfig.normalize([TEST_CONFIG_0, TEST_CONFIG_0])).to.deep.equal([
-        TEST_CONFIG_0,
-        TEST_CONFIG_0,
+        expectedConfig,
+        expectedConfig,
       ]);
+    });
+    
+    it("preserves explicit configDir", () => {
+      const configWithDir = { source: "foo", configDir: "bar" };
+      expect(projectConfig.normalize(configWithDir)).to.deep.equal([configWithDir]);
     });
 
     it("throws error if given empty config", () => {
@@ -158,11 +165,13 @@ describe("projectConfig", () => {
 
   describe("normalizeAndValidate", () => {
     it("returns normalized config for singleton config", () => {
-      expect(projectConfig.normalizeAndValidate(TEST_CONFIG_0)).to.deep.equal([TEST_CONFIG_0]);
+      const expectedConfig = { ...TEST_CONFIG_0, configDir: TEST_CONFIG_0.source };
+      expect(projectConfig.normalizeAndValidate(TEST_CONFIG_0)).to.deep.equal([expectedConfig]);
     });
 
     it("returns normalized config for multi-resource config", () => {
-      expect(projectConfig.normalizeAndValidate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
+      const expectedConfig = { ...TEST_CONFIG_0, configDir: TEST_CONFIG_0.source };
+      expect(projectConfig.normalizeAndValidate([TEST_CONFIG_0])).to.deep.equal([expectedConfig]);
     });
 
     it("fails validation given singleton config w/o source", () => {

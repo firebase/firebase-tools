@@ -275,6 +275,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       await getExtensionFunctionInfo(instance, env);
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
+      configDir: functionsDir,
       runtime,
       bin: process.execPath,
       env: nonSecretEnv,

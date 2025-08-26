@@ -108,6 +108,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should return the correct location for an Extension backend",
         in: {
           functionsDir: "extensions/functions",
+          configDir: "extensions/functions",
           env: {},
           secretEnv: [],
           extensionInstanceId: "my-extension-instance",
@@ -119,6 +120,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should return the correct location for a CF3 backend",
         in: {
           functionsDir: "test/cf3",
+          configDir: "test/cf3",
           env: {},
           secretEnv: [],
           codebase: "",
@@ -198,6 +200,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should transform a published Extension backend",
         in: {
           functionsDir: "test",
+          configDir: "test",
           env: {
             KEY: "value",
           },
@@ -223,6 +226,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should transform a local Extension backend",
         in: {
           functionsDir: "test",
+          configDir: "test",
           env: {
             KEY: "value",
           },
@@ -246,6 +250,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should transform a CF3 backend",
         in: {
           functionsDir: "test",
+          configDir: "test",
           env: {
             KEY: "value",
           },
@@ -264,6 +269,7 @@ describe("FunctionsEmulatorShared", () => {
         desc: "should add secretEnvVar into env",
         in: {
           functionsDir: "test",
+          configDir: "test",
           env: {
             KEY: "value",
           },

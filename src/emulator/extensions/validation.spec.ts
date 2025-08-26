@@ -60,6 +60,7 @@ function getTestEmulatableBackend(
 ): EmulatableBackend {
   return {
     functionsDir: ".",
+    configDir: ".",
     env: {},
     secretEnv: [],
     codebase: "",

@@ -2,7 +2,7 @@ import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
+export type ValidatedSingle = FunctionConfig & { source: string; codebase: string; configDir: string };
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
@@ -15,14 +15,19 @@ export function normalize(config?: FunctionsConfig): NormalizedConfig {
     throw new FirebaseError("No valid functions configuration detected in firebase.json");
   }
 
-  if (Array.isArray(config)) {
-    if (config.length < 1) {
-      throw new FirebaseError("Requires at least one functions.source in firebase.json.");
-    }
-    // Unfortunately, Typescript can't figure out that config has at least one element. We assert the type manually.
-    return config as NormalizedConfig;
+  const normalized = Array.isArray(config) ? config : [config];
+  if (normalized.length < 1) {
+    throw new FirebaseError("Requires at least one functions.source in firebase.json.");
   }
-  return [config];
+  
+  // Apply defaults during normalization
+  return normalized.map(cfg => {
+    // For local sources, default configDir to source directory if not specified
+    if (cfg.source && !cfg.configDir) {
+      return { ...cfg, configDir: cfg.source };
+    }
+    return cfg;
+  }) as NormalizedConfig;
 }
 
 /**
@@ -63,8 +68,11 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
   if (config.prefix) {
     validatePrefix(config.prefix);
   }
+  
+  // configDir should already be set by normalize(), but ensure it's present
+  const configDir = config.configDir || config.source;
 
-  return { ...config, source: config.source, codebase: config.codebase };
+  return { ...config, source: config.source, codebase: config.codebase, configDir };
 }
 
 /**

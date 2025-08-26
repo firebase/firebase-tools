@@ -541,6 +541,7 @@ export async function startAll(
       }
       const backend: EmulatableBackend = {
         functionsDir,
+        configDir: path.join(projectDir, cfg.configDir),
         runtime,
         codebase: cfg.codebase,
         prefix: cfg.prefix,
@@ -553,7 +554,6 @@ export async function startAll(
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: cfg.ignore,
       };
-      proto.convertIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
       emulatableBackends.push(backend);
     }
   }

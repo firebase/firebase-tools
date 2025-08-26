@@ -85,7 +85,7 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  */
 export interface EmulatableBackend {
   functionsDir: string;
-  configDir?: string;
+  configDir: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
@@ -560,12 +560,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         FIREBASE_CONFIG: firebaseConfig,
         ...emulatableBackend.env,
       };
+      // Load user envs from configDir
       const userEnvOpt: functionsEnv.UserEnvsOpts = {
-        functionsSource: emulatableBackend.functionsDir,
+        configDir: emulatableBackend.configDir,
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
         isEmulator: true,
-        configDir: emulatableBackend.configDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
@@ -1388,7 +1388,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
     const projectInfo: functionsEnv.UserEnvsOpts = {
-      functionsSource: backend.functionsDir,
       configDir: backend.configDir,
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,

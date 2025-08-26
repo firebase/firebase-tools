@@ -106,6 +106,10 @@ describe("Extensions Emulator", () => {
           functionsDir: join(
             "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",
           ),
+          // configDir defaults to functionsDir for emulator backends
+          configDir: join(
+            "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",
+          ),
           runtime: "nodejs10",
           predefinedTriggers: [
             {

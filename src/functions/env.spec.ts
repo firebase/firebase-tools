@@ -310,11 +310,11 @@ FOO=foo
     it("never affects the filesystem if the list of keys to write is empty", () => {
       env.writeUserEnvs(
         {},
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir },
       );
       env.writeUserEnvs(
         {},
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir, isEmulator: true },
       );
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
@@ -322,7 +322,7 @@ FOO=foo
     });
 
     it("touches .env.projectId if it doesn't already exist", () => {
-      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
+      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", configDir: tmpdir });
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
       expect(() => fs.statSync(path.join(tmpdir, ".env.local"))).to.throw;
@@ -331,7 +331,7 @@ FOO=foo
     it("touches .env.local if it doesn't already exist in emulator mode", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", functionsSource: tmpdir, isEmulator: true },
+        { projectId: "project", configDir: tmpdir, isEmulator: true },
       );
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
@@ -343,7 +343,7 @@ FOO=foo
         [".env.project"]: "FOO=foo",
       });
       expect(() =>
-        env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir }),
+        env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", configDir: tmpdir }),
       ).to.throw(FirebaseError);
     });
 
@@ -353,13 +353,13 @@ FOO=foo
       });
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", functionsSource: tmpdir, isEmulator: true },
+        { projectId: "project", configDir: tmpdir, isEmulator: true },
       );
       expect(
         env.loadUserEnvs({
           projectId: "project",
           projectAlias: "alias",
-          functionsSource: tmpdir,
+          configDir: tmpdir,
           isEmulator: true,
         })["FOO"],
       ).to.equal("bar");
@@ -372,7 +372,7 @@ FOO=foo
       expect(() =>
         env.writeUserEnvs(
           { FOO: "baz" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+          { projectId: "project", projectAlias: "alias", configDir: tmpdir },
         ),
       ).to.throw(FirebaseError);
     });
@@ -383,13 +383,13 @@ FOO=foo
       });
       env.writeUserEnvs(
         { FOO: "baz" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir, isEmulator: true },
       );
       expect(
         env.loadUserEnvs({
           projectId: "project",
           projectAlias: "alias",
-          functionsSource: tmpdir,
+          configDir: tmpdir,
           isEmulator: true,
         })["FOO"],
       ).to.equal("baz");
@@ -402,7 +402,7 @@ FOO=foo
       expect(() =>
         env.writeUserEnvs(
           { ASDF: "bar" },
-          { projectId: "project", functionsSource: tmpdir, isEmulator: true },
+          { projectId: "project", configDir: tmpdir, isEmulator: true },
         ),
       ).to.throw(FirebaseError);
     });
@@ -411,19 +411,19 @@ FOO=foo
       expect(() =>
         env.writeUserEnvs(
           { lowercase: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+          { projectId: "project", projectAlias: "alias", configDir: tmpdir },
         ),
       ).to.throw(env.KeyValidationError);
       expect(() =>
         env.writeUserEnvs(
           { GCP_PROJECT: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+          { projectId: "project", projectAlias: "alias", configDir: tmpdir },
         ),
       ).to.throw(env.KeyValidationError);
       expect(() =>
         env.writeUserEnvs(
           { FIREBASE_KEY: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+          { projectId: "project", projectAlias: "alias", configDir: tmpdir },
         ),
       ).to.throw(env.KeyValidationError);
     });
@@ -431,10 +431,10 @@ FOO=foo
     it("writes the specified key to a .env.projectId that it created", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
+        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", configDir: tmpdir })[
           "FOO"
         ],
       ).to.equal("bar");
@@ -446,10 +446,10 @@ FOO=foo
       });
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir },
       );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
+        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", configDir: tmpdir })[
           "FOO"
         ],
       ).to.equal("bar");
@@ -458,12 +458,12 @@ FOO=foo
     it("writes multiple keys at once", () => {
       env.writeUserEnvs(
         { FOO: "foo", BAR: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir },
       );
       const envs = env.loadUserEnvs({
         projectId: "project",
         projectAlias: "alias",
-        functionsSource: tmpdir,
+        configDir: tmpdir,
       });
       expect(envs["FOO"]).to.equal("foo");
       expect(envs["BAR"]).to.equal("bar");
@@ -476,12 +476,12 @@ FOO=foo
           WITH_SLASHES: "\n\\\r\\\t\\\v",
           QUOTES: "'\"'",
         },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir },
+        { projectId: "project", projectAlias: "alias", configDir: tmpdir },
       );
       const envs = env.loadUserEnvs({
         projectId: "project",
         projectAlias: "alias",
-        functionsSource: tmpdir,
+        configDir: tmpdir,
       });
       expect(envs["ESCAPES"]).to.equal("\n\r\t\v");
       expect(envs["WITH_SLASHES"]).to.equal("\n\\\r\\\t\\\v");
@@ -492,12 +492,12 @@ FOO=foo
       try {
         env.writeUserEnvs(
           { FOO: "bar", lowercase: "bar" },
-          { projectId: "project", functionsSource: tmpdir },
+          { projectId: "project", configDir: tmpdir },
         );
       } catch (err: any) {
         // no-op
       }
-      expect(env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir })["FOO"]).to.be
+      expect(env.loadUserEnvs({ projectId: "project", configDir: tmpdir })["FOO"]).to.be
         .undefined;
     });
   });
@@ -508,7 +508,7 @@ FOO=foo
         fs.writeFileSync(path.join(sourceDir, filename), data);
       }
     };
-    const projectInfo: Omit<env.UserEnvsOpts, "functionsSource"> = {
+    const projectInfo: Omit<env.UserEnvsOpts, "configDir"> = {
       projectId: "my-project",
       projectAlias: "dev",
     };
@@ -526,7 +526,7 @@ FOO=foo
     });
 
     it("loads nothing if .env files are missing", () => {
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({});
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({});
     });
 
     it("loads envs from .env file", () => {
@@ -534,7 +534,7 @@ FOO=foo
         ".env": "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -545,7 +545,7 @@ FOO=foo
         ".env": "# THIS IS A COMMENT\nFOO=foo # inline comments\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -556,7 +556,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -567,7 +567,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=foo\nBAR=bar",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",
       });
@@ -579,7 +579,7 @@ FOO=foo
         [`.env.${projectInfo.projectId}`]: "FOO=good",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -592,7 +592,7 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir, isEmulator: true }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -605,7 +605,7 @@ FOO=foo
         [`.env.${projectInfo.projectAlias}`]: "FOO=good",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -618,7 +618,7 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir, isEmulator: true }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -632,7 +632,7 @@ FOO=foo
         ".env.local": "FOO=bad",
       });
 
-      expect(env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir })).to.be.deep.equal({
+      expect(env.loadUserEnvs({ ...projectInfo, configDir: tmpdir })).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
       });
@@ -646,7 +646,7 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, isEmulator: true }),
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir, isEmulator: true }),
       ).to.be.deep.equal({
         FOO: "good",
         BAR: "bar",
@@ -661,7 +661,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir });
       }).to.throw("Can't have both");
     });
 
@@ -671,7 +671,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -682,7 +682,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -692,7 +692,7 @@ FOO=foo
       });
 
       expect(() => {
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
+        env.loadUserEnvs({ ...projectInfo, configDir: tmpdir });
       }).to.throw("Failed to load");
     });
 
@@ -704,7 +704,7 @@ FOO=foo
       });
 
       expect(
-        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: configDir }),
+        env.loadUserEnvs({ ...projectInfo, configDir: configDir }),
       ).to.be.deep.equal({
         FOO: "foo",
         BAR: "bar",

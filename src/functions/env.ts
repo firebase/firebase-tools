@@ -239,8 +239,7 @@ function findEnvfiles(
 }
 
 export interface UserEnvsOpts {
-  functionsSource: string;
-  configDir?: string;
+  configDir: string;
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
@@ -252,8 +251,7 @@ export interface UserEnvsOpts {
  * @return True if there are any user-specified environment variables
  */
 export function hasUserEnvs(opts: UserEnvsOpts): boolean {
-  const configDir = opts.configDir || opts.functionsSource;
-  return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
+  return findEnvfiles(opts.configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
 }
 
 /**
@@ -266,8 +264,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { projectId, projectAlias, isEmulator } = envOpts;
-  const configDir = envOpts.configDir || envOpts.functionsSource;
+  const { projectId, projectAlias, isEmulator, configDir } = envOpts;
 
   // Determine which .env file to write to, and create it if it doesn't exist
   const allEnvFiles = findEnvfiles(configDir, projectId, projectAlias, isEmulator);
@@ -362,8 +359,7 @@ function formatUserEnvForWrite(key: string, value: string): string {
  * @return {Record<string, string>} Environment variables for the project.
  */
 export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
-  const configDir = opts.configDir || opts.functionsSource;
-  const envFiles = findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
+  const envFiles = findEnvfiles(opts.configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
   if (envFiles.length === 0) {
     return {};
   }
@@ -384,7 +380,7 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
   let envs: Record<string, string> = {};
   for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(path.join(configDir, f), "utf8");
+      const data = fs.readFileSync(path.join(opts.configDir, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
