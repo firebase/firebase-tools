@@ -425,14 +425,14 @@ export function writeResolvedEnvsToFile(
   userEnvOpt: UserEnvsOpts,
 ): void {
   const toWrite: Record<string, string> = {};
-  
+
   for (const paramName of Object.keys(resolvedEnvs)) {
     const paramValue = resolvedEnvs[paramName];
     if (!paramValue.internal && !Object.prototype.hasOwnProperty.call(userEnvs, paramName)) {
       toWrite[paramName] = paramValue.toString();
     }
   }
-  
+
   if (Object.keys(toWrite).length > 0) {
     writeUserEnvs(toWrite, userEnvOpt);
   }

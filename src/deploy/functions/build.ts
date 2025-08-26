@@ -306,7 +306,6 @@ export async function resolveBackend(
   return { backend: toBackend(opts.build, paramValues), envs: paramValues };
 }
 
-
 // Exported for testing
 /**
  *

@@ -842,7 +842,7 @@ FOO=foo
 
       // Check the written file handles special chars correctly
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
-      expect(writtenContent).to.include("NEW_PARAM=\"value with\\nnewline\"");
+      expect(writtenContent).to.include('NEW_PARAM="value with\\nnewline"');
     });
   });
 });
