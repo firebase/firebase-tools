@@ -585,7 +585,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         isEmulator: true,
       });
 
-      functionsEnv.writeResolvedEnvsToFile(resolution.envs, userEnvs, userEnvOpt);
+      functionsEnv.writeResolvedParams(resolution.envs, userEnvs, userEnvOpt);
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);

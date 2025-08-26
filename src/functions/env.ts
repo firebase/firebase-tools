@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import { ParamValue } from "../deploy/functions/params";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -419,8 +420,8 @@ export function loadFirebaseEnvs(
  * Writes newly resolved params to the appropriate .env file.
  * Skips internal params and params that already exist in userEnvs.
  */
-export function writeResolvedEnvsToFile(
-  resolvedEnvs: Readonly<Record<string, { internal: boolean; toString(): string }>>,
+export function writeResolvedParams(
+  resolvedEnvs: Readonly<Record<string, ParamValue>>,
   userEnvs: Readonly<Record<string, string>>,
   userEnvOpt: UserEnvsOpts,
 ): void {
@@ -433,7 +434,5 @@ export function writeResolvedEnvsToFile(
     }
   }
 
-  if (Object.keys(toWrite).length > 0) {
-    writeUserEnvs(toWrite, userEnvOpt);
-  }
+  writeUserEnvs(toWrite, userEnvOpt);
 }

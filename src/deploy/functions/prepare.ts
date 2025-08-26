@@ -140,7 +140,7 @@ export async function prepare(
       isEmulator: false,
     });
 
-    functionsEnv.writeResolvedEnvsToFile(resolvedEnvs, userEnvs, userEnvOpt);
+    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;

@@ -6,6 +6,7 @@ import { expect } from "chai";
 
 import * as env from "./env";
 import { FirebaseError } from "../error";
+import { ParamValue } from "../deploy/functions/params";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -759,7 +760,7 @@ FOO=foo
     });
   });
 
-  describe("writeResolvedEnvsToFile", () => {
+  describe("writeResolvedParams", () => {
     let tmpdir: string;
 
     beforeEach(() => {
@@ -772,9 +773,9 @@ FOO=foo
 
     it("should write only new, non-internal params", () => {
       const resolvedEnvs = {
-        EXISTING_PARAM: { internal: false, toString: () => "existing" },
-        NEW_PARAM: { internal: false, toString: () => "new_value" },
-        INTERNAL_PARAM: { internal: true, toString: () => "internal" },
+        EXISTING_PARAM: new ParamValue("existing", false, { string: true }),
+        NEW_PARAM: new ParamValue("new_value", false, { string: true }),
+        INTERNAL_PARAM: new ParamValue("internal", true, { string: true }),
       };
       const userEnvs = { EXISTING_PARAM: "old_value" };
       const userEnvOpt = {
@@ -782,7 +783,7 @@ FOO=foo
         functionsSource: tmpdir,
       };
 
-      env.writeResolvedEnvsToFile(resolvedEnvs, userEnvs, userEnvOpt);
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
       // Check the written file
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
@@ -793,8 +794,8 @@ FOO=foo
 
     it("should not create file when no params to write", () => {
       const resolvedEnvs = {
-        EXISTING_PARAM: { internal: false, toString: () => "existing" },
-        INTERNAL_PARAM: { internal: true, toString: () => "internal" },
+        EXISTING_PARAM: new ParamValue("existing", false, { string: true }),
+        INTERNAL_PARAM: new ParamValue("internal", true, { string: true }),
       };
       const userEnvs = { EXISTING_PARAM: "old_value" };
       const userEnvOpt = {
@@ -802,7 +803,7 @@ FOO=foo
         functionsSource: tmpdir,
       };
 
-      env.writeResolvedEnvsToFile(resolvedEnvs, userEnvs, userEnvOpt);
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
       // Check that no file was created
       const envFile = path.join(tmpdir, ".env.test-project");
@@ -811,7 +812,7 @@ FOO=foo
 
     it("should write to .env.local for emulator", () => {
       const resolvedEnvs = {
-        NEW_PARAM: { internal: false, toString: () => "emulator_value" },
+        NEW_PARAM: new ParamValue("emulator_value", false, { string: true }),
       };
       const userEnvs = {};
       const userEnvOpt = {
@@ -820,7 +821,7 @@ FOO=foo
         isEmulator: true,
       };
 
-      env.writeResolvedEnvsToFile(resolvedEnvs, userEnvs, userEnvOpt);
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
       // Check the written file is .env.local
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.local"), "utf-8");
@@ -830,7 +831,7 @@ FOO=foo
 
     it("should handle params with special characters in values", () => {
       const resolvedEnvs = {
-        NEW_PARAM: { internal: false, toString: () => "value with\nnewline" },
+        NEW_PARAM: new ParamValue("value with\nnewline", false, { string: true }),
       };
       const userEnvs = {};
       const userEnvOpt = {
@@ -838,7 +839,7 @@ FOO=foo
         functionsSource: tmpdir,
       };
 
-      env.writeResolvedEnvsToFile(resolvedEnvs, userEnvs, userEnvOpt);
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
       // Check the written file handles special chars correctly
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
