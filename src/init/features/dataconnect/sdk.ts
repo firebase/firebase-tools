@@ -222,7 +222,7 @@ async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo)
   if (apps.some((a) => a.frameworks?.includes("angular"))) {
     // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
     logBullet(
-      "Run `npm i --save @angular/fire @tanstack-query-firebase/angular @tanstack/angular-query-experimental` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
+      "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
     );
   }
 }
