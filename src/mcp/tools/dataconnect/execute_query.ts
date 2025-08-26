@@ -3,7 +3,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError } from "../../util";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
-import { pickService } from "../../../dataconnect/fileUtils";
+import { pickService } from "../../../dataconnect/load";
 import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
 import { Client } from "../../../apiv2";
 import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";

@@ -31,7 +31,7 @@ export const schema = prompt(
       },
     ],
     annotations: {
-      title: "Deploy to Firebase",
+      title: "Generate Data Connect Schema",
     },
   },
   async ({ prompt }, { config, projectId, accountEmail }) => {

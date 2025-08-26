@@ -13,15 +13,15 @@ import {
   FIREBASE_SUPER_USER,
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
-import { setupIAMUsers } from "./connect";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { needProjectNumber } from "../../projectUtils";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 import * as utils from "../../utils";
+import * as cloudSqlAdminClient from "./cloudsqladmin";
 
 export type TableMetadata = {
   name: string;
@@ -121,7 +121,6 @@ export async function setupSQLPermissions(
       `Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`,
     );
   }
-  await setupIAMUsers(instanceId, databaseId, options);
 
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
@@ -447,5 +446,27 @@ export async function brownfieldSqlSetup(
     brownfieldSetupCmds,
     silent,
     /** transaction=*/ true,
+  );
+}
+
+export async function grantRoleTo(
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  role: string,
+  email: string,
+): Promise<void> {
+  // Upsert new user account into the database.
+  const projectId = needProjectId(options);
+  const { user, mode } = toDatabaseUser(email);
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
   );
 }

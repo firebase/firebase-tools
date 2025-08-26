@@ -1,6 +1,5 @@
-import { load } from "./load";
+import { load, readFirebaseJson } from "./load";
 import type { Config } from "../config";
-import { readFirebaseJson } from "./fileUtils";
 
 export function loadAll(projectId: string, config: Config) {
   const configs = readFirebaseJson(config);

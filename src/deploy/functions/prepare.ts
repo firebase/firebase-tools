@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
+import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -127,6 +128,7 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
+    proto.convertIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
@@ -155,7 +157,7 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
+      endpoint.environmentVariables = { ...(wantBackend.environmentVariables || {}) };
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
@@ -476,14 +478,16 @@ export async function loadCodebases(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
-    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
+    const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
       // in order for .init() calls to succeed.
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
-    wantBuilds[codebase].runtime = codebaseConfig.runtime;
+    discoveredBuild.runtime = codebaseConfig.runtime;
+    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
 }

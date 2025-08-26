@@ -227,10 +227,6 @@ export class FirebaseMcpServer {
   }
 
   get availablePrompts(): ServerPrompt[] {
-    this.log(
-      "debug",
-      `availablePrompts: ${JSON.stringify(this.activeFeatures)} // ${JSON.stringify(this.detectedFeatures)}`,
-    );
     return availablePrompts(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );

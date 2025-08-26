@@ -2,6 +2,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
+import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
 import { trackEmulator, trackGA4 } from "../track";
@@ -56,7 +57,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
-import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { readFirebaseJson } from "../dataconnect/load";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
@@ -170,18 +171,16 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     );
   }
 
-  // Don't start the functions emulator if we can't find the source directory
+  // Don't start the functions emulator if we can't validate the functions config
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: any) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-        "WARN",
+        "ERROR",
         "functions",
-        `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
-          "firebase init functions",
-        )}?`,
+        `Failed to start Functions emulator: ${err.message}`,
       );
       return false;
     }
@@ -540,10 +539,11 @@ export async function startAll(
           `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
-      emulatableBackends.push({
+      const backend: EmulatableBackend = {
         functionsDir,
         runtime,
         codebase: cfg.codebase,
+        prefix: cfg.prefix,
         env: {
           ...options.extDevEnv,
         },
@@ -552,7 +552,9 @@ export async function startAll(
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: cfg.ignore,
-      });
+      };
+      proto.convertIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
+      emulatableBackends.push(backend);
     }
   }
 

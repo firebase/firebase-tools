@@ -695,6 +695,21 @@ FOO=foo
         env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir });
       }).to.throw("Failed to load");
     });
+
+    it("loads envs from a different configDir", () => {
+      const configDir = path.join(tmpdir, "config");
+      fs.mkdirSync(configDir);
+      createEnvFiles(configDir, {
+        ".env": "FOO=foo\nBAR=bar",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, configDir: configDir }),
+      ).to.be.deep.equal({
+        FOO: "foo",
+        BAR: "bar",
+      });
+    });
   });
 
   describe("parseStrict", () => {
