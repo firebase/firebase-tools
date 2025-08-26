@@ -5,7 +5,6 @@ import * as path from "path";
 import { dirExistsSync } from "../../../fsutils";
 import { checkbox, select } from "../../../prompt";
 import {
-  readFirebaseJson,
   getPlatformFromFolder,
   getFrameworksFromPackageJson,
   resolvePackageJson,
@@ -13,7 +12,7 @@ import {
 } from "../../../dataconnect/fileUtils";
 import { Config } from "../../../config";
 import { Setup } from "../..";
-import { load } from "../../../dataconnect/load";
+import { loadAll } from "../../../dataconnect/load";
 import {
   ConnectorInfo,
   ConnectorYaml,
@@ -25,7 +24,7 @@ import {
 } from "../../../dataconnect/types";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { FirebaseError } from "../../../error";
-import { camelCase, snakeCase, upperFirst } from "lodash";
+import { snakeCase } from "lodash";
 import { logSuccess, logBullet, promptForDirectory, envOverride, logWarning } from "../../../utils";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { Options } from "../../../options";
@@ -48,11 +47,7 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
 }
 
 async function askQuestions(setup: Setup, config: Config, options: Options): Promise<SDKInfo> {
-  const serviceCfgs = readFirebaseJson(config);
-  // TODO: This current approach removes comments from YAML files. Consider a different approach that won't.
-  const serviceInfos = await Promise.all(
-    serviceCfgs.map((c) => load(setup.projectId || "", config, c.source)),
-  );
+  const serviceInfos = await loadAll(setup.projectId || "", config);
   const connectorChoices: connectorChoice[] = serviceInfos
     .map((si) => {
       return si.connectorInfo.map((ci) => {
@@ -211,7 +206,7 @@ export async function generateSdkYaml(
   if (targetPlatform === Platform.IOS) {
     const swiftSdk = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/swift`)),
-      package: upperFirst(camelCase(connectorYaml.connectorId)) + "Connector",
+      package: "DataConnectGenerated",
     };
     connectorYaml.generate.swiftSdk = swiftSdk;
   }
@@ -221,7 +216,7 @@ export async function generateSdkYaml(
     const packageJsonDir = path.relative(connectorDir, appDir);
     const javascriptSdk: JavascriptSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/js/${pkg}`)),
-      package: `@firebasegen/${pkg}`,
+      package: `@dataconnect/generated`,
       // If appDir has package.json, Emulator would add Generated JS SDK to `package.json`.
       // Otherwise, emulator would ignore it. Always add it here in case `package.json` is added later.
       // TODO: Explore other platforms that can be automatically installed. Dart? Android?
@@ -246,7 +241,7 @@ export async function generateSdkYaml(
         connectorDir,
         path.join(appDir, `dataconnect-generated/dart/${pkg}`),
       ),
-      package: pkg,
+      package: "dataconnect_generated",
     };
     connectorYaml.generate.dartSdk = dartSdk;
   }
@@ -254,7 +249,7 @@ export async function generateSdkYaml(
   if (targetPlatform === Platform.ANDROID) {
     const kotlinSdk: KotlinSDK = {
       outputDir: path.relative(connectorDir, path.join(appDir, `dataconnect-generated/kotlin`)),
-      package: `connectors.${snakeCase(connectorYaml.connectorId)}`,
+      package: `com.google.firebase.dataconnect.generated`,
     };
     // app/src/main/kotlin and app/src/main/java are conventional for Android,
     // but not required or enforced. If one of them is present (preferring the

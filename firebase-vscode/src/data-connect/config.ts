@@ -14,7 +14,7 @@ import {
   readConnectorYaml,
   readDataConnectYaml,
   readFirebaseJson as readFdcFirebaseJson,
-} from "../../../src/dataconnect/fileUtils";
+} from "../../../src/dataconnect/load";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
