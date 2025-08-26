@@ -29,7 +29,6 @@ export interface Setup {
 export interface SetupInfo {
   database?: features.DatabaseInfo;
   firestore?: features.FirestoreInfo;
-  dataconnectAnalyticsFlow?: string;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
