@@ -785,7 +785,6 @@ FOO=foo
 
       env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
-      // Check the written file
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
       expect(writtenContent).to.include("NEW_PARAM=new_value");
       expect(writtenContent).not.to.include("EXISTING_PARAM");
@@ -805,7 +804,6 @@ FOO=foo
 
       env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
-      // Check that no file was created
       const envFile = path.join(tmpdir, ".env.test-project");
       expect(fs.existsSync(envFile)).to.be.false;
     });
@@ -823,7 +821,6 @@ FOO=foo
 
       env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
-      // Check the written file is .env.local
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.local"), "utf-8");
       expect(writtenContent).to.include("NEW_PARAM=emulator_value");
       expect(fs.existsSync(path.join(tmpdir, ".env.test-project"))).to.be.false;
@@ -841,7 +838,6 @@ FOO=foo
 
       env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
-      // Check the written file handles special chars correctly
       const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
       expect(writtenContent).to.include('NEW_PARAM="value with\\nnewline"');
     });
