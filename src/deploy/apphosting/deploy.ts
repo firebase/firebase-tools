@@ -64,16 +64,17 @@ export default async function (context: Context, options: Options): Promise<void
         "apphosting",
         `Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`,
       );
+      const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`;
       const { bucket, object } = await gcs.uploadObject(
         {
           file: zippedSourcePath,
           stream: fs.createReadStream(zippedSourcePath),
         },
-        `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`,
+        bucketName,
       );
       logLabeledBullet("apphosting", `Source code uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =
-        `gs://firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}/${path.basename(zippedSourcePath)}`;
+        `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
     }),
   );
 }

@@ -226,8 +226,8 @@ export async function upload(
   ignoreQuotaProject?: boolean,
 ): Promise<{ generation: string | null }> {
   const url = new URL(uploadUrl, storageOrigin());
-  const signedUrl = url.searchParams.has("GoogleAccessId");
-  const localAPIClient = new Client({ urlPrefix: url.origin, auth: !signedUrl });
+  const isSignedUrl = url.searchParams.has("GoogleAccessId");
+  const localAPIClient = new Client({ urlPrefix: url.origin, auth: !isSignedUrl });
   const res = await localAPIClient.request({
     method: "PUT",
     path: url.pathname,
