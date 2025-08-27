@@ -10,7 +10,7 @@ import { getDataConnectEmulatorClient } from "./emulator";
 
 export const execute = tool(
   {
-    name: "dataconnect_execute",
+    name: "execute",
     description: "Executes a GraphQL operation against a Data Connect service or its emulator.",
     inputSchema: z
       .object({
