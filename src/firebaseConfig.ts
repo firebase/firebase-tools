@@ -170,6 +170,9 @@ export type FunctionConfig = {
   // Optional: Directory containing the Cloud Functions source code.
   // Defaults to "functions" if not specified.
   source?: string;
+  // Optional: Directory containing the .env files for this codebase.
+  // Defaults to the same directory as source if not specified.
+  configDir?: string;
   // Optional: List of glob patterns for files and directories to ignore during deployment.
   // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];

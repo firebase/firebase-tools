@@ -1,23 +1,15 @@
-import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { crashlyticsApiOrigin } from "../api";
-
-const TIMEOUT = 10000;
-
-const apiClient = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1alpha",
-});
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 
 export async function getIssueDetails(appId: string, issueId: string): Promise<string> {
-  try {
-    const requestProjectNumber = parseProjectNumber(appId);
-    if (requestProjectNumber === undefined) {
-      throw new FirebaseError("Unable to get the projectId from the AppId.");
-    }
+  const requestProjectNumber = parseProjectNumber(appId);
 
-    const response = await apiClient.request<void, string>({
+  logger.debug(
+    `[mcp][crashlytics] getIssueDetails called with appId: ${appId}, issueId: ${issueId}`,
+  );
+  try {
+    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -34,12 +26,4 @@ export async function getIssueDetails(appId: string, issueId: string): Promise<s
       { original: err },
     );
   }
-}
-
-function parseProjectNumber(appId: string): string | undefined {
-  const appIdParts = appId.split(":");
-  if (appIdParts.length > 1) {
-    return appIdParts[1];
-  }
-  return undefined;
 }
