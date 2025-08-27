@@ -33,8 +33,6 @@ export const list_collections = tool(
     if (use_emulator) {
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
-
-    if (!projectId) return NO_PROJECT_ERROR;
     return toContent(await listCollectionIds(projectId, database, emulatorUrl));
   },
 );
