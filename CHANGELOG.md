@@ -1,4 +1,5 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
-- Improve `firebase init dataconnect` to detect all apps and set up SDKs in platform-specific directories (#9026)
-- `firebase init dataconnect` provide an option to create an Next.JS app template (#9026)
+- Added additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Updated Data Connect local toolkit to 2.12, which
+  - Added ImpersonateQuery, ImpersonateMutation and IntrospectGraphql APIs to the Firebase Data Connect emulator
+  - Added support for Firebase JS SDK v12
 - Add core MCP tools like `firebase_init` and `firebase_{set,get}_environment` `firebase_consult_assistant` MCP back. (#9045)
