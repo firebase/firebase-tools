@@ -26,7 +26,6 @@ export {
   askQuestions as dataconnectAskQuestions,
   RequiredInfo as DataconnectInfo,
   actuate as dataconnectActuate,
-  postSetup as dataconnectPostSetup,
 } from "./dataconnect";
 export {
   askQuestions as dataconnectSdkAskQuestions,

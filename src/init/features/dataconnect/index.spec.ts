@@ -183,6 +183,7 @@ describe("init dataconnect", () => {
             rcfile: MOCK_RC,
             config: c.config.src,
             featureInfo: { dataconnect: c.requiredInfo, dataconnectSdk: { apps: [] } },
+            instructions: [],
           },
           c.config,
           {},
