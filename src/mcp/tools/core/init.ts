@@ -177,14 +177,16 @@ export const init = tool(
     if (featureInfo.dataconnectSdk && !featureInfo.dataconnectSdk.apps.length) {
       setup.instructions.push(
         `No apps is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool to add Data Connect SDKs to your apps.
-        Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
+  Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
       );
     }
     return toContent(
       `Successfully setup those features: ${featuresList.join(", ")}
 
 To get started:
-- ${setup.instructions.join("\n\n- ")}`,
+
+- ${setup.instructions.join("\n\n- ")}
+`,
     );
   },
 );
