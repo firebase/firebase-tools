@@ -389,7 +389,7 @@ async function writeFiles(
       await config.askWriteProjectFile(join(dir, "schema", f.path), f.content, !!options.force);
     }
   } else {
-    // Even if the schema is empty, lets give them an empty .gql file What's next?.
+    // Even if the schema is empty, lets give them an empty .gql file to get started.
     fs.ensureFileSync(join(dir, "schema", "schema.gql"));
   }
 
