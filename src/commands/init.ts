@@ -15,6 +15,7 @@ import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
+import { logBullet } from "../utils";
 
 const homeDir = os.homedir();
 
@@ -197,6 +198,7 @@ export async function initAction(feature: string, options: Options): Promise<voi
       json: true,
       fallback: {},
     }),
+    instructions: [],
   };
 
   // HACK: Windows Node has issues with selectables as the first prompt, so we
@@ -265,7 +267,13 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
     config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
   }
-
   logger.info();
   utils.logSuccess("Firebase initialization complete!");
+
+  if (setup.instructions.length) {
+    logger.info(`\n${clc.bold("To get started:")}\n`);
+    for (const i of setup.instructions) {
+      logBullet(i + "\n");
+    }
+  }
 }
