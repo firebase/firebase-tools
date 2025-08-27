@@ -2,6 +2,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
+import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
 import { trackEmulator, trackGA4 } from "../track";
@@ -56,7 +57,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
-import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { readFirebaseJson } from "../dataconnect/load";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
@@ -538,7 +539,7 @@ export async function startAll(
           `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
-      emulatableBackends.push({
+      const backend: EmulatableBackend = {
         functionsDir,
         runtime,
         codebase: cfg.codebase,
@@ -551,7 +552,9 @@ export async function startAll(
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: cfg.ignore,
-      });
+      };
+      proto.convertIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
+      emulatableBackends.push(backend);
     }
   }
 
