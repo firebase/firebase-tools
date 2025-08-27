@@ -30,7 +30,7 @@ export {
 } from "./dataconnect";
 export {
   askQuestions as dataconnectSdkAskQuestions,
-  RequiredInfo as DataconnectSdkInfo,
+  SdkRequiredInfo as DataconnectSdkInfo,
   actuate as dataconnectSdkActuate,
 } from "./dataconnect/sdk";
 export { doSetup as apphosting } from "./apphosting";

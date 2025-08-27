@@ -39,7 +39,7 @@ export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
 export const FDC_SDK_PLATFORM_ENV = "FDC_SDK_PLATFORM";
 
-export interface RequiredInfo {
+export interface SdkRequiredInfo {
   apps: App[];
 }
 
@@ -50,7 +50,7 @@ export type SDKInfo = {
 };
 
 export async function askQuestions(setup: Setup): Promise<void> {
-  const info: RequiredInfo = {
+  const info: SdkRequiredInfo = {
     apps: [],
   };
 
@@ -143,16 +143,16 @@ async function chooseApp(): Promise<App[]> {
 
 export async function actuate(setup: Setup, config: Config) {
   const fdcInfo = setup.featureInfo?.dataconnect;
-  const info = setup.featureInfo?.dataconnectSdk;
-  if (!info) {
+  const sdkInfo = setup.featureInfo?.dataconnectSdk;
+  if (!sdkInfo) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
   try {
-    await actuateWithInfo(setup, config, info);
+    await actuateWithInfo(setup, config, sdkInfo);
   } finally {
     let flow = "no_app";
-    if (info.apps.length) {
-      const platforms = info.apps.map((a) => a.platform.toLowerCase()).sort();
+    if (sdkInfo.apps.length) {
+      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
       flow = `${platforms.join("_")}_app`;
     }
     if (fdcInfo) {
@@ -166,7 +166,7 @@ export async function actuate(setup: Setup, config: Config) {
   }
 }
 
-async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo) {
+async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredInfo) {
   if (!info.apps.length) {
     // If no apps is specified, try to detect it again.
     // In `firebase init dataconnect:sdk`, customer may create the app while the command is running.
@@ -223,7 +223,6 @@ async function actuateWithInfo(setup: Setup, config: Config, info: RequiredInfo)
     );
   }
   if (apps.some((a) => a.frameworks?.includes("angular"))) {
-    // TODO(mtewani): Replace this with `ng add @angular/fire` when ready.
     logBullet(
       "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
     );
