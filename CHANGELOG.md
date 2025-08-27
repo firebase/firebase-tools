@@ -1,1 +1,3 @@
 - Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Add ImpersonateQuery, ImpersonateMutation and IntrospectGraphql APIs to the Firebase Data Connect emulator
+- Added support for Firebase JS SDK v12
