@@ -252,6 +252,10 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
     setup.features = setup.features.filter((f) => f !== "hosting:github");
   }
+  // "dataconnect:sdk" is a part of "dataconnect", so if both are selected, "dataconnect:sdk" is ignored.
+  if (setup.features.includes("dataconnect") && setup.features.includes("dataconnect:sdk")) {
+    setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
+  }
 
   await init(setup, config, options);
 
