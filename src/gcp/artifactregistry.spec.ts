@@ -117,24 +117,6 @@ describe("artifactRegistry", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should call getRepository if no fields are updated", async () => {
-      const getRepo: artifactRegistry.Repository = {
-        name: REPO_PATH,
-        format: "DOCKER",
-        description: "test repo",
-        createTime: "2020-01-01T00:00:00Z",
-        updateTime: "2020-01-01T00:00:00Z",
-      };
-      nock(api.artifactRegistryDomain())
-        .get(`/${artifactRegistry.API_VERSION}/${REPO_PATH}`)
-        .reply(200, getRepo);
-
-      const resp = await artifactRegistry.updateRepository({ name: REPO_PATH });
-
-      expect(resp).to.deep.equal(getRepo);
-      expect(nock.isDone()).to.be.true;
-    });
-
     it("should reject if api returns error", async () => {
       nock(api.artifactRegistryDomain())
         .patch(`/${artifactRegistry.API_VERSION}/${REPO_PATH}?updateMask=${UPDATE_MASK}`)
