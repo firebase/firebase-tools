@@ -1,5 +1,4 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
-- Adds ImpersonateQuery, ImpersonateMutation and IntrospectGraphql APIs to the Firebase Data Connect emulator
-- Adds support for Firebase JS SDK v12
-- Add ImpersonateQuery, ImpersonateMutation and IntrospectGraphql APIs to the Firebase Data Connect emulator
-- Added support for Firebase JS SDK v12
+- Added additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Updated Data Connect local toolkit to 2.12, which
+  - Added ImpersonateQuery, ImpersonateMutation and IntrospectGraphql APIs to the Firebase Data Connect emulator
+  - Added support for Firebase JS SDK v12
