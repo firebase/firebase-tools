@@ -1,5 +1,5 @@
 import { prompt } from "../../prompt";
-import { loadAll } from "../../../dataconnect/loadAll";
+import { loadAll } from "../../../dataconnect/load";
 import type { ServiceInfo } from "../../../dataconnect/types";
 import { BUILTIN_SDL, MAIN_INSTRUCTIONS } from "../../util/dataconnect/content";
 import { compileErrors } from "../../util/dataconnect/compile";
