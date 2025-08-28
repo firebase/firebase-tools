@@ -4,8 +4,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
-import { load } from "../dataconnect/load";
-import { readFirebaseJson } from "../dataconnect/fileUtils";
+import { loadAll } from "../dataconnect/load";
 import { logger } from "../logger";
 import { getProjectDefaultAccount } from "../auth";
 
@@ -20,10 +19,9 @@ export const command = new Command("dataconnect:sdk:generate")
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
 
-    const services = readFirebaseJson(options.config);
-    for (const service of services) {
-      const configDir = service.source;
-      const serviceInfo = await load(projectId, options.config, configDir);
+    const serviceInfos = await loadAll(projectId, options.config);
+    for (const serviceInfo of serviceInfos) {
+      const configDir = serviceInfo.sourceDirectory;
       const hasGeneratables = serviceInfo.connectorInfo.some((c) => {
         return (
           c.connectorYaml.generate?.javascriptSdk ||

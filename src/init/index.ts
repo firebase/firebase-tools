@@ -17,6 +17,11 @@ export interface Setup {
   featureArg?: boolean;
   featureInfo?: SetupInfo;
 
+  // Each feature init flow may add instructions.
+  // They will be displayed at the end of `firebase init` or
+  // return back to `firebase_init` MCP tools.
+  instructions: string[];
+
   /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
@@ -30,6 +35,7 @@ export interface SetupInfo {
   database?: features.DatabaseInfo;
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
+  dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
 }
@@ -65,9 +71,12 @@ const featuresList: Feature[] = [
     name: "dataconnect",
     askQuestions: features.dataconnectAskQuestions,
     actuate: features.dataconnectActuate,
-    postSetup: features.dataconnectPostSetup,
   },
-  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  {
+    name: "dataconnect:sdk",
+    askQuestions: features.dataconnectSdkAskQuestions,
+    actuate: features.dataconnectSdkActuate,
+  },
   { name: "functions", doSetup: features.functions },
   { name: "hosting", doSetup: features.hosting },
   {
