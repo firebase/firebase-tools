@@ -16,6 +16,9 @@ import { getNeverAskAgain, setNeverAskAgain } from "./state";
 import { tail } from "./tail";
 import { Options } from "../options";
 
+/**
+ * Checks if the Gemini CLI is installed and available in the system's PATH.
+ */
 export function isGeminiInstalled(): boolean {
   const command = process.platform === "win32" ? "where" : "which";
   try {
@@ -27,19 +30,22 @@ export function isGeminiInstalled(): boolean {
   }
 }
 
+/**
+ * Redacts sensitive information from a string.
+ */
 function redact(s: string): string {
+  const tokenRegex =
+    /(Bearer|access_token|refresh_token|GCP_TOKEN|refreshToken|accessToken)\s*:\s*["']?([^"'\s,]+)/gi;
+  const privateKeyRegex = /-----BEGIN PRIVATE KEY-----\s*\n[\s\S]*?\s*-----END PRIVATE KEY-----/g;
+
   return s
-    .replace(
-      /(Bearer|access_token|refresh_token|GCP_TOKEN)\s*:\s*["']?([^"'\s]+)/g,
-      "$1: <REDACTED>",
-    )
-    .replace(/("refreshToken"|"accessToken"|"GCP_TOKEN")\s*:\s*"[^"]+"/g, '$1: "<REDACTED>"')
-    .replace(
-      /-----BEGIN PRIVATE KEY-----\s*[\s\S]*?\s*-----END PRIVATE KEY-----/g,
-      "<REDACTED PEM PRIVATE KEY>",
-    );
+    .replace(tokenRegex, "$1: <REDACTED>")
+    .replace(privateKeyRegex, "<REDACTED PEM PRIVATE KEY>");
 }
 
+/**
+ * Creates a context file for the Gemini session, containing the command, error, and logs.
+ */
 async function createSessionContext(error: FirebaseError, logFilePath: string): Promise<string> {
   const logLines = await tail(logFilePath, 500);
   const command = process.argv.slice(2).join(" ");
@@ -75,6 +81,9 @@ ${logLines.join("\n")}
   return tempFilePath;
 }
 
+/**
+ * Checks conditions and, if met, prompts the user to launch a Gemini session.
+ */
 export async function maybeLaunchGemini(
   error: FirebaseError,
   logFilePath: string,
@@ -83,6 +92,7 @@ export async function maybeLaunchGemini(
   if (
     !process.stdout.isTTY ||
     options.json ||
+    options.nonInteractive ||
     !isEnabled("withgemini") ||
     !isGeminiInstalled() ||
     getNeverAskAgain()
@@ -112,6 +122,9 @@ export async function maybeLaunchGemini(
   await launchGemini(prompt);
 }
 
+/**
+ * Launches the Gemini CLI in an interactive pty session.
+ */
 export function launchGemini(prompt: string): Promise<void> {
   return new Promise((resolve) => {
     logger.info("Connecting to Gemini...");
@@ -130,11 +143,9 @@ export function launchGemini(prompt: string): Promise<void> {
       handleFlowControl: true,
     });
 
-    // Store original handlers
     const originalSigintListeners = process.listeners("SIGINT");
     const originalSigtermListeners = process.listeners("SIGTERM");
 
-    // Remove all existing SIGINT/SIGTERM handlers
     process.removeAllListeners("SIGINT");
     process.removeAllListeners("SIGTERM");
 
@@ -142,7 +153,6 @@ export function launchGemini(prompt: string): Promise<void> {
       process.stdout.removeListener("resize", onResize);
       process.stdin.removeListener("data", dataListener);
 
-      // Restore original signal handlers
       process.removeAllListeners("SIGINT");
       process.removeAllListeners("SIGTERM");
       originalSigintListeners.forEach((listener) =>
@@ -158,10 +168,8 @@ export function launchGemini(prompt: string): Promise<void> {
       process.stdin.resume();
     };
 
-    // Handle signals by forwarding to PTY process
     const signalHandler = (signal: NodeJS.Signals) => {
       return () => {
-        // Forward the signal to the PTY process
         ptyProcess.kill(signal);
       };
     };

@@ -153,7 +153,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   withgemini: {
     shortDescription: "Enables Gemini assistance on command failures.",
-    public: false,
+    public: true,
   },
 });
 
