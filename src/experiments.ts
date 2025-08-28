@@ -151,6 +151,10 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
+  withgemini: {
+    shortDescription: "Enables Gemini assistance on command failures.",
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
