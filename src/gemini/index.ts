@@ -1,9 +1,12 @@
+// Node.js imports
 import { spawnSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
+// 3rd party imports
 import type * as pty from "@lydell/node-pty";
 
+// Local imports
 import { isEnabled } from "../experiments";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -11,6 +14,13 @@ import { confirm } from "../prompt";
 import { getNeverAskAgain, setNeverAskAgain } from "./state";
 import { tail } from "./tail";
 import { Options } from "../options";
+
+import { trackGA4 } from "../track";
+
+/**
+ * The possible outcomes of the Gemini handoff interaction.
+ */
+export type GeminiOutcome = "accepted" | "declined" | "never_ask_again" | "not_offered" | "offered";
 
 /**
  * Checks if the Gemini CLI is installed and available in the system's PATH.
@@ -46,7 +56,7 @@ export function redact(s: string): string {
   redacted = redacted.replace(bearerPattern, "$1<REDACTED>");
 
   // Redact PEM private keys
-  const privateKeyPattern = /-----BEGIN PRIVATE KEY-----\s*[\s\S]*?\s*-----END PRIVATE KEY-----/g;
+  const privateKeyPattern = /-----BEGIN PRIVATE KEY-----\s*["\s\S]*?\s*-----END PRIVATE KEY-----/g;
   redacted = redacted.replace(privateKeyPattern, "<REDACTED PEM PRIVATE KEY>");
 
   return redacted;
@@ -98,46 +108,61 @@ export async function maybeLaunchGemini(
   logFilePath: string,
   options: Options,
 ): Promise<void> {
+  const geminiInstalled = isGeminiInstalled();
+  let outcome: GeminiOutcome = "not_offered";
+  let sessionDuration = 0;
+
   if (
     !process.stdout.isTTY ||
     options.json ||
     options.nonInteractive ||
     !isEnabled("withgemini") ||
-    !isGeminiInstalled() ||
     getNeverAskAgain()
   ) {
     return;
   }
 
-  const choice = await confirm({
-    message: "An error occurred. Would you like to ask Gemini for help?",
-    default: true,
-  });
-
-  if (!choice) {
-    const neverAskAgain = await confirm({
-      message: "Never ask again?",
-      default: false,
+  if (geminiInstalled) {
+    outcome = "offered";
+    const choice = await confirm({
+      message: "An error occurred. Would you like to ask Gemini for help?",
+      default: true,
     });
-    if (neverAskAgain) {
-      setNeverAskAgain(true);
+
+    if (choice) {
+      outcome = "accepted";
+      const startTime = Date.now();
+      const contextPath = await createSessionContext(error, logFilePath);
+      const prompt = `The firebase command failed with the error: '${error.message}'. I have a context file with logs that might help: ${contextPath}`;
+      try {
+        await launchGemini(prompt);
+      } finally {
+        sessionDuration = Date.now() - startTime;
+        try {
+          fs.unlinkSync(contextPath);
+        } catch (e) {
+          logger.debug(`Failed to delete context file: ${contextPath}`, e);
+        }
+      }
+    } else {
+      outcome = "declined";
+      const neverAskAgain = await confirm({
+        message: "Never ask again?",
+        default: false,
+      });
+      if (neverAskAgain) {
+        outcome = "never_ask_again";
+        setNeverAskAgain(true);
+      }
     }
-    return;
   }
 
-  const contextPath = await createSessionContext(error, logFilePath);
-  const prompt = `The firebase command failed with the error: '${error.message}'. I have a context file with logs that might help: ${contextPath}`;
-
-  try {
-    await launchGemini(prompt);
-  } finally {
-    // Clean up the context file
-    try {
-      fs.unlinkSync(contextPath);
-    } catch (e) {
-      logger.debug(`Failed to delete context file: ${contextPath}`, e);
-    }
-  }
+  void trackGA4("gemini_handoff", {
+    gemini_installed: geminiInstalled.toString(),
+    outcome: outcome,
+    error_message: error.message,
+    gemini_session_duration: sessionDuration,
+  });
 }
 
 /**
@@ -151,7 +176,7 @@ export async function launchGemini(prompt: string): Promise<void> {
   const pty = await import("@lydell/node-pty");
 
   return new Promise((resolve) => {
-    logger.info("Connecting to Gemini...");
+    logger.info("Connecting to Gemini CLI...");
 
     const env = { ...process.env } as NodeJS.ProcessEnv;
     if (!env.TERM) {
@@ -190,7 +215,7 @@ export async function launchGemini(prompt: string): Promise<void> {
     process.on("SIGTERM", sigtermHandler);
 
     if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
+      (process.stdin as NodeJS.ReadStream).setRawMode(true);
     }
     process.stdin.resume();
 
@@ -205,7 +230,7 @@ export async function launchGemini(prompt: string): Promise<void> {
       process.off("SIGTERM", sigtermHandler);
 
       if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
+        (process.stdin as NodeJS.ReadStream).setRawMode(false);
       }
       process.stdin.resume();
       resolve();
