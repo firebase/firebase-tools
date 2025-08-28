@@ -1,12 +1,9 @@
-// Node.js imports
 import { spawnSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-// 3rd party imports
 import type * as pty from "@lydell/node-pty";
 
-// Local imports
 import { isEnabled } from "../experiments";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -14,7 +11,6 @@ import { confirm } from "../prompt";
 import { getNeverAskAgain, setNeverAskAgain } from "./state";
 import { tail } from "./tail";
 import { Options } from "../options";
-
 import { trackGA4 } from "../track";
 
 /**
