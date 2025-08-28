@@ -1,1 +1,2 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Fixed an issue where core MCP tools would be excluded from `listTools`. (#9045)
+- Fixed an issue where the MCP server would fail to identify active projects.
