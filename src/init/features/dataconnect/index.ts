@@ -158,6 +158,20 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
       flow: info.analyticsFlow,
     });
   }
+
+  if (info.appDescription) {
+    setup.instructions.push(
+      `You can visualize the Data Connect Schema in Firebase Console:
+
+    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
+    );
+  }
+  if (!setup.isBillingEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
+  }
+  setup.instructions.push(
+    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
+  );
 }
 
 async function actuateWithInfo(
@@ -340,36 +354,6 @@ function schemasDeploySequence(
       },
     },
   ];
-}
-
-export async function postSetup(setup: Setup): Promise<void> {
-  const info = setup.featureInfo?.dataconnect;
-  if (!info) {
-    throw new Error("Data Connect feature RequiredInfo is not provided");
-  }
-
-  const instructions: string[] = [];
-  if (info.appDescription) {
-    instructions.push(
-      `You can visualize the Data Connect Schema in Firebase Console:
-
-    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
-    );
-  }
-
-  if (!setup.isBillingEnabled) {
-    instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
-  }
-  instructions.push(
-    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
-  );
-
-  if (instructions.length) {
-    logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
-    for (const i of instructions) {
-      logBullet(i + "\n");
-    }
-  }
 }
 
 async function writeFiles(

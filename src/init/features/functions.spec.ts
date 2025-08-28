@@ -26,6 +26,7 @@ function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
       },
       rcfile: { projects: {}, targets: {}, etags: {} },
       featureArg: true,
+      instructions: [],
     },
     config: new Config({ functions: [cbconfig] }, { projectDir: "test", cwd: "test" }),
   };
