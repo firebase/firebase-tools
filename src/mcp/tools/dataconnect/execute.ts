@@ -52,7 +52,9 @@ export const execute = tool(
         read_only: z
           .boolean()
           .default(false)
-          .describe("Whether the operation should be read-only. This will use a read-only endpoint."),
+          .describe(
+            "Whether the operation should be read-only. This will use a read-only endpoint.",
+          ),
       })
       .superRefine((val, ctx) => {
         if (val.query && val.operationName) {
