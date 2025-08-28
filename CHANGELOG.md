@@ -1,1 +1,2 @@
-- Add core MCP tools like `firebase_init` and `firebase_get_environment` `firebase_consult_assistant` MCP back. (#9045)
+- Fixed an issue where core MCP tools would be excluded from `listTools`. (#9045)
+- Fixed an issue where the MCP server would fail to identify active projects.

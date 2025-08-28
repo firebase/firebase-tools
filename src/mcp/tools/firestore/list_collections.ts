@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { listCollectionIds } from "../../../gcp/firestore";
-import { NO_PROJECT_ERROR } from "../../errors";
 import { Emulators } from "../../../emulator/types";
 
 export const list_collections = tool(
@@ -33,8 +32,6 @@ export const list_collections = tool(
     if (use_emulator) {
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
-
-    if (!projectId) return NO_PROJECT_ERROR;
     return toContent(await listCollectionIds(projectId, database, emulatorUrl));
   },
 );
