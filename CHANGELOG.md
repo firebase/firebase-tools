@@ -1,1 +1,1 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Add core MCP tools like `firebase_init` and `firebase_get_environment` `firebase_consult_assistant` MCP back. (#9045)

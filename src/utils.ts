@@ -992,3 +992,17 @@ export function deepEqual(a: any, b: any): boolean {
 
   return true;
 }
+
+/**
+ * Returns a unique ID that's either `recommended` or `recommended-{i}`.
+ * Avoid existing IDs.
+ */
+export function newUniqueId(recommended: string, existingIDs: string[]): string {
+  let id = recommended;
+  let i = 1;
+  while (existingIDs.includes(id)) {
+    id = `${recommended}-${i}`;
+    i++;
+  }
+  return id;
+}
