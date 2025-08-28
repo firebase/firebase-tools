@@ -40,11 +40,11 @@ export function redact(s: string): string {
 
   // Redact JSON-like key-value pairs, keeping quotes for valid JSON
   const jsonPattern =
-    /(["']?)(apiKey|client_secret|token|password|refreshToken|accessToken|GCP_TOKEN|FIREBASE_TOKEN)(["']?\s*:\s*["'])([^"']+)(["'])/gi;
+    /(['"]?)(apiKey|client_secret|token|password|refreshToken|accessToken|GCP_TOKEN|FIREBASE_TOKEN)(['"]?\s*:\s*['"])((?:[^"']|\\["'])*)(['"])/gi;
   redacted = redacted.replace(jsonPattern, "$1$2$3<REDACTED>$5");
 
   // Redact environment variable-like key-value pairs
-  const envPattern = /((?:GOOGLE_|FIREBASE_)[A-Z_]+)\s*=\s*(['"]?)[^"'\s,]+/gi;
+  const envPattern = /((?:GOOGLE_|FIREBASE_)[A-Z_]+)\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi;
   redacted = redacted.replace(envPattern, "$1=<REDACTED>");
 
   // Redact Bearer tokens
@@ -87,9 +87,7 @@ ${logLines.join("\n")}
   const sanitizedContext = redact(contextContent);
 
   const firebaseDir = path.join(process.cwd(), ".firebase");
-  if (!fs.existsSync(firebaseDir)) {
-    fs.mkdirSync(firebaseDir, { recursive: true });
-  }
+  fs.mkdirSync(firebaseDir, { recursive: true });
 
   const tempFilePath = path.join(firebaseDir, `firebase-session-context-${Date.now()}.md`);
   fs.writeFileSync(tempFilePath, sanitizedContext);
