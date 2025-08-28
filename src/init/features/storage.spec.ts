@@ -27,6 +27,7 @@ describe("storage", () => {
         rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "my-project-123",
         projectLocation: "us-central",
+        instructions: [],
       };
       const config = new Config({}, { projectDir: "test", cwd: "test" });
       promptStub.returns("storage.rules");
