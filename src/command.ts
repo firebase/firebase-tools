@@ -15,7 +15,7 @@ import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
-import { logger, useConsoleLoggers } from "./logger";
+import { useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -356,10 +356,7 @@ export class Command {
   private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    const configstoreProj = this.configstoreProject(options.projectRoot || process.cwd())
-    let activeProject: string | undefined = options.projectRoot
-      ? configstoreProj
-      : undefined;
+    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
@@ -395,25 +392,19 @@ export class Command {
   }
 
   private configstoreProject(dir: string) {
-    logger.debug(dir);
     const projectMap = configstore.get("activeProjects") ?? {};
     let currentDir = path.resolve(dir);
-
     while (true) {
-
-      logger.debug("trying " + currentDir);
       if (projectMap[currentDir]) {
-        logger.debug("active project is " + currentDir);
         return projectMap[currentDir];
       }
       const parentDir = path.dirname(currentDir);
       if (parentDir === currentDir) {
-        return null; 
+        return null;
       }
       currentDir = parentDir;
     }
   }
-
 
   private async resolveProjectIdentifiers(options: {
     project?: string;

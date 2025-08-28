@@ -2,7 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { listCollectionIds } from "../../../gcp/firestore";
-import { NO_PROJECT_ERROR } from "../../errors";
 import { Emulators } from "../../../emulator/types";
 
 export const list_collections = tool(
