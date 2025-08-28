@@ -7,7 +7,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
+import { pickService } from "../dataconnect/load";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";

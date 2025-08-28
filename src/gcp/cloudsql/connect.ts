@@ -105,7 +105,7 @@ export async function execute(
     sqlStatements.push("COMMIT;");
   }
   for (const s of sqlStatements) {
-    logFn(`Executing: '${s}'`);
+    logFn(`> ${s}`);
     try {
       results.push(await conn.query(s));
     } catch (err) {
@@ -117,6 +117,7 @@ export async function execute(
   }
 
   await cleanUpFn();
+  logFn(``);
   return results;
 }
 
@@ -155,7 +156,7 @@ export async function executeSqlCmdsAsSuperUser(
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
+  const temporaryPassword = utils.generatePassword(20);
   await cloudSqlAdminClient.createUser(
     projectId,
     instanceId,
@@ -194,11 +195,7 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
 // Steps:
 // 1. Create an IAM user for the current identity
 // 2. Create an IAM user for FDC P4SA
-export async function setupIAMUsers(
-  instanceId: string,
-  databaseId: string,
-  options: Options,
-): Promise<string> {
+export async function setupIAMUsers(instanceId: string, options: Options): Promise<string> {
   // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
   const projectId = needProjectId(options);
 

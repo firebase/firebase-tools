@@ -1,5 +1,9 @@
 ## NEXT
 
+## 1.6.1
+
+- Update internal `firebase-tools` dependency to 14.13.0
+
 ## 1.6.0
 
 - Update internal `firebase-tools` dependency to 14.11.1

@@ -8,6 +8,7 @@ import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
 import { Options } from "../options";
+import { trackGA4 } from "../track";
 
 export interface Setup {
   config: FirebaseConfig;
@@ -15,6 +16,11 @@ export interface Setup {
   features?: string[];
   featureArg?: boolean;
   featureInfo?: SetupInfo;
+
+  // Each feature init flow may add instructions.
+  // They will be displayed at the end of `firebase init` or
+  // return back to `firebase_init` MCP tools.
+  instructions: string[];
 
   /** Basic Project information */
   project?: Record<string, any>;
@@ -29,6 +35,7 @@ export interface SetupInfo {
   database?: features.DatabaseInfo;
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
+  dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
 }
@@ -64,9 +71,12 @@ const featuresList: Feature[] = [
     name: "dataconnect",
     askQuestions: features.dataconnectAskQuestions,
     actuate: features.dataconnectActuate,
-    postSetup: features.dataconnectPostSetup,
   },
-  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  {
+    name: "dataconnect:sdk",
+    askQuestions: features.dataconnectSdkAskQuestions,
+    actuate: features.dataconnectSdkActuate,
+  },
   { name: "functions", doSetup: features.functions },
   { name: "hosting", doSetup: features.hosting },
   {
@@ -86,6 +96,7 @@ const featuresList: Feature[] = [
     askQuestions: features.apptestingAskQuestions,
     actuate: features.apptestingAcutate,
   },
+  { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
@@ -93,6 +104,8 @@ const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
+    const start = process.uptime();
+
     const f = featureMap.get(nextFeature);
     if (!f) {
       const availableFeatures = Object.keys(features)
@@ -120,13 +133,20 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
     if (f.postSetup) {
       await f.postSetup(setup, config, options);
     }
+
+    const duration = Math.floor((process.uptime() - start) * 1000);
+    await trackGA4("product_init", { feature: nextFeature }, duration);
+
     return init(setup, config, options);
   }
 }
 
+/** Actuate the feature init flow from firebase_init MCP tool. */
 export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
+    const start = process.uptime();
+
     const f = lookupFeature(nextFeature);
     logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
 
@@ -139,6 +159,10 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
         await f.actuate(setup, config, options);
       }
     }
+
+    const duration = Math.floor((process.uptime() - start) * 1000);
+    await trackGA4("product_init_mcp", { feature: nextFeature }, duration);
+
     return actuate(setup, config, options);
   }
 }

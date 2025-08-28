@@ -11,6 +11,8 @@ type cliEventNames =
   | "command_execution"
   | "product_deploy"
   | "product_init"
+  | "product_init_mcp"
+  | "dataconnect_init"
   | "error"
   | "login"
   | "api_enabled"
@@ -23,7 +25,9 @@ type cliEventNames =
   | "function_deploy_group"
   | "mcp_tool_call"
   | "mcp_list_tools"
-  | "mcp_client_connected";
+  | "mcp_client_connected"
+  | "mcp_list_prompts"
+  | "mcp_get_prompt";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;

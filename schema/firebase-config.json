@@ -88,6 +88,9 @@
                 "database": {
                     "type": "string"
                 },
+                "edition": {
+                    "type": "string"
+                },
                 "indexes": {
                     "type": "string"
                 },
@@ -244,6 +247,9 @@
                 "codebase": {
                     "type": "string"
                 },
+                "configDir": {
+                    "type": "string"
+                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -275,6 +281,9 @@
                             "type": "string"
                         }
                     ]
+                },
+                "prefix": {
+                    "type": "string"
                 },
                 "runtime": {
                     "enum": [

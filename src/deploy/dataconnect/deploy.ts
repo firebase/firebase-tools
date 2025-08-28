@@ -3,7 +3,7 @@ import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
 import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
@@ -43,7 +43,7 @@ export default async function (
     .filter((si) => {
       return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
     });
-  // When --only filters are passed, don't delete anything.
+
   const servicesToDelete = filters
     ? []
     : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
@@ -56,13 +56,13 @@ export default async function (
   );
 
   if (servicesToDelete.length) {
+    const serviceToDeleteList = servicesToDelete.map((s) => " - " + s.name).join("\n");
     if (
       await confirm({
-        force: options.force,
+        force: false, // Don't delete anything in --force.
         nonInteractive: options.nonInteractive,
-        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
-          .map((s) => s.name)
-          .join("\n")}\nWould you like to delete these services?`,
+        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${serviceToDeleteList}\nWould you like to delete these services?`,
+        default: false,
       })
     ) {
       await Promise.all(
@@ -85,19 +85,17 @@ export default async function (
       .map(async (s) => {
         const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
         if (postgresDatasource) {
-          const instanceId = postgresDatasource.postgresql?.cloudSql.instance.split("/").pop();
+          const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
           const databaseId = postgresDatasource.postgresql?.database;
           if (!instanceId || !databaseId) {
             return Promise.resolve();
           }
-          const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-          return provisionCloudSql({
+          return setupCloudSql({
             projectId,
             location: parseServiceName(s.serviceName).location,
             instanceId,
             databaseId,
-            enableGoogleMlIntegration,
-            waitForCreation: true,
+            requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
           });
         }
       }),

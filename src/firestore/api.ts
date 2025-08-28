@@ -5,6 +5,7 @@ import * as utils from "../utils";
 import * as validator from "./validator";
 
 import * as types from "./api-types";
+import { DatabaseEdition, Density } from "./api-types";
 import * as Spec from "./api-spec";
 import * as sort from "./api-sort";
 import * as util from "./util";
@@ -13,6 +14,7 @@ import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
+import { optionalValueMatches } from "../functional";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
@@ -74,8 +76,10 @@ export class FirestoreApi {
       databaseId,
     );
 
+    const database = await this.getDatabase(options.project, databaseId);
+    const edition = database.databaseEdition ?? DatabaseEdition.STANDARD;
     const indexesToDelete = existingIndexes.filter((index) => {
-      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec));
+      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec, edition));
     });
 
     // We only want to delete fields where there is nothing in the local file with the same
@@ -127,7 +131,7 @@ export class FirestoreApi {
     }
 
     for (const index of indexesToDeploy) {
-      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
+      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index, edition));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
       } else {
@@ -244,6 +248,10 @@ export class FirestoreApi {
         collectionGroup: util.parseIndexName(index.name).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
       };
     });
 
@@ -266,6 +274,10 @@ export class FirestoreApi {
             order: firstField.order,
             arrayConfig: firstField.arrayConfig,
             queryScope: index.queryScope,
+            apiScope: index.apiScope,
+            density: index.density,
+            multikey: index.multikey,
+            unique: index.unique,
           };
         }),
       };
@@ -304,6 +316,25 @@ export class FirestoreApi {
     validator.assertHas(index, "collectionGroup");
     validator.assertHas(index, "queryScope");
     validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
+
+    if (index.apiScope) {
+      validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+    }
+
+    if (index.density) {
+      validator.assertEnum(index, "density", Object.keys(types.Density));
+    }
+
+    if (index.multikey) {
+      validator.assertType("multikey", index.multikey, "boolean");
+    }
+
+    if (index.unique !== undefined) {
+      validator.assertType("unique", index.unique, "boolean");
+      // TODO(b/439901837): Remove this check and update indexMatchesSpec once
+      //  unique index configuration is supported.
+      throw new FirebaseError("The `unique` index configuration is not supported yet.");
+    }
 
     validator.assertHas(index, "fields");
 
@@ -353,6 +384,22 @@ export class FirestoreApi {
       if (index.queryScope) {
         validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
       }
+
+      if (index.apiScope) {
+        validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+      }
+
+      if (index.density) {
+        validator.assertEnum(index, "density", Object.keys(types.Density));
+      }
+
+      if (index.multikey) {
+        validator.assertType("multikey", index.multikey, "boolean");
+      }
+
+      if (index.unique) {
+        validator.assertType("unique", index.unique, "boolean");
+      }
     });
   }
 
@@ -373,6 +420,10 @@ export class FirestoreApi {
     const indexes = spec.indexes.map((index) => {
       return {
         queryScope: index.queryScope,
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
         fields: [
           {
             fieldPath: spec.fieldPath,
@@ -420,6 +471,10 @@ export class FirestoreApi {
     return this.apiClient.post(url, {
       fields: index.fields,
       queryScope: index.queryScope,
+      apiScope: index.apiScope,
+      density: index.density,
+      multikey: index.multikey,
+      unique: index.unique,
     });
   }
 
@@ -432,9 +487,50 @@ export class FirestoreApi {
   }
 
   /**
+   * Returns true if the given ApiScope values match.
+   * If either one is undefined, the default value is used for comparison.
+   * @param lhs the first ApiScope value.
+   * @param rhs the second ApiScope value.
+   */
+  optionalApiScopeMatches(
+    lhs: types.ApiScope | undefined,
+    rhs: types.ApiScope | undefined,
+  ): boolean {
+    return optionalValueMatches<types.ApiScope>(lhs, rhs, types.ApiScope.ANY_API);
+  }
+
+  /**
+   * Returns true if the given Density values match.
+   * If either one is undefined, the default value is used for comparison based on Database Edition.
+   * @param lhs the first Density value.
+   * @param rhs the second Density value.
+   * @param edition the database edition used to determine the default value.
+   */
+  optionalDensityMatches(
+    lhs: Density | undefined,
+    rhs: Density | undefined,
+    edition: types.DatabaseEdition,
+  ): boolean {
+    const defaultValue =
+      edition === DatabaseEdition.STANDARD ? types.Density.SPARSE_ALL : types.Density.DENSE;
+    return optionalValueMatches<types.Density>(lhs, rhs, defaultValue);
+  }
+
+  /**
+   * Returns true if the given Multikey values match.
+   * If either one is undefined, the default value is used for comparison.
+   * @param lhs the first Multikey value.
+   * @param rhs the second Multikey value.
+   */
+  optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined): boolean {
+    const defaultValue = false;
+    return optionalValueMatches<boolean>(lhs, rhs, defaultValue);
+  }
+
+  /**
    * Determine if an API Index and a Spec Index are functionally equivalent.
    */
-  indexMatchesSpec(index: types.Index, spec: Spec.Index): boolean {
+  indexMatchesSpec(index: types.Index, spec: Spec.Index, edition: types.DatabaseEdition): boolean {
     const collection = util.parseIndexName(index.name).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
@@ -443,6 +539,25 @@ export class FirestoreApi {
     if (index.queryScope !== spec.queryScope) {
       return false;
     }
+
+    // apiScope is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalApiScopeMatches(index.apiScope, spec.apiScope)) {
+      return false;
+    }
+
+    // density is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalDensityMatches(index.density, spec.density, edition)) {
+      return false;
+    }
+    // multikey is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalMultikeyMatches(index.multikey, spec.multikey)) {
+      return false;
+    }
+
+    // TODO(b/439901837): Compare `unique` index configuration when it's supported.
 
     if (index.fields.length !== spec.fields.length) {
       return false;
@@ -462,6 +577,11 @@ export class FirestoreApi {
       }
 
       if (iField.arrayConfig !== sField.arrayConfig) {
+        return false;
+      }
+
+      // Note: vectorConfig is an object, and using '!==' should not be used.
+      if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
         return false;
       }
 
@@ -549,11 +669,23 @@ export class FirestoreApi {
     }
 
     result.indexes = spec.indexes.map((index: any) => {
-      const i = {
+      const i: any = {
         collectionGroup: index.collectionGroup || index.collectionId,
         queryScope: index.queryScope || types.QueryScope.COLLECTION,
-        fields: [],
       };
+
+      if (index.apiScope) {
+        i.apiScope = index.apiScope;
+      }
+      if (index.density) {
+        i.density = index.density;
+      }
+      if (index.multikey !== undefined) {
+        i.multikey = index.multikey;
+      }
+      if (index.unique !== undefined) {
+        i.unique = index.unique;
+      }
 
       if (index.fields) {
         i.fields = index.fields.map((field: any) => {
@@ -638,6 +770,7 @@ export class FirestoreApi {
     const payload: types.DatabaseReq = {
       locationId: req.locationId,
       type: req.type,
+      databaseEdition: req.databaseEdition,
       deleteProtectionState: req.deleteProtectionState,
       pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
       cmekConfig: req.cmekConfig,

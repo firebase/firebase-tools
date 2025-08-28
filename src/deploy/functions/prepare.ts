@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
+import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -10,6 +11,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import * as experiments from "../../experiments";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -86,17 +88,18 @@ export async function prepare(
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   context.firebaseConfig = firebaseConfig;
-  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  if (checkAPIsEnabled[1]) {
-    // If runtime config API is enabled, load the runtime config.
-    const config = await getFunctionsConfig(projectId);
-    runtimeConfig = { ...runtimeConfig, ...config };
-    context.hasRuntimeConfig = Object.keys(config).length > 0;
-  }
 
   context.codebaseDeployEvents = {};
 
-  // ===Phase 1. Load codebases from source.
+  // ===Phase 1. Load codebases from source with optional runtime config.
+  let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
+  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
+
+  // Load runtime config if experiment allows it and API is enabled
+  if (allowFunctionsConfig && checkAPIsEnabled[1]) {
+    runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
+  }
+
   const wantBuilds = await loadCodebases(
     context.config,
     options,
@@ -125,6 +128,7 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
+    proto.convertIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
@@ -153,14 +157,15 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
+      endpoint.environmentVariables = { ...(wantBackend.environmentVariables || {}) };
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         // N.B. If GCF starts allowing v1's allowable characters in IDs they're
         // going to need to have a transform to create a service ID (which has a
         // more restrictive character set). We'll need to reimplement that here.
+        // BUG BUG BUG. This has happened and we need to fix it.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
       } else {
         assertExhaustive(endpoint.platform);
@@ -473,14 +478,16 @@ export async function loadCodebases(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
-    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, {
+    const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
       // in order for .init() calls to succeed.
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
-    wantBuilds[codebase].runtime = codebaseConfig.runtime;
+    discoveredBuild.runtime = codebaseConfig.runtime;
+    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
 }

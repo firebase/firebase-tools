@@ -15,7 +15,7 @@ import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
-import { trackGA4 } from "../track";
+import { logBullet } from "../utils";
 
 const homeDir = os.homedir();
 
@@ -117,6 +117,13 @@ if (isEnabled("apptesting")) {
   });
 }
 
+choices.push({
+  value: "aitools",
+  name: "AI Tools: Configure AI coding assistants to work with your Firebase project",
+  checked: false,
+  hidden: true,
+});
+
 const featureNames = choices.map((choice) => choice.value);
 
 const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
@@ -149,8 +156,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
         ".",
     );
   }
-
-  const start = process.uptime();
 
   const cwd = options.cwd || process.cwd();
 
@@ -193,6 +198,7 @@ export async function initAction(feature: string, options: Options): Promise<voi
       json: true,
       fallback: {},
     }),
+    instructions: [],
   };
 
   // HACK: Windows Node has issues with selectables as the first prompt, so we
@@ -248,6 +254,10 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
     setup.features = setup.features.filter((f) => f !== "hosting:github");
   }
+  // "dataconnect:sdk" is a part of "dataconnect", so if both are selected, "dataconnect:sdk" is ignored.
+  if (setup.features.includes("dataconnect") && setup.features.includes("dataconnect:sdk")) {
+    setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
+  }
 
   await init(setup, config, options);
 
@@ -257,10 +267,13 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
     config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
   }
-  const duration = Math.floor((process.uptime() - start) * 1000);
-
-  await trackGA4("product_init", { products_initialized: setup.features?.join(",") }, duration);
-
   logger.info();
   utils.logSuccess("Firebase initialization complete!");
+
+  if (setup.instructions.length) {
+    logger.info(`\n${clc.bold("To get started:")}\n`);
+    for (const i of setup.instructions) {
+      logBullet(i + "\n");
+    }
+  }
 }

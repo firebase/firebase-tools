@@ -1,0 +1,1 @@
+- Add core MCP tools like `firebase_init` and `firebase_get_environment` `firebase_consult_assistant` MCP back. (#9045)

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "14.11.2",
+  "version": "14.15.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -23,7 +23,7 @@
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
-    "mocha": "nyc mocha 'src/**/*.spec.{ts,js}'",
+    "mocha": "nyc --reporter=html mocha 'src/**/*.spec.{ts,js}'",
     "prepare": "npm run clean && npm run build:publish",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:apptesting": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/apptesting/*.spec.{ts,js}'",
@@ -243,7 +243,7 @@
     "firebase-functions": "^4.3.1",
     "google-discovery-to-swagger": "^2.1.0",
     "googleapis": "^105.0.0",
-    "mocha": "^9.1.3",
+    "mocha": "^11.7.1",
     "mock-fs": "5.2.0",
     "next": "^14.1.0",
     "nock": "^13.0.5",
