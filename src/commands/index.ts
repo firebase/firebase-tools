@@ -115,6 +115,7 @@ export function load(client: any): any {
   client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.databases.clone = loadCommand("firestore-databases-clone");
   client.firestore.backups = {};
   client.firestore.backups.schedules = {};
   client.firestore.backups.list = loadCommand("firestore-backups-list");
