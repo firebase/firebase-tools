@@ -1,13 +1,9 @@
-// Node.js imports
 import { spawnSync } from "child_process";
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
-// 3rd party imports
-import * as pty from "@lydell/node-pty";
+import type * as pty from "@lydell/node-pty";
 
-// Local imports
 import { isEnabled } from "../experiments";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -31,16 +27,29 @@ export function isGeminiInstalled(): boolean {
 }
 
 /**
- * Redacts sensitive information from a string.
+ * Redacts sensitive information from a string, preserving keys.
  */
-function redact(s: string): string {
-  const tokenRegex =
-    /(Bearer|access_token|refresh_token|GCP_TOKEN|refreshToken|accessToken)\s*:\s*["']?([^"'\s,]+)/gi;
-  const privateKeyRegex = /-----BEGIN PRIVATE KEY-----\s*\n[\s\S]*?\s*-----END PRIVATE KEY-----/g;
+export function redact(s: string): string {
+  let redacted = s;
 
-  return s
-    .replace(tokenRegex, "$1: <REDACTED>")
-    .replace(privateKeyRegex, "<REDACTED PEM PRIVATE KEY>");
+  // Redact JSON-like key-value pairs, keeping quotes for valid JSON
+  const jsonPattern =
+    /(["']?)(apiKey|client_secret|token|password|refreshToken|accessToken|GCP_TOKEN|FIREBASE_TOKEN)(["']?\s*:\s*["'])([^"']+)(["'])/gi;
+  redacted = redacted.replace(jsonPattern, "$1$2$3<REDACTED>$5");
+
+  // Redact environment variable-like key-value pairs
+  const envPattern = /((?:GOOGLE_|FIREBASE_)[A-Z_]+)\s*=\s*(['"]?)[^"'\s,]+/gi;
+  redacted = redacted.replace(envPattern, "$1=<REDACTED>");
+
+  // Redact Bearer tokens
+  const bearerPattern = /(Bearer\s+)[^"'\s,]+/gi;
+  redacted = redacted.replace(bearerPattern, "$1<REDACTED>");
+
+  // Redact PEM private keys
+  const privateKeyPattern = /-----BEGIN PRIVATE KEY-----\s*[\s\S]*?\s*-----END PRIVATE KEY-----/g;
+  redacted = redacted.replace(privateKeyPattern, "<REDACTED PEM PRIVATE KEY>");
+
+  return redacted;
 }
 
 /**
@@ -119,83 +128,86 @@ export async function maybeLaunchGemini(
   const contextPath = await createSessionContext(error, logFilePath);
   const prompt = `The firebase command failed with the error: '${error.message}'. I have a context file with logs that might help: ${contextPath}`;
 
-  await launchGemini(prompt);
+  try {
+    await launchGemini(prompt);
+  } finally {
+    // Clean up the context file
+    try {
+      fs.unlinkSync(contextPath);
+    } catch (e) {
+      logger.debug(`Failed to delete context file: ${contextPath}`, e);
+    }
+  }
 }
 
 /**
  * Launches the Gemini CLI in an interactive pty session.
  */
-export function launchGemini(prompt: string): Promise<void> {
+export async function launchGemini(prompt: string): Promise<void> {
+  if (!process.stdout.isTTY) {
+    return;
+  }
+
+  const pty = await import("@lydell/node-pty");
+
   return new Promise((resolve) => {
     logger.info("Connecting to Gemini...");
 
-    const ptyProcess = pty.spawn("gemini", ["-i", prompt], {
-      name: "xterm-color",
-      cols: process.stdout.columns,
-      rows: process.stdout.rows,
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        PATH: process.env.PATH,
-        HOME: process.env.HOME,
-        USER: process.env.USER,
-      },
-      handleFlowControl: true,
-    });
+    const env = { ...process.env } as NodeJS.ProcessEnv;
+    if (!env.TERM) {
+      env.TERM = "xterm-256color";
+    }
 
-    const originalSigintListeners = process.listeners("SIGINT");
-    const originalSigtermListeners = process.listeners("SIGTERM");
-
-    process.removeAllListeners("SIGINT");
-    process.removeAllListeners("SIGTERM");
-
-    const cleanup = (): void => {
-      process.stdout.removeListener("resize", onResize);
-      process.stdin.removeListener("data", dataListener);
-
-      process.removeAllListeners("SIGINT");
-      process.removeAllListeners("SIGTERM");
-      originalSigintListeners.forEach((listener) =>
-        process.on("SIGINT", listener as (...args: any[]) => void),
-      );
-      originalSigtermListeners.forEach((listener) =>
-        process.on("SIGTERM", listener as (...args: any[]) => void),
-      );
-
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
-      }
-      process.stdin.resume();
-    };
-
-    const signalHandler = (signal: NodeJS.Signals) => {
-      return () => {
-        ptyProcess.kill(signal);
-      };
-    };
-
-    process.on("SIGINT", signalHandler("SIGINT"));
-    process.on("SIGTERM", signalHandler("SIGTERM"));
-
-    const dataListener = (data: Buffer): void => {
-      ptyProcess.write(data.toString());
-    };
-    process.stdin.on("data", dataListener);
-
-    ptyProcess.onData((data: string) => {
-      process.stdout.write(data);
-    });
+    let ptyProcess: pty.IPty;
+    try {
+      ptyProcess = pty.spawn("gemini", ["-i", prompt], {
+        name: "xterm-color",
+        cols: process.stdout.columns,
+        rows: process.stdout.rows,
+        cwd: process.cwd(),
+        env,
+      });
+    } catch (e) {
+      logger.warn("Couldn’t launch Gemini CLI. Is it installed and in your PATH?");
+      logger.debug("Failed to launch Gemini CLI", e);
+      resolve();
+      return;
+    }
 
     const onResize = (): void => {
       ptyProcess.resize(process.stdout.columns, process.stdout.rows);
     };
     process.stdout.on("resize", onResize);
 
-    process.stdin.setRawMode(true);
+    const dataListener = (data: Buffer): void => {
+      ptyProcess.write(data.toString());
+    };
+    process.stdin.on("data", dataListener);
+
+    const sigintHandler = (): void => ptyProcess.kill("SIGINT");
+    const sigtermHandler = (): void => ptyProcess.kill("SIGTERM");
+    process.on("SIGINT", sigintHandler);
+    process.on("SIGTERM", sigtermHandler);
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
     process.stdin.resume();
 
-    ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
-      cleanup();
+    ptyProcess.onData((data: string) => {
+      process.stdout.write(data);
+    });
+
+    ptyProcess.onExit(() => {
+      process.stdout.removeListener("resize", onResize);
+      process.stdin.removeListener("data", dataListener);
+      process.off("SIGINT", sigintHandler);
+      process.off("SIGTERM", sigtermHandler);
+
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.resume();
       resolve();
     });
   });
