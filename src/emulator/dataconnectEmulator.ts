@@ -22,7 +22,6 @@ import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
-import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
 import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
@@ -263,13 +262,16 @@ export class DataConnectEmulator implements EmulatorInstance {
         });
       } catch (e: any) {
         if (isIncomaptibleArchError(e)) {
-          throw new FirebaseError(
-            `Unknown system error when running the Data Connect toolkit. ` +
-              `You may be able to fix this by installing Rosetta: ` +
-              `softwareupdate --install-rosetta`,
+          reject(
+            new FirebaseError(
+              `Unknown system error when running the Data Connect toolkit. ` +
+                `You may be able to fix this by installing Rosetta: ` +
+                `softwareupdate --install-rosetta`,
+            ),
           );
+        } else {
+          reject(e);
         }
-        throw e;
       }
     });
   }
