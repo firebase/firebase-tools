@@ -321,6 +321,9 @@ export async function resolveBackend(
 }
 
 // Exported for testing
+/**
+ *
+ */
 export function envWithTypes(
   definedParams: params.Param[],
   rawEnvs: Record<string, string>,
@@ -650,4 +653,42 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     return { taskQueueTrigger };
   }
   assertExhaustive(endpoint);
+}
+
+/**
+ * Prefixes all endpoint IDs and secret names in a build with a given prefix.
+ * This ensures that functions and their associated secrets from different codebases
+ * remain isolated and don't conflict when deployed to the same project.
+ */
+export function applyPrefix(build: Build, prefix: string): void {
+  if (!prefix) {
+    return;
+  }
+  const newEndpoints: Record<string, Endpoint> = {};
+  for (const [id, endpoint] of Object.entries(build.endpoints)) {
+    const newId = `${prefix}-${id}`;
+
+    // Enforce function id constraints early for clearer errors.
+    if (newId.length > 63) {
+      throw new FirebaseError(
+        `Function id '${newId}' exceeds 63 characters after applying prefix '${prefix}'. Please shorten the prefix or function name.`,
+      );
+    }
+    const fnIdRegex = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
+    if (!fnIdRegex.test(newId)) {
+      throw new FirebaseError(
+        `Function id '${newId}' is invalid after applying prefix '${prefix}'. Function names must start with a letter and can contain letters, numbers, underscores, and hyphens, with a maximum length of 63 characters.`,
+      );
+    }
+
+    newEndpoints[newId] = endpoint;
+
+    if (endpoint.secretEnvironmentVariables) {
+      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
+        ...secret,
+        secret: `${prefix}-${secret.secret}`,
+      }));
+    }
+  }
+  build.endpoints = newEndpoints;
 }

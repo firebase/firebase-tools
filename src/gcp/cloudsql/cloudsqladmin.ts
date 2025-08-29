@@ -1,4 +1,4 @@
-import { Client, ClientResponse } from "../../apiv2";
+import { Client } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
@@ -63,16 +63,14 @@ export async function createInstance(args: {
   location: string;
   instanceId: string;
   enableGoogleMlIntegration: boolean;
-  waitForCreation: boolean;
   freeTrial: boolean;
-}): Promise<Instance | undefined> {
+}): Promise<void> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
   }
-  let op: ClientResponse<Operation>;
   try {
-    op = await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
+    await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
       name: args.instanceId,
       region: args.location,
       databaseVersion: "POSTGRES_15",
@@ -93,22 +91,11 @@ export async function createInstance(args: {
         },
       },
     });
+    return;
   } catch (err: any) {
     handleAllowlistError(err, args.location);
     throw err;
   }
-  if (!args.waitForCreation) {
-    return;
-  }
-  const opName = `projects/${args.projectId}/operations/${op.body.name}`;
-  const pollRes = await operationPoller.pollOperation<Instance>({
-    apiOrigin: cloudSQLAdminOrigin(),
-    apiVersion: API_VERSION,
-    operationResourceName: opName,
-    doneFn: (op: Operation) => op.status === "DONE",
-    masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
-  });
-  return pollRes;
 }
 
 /**

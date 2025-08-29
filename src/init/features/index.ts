@@ -26,9 +26,12 @@ export {
   askQuestions as dataconnectAskQuestions,
   RequiredInfo as DataconnectInfo,
   actuate as dataconnectActuate,
-  postSetup as dataconnectPostSetup,
 } from "./dataconnect";
-export { doSetup as dataconnectSdk } from "./dataconnect/sdk";
+export {
+  askQuestions as dataconnectSdkAskQuestions,
+  SdkRequiredInfo as DataconnectSdkInfo,
+  actuate as dataconnectSdkActuate,
+} from "./dataconnect/sdk";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
 export {
