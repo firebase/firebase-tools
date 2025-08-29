@@ -1,3 +1,5 @@
+export const NAMESPACE_FIREBASE = "firebase";
+
 export enum TagColor {
   BLUE = "Blue",
   BROWN = "Brown",
@@ -93,4 +95,55 @@ export interface RemoteConfigUser {
   email: string;
   name?: string;
   imageUrl?: string;
+}
+
+/** Interface representing a Remote Config experiment. */
+export interface GetExperimentResult {
+  name: string;
+  definition: ExperimentDefinition;
+  state: string;
+  startTime: string;
+  endTime: string;
+  lastUpdateTime: string;
+  etag: string;
+}
+
+/** Interface representing the definition of a Remote Config experiment. */
+interface ExperimentDefinition {
+  displayName: string;
+  description?: string;
+  service: string;
+  objectives: ExperimentObjectives;
+  variants: ExperimentVariant[];
+}
+
+/** Interface representing all objectives of a Remote Config experiment. */
+interface ExperimentObjectives {
+  activationEvent: { event?: string };
+  eventObjectives: ExperimentEventObjectives[];
+}
+
+/** Type representing the event objectives of a Remote Config experiment. */
+type ExperimentEventObjectives = {
+  isPrimary?: boolean;
+} & (
+  | { systemObjectiveDetails: ExperimentSystemObjectiveDetails; customObjectiveDetails?: never }
+  | { customObjectiveDetails: ExperimentCustomObjectiveDetails; systemObjectiveDetails?: never }
+);
+
+/** Interface representing system objectives of a Remote Config experiment. */
+interface ExperimentSystemObjectiveDetails {
+  objective: string;
+}
+
+/** Interface representing custom objectives of a Remote Config experiment. */
+interface ExperimentCustomObjectiveDetails {
+  event: string;
+  countType: string;
+}
+
+/** Interface representing an experiment variant. */
+interface ExperimentVariant {
+  name: string;
+  weight: number;
 }
