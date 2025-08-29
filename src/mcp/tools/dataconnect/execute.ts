@@ -1,75 +1,32 @@
 import { z } from "zod";
 
 import { tool } from "../../tool";
-import { mcpError } from "../../util";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
 import { pickService } from "../../../dataconnect/load";
-import { graphqlResponseToToolResponse, parseVariables } from "./converter";
+import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
+import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
-import { getDataConnectEmulatorClient } from "./emulator";
 
 export const execute = tool(
   {
     name: "execute",
     description: "Executes a GraphQL operation against a Data Connect service or its emulator.",
-    inputSchema: z
-      .object({
-        // Either query or operationName must be provided.
-        query: z
-          .string()
-          .optional()
-          .describe(
-            "A GraphQL query or mutation to execute against the service. Cannot be used with operationName.",
-          ),
-        operationName: z
-          .string()
-          .optional()
-          .describe(
-            "The name of the deployed operation you want to execute. Cannot be used with query.",
-          ),
-        service_id: z
-          .string()
-          .optional()
-          .describe(
-            "The Firebase Data Connect service ID to look for. If there is only one service defined in firebase.json, this can be omitted and that will be used.",
-          ),
-        connector_id: z
-          .string()
-          .optional()
-          .describe(
-            "The Firebase Data Connect connector ID to look for. Only used with operationName. If there is only one connector defined in dataconnect.yaml, this can be omitted and that will be used.",
-          ),
-        variables: z
-          .string()
-          .optional()
-          .describe(
-            "A stringified JSON object containing variables for the operation. MUST be valid JSON.",
-          ),
-        use_emulator: z
-          .boolean()
-          .default(false)
-          .describe("Target the DataConnect emulator if true."),
-      })
-      .superRefine((val, ctx) => {
-        if (val.query && val.operationName) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Cannot provide both query and operationName.",
-          });
-        }
-        if (!val.query && !val.operationName) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Must provide either query or operationName.",
-          });
-        }
-        if (val.connector_id && !val.operationName) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "connector_id can only be used with operationName.",
-          });
-        }
-      }),
+    inputSchema: z.object({
+      query: z.string().describe("A GraphQL query or mutation to execute against the service."),
+      service_id: z
+        .string()
+        .optional()
+        .describe(
+          "The Firebase Data Connect service ID to look for. If there is only one service defined in firebase.json, this can be omitted and that will be used.",
+        ),
+      variables: z
+        .string()
+        .optional()
+        .describe(
+          "A stringified JSON object containing variables for the operation. MUST be valid JSON.",
+        ),
+      use_emulator: z.boolean().default(false).describe("Target the DataConnect emulator if true."),
+    }),
     annotations: {
       title: "Execute Data Connect Operation",
     },
@@ -79,53 +36,25 @@ export const execute = tool(
     },
   },
   async (
-    { query, operationName, service_id, connector_id, variables: unparsedVariables, use_emulator },
+    { query, service_id, variables: unparsedVariables, use_emulator },
     { projectId, config, host },
   ) => {
     const serviceInfo = await pickService(projectId, config, service_id || undefined);
-
     let apiClient: Client;
     if (use_emulator) {
       apiClient = await getDataConnectEmulatorClient(host);
     } else {
       apiClient = dataplane.dataconnectDataplaneClient();
     }
-
-    if (query) {
-      let executeGraphQL = dataplane.executeGraphQL;
-      if (query.startsWith("query")) {
-        executeGraphQL = dataplane.executeGraphQLRead;
-      }
-      const response = await executeGraphQL(apiClient, serviceInfo.serviceName, {
-        name: "",
-        query,
-        variables: parseVariables(unparsedVariables),
-      });
-      return graphqlResponseToToolResponse(response.body);
-    } else if (operationName) {
-      if (!connector_id) {
-        if (serviceInfo.connectorInfo.length === 0) {
-          return mcpError(
-            `Service ${serviceInfo.serviceName} has no connectors`,
-            "NO_CONNECTORS_FOUND",
-          );
-        }
-        if (serviceInfo.connectorInfo.length > 1) {
-          return mcpError(
-            `Service ${serviceInfo.serviceName} has more than one connector. Please use the connector_id argument to specify which connector this operation is part of.`,
-            "MULTIPLE_CONNECTORS_FOUND",
-          );
-        }
-        connector_id = serviceInfo.connectorInfo[0].connectorYaml.connectorId;
-      }
-      const connectorPath = `${serviceInfo.serviceName}/connectors/${connector_id}`;
-      const response = await dataplane.executeGraphQLMutation(apiClient, connectorPath, {
-        operationName,
-        variables: parseVariables(unparsedVariables),
-      });
-      return graphqlResponseToToolResponse(response.body);
+    let executeGraphQL = dataplane.executeGraphQL;
+    if (query.startsWith("query")) {
+      executeGraphQL = dataplane.executeGraphQLRead;
     }
-    // This should not be reached due to the superRefine
-    return mcpError("Invalid input: must provide either query or operationName.", "INVALID_INPUT");
+    const response = await executeGraphQL(apiClient, serviceInfo.serviceName, {
+      name: "",
+      query,
+      variables: parseVariables(unparsedVariables),
+    });
+    return graphqlResponseToToolResponse(response.body);
   },
 );
