@@ -99,6 +99,11 @@ export const command = new Command("functions:config:export")
   .action(async (options: Options) => {
     const config = normalizeAndValidate(options.config.src.functions)[0];
     const functionsDir = resolveConfigDir(config);
+    if (!functionsDir) {
+      throw new FirebaseError(
+        "functions:config:export requires a local env directory. Set functions[].configDir in firebase.json when using remoteSource.",
+      );
+    }
 
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);

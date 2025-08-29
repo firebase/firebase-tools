@@ -278,4 +278,48 @@ describe("projectConfig", () => {
       ).to.throw(FirebaseError, /functions.codebase must be unique/);
     });
   });
+
+  describe("helpers", () => {
+    it("isLocalConfig / isRemoteConfig narrow correctly", () => {
+      const local = projectConfig.validate([{ source: "local" }])[0];
+      const remote = projectConfig.validate([
+        { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
+      ])[0];
+
+      expect(projectConfig.isLocalConfig(local)).to.equal(true);
+      expect(projectConfig.isRemoteConfig(local)).to.equal(false);
+      expect(projectConfig.isLocalConfig(remote)).to.equal(false);
+      expect(projectConfig.isRemoteConfig(remote)).to.equal(true);
+    });
+
+    it("requireLocal returns local and throws for remote", () => {
+      const local = projectConfig.validate([{ source: "local" }])[0];
+      const remote = projectConfig.validate([
+        { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
+      ])[0];
+
+      expect(() => projectConfig.requireLocal(local)).to.not.throw();
+      expect(() => projectConfig.requireLocal(remote, "msg")).to.throw(FirebaseError, /msg/);
+    });
+
+    it("resolveConfigDir prefers configDir, falls back to source, and returns undefined for remote without configDir", () => {
+      const local = projectConfig.validate([{ source: "functions" }])[0];
+      const localWithDir = projectConfig.validate([{ source: "functions", configDir: "cfg" }])[0];
+      const remote = projectConfig.validate([
+        { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
+      ])[0];
+      const remoteWithDir = projectConfig.validate([
+        {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+          configDir: "cfg",
+        },
+      ])[0];
+
+      expect(projectConfig.resolveConfigDir(local)).to.equal("functions");
+      expect(projectConfig.resolveConfigDir(localWithDir)).to.equal("cfg");
+      expect(projectConfig.resolveConfigDir(remote)).to.equal(undefined);
+      expect(projectConfig.resolveConfigDir(remoteWithDir)).to.equal("cfg");
+    });
+  });
 });

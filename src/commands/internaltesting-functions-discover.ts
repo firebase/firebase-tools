@@ -2,6 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { loadCodebases } from "../deploy/functions/prepare";
+import type { Context as FunctionsContext } from "../deploy/functions/args";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
@@ -43,13 +44,13 @@ export const command = new Command("internaltesting:functions:discover")
       }
     }
 
-    const wantBuilds = await loadCodebases(
-      fnConfig,
-      options,
+    const ctx: FunctionsContext = {
+      projectId,
+      config: fnConfig,
       firebaseConfig,
-      runtimeConfig,
-      undefined, // no filters
-    );
+    } as FunctionsContext;
+
+    const wantBuilds = await loadCodebases(ctx, options, runtimeConfig);
 
     logger.info(JSON.stringify(wantBuilds, null, 2));
     return wantBuilds;

@@ -1,6 +1,7 @@
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
+import * as discovery from "./discovery";
 import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
@@ -67,6 +68,8 @@ export interface DelegateContext {
   // Absolute path of the source directory.
   sourceDir: string;
   runtime?: supported.Runtime;
+  // When true, delegates must perform manifest-only discovery and avoid user code execution.
+  safeMode?: boolean;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

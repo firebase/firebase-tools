@@ -118,10 +118,14 @@ async function packageSource(
     );
   }
 
+  const isRemote = !projectConfig.isLocalConfig(config);
+  const label = isRemote
+    ? `packaged remote source for codebase ${config.codebase}`
+    : `packaged ${clc.bold(sourceDir)}`;
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
-      " packaged " +
-      clc.bold(sourceDir) +
+      " " +
+      label +
       " (" +
       filesize(archive.pointer()) +
       ") for uploading",

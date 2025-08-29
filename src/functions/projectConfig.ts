@@ -82,7 +82,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
   }
   if (!source && !remoteSource) {
     throw new FirebaseError(
-      "Must specify either 'source' or 'remoteSource' in a functions config.",
+      "codebase source must be specified. Must specify either 'source' or 'remoteSource' in a functions config.",
     );
   }
 
@@ -112,13 +112,13 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
     const validated: ValidatedLocalSingle = {
       source,
       codebase,
-      runtime,
-      prefix,
-      ignore,
-      configDir,
-      predeploy,
-      postdeploy,
-    };
+      ...(runtime ? { runtime } : {}),
+      ...(prefix ? { prefix } : {}),
+      ...(ignore ? { ignore } : {}),
+      ...(configDir ? { configDir } : {}),
+      ...(predeploy ? { predeploy } : {}),
+      ...(postdeploy ? { postdeploy } : {}),
+    } as ValidatedLocalSingle;
     return validated;
   }
 
@@ -127,12 +127,12 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
     remoteSource: remoteSource!,
     runtime: runtime!,
     codebase,
-    prefix,
-    ignore,
-    configDir,
-    predeploy,
-    postdeploy,
-  };
+    ...(prefix ? { prefix } : {}),
+    ...(ignore ? { ignore } : {}),
+    ...(configDir ? { configDir } : {}),
+    ...(predeploy ? { predeploy } : {}),
+    ...(postdeploy ? { postdeploy } : {}),
+  } as ValidatedRemoteSingle;
   return validated;
 }
 
@@ -238,11 +238,18 @@ export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLoc
   return c;
 }
 
-export function resolveConfigDir(c: ValidatedSingle): string {
-  // Prefer explicit configDir; else local source if available
+/**
+ * Returns config directory if available, otherwise undefined.
+ * - Local: returns configDir or source
+ * - Remote: returns configDir if present; otherwise undefined (skip dotenv)
+ */
+/**
+ * Returns the local directory to read/write env files if available.
+ * - Local: returns configDir or source
+ * - Remote: returns configDir if present; otherwise undefined (skip dotenv)
+ */
+export function resolveConfigDir(c: ValidatedSingle): string | undefined {
   if (c.configDir) return c.configDir;
   if (isLocalConfig(c)) return c.source;
-  throw new FirebaseError(
-    "Cannot determine a local directory to write environment files. Set functions[].configDir in firebase.json when using remoteSource.",
-  );
+  return undefined;
 }

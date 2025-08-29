@@ -25,21 +25,37 @@ export async function tryCreateDelegate(
 ): Promise<Delegate | undefined> {
   const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
 
-  if (!(await promisify(fs.exists)(requirementsTextPath))) {
-    logger.debug("Customer code is not Python code.");
-    return;
+  if (!context.safeMode) {
+    if (!(await promisify(fs.exists)(requirementsTextPath))) {
+      logger.debug("Customer code is not Python code.");
+      return;
+    }
   }
-  const runtime = context.runtime ?? supported.latest("python");
-  if (!supported.isRuntime(runtime)) {
+  let runtime: supported.Runtime | undefined = context.safeMode
+    ? (context.runtime as supported.Runtime | undefined)
+    : ((context.runtime ?? supported.latest("python")) as supported.Runtime);
+  if (context.safeMode && !runtime) {
+    throw new FirebaseError(
+      "Runtime is required for remote-safe discovery but was not provided.",
+    );
+  }
+  if (!supported.isRuntime(runtime as string)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
   }
-  if (!supported.runtimeIsLanguage(runtime, "python")) {
+  if (!supported.runtimeIsLanguage(runtime as supported.Runtime, "python")) {
     throw new FirebaseError(
       `Internal error. Trying to construct a python runtime delegate for runtime ${runtime}`,
       { exit: 1 },
     );
   }
-  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
+  return Promise.resolve(
+    new Delegate(
+      context.projectId,
+      context.sourceDir,
+      runtime as supported.Runtime & supported.RuntimeOf<"python">,
+      !!context.safeMode,
+    ),
+  );
 }
 
 /**
@@ -72,6 +88,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     private readonly projectId: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime & supported.RuntimeOf<"python">,
+    private readonly safeMode: boolean = false,
   ) {}
 
   private _bin = "";
@@ -136,6 +153,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   validate(): Promise<void> {
+    if (this.safeMode) {
+      const manifestPath = path.join(this.sourceDir, "functions.yaml");
+      if (!fs.existsSync(manifestPath)) {
+        throw new FirebaseError(
+          `Missing required deployment manifest at ${manifestPath}. Remote sources require a static functions.yaml for discovery.`,
+        );
+      }
+      return Promise.resolve();
+    }
     // TODO: make sure firebase-functions is included as a dep
     return Promise.resolve();
   }
@@ -190,23 +216,28 @@ export class Delegate implements runtimes.RuntimeDelegate {
     _configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
   ): Promise<Build> {
-    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-    if (!discovered) {
-      const adminPort = await portfinder.getPortPromise({
-        port: 8081,
-      });
-      const killProcess = await this.serveAdmin(adminPort, envs);
-      try {
-        discovered = await discovery.detectFromPort(
-          adminPort,
-          this.projectId,
-          this.runtime,
-          500 /* initialDelay, python startup is slow */,
-        );
-      } finally {
-        await killProcess();
-      }
+    const discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+    if (discovered) {
+      return discovered;
     }
-    return discovered;
+    if (this.safeMode) {
+      throw new FirebaseError(
+        `Failed to load functions.yaml from ${this.sourceDir}. Ensure a static manifest exists for remote discovery.`,
+      );
+    }
+    const adminPort = await portfinder.getPortPromise({
+      port: 8081,
+    });
+    const killProcess = await this.serveAdmin(adminPort, envs);
+    try {
+      return await discovery.detectFromPort(
+        adminPort,
+        this.projectId,
+        this.runtime,
+        500 /* initialDelay, python startup is slow */,
+      );
+    } finally {
+      await killProcess();
+    }
   }
 }

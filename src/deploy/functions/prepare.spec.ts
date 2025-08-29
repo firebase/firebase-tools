@@ -7,7 +7,14 @@ import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
-import { RuntimeDelegate } from "./runtimes";
+import type { RuntimeDelegate, DelegateContext } from "./runtimes";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import * as projectConfig from "../../functions/projectConfig";
+import * as discovery from "./runtimes/discovery";
+import * as pythonDelegate from "./runtimes/python";
+import * as remoteSourceModule from "./remoteSource";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
@@ -77,7 +84,8 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const ctx: any = { projectId: "project", config, firebaseConfig };
+      const builds = await prepare.loadCodebases(ctx, options, runtimeConfig);
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
     });
@@ -95,7 +103,8 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const ctx: any = { projectId: "project", config, firebaseConfig };
+      const builds = await prepare.loadCodebases(ctx, options, runtimeConfig);
 
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });
@@ -590,4 +599,258 @@ describe("prepare", () => {
       ).to.be.true;
     });
   });
+
+  describe("loadCodebases (remote)", () => {
+    const RUNTIME = "nodejs20" as const;
+    const yamlText = `specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n`;
+
+    let tmpDir = "";
+    let stub: sinon.SinonStub | undefined;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-remote-"));
+      fs.writeFileSync(path.join(tmpDir, "functions.yaml"), yamlText, "utf8");
+      stub = sinon.stub(remoteSourceModule, "cloneRemoteSource").resolves(tmpDir);
+    });
+
+    afterEach(() => {
+      stub?.restore();
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors
+      }
+    });
+
+  it("clones remote and loads functions.yaml, applying prefix", async () => {
+      const cfg = projectConfig.normalizeAndValidate([
+        {
+          codebase: "remote",
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: RUNTIME,
+          prefix: "pfx",
+        },
+      ]);
+
+      const options = {
+        project: "test-project",
+        config: {
+          projectDir: "/project",
+          path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+        },
+      } as unknown as Options;
+
+      const ctx: any = { projectId: "test-project", config: cfg, firebaseConfig: { projectId: "test-project" } };
+      const wantBuilds = await prepare.loadCodebases(ctx, options, {});
+      const build = wantBuilds["remote"];
+      expect(build).to.be.ok;
+      expect(build.runtime).to.equal(RUNTIME);
+      expect(Object.keys(build.endpoints)).to.deep.equal(["pfx-hello"]);
+    });
+
+  it("throws when functions.yaml missing in remote", async () => {
+      fs.rmSync(path.join(tmpDir, "functions.yaml"));
+
+      const cfg = projectConfig.normalizeAndValidate([
+        {
+          codebase: "remote",
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: RUNTIME,
+        },
+      ]);
+
+      const options = {
+        project: "test-project",
+        config: {
+          projectDir: "/project",
+          path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+        },
+      } as unknown as Options;
+
+    const ctx: any = { projectId: "test-project", config: cfg, firebaseConfig: { projectId: "test-project" } };
+    await expect(prepare.loadCodebases(ctx, options, {})).to.be.rejectedWith(/functions\.yaml/i);
+  });
+    it("passes safeMode=true and correct sourceDir to runtime delegate for remote", async () => {
+      const getDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+      let captured: DelegateContext | undefined;
+      const fakeDelegate: RuntimeDelegate = {
+        language: "nodejs",
+        runtime: "nodejs20",
+        bin: "node",
+        async validate() {
+          return;
+        },
+        async build() {
+          return;
+        },
+        async watch() {
+          return async () => undefined;
+        },
+        async discoverBuild() {
+          return { requiredAPIs: [], endpoints: {}, params: [] } as any;
+        },
+      };
+      getDelegateStub.callsFake(async (ctx: DelegateContext) => {
+        captured = ctx;
+        return fakeDelegate;
+      });
+
+      const cfg = projectConfig.normalizeAndValidate([
+        {
+          codebase: "remote",
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: RUNTIME,
+        },
+      ]);
+      const options = {
+        project: "test-project",
+        config: {
+          projectDir: "/project",
+          path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+        },
+      } as unknown as Options;
+
+      const ctx: any = { projectId: "test-project", config: cfg, firebaseConfig: { projectId: "test-project" } };
+      await prepare.loadCodebases(ctx, options, {});
+      expect((captured as DelegateContext).safeMode).to.equal(true);
+      expect((captured as DelegateContext).sourceDir).to.equal(tmpDir);
+
+      getDelegateStub.restore();
+    });
+  });
+
+  it("passes safeMode=true and correct sourceDir to runtime delegate for remote", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-remote-safe-"));
+    fs.writeFileSync(
+      path.join(tmpDir, "functions.yaml"),
+      "specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n",
+      "utf8",
+    );
+    const cloneStub = sinon.stub(remoteSourceModule, "cloneRemoteSource").resolves(tmpDir);
+    const getDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+    let captured: DelegateContext | undefined;
+    getDelegateStub.callsFake(async (ctx: DelegateContext) => {
+      captured = ctx;
+      return {
+        language: "nodejs",
+        runtime: "nodejs20",
+        bin: "node",
+        async validate() {
+          return;
+        },
+        async build() {
+          return;
+        },
+        async watch() {
+          return async () => undefined;
+        },
+        async discoverBuild() {
+          return { requiredAPIs: [], endpoints: {}, params: [], runtime: "nodejs20" };
+        },
+      } as any;
+    });
+
+    const cfg = projectConfig.normalizeAndValidate([
+      {
+        codebase: "remote",
+        remoteSource: { repository: "repo", ref: "main" },
+        runtime: "nodejs20",
+      },
+    ]);
+    const options = {
+      project: "test-project",
+      config: {
+        projectDir: "/project",
+        path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+      },
+    } as unknown as Options;
+
+    const ctx: any = { projectId: "test-project", config: cfg, firebaseConfig: { projectId: "test-project" } };
+    await prepare.loadCodebases(ctx, options, {});
+    expect((captured as DelegateContext).safeMode).to.equal(true);
+    expect((captured as DelegateContext).sourceDir).to.equal(tmpDir);
+
+    getDelegateStub.restore();
+    cloneStub.restore();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("passes safeMode=false for local source", async () => {
+    const getDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+    let captured: DelegateContext | undefined;
+    const fakeDelegate: RuntimeDelegate = {
+      language: "nodejs",
+      runtime: "nodejs20",
+      bin: "node",
+      async validate() {
+        return;
+      },
+      async build() {
+        return;
+      },
+      async watch() {
+        return async () => undefined;
+      },
+      async discoverBuild() {
+        return { requiredAPIs: [], endpoints: {}, params: [] } as any;
+      },
+    };
+    getDelegateStub.callsFake(async (ctx: DelegateContext) => {
+      captured = ctx;
+      return fakeDelegate;
+    });
+
+    const cfg = projectConfig.normalizeAndValidate([
+      { source: "functions", codebase: "local", runtime: "nodejs20" },
+    ]);
+    const options = {
+      project: "test-project",
+      config: {
+        projectDir: "/project",
+        path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+      },
+    } as unknown as Options;
+
+    const ctx: any = { projectId: "test-project", config: cfg, firebaseConfig: { projectId: "test-project" } };
+    await prepare.loadCodebases(ctx, options, {});
+    expect((captured as DelegateContext).safeMode).to.equal(false);
+    expect((captured as DelegateContext).sourceDir).to.equal(path.join("/project", "functions"));
+
+    getDelegateStub.restore();
+  });
 });
+
+  describe("python delegate safeMode", () => {
+    it("validate throws when functions.yaml missing in safeMode", async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fb-py-safe-"));
+      const delegate = await pythonDelegate.tryCreateDelegate({
+        projectId: "p",
+        projectDir: "/project",
+        sourceDir: tmp,
+        runtime: "python312",
+        safeMode: true,
+      });
+      expect(() => delegate!.validate()).to.throw(/functions\.yaml/);
+    });
+
+    it("discoverBuild uses manifest-only in safeMode", async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fb-py-safe-"));
+      fs.writeFileSync(
+        path.join(tmp, "functions.yaml"),
+        "specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n",
+        "utf8",
+      );
+      const detectFromPortStub = sinon.stub(discovery, "detectFromPort");
+      const delegate = await pythonDelegate.tryCreateDelegate({
+        projectId: "p",
+        projectDir: "/project",
+        sourceDir: tmp,
+        runtime: "python312",
+        safeMode: true,
+      });
+      const build = await delegate!.discoverBuild({}, {});
+      expect(build.endpoints).to.have.property("hello");
+      expect(detectFromPortStub.called).to.equal(false);
+      detectFromPortStub.restore();
+    });
+  });
