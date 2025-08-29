@@ -51,7 +51,6 @@ export interface DataConnectEmulatorArgs {
 
 export interface DataConnectGenerateArgs {
   configDir: string;
-  connectorId: string;
   watch?: boolean;
   account?: Account;
 }
@@ -238,39 +237,41 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-  static async generate(args: DataConnectGenerateArgs): Promise<string> {
+  static async generate(args: DataConnectGenerateArgs): Promise<void> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    const cmd = [
-      "--logtostderr",
-      "-v=2",
-      "generate",
-      `--config_dir=${args.configDir}`,
-      `--connector_id=${args.connectorId}`,
-    ];
+    const cmd = ["--logtostderr", "-v=2", "sdk", "generate", `--config_dir=${args.configDir}`];
     if (args.watch) {
       cmd.push("--watch");
     }
     const env = await DataConnectEmulator.getEnv(args.account);
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
-    if (isIncomaptibleArchError(res.error)) {
-      throw new FirebaseError(
-        `Unknown system error when running the Data Connect toolkit. ` +
-          `You may be able to fix this by installing Rosetta: ` +
-          `softwareupdate --install-rosetta`,
-      );
-    }
-    logger.info(res.stderr);
-    if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
-        original: res.error,
-      });
-    }
-    if (res.status !== 0) {
-      throw new FirebaseError(
-        `Unable to generate your Data Connect SDKs (exit code ${res.status}): ${res.stderr}`,
-      );
-    }
-    return res.stdout;
+    return new Promise((resolve, reject) => {
+      try {
+        const proc = childProcess.spawn(commandInfo.binary, cmd, { stdio: "inherit", env });
+        proc.on("close", (code) => {
+          if (code === 0) {
+            // Command executed successfully
+            resolve();
+          } else {
+            // Command failed
+            reject(new Error(`Command failed with exit code ${code}`));
+          }
+        });
+
+        proc.on("error", (err) => {
+          // Handle errors like command not found
+          reject(err);
+        });
+      } catch (e: any) {
+        if (isIncomaptibleArchError(e)) {
+          throw new FirebaseError(
+            `Unknown system error when running the Data Connect toolkit. ` +
+            `You may be able to fix this by installing Rosetta: ` +
+            `softwareupdate --install-rosetta`,
+          );
+        }
+        throw e;
+      }
+    });
   }
 
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
