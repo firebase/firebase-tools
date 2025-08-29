@@ -29,6 +29,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given config w/o source", () => {
+      // @ts-expect-error invalid function config for test
       expect(() => projectConfig.validate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
         /codebase source must be specified/,
@@ -154,6 +155,86 @@ describe("projectConfig", () => {
       const expected = [{ source: "foo", codebase: "default" }];
       expect(projectConfig.validate(config)).to.deep.equal(expected);
     });
+
+    describe("remoteSource", () => {
+      const VALID_REMOTE_CONFIG = {
+        remoteSource: { repository: "repo", ref: "main" },
+        runtime: "nodejs20",
+      } as const;
+
+      it("passes validation for a valid remoteSource config", () => {
+        const config: projectConfig.NormalizedConfig = [VALID_REMOTE_CONFIG];
+        const expected = [{ ...VALID_REMOTE_CONFIG, codebase: "default" }];
+        expect(projectConfig.validate(config)).to.deep.equal(expected);
+      });
+
+      it("passes validation for a mixed local and remote source config", () => {
+        const config: projectConfig.NormalizedConfig = [
+          { source: "local/path", codebase: "local" },
+          { ...VALID_REMOTE_CONFIG, codebase: "remote" },
+        ];
+        expect(projectConfig.validate(config)).to.deep.equal(config);
+      });
+
+      it("fails validation if both source and remoteSource are present", () => {
+        const config = [{ ...VALID_REMOTE_CONFIG, source: "local" }];
+        // @ts-expect-error Should not be able to specify both source and remoteSource
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /Cannot specify both 'source' and 'remoteSource'/,
+        );
+      });
+
+      it("fails validation if neither source nor remoteSource are present", () => {
+        const config = [{ runtime: "nodejs20" }];
+        // @ts-expect-error Must specify either source or remoteSource
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /Must specify either 'source' or 'remoteSource'/,
+        );
+      });
+
+      it("fails validation if remoteSource is missing runtime", () => {
+        const config = [{ remoteSource: { repository: "repo", ref: "main" } }];
+        // @ts-expect-error remoteSource requires runtime
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /functions.runtime is required when using remoteSource/,
+        );
+      });
+
+      it("fails validation if remoteSource is missing repository", () => {
+        const config = [{ remoteSource: { ref: "main" }, runtime: "nodejs20" }];
+        // @ts-expect-error remoteSource requires repository
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /remoteSource requires 'repository' and 'ref'/,
+        );
+      });
+
+      it("fails validation for duplicate remote source/prefix pairs", () => {
+        const config: projectConfig.NormalizedConfig = [
+          { ...VALID_REMOTE_CONFIG, codebase: "bar" },
+          { ...VALID_REMOTE_CONFIG, codebase: "baz" },
+        ];
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /More than one functions config specifies the same remote source \('repo'\) and prefix \(''\)/,
+        );
+      });
+
+      it("passes validation for different remote sources with the same prefix", () => {
+        const config: projectConfig.NormalizedConfig = [
+          { ...VALID_REMOTE_CONFIG, codebase: "bar" },
+          {
+            remoteSource: { repository: "repo2", ref: "main" },
+            runtime: "nodejs20",
+            codebase: "baz",
+          },
+        ];
+        expect(projectConfig.validate(config)).to.deep.equal(config);
+      });
+    });
   });
 
   describe("normalizeAndValidate", () => {
@@ -166,6 +247,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given singleton config w/o source", () => {
+      // @ts-expect-error invalid function config for test
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs22" })).to.throw(
         FirebaseError,
         /codebase source must be specified/,
@@ -180,6 +262,7 @@ describe("projectConfig", () => {
     });
 
     it("fails validation given multi-resource config w/o source", () => {
+      // @ts-expect-error invalid function config for test
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
         /codebase source must be specified/,

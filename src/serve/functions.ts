@@ -29,11 +29,15 @@ export class FunctionsServer {
 
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
-      const functionsDir = path.join(options.config.projectDir, cfg.source);
+      const local = projectConfig.requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator at this time.",
+      );
+      const functionsDir = path.join(options.config.projectDir, local.source);
       backends.push({
         functionsDir,
-        codebase: cfg.codebase,
-        runtime: cfg.runtime,
+        codebase: local.codebase,
+        runtime: local.runtime,
         env: {},
         secretEnv: [],
       });

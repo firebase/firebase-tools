@@ -42,6 +42,8 @@ import {
   configForCodebase,
   normalizeAndValidate,
   ValidatedConfig,
+  resolveConfigDir,
+  isLocalConfig,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -124,7 +126,7 @@ export async function prepare(
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: options.config.path(config.source),
+      functionsSource: options.config.path(resolveConfigDir(config)),
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
@@ -205,26 +207,32 @@ export async function prepare(
   context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const config = configForCodebase(context.config, codebase);
-    const sourceDirName = config.source;
-    const sourceDir = options.config.path(sourceDirName);
     const source: args.Source = {};
-    if (backend.someEndpoint(wantBackend, () => true)) {
-      logLabeledBullet(
-        "functions",
-        `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
-      );
+
+    if (isLocalConfig(config)) {
+      const sourceDirName = config.source;
+      const sourceDir = options.config.path(sourceDirName);
+      if (backend.someEndpoint(wantBackend, () => true)) {
+        logLabeledBullet(
+          "functions",
+          `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
+        );
+      }
+
+      if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+        const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+        source.functionsSourceV2 = packagedSource?.pathToSource;
+        source.functionsSourceV2Hash = packagedSource?.hash;
+      }
+      if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
+        const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+        source.functionsSourceV1 = packagedSource?.pathToSource;
+        source.functionsSourceV1Hash = packagedSource?.hash;
+      }
+    } else {
+      throw new FirebaseError(`Remote sources are not supported for deploy at this time.`);
     }
 
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
-      source.functionsSourceV2 = packagedSource?.pathToSource;
-      source.functionsSourceV2Hash = packagedSource?.hash;
-    }
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
-      source.functionsSourceV1 = packagedSource?.pathToSource;
-      source.functionsSourceV1Hash = packagedSource?.hash;
-    }
     context.sources[codebase] = source;
   }
 
@@ -444,12 +452,10 @@ export async function loadCodebases(
   const wantBuilds: Record<string, build.Build> = {};
   for (const codebase of codebases) {
     const codebaseConfig = configForCodebase(config, codebase);
-    const sourceDirName = codebaseConfig.source;
-    if (!sourceDirName) {
-      throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
-      );
+    if (!isLocalConfig(codebaseConfig)) {
+      throw new FirebaseError(`Remote sources are not supported for deploy at this time.`);
     }
+    const sourceDirName = codebaseConfig.source;
     const sourceDir = options.config.path(sourceDirName);
     const delegateContext: runtimes.DelegateContext = {
       projectId,

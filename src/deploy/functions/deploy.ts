@@ -96,7 +96,7 @@ async function uploadCodebase(
       source.storage = storage as gcfv2.StorageSource;
     }
 
-    const sourceDir = configForCodebase(context.config!, codebase).source;
+    const sourceDir = configForCodebase(context.config!, codebase).source ?? "(remote source)";
     if (uploads.length) {
       logSuccess(
         `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`,

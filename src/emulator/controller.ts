@@ -42,7 +42,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -528,7 +528,11 @@ export async function startAll(
     utils.assertIsStringOrUndefined(options.extDevDir);
 
     for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
+      const narrowed = requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator at this time.",
+      );
+      const functionsDir = path.join(projectDir, narrowed.source);
       const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
       // will dynamically detect it later.
@@ -542,8 +546,8 @@ export async function startAll(
       const backend: EmulatableBackend = {
         functionsDir,
         runtime,
-        codebase: cfg.codebase,
-        prefix: cfg.prefix,
+        codebase: narrowed.codebase,
+        prefix: narrowed.prefix,
         env: {
           ...options.extDevEnv,
         },
