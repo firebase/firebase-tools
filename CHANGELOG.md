@@ -1,1 +1,1 @@
-- Simplified `dataconnect_execute` tools and support auth token. (#9046)
+- Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9046)
