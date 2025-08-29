@@ -12,7 +12,10 @@ export const execute = tool(
     name: "execute",
     description: "Executes a GraphQL operation against a Data Connect service or its emulator.",
     inputSchema: z.object({
-      query: z.string().describe("A GraphQL query or mutation to execute against the service."),
+      query: z.string().describe(`A Firebase Data Connect GraphQL query or mutation to execute.
+You can use the \`dataconnect_generate_operation\` tool to generate a query.
+Example Data Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
+`),
       service_id: z.string().optional()
         .describe(`Data Connect Service ID to dis-ambulate if there are multiple.
 It's only necessary if there are multiple dataconnect sources in \`firebase.json\`.
@@ -36,11 +39,11 @@ You can find candidate service_id in \`dataconnect.yaml\`
         .boolean()
         .default(false)
         .describe(
-          "If true, target the DataConnect emulator. Run `firebase emulators:start` in the background",
+          "If true, target the DataConnect emulator. Run `firebase emulators:start` to start it",
         ),
     }),
     annotations: {
-      title: "Execute Data Connect Operation",
+      title: "Execute Firebase Data Connect Query",
     },
     _meta: {
       requiresProject: true,
