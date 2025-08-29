@@ -1,0 +1,1 @@
+- Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
