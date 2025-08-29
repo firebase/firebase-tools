@@ -1,1 +1,2 @@
-- Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9046)
+- Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
+- Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9055)
