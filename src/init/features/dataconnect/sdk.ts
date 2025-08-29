@@ -202,7 +202,6 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
   const account = getGlobalDefaultAccount();
   await DataConnectEmulator.generate({
     configDir: connectorInfo.directory,
-    connectorId: connectorInfo.connectorYaml.connectorId,
     account,
   });
 
