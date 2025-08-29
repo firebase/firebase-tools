@@ -265,8 +265,8 @@ export class DataConnectEmulator implements EmulatorInstance {
         if (isIncomaptibleArchError(e)) {
           throw new FirebaseError(
             `Unknown system error when running the Data Connect toolkit. ` +
-            `You may be able to fix this by installing Rosetta: ` +
-            `softwareupdate --install-rosetta`,
+              `You may be able to fix this by installing Rosetta: ` +
+              `softwareupdate --install-rosetta`,
           );
         }
         throw e;
