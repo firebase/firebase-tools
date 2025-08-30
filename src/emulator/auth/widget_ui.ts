@@ -35,10 +35,15 @@ var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
 var isSamlProvider = !!providerId.match(/^saml\./);
-assert(
-  appName || clientId || firebaseAppId || appIdentifier,
-  'Missing one of appName / clientId / appId / apn / ibi query params.'
-);
+var isIdpInitiated = query.get('idp_initiated') === 'true' || window.location.pathname.includes('/saml/acs/');
+
+// For IdP-initiated flows, we may not have the usual app identifiers
+if (!isIdpInitiated) {
+  assert(
+    appName || clientId || firebaseAppId || appIdentifier,
+    'Missing one of appName / clientId / appId / apn / ibi query params.'
+  );
+}
 
 // Warn the developer of a few flows only available in Auth Emulator.
 if ((providerId === 'facebook.com' && appIdentifier) || (providerId === 'apple.com' && ibi)) {
@@ -64,6 +69,9 @@ function saveAuthEvent(authEvent) {
     } else if (redirectUrl) {
       saveAuthEventToStorage(authEvent);
       window.location = redirectUrl;
+    } else if (isIdpInitiated) {
+      // For IdP-initiated flows, handle the completion differently
+      handleIdpInitiatedCompletion(authEvent);
     } else {
       assert(false, 'This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
     }
@@ -73,6 +81,45 @@ function saveAuthEvent(authEvent) {
 function saveAuthEventToStorage(authEvent) {
   sessionStorage['firebase:redirectEvent:' + storageKey] =
     JSON.stringify(authEvent);
+}
+
+function handleIdpInitiatedCompletion(authEvent) {
+  // For IdP-initiated flows, we need to handle completion without the usual session context
+  // This might involve redirecting to a configured app URL or showing a completion page
+  
+  // Try to get RelayState for redirect URL
+  var relayState = query.get('RelayState') || query.get('relay_state');
+  var targetUrl = relayState || '/'; // Default to root
+  
+  // For IdP-initiated flows, we might want to:
+  // 1. Store the auth event for the target application to pick up
+  // 2. Redirect to the target application
+  // 3. Show a success message with auto-redirect
+  
+  if (relayState) {
+    // Store auth event and redirect to RelayState URL
+    saveAuthEventToStorage(authEvent);
+    setTimeout(function() {
+      window.location = targetUrl;
+    }, 1000); // Brief delay to show success
+    
+    // Show success message
+    document.body.innerHTML = 
+      '<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">' +
+      '<h2>✓ Authentication Successful</h2>' +
+      '<p>Redirecting to your application...</p>' +
+      '<p>Provider: ' + providerId + '</p>' +
+      '</div>';
+  } else {
+    // No RelayState - show completion page with instructions
+    document.body.innerHTML = 
+      '<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">' +
+      '<h2>✓ Authentication Successful</h2>' +
+      '<p>You have been successfully authenticated with ' + providerId + '</p>' +
+      '<p>You can close this window and return to your application.</p>' +
+      '<button onclick="window.close()" style="padding: 10px 20px; margin-top: 20px;">Close Window</button>' +
+      '</div>';
+  }
 }
 
 function sendAuthEventViaIframeRelay(authEvent, cb) {
@@ -183,8 +230,24 @@ function finishWithUser(urlEncodedIdToken, email) {
         subject: {
           nameId: email,
         },
+        attributeStatements: isIdpInitiated ? [{
+          attributes: {
+            email: email,
+            emailVerified: 'true',
+            idpInitiated: 'true'
+          }
+        }] : undefined
       },
     }));
+  }
+
+  // For IdP-initiated flows, include additional context
+  if (isIdpInitiated) {
+    url += '&idp_initiated=true';
+    var relayState = query.get('RelayState') || query.get('relay_state');
+    if (relayState) {
+      url += '&relay_state=' + encodeURIComponent(relayState);
+    }
   }
 
   saveAuthEvent({

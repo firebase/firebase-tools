@@ -6985,6 +6985,38 @@ export default {
             type: "boolean",
           },
           ssoUrl: { description: "URL to send Authentication request to.", type: "string" },
+          idpInitiated: {
+            description: "Configuration for IdP-initiated SAML flows.",
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2IdpInitiatedConfig"
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2IdpInitiatedConfig: {
+        description: "Configuration for IdP-initiated SAML authentication flows.",
+        properties: {
+          enabled: {
+            description: "Whether IdP-initiated SAML flows are enabled for this provider.",
+            type: "boolean"
+          },
+          defaultRedirectUrl: {
+            description: "Default URL to redirect users after successful IdP-initiated authentication.",
+            type: "string"
+          },
+          allowedRedirectUrls: {
+            description: "List of allowed redirect URLs for RelayState parameter. If empty, any URL is allowed.",
+            items: { type: "string" },
+            type: "array"
+          },
+          validateRelayState: {
+            description: "Whether to validate RelayState URLs against the allowed list. Default is true for security.",
+            type: "boolean"
+          },
+          attributeMapping: {
+            description: "Custom attribute mapping for IdP-initiated flows.",
+            type: "object",
+            additionalProperties: { type: "string" }
+          }
         },
         type: "object",
       },

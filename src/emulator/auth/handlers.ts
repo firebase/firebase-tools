@@ -320,6 +320,180 @@ export function registerHandlers(
 `,
     );
   });
+
+  // IdP-initiated SAML authentication endpoint (POST)
+  app.post(`/emulator/auth/saml/acs/:providerId`, express.json(), express.urlencoded({ extended: true }), (req, res) => {
+    const providerId = req.params.providerId;
+    const samlResponse = req.body.SAMLResponse || req.query.SAMLResponse;
+    const relayState = req.body.RelayState || req.query.RelayState;
+
+    if (!providerId || !providerId.startsWith('saml.')) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "Invalid provider ID. Must be a SAML provider (saml.*).",
+        },
+      });
+    }
+
+    if (!samlResponse) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "Missing SAMLResponse parameter",
+          instructions: "IdP-initiated SAML flows require a SAMLResponse parameter.",
+        },
+      });
+    }
+
+    try {
+      // Resolve the appropriate project state for this IdP-initiated flow
+      const state = resolveProjectStateForIdpInitiated(providerId, getProjectStateByApiKey);
+
+      // Create a SignInWithIdpRequest that represents the IdP-initiated flow
+      const signInRequest = {
+        postBody: `providerId=${encodeURIComponent(providerId)}&SAMLResponse=${encodeURIComponent(samlResponse)}${relayState ? `&RelayState=${encodeURIComponent(relayState)}` : ''}`,
+        requestUri: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      };
+
+      // Import signInWithIdp dynamically to avoid circular dependencies
+      const { signInWithIdp } = await import('./operations');
+      
+      // Process the SAML authentication using the existing signInWithIdp logic
+      const authResult = await signInWithIdp(state, signInRequest);
+      
+      // For IdP-initiated flows, generate a completion page that handles the redirect
+      const redirectUrl = relayState || '/';
+      
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SAML Authentication Success</title>
+  <script>
+    // Store the authentication result for the application to retrieve
+    if (window.opener) {
+      // Post message to parent window for popup flows
+      window.opener.postMessage({
+        type: 'firebase-auth-idp-initiated',
+        authResult: ${JSON.stringify(authResult)},
+        providerId: '${providerId}',
+        relayState: '${relayState || ''}'
+      }, '*');
+      window.close();
+    } else {
+      // Redirect for direct navigation flows
+      setTimeout(function() {
+        window.location.href = '${redirectUrl}';
+      }, 2000);
+    }
+  </script>
+</head>
+<body>
+  <h2>✓ Authentication Successful</h2>
+  <p>Welcome, ${authResult.email || authResult.displayName || 'User'}!</p>
+  <p>Provider: ${providerId}</p>
+  ${relayState ? `<p>Redirecting to your application...</p>` : '<p>You may close this window.</p>'}
+</body>
+</html>
+      `);
+    } catch (error: any) {
+      res.status(400).json({
+        authEmulator: {
+          error: `IdP-initiated SAML authentication failed: ${error.message}`,
+          details: error.stack,
+        },
+      });
+    }
+  });
+
+  // IdP-initiated SAML authentication endpoint (GET)
+  app.get(`/emulator/auth/saml/acs/:providerId`, (req, res) => {
+    const providerId = req.params.providerId;
+    const samlResponse = req.query.SAMLResponse as string;
+    const relayState = req.query.RelayState as string;
+
+    if (!providerId || !providerId.startsWith('saml.')) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "Invalid provider ID. Must be a SAML provider (saml.*).",
+        },
+      });
+    }
+
+    if (!samlResponse) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "Missing SAMLResponse parameter",
+          instructions: "IdP-initiated SAML flows require a SAMLResponse parameter.",
+        },
+      });
+    }
+
+    try {
+      // Resolve the appropriate project state for this IdP-initiated flow
+      const state = resolveProjectStateForIdpInitiated(providerId, getProjectStateByApiKey);
+
+      // Create a SignInWithIdpRequest that represents the IdP-initiated flow
+      const signInRequest = {
+        postBody: `providerId=${encodeURIComponent(providerId)}&SAMLResponse=${encodeURIComponent(samlResponse)}${relayState ? `&RelayState=${encodeURIComponent(relayState)}` : ''}`,
+        requestUri: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+        returnIdpCredential: true,
+        returnSecureToken: true,
+      };
+
+      // Import signInWithIdp dynamically to avoid circular dependencies
+      const { signInWithIdp } = await import('./operations');
+      
+      // Process the SAML authentication using the existing signInWithIdp logic
+      const authResult = await signInWithIdp(state, signInRequest);
+      
+      // For IdP-initiated flows, generate a completion page that handles the redirect
+      const redirectUrl = relayState || '/';
+      
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SAML Authentication Success</title>
+  <script>
+    // Store the authentication result for the application to retrieve
+    if (window.opener) {
+      // Post message to parent window for popup flows
+      window.opener.postMessage({
+        type: 'firebase-auth-idp-initiated',
+        authResult: ${JSON.stringify(authResult)},
+        providerId: '${providerId}',
+        relayState: '${relayState || ''}'
+      }, '*');
+      window.close();
+    } else {
+      // Redirect for direct navigation flows
+      setTimeout(function() {
+        window.location.href = '${redirectUrl}';
+      }, 2000);
+    }
+  </script>
+</head>
+<body>
+  <h2>✓ Authentication Successful</h2>
+  <p>Welcome, ${authResult.email || authResult.displayName || 'User'}!</p>
+  <p>Provider: ${providerId}</p>
+  ${relayState ? `<p>Redirecting to your application...</p>` : '<p>You may close this window.</p>'}
+</body>
+</html>
+      `);
+    } catch (error: any) {
+      res.status(400).json({
+        authEmulator: {
+          error: `IdP-initiated SAML authentication failed: ${error.message}`,
+          details: error.stack,
+        },
+      });
+    }
+  });
 }
 
 function createFakeClaims(info: ProviderUserInfo): string {
@@ -336,4 +510,34 @@ function createFakeClaims(info: ProviderUserInfo): string {
     picture: info.photoUrl,
   };
   return JSON.stringify(claims);
+}
+
+/**
+ * Resolves the project state for IdP-initiated SAML flows.
+ * In IdP-initiated flows, we don't have an API key from the client,
+ * so we need to determine the project from SAML provider configuration.
+ */
+function resolveProjectStateForIdpInitiated(
+  providerId: string,
+  getProjectStateByApiKey: (apiKey: string, tenantId?: string) => ProjectState,
+): ProjectState {
+  // For the auth emulator, we can use a default project approach
+  // In production Firebase, this would be resolved through provider configuration
+  // that maps SAML provider IDs to specific projects
+  
+  // Try to extract project hint from provider ID if available
+  // Format: saml.{project-hint}.{provider-name} or just saml.{provider-name}
+  const parts = providerId.split('.');
+  if (parts.length > 2) {
+    const projectHint = parts[1];
+    try {
+      return getProjectStateByApiKey(projectHint);
+    } catch {
+      // Fall through to default handling
+    }
+  }
+  
+  // Default to the first available project for emulator
+  // In production, this would be properly configured per provider
+  return getProjectStateByApiKey('fake-api-key');
 }

@@ -3446,6 +3446,21 @@ export interface components {
       signRequest?: boolean;
       /** @description URL to send Authentication request to. */
       ssoUrl?: string;
+      /** @description Configuration for IdP-initiated SAML flows. */
+      idpInitiated?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2IdpInitiatedConfig"];
+    };
+    /** @description Configuration for IdP-initiated SAML authentication flows. */
+    GoogleCloudIdentitytoolkitAdminV2IdpInitiatedConfig: {
+      /** @description Whether IdP-initiated SAML flows are enabled for this provider. */
+      enabled?: boolean;
+      /** @description Default URL to redirect users after successful IdP-initiated authentication. */
+      defaultRedirectUrl?: string;
+      /** @description List of allowed redirect URLs for RelayState parameter. If empty, any URL is allowed. */
+      allowedRedirectUrls?: string[];
+      /** @description Whether to validate RelayState URLs against the allowed list. Default is true for security. */
+      validateRelayState?: boolean;
+      /** @description Custom attribute mapping for IdP-initiated flows. */
+      attributeMapping?: { [key: string]: string };
     };
     /** @description A pair of SAML RP-IDP configurations when the project acts as the relying party. */
     GoogleCloudIdentitytoolkitAdminV2InboundSamlConfig: {

@@ -1135,6 +1135,197 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       });
   });
 
+  describe("IdP-initiated SAML authentication", () => {
+    it("should handle IdP-initiated SAML flow with valid SAMLResponse", async () => {
+      const userEmail = "user@example.com";
+      const samlResponse = {
+        assertion: {
+          subject: { nameId: userEmail },
+          attributeStatements: [{
+            attributes: {
+              displayName: "John Doe",
+              email: userEmail,
+              name: "John Doe"
+            }
+          }]
+        }
+      };
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=saml.example&SAMLResponse=${JSON.stringify(samlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+          expect(res.body.email).to.equal(userEmail);
+          expect(res.body.providerId).to.equal("saml.example");
+          expect(res.body.emailVerified).to.equal(true);
+          
+          // Check that user claims are extracted from SAML attributes
+          const rawUserInfo = JSON.parse(res.body.rawUserInfo);
+          expect(rawUserInfo).to.have.property("attributes");
+        });
+    });
+
+    it("should handle IdP-initiated SAML flow without OAuth tokens", async () => {
+      const userEmail = "user@company.com";
+      const samlResponse = {
+        assertion: {
+          subject: { nameId: userEmail },
+          attributeStatements: [{
+            attributes: {
+              firstName: "Jane",
+              lastName: "Smith",
+              email: userEmail
+            }
+          }]
+        }
+      };
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=saml.workos&SAMLResponse=${JSON.stringify(samlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+          expect(res.body.email).to.equal(userEmail);
+          expect(res.body.providerId).to.equal("saml.workos");
+          
+          // Verify that authentication tokens are generated
+          expect(res.body.idToken).to.be.a("string");
+          expect(res.body.refreshToken).to.be.a("string");
+          expect(res.body.localId).to.be.a("string");
+        });
+    });
+
+    it("should extract claims from SAML attribute statements", async () => {
+      const userEmail = "test@domain.com";
+      const samlResponse = {
+        assertion: {
+          subject: { nameId: userEmail },
+          attributeStatements: [{
+            attributes: {
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": "Test User",
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname": "Test",
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname": "User",
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": userEmail
+            }
+          }]
+        }
+      };
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=saml.adfs&SAMLResponse=${JSON.stringify(samlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.email).to.equal(userEmail);
+          expect(res.body.displayName).to.include("Test User");
+        });
+    });
+
+    it("should handle existing user in IdP-initiated SAML flow", async () => {
+      const userEmail = "existing@example.com";
+      const providerId = "saml.existing";
+      
+      // First, create a user via IdP-initiated SAML
+      const samlResponse = {
+        assertion: {
+          subject: { nameId: userEmail },
+          attributeStatements: [{
+            attributes: {
+              displayName: "Existing User",
+              email: userEmail
+            }
+          }]
+        }
+      };
+
+      // First sign-in (creates user)
+      const firstSignIn = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=${providerId}&SAMLResponse=${JSON.stringify(samlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        });
+
+      expectStatusCode(200, firstSignIn);
+      expect(firstSignIn.body.isNewUser).to.equal(true);
+      const localId = firstSignIn.body.localId;
+
+      // Second sign-in (existing user)
+      const secondSignIn = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=${providerId}&SAMLResponse=${JSON.stringify(samlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        });
+
+      expectStatusCode(200, secondSignIn);
+      expect(secondSignIn.body.isNewUser).to.equal(false);
+      expect(secondSignIn.body.localId).to.equal(localId);
+      expect(secondSignIn.body.email).to.equal(userEmail);
+    });
+
+    it("should error on IdP-initiated SAML with invalid SAMLResponse", async () => {
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=saml.invalid&SAMLResponse=invalid-json`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.include("Unable to parse SAMLResponse");
+        });
+    });
+
+    it("should error on IdP-initiated SAML with missing assertion", async () => {
+      const invalidSamlResponse = { notAssertion: {} };
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=saml.invalid&SAMLResponse=${JSON.stringify(invalidSamlResponse)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.include("Missing assertion in SAMLResponse");
+        });
+    });
+  });
+
   describe("when blocking functions are present", () => {
     afterEach(() => {
       expect(nock.isDone()).to.be.true;

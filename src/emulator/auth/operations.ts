@@ -586,8 +586,9 @@ function createAuthUri(
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   const sessionId = reqBody.sessionId || randomId(27);
-  if (reqBody.providerId) {
-    throw new NotImplementedError("Sign-in with IDP is not yet supported.");
+  // Allow SAML provider IDs for createAuthUri but still block others
+  if (reqBody.providerId && !reqBody.providerId.startsWith("saml.")) {
+    throw new NotImplementedError("Sign-in with non-SAML IDP is not yet supported.");
   }
   assert(reqBody.identifier, "MISSING_IDENTIFIER");
   assert(reqBody.continueUri, "MISSING_CONTINUE_URI");
@@ -1532,6 +1533,44 @@ async function signInWithEmailLink(
 
 type SignInWithIdpResponse = Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpResponse"];
 
+
+
+/**
+ * Extract claims from SAML attribute statements for IdP-initiated flows
+ */
+function extractClaimsFromSamlAttributes(attributeStatements?: any): Partial<IdpJwtPayload> {
+  if (!attributeStatements || !Array.isArray(attributeStatements)) {
+    return {};
+  }
+
+  const claims: Partial<IdpJwtPayload> = {};
+  
+  // Common SAML attribute mappings
+  const attributeMap: Record<string, string> = {
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": "name",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname": "given_name",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname": "family_name",
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email",
+    "displayName": "name",
+    "firstName": "given_name",
+    "lastName": "family_name",
+    "email": "email",
+  };
+
+  for (const statement of attributeStatements) {
+    if (statement.attributes) {
+      for (const [attrName, attrValue] of Object.entries(statement.attributes)) {
+        const claimName = attributeMap[attrName] || attrName;
+        if (claimName in ["name", "given_name", "family_name", "email"]) {
+          claims[claimName as keyof IdpJwtPayload] = String(attrValue);
+        }
+      }
+    }
+  }
+
+  return claims;
+}
+
 async function signInWithIdp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpRequest"],
@@ -1554,8 +1593,11 @@ async function signInWithIdp(
   const oauthIdToken = normalizedUri.searchParams.get("id_token") || undefined;
   const oauthAccessToken = normalizedUri.searchParams.get("access_token") || undefined;
 
+  // For SAML providers, we might not have OAuth tokens but should have SAMLResponse
+  const hasSamlResponse = normalizedUri.searchParams.get("SAMLResponse");
   const claims = parseClaims(oauthIdToken) || parseClaims(oauthAccessToken);
-  if (!claims) {
+  
+  if (!claims && !hasSamlResponse) {
     // Try to give the most helpful error message, depending on input.
     if (oauthIdToken) {
       throw new BadRequestError(
@@ -1573,7 +1615,7 @@ async function signInWithIdp(
       }
     } else {
       throw new NotImplementedError(
-        "The Auth Emulator only supports sign-in with credentials (id_token required).",
+        "The Auth Emulator only supports sign-in with credentials (id_token required) or SAML response.",
       );
     }
   }
@@ -1598,7 +1640,19 @@ async function signInWithIdp(
     );
   }
 
-  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims, samlResponse);
+  // If we have SAML response but no claims (IdP-initiated flow), create claims from SAML
+  let finalClaims = claims;
+  if (!claims && samlResponse) {
+    const nameId = samlResponse.assertion!.subject!.nameId!;
+    finalClaims = {
+      sub: nameId,
+      email: isValidEmailAddress(nameId) ? nameId : undefined,
+      email_verified: true,
+      ...extractClaimsFromSamlAttributes(samlResponse.assertion!.attributeStatements),
+    };
+  }
+
+  let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, finalClaims, samlResponse);
 
   // Always return an access token, so that clients depending on it sorta work.
   // e.g. JS SDK creates credentials from accessTokens for most providers:
