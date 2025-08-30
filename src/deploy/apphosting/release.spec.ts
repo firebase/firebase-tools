@@ -1,7 +1,6 @@
 import * as sinon from "sinon";
 import * as rollout from "../../apphosting/rollout";
 import { Config } from "../../config";
-import { AppHostingSingle } from "../../firebaseConfig";
 import { RC } from "../../rc";
 import { Context } from "./args";
 import release from "./release";
@@ -22,20 +21,17 @@ const BASE_OPTS = {
 
 function initializeContext(): Context {
   return {
-    backendConfigs: new Map<string, AppHostingSingle>([
-      [
-        "foo",
-        {
-          backendId: "foo",
-          rootDir: "/",
-          ignore: [],
-        },
-      ],
-    ]),
-    backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-    backendStorageUris: new Map<string, string>([
-      ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-    ]),
+    backendConfigs: {
+      foo: {
+        backendId: "foo",
+        rootDir: "/",
+        ignore: [],
+      },
+    },
+    backendLocations: { foo: "us-central1" },
+    backendStorageUris: {
+      foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+    },
   };
 }
 
