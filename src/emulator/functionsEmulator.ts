@@ -580,11 +580,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
-        userEnvOpt,
         userEnvs,
         nonInteractive: false,
         isEmulator: true,
       });
+
+      functionsEnv.writeResolvedParams(resolution.envs, userEnvs, userEnvOpt);
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
