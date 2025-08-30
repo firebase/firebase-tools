@@ -29,7 +29,7 @@ interface BeforeFunction {
 
 interface CLIClient {
   cli: CommanderStatic;
-  errorOut: (e: Error) => void;
+  errorOut: (e: Error, options?: Options) => void;
 }
 
 /**
@@ -285,7 +285,8 @@ export class Command {
             ]),
           );
 
-          client.errorOut(err);
+          options.command = this.name;
+          client.errorOut(err, options);
         });
     });
   }
