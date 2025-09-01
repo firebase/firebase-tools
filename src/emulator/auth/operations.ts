@@ -2221,7 +2221,14 @@ async function mfaSignInFinalize(
 
   let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
   const enrollment = user.mfaInfo?.find(
-    (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber,
+    (enrollment) => {
+      return
+        // all but firebase-ios-sdk finalize with unobfuscated phone number which we find easily...
+        enrollment.unobfuscatedPhoneInfo === phoneNumber ||
+        // ...but firebase-ios-sdk finalizes with obfuscated
+        // This works against cloud auth, so emulator should attempt to find enrollment obfuscated as well.
+        ('+********' + enrollment.unobfuscatedPhoneInfo.substring(enrollment.unobfuscatedPhoneInfo.length - 4)) === phoneNumber;
+    }
   );
 
   const { updates, extraClaims } = await fetchBlockingFunction(
