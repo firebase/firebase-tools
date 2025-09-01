@@ -1,1 +1,2 @@
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
+- feat: [mcp] Add 'select' parameter to the `firestore_get_documents` tool. (#9043)

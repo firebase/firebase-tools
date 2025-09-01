@@ -1,9 +1,24 @@
 import { z } from "zod";
+import * as _ from "lodash";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getDocuments } from "../../../gcp/firestore";
 import { firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
+
+function applySelect(doc: any, select: string[]): any {
+  const newDoc: any = {};
+  // Always preserve the __path__ field if it exists.
+  if (doc.__path__) {
+    newDoc.__path__ = doc.__path__;
+  }
+  for (const path of select) {
+    if (_.has(doc, path)) {
+      _.set(newDoc, path, _.get(doc, path));
+    }
+  }
+  return newDoc;
+}
 
 export const get_documents = tool(
   {
@@ -20,6 +35,12 @@ export const get_documents = tool(
         .describe(
           "One or more document paths (e.g. `collectionName/documentId` or `parentCollection/parentDocument/collectionName/documentId`)",
         ),
+      select: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "A list of field paths to return. If not specified, returns the entire document. E.g. `['field1', 'nested.field2']`.",
+        ),
       use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
@@ -31,7 +52,7 @@ export const get_documents = tool(
       requiresProject: true,
     },
   },
-  async ({ paths, database, use_emulator }, { projectId, host }) => {
+  async ({ paths, database, use_emulator, select }, { projectId, host }) => {
     if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
     let emulatorUrl: string | undefined;
@@ -43,7 +64,11 @@ export const get_documents = tool(
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
-    const docs = documents.map(firestoreDocumentToJson);
+    let docs = documents.map(firestoreDocumentToJson);
+
+    if (select && select.length > 0) {
+      docs = docs.map((doc) => applySelect(doc, select));
+    }
 
     if (documents.length === 1 && missing.length === 0) {
       // return a single document as YAML if that's all we have/need
