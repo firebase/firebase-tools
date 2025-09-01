@@ -1,13 +1,14 @@
 import { ServerFeature } from "../types";
 import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
+import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: corePrompts,
   firestore: [],
   storage: [],
-  dataconnect: [],
+  dataconnect: dataconnectPrompts,
   auth: [],
   messaging: [],
   remoteconfig: [],
