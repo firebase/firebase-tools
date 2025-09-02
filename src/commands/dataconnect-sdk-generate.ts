@@ -53,6 +53,10 @@ export const command = new Command("dataconnect:sdk:generate")
       await Promise.race(generateRuns);
     } else {
       await Promise.all(generateRuns);
-      logLabeledSuccess("dataconnect", `Successfully Generated SDKs`);
+      const services = serviceInfosWithSDKs.map((s) => s.dataConnectYaml.serviceId).join(", ");
+      logLabeledSuccess(
+        "dataconnect",
+        `Successfully Generated SDKs for services: ${clc.bold(services)}`,
+      );
     }
   });
