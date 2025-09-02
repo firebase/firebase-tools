@@ -1,1 +1,2 @@
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
+- Fixed issue where `firebase-ios-sdk` could not finalize MFA with auth emulator. (#9062)
