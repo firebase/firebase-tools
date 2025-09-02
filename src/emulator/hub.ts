@@ -53,8 +53,9 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locator = JSON.parse(data) as Locator;
 
     if (locator.version !== this.CLI_VERSION) {
-      // TODO: In case the locator file format is changed, handle issues with format incompatibility
-      logger.debug(`Found locator with mismatched version: ${JSON.stringify(locator)}`);
+      logger.debug(
+        `Found emulator locator with different version: ${JSON.stringify(locator)}, CLI_VERSION: ${this.CLI_VERSION}`,
+      );
     }
 
     return locator;
