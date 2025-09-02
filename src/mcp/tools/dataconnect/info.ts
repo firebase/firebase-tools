@@ -46,10 +46,10 @@ export const status = tool(
     },
   },
   async ({ include_connector_source, include_schema_source }, { projectId, config }) => {
-    const localServices = await loadAll(projectId, config);
+    const serviceInfos = await loadAll(projectId, config);
     const serviceStatuses = new Map<string, ServiceStatus>();
 
-    for (const l of localServices) {
+    for (const l of serviceInfos) {
       serviceStatuses.set(
         `locations/${l.dataConnectYaml.location}/services/${l.dataConnectYaml.serviceId}`,
         { local: l },
@@ -98,9 +98,44 @@ export const status = tool(
       }
     }
 
+    const localServices = Array.from(serviceStatuses.values()).filter((s) => s.local);
+    const remoteOnlyServices = Array.from(serviceStatuses.values()).filter((s) => !s.local);
 
     const output: string[] = [];
 
+    function includeDeployed(deployed: DeployServiceStatus) {
+      output.push(`It's deployed in the backend.`);
+      if (deployed.schemas?.length) {
+        for (const schema of deployed.schemas) {
+          output.push(schemaToText(schema));
+        }
+      }
+      if (deployed.connectors?.length) {
+        output.push(`- Deployed Connectors:`);
+        for (const connector of deployed.connectors) {
+          output.push(`  - ${connector.name}`);
+        }
+      }
+    }
+
+    if (localServices.length) {
+      output.push(`Local Data Connect sources:`);
+      for (const s of localServices) {
+        output.push(JSON.stringify(s.local!.dataConnectYaml, null, 2));
+        if (s.deployed) {
+          includeDeployed(s.deployed);
+        }
+      }
+    }
+    if (remoteOnlyServices.length) {
+      output.push(`Remote Data Connect sources:`);
+      for (const s of remoteOnlyServices) {
+        output.push(JSON.stringify(s.local!.dataConnectYaml, null, 2));
+        if (s.deployed) {
+          includeDeployed(s.deployed);
+        }
+      }
+    }
     return toContent(output.join("\n"));
   },
 );
