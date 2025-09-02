@@ -1,1 +1,2 @@
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
+- Fixed the bugs when MCP tools cannot connect to emulator due to CLI version mis-matched. (#9068)
