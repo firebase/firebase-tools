@@ -2223,11 +2223,18 @@ async function mfaSignInFinalize(
   const enrollment = user.mfaInfo?.find(
     (enrollment) => {
       return
-        // all but firebase-ios-sdk finalize with unobfuscated phone number which we find easily...
-        enrollment.unobfuscatedPhoneInfo === phoneNumber ||
-        // ...but firebase-ios-sdk finalizes with obfuscated
-        // This works against cloud auth, so emulator should attempt to find enrollment obfuscated as well.
-        ('+********' + enrollment.unobfuscatedPhoneInfo.substring(enrollment.unobfuscatedPhoneInfo.length - 4)) === phoneNumber;
+        // All but firebase-ios-sdk finalize with unobfuscated phone number.
+        if (enrollment.unobfuscatedPhoneInfo === phoneNumber) {
+          return true;
+        }
+        
+        // But firebase-ios-sdk finalizes with an obfuscated number. This works against
+        // cloud auth, so emulator should attempt to find enrollment obfuscated as well.
+        if (obfuscatePhoneNumber(enrollment.unobfuscatedPhoneInfo) === phoneNumber) {
+          return true;
+        }
+        
+        return false;
     }
   );
 
