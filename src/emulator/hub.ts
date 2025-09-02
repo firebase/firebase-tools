@@ -53,10 +53,9 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
 
-    // TODO: In case the locator file format is changed, handle issues with format incompatability
-    if (!isVSCodeExtension() && locator.version !== this.CLI_VERSION) {
+    if (locator.version !== this.CLI_VERSION) {
+      // TODO: In case the locator file format is changed, handle issues with format incompatability
       logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
-      return undefined;
     }
 
     return locator;
