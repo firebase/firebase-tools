@@ -89,7 +89,8 @@ export const init = tool(
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.",
+            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
+              "It installs Data Connect Generated SDKs in all detected apps in the folder.",
           ),
         storage: z
           .object({
@@ -155,6 +156,10 @@ export const init = tool(
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
       };
+      featureInfo.dataconnectSdk = {
+        // Add FDC generated SDKs to all apps detected.
+        apps: [],
+      };
     }
     const setup: Setup = {
       config: config?.src,
@@ -162,14 +167,26 @@ export const init = tool(
       projectId: projectId,
       features: [...featuresList],
       featureInfo: featureInfo,
+      instructions: [],
     };
     // Set force to true to avoid prompting the user for confirmation.
     await actuate(setup, config, { force: true });
     config.writeProjectFile("firebase.json", setup.config);
     config.writeProjectFile(".firebaserc", setup.rcfile);
+
+    if (featureInfo.dataconnectSdk && !featureInfo.dataconnectSdk.apps.length) {
+      setup.instructions.push(
+        `No app is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool to add Data Connect SDKs to your apps.
+  Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
+      );
+    }
     return toContent(
-      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}` +
-        " To deploy them, you can run `firebase deploy` in command line.",
+      `Successfully setup those features: ${featuresList.join(", ")}
+
+To get started:
+
+- ${setup.instructions.join("\n\n- ")}
+`,
     );
   },
 );

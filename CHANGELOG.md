@@ -1,1 +1,1 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)

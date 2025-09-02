@@ -3,7 +3,7 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import * as client from "../../../dataconnect/client";
 import { pickService } from "../../../dataconnect/load";
-import { schemaToText } from "./converter";
+import { schemaToText } from "../../util/dataconnect/converter";
 
 export const get_schema = tool(
   {
