@@ -8,6 +8,7 @@ import { loadAll } from "../dataconnect/load";
 import { logger } from "../logger";
 import { getProjectDefaultAccount } from "../auth";
 import { logLabeledSuccess } from "../utils";
+import { ServiceInfo } from "../dataconnect/types";
 
 type GenerateOptions = Options & { watch?: boolean };
 
@@ -39,20 +40,19 @@ export const command = new Command("dataconnect:sdk:generate")
       );
       return;
     }
-    const generateRuns = serviceInfosWithSDKs.map((serviceInfo) => {
-      const configDir = serviceInfo.sourceDirectory;
-      const account = getProjectDefaultAccount(options.projectRoot);
+    async function generateSDK(serviceInfo: ServiceInfo): Promise<void> {
       return DataConnectEmulator.generate({
-        configDir,
+        configDir: serviceInfo.sourceDirectory,
         watch: options.watch,
-        account,
+        account: getProjectDefaultAccount(options.projectRoot),
       });
-    });
-
+    }
     if (options.watch) {
-      await Promise.race(generateRuns);
+      await Promise.race(serviceInfosWithSDKs.map(generateSDK));
     } else {
-      await Promise.all(generateRuns);
+      for (const s of serviceInfosWithSDKs) {
+        await generateSDK(s);
+      }
       const services = serviceInfosWithSDKs.map((s) => s.dataConnectYaml.serviceId).join(", ");
       logLabeledSuccess(
         "dataconnect",
