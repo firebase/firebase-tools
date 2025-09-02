@@ -7,8 +7,6 @@ import { logLabeledBullet } from "../../utils";
 import * as fs from "fs";
 import { resolveWithin } from "../../pathUtils";
 
-tmp.setGracefulCleanup();
-
 export interface GitClient {
   clone(repository: string, destination: string): SpawnSyncReturns<string>;
   fetch(ref: string, cwd: string): SpawnSyncReturns<string>;

@@ -9,7 +9,7 @@ import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
 import type { RuntimeDelegate, DelegateContext } from "./runtimes";
 import * as fs from "fs";
-import * as os from "os";
+import * as tmp from "tmp";
 import * as path from "path";
 import * as projectConfig from "../../functions/projectConfig";
 import * as discovery from "./runtimes/discovery";
@@ -113,22 +113,19 @@ describe("prepare", () => {
       const RUNTIME = "nodejs20" as const;
       const yamlText = `specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n`;
 
-      let tmpDir = "";
-      let stub: sinon.SinonStub | undefined;
+      let tmpDir: tmp.DirResult;
+      let cleanRemoteSourceStub: sinon.SinonStub;
 
       beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-remote-"));
-        fs.writeFileSync(path.join(tmpDir, "functions.yaml"), yamlText, "utf8");
-        stub = sinon.stub(remoteSourceModule, "cloneRemoteSource").resolves(tmpDir);
+        tmpDir = tmp.dirSync({ prefix: "fb-remote-", unsafeCleanup: true });
+        fs.writeFileSync(path.join(tmpDir.name, "functions.yaml"), yamlText, "utf8");
+        cleanRemoteSourceStub = sinon
+          .stub(remoteSourceModule, "cloneRemoteSource")
+          .resolves(tmpDir.name);
       });
 
       afterEach(() => {
-        stub?.restore();
-        try {
-          fs.rmSync(tmpDir, { recursive: true, force: true });
-        } catch {
-          // ignore cleanup errors
-        }
+        cleanRemoteSourceStub.restore();
       });
 
       it("clones remote and loads functions.yaml, applying prefix", async () => {
@@ -162,7 +159,7 @@ describe("prepare", () => {
       });
 
       it("throws when functions.yaml missing in remote", async () => {
-        fs.rmSync(path.join(tmpDir, "functions.yaml"));
+        fs.rmSync(path.join(tmpDir.name, "functions.yaml"));
 
         const cfg = projectConfig.normalizeAndValidate([
           {
@@ -237,7 +234,7 @@ describe("prepare", () => {
         };
         await prepare.loadCodebases(ctx, options, {});
         expect((captured as DelegateContext).safeMode).to.equal(true);
-        expect((captured as DelegateContext).sourceDir).to.equal(tmpDir);
+        expect((captured as DelegateContext).sourceDir).to.equal(tmpDir.name);
 
         getDelegateStub.restore();
       });
