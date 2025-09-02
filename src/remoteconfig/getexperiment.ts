@@ -38,6 +38,7 @@ export const parseExperimentIntoTable = (experiment: GetExperimentResult): strin
 /**
  * Returns a Remote Config experiment.
  * @param projectId The ID of the project.
+ * @param namespace The namespace under which the experiment is created.
  * @param experimentId The ID of the experiment to retrieve.
  * @return A promise that resolves to the experiment object.
  */
@@ -47,7 +48,7 @@ export async function getExperiment(
   experimentId: string,
 ): Promise<GetExperimentResult> {
   try {
-    const res = await apiClient.request<null, GetExperimentResult>({
+    const res = await apiClient.request<void, GetExperimentResult>({
       method: "GET",
       path: `projects/${projectId}/namespaces/${namespace}/experiments/${experimentId}`,
       timeout: TIMEOUT,
