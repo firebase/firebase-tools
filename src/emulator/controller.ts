@@ -64,6 +64,7 @@ import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { dataConnectLocalConnString } from "../api";
 import { AppHostingSingle } from "../firebaseConfig";
 import { resolveProjectPath } from "../projectPath";
+import { resolveWithin } from "../pathUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -532,7 +533,11 @@ export async function startAll(
         cfg,
         "Remote sources are not supported in the Functions emulator at this time.",
       );
-      const functionsDir = path.join(projectDir, narrowed.source);
+      const functionsDir = resolveWithin(
+        projectDir,
+        narrowed.source,
+        `functions.source "${narrowed.source}" must be within the project directory.`,
+      );
       const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
       // will dynamically detect it later.

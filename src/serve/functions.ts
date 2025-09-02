@@ -1,4 +1,3 @@
-import * as path from "path";
 import {
   EmulatableBackend,
   FunctionsEmulator,
@@ -11,6 +10,7 @@ import * as projectConfig from "../functions/projectConfig";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "../emulator/registry";
 import { parseInspectionPort } from "../emulator/commandUtils";
+import { resolveWithin } from "../pathUtils";
 
 export class FunctionsServer {
   emulator?: FunctionsEmulator;
@@ -33,7 +33,11 @@ export class FunctionsServer {
         cfg,
         "Remote sources are not supported in the Functions emulator at this time.",
       );
-      const functionsDir = path.join(options.config.projectDir, local.source);
+      const functionsDir = resolveWithin(
+        options.config.projectDir,
+        local.source,
+        `functions.source "${local.source}" must be within the project directory.`,
+      );
       backends.push({
         functionsDir,
         codebase: local.codebase,

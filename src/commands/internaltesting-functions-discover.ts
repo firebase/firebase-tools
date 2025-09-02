@@ -2,7 +2,6 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { loadCodebases } from "../deploy/functions/prepare";
-import type { Context as FunctionsContext } from "../deploy/functions/args";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
@@ -44,11 +43,11 @@ export const command = new Command("internaltesting:functions:discover")
       }
     }
 
-    const ctx: FunctionsContext = {
+    const ctx = {
       projectId,
       config: fnConfig,
       firebaseConfig,
-    } as FunctionsContext;
+    };
 
     const wantBuilds = await loadCodebases(ctx, options, runtimeConfig);
 

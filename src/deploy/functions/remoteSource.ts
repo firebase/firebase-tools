@@ -5,6 +5,7 @@ import { FirebaseError, hasMessage } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
 import * as fs from "fs";
+import { resolveWithin } from "../../pathUtils";
 
 tmp.setGracefulCleanup();
 
@@ -111,7 +112,13 @@ export async function cloneRemoteSource(
       throw new Error(checkoutResult.stderr || checkoutResult.stdout || "Checkout failed");
     }
 
-    const sourceDir = dir ? path.join(tmpDir.name, dir) : tmpDir.name;
+    const sourceDir = dir
+      ? resolveWithin(
+          tmpDir.name,
+          dir,
+          `Subdirectory '${dir}' in remote source must not escape the repository root.`,
+        )
+      : tmpDir.name;
     requireFunctionsYaml(sourceDir);
     try {
       const rev = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
