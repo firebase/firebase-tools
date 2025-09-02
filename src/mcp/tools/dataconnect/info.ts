@@ -3,167 +3,103 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import * as client from "../../../dataconnect/client";
 import { loadAll } from "../../../dataconnect/load";
-import { Service, ServiceInfo, Connector } from "../../../dataconnect/types";
+import { Service, Schema, ServiceInfo, Connector } from "../../../dataconnect/types";
 import { connectorToText } from "../../util/dataconnect/converter";
 import { schemaToText } from "../../util/dataconnect/converter";
+import { fieldSize } from "tar";
+import { logger } from "../../../logger";
 
 interface ServiceStatus {
   local?: ServiceInfo;
-  remote?: Service;
+  deployed?: DeployServiceStatus;
 }
 
-export const dataconnect_info = tool(
+interface DeployServiceStatus {
+  service?: Service;
+  schemas?: Schema[];
+  connectors?: Connector[];
+}
+
+export const status = tool(
   {
-    name: "dataconnect_info",
-    description:
-      "Get information about the Firebase Data Connect services in the project and in the local workspace.",
-    inputSchema: z.object({}),
+    name: "status",
+    description: "Get status about the Firebase Data Connect local and deployed sources.",
+    inputSchema: z.object({
+      include_schema_source: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Include Data Connect schema details."),
+      include_connector_source: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Include Data Connect connector details."),
+    }),
     annotations: {
-      title: "Get Data Connect Information",
+      title: "Get project status about Firebase Data Connect",
       readOnlyHint: true,
     },
     _meta: {
-      requiresProject: true,
-      requiresAuth: true,
+      requiresProject: false,
+      requiresAuth: false,
     },
   },
-  async (_, { projectId, config }) => {
-    const remoteServices = await client.listAllServices(projectId);
+  async ({ include_connector_source, include_schema_source }, { projectId, config }) => {
     const localServices = await loadAll(projectId, config);
-
     const serviceStatuses = new Map<string, ServiceStatus>();
 
-    for (const ls of localServices) {
-      const serviceId = ls.dataConnectYaml.serviceId;
-      if (!serviceStatuses.has(serviceId)) {
-        serviceStatuses.set(serviceId, {});
-      }
-      serviceStatuses.get(serviceId)!.local = ls;
+    for (const l of localServices) {
+      serviceStatuses.set(
+        `locations/${l.dataConnectYaml.location}/services/${l.dataConnectYaml.serviceId}`,
+        { local: l },
+      );
     }
 
-    for (const rs of remoteServices) {
-      const serviceId = rs.name.split("/").pop()!;
-      if (!serviceStatuses.has(serviceId)) {
-        serviceStatuses.set(serviceId, {});
+    if (projectId) {
+      try {
+        const [services, schemas, connectors] = await Promise.all([
+          client.listAllServices(projectId),
+          client.listSchemas(
+            `projects/${projectId}/services/-`,
+            include_schema_source ? ["datasources", "source"] : ["datasources"],
+          ),
+          client.listConnectors(
+            `projects/${projectId}/services/-`,
+            include_connector_source ? ["source"] : [],
+          ),
+        ]);
+        console.log(services, schemas, connectors);
+        for (const s of services) {
+          const k = s.name.split("/").slice(2, 4).join("/");
+          const st = serviceStatuses.get(k) || {};
+          st.deployed = st.deployed || {};
+          st.deployed.service = s;
+          serviceStatuses.set(k, st);
+        }
+        for (const s of schemas) {
+          const k = s.name.split("/").slice(2, 4).join("/");
+          const st = serviceStatuses.get(k) || {};
+          st.deployed = st.deployed || {};
+          st.deployed.schemas = st.deployed.schemas || [];
+          st.deployed.schemas.push(s);
+          serviceStatuses.set(k, st);
+        }
+        for (const s of connectors) {
+          const k = s.name.split("/").slice(2, 4).join("/");
+          const st = serviceStatuses.get(k) || {};
+          st.deployed = st.deployed || {};
+          st.deployed.connectors = st.deployed.connectors || [];
+          st.deployed.connectors.push(s);
+          serviceStatuses.set(k, st);
+        }
+      } catch (e: any) {
+        logger.debug("Cannot fetch dataconnect resources");
       }
-      serviceStatuses.get(serviceId)!.remote = rs;
     }
+
 
     const output: string[] = [];
-
-    output.push("Services in local workspace (firebase.json):");
-    const localServiceIds = localServices.map((ls) => ls.dataConnectYaml.serviceId);
-    if (localServiceIds.length === 0) {
-      output.push("  No services found in firebase.json.");
-    } else {
-      for (const serviceId of localServiceIds) {
-        const status = serviceStatuses.get(serviceId)!;
-        const location = status.local?.dataConnectYaml.location ?? "unknown";
-        const source = status.local?.sourceDirectory ?? "unknown";
-        const existsRemotely = status.remote ? "exists remotely" : "does not exist remotely";
-        output.push(
-          `- ${serviceId} (location: ${location}, source: ${source}) - ${existsRemotely}`,
-        );
-      }
-    }
-
-    const remoteOnlyServices = remoteServices.filter((rs) => {
-      const serviceId = rs.name.split("/").pop()!;
-      return !serviceStatuses.get(serviceId)?.local;
-    });
-
-    if (remoteOnlyServices.length > 0) {
-      output.push("\nServices in Google Cloud Project (not in local workspace):");
-      for (const rs of remoteOnlyServices) {
-        output.push(`- ${rs.name}`);
-      }
-    }
-
-    for (const serviceId of localServiceIds) {
-      const status = serviceStatuses.get(serviceId)!;
-      if (status.local) {
-        output.push(`\nDetails for service ${serviceId}:`);
-        output.push("  Schema (from local source):");
-        output.push(
-          schemaToText(status.local.schema)
-            .split("\n")
-            .map((l) => `    ${l}`)
-            .join("\n"),
-        );
-
-        const localConnectors = new Map<string, Connector>();
-        for (const ci of status.local.connectorInfo) {
-          localConnectors.set(ci.connectorYaml.connectorId, ci.connector);
-        }
-        const remoteConnectors = await client.listConnectors(status.local.serviceName, ["*"]);
-        const remoteConnectorIds = new Set(remoteConnectors.map((rc) => rc.name.split("/").pop()!));
-
-        output.push("  Connectors:");
-        for (const [connectorId, connector] of localConnectors.entries()) {
-          const existsRemotely = remoteConnectorIds.has(connectorId)
-            ? "exists remotely"
-            : "does not exist remotely";
-          output.push(`    - ${connectorId} (from local source) - ${existsRemotely}`);
-          output.push(
-            connectorToText(connector)
-              .split("\n")
-              .map((l) => `      ${l}`)
-              .join("\n"),
-          );
-        }
-
-        for (const rc of remoteConnectors) {
-          const connectorId = rc.name.split("/").pop()!;
-          if (!localConnectors.has(connectorId)) {
-            output.push(`    - ${connectorId} (from remote source only)`);
-            output.push(
-              connectorToText(rc)
-                .split("\n")
-                .map((l) => `      ${l}`)
-                .join("\n"),
-            );
-          }
-        }
-      }
-    }
-
-    for (const rs of remoteOnlyServices) {
-      const serviceId = rs.name.split("/").pop()!;
-      output.push(`\nDetails for service ${serviceId} (from remote source only):`);
-      const schemas = await client.listSchemas(rs.name, ["*"]);
-      output.push("  Schema:");
-      if (schemas && schemas.length > 0) {
-        output.push(
-          schemas
-            .map((s) =>
-              schemaToText(s)
-                .split("\n")
-                .map((l) => `    ${l}`)
-                .join("\n"),
-            )
-            .join("\n\n"),
-        );
-      } else {
-        output.push("    No schemas found for this service.");
-      }
-
-      const connectors = await client.listConnectors(rs.name, ["*"]);
-      output.push("  Connectors:");
-      if (connectors.length > 0) {
-        output.push(
-          connectors
-            .map((c) =>
-              connectorToText(c)
-                .split("\n")
-                .map((l) => `    ${l}`)
-                .join("\n"),
-            )
-            .join("\n\n"),
-        );
-      } else {
-        output.push("    No connectors found for this service.");
-      }
-    }
 
     return toContent(output.join("\n"));
   },
