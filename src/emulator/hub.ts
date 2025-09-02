@@ -12,7 +12,6 @@ import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
-import { isVSCodeExtension } from "../vsCodeUtils";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -54,8 +53,8 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locator = JSON.parse(data) as Locator;
 
     if (locator.version !== this.CLI_VERSION) {
-      // TODO: In case the locator file format is changed, handle issues with format incompatability
-      logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
+      // TODO: In case the locator file format is changed, handle issues with format incompatibility
+      logger.debug(`Found locator with mismatched version: ${JSON.stringify(locator)}`);
     }
 
     return locator;
