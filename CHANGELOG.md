@@ -1,2 +1,1 @@
-- Fixed an issue where core MCP tools would be excluded from `listTools`. (#9045)
-- Fixed an issue where the MCP server would fail to identify active projects.
+- Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
