@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 
 import * as init from "./index";
+import * as sdk from "./sdk";
 import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
@@ -20,10 +21,12 @@ describe("init dataconnect", () => {
     let provisionCSQLStub: sinon.SinonStub;
     let askWriteProjectFileStub: sinon.SinonStub;
     let ensureSyncStub: sinon.SinonStub;
+    let sdkActuateStub: sinon.SinonStub;
 
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "setupCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
+      sdkActuateStub = sandbox.stub(sdk, "actuate").resolves();
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
     });
 
@@ -179,7 +182,8 @@ describe("init dataconnect", () => {
             projectId: "test-project",
             rcfile: MOCK_RC,
             config: c.config.src,
-            featureInfo: { dataconnect: c.requiredInfo },
+            featureInfo: { dataconnect: c.requiredInfo, dataconnectSdk: { apps: [] } },
+            instructions: [],
           },
           c.config,
           {},
@@ -190,6 +194,7 @@ describe("init dataconnect", () => {
         }
         expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
         expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
+        expect(sdkActuateStub.called).to.be.true;
       });
     }
   });
@@ -231,7 +236,7 @@ describe("init dataconnect", () => {
 });
 
 function mockConfig(data: Record<string, any> = {}): Config {
-  return new Config(data, {});
+  return new Config(data, { projectDir: "." });
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
