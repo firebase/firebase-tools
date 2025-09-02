@@ -60,4 +60,3 @@ describe("runtimes.getRuntimeDelegate (safeMode)", () => {
     detectFromPortStub.restore();
   });
 });
-

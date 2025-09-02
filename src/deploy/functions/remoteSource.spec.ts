@@ -66,7 +66,10 @@ describe("remoteSource", () => {
 
     it("should validate subdirectory exists after clone", async () => {
       isGitAvailableStub.returns(true);
-      setSparseStub.returns({ status: 1, stderr: "fatal: pathspec 'subdir' did not match any files" });
+      setSparseStub.returns({
+        status: 1,
+        stderr: "fatal: pathspec 'subdir' did not match any files",
+      });
 
       await expect(
         cloneRemoteSource("https://github.com/org/repo", "main", "subdir", mockGitClient),

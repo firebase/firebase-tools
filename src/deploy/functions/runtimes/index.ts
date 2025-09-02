@@ -1,7 +1,6 @@
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
-import * as discovery from "./discovery";
 import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";

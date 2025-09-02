@@ -222,10 +222,7 @@ export async function getCodebaseRuntime(options: Options): Promise<string> {
     config,
     (options.codebase as string) || DEFAULT_CODEBASE,
   );
-  const local = requireLocal(
-    codebaseConfig,
-    "Remote sources are not supported here at this time.",
-  );
+  const local = requireLocal(codebaseConfig, "Remote sources are not supported here at this time.");
   const sourceDirName = local.source;
   const sourceDir = options.config.path(sourceDirName);
   const delegateContext: functionRuntimes.DelegateContext = {

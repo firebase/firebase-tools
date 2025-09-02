@@ -4,7 +4,10 @@ import type { ActiveRuntime } from "../deploy/functions/runtimes/supported/types
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
 // Stronger validated variants: local vs remote.
-type FunctionConfigCommon = Omit<FunctionConfig, "source" | "remoteSource" | "codebase" | "runtime">;
+type FunctionConfigCommon = Omit<
+  FunctionConfig,
+  "source" | "remoteSource" | "codebase" | "runtime"
+>;
 
 export type ValidatedLocalSingle = FunctionConfigCommon & {
   source: string;
@@ -238,11 +241,6 @@ export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLoc
   return c;
 }
 
-/**
- * Returns config directory if available, otherwise undefined.
- * - Local: returns configDir or source
- * - Remote: returns configDir if present; otherwise undefined (skip dotenv)
- */
 /**
  * Returns the local directory to read/write env files if available.
  * - Local: returns configDir or source

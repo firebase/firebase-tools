@@ -53,9 +53,7 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
     : getRuntimeChoice(context.sourceDir, context.runtime);
 
   if (context.safeMode && !runtime) {
-    throw new FirebaseError(
-      "Runtime is required for remote-safe discovery but was not provided.",
-    );
+    throw new FirebaseError("Runtime is required for remote-safe discovery but was not provided.");
   }
 
   if (!supported.runtimeIsLanguage(runtime, "nodejs")) {
@@ -69,7 +67,13 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime, !!context.safeMode);
+  return new Delegate(
+    context.projectId,
+    context.projectDir,
+    context.sourceDir,
+    runtime,
+    !!context.safeMode,
+  );
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -317,7 +321,11 @@ export class Delegate {
   ): Promise<build.Build> {
     if (this.safeMode) {
       // Manifest-only discovery; never execute user code.
-      const discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+      const discovered = await discovery.detectFromYaml(
+        this.sourceDir,
+        this.projectId,
+        this.runtime,
+      );
       if (!discovered) {
         throw new FirebaseError(
           `Failed to load functions.yaml from ${this.sourceDir}. Ensure a static manifest exists for remote discovery.`,

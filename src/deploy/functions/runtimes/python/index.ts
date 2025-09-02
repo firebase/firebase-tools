@@ -31,13 +31,11 @@ export async function tryCreateDelegate(
       return;
     }
   }
-  let runtime: supported.Runtime | undefined = context.safeMode
+  const runtime: supported.Runtime | undefined = context.safeMode
     ? (context.runtime as supported.Runtime | undefined)
     : ((context.runtime ?? supported.latest("python")) as supported.Runtime);
   if (context.safeMode && !runtime) {
-    throw new FirebaseError(
-      "Runtime is required for remote-safe discovery but was not provided.",
-    );
+    throw new FirebaseError("Runtime is required for remote-safe discovery but was not provided.");
   }
   if (!supported.isRuntime(runtime as string)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
