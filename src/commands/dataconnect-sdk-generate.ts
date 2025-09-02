@@ -39,14 +39,20 @@ export const command = new Command("dataconnect:sdk:generate")
       );
       return;
     }
-    for (const serviceInfo of serviceInfosWithSDKs) {
+    const generateRuns = serviceInfosWithSDKs.map((serviceInfo) => {
       const configDir = serviceInfo.sourceDirectory;
       const account = getProjectDefaultAccount(options.projectRoot);
-      await DataConnectEmulator.generate({
+      return DataConnectEmulator.generate({
         configDir,
         watch: options.watch,
         account,
       });
+    });
+
+    if (options.watch) {
+      await Promise.race(generateRuns);
+    } else {
+      await Promise.all(generateRuns);
       logLabeledSuccess("dataconnect", `Successfully Generated SDKs`);
     }
   });
