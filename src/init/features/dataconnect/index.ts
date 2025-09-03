@@ -17,7 +17,7 @@ import {
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, Platform, SCHEMA_ID } from "../../../dataconnect/types";
+import { Schema, Service, File, SCHEMA_ID } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -27,10 +27,10 @@ import {
   envOverride,
   promiseWithSpinner,
   logLabeledError,
+  newUniqueId,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
-import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import {
   generateOperation,
   generateSchema,
@@ -38,7 +38,6 @@ import {
   PROMPT_GENERATE_SEED_DATA,
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
-import { Options } from "../../../options";
 import { trackGA4 } from "../../../track";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
@@ -115,7 +114,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema [Enter to skip]:`,
+        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
@@ -128,6 +127,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
+
+  await sdk.askQuestions(setup);
 }
 
 // actuate writes product specific files and makes product specifc API calls.
@@ -150,12 +151,27 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   try {
     await actuateWithInfo(setup, config, info, options);
+    await sdk.actuate(setup, config);
   } finally {
     void trackGA4("dataconnect_init", {
       project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
       flow: info.analyticsFlow,
     });
   }
+
+  if (info.appDescription) {
+    setup.instructions.push(
+      `You can visualize the Data Connect Schema in Firebase Console:
+
+    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
+    );
+  }
+  if (!setup.isBillingEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
+  }
+  setup.instructions.push(
+    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
+  );
 }
 
 async function actuateWithInfo(
@@ -257,7 +273,7 @@ async function actuateWithInfo(
         path: "./example",
         files: [
           {
-            path: "queries",
+            path: "queries.gql",
             content: operationGql,
           },
         ],
@@ -340,42 +356,6 @@ function schemasDeploySequence(
   ];
 }
 
-export async function postSetup(setup: Setup, config: Config, options: Options): Promise<void> {
-  const info = setup.featureInfo?.dataconnect;
-  if (!info) {
-    throw new Error("Data Connect feature RequiredInfo is not provided");
-  }
-
-  const instructions: string[] = [];
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  // If a platform can be detected or a connector is chosen via env var, always
-  // setup SDK. FDC_CONNECTOR is used for scripts under https://firebase.tools/.
-  if (cwdPlatformGuess !== Platform.NONE || envOverride("FDC_CONNECTOR", "")) {
-    await sdk.doSetup(setup, config, options);
-  } else {
-    instructions.push(
-      `To add the generated SDK to your app, run ${clc.bold("firebase init dataconnect:sdk")}`,
-    );
-  }
-
-  if (info.appDescription) {
-    instructions.push(
-      `You can visualize the Data Connect Schema in Firebase Console:
-
-    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
-    );
-  }
-
-  if (setup.projectId && !setup.isBillingEnabled) {
-    instructions.push(upgradeInstructions(setup.projectId));
-  }
-
-  logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
-  for (const i of instructions) {
-    logBullet(i + "\n");
-  }
-}
-
 async function writeFiles(
   config: Config,
   info: RequiredInfo,
@@ -433,6 +413,8 @@ async function writeConnectorFiles(
     join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
     !!options.force,
+    // Default to override connector.yaml
+    true,
   );
   for (const f of connectorInfo.files) {
     await config.askWriteProjectFile(
@@ -526,7 +508,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
         const id = c.name.split("/").pop()!;
         return {
           id,
-          path: connectors.length === 1 ? "./connector" : `./${id}`,
+          path: connectors.length === 1 ? "./example" : `./${id}`,
           files: c.source.files || [],
         };
       });
@@ -681,20 +663,6 @@ async function locationChoices(setup: Setup) {
   }
 }
 
-/**
- * Returns a unique ID that's either `recommended` or `recommended-{i}`.
- * Avoid existing IDs.
- */
-function newUniqueId(recommended: string, existingIDs: string[]): string {
-  let id = recommended;
-  let i = 1;
-  while (existingIDs.includes(id)) {
-    id = `${recommended}-${i}`;
-    i++;
-  }
-  return id;
-}
-
 function defaultServiceId(): string {
   return toDNSCompatibleId(basename(process.cwd()));
 }
@@ -715,3 +683,4 @@ export function toDNSCompatibleId(id: string): string {
   }
   return id || "app";
 }
+export { newUniqueId };

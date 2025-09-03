@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
+import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -99,6 +100,10 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
+  // Track whether legacy runtime config is present (i.e., any keys other than the default 'firebase').
+  // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
+  context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
+
   const wantBuilds = await loadCodebases(
     context.config,
     options,
@@ -127,17 +132,19 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
+    proto.convertIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
-      userEnvOpt,
       userEnvs,
       nonInteractive: options.nonInteractive,
       isEmulator: false,
     });
+
+    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
