@@ -125,7 +125,7 @@ export const status = tool(
       }
     }
 
-    output.push(`# What's next?`);
+    output.push(`\n# What's next?`);
     if (!localServices.length) {
       output.push(
         `- There is no local Data Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
@@ -134,7 +134,9 @@ export const status = tool(
     output.push(
       `- You can use the \`dataconnect_compile\` tool to compile all local Data Connect schemas and query sources.`,
     );
-
+    output.push(
+      `- You run \`firebase deploy\` in command line to deploy the Data Connect schemas, connector and perform SQL migrations.`,
+    );
     return toContent(output.join("\n"));
   },
 );
