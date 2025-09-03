@@ -52,7 +52,7 @@ export class DataConnectService {
     private context: ExtensionContext,
   ) {}
 
-  async servicePath(path: string): Promise<string | undefined> {
+  async servicePath(path: string): Promise<string> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
     const dcs = dataConnectConfigsValue?.tryReadValue;
