@@ -108,7 +108,7 @@ export const status = tool(
         const local = s.local!;
         output.push(dump(local.dataConnectYaml));
         const schemaDir = path.join(local.sourceDirectory, local.dataConnectYaml.schema.source);
-        output.push(`You can find all of its schema sources in ${schemaDir}/*.{graphql,gql}`);
+        output.push(`You can find all of schema sources under ${schemaDir}/`);
         if (s.deployed) {
           output.push(`It's already deployed in the backend:\n`);
           includeDeployedServiceStatus(s.deployed);
