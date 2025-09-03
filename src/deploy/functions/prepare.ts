@@ -157,7 +157,15 @@ export async function prepare(
       }
       userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     } else {
-      logger.debug(`Skipping dotenv for codebase ${codebase} (no local env dir).`);
+      // Surface an info log for remote sources that do not provide a local configDir.
+      if (!isLocalConfig(config)) {
+        logLabeledBullet(
+          "functions",
+          `remote source without configDir — skipping dotenv read/write for codebase ${codebase}`,
+        );
+      } else {
+        logger.debug(`Skipping dotenv for codebase ${codebase} (no local env dir).`);
+      }
     }
     const envs = { ...userEnvs, ...firebaseEnvs };
 

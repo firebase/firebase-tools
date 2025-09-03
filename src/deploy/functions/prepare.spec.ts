@@ -11,6 +11,7 @@ import type { RuntimeDelegate, DelegateContext } from "./runtimes";
 import * as fs from "fs";
 import * as tmp from "tmp";
 import * as path from "path";
+import * as os from "os";
 import * as projectConfig from "../../functions/projectConfig";
 import * as discovery from "./runtimes/discovery";
 import * as pythonDelegate from "./runtimes/python";
@@ -117,6 +118,8 @@ describe("prepare", () => {
       let cleanRemoteSourceStub: sinon.SinonStub;
 
       beforeEach(() => {
+        // Use real runtime delegates for remote codepaths so safeMode can read YAML.
+        sandbox.restore();
         tmpDir = tmp.dirSync({ prefix: "fb-remote-", unsafeCleanup: true });
         fs.writeFileSync(path.join(tmpDir.name, "functions.yaml"), yamlText, "utf8");
         cleanRemoteSourceStub = sinon
@@ -733,11 +736,12 @@ describe("prepare", () => {
 
   describe("python delegate safeMode", () => {
     it("validate throws when functions.yaml missing in safeMode", async () => {
-      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fb-py-safe-"));
+      const tdir = tmp.dirSync({ prefix: "fb-py-safe-", unsafeCleanup: true });
+      const tmpPath = tdir.name;
       const delegate = await pythonDelegate.tryCreateDelegate({
         projectId: "p",
         projectDir: "/project",
-        sourceDir: tmp,
+        sourceDir: tmpPath,
         runtime: "python312",
         safeMode: true,
       });
@@ -745,9 +749,10 @@ describe("prepare", () => {
     });
 
     it("discoverBuild uses manifest-only in safeMode", async () => {
-      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fb-py-safe-"));
+      const tdir = tmp.dirSync({ prefix: "fb-py-safe-", unsafeCleanup: true });
+      const tmpPath = tdir.name;
       fs.writeFileSync(
-        path.join(tmp, "functions.yaml"),
+        path.join(tmpPath, "functions.yaml"),
         "specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n",
         "utf8",
       );
@@ -755,7 +760,7 @@ describe("prepare", () => {
       const delegate = await pythonDelegate.tryCreateDelegate({
         projectId: "p",
         projectDir: "/project",
-        sourceDir: tmp,
+        sourceDir: tmpPath,
         runtime: "python312",
         safeMode: true,
       });

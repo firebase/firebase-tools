@@ -99,7 +99,7 @@ async function uploadCodebase(
     const cfg = configForCodebase(context.config!, codebase);
     const label = cfg.source ?? cfg.remoteSource?.dir ?? "remote";
     if (uploads.length) {
-      logLabeledSuccess("functions", `${clc.bold(label)} folder uploaded successfully`);
+      logLabeledSuccess("functions", `${clc.bold(label)} source uploaded successfully`);
     }
   } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);

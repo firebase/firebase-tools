@@ -82,7 +82,7 @@ export async function cloneRemoteSource(
     // Keep clone details at debug to avoid duplicate, unlabeled lines.
     logger.debug(`Fetching remote source for ${repository}@${ref}...`);
 
-    const cloneResult = gitClient.clone(repository, tmpDir.name);
+    const cloneResult = await runGitWithRetry(() => gitClient.clone(repository, tmpDir.name));
     if (cloneResult.error || cloneResult.status !== 0) {
       throw new Error(cloneResult.stderr || cloneResult.stdout || "Clone failed");
     }
@@ -100,7 +100,7 @@ export async function cloneRemoteSource(
     }
 
     // Fetch just the requested ref shallowly, then check it out.
-    const fetchResult = gitClient.fetch(ref, tmpDir.name);
+    const fetchResult = await runGitWithRetry(() => gitClient.fetch(ref, tmpDir.name));
     if (fetchResult.error || fetchResult.status !== 0) {
       throw new Error(fetchResult.stderr || fetchResult.stdout || "Fetch failed");
     }
@@ -178,6 +178,45 @@ export async function cloneRemoteSource(
 export function isGitAvailable(): boolean {
   const result = spawnSync("git", ["--version"], { encoding: "utf8" });
   return !result.error && result.status === 0;
+}
+
+async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientGitError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("could not resolve host") ||
+    m.includes("unable to access") ||
+    m.includes("connection reset") ||
+    m.includes("timed out") ||
+    m.includes("temporary failure in name resolution") ||
+    m.includes("ssl_read") ||
+    m.includes("network is unreachable")
+  );
+}
+
+async function runGitWithRetry(
+  cmd: () => SpawnSyncReturns<string>,
+  retries = 1,
+  backoffMs = 200,
+): Promise<SpawnSyncReturns<string>> {
+  let last: SpawnSyncReturns<string> | undefined;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = cmd();
+    last = res;
+    const stderr = (res.stderr || res.stdout || "").toString();
+    if (!res.error && res.status === 0) return res;
+    if (attempt < retries && isTransientGitError(stderr)) {
+      await delay(backoffMs * Math.max(1, attempt + 1));
+      continue;
+    }
+    return res;
+  }
+  // Should not reach here, but return last if it exists.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return last!;
 }
 
 /**

@@ -78,15 +78,23 @@ export class Config {
       }
     });
 
-    // Inject default functions source if missing.
+    // Inject default functions source if missing, but only when a given entry has
+    // neither a local source nor a remoteSource configured.
     if (this.get("functions")) {
       if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-        if (Array.isArray(this.get("functions"))) {
-          if (!this.get("functions.[0].source")) {
+        const funcs = this.get("functions");
+        if (Array.isArray(funcs)) {
+          // Preserve historical behavior (inject for the first entry when needed)
+          // but also ensure we don't inject if remoteSource is present.
+          const firstHasSource = this.get("functions.[0].source");
+          const firstHasRemote = this.get("functions.[0].remoteSource");
+          if (!firstHasSource && !firstHasRemote) {
             this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
-          if (!this.get("functions.source")) {
+          const hasSource = this.get("functions.source");
+          const hasRemote = this.get("functions.remoteSource");
+          if (!hasSource && !hasRemote) {
             this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         }
