@@ -1,2 +1,1 @@
-- Fix GA4 under-reporting of Functions runtime config usage by restoring `has_runtime_config` tracking during deploy. (#9069)
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
