@@ -63,7 +63,10 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
   static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
-    const filename = `hub-${projectId || "demo-local"}.json`;
+    let filename = `hub_no_project.json`;
+    if (projectId) {
+      filename = `hub-${projectId}.json`;
+    }
     const locatorPath = path.join(dir, filename);
     logger.debug(`Emulator locator file path: ${locatorPath}`);
     return locatorPath;
