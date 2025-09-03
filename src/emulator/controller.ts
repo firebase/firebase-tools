@@ -310,7 +310,7 @@ export async function startAll(
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = getProjectId(options) || "";
+  const projectId = getProjectId(options) || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
   const isDemoProject = Constants.isDemoProject(projectId);
   if (isDemoProject) {
     hubLogger.logLabeled(
@@ -579,7 +579,6 @@ export async function startAll(
     }
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
-    const projectId = needProjectId(options);
 
     const inspectFunctions = commandUtils.parseInspectionPort(options);
     if (inspectFunctions) {
@@ -723,16 +722,8 @@ export async function startAll(
 
     // undefined in the config defaults to setting single_project_mode.
     if (singleProjectModeEnabled) {
-      if (projectId) {
-        args.single_project_mode = true;
-        args.single_project_mode_error = false;
-      } else {
-        firestoreLogger.logLabeled(
-          "DEBUG",
-          "firestore",
-          "Could not enable single_project_mode: missing projectId.",
-        );
-      }
+      args.single_project_mode = true;
+      args.single_project_mode_error = false;
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -822,19 +813,12 @@ export async function startAll(
   }
 
   if (listenForEmulator.auth) {
-    if (!projectId) {
-      throw new FirebaseError(
-        `Cannot start the ${Constants.description(
-          Emulators.AUTH,
-        )} without a project: run 'firebase init' or provide the --project flag`,
-      );
-    }
-
+    const mustProjectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     const authAddr = legacyGetFirstAddr(Emulators.AUTH);
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
       port: authAddr.port,
-      projectId,
+      projectId: mustProjectId,
       singleProjectMode: singleProjectModeEnabled
         ? SingleProjectMode.WARNING
         : SingleProjectMode.NO_WARNING,
@@ -846,22 +830,17 @@ export async function startAll(
       const importDirAbsPath = path.resolve(options.import);
       const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
 
-      await authEmulator.importData(authExportDir, projectId, { initiatedBy: "start" });
+      await authEmulator.importData(authExportDir, mustProjectId, { initiatedBy: "start" });
     }
   }
 
   if (listenForEmulator.pubsub) {
-    if (!projectId) {
-      throw new FirebaseError(
-        "Cannot start the Pub/Sub emulator without a project: run 'firebase init' or provide the --project flag",
-      );
-    }
-
+    const mustProjectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     const pubsubAddr = legacyGetFirstAddr(Emulators.PUBSUB);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
-      projectId,
+      projectId: mustProjectId,
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);

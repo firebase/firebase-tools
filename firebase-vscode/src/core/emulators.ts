@@ -179,7 +179,7 @@ export class EmulatorsController implements Disposable {
   }
 
   private getHubClient(): EmulatorHubClient | undefined {
-    const projectId = firebaseRC.value?.tryReadValue?.projects?.default || "";
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
     const hubClient = new EmulatorHubClient(projectId);
     if (hubClient.foundHub()) {
       return hubClient;

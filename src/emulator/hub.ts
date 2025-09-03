@@ -31,6 +31,7 @@ export interface EmulatorHubArgs {
 export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
 export class EmulatorHub extends ExpressBasedEmulator {
+  static MISSING_PROJECT_PLACEHOLDER = "demo-no-project";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
@@ -63,10 +64,10 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
   static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
-    let filename = `hub_no_project.json`;
-    if (projectId) {
-      filename = `hub-${projectId}.json`;
+    if (!projectId) {
+      projectId = EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     }
+    const filename = `hub-${projectId}.json`;
     const locatorPath = path.join(dir, filename);
     logger.debug(`Emulator locator file path: ${locatorPath}`);
     return locatorPath;
