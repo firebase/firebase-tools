@@ -310,7 +310,7 @@ export async function startAll(
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
+  const projectId: string = getProjectId(options) || "";
   const isDemoProject = Constants.isDemoProject(projectId);
   if (isDemoProject) {
     hubLogger.logLabeled(
@@ -1103,14 +1103,7 @@ function getListenConfig(
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
   const projectId = options.project;
-  if (!projectId) {
-    throw new FirebaseError(
-      "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
-      { exit: 1 },
-    );
-  }
-
-  const hubClient = new EmulatorHubClient(projectId);
+  const hubClient = new EmulatorHubClient(projectId || "");
   if (!hubClient.foundHub()) {
     throw new FirebaseError(
       `Did not find any running emulators for project ${clc.bold(projectId)}.`,

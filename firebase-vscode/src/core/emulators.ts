@@ -180,7 +180,6 @@ export class EmulatorsController implements Disposable {
 
   private getHubClient(): EmulatorHubClient | undefined {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default || "";
-    // TODO: think about what to without projectID, in potentially a logged out mode
     const hubClient = new EmulatorHubClient(projectId);
     if (hubClient.foundHub()) {
       return hubClient;
