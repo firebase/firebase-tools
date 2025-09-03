@@ -817,7 +817,7 @@ export async function startAll(
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
       port: authAddr.port,
-      projectId: projectId,
+      projectId,
       singleProjectMode: singleProjectModeEnabled
         ? SingleProjectMode.WARNING
         : SingleProjectMode.NO_WARNING,
