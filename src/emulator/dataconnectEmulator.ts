@@ -36,7 +36,6 @@ export interface DataConnectEmulatorArgs {
   listen: ListenSpec[];
   configDir: string;
   auto_download?: boolean;
-  rc: RC;
   config: Config;
   autoconnectToPostgres: boolean;
   postgresListen?: ListenSpec[];

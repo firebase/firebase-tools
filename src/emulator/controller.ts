@@ -882,7 +882,6 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir: config[0].source,
-      rc: options.rc,
       config: options.config,
       autoconnectToPostgres: true,
       postgresListen: listenForEmulator["dataconnect.postgres"],

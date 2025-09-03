@@ -19,10 +19,9 @@ export class DataConnectToolkit implements vscode.Disposable {
     this.subs.push(
       effect(() => {
         if (!this.isFDCToolkitRunning()) {
-          const rc = firebaseRC.value?.tryReadValue;
           const config = firebaseConfig.value?.tryReadValue;
-          if (rc && config) {
-            this.startFDCToolkit("./dataconnect", config, rc).then(() => {
+          if (config) {
+            this.startFDCToolkit("./dataconnect", config).then(() => {
               this.connectToToolkit();
             });
           }
@@ -35,7 +34,7 @@ export class DataConnectToolkit implements vscode.Disposable {
   }
 
   // special function to start FDC emulator with special flags & port
-  async startFDCToolkit(configDir: string, config: Config, RC: RC) {
+  async startFDCToolkit(configDir: string, config: Config) {
     const port = await findOpenPort(DEFAULT_PORT);
     const settings = getSettings();
 
@@ -44,7 +43,6 @@ export class DataConnectToolkit implements vscode.Disposable {
       listen: [{ address: "localhost", port, family: "IPv4" }],
       config,
       configDir,
-      rc: RC,
       autoconnectToPostgres: false,
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
