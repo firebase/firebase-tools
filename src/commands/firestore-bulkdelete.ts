@@ -26,7 +26,7 @@ function confirmationMessage(
   );
 }
 
-export const command = new Command("firestore:bulk-delete")
+export const command = new Command("firestore:bulkdelete")
   .description("managed bulk delete service to delete data from one or more collection groups")
   .option(
     "--database <databaseName>",

@@ -1,13 +1,13 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "../command";
-import { command as firestoreBulkDelete } from "./firestore-bulk-delete";
+import { command as firestoreBulkDelete } from "./firestore-bulkdelete";
 import * as fsi from "../firestore/api";
 import { FirebaseError } from "../error";
 import * as requireAuthModule from "../requireAuth";
 import { BulkDeleteDocumentsResponse } from "../firestore/api-types";
 
-describe("firestore:bulk-delete", () => {
+describe("firestore:bulkdelete", () => {
   const PROJECT = "test-project";
   const DATABASE = "test-database";
   const COLLECTION_IDS = ["collection1", "collection2"];
