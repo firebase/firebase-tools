@@ -20,7 +20,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
+import { getProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
@@ -813,12 +813,11 @@ export async function startAll(
   }
 
   if (listenForEmulator.auth) {
-    const mustProjectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     const authAddr = legacyGetFirstAddr(Emulators.AUTH);
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
       port: authAddr.port,
-      projectId: mustProjectId,
+      projectId: projectId,
       singleProjectMode: singleProjectModeEnabled
         ? SingleProjectMode.WARNING
         : SingleProjectMode.NO_WARNING,
@@ -830,17 +829,16 @@ export async function startAll(
       const importDirAbsPath = path.resolve(options.import);
       const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
 
-      await authEmulator.importData(authExportDir, mustProjectId, { initiatedBy: "start" });
+      await authEmulator.importData(authExportDir, projectId, { initiatedBy: "start" });
     }
   }
 
   if (listenForEmulator.pubsub) {
-    const mustProjectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     const pubsubAddr = legacyGetFirstAddr(Emulators.PUBSUB);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
-      projectId: mustProjectId,
+      projectId: projectId,
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);

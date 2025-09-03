@@ -59,10 +59,8 @@ export class DataConnectService {
     if (!dcs) {
       throw new Error("cannot find dataconnect.yaml in the project");
     }
-    return ( dcs?.getApiServicePathByPath(
-        firebaseRC.value?.tryReadValue?.projects?.default,
-        path,
-      ) 
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+    return ( dcs?.getApiServicePathByPath( projectId, path,) 
     );
   }
 
