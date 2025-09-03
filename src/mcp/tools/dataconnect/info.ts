@@ -117,13 +117,24 @@ export const status = tool(
     }
 
     if (remoteOnlyServices.length) {
-      output.push(`# Other Data Connect Services in project ${projectId}`);
+      output.push(`# Data Connect Services in project ${projectId}`);
       for (const s of remoteOnlyServices) {
         if (s.deployed) {
           includeDeployedServiceStatus(s.deployed);
         }
       }
     }
+
+    output.push(`# What's next?`);
+    if (!localServices.length) {
+      output.push(
+        `- There is no local Data Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
+      );
+    }
+    output.push(
+      `- You can use the \`dataconnect_compile\` tool to compile all local Data Connect schemas and query sources.`,
+    );
+
     return toContent(output.join("\n"));
   },
 );
