@@ -47,9 +47,9 @@ describe("EmulatorController", () => {
       expect(shouldStart(options, Emulators.HUB)).to.be.true;
     });
 
-    it("should not start the hub if no project is specified", () => {
+    it("should start the hub even if no project is specified", () => {
       const options = {} as Options;
-      expect(shouldStart(options, Emulators.HUB)).to.be.false;
+      expect(shouldStart(options, Emulators.HUB)).to.be.true;
     });
 
     it("should start the UI if options.ui is true", () => {
