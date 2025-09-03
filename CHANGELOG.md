@@ -1,4 +1,4 @@
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
 - Fixed the bugs when MCP tools cannot connect to emulator due to CLI version mis-matched. (#9068)
 - Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9055)
-- Consolidate one large `dataconnect_status` tool to 
+- Consolidate one `dataconnect_status` tool to report the status of local workspace and backend resources. (#9056)
