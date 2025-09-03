@@ -95,8 +95,7 @@ const GA4_USER_PROPS = {
   is_firebase_studio: {
     value: isFirebaseStudio().toString(),
   },
-  // When present, indicates the command was invoked by an agent.
-  agent: (() => {
+  ai_agent: (() => {
     const agent = detectAgent();
     return agent ? { value: agent } : undefined;
   })(),
