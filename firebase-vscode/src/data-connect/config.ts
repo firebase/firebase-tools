@@ -305,27 +305,35 @@ export class ResolvedDataConnectConfig {
 export class ResolvedDataConnectConfigs {
   constructor(readonly values: DeepReadOnly<ResolvedDataConnectConfig[]>) {}
 
-  get serviceIds() {
+  get serviceIds(): string[] {
     return this.values.map((config) => config.value.serviceId);
   }
 
-  get allConnectors() {
+  get allConnectors(): ResolvedConnectorYaml[] {
     return this.values.flatMap((dc) => dc.resolvedConnectors);
   }
 
-  findById(serviceId: string) {
-    return this.values.find((dc) => dc.value.serviceId === serviceId);
+  findById(serviceId: string): ResolvedDataConnectConfig {
+    const dc = this.values.find((dc) => dc.value.serviceId === serviceId);
+    if (!dc) {
+      throw new Error(`No dataconnect.yaml with serviceId ${serviceId}. Available: ${this.serviceIds.join(", ")}`);
+    }
+    return dc;
   }
 
-  findEnclosingServiceForPath(filePath: string) {
-    return this.values.find((dc) => dc.containsPath(filePath));
+  findEnclosingServiceForPath(filePath: string): ResolvedDataConnectConfig {
+    const dc = this.values.find((dc) => dc.containsPath(filePath));
+    if (!dc) {
+      throw new Error(`No enclosing dataconnect.yaml found for path ${filePath}. Available Paths: ${this.values.map((dc) => dc.path).join(", ")}`);
+    }
+    return dc;
   }
 
-  getApiServicePathByPath(projectId: string, path: string) {
+  getApiServicePathByPath(projectId: string | undefined, path: string): string {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
     const serviceId = dataConnectConfig?.value.serviceId;
     const locationId = dataConnectConfig?.dataConnectLocation;
-    return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
+    return `projects/${projectId || "p"}/locations/${locationId}/services/${serviceId}`;
   }
 }
 
