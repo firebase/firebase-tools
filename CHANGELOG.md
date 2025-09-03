@@ -2,3 +2,4 @@
 - Fixed the bugs when MCP tools cannot connect to emulator due to CLI version mis-matched. (#9068)
 - Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9055)
 - Consolidate one `dataconnect_status` tool to report the status of local workspace and backend resources. (#9056)
+- Add GA4 agent user property to tag CLI usage by coding agents. (#9070)
