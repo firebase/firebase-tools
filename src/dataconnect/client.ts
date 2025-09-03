@@ -100,7 +100,7 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
 export async function listSchemas(
   serviceName: string,
   fields: string[] = [],
-): Promise<types.Schema[] | undefined> {
+): Promise<types.Schema[]> {
   const schemas: types.Schema[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
