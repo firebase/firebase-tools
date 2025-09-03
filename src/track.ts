@@ -95,7 +95,7 @@ const GA4_USER_PROPS = {
   is_firebase_studio: {
     value: isFirebaseStudio().toString(),
   },
-  agent: {
+  ai_agent: {
     value: detectAIAgent(),
   },
 };
