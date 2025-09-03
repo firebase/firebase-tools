@@ -188,10 +188,7 @@ export class FirebaseMcpServer {
       return this.emulatorHubClient;
     }
     const projectId = await this.getProjectId();
-    if (!projectId) {
-      return;
-    }
-    this.emulatorHubClient = new EmulatorHubClient(projectId);
+    this.emulatorHubClient = new EmulatorHubClient(projectId || "");
     return this.emulatorHubClient;
   }
 

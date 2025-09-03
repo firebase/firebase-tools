@@ -148,8 +148,8 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
  */
 export function shouldStart(options: Options, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    // The hub only starts if we know the project ID.
-    return !!options.project;
+    // The emulator hub always starts.
+    return true;
   }
   const targets = filterEmulatorTargets(options);
   const emulatorInTargets = targets.includes(name);

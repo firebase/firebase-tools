@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { effect } from "@preact/signals-core";
-import { firebaseRC } from "../core/config";
 import { dataConnectConfigs, firebaseConfig } from "./config";
 import { runDataConnectCompiler } from "./core-compiler";
 import { DataConnectToolkitController } from "../../../src/emulator/dataconnectToolkitController";

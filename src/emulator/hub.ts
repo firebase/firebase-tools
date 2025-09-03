@@ -43,7 +43,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
    * This is useful so that multiple copies of the Firebase CLI can discover
    * each other.
    */
-  static readLocatorFile(projectId: string): Locator | undefined {
+  static readLocatorFile(projectId: string | undefined): Locator | undefined {
     const locatorPath = this.getLocatorFilePath(projectId);
     if (!fs.existsSync(locatorPath)) {
       return undefined;
@@ -61,10 +61,12 @@ export class EmulatorHub extends ExpressBasedEmulator {
     return locator;
   }
 
-  static getLocatorFilePath(projectId: string): string {
+  static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
-    const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
+    const filename = `hub-${projectId || "local-demo"}.json`;
+    const locatorPath = path.join(dir, filename);
+    logger.debug(`Emulator locator file path: ${locatorPath}`);
+    return locatorPath;
   }
 
   constructor(private args: EmulatorHubArgs) {
