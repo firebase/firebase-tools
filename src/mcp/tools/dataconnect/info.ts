@@ -8,24 +8,24 @@ import { Service, Schema, ServiceInfo, Connector } from "../../../dataconnect/ty
 import { dump } from "js-yaml";
 import { logger } from "../../../logger";
 
-interface ServiceStatus {
+interface CombinedServiceInfo {
   local?: ServiceInfo;
-  deployed?: DeployServiceStatus;
+  deployed?: DeployServiceInfo;
 }
 
-interface DeployServiceStatus {
+interface DeployServiceInfo {
   service?: Service;
   schemas?: Schema[];
   connectors?: Connector[];
 }
 
-export const status = tool(
+export const info = tool(
   {
-    name: "status",
-    description: "Get status about the Firebase Data Connect local and deployed sources.",
+    name: "info",
+    description: "Get information about the Firebase Data Connect local and deployed resources.",
     inputSchema: z.object({}),
     annotations: {
-      title: "Get project status about Firebase Data Connect",
+      title: "Get information about Firebase Data Connect",
       readOnlyHint: true,
     },
     _meta: {
@@ -34,11 +34,11 @@ export const status = tool(
     },
   },
   async (_, { projectId, config }) => {
-    const serviceInfos = await loadAll(projectId, config);
-    const serviceStatuses = new Map<string, ServiceStatus>();
+    const localServiceInfos = await loadAll(projectId, config);
+    const serviceInfos = new Map<string, CombinedServiceInfo>();
 
-    for (const l of serviceInfos) {
-      serviceStatuses.set(
+    for (const l of localServiceInfos) {
+      serviceInfos.set(
         `locations/${l.dataConnectYaml.location}/services/${l.dataConnectYaml.serviceId}`,
         { local: l },
       );
@@ -54,38 +54,38 @@ export const status = tool(
         console.log(services, schemas, connectors);
         for (const s of services) {
           const k = s.name.split("/").slice(2, 6).join("/");
-          const st = serviceStatuses.get(k) || {};
+          const st = serviceInfos.get(k) || {};
           st.deployed = st.deployed || {};
           st.deployed.service = s;
-          serviceStatuses.set(k, st);
+          serviceInfos.set(k, st);
         }
         for (const s of schemas) {
           const k = s.name.split("/").slice(2, 6).join("/");
-          const st = serviceStatuses.get(k) || {};
+          const st = serviceInfos.get(k) || {};
           st.deployed = st.deployed || {};
           st.deployed.schemas = st.deployed.schemas || [];
           st.deployed.schemas.push(s);
-          serviceStatuses.set(k, st);
+          serviceInfos.set(k, st);
         }
         for (const s of connectors) {
           const k = s.name.split("/").slice(2, 6).join("/");
-          const st = serviceStatuses.get(k) || {};
+          const st = serviceInfos.get(k) || {};
           st.deployed = st.deployed || {};
           st.deployed.connectors = st.deployed.connectors || [];
           st.deployed.connectors.push(s);
-          serviceStatuses.set(k, st);
+          serviceInfos.set(k, st);
         }
       } catch (e: any) {
         logger.debug("cannot fetch dataconnect resources in the backend", e);
       }
     }
 
-    const localServices = Array.from(serviceStatuses.values()).filter((s) => s.local);
-    const remoteOnlyServices = Array.from(serviceStatuses.values()).filter((s) => !s.local);
+    const localServices = Array.from(serviceInfos.values()).filter((s) => s.local);
+    const remoteOnlyServices = Array.from(serviceInfos.values()).filter((s) => !s.local);
 
     const output: string[] = [];
 
-    function includeDeployedServiceStatus(deployed: DeployServiceStatus): void {
+    function includeDeployedServiceInfo(deployed: DeployServiceInfo): void {
       if (deployed.schemas?.length) {
         output.push(`### Schemas`);
         for (const s of deployed.schemas) {
@@ -111,7 +111,7 @@ export const status = tool(
         output.push(`You can find all of schema sources under ${schemaDir}/`);
         if (s.deployed) {
           output.push(`It's already deployed in the backend:\n`);
-          includeDeployedServiceStatus(s.deployed);
+          includeDeployedServiceInfo(s.deployed);
         }
       }
     }
@@ -120,7 +120,7 @@ export const status = tool(
       output.push(`# Data Connect Services in project ${projectId}`);
       for (const s of remoteOnlyServices) {
         if (s.deployed) {
-          includeDeployedServiceStatus(s.deployed);
+          includeDeployedServiceInfo(s.deployed);
         }
       }
     }

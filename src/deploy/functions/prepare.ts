@@ -100,6 +100,10 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
+  // Track whether legacy runtime config is present (i.e., any keys other than the default 'firebase').
+  // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
+  context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
+
   const wantBuilds = await loadCodebases(
     context.config,
     options,
