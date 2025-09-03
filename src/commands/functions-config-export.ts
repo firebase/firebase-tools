@@ -15,7 +15,7 @@ import * as configExport from "../functions/runtimeConfigExport";
 import { requireConfig } from "../requireConfig";
 
 import type { Options } from "../options";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, resolveConfigDir } from "../functions/projectConfig";
 
 const REQUIRED_PERMISSIONS = [
   "runtimeconfig.configs.list",
@@ -98,7 +98,12 @@ export const command = new Command("functions:config:export")
   .before(requireInteractive)
   .action(async (options: Options) => {
     const config = normalizeAndValidate(options.config.src.functions)[0];
-    const functionsDir = config.source;
+    const functionsDir = resolveConfigDir(config);
+    if (!functionsDir) {
+      throw new FirebaseError(
+        "functions:config:export requires a local env directory. Set functions[].configDir in firebase.json when using remoteSource.",
+      );
+    }
 
     let pInfos = configExport.getProjectInfos(options);
     checkReservedAliases(pInfos);

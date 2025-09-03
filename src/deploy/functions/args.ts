@@ -14,13 +14,25 @@ interface CodebasePayload {
 // Source holds details on location of packaged and uploaded source code.
 export interface Source {
   // Filled in the "prepare" phase.
+  // Absolute path to the resolved source directory for this codebase.
+  // - Local source: the absolute path to the configured source directory
+  // - Remote source: the absolute path to a temporary, materialized clone
+  resolvedSourceDir?: string;
+  // Absolute path to the packaged archive used for Cloud Functions (Gen 1) uploads.
+  // When a codebase contains any gcfv1 endpoints, we create a ZIP archive and store its path here.
   functionsSourceV1?: string;
+  // Absolute path to the packaged archive used for Cloud Functions (Gen 2) uploads.
+  // When a codebase contains any gcfv2 endpoints, we create a ZIP archive and store its path here.
   functionsSourceV2?: string;
+  // Content hash of the Gen 1 archive (used for change detection and messages).
   functionsSourceV1Hash?: string;
+  // Content hash of the Gen 2 archive (used for change detection and messages).
   functionsSourceV2Hash?: string;
 
   // Filled in the "deploy" phase.
+  // For Gen 1: the signed upload URL returned by GCF v1 generateUploadUrl that we PUT the archive to.
   sourceUrl?: string;
+  // For Gen 2: a StorageSource descriptor returned by GCF v2 generateUploadUrl that we reference in create/update calls.
   storage?: gcfV2.StorageSource;
 }
 
@@ -44,6 +56,7 @@ export interface Context {
 
   // Filled in the "prepare" and "deploy" phase.
   sources?: Record<string, Source>; // codebase -> source
+  // Note: Source objects may include sourceDir for each codebase once resolved.
 
   // Caching fields for backend.existingBackend()
   existingBackend?: backend.Backend;

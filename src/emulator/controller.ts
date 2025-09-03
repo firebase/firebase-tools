@@ -42,7 +42,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -64,6 +64,7 @@ import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { dataConnectLocalConnString } from "../api";
 import { AppHostingSingle } from "../firebaseConfig";
 import { resolveProjectPath } from "../projectPath";
+import { resolveWithin } from "../pathUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -528,7 +529,15 @@ export async function startAll(
     utils.assertIsStringOrUndefined(options.extDevDir);
 
     for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
+      const narrowed = requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator at this time.",
+      );
+      const functionsDir = resolveWithin(
+        projectDir,
+        narrowed.source,
+        `functions.source "${narrowed.source}" must be within the project directory.`,
+      );
       const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
       // will dynamically detect it later.
@@ -542,8 +551,8 @@ export async function startAll(
       const backend: EmulatableBackend = {
         functionsDir,
         runtime,
-        codebase: cfg.codebase,
-        prefix: cfg.prefix,
+        codebase: narrowed.codebase,
+        prefix: narrowed.prefix,
         env: {
           ...options.extDevEnv,
         },

@@ -67,6 +67,8 @@ export interface DelegateContext {
   // Absolute path of the source directory.
   sourceDir: string;
   runtime?: supported.Runtime;
+  // When true, delegates must perform manifest-only discovery and avoid user code execution.
+  safeMode?: boolean;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

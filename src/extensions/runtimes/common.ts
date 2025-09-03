@@ -9,12 +9,14 @@ import {
   DEFAULT_CODEBASE,
   configForCodebase,
   normalizeAndValidate,
+  requireLocal,
 } from "../../functions/projectConfig";
 import { Build, DynamicExtension } from "../../deploy/functions/build";
 import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
 import { ExtensionSpec } from "../types";
 import * as functionRuntimes from "../../deploy/functions/runtimes";
 import * as nodeRuntime from "./node";
+import { resolveWithin } from "../../pathUtils";
 
 export { DynamicExtension } from "../../deploy/functions/build";
 
@@ -221,13 +223,18 @@ export async function getCodebaseRuntime(options: Options): Promise<string> {
     config,
     (options.codebase as string) || DEFAULT_CODEBASE,
   );
-  const sourceDirName = codebaseConfig.source;
-  const sourceDir = options.config.path(sourceDirName);
+  const local = requireLocal(codebaseConfig, "Remote sources are not supported here at this time.");
+  const sourceDirName = local.source;
+  const sourceDir = resolveWithin(
+    options.config.projectDir,
+    sourceDirName,
+    `functions.source "${sourceDirName}" must be within the project directory.`,
+  );
   const delegateContext: functionRuntimes.DelegateContext = {
     projectId: "", // not needed to determine the runtime in the function below
     sourceDir,
     projectDir: options.config.projectDir,
-    runtime: codebaseConfig.runtime,
+    runtime: local.runtime,
   };
   let delegate: functionRuntimes.RuntimeDelegate;
   try {
