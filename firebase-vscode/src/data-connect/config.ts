@@ -334,7 +334,10 @@ export class ResolvedDataConnectConfigs {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
     const serviceId = dataConnectConfig?.value.serviceId;
     const locationId = dataConnectConfig?.dataConnectLocation;
-    return `projects/${projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER}/locations/${locationId}/services/${serviceId}`;
+    // FDC emulator can service multiple services keyed by serviceId.
+    // ${projectId} and ${locationId} aren't used to resolve emulator service.
+    projectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }
 }
 
