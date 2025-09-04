@@ -38,26 +38,42 @@ const MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES = "5.1.0";
 export async function tryCreateDelegate(context: DelegateContext): Promise<Delegate | undefined> {
   const packageJsonPath = path.join(context.sourceDir, "package.json");
 
-  try {
-    await fs.promises.access(packageJsonPath);
-  } catch {
-    logger.debug("Customer code is not Node");
-    return undefined;
+  if (!context.safeMode) {
+    try {
+      await fs.promises.access(packageJsonPath);
+    } catch {
+      logger.debug("Customer code is not Node");
+      return undefined;
+    }
   }
 
-  // Check what runtime to use, first in firebase.json, then in 'engines' field.
-  // TODO: This method loads the Functions SDK version which is then manually loaded elsewhere.
-  // We should find a way to refactor this code so we're not repeatedly invoking node.
-  const runtime = getRuntimeChoice(context.sourceDir, context.runtime);
+  // Check what runtime to use. In safeMode, rely only on provided runtime to avoid reading user code.
+  const runtime = context.safeMode
+    ? (context.runtime as supported.Runtime)
+    : getRuntimeChoice(context.sourceDir, context.runtime);
+
+  if (context.safeMode && !runtime) {
+    throw new FirebaseError("Runtime is required for remote-safe discovery but was not provided.");
+  }
 
   if (!supported.runtimeIsLanguage(runtime, "nodejs")) {
+    if (context.safeMode) {
+      // In safe mode, defer to other delegates if runtime doesn't match Node.
+      return undefined;
+    }
     logger.debug(
       "Customer has a package.json but did not get a nodejs runtime. This should not happen",
     );
     throw new FirebaseError(`Unexpected runtime ${runtime}`);
   }
 
-  return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
+  return new Delegate(
+    context.projectId,
+    context.projectDir,
+    context.sourceDir,
+    runtime,
+    !!context.safeMode,
+  );
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -72,6 +88,7 @@ export class Delegate {
     private readonly projectDir: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime,
+    private readonly safeMode: boolean = false,
   ) {}
 
   // Using a caching interface because we (may/will) eventually depend on the SDK version
@@ -147,6 +164,14 @@ export class Delegate {
   }
 
   validate(): Promise<void> {
+    if (this.safeMode) {
+      const manifestPath = path.join(this.sourceDir, "functions.yaml");
+      if (!fs.existsSync(manifestPath)) {
+        throw new FirebaseError(
+          `Missing required deployment manifest at ${manifestPath}. Remote sources require a static functions.yaml for discovery.`,
+        );
+      }
+    }
     versioning.checkFunctionsSDKVersion(this.sdkVersion);
 
     const relativeDir = path.relative(this.projectDir, this.sourceDir);
@@ -291,6 +316,19 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables,
   ): Promise<build.Build> {
+    if (this.safeMode) {
+      const discovered = await discovery.detectFromYaml(
+        this.sourceDir,
+        this.projectId,
+        this.runtime,
+      );
+      if (!discovered) {
+        throw new FirebaseError(
+          `Failed to load functions.yaml from ${this.sourceDir}. Ensure a static manifest exists for remote discovery.`,
+        );
+      }
+      return discovered;
+    }
     if (!semver.valid(this.sdkVersion)) {
       logger.debug(
         `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`,

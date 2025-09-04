@@ -29,6 +29,10 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Python code.");
     return;
   }
+  if (context.safeMode && !context.runtime) {
+    throw new FirebaseError("runtime is required for remote-safe discovery but was not provided.");
+  }
+
   const runtime = context.runtime ?? supported.latest("python");
   if (!supported.isRuntime(runtime)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
@@ -39,7 +43,9 @@ export async function tryCreateDelegate(
       { exit: 1 },
     );
   }
-  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
+  return Promise.resolve(
+    new Delegate(context.projectId, context.sourceDir, runtime, !!context.safeMode),
+  );
 }
 
 /**
@@ -72,6 +78,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     private readonly projectId: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime & supported.RuntimeOf<"python">,
+    private readonly safeMode: boolean = false,
   ) {}
 
   private _bin = "";
@@ -136,6 +143,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   validate(): Promise<void> {
+    if (this.safeMode) {
+      const manifestPath = path.join(this.sourceDir, "functions.yaml");
+      if (!fs.existsSync(manifestPath)) {
+        throw new FirebaseError(
+          `Missing required deployment manifest at ${manifestPath}. Remote sources require a static functions.yaml for discovery.`,
+        );
+      }
+      return Promise.resolve();
+    }
     // TODO: make sure firebase-functions is included as a dep
     return Promise.resolve();
   }
@@ -190,23 +206,28 @@ export class Delegate implements runtimes.RuntimeDelegate {
     _configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
   ): Promise<Build> {
-    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-    if (!discovered) {
-      const adminPort = await portfinder.getPortPromise({
-        port: 8081,
-      });
-      const killProcess = await this.serveAdmin(adminPort, envs);
-      try {
-        discovered = await discovery.detectFromPort(
-          adminPort,
-          this.projectId,
-          this.runtime,
-          500 /* initialDelay, python startup is slow */,
-        );
-      } finally {
-        await killProcess();
-      }
+    const discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+    if (discovered) {
+      return discovered;
     }
-    return discovered;
+    if (this.safeMode) {
+      throw new FirebaseError(
+        `Failed to load functions.yaml from ${this.sourceDir}. Ensure a static manifest exists for remote source.`,
+      );
+    }
+    const adminPort = await portfinder.getPortPromise({
+      port: 8081,
+    });
+    const killProcess = await this.serveAdmin(adminPort, envs);
+    try {
+      return await discovery.detectFromPort(
+        adminPort,
+        this.projectId,
+        this.runtime,
+        500 /* initialDelay, python startup is slow */,
+      );
+    } finally {
+      await killProcess();
+    }
   }
 }

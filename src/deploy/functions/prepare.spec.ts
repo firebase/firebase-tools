@@ -1,5 +1,10 @@
+import * as fs from "fs";
+import * as tmp from "tmp";
+import * as path from "path";
+
 import { expect } from "chai";
 import * as sinon from "sinon";
+
 import * as build from "./build";
 import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
@@ -7,12 +12,14 @@ import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
-import { RuntimeDelegate } from "./runtimes";
+import * as projectConfig from "../../functions/projectConfig";
+import * as remoteSourceModule from "./remoteSource";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import type { RuntimeDelegate, DelegateContext } from "./runtimes";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -77,7 +84,8 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const ctx = { projectId: "project", config, firebaseConfig };
+      const builds = await prepare.loadCodebases(ctx, options, runtimeConfig);
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
     });
@@ -95,9 +103,142 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const ctx = { projectId: "project", config, firebaseConfig };
+      const builds = await prepare.loadCodebases(ctx, options, runtimeConfig);
 
       expect(builds.codebase.runtime).to.equal("nodejs20");
+    });
+
+    describe("remote codebases", () => {
+      const RUNTIME = "nodejs20" as const;
+      const yamlText = `specVersion: v1alpha1\nendpoints:\n  hello:\n    httpsTrigger: {}\n    entryPoint: hello\n`;
+
+      let tmpDir: tmp.DirResult;
+      let cleanRemoteSourceStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        sandbox.restore();
+        tmpDir = tmp.dirSync({ prefix: "fb-remote-", unsafeCleanup: true });
+        fs.writeFileSync(path.join(tmpDir.name, "functions.yaml"), yamlText, "utf8");
+        cleanRemoteSourceStub = sinon
+          .stub(remoteSourceModule, "cloneRemoteSource")
+          .resolves(tmpDir.name);
+      });
+
+      afterEach(() => {
+        cleanRemoteSourceStub.restore();
+      });
+
+      it("clones remote and loads functions.yaml, applying prefix", async () => {
+        const cfg = projectConfig.normalizeAndValidate([
+          {
+            codebase: "remote",
+            remoteSource: { repository: "repo", ref: "main" },
+            runtime: RUNTIME,
+            prefix: "pfx",
+          },
+        ]);
+
+        const options = {
+          project: "test-project",
+          config: {
+            projectDir: "/project",
+            path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+          },
+        } as unknown as Options;
+
+        const ctx = {
+          projectId: "test-project",
+          config: cfg,
+          firebaseConfig: { projectId: "test-project" },
+        };
+        const wantBuilds = await prepare.loadCodebases(ctx, options, {});
+        const build = wantBuilds["remote"];
+        expect(build).to.be.ok;
+        expect(build.runtime).to.equal(RUNTIME);
+        expect(Object.keys(build.endpoints)).to.deep.equal(["pfx-hello"]);
+      });
+
+      it("throws when functions.yaml missing in remote", async () => {
+        fs.rmSync(path.join(tmpDir.name, "functions.yaml"));
+
+        const cfg = projectConfig.normalizeAndValidate([
+          {
+            codebase: "remote",
+            remoteSource: { repository: "repo", ref: "main" },
+            runtime: RUNTIME,
+          },
+        ]);
+
+        const options = {
+          project: "test-project",
+          config: {
+            projectDir: "/project",
+            path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+          },
+        } as unknown as Options;
+
+        const ctx = {
+          projectId: "test-project",
+          config: cfg,
+          firebaseConfig: { projectId: "test-project" },
+        };
+        await expect(prepare.loadCodebases(ctx, options, {})).to.be.rejectedWith(
+          /functions\.yaml/i,
+        );
+      });
+
+      it("passes safeMode=true and correct sourceDir to runtime delegate for remote", async () => {
+        const getDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+        let captured: DelegateContext | undefined;
+        const fakeDelegate: RuntimeDelegate = {
+          language: "nodejs",
+          runtime: "nodejs20",
+          bin: "node",
+          async validate() {
+            return;
+          },
+          async build() {
+            return;
+          },
+          async watch() {
+            return async () => undefined;
+          },
+          async discoverBuild() {
+            return { requiredAPIs: [], endpoints: {}, params: [] };
+          },
+        };
+        getDelegateStub.callsFake(async (ctx: DelegateContext) => {
+          captured = ctx;
+          return fakeDelegate;
+        });
+
+        const cfg = projectConfig.normalizeAndValidate([
+          {
+            codebase: "remote",
+            remoteSource: { repository: "repo", ref: "main" },
+            runtime: RUNTIME,
+          },
+        ]);
+        const options = {
+          project: "test-project",
+          config: {
+            projectDir: "/project",
+            path: (p: string) => (path.isAbsolute(p) ? p : path.join("/project", p)),
+          },
+        } as unknown as Options;
+
+        const ctx = {
+          projectId: "test-project",
+          config: cfg,
+          firebaseConfig: { projectId: "test-project" },
+        };
+        await prepare.loadCodebases(ctx, options, {});
+        expect((captured as DelegateContext).safeMode).to.equal(true);
+        expect((captured as DelegateContext).sourceDir).to.equal(tmpDir.name);
+
+        getDelegateStub.restore();
+      });
     });
   });
 

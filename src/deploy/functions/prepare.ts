@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
-import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -41,13 +40,15 @@ import { FirebaseError } from "../../error";
 import {
   configForCodebase,
   normalizeAndValidate,
-  ValidatedConfig,
-  requireLocal,
+  ValidatedSingle,
+  resolveConfigDir,
+  isLocalConfig,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
+import { cloneRemoteSource } from "./remoteSource";
 import { assertExhaustive } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
@@ -55,6 +56,26 @@ import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+
+async function packageSourcesForBackend(
+  sourceDir: string,
+  config: ValidatedSingle,
+  wantBackend: backend.Backend,
+  runtimeConfig?: backend.RuntimeConfigValues,
+): Promise<args.Source> {
+  const source: args.Source = {};
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+    const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+    source.functionsSourceV2 = packagedSource?.pathToSource;
+    source.functionsSourceV2Hash = packagedSource?.hash;
+  }
+  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
+    const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+    source.functionsSourceV1 = packagedSource?.pathToSource;
+    source.functionsSourceV1Hash = packagedSource?.hash;
+  }
+  return source;
+}
 
 /**
  * Prepare functions codebases for deploy.
@@ -105,13 +126,7 @@ export async function prepare(
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
 
-  const wantBuilds = await loadCodebases(
-    context.config,
-    options,
-    firebaseConfig,
-    runtimeConfig,
-    context.filters,
-  );
+  const wantBuilds = await loadCodebases(context, options, runtimeConfig);
 
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
@@ -128,14 +143,33 @@ export async function prepare(
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-    const localCfg = requireLocal(config, "Remote sources are not supported.");
-    const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: options.config.path(localCfg.source),
-      projectId: projectId,
-      projectAlias: options.projectAlias,
-    };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+    let userEnvs: Record<string, string> = {};
+    let userEnvOpt: functionsEnv.UserEnvsOpts | undefined = undefined;
+
+    const configDir = resolveConfigDir(config);
+    if (configDir) {
+      const dir = options.config.path(configDir);
+      userEnvOpt = {
+        functionsSource: dir,
+        projectId: projectId,
+        projectAlias: options.projectAlias,
+      };
+      // When configDir is explicitly set in config, reflect it in opts
+      if (config.configDir) {
+        userEnvOpt.configDir = dir;
+      }
+      userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    } else {
+      if (!isLocalConfig(config)) {
+        logLabeledBullet(
+          "functions",
+          `remote source without configDir — skipping dotenv read/write for codebase ${codebase}`,
+        );
+      } else {
+        logger.debug(`Skipping dotenv for codebase ${codebase} (no local env dir).`);
+      }
+    }
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
@@ -146,7 +180,9 @@ export async function prepare(
       isEmulator: false,
     });
 
-    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    if (userEnvOpt) {
+      functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -181,7 +217,7 @@ export async function prepare(
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
-    if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
+    if ((userEnvOpt && functionsEnv.hasUserEnvs(userEnvOpt)) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
     }
 
@@ -208,31 +244,21 @@ export async function prepare(
   validate.endpointsAreUnique(wantBackends);
 
   // ===Phase 3. Prepare source for upload.
-  context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const cfg = configForCodebase(context.config, codebase);
-    const localCfg = requireLocal(cfg, "Remote sources are not supported.");
-    const sourceDirName = localCfg.source;
-    const sourceDir = options.config.path(sourceDirName);
-    const source: args.Source = {};
+    const config = configForCodebase(context.config, codebase);
+    const source = context.sources?.[codebase];
+    if (!source) {
+      throw new FirebaseError(`Internal error: missing source info for codebase ${codebase}.`);
+    }
+    const sourceDir = source.resolvedSourceDir;
+    if (!sourceDir) {
+      throw new FirebaseError(`Internal error: missing source directory for codebase ${codebase}.`);
+    }
     if (backend.someEndpoint(wantBackend, () => true)) {
-      logLabeledBullet(
-        "functions",
-        `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
-      );
+      logLabeledBullet("functions", `packaging source for codebase ${codebase}...`);
     }
-
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
-      source.functionsSourceV2 = packagedSource?.pathToSource;
-      source.functionsSourceV2Hash = packagedSource?.hash;
-    }
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, runtimeConfig);
-      source.functionsSourceV1 = packagedSource?.pathToSource;
-      source.functionsSourceV1Hash = packagedSource?.hash;
-    }
-    context.sources[codebase] = source;
+    const packaged = await packageSourcesForBackend(sourceDir, config, wantBackend, runtimeConfig);
+    context.sources![codebase] = { ...source, ...packaged };
   }
 
   // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
@@ -439,31 +465,24 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
  * @internal
  */
 export async function loadCodebases(
-  config: ValidatedConfig,
+  context: args.Context,
   options: Options,
-  firebaseConfig: args.FirebaseConfig,
   runtimeConfig: Record<string, unknown>,
-  filters?: EndpointFilter[],
 ): Promise<Record<string, build.Build>> {
-  const codebases = targetCodebases(config, filters);
+  if (!context.config) {
+    throw new FirebaseError("Internal error: functions config not loaded in context.");
+  }
+  if (!context.firebaseConfig) {
+    throw new FirebaseError("Internal error: firebaseConfig not loaded in context.");
+  }
+  const config = context.config;
+  const firebaseConfig = context.firebaseConfig;
+  const codebases = targetCodebases(config, context.filters);
   const projectId = needProjectId(options);
 
   const wantBuilds: Record<string, build.Build> = {};
   for (const codebase of codebases) {
     const codebaseConfig = configForCodebase(config, codebase);
-    const sourceDirName = codebaseConfig.source;
-    if (!sourceDirName) {
-      throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
-      );
-    }
-    const sourceDir = options.config.path(sourceDirName);
-    const delegateContext: runtimes.DelegateContext = {
-      projectId,
-      sourceDir,
-      projectDir: options.config.projectDir,
-      runtime: codebaseConfig.runtime,
-    };
     const firebaseJsonRuntime = codebaseConfig.runtime;
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
@@ -474,6 +493,39 @@ export async function loadCodebases(
             .join("\n"),
       );
     }
+
+    const isLocalSource = isLocalConfig(codebaseConfig);
+    let sourceDir: string;
+    if (isLocalSource) {
+      const sourceDirName = codebaseConfig.source;
+      sourceDir = options.config.path(sourceDirName);
+    } else {
+      const rs = codebaseConfig.remoteSource!;
+      logLabeledBullet(
+        "functions",
+        `fetching remote source for codebase ${codebase} (${rs.repository}@${rs.ref}${rs.dir ? ` dir: ${rs.dir}` : ""})`,
+      );
+      logLabeledBullet(
+        "functions",
+        `using safe mode for codebase ${codebase} (manifest-only, no code execution)`,
+      );
+      sourceDir = await cloneRemoteSource(rs.repository, rs.ref, rs.dir);
+      logger.debug(`Found remote source at ${sourceDir}; loading manifest`);
+    }
+
+    context.sources = context.sources || {};
+    context.sources[codebase] = {
+      ...(context.sources[codebase] || {}),
+      resolvedSourceDir: sourceDir,
+    };
+
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime,
+      safeMode: !isLocalSource,
+    };
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
     logger.debug(`Validating ${runtimeDelegate.language} source`);
     supported.guardVersionSupport(runtimeDelegate.runtime);
@@ -495,6 +547,11 @@ export async function loadCodebases(
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
     build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    const endpointCount = Object.keys(discoveredBuild.endpoints || {}).length;
+    logLabeledBullet(
+      "functions",
+      `Discovered ${endpointCount} function${endpointCount === 1 ? "" : "s"} in codebase ${codebase}`,
+    );
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
