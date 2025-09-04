@@ -118,20 +118,20 @@ export async function cloneRemoteSource(
         )
       : tmpDir.name;
     requireFunctionsYaml(sourceDir);
-    try {
-      const rev = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
-        cwd: tmpDir.name,
-        encoding: "utf8",
-      });
-      const sha = rev.status === 0 ? rev.stdout.trim() : undefined;
-      const origin = `${repository}@${ref}/${dir ?? ""}`;
-      if (sha) {
-        logLabeledBullet("functions", `verified functions.yaml for ${origin}; using commit ${sha}`);
-      } else {
-        logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
-      }
-    } catch {
-      const origin = `${repository}@${ref}/${dir ?? ""}`;
+    const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
+    let sha: string | undefined;
+    const rev = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
+      cwd: tmpDir.name,
+      encoding: "utf8",
+    });
+    if (!rev.error && rev.status === 0) {
+      sha = rev.stdout.trim();
+    } else if (rev.error) {
+      logger.debug("Failed to get git revision for logging:", rev.error);
+    }
+    if (sha) {
+      logLabeledBullet("functions", `verified functions.yaml for ${origin}; using commit ${sha}`);
+    } else {
       logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
     }
     logger.debug(`Successfully cloned to ${sourceDir}`);
@@ -202,21 +202,20 @@ async function runGitWithRetry(
   retries = 1,
   backoffMs = 200,
 ): Promise<SpawnSyncReturns<string>> {
-  let last: SpawnSyncReturns<string> | undefined;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  let attempt = 0;
+  while (true) {
     const res = cmd();
-    last = res;
+    if (!res.error && res.status === 0) {
+      return res;
+    }
     const stderr = (res.stderr || res.stdout || "").toString();
-    if (!res.error && res.status === 0) return res;
     if (attempt < retries && isTransientGitError(stderr)) {
-      await delay(backoffMs * Math.max(1, attempt + 1));
+      await delay(backoffMs * (attempt + 1));
+      attempt++;
       continue;
     }
     return res;
   }
-  // Should not reach here, but return last if it exists.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return last!;
 }
 
 /**
