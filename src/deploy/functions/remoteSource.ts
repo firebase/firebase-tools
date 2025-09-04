@@ -74,29 +74,39 @@ export async function cloneRemoteSource(
 
     const cloneResult = await runGitWithRetry(() => gitClient.clone(repository, tmpDir.name));
     if (cloneResult.error || cloneResult.status !== 0) {
-      throw cloneResult.error ||
+      throw (
+        cloneResult.error ||
         new Error(
-          cloneResult.stderr || cloneResult.stdout || `Clone failed with status ${cloneResult.status}`,
-        );
+          cloneResult.stderr ||
+            cloneResult.stdout ||
+            `Clone failed with status ${cloneResult.status}`,
+        )
+      );
     }
 
     // Fetch just the requested ref shallowly, then check it out.
     const fetchResult = await runGitWithRetry(() => gitClient.fetch(ref, tmpDir.name));
     if (fetchResult.error || fetchResult.status !== 0) {
-      throw fetchResult.error ||
+      throw (
+        fetchResult.error ||
         new Error(
-          fetchResult.stderr || fetchResult.stdout || `Fetch failed with status ${fetchResult.status}`,
-        );
+          fetchResult.stderr ||
+            fetchResult.stdout ||
+            `Fetch failed with status ${fetchResult.status}`,
+        )
+      );
     }
 
     const checkoutResult = gitClient.checkout("FETCH_HEAD", tmpDir.name);
     if (checkoutResult.error || checkoutResult.status !== 0) {
-      throw checkoutResult.error ||
+      throw (
+        checkoutResult.error ||
         new Error(
           checkoutResult.stderr ||
             checkoutResult.stdout ||
             `Checkout failed with status ${checkoutResult.status}`,
-        );
+        )
+      );
     }
 
     const sourceDir = dir
