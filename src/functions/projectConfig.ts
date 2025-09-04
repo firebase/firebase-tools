@@ -55,7 +55,7 @@ export function validateCodebase(codebase: string): void {
   if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
     throw new FirebaseError(
       "Invalid codebase name. Codebase must be less than 64 characters and " +
-        "can contain only lowercase letters, numeric characters, underscores, and dashes.",
+      "can contain only lowercase letters, numeric characters, underscores, and dashes.",
     );
   }
 }
@@ -171,9 +171,8 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
       sourceIdentifier = c.source;
       sourceDescription = `source directory ('${c.source}')`;
     } else if (c.remoteSource) {
-      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${
-        c.remoteSource.dir || "."
-      }`;
+      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${c.remoteSource.dir || "."
+        }`;
       sourceDescription = `remote source ('${c.remoteSource.repository}')`;
     } else {
       // This case should be prevented by `validateSingle`.
@@ -183,8 +182,7 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
     const key = JSON.stringify({ source: sourceIdentifier, prefix: c.prefix || "" });
     if (sourcePrefixPairs.has(key)) {
       throw new FirebaseError(
-        `More than one functions config specifies the same ${sourceDescription} and prefix ('${
-          c.prefix ?? ""
+        `More than one functions config specifies the same ${sourceDescription} and prefix ('${c.prefix ?? ""
         }'). Please add a unique 'prefix' to each function configuration that shares this source to resolve the conflict.`,
       );
     }
