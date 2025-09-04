@@ -63,10 +63,10 @@ describe("EmulatorController", () => {
       expect(shouldStart(options, Emulators.UI)).to.be.true;
     });
 
-    it("should not start the UI if no project is specified", () => {
+    it("should start the UI even if no project is specified", () => {
       const options = createMockOptions("firestore", { firestore: {} });
       delete options.project;
-      expect(shouldStart(options, Emulators.UI)).to.be.false;
+      expect(shouldStart(options, Emulators.UI)).to.be.true;
     });
 
     it("should not start the UI if no UI-supported emulator is running", () => {

@@ -166,7 +166,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     }
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
-    return !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target));
+    return targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target));
   }
 
   // Don't start the functions emulator if we can't validate the functions config
