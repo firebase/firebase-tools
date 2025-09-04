@@ -31,7 +31,7 @@ export class FunctionsServer {
     for (const cfg of config) {
       const localCfg = projectConfig.requireLocal(
         cfg,
-        "Remote sources are not supported in the Functions emulator at this time.",
+        "Remote sources are not supported in the Functions emulator.",
       );
       const functionsDir = path.join(options.config.projectDir, localCfg.source);
       backends.push({

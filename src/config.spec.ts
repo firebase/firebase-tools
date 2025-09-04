@@ -1,13 +1,12 @@
-import { expect } from "chai";
 import * as path from "path";
+import * as fs from "fs";
+
+import { expect } from "chai";
 
 import { Config } from "./config";
 import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
 import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
 import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
-import * as os from "os";
-import * as fs from "fs";
-import * as tmp from "tmp";
 
 describe("Config", () => {
   describe("#load", () => {
@@ -70,13 +69,29 @@ describe("Config", () => {
     });
   });
 
-  describe("default functions.source injection", () => {
-    it("does not inject when remoteSource is present", () => {
-      const tdir = tmp.dirSync({ prefix: "fb-config-inject-", unsafeCleanup: true });
-      const dir = tdir.name;
-      fs.mkdirSync(path.join(dir, "functions"));
-      // Ensure detectProjectRoot sets projectDir to this tmp folder.
-      fs.writeFileSync(path.join(dir, "firebase.json"), "{}", "utf8");
+  describe("functions.source", () => {
+    it("injects default source when default dir exists but source is missing", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config({ functions: {} }, { cwd: tmpDir, projectDir: tmpDir });
+      expect(cfg.get("functions.source")).to.be.equal("functions");
+    });
+
+    it("does not injects default source when default dir is missing", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+
+      const cfg = new Config(
+        { functions: { runtime: "nodejs20" } },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+      expect(cfg.get("functions.source")).to.be.undefined;
+    });
+
+    it("does not inject source for remoteSource", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
       const cfg = new Config(
         {
           functions: {
@@ -84,20 +99,9 @@ describe("Config", () => {
             runtime: "nodejs20",
           },
         },
-        { cwd: dir },
+        { cwd: tmpDir, projectDir: tmpDir },
       );
-      // Should not inject functions.source when remoteSource is set
       expect(cfg.get("functions.source")).to.be.undefined;
-    });
-
-    it("injects when neither source nor remoteSource is set and default dir exists", () => {
-      const tdir = tmp.dirSync({ prefix: "fb-config-inject-", unsafeCleanup: true });
-      const dir = tdir.name;
-      fs.mkdirSync(path.join(dir, "functions"));
-      // Create a minimal firebase.json so detectProjectRoot() identifies the projectDir
-      fs.writeFileSync(path.join(dir, "firebase.json"), "{}", "utf8");
-      const cfg = new Config({ functions: {} }, { cwd: dir });
-      expect(cfg.get("functions.source")).to.equal("functions");
     });
   });
 });

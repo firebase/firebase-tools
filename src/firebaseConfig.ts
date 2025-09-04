@@ -186,23 +186,23 @@ type FunctionConfigBase = {
 } & Deployable;
 
 export type LocalFunctionConfig = FunctionConfigBase & {
-  // Required: Directory containing the Cloud Functions source code.
+  // Directory containing the Cloud Functions source code.
   source: string;
   // Forbid remoteSource when local source is provided
   remoteSource?: never;
 };
 
 export type RemoteFunctionConfig = FunctionConfigBase & {
-  // Required: Deploy functions from a remote Git repository.
+  // Deploy functions from a remote Git repository.
   remoteSource: {
-    // Required: The URL of the Git repository.
+    // The URL of the Git repository.
     repository: string;
-    // Required: The git ref (tag, branch, or commit hash) to deploy.
+    // The git ref (tag, branch, or commit hash) to deploy.
     ref: string;
-    // Optional: The directory within the repository containing the functions source.
+    // The directory within the repository containing the functions source.
     dir?: string;
   };
-  // Required for remote sources until discovery can infer it.
+  // Required for remote sources
   runtime: ActiveRuntime;
   // Forbid local source when remoteSource is provided
   source?: never;

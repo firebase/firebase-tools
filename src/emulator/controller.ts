@@ -530,7 +530,7 @@ export async function startAll(
     for (const cfg of functionsCfg) {
       const localCfg = requireLocal(
         cfg,
-        "Remote sources are not supported in the Functions emulator at this time.",
+        "Remote sources are not supported in the Functions emulator.",
       );
       const functionsDir = path.join(projectDir, localCfg.source);
       const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;

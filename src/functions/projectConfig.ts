@@ -55,7 +55,7 @@ export function validateCodebase(codebase: string): void {
   if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
     throw new FirebaseError(
       "Invalid codebase name. Codebase must be less than 64 characters and " +
-      "can contain only lowercase letters, numeric characters, underscores, and dashes.",
+        "can contain only lowercase letters, numeric characters, underscores, and dashes.",
     );
   }
 }
@@ -171,8 +171,9 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
       sourceIdentifier = c.source;
       sourceDescription = `source directory ('${c.source}')`;
     } else if (c.remoteSource) {
-      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${c.remoteSource.dir || "."
-        }`;
+      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${
+        c.remoteSource.dir || "."
+      }`;
       sourceDescription = `remote source ('${c.remoteSource.repository}')`;
     } else {
       // This case should be prevented by `validateSingle`.
@@ -182,7 +183,8 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
     const key = JSON.stringify({ source: sourceIdentifier, prefix: c.prefix || "" });
     if (sourcePrefixPairs.has(key)) {
       throw new FirebaseError(
-        `More than one functions config specifies the same ${sourceDescription} and prefix ('${c.prefix ?? ""
+        `More than one functions config specifies the same ${sourceDescription} and prefix ('${
+          c.prefix ?? ""
         }'). Please add a unique 'prefix' to each function configuration that shares this source to resolve the conflict.`,
       );
     }
@@ -220,15 +222,21 @@ export function configForCodebase(config: ValidatedConfig, codebase: string): Va
   return codebaseCfg;
 }
 
-// Type guards and helpers to make call sites safer
+/** Returns true if the codebase uses a local source. */
 export function isLocalConfig(c: ValidatedSingle): c is ValidatedLocalSingle {
   return (c as ValidatedLocalSingle).source !== undefined;
 }
 
+/** Returns true if the codebase uses a remote source. */
 export function isRemoteConfig(c: ValidatedSingle): c is ValidatedRemoteSingle {
   return (c as ValidatedRemoteSingle).remoteSource !== undefined;
 }
 
+/**
+ * Require a local functions config. Throws a FirebaseError if the config is remote.
+ * @param c The validated functions config entry.
+ * @param purpose Optional message to use in the error.
+ */
 export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLocalSingle {
   if (!isLocalConfig(c)) {
     const msg =
@@ -240,9 +248,9 @@ export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLoc
 }
 
 /**
- * Returns the local directory to read/write env files if available.
- * - Local: returns configDir or source
- * - Remote: returns configDir if present; otherwise undefined (skip dotenv)
+ * Resolve the directory used for .env files.
+ * - Local: returns `configDir` if set, otherwise `source`.
+ * - Remote: returns `configDir` if set, otherwise `undefined`.
  */
 export function resolveConfigDir(c: ValidatedSingle): string | undefined {
   if (c.configDir) return c.configDir;

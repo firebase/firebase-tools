@@ -279,12 +279,15 @@ describe("projectConfig", () => {
     });
   });
 
-  describe("helpers", () => {
-    it("isLocalConfig / isRemoteConfig narrow correctly", () => {
-      const local = projectConfig.validate([{ source: "local" }])[0];
-      const remote = projectConfig.validate([
-        { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
-      ])[0];
+  describe("isLocalConfig/isRemoteConfig", () => {
+    const localCfg = { source: "local" };
+    const remoteCfg = {
+      remoteSource: { repository: "repo", ref: "main" },
+      runtime: "nodejs20" as const,
+    };
+    it("isLocalConfig narrow correctly", () => {
+      const local = projectConfig.validate([localCfg])[0];
+      const remote = projectConfig.validate([remoteCfg])[0];
 
       expect(projectConfig.isLocalConfig(local)).to.equal(true);
       expect(projectConfig.isRemoteConfig(local)).to.equal(false);
@@ -292,34 +295,57 @@ describe("projectConfig", () => {
       expect(projectConfig.isRemoteConfig(remote)).to.equal(true);
     });
 
-    it("requireLocal returns local and throws for remote", () => {
-      const local = projectConfig.validate([{ source: "local" }])[0];
-      const remote = projectConfig.validate([
-        { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
-      ])[0];
+    it("isRemoteConfig narrow correctly", () => {
+      const local = projectConfig.validate([localCfg])[0];
+      const remote = projectConfig.validate([remoteCfg])[0];
 
+      expect(projectConfig.isRemoteConfig(local)).to.equal(false);
+      expect(projectConfig.isRemoteConfig(remote)).to.equal(true);
+    });
+  });
+
+  describe("requireLocal", () => {
+    it("does not throw for local cfg and throws for remote", () => {
+      const local = projectConfig.validate([{ source: "local" }])[0];
       expect(() => projectConfig.requireLocal(local)).to.not.throw();
-      expect(() => projectConfig.requireLocal(remote, "msg")).to.throw(FirebaseError, /msg/);
     });
 
-    it("resolveConfigDir prefers configDir, falls back to source, and returns undefined for remote without configDir", () => {
-      const local = projectConfig.validate([{ source: "functions" }])[0];
-      const localWithDir = projectConfig.validate([{ source: "functions", configDir: "cfg" }])[0];
+    it("throws for remote", () => {
       const remote = projectConfig.validate([
         { remoteSource: { repository: "repo", ref: "main" }, runtime: "nodejs20" },
       ])[0];
-      const remoteWithDir = projectConfig.validate([
+      expect(() => projectConfig.requireLocal(remote, "msg")).to.throw(FirebaseError, /msg/);
+    });
+  });
+
+  describe("resolveConfigDir", () => {
+    it("prefers configDir, falls back to source, and returns undefined for remote without configDir", () => {
+      const cfg = projectConfig.validate([{ source: "functions", configDir: "cfg" }])[0];
+      expect(projectConfig.resolveConfigDir(cfg)).to.equal("cfg");
+
+      const remoteCfg = projectConfig.validate([
         {
           remoteSource: { repository: "repo", ref: "main" },
           runtime: "nodejs20",
           configDir: "cfg",
         },
       ])[0];
+      expect(projectConfig.resolveConfigDir(remoteCfg)).to.equal("cfg");
+    });
 
-      expect(projectConfig.resolveConfigDir(local)).to.equal("functions");
-      expect(projectConfig.resolveConfigDir(localWithDir)).to.equal("cfg");
-      expect(projectConfig.resolveConfigDir(remote)).to.equal(undefined);
-      expect(projectConfig.resolveConfigDir(remoteWithDir)).to.equal("cfg");
+    it("falls back to source if configDir is missing", () => {
+      const cfg = projectConfig.validate([{ source: "functions" }])[0];
+      expect(projectConfig.resolveConfigDir(cfg)).to.equal("functions");
+    });
+
+    it("returns undefined for remote w/o configDir", () => {
+      const cfg = projectConfig.validate([
+        {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+        },
+      ])[0];
+      expect(projectConfig.resolveConfigDir(cfg)).to.be.undefined;
     });
   });
 });

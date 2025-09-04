@@ -128,10 +128,7 @@ export async function prepare(
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-    const localCfg = requireLocal(
-      config,
-      "Remote sources are not supported for env file resolution in this CLI version.",
-    );
+    const localCfg = requireLocal(config, "Remote sources are not supported.");
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
@@ -214,10 +211,7 @@ export async function prepare(
   context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const cfg = configForCodebase(context.config, codebase);
-    const localCfg = requireLocal(
-      cfg,
-      "Remote sources are not supported for packaging; use local sources when deploying from this CLI version.",
-    );
+    const localCfg = requireLocal(cfg, "Remote sources are not supported.");
     const sourceDirName = localCfg.source;
     const sourceDir = options.config.path(sourceDirName);
     const source: args.Source = {};
