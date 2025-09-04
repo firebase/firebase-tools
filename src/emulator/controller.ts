@@ -1077,7 +1077,7 @@ function getListenConfig(
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
   const projectId = options.project;
-  const hubClient = new EmulatorHubClient(projectId || "");
+  const hubClient = new EmulatorHubClient(projectId);
   if (!hubClient.foundHub()) {
     throw new FirebaseError(
       `Did not find any running emulators for project ${clc.bold(projectId)}.`,
