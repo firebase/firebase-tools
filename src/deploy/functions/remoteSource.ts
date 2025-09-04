@@ -11,8 +11,6 @@ export interface GitClient {
   clone(repository: string, destination: string): SpawnSyncReturns<string>;
   fetch(ref: string, cwd: string): SpawnSyncReturns<string>;
   checkout(ref: string, cwd: string): SpawnSyncReturns<string>;
-  initSparseCheckout(cwd: string): SpawnSyncReturns<string>;
-  setSparsePaths(paths: string[], cwd: string): SpawnSyncReturns<string>;
 }
 
 export class DefaultGitClient implements GitClient {
@@ -33,14 +31,6 @@ export class DefaultGitClient implements GitClient {
 
   checkout(ref: string, cwd: string): SpawnSyncReturns<string> {
     return spawnSync("git", ["checkout", ref], { cwd, encoding: "utf8" });
-  }
-
-  initSparseCheckout(cwd: string): SpawnSyncReturns<string> {
-    return spawnSync("git", ["sparse-checkout", "init", "--cone"], { cwd, encoding: "utf8" });
-  }
-
-  setSparsePaths(paths: string[], cwd: string): SpawnSyncReturns<string> {
-    return spawnSync("git", ["sparse-checkout", "set", ...paths], { cwd, encoding: "utf8" });
   }
 }
 
@@ -84,30 +74,29 @@ export async function cloneRemoteSource(
 
     const cloneResult = await runGitWithRetry(() => gitClient.clone(repository, tmpDir.name));
     if (cloneResult.error || cloneResult.status !== 0) {
-      throw new Error(cloneResult.stderr || cloneResult.stdout || "Clone failed");
-    }
-
-    // If a subdirectory is specified, use sparse checkout to limit the working tree.
-    if (dir) {
-      const initSparse = gitClient.initSparseCheckout(tmpDir.name);
-      if (initSparse.error || initSparse.status !== 0) {
-        throw new Error(initSparse.stderr || initSparse.stdout || "Sparse checkout init failed");
-      }
-      const setSparse = gitClient.setSparsePaths([dir], tmpDir.name);
-      if (setSparse.error || setSparse.status !== 0) {
-        throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
-      }
+      throw cloneResult.error ||
+        new Error(
+          cloneResult.stderr || cloneResult.stdout || `Clone failed with status ${cloneResult.status}`,
+        );
     }
 
     // Fetch just the requested ref shallowly, then check it out.
     const fetchResult = await runGitWithRetry(() => gitClient.fetch(ref, tmpDir.name));
     if (fetchResult.error || fetchResult.status !== 0) {
-      throw new Error(fetchResult.stderr || fetchResult.stdout || "Fetch failed");
+      throw fetchResult.error ||
+        new Error(
+          fetchResult.stderr || fetchResult.stdout || `Fetch failed with status ${fetchResult.status}`,
+        );
     }
 
     const checkoutResult = gitClient.checkout("FETCH_HEAD", tmpDir.name);
     if (checkoutResult.error || checkoutResult.status !== 0) {
-      throw new Error(checkoutResult.stderr || checkoutResult.stdout || "Checkout failed");
+      throw checkoutResult.error ||
+        new Error(
+          checkoutResult.stderr ||
+            checkoutResult.stdout ||
+            `Checkout failed with status ${checkoutResult.status}`,
+        );
     }
 
     const sourceDir = dir
@@ -117,6 +106,9 @@ export async function cloneRemoteSource(
           `Subdirectory '${dir}' in remote source must not escape the repository root.`,
         )
       : tmpDir.name;
+    if (dir && !fs.existsSync(sourceDir)) {
+      throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
+    }
     requireFunctionsYaml(sourceDir);
     const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
     let sha: string | undefined;

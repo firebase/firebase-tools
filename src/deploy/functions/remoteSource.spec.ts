@@ -13,8 +13,6 @@ describe("remoteSource", () => {
     let cloneStub: sinon.SinonStub;
     let fetchStub: sinon.SinonStub;
     let checkoutStub: sinon.SinonStub;
-    let initSparseStub: sinon.SinonStub;
-    let setSparseStub: sinon.SinonStub;
     let mockGitClient: GitClient;
 
     beforeEach(() => {
@@ -24,14 +22,10 @@ describe("remoteSource", () => {
       cloneStub = sinon.stub().returns({ status: 0 });
       fetchStub = sinon.stub().returns({ status: 0 });
       checkoutStub = sinon.stub().returns({ status: 0 });
-      initSparseStub = sinon.stub().returns({ status: 0 });
-      setSparseStub = sinon.stub().returns({ status: 0 });
       mockGitClient = {
         clone: cloneStub,
         fetch: fetchStub,
         checkout: checkoutStub,
-        initSparseCheckout: initSparseStub,
-        setSparsePaths: setSparseStub,
       } as unknown as GitClient;
     });
 
@@ -66,11 +60,13 @@ describe("remoteSource", () => {
 
     it("should validate subdirectory exists after clone", async () => {
       isGitAvailableStub.returns(true);
-      setSparseStub.returns({
-        status: 1,
-        stderr: "fatal: pathspec 'subdir' did not match any files",
+      // Simulate that the subdirectory does not exist
+      existsSyncStub.callsFake((p: fs.PathLike) => {
+        const s = String(p);
+        if (/[/\\]subdir$/.test(s)) return false; // dir missing
+        if (s.endsWith("functions.yaml")) return true; // avoid manifest error masking
+        return true;
       });
-
       await expect(
         cloneRemoteSource("https://github.com/org/repo", "main", "subdir", mockGitClient),
       ).to.be.rejectedWith(FirebaseError, /Directory 'subdir' not found/);
@@ -78,12 +74,55 @@ describe("remoteSource", () => {
 
     it("should validate functions.yaml exists", async () => {
       isGitAvailableStub.returns(true);
-      existsSyncStub.withArgs(sinon.match(/firebase-functions-remote/)).returns(true);
-      existsSyncStub.withArgs(sinon.match(/functions\.yaml$/)).returns(false);
+      // Everything exists except the manifest file
+      existsSyncStub.callsFake((p: fs.PathLike) => !String(p).endsWith("functions.yaml"));
 
       await expect(
         cloneRemoteSource("https://github.com/org/repo", "main", undefined, mockGitClient),
       ).to.be.rejectedWith(FirebaseError, /missing a required deployment manifest/);
+    });
+
+    it("should successfully clone a repository without a subdirectory", async () => {
+      isGitAvailableStub.returns(true);
+      // Pass manifest check by returning true for any path ending with functions.yaml
+      existsSyncStub.callsFake((p: fs.PathLike) => String(p).endsWith("functions.yaml"));
+
+      const sourceDir = await cloneRemoteSource(
+        "https://github.com/org/repo",
+        "main",
+        undefined,
+        mockGitClient,
+      );
+
+      expect(cloneStub.calledOnceWith("https://github.com/org/repo", sinon.match.string)).to.be
+        .true;
+      expect(fetchStub.calledOnceWith("main", sinon.match.string)).to.be.true;
+      expect(checkoutStub.calledOnceWith("FETCH_HEAD", sinon.match.string)).to.be.true;
+      // No sparse-checkout in MVP path
+      expect(sourceDir).to.be.a("string");
+    });
+
+    it("should successfully clone a repository with a subdirectory", async () => {
+      isGitAvailableStub.returns(true);
+      existsSyncStub.callsFake((p: fs.PathLike) => {
+        const s = String(p);
+        if (/[/\\]functions$/.test(s)) return true; // subdir exists
+        if (s.endsWith("functions.yaml")) return true; // manifest exists
+        return false;
+      });
+
+      const dir = "functions";
+      const sourceDir = await cloneRemoteSource(
+        "https://github.com/org/repo",
+        "main",
+        dir,
+        mockGitClient,
+      );
+
+      expect(fetchStub.calledOnceWith("main", sinon.match.string)).to.be.true;
+      expect(checkoutStub.calledOnceWith("FETCH_HEAD", sinon.match.string)).to.be.true;
+      expect(sourceDir).to.be.a("string");
+      expect(/[/\\]functions$/.test(sourceDir)).to.be.true;
     });
   });
 });
