@@ -1,5 +1,7 @@
 ## NEXT
 
+- Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
+
 ## 1.6.1
 
 - Update internal `firebase-tools` dependency to 14.13.0
