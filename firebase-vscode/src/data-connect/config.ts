@@ -20,6 +20,7 @@ import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import * as fs from "fs";
+import { EmulatorHub } from "../emulator/hub";
 
 export * from "../core/config";
 
@@ -333,7 +334,7 @@ export class ResolvedDataConnectConfigs {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
     const serviceId = dataConnectConfig?.value.serviceId;
     const locationId = dataConnectConfig?.dataConnectLocation;
-    return `projects/${projectId || "p"}/locations/${locationId}/services/${serviceId}`;
+    return `projects/${projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER}/locations/${locationId}/services/${serviceId}`;
   }
 }
 

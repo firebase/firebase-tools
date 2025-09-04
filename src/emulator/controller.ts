@@ -836,7 +836,7 @@ export async function startAll(
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
-      projectId: projectId,
+      projectId,
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
@@ -915,7 +915,7 @@ export async function startAll(
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId: projectId,
+      projectId,
       rules: getStorageRulesConfig(projectId, options),
     });
     await startEmulator(storageEmulator);
@@ -1011,7 +1011,7 @@ export async function startAll(
 
   if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
-      projectId: projectId,
+      projectId,
       listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);
