@@ -12,7 +12,7 @@ interface MfaEnrollment {
   unobfuscatedPhoneInfo?: string;
 }
 
-interface UserInfo {
+export interface UserInfo {
   uid?: string;
   localId?: string;
   email: string;

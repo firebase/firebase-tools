@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { findUser } from "../../../gcp/auth";
+import { findUser, UserInfo } from "../../../gcp/auth";
 
 export const get_user = tool(
   {
@@ -36,8 +36,14 @@ export const get_user = tool(
   },
   async ({ email, phone_number, uid }, { projectId }) => {
     if (email === undefined && phone_number === undefined && uid === undefined) {
-      return mcpError(`No user identifier supplied in auth_get_user tool`);
+      return mcpError("No user identifier supplied in auth_get_user tool");
     }
-    return toContent(await findUser(projectId, email, phone_number, uid));
+    let user: UserInfo;
+    try {
+      user = await findUser(projectId, email, phone_number, uid);
+    } catch (err: any) {
+      return mcpError("Unable to find user");
+    }
+    return toContent(user);
   },
 );
