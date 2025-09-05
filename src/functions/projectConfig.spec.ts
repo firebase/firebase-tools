@@ -25,7 +25,9 @@ describe("projectConfig", () => {
 
   describe("validate", () => {
     it("passes validation for simple config", () => {
-      expect(projectConfig.validate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
+      expect(projectConfig.validate([TEST_CONFIG_0])).to.deep.equal([
+        { ...TEST_CONFIG_0, codebase: "default" },
+      ]);
     });
 
     it("fails validation given config w/o source", () => {
@@ -239,11 +241,15 @@ describe("projectConfig", () => {
 
   describe("normalizeAndValidate", () => {
     it("returns normalized config for singleton config", () => {
-      expect(projectConfig.normalizeAndValidate(TEST_CONFIG_0)).to.deep.equal([TEST_CONFIG_0]);
+      expect(projectConfig.normalizeAndValidate(TEST_CONFIG_0)).to.deep.equal([
+        { ...TEST_CONFIG_0, codebase: "default" },
+      ]);
     });
 
     it("returns normalized config for multi-resource config", () => {
-      expect(projectConfig.normalizeAndValidate([TEST_CONFIG_0])).to.deep.equal([TEST_CONFIG_0]);
+      expect(projectConfig.normalizeAndValidate([TEST_CONFIG_0])).to.deep.equal([
+        { ...TEST_CONFIG_0, codebase: "default" },
+      ]);
     });
 
     it("fails validation given singleton config w/o source", () => {

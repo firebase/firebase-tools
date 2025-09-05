@@ -76,7 +76,7 @@ export function validatePrefix(prefix: string): void {
 }
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
-  const { source, remoteSource, runtime } = config;
+  const { source, remoteSource, runtime, codebase: providedCodebase, ...rest } = config;
 
   // Exactly one of source or remoteSource must be specified
   if (source && remoteSource) {
@@ -90,19 +90,12 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
     );
   }
 
-  const codebase = config.codebase ?? DEFAULT_CODEBASE;
+  const codebase = providedCodebase ?? DEFAULT_CODEBASE;
   validateCodebase(codebase);
   if (config.prefix) {
     validatePrefix(config.prefix);
   }
-  const commonConfig = {
-    codebase,
-    prefix: config.prefix,
-    ignore: config.ignore,
-    configDir: config.configDir,
-    predeploy: config.predeploy,
-    postdeploy: config.postdeploy,
-  } as const;
+  const commonConfig = { codebase, ...rest };
   if (source) {
     return {
       ...commonConfig,
