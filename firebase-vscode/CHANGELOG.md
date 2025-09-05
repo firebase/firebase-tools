@@ -1,5 +1,7 @@
 ## NEXT
 
+## 1.7.0
+
 - Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
 
 ## 1.6.1
