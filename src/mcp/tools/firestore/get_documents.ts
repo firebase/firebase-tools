@@ -39,7 +39,7 @@ export const get_documents = tool(
         .array(z.string())
         .optional()
         .describe(
-          "A list of field paths to return. If not specified, returns the entire document. E.g. `['field1', 'nested.field2']`.",
+          "A list of fields to return. Nested fields can be accessed by separating each field with a period (ie 'nested.nested2.field') If not specified, returns the entire document. E.g. `['field1', 'nested.field2']`.",
         ),
       use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
