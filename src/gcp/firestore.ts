@@ -193,6 +193,7 @@ export function listCollectionIds(
  * Get multiple documents by path.
  * @param {string} project the Google Cloud project ID.
  * @param {string[]} paths The document paths to fetch.
+ * @param {string[]} selectFields the fields to select.
  * @return {Promise<{ documents: FirestoreDocument[]; missing: string[] }>} a promise for an array of firestore documents and missing documents in the request.
  */
 export async function getDocuments(
@@ -200,15 +201,20 @@ export async function getDocuments(
   paths: string[],
   databaseId: string = "(default)",
   emulatorUrl?: string,
+  selectFields?: string[],
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
   const apiClient = getClient(emulatorUrl);
   const basePath = `projects/${project}/databases/${databaseId}/documents`;
   const url = `${basePath}:batchGet`;
   const fullPaths = paths.map((p) => `${basePath}/${p}`);
-  const res = await apiClient.post<
-    { documents: string[] },
-    { found?: FirestoreDocument; missing?: string }[]
-  >(url, { documents: fullPaths });
+  const req: { documents: string[]; mask?: { fieldPaths: string[] } } = { documents: fullPaths };
+  if (selectFields?.length) {
+    req.mask = { fieldPaths: selectFields };
+  }
+  const res = await apiClient.post<typeof req, { found?: FirestoreDocument; missing?: string }[]>(
+    url,
+    req,
+  );
   const out: { documents: FirestoreDocument[]; missing: string[] } = { documents: [], missing: [] };
   res.body.map((r) => (r.missing ? out.missing.push(r.missing) : out.documents.push(r.found!)));
   return out;

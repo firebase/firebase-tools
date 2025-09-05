@@ -1,24 +1,9 @@
 import { z } from "zod";
-import * as _ from "lodash";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getDocuments } from "../../../gcp/firestore";
 import { firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
-
-function applySelect(doc: any, select: string[]): any {
-  const newDoc: any = {};
-  // Always preserve the __path__ field if it exists.
-  if (doc.__path__) {
-    newDoc.__path__ = doc.__path__;
-  }
-  for (const path of select) {
-    if (_.has(doc, path)) {
-      _.set(newDoc, path, _.get(doc, path));
-    }
-  }
-  return newDoc;
-}
 
 export const get_documents = tool(
   {
@@ -59,16 +44,18 @@ export const get_documents = tool(
     if (use_emulator) {
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
-    const { documents, missing } = await getDocuments(projectId, paths, database, emulatorUrl);
+    const { documents, missing } = await getDocuments(
+      projectId,
+      paths,
+      database,
+      emulatorUrl,
+      select,
+    );
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
 
-    let docs = documents.map(firestoreDocumentToJson);
-
-    if (select && select.length > 0) {
-      docs = docs.map((doc) => applySelect(doc, select));
-    }
+    const docs = documents.map(firestoreDocumentToJson);
 
     if (documents.length === 1 && missing.length === 0) {
       // return a single document as YAML if that's all we have/need
