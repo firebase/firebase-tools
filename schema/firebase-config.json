@@ -1302,6 +1302,9 @@
                     },
                     "type": "object"
                 },
+                "dataDir": {
+                    "type": "string"
+                },
                 "database": {
                     "additionalProperties": false,
                     "properties": {
