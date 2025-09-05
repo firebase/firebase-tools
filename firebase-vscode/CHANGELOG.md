@@ -2,6 +2,7 @@
 
 ## 1.7.0
 
+- Update internal `firebase-tools` dependency to 14.15.2
 - Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
 
 ## 1.6.1
