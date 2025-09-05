@@ -188,9 +188,6 @@ export class FirebaseMcpServer {
       return this.emulatorHubClient;
     }
     const projectId = await this.getProjectId();
-    if (!projectId) {
-      return;
-    }
     this.emulatorHubClient = new EmulatorHubClient(projectId);
     return this.emulatorHubClient;
   }
@@ -207,7 +204,7 @@ export class FirebaseMcpServer {
     const emulatorInfo = emulators[emulatorType];
     if (!emulatorInfo) {
       throw Error(
-        "No Firestore Emulator found running. Make sure your project firebase.json file includes firestore and then rerun emulator using `firebase emulators:start` from your project directory.",
+        `No ${emulatorType} Emulator found running. Make sure your project firebase.json file includes ${emulatorType} and then rerun emulator using \`firebase emulators:start\` from your project directory.`,
       );
     }
 

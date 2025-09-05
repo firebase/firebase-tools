@@ -1,1 +1,1 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- `firebase emulator:start` use a default project if no project can be found. (#9072)

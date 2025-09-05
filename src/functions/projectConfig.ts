@@ -1,8 +1,31 @@
 import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
+import type { ActiveRuntime } from "../deploy/functions/runtimes/supported/types";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
+// Stronger validated variants: local vs remote.
+type FunctionConfigCommon = Omit<
+  FunctionConfig,
+  "source" | "remoteSource" | "codebase" | "runtime"
+>;
+
+export type ValidatedLocalSingle = FunctionConfigCommon & {
+  source: string;
+  codebase: string;
+  // runtime optional for local (auto-detected if not provided)
+  runtime?: ActiveRuntime;
+  remoteSource?: never;
+};
+
+export type ValidatedRemoteSingle = FunctionConfigCommon & {
+  remoteSource: { repository: string; ref: string; dir?: string };
+  // runtime required for remote
+  runtime: ActiveRuntime;
+  codebase: string;
+  source?: never;
+};
+
+export type ValidatedSingle = ValidatedLocalSingle | ValidatedRemoteSingle;
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
@@ -53,18 +76,51 @@ export function validatePrefix(prefix: string): void {
 }
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
-  if (!config.source) {
-    throw new FirebaseError("codebase source must be specified");
+  const { source, remoteSource, runtime, codebase: providedCodebase, ...rest } = config;
+
+  // Exactly one of source or remoteSource must be specified
+  if (source && remoteSource) {
+    throw new FirebaseError(
+      "Cannot specify both 'source' and 'remoteSource' in a single functions config. Please choose one.",
+    );
   }
-  if (!config.codebase) {
-    config.codebase = DEFAULT_CODEBASE;
+  if (!source && !remoteSource) {
+    throw new FirebaseError(
+      "codebase source must be specified. Must specify either 'source' or 'remoteSource' in a functions config.",
+    );
   }
-  validateCodebase(config.codebase);
+
+  const codebase = providedCodebase ?? DEFAULT_CODEBASE;
+  validateCodebase(codebase);
   if (config.prefix) {
     validatePrefix(config.prefix);
   }
+  const commonConfig = { codebase, ...rest };
+  if (source) {
+    return {
+      ...commonConfig,
+      source,
+      ...(runtime ? { runtime } : {}),
+    };
+  } else if (remoteSource) {
+    if (!remoteSource.repository || !remoteSource.ref) {
+      throw new FirebaseError("remoteSource requires 'repository' and 'ref' to be specified.");
+    }
+    if (!runtime) {
+      // TODO: Once functions.yaml can provide a runtime, relax this requirement.
+      throw new FirebaseError(
+        "functions.runtime is required when using remoteSource in firebase.json.",
+      );
+    }
+    return {
+      ...commonConfig,
+      remoteSource,
+      runtime,
+    };
+  }
 
-  return { ...config, source: config.source, codebase: config.codebase };
+  // Unreachable due to XOR guard
+  throw new FirebaseError("Invalid functions config.");
 }
 
 /**
@@ -93,12 +149,25 @@ export function assertUnique(
 function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
   const sourcePrefixPairs = new Set<string>();
   for (const c of config) {
-    const key = JSON.stringify({ source: c.source, prefix: c.prefix || "" });
+    let sourceIdentifier: string;
+    let sourceDescription: string;
+    if (c.source) {
+      sourceIdentifier = c.source;
+      sourceDescription = `source directory ('${c.source}')`;
+    } else if (c.remoteSource) {
+      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${
+        c.remoteSource.dir || "."
+      }`;
+      sourceDescription = `remote source ('${c.remoteSource.repository}')`;
+    } else {
+      // This case should be prevented by `validateSingle`.
+      continue;
+    }
+
+    const key = JSON.stringify({ source: sourceIdentifier, prefix: c.prefix || "" });
     if (sourcePrefixPairs.has(key)) {
       throw new FirebaseError(
-        `More than one functions config specifies the same source directory ('${
-          c.source
-        }') and prefix ('${
+        `More than one functions config specifies the same ${sourceDescription} and prefix ('${
           c.prefix ?? ""
         }'). Please add a unique 'prefix' to each function configuration that shares this source to resolve the conflict.`,
       );
@@ -135,4 +204,38 @@ export function configForCodebase(config: ValidatedConfig, codebase: string): Va
     throw new FirebaseError(`No functions config found for codebase ${codebase}`);
   }
   return codebaseCfg;
+}
+
+/** Returns true if the codebase uses a local source. */
+export function isLocalConfig(c: ValidatedSingle): c is ValidatedLocalSingle {
+  return (c as ValidatedLocalSingle).source !== undefined;
+}
+
+/** Returns true if the codebase uses a remote source. */
+export function isRemoteConfig(c: ValidatedSingle): c is ValidatedRemoteSingle {
+  return (c as ValidatedRemoteSingle).remoteSource !== undefined;
+}
+
+/**
+ * Require a local functions config. Throws a FirebaseError if the config is remote.
+ * @param c The validated functions config entry.
+ * @param purpose Optional message to use in the error.
+ */
+export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLocalSingle {
+  if (!isLocalConfig(c)) {
+    const msg =
+      purpose ??
+      "This operation requires a local functions source directory, but the codebase is configured with a remote source.";
+    throw new FirebaseError(msg);
+  }
+  return c;
+}
+
+/**
+ * Resolve the directory used for .env files.
+ * - Local: returns `configDir` if set, otherwise `source`.
+ * - Remote: returns `configDir` if set, otherwise `undefined`.
+ */
+export function resolveConfigDir(c: ValidatedSingle): string | undefined {
+  return c.configDir || c.source;
 }
