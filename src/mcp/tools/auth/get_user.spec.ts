@@ -52,9 +52,9 @@ describe("get_user tool", () => {
     expect(result).to.deep.equal(util.toContent(user));
   });
 
-  it("throws an error when no user exists", async () => {
+  it("returns an error when no user exists", async () => {
     findUserStub.rejects(new Error("No users found"));
     await get_user.fn({ uid: "nonexistant@email.com" }, { projectId } as ServerToolContext);
-    expect(mcpErrorStub).to.be.calledWith("No users found");
+    expect(mcpErrorStub).to.be.calledWith("Unable to find user");
   });
 });
