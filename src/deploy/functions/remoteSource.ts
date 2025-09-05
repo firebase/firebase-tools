@@ -1,10 +1,12 @@
-import * as tmp from "tmp";
+import * as fs from "fs";
 import * as path from "path";
 import { spawnSync, SpawnSyncReturns } from "child_process";
+
+import * as tmp from "tmp";
+
 import { FirebaseError, hasMessage } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
-import * as fs from "fs";
 import { resolveWithin } from "../../pathUtils";
 
 export interface GitClient {
@@ -41,11 +43,9 @@ export async function cloneRemoteSource(
   gitClient: GitClient = new DefaultGitClient(),
 ): Promise<string> {
   /**
-   * Shallow‑clones a Git repo to a temporary directory and returns the
-   * absolute path to the source directory. If `dir` is provided, performs a
-   * sparse checkout of that subdirectory. Verifies that a `functions.yaml`
-   * manifest exists before returning. Throws `FirebaseError` with actionable
-   * messages on common failures (network, auth, bad ref, missing directory).
+   * Clones a Git repo to a temporary directory and returns the absolute path
+   * to the source directory. Verifies that a `functions.yaml` manifest exists
+   * before returning.
    *
    * @param repository Remote Git URL (e.g. https://github.com/org/repo)
    * @param ref Git ref to fetch (tag/branch/commit)
@@ -68,8 +68,6 @@ export async function cloneRemoteSource(
   }
 
   try {
-    // Info-level, labeled logging is handled by the caller (prepare.ts).
-    // Keep clone details at debug to avoid duplicate, unlabeled lines.
     logger.debug(`Fetching remote source for ${repository}@${ref}...`);
 
     const cloneResult = await runGitWithRetry(() => gitClient.clone(repository, tmpDir.name));
@@ -84,7 +82,6 @@ export async function cloneRemoteSource(
       );
     }
 
-    // Fetch just the requested ref shallowly, then check it out.
     const fetchResult = await runGitWithRetry(() => gitClient.fetch(ref, tmpDir.name));
     if (fetchResult.error || fetchResult.status !== 0) {
       throw (
@@ -116,28 +113,14 @@ export async function cloneRemoteSource(
           `Subdirectory '${dir}' in remote source must not escape the repository root.`,
         )
       : tmpDir.name;
+
     if (dir && !fs.existsSync(sourceDir)) {
       throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
     }
+
     requireFunctionsYaml(sourceDir);
     const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
-    let sha: string | undefined;
-    const rev = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
-      cwd: tmpDir.name,
-      encoding: "utf8",
-    });
-    if (!rev.error && rev.status === 0) {
-      sha = rev.stdout.trim();
-    } else if (rev.error) {
-      logger.debug("Failed to get git revision for logging:", rev.error);
-    }
-    if (sha) {
-      logLabeledBullet("functions", `verified functions.yaml for ${origin}; using commit ${sha}`);
-    } else {
-      logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
-    }
-    logger.debug(`Successfully cloned to ${sourceDir}`);
-    return sourceDir;
+    logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
   } catch (error: unknown) {
     if (error instanceof FirebaseError) {
       throw error;
