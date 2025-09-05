@@ -1,5 +1,1 @@
-- Added support for auth token JSON in `dataconnect_execute` MPC tool. (#9046)
-- Fixed issue where `firebase-ios-sdk` could not finalize MFA with auth emulator. (#9062)
-- Fixed the bugs when MCP tools cannot connect to emulator due to CLI version mis-matched. (#9068)
-- Fixed a bug where `firebase dataconnect:sdk:generate --watch` swallowed all logs. (#9055)
-- Added GA4 agent user property to tag CLI usage by coding agents. (#9070)
+- `firebase emulator:start` use a default project if no project can be found. (#9072)
