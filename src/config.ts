@@ -86,17 +86,17 @@ export class Config {
         if (Array.isArray(funcs)) {
           // Inject default source for exactly one empty entry (the first empty),
           // preserving legacy convenience while avoiding ambiguity when multiple are empty.
-          let idx;
+          let emptyIdx: number | undefined;
           for (let i = 0; i < funcs.length; i++) {
             const hasSource = this.get(`functions.[${i}].source`);
             const hasRemote = this.get(`functions.[${i}].remoteSource`);
             if (!hasSource && !hasRemote) {
-              idx = i;
+              emptyIdx = i;
               break; // inject into the first empty entry only
             }
           }
-          if (idx) {
-            this.set(`functions.[${idx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
+          if (emptyIdx !== undefined) {
+            this.set(`functions.[${emptyIdx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
           const hasSource = this.get("functions.source");
