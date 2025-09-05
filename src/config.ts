@@ -84,12 +84,19 @@ export class Config {
       if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
         const funcs = this.get("functions");
         if (Array.isArray(funcs)) {
-          // Preserve historical behavior (inject for the first entry when needed)
-          // but also ensure we don't inject if remoteSource is present.
-          const firstHasSource = this.get("functions.[0].source");
-          const firstHasRemote = this.get("functions.[0].remoteSource");
-          if (!firstHasSource && !firstHasRemote) {
-            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+          // Inject default source for exactly one empty entry (the first empty),
+          // preserving legacy convenience while avoiding ambiguity when multiple are empty.
+          let idx;
+          for (let i = 0; i < funcs.length; i++) {
+            const hasSource = this.get(`functions.[${i}].source`);
+            const hasRemote = this.get(`functions.[${i}].remoteSource`);
+            if (!hasSource && !hasRemote) {
+              idx = i;
+              break; // inject into the first empty entry only
+            }
+          }
+          if (idx) {
+            this.set(`functions.[${idx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
           const hasSource = this.get("functions.source");

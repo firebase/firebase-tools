@@ -78,6 +78,7 @@ export function validatePrefix(prefix: string): void {
 function validateSingle(config: FunctionConfig): ValidatedSingle {
   const { source, remoteSource, runtime } = config;
 
+  // Exactly one of source or remoteSource must be specified
   if (source && remoteSource) {
     throw new FirebaseError(
       "Cannot specify both 'source' and 'remoteSource' in a single functions config. Please choose one.",
@@ -89,7 +90,26 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
     );
   }
 
-  if (remoteSource) {
+  const codebase = config.codebase ?? DEFAULT_CODEBASE;
+  validateCodebase(codebase);
+  if (config.prefix) {
+    validatePrefix(config.prefix);
+  }
+  const commonConfig = {
+    codebase,
+    prefix: config.prefix,
+    ignore: config.ignore,
+    configDir: config.configDir,
+    predeploy: config.predeploy,
+    postdeploy: config.postdeploy,
+  } as const;
+  if (source) {
+    return {
+      ...commonConfig,
+      source,
+      ...(runtime ? { runtime } : {}),
+    };
+  } else if (remoteSource) {
     if (!remoteSource.repository || !remoteSource.ref) {
       throw new FirebaseError("remoteSource requires 'repository' and 'ref' to be specified.");
     }
@@ -99,44 +119,15 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
         "functions.runtime is required when using remoteSource in firebase.json.",
       );
     }
+    return {
+      ...commonConfig,
+      remoteSource,
+      runtime,
+    };
   }
 
-  if (!config.codebase) {
-    config.codebase = DEFAULT_CODEBASE;
-  }
-  validateCodebase(config.codebase);
-  if (config.prefix) {
-    validatePrefix(config.prefix);
-  }
-
-  // Narrow to validated shapes
-  const { codebase, prefix, ignore, configDir, predeploy, postdeploy } = config;
-  if (source) {
-    const validated: ValidatedLocalSingle = {
-      source,
-      codebase,
-      ...(runtime ? { runtime } : {}),
-      ...(prefix ? { prefix } : {}),
-      ...(ignore ? { ignore } : {}),
-      ...(configDir ? { configDir } : {}),
-      ...(predeploy ? { predeploy } : {}),
-      ...(postdeploy ? { postdeploy } : {}),
-    } as ValidatedLocalSingle;
-    return validated;
-  }
-
-  // remoteSource case already validated above; runtime is required there
-  const validated: ValidatedRemoteSingle = {
-    remoteSource: remoteSource!,
-    runtime: runtime!,
-    codebase,
-    ...(prefix ? { prefix } : {}),
-    ...(ignore ? { ignore } : {}),
-    ...(configDir ? { configDir } : {}),
-    ...(predeploy ? { predeploy } : {}),
-    ...(postdeploy ? { postdeploy } : {}),
-  } as ValidatedRemoteSingle;
-  return validated;
+  // Unreachable due to XOR guard
+  throw new FirebaseError("Invalid functions config.");
 }
 
 /**
@@ -253,7 +244,5 @@ export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLoc
  * - Remote: returns `configDir` if set, otherwise `undefined`.
  */
 export function resolveConfigDir(c: ValidatedSingle): string | undefined {
-  if (c.configDir) return c.configDir;
-  if (isLocalConfig(c)) return c.source;
-  return undefined;
+  return c.configDir || c.source;
 }
