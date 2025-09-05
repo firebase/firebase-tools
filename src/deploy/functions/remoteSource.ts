@@ -121,6 +121,7 @@ export async function cloneRemoteSource(
     requireFunctionsYaml(sourceDir);
     const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
     logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
+    return sourceDir;
   } catch (error: unknown) {
     if (error instanceof FirebaseError) {
       throw error;
