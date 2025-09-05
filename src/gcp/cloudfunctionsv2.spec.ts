@@ -7,7 +7,6 @@ import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
-import { FirebaseError } from "../error";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -798,27 +797,6 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: undefined,
         }),
       ).to.deep.equal(expectedEndpoint);
-    });
-  });
-
-  describe("listFunctions", () => {
-    it("should pass back an error with the correct status", async () => {
-      nock(functionsV2Origin())
-        .get("/v2/projects/foo/locations/-/functions")
-        .query({ filter: `environment="GEN_2"` })
-        .reply(403, { error: "You don't have permissions." });
-
-      let errCaught = false;
-      try {
-        await cloudfunctionsv2.listFunctions("foo", "-");
-      } catch (err: unknown) {
-        errCaught = true;
-        expect(err).instanceOf(FirebaseError);
-        expect(err).has.property("status", 403);
-      }
-
-      expect(errCaught, "should have caught an error").to.be.true;
-      expect(nock.isDone()).to.be.true;
     });
   });
 

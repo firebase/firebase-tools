@@ -472,16 +472,6 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
 }
 
 /**
- * List all existing Cloud Functions in a project and region.
- * @param projectId the Id of the project to check.
- * @param region the region to check in.
- */
-export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
-  const res = await list(projectId, region);
-  return res.functions;
-}
-
-/**
  * List all existing Cloud Functions in a project.
  * @param projectId the Id of the project to check.
  */
