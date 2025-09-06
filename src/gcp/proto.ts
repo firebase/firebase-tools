@@ -62,6 +62,88 @@ export function copyIfPresent<Dest extends object, Keys extends (keyof Dest)[]>(
 }
 
 /**
+ * Form of copyIfPresent that can be run inline and splatted into a literal object.
+ * The two forms are comparable:
+ *
+ * const dest: D = { a: "b" }
+ * copyIfPresent(dest, src, "foo", "bar");
+ *
+ * and dest: D = {
+ *  a: "b",
+ *  ...pick(src, "foo", "bar"),
+ * }
+ *
+ * This is better than raw copying of an optional field because it will not insert a undefined,
+ * which can confuse the difference between "!foo[bar]" vs "foo in bar".
+ */
+// Note: Technically this can do better with literal inlined types, but do we actually care?
+export function pick<Key extends string, O extends { [K in Key]?: unknown }>(
+  src: O,
+  ...fields: Key[]
+): { [K in Key]?: O[K] } {
+  const dest: { [K in Key]?: O[K] } = {};
+
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(src, field)) {
+      dest[field] = src[field]!;
+    }
+  }
+  return dest;
+}
+
+// Convert implementation that takes a key value map
+export function convert<
+  SrcKey extends string,
+  DestKey extends string,
+  Source extends { [K in SrcKey]?: unknown },
+  Fn extends (s: Required<Source>[SrcKey]) => unknown,
+>(
+  src: Source,
+  transform: Fn,
+  renamings: Record<SrcKey, DestKey>,
+): { [K in DestKey]?: ReturnType<Fn> };
+
+// Convert implementation that takes a list of keys
+export function convert<
+  Key extends string,
+  Source extends { [K in Key]?: unknown },
+  Fn extends (s: Required<Source>[Key]) => unknown,
+>(src: Source, transform: Fn, ...keys: Key[]): { [K in Key]?: ReturnType<Fn> };
+
+export function convert<
+  SrcKey extends string,
+  DestKey extends string,
+  Source extends { [K in SrcKey]?: unknown },
+  Fn extends (s: Required<Source>[SrcKey]) => unknown,
+>(
+  src: Source,
+  transform: Fn,
+  mapOrFirstKey: Record<SrcKey, DestKey> | SrcKey,
+  ...restKeys: SrcKey[]
+): Record<string, unknown> {
+  const dest: Record<string, unknown> = {};
+
+  if (typeof mapOrFirstKey === "string") {
+    if (mapOrFirstKey in src) {
+      dest[mapOrFirstKey] = transform(src[mapOrFirstKey]);
+    }
+    for (const key of restKeys) {
+      if (key in src) {
+        dest[key] = transform(src[key]);
+      }
+    }
+    return dest;
+  }
+
+  for (const srcKey of Object.keys(mapOrFirstKey) as SrcKey[]) {
+    if (srcKey in src) {
+      dest[mapOrFirstKey[srcKey]] = transform(src[srcKey]);
+    }
+  }
+  return dest;
+}
+
+/**
  * Utility function to help convert a field from type A to B if they are present.
  */
 export function convertIfPresent<

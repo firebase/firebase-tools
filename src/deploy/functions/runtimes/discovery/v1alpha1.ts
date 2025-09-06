@@ -3,7 +3,7 @@ import * as backend from "../../backend";
 import * as params from "../../params";
 import { Runtime } from "../supported";
 
-import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
+import { convertIfPresent, secondsFromDuration, pick, convert } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 import { nullsafeVisitor } from "../../../../functional";
@@ -285,18 +285,12 @@ function parseEndpointForBuild(
     const eventTrigger: build.EventTrigger = {
       eventType: ep.eventTrigger.eventType,
       retry: ep.eventTrigger.retry,
+      ...pick(ep.eventTrigger, "serviceAccount", "eventFilterPathPatterns", "region"),
     };
     // Allow serviceAccountEmail but prefer serviceAccount
     if ("serviceAccountEmail" in (ep.eventTrigger as any)) {
       eventTrigger.serviceAccount = (ep.eventTrigger as any).serviceAccountEmail;
     }
-    copyIfPresent(
-      eventTrigger,
-      ep.eventTrigger,
-      "serviceAccount",
-      "eventFilterPathPatterns",
-      "region",
-    );
     convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
       resolveChannelName(project, c, defaultRegion),
     );
@@ -309,11 +303,9 @@ function parseEndpointForBuild(
     });
     triggered = { eventTrigger };
   } else if (build.isHttpsTriggered(ep)) {
-    triggered = { httpsTrigger: {} };
-    copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+    triggered = { httpsTrigger: pick(ep.httpsTrigger, "invoker") };
   } else if (build.isCallableTriggered(ep)) {
-    triggered = { callableTrigger: {} };
-    copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
+    triggered = { callableTrigger: pick(ep.callableTrigger, "genkitAction") };
   } else if (build.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       // TODO: consider adding validation for fields like this that reject
@@ -322,7 +314,14 @@ function parseEndpointForBuild(
       timeZone: ep.scheduleTrigger.timeZone ?? null,
     };
     if (ep.scheduleTrigger.retryConfig) {
-      st.retryConfig = {};
+      st.retryConfig = pick(
+        ep.scheduleTrigger.retryConfig,
+        "retryCount",
+        "minBackoffSeconds",
+        "maxBackoffSeconds",
+        "maxRetrySeconds",
+        "maxDoublings",
+      );
       convertIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
@@ -343,15 +342,6 @@ function parseEndpointForBuild(
         "maxRetrySeconds",
         "maxRetryDuration",
         (duration) => (duration === null ? null : secondsFromDuration(duration)),
-      );
-      copyIfPresent(
-        st.retryConfig,
-        ep.scheduleTrigger.retryConfig,
-        "retryCount",
-        "minBackoffSeconds",
-        "maxBackoffSeconds",
-        "maxRetrySeconds",
-        "maxDoublings",
       );
       convertIfPresent(
         st.retryConfig,
@@ -412,27 +402,24 @@ function parseEndpointForBuild(
     runtime,
     entryPoint: ep.entryPoint,
     ...triggered,
+    // Allow "serviceAccountEmail" but prefer "serviceAccount"
+    ...convert(ep, (s) => s, { serviceAccountEmail: "serviceAccount" }),
+    ...pick(
+      ep,
+      "omit",
+      "availableMemoryMb",
+      "cpu",
+      "maxInstances",
+      "minInstances",
+      "concurrency",
+      "timeoutSeconds",
+      "vpc",
+      "labels",
+      "ingressSettings",
+      "environmentVariables",
+      "serviceAccount",
+    ),
   };
-  // Allow "serviceAccountEmail" but prefer "serviceAccount"
-  if ("serviceAccountEmail" in (ep as any)) {
-    parsed.serviceAccount = (ep as any).serviceAccountEmail;
-  }
-  copyIfPresent(
-    parsed,
-    ep,
-    "omit",
-    "availableMemoryMb",
-    "cpu",
-    "maxInstances",
-    "minInstances",
-    "concurrency",
-    "timeoutSeconds",
-    "vpc",
-    "labels",
-    "ingressSettings",
-    "environmentVariables",
-    "serviceAccount",
-  );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {
       return null;
@@ -476,13 +463,8 @@ function parseExtensionForBuild(ex: WireExtension): build.DynamicExtension {
   const parsed: build.DynamicExtension = {
     params: {},
     events: [],
+    ...pick(ex, "params", "events", "localPath", "ref"),
   };
-  if (ex.localPath) {
-    parsed.localPath = ex.localPath;
-  } else {
-    parsed.ref = ex.ref;
-  }
-  copyIfPresent(parsed, ex, "params", "events");
 
   return parsed;
 }
