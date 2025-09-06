@@ -1,5 +1,6 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { commandExistsSync, mcpError } from "./util";
+import { mcpError } from "./util";
+import { commandExistsSync } from "../utils";
 
 export const NO_PROJECT_ERROR = mcpError(
   'No active project was found. Use the `firebase_update_environment` tool to set the project directory to an absolute folder location containing a firebase.json config file. Alternatively, change the MCP server config to add [...,"--dir","/absolute/path/to/project/directory"] in its command-line arguments.',

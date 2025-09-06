@@ -26,9 +26,15 @@ export async function createNextApp(webAppId: string): Promise<void> {
   await executeCommand("npx", args);
 }
 
+/** Create a Flutter app using flutter create. */
+export async function createFlutterApp(webAppId: string): Promise<void> {
+  const args = ["create", webAppId];
+  await executeCommand("flutter", args);
+}
+
 // Function to execute a command asynchronously and pipe I/O
 async function executeCommand(command: string, args: string[]): Promise<void> {
-  logLabeledBullet("dataconnect", `Running ${clc.bold(`${command} ${args.join(" ")}`)}`);
+  logLabeledBullet("dataconnect", `> ${clc.bold(`${command} ${args.join(" ")}`)}`);
   return new Promise((resolve, reject) => {
     // spawn returns a ChildProcess object
     const childProcess = spawn(command, args, {
