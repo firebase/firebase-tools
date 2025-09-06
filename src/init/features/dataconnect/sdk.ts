@@ -57,11 +57,10 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
   info.apps = await chooseApp();
   if (!info.apps.length) {
-    // By default, create an React web app.
-    const npmWarning = commandExistsSync("npx")
+    const npxMissingWarning = commandExistsSync("npx")
       ? ""
       : clc.yellow(" (you need to install Node.js first)");
-    const flutterWarning = commandExistsSync("flutter")
+    const flutterMissingWarning = commandExistsSync("flutter")
       ? ""
       : clc.yellow(" (you need to install Flutter first)");
 
@@ -69,9 +68,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
       message: `Do you want to create an app template?`,
       choices: [
         // TODO: Create template tailored to FDC.
-        { name: `React${npmWarning}`, value: "react" },
-        { name: `Next.JS${npmWarning}`, value: "next" },
-        { name: `Flutter${flutterWarning}`, value: "flutter" },
+        { name: `React${npxMissingWarning}`, value: "react" },
+        { name: `Next.JS${npxMissingWarning}`, value: "next" },
+        { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
         { name: "no", value: "no" },
       ],
     });
