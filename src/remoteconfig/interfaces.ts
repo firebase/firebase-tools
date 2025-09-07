@@ -53,6 +53,11 @@ export interface RemoteConfigTemplate {
   version?: Version;
 }
 
+//Interface representing Rollout template
+export interface Rollout {
+  
+}
+
 /** Interface representing a Remote Config version. */
 export interface Version {
   versionNumber?: string; // int64 format
