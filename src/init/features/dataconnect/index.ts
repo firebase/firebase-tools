@@ -149,6 +149,8 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
+  } catch (e) {
+    throw new Error(`Failed to init Data Connect: ${(e as Error).message}`);
   } finally {
     void trackGA4("dataconnect_init", {
       project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
