@@ -1,2 +1,3 @@
 - `firebase emulator:start` use a default project if no project can be found. (#9072)
+- `firebase init dataconnect` also supports bootstrapping flutter template. (#9084)
 - MCP `firebase_init` tool can download an existing FDC service returned from `dataconnect_list_services` (#9091)

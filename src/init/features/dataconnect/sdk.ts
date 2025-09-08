@@ -28,11 +28,15 @@ import {
   logLabeledWarning,
   logLabeledBullet,
   newUniqueId,
+<<<<<<< HEAD
   logLabeledError,
+=======
+  commandExistsSync,
+>>>>>>> origin/master
 } from "../../../utils";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
-import { createNextApp, createReactApp } from "./create_app";
+import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
 import { dirExistsSync, listFiles } from "../../../fsutils";
 
@@ -57,25 +61,32 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
   info.apps = await chooseApp();
   if (!info.apps.length) {
-    // By default, create an React web app.
-    const existingFilesAndDirs = listFiles(cwd);
-    const webAppId = newUniqueId("web-app", existingFilesAndDirs);
+    const npxMissingWarning = commandExistsSync("npx")
+      ? ""
+      : clc.yellow(" (you need to install Node.js first)");
+    const flutterMissingWarning = commandExistsSync("flutter")
+      ? ""
+      : clc.yellow(" (you need to install Flutter first)");
+
     const choice = await select({
       message: `Do you want to create an app template?`,
       choices: [
         // TODO: Create template tailored to FDC.
-        { name: "React", value: "react" },
-        { name: "Next.JS", value: "next" },
-        // TODO: Add flutter here.
+        { name: `React${npxMissingWarning}`, value: "react" },
+        { name: `Next.JS${npxMissingWarning}`, value: "next" },
+        { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
         { name: "no", value: "no" },
       ],
     });
     switch (choice) {
       case "react":
-        await createReactApp(webAppId);
+        await createReactApp(newUniqueId("web-app", listFiles(cwd)));
         break;
       case "next":
-        await createNextApp(webAppId);
+        await createNextApp(newUniqueId("web-app", listFiles(cwd)));
+        break;
+      case "flutter":
+        await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
         break;
       case "no":
         break;
