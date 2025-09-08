@@ -194,8 +194,8 @@ async function actuateWithInfo(
       options,
     );
   }
-  const hasBilling = await isBillingEnabled(setup);
-  if (hasBilling) {
+  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
+  if (provisionCSQL) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await setupCloudSql({
       projectId: projectId,
@@ -250,7 +250,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      hasBilling,
+      provisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
