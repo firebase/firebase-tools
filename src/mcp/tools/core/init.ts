@@ -81,7 +81,7 @@ export const init = tool(
               .optional()
               .describe(
                 "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc. " +
-                "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
+                  "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
               ),
             cloudsql_database: z
               .string()
