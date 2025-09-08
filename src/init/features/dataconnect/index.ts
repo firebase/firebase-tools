@@ -184,7 +184,6 @@ async function actuateWithInfo(
     return await writeFiles(config, info, defaultServiceInfo, options);
   }
 
-  // Check if the specified FDC service already exists.
   await ensureApis(projectId);
 
   const hasBilling = await isBillingEnabled(setup);
