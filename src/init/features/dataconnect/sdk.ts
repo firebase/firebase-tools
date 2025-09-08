@@ -28,11 +28,8 @@ import {
   logLabeledWarning,
   logLabeledBullet,
   newUniqueId,
-<<<<<<< HEAD
   logLabeledError,
-=======
   commandExistsSync,
->>>>>>> origin/master
 } from "../../../utils";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
