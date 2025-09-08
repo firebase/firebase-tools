@@ -68,7 +68,7 @@ export interface ServiceGQL {
   seedDataGql?: string;
 }
 
-const defaultServiceInfo: ServiceGQL = {
+const templateServiceInfo: ServiceGQL = {
   schemaGql: [{ path: "schema.gql", content: SCHEMA_TEMPLATE }],
   connectors: [
     {
@@ -181,7 +181,7 @@ async function actuateWithInfo(
   if (!projectId) {
     // If no project is present, just save the template files.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(config, info, defaultServiceInfo, options);
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
 
   await ensureApis(projectId);
@@ -212,7 +212,7 @@ async function actuateWithInfo(
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(config, info, defaultServiceInfo, options);
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
 
@@ -479,44 +479,42 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
 
 async function downloadService(info: RequiredInfo, serviceName: string): Promise<void> {
   const schema = await getSchema(serviceName);
-  if (schema) {
-    info.serviceGql = {
-      schemaGql: [],
-      connectors: [
-        {
-          id: "example",
-          path: "./example",
-          files: [],
-        },
-      ],
-    };
-    const primaryDatasource = schema.datasources.find((d) => d.postgresql);
-    if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-      const instanceName = parseCloudSQLInstanceName(
-        primaryDatasource.postgresql.cloudSql.instance,
-      );
-      info.cloudSqlInstanceId = instanceName.instanceId;
-    }
-    if (schema.source.files?.length) {
-      info.serviceGql.schemaGql = schema.source.files;
-    }
-    info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
-    const connectors = await listConnectors(serviceName, [
-      "connectors.name",
-      "connectors.source.files",
-    ]);
-    if (connectors.length) {
-      info.serviceGql.connectors = connectors.map((c) => {
-        const id = c.name.split("/").pop()!;
-        return {
-          id,
-          path: connectors.length === 1 ? "./example" : `./${id}`,
-          files: c.source.files || [],
-        };
-      });
-    }
+  if (!schema) {
+    return;
   }
-  return;
+  info.serviceGql = {
+    schemaGql: [],
+    connectors: [
+      {
+        id: "example",
+        path: "./example",
+        files: [],
+      },
+    ],
+  };
+  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
+  if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+    const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
+    info.cloudSqlInstanceId = instanceName.instanceId;
+  }
+  if (schema.source.files?.length) {
+    info.serviceGql.schemaGql = schema.source.files;
+  }
+  info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+  const connectors = await listConnectors(serviceName, [
+    "connectors.name",
+    "connectors.source.files",
+  ]);
+  if (connectors.length) {
+    info.serviceGql.connectors = connectors.map((c) => {
+      const id = c.name.split("/").pop()!;
+      return {
+        id,
+        path: connectors.length === 1 ? "./example" : `./${id}`,
+        files: c.source.files || [],
+      };
+    });
+  }
 }
 
 /**
