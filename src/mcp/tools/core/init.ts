@@ -86,6 +86,13 @@ export const init = tool(
               .optional()
               .default("fdcdb")
               .describe("The Postgres database ID to use in the Firebase Data Connect service."),
+            provision_cloudsql: z
+              .boolean()
+              .optional()
+              .default(true)
+              .describe(
+                "Whether to provision the Cloud SQL instance as part of this initialization. Then first ",
+              ),
           })
           .optional()
           .describe(
@@ -155,6 +162,7 @@ export const init = tool(
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
+        shouldProvisionCSQL: !!features.dataconnect.provision_cloudsql,
       };
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
