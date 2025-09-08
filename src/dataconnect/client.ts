@@ -100,7 +100,7 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
 export async function listSchemas(
   serviceName: string,
   fields: string[] = [],
-): Promise<types.Schema[] | undefined> {
+): Promise<types.Schema[]> {
   const schemas: types.Schema[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
@@ -125,6 +125,7 @@ export async function listSchemas(
 export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,
+  async: boolean = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
@@ -132,7 +133,7 @@ export async function upsertSchema(
       validateOnly: validateOnly ? "true" : "false",
     },
   });
-  if (validateOnly) {
+  if (validateOnly || async) {
     return;
   }
   return operationPoller.pollOperation<types.Schema>({

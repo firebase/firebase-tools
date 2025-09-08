@@ -32,6 +32,7 @@ export interface Datasource {
 export type SchemaValidation = "STRICT" | "COMPATIBLE";
 
 export interface PostgreSql {
+  ephemeral?: boolean;
   database?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
@@ -141,16 +142,18 @@ export interface ConnectorYaml {
 }
 
 export interface Generate {
-  javascriptSdk?: JavascriptSDK;
-  swiftSdk?: SwiftSDK;
-  kotlinSdk?: KotlinSDK;
-  dartSdk?: DartSDK;
+  javascriptSdk?: JavascriptSDK | JavascriptSDK[];
+  swiftSdk?: SwiftSDK | SwiftSDK[];
+  kotlinSdk?: KotlinSDK | KotlinSDK[];
+  dartSdk?: DartSDK | DartSDK[];
 }
 
 export interface SupportedFrameworks {
   react?: boolean;
   angular?: boolean;
 }
+
+export type Framework = keyof SupportedFrameworks;
 
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
@@ -221,7 +224,7 @@ export interface ExecuteGraphqlRequest {
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };
-  extensions?: { impersonate?: Impersonation; includeDebugDetails?: boolean };
+  extensions?: { impersonate?: Impersonation };
 }
 
 export interface GraphqlResponse {
