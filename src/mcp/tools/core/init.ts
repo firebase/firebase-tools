@@ -90,7 +90,7 @@ export const init = tool(
             provision_cloudsql: z
               .boolean()
               .optional()
-              .default(true)
+              .default(false)
               .describe(
                 "If true, provision the Cloud SQL instance if `cloudsql_instance_id` does not exist already. " +
                   `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
