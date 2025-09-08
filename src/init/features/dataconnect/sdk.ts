@@ -28,6 +28,7 @@ import {
   logLabeledWarning,
   logLabeledBullet,
   newUniqueId,
+  logLabeledError,
 } from "../../../utils";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
@@ -200,10 +201,14 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
 
   logLabeledBullet("dataconnect", `Installing the generated SDKs ...`);
   const account = getGlobalDefaultAccount();
-  await DataConnectEmulator.generate({
-    configDir: connectorInfo.directory,
-    account,
-  });
+  try {
+    await DataConnectEmulator.generate({
+      configDir: connectorInfo.directory,
+      account,
+    });
+  } catch (e: any) {
+    logLabeledError("dataconnect", `Failed to generate Data Connect SDKs\n${e?.message}`);
+  }
 
   logLabeledSuccess(
     "dataconnect",
