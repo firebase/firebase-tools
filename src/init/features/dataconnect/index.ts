@@ -201,9 +201,11 @@ async function actuateWithInfo(
 
   const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   if (!info.appDescription) {
-    // Try download the existing service if it exists.
-    // MCP tool `firebase_init` may setup an existing service.
-    await downloadService(info, serviceName);
+    if (!info.serviceGql) {
+      // Try download the existing service if it exists.
+      // MCP tool `firebase_init` may setup an existing service.
+      await downloadService(info, serviceName);
+    }
     if (info.serviceGql) {
       // Save the downloaded service from the backend.
       info.analyticsFlow += "_save_downloaded";
