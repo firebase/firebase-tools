@@ -45,7 +45,6 @@ export class Notifications {
     const notifications = await this.workbench.getNotifications();
     return notifications.find(async (n) => {
       const message = await n.getMessage();
-      console.log("NOTIF MESSAGE: ", message);
       return message.includes(
         "The Firebase Assistant requires the Gemini Code Assist extension",
       );
