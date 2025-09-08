@@ -85,6 +85,10 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
     entry.fileName = entry.fileName.replace(/\//g, path.sep);
 
     const outputFilePath = path.normalize(path.join(outputDir, entry.fileName));
+    // Don't allow traversal outside of outputDir
+    if (!isChildDir(outputDir, outputFilePath)) {
+      throw new FirebaseError(`ZIP contained an entry for a path outside of ${outputDir}.`)
+    }
 
     logger.debug(`[unzip] Processing entry: ${entry.fileName}`);
     if (entry.fileName.endsWith(path.sep)) {
@@ -116,6 +120,31 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
     position += entry.headerSize + entry.compressedSize + dataDescriptorSize;
   }
 };
+
+function isChildDir(parentDir: string , potentialChild: string): boolean {
+  try {
+    // 1. Resolve and normalize both paths to absolute paths
+    const resolvedParent = path.resolve(parentDir);
+    const resolvedChild = path.resolve(potentialChild);
+
+    // 2. Get the physical paths by resolving symbolic links. This is essential for security.
+    const realPathParent =  fs.realpathSync(resolvedParent);
+    const realPathChild =  fs.realpathSync(resolvedChild);
+
+    // 3. Compare the real paths
+    const parentWithSeparator = path.join(realPathParent, path.sep);
+
+    // The child path must start with the parent path and not be the same path.
+    return (
+      realPathChild.startsWith(parentWithSeparator) ||
+      realPathChild === realPathParent
+    );
+  } catch (error) {
+    // If either path does not exist, an error will be thrown.
+    // In this case, the potential child cannot be a subdirectory.
+    return false;
+  }
+}
 
 export const unzip = async (inputPath: string, outputDir: string): Promise<void> => {
   const data = await fs.promises.readFile(inputPath);
