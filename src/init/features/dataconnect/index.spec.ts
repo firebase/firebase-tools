@@ -9,6 +9,7 @@ import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
 import * as cloudbilling from "../../../gcp/cloudbilling";
 import * as ensureApis from "../../../dataconnect/ensureApis";
+import * as client from "../../../dataconnect/client";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
@@ -23,14 +24,14 @@ describe("init dataconnect", () => {
     let askWriteProjectFileStub: sinon.SinonStub;
     let ensureSyncStub: sinon.SinonStub;
     let sdkActuateStub: sinon.SinonStub;
-    let ensureApisStub: sinon.SinonStub;
 
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "setupCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
       sdkActuateStub = sandbox.stub(sdk, "actuate").resolves();
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
-      ensureApisStub = sandbox.stub(ensureApis, "ensureApis").resolves();
+      sandbox.stub(ensureApis, "ensureApis").resolves();
+      sandbox.stub(client, "getSchema").resolves(undefined);
     });
 
     afterEach(() => {

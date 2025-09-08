@@ -184,7 +184,7 @@ async function actuateWithInfo(
     return await writeFiles(config, info, templateServiceInfo, options);
   }
 
-  await ensureApis(projectId);
+  await ensureApis(projectId, /* silent =*/ true);
 
   const hasBilling = await isBillingEnabled(setup);
   if (hasBilling) {
