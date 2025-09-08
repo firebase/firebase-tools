@@ -269,7 +269,14 @@ describe("cloudsqladmin", () => {
         .reply(200, op);
       sandbox.stub(operationPoller, "pollOperation").resolves(user);
 
-      const result = await sqladmin.createUser(PROJECT_ID, INSTANCE_ID, "BUILT_IN", USERNAME);
+      const result = await sqladmin.createUser(
+        PROJECT_ID,
+        INSTANCE_ID,
+        "BUILT_IN",
+        USERNAME,
+        undefined,
+        1,
+      );
 
       expect(result).to.deep.equal(user);
       expect(nock.isDone()).to.be.true;
