@@ -185,6 +185,7 @@ async function actuateWithInfo(
   }
 
   // Check if the specified FDC service already exists.
+  await ensureApis(projectId);
   const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
   if (serviceAlreadyExists) {
@@ -206,13 +207,12 @@ async function actuateWithInfo(
     });
   }
 
-  if (info.serviceGql) {
-    // Save the downloaded service from the backend.
-    info.analyticsFlow += "_save_downloaded";
-    return await writeFiles(config, info, info.serviceGql, options);
-  }
-
   if (!info.appDescription) {
+    if (info.serviceGql) {
+      // Save the downloaded service from the backend.
+      info.analyticsFlow += "_save_downloaded";
+      return await writeFiles(config, info, info.serviceGql, options);
+    }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
     info.analyticsFlow += "_save_template";
     return await writeFiles(config, info, defaultServiceInfo, options);
