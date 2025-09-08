@@ -183,7 +183,7 @@ export class FirebaseMcpServer {
   }
 
   async getEmulatorHubClient(): Promise<EmulatorHubClient | undefined> {
-    // Single initilization
+    // Single initialization
     if (this.emulatorHubClient) {
       return this.emulatorHubClient;
     }
