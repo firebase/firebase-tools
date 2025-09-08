@@ -3,6 +3,7 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
+import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 
 export const init = tool(
   {
@@ -91,7 +92,8 @@ export const init = tool(
               .optional()
               .default(true)
               .describe(
-                "Whether to provision the Cloud SQL instance as part of this initialization. Then first ",
+                "Whether to provision the Cloud SQL instance if `cloudsql_instance_id` doesn't exist already. " +
+                  `\nThis first instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}.`,
               ),
           })
           .optional()
