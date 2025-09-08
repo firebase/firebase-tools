@@ -1,5 +1,4 @@
 import type { ServerPrompt } from "../../prompt";
-import { fix_issue } from "./fix_issue";
-import { prioritize_issues } from "./prioritize_issues";
+import { connect } from "./connect";
 
-export const crashlyticsPrompts: ServerPrompt[] = [fix_issue, prioritize_issues];
+export const crashlyticsPrompts: ServerPrompt[] = [connect];
