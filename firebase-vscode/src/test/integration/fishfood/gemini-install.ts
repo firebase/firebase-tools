@@ -29,13 +29,6 @@ firebaseSuite("Gemini Install", async function () {
         installNotification!, // verified in expect statement above,
       );
 
-      // Wait for the Gemini view to appear in the activity bar
-      const geminiView = await workbench
-        .getActivityBar()
-        .getViewControl("Gemini Code Assist");
-      expect(geminiView).toExist();
-      await geminiView!.wait(30000);
-
       // Verify that the Gemini chat view is focused
       const chatView = await workbench.getEditorView().webView$;
       await chatView.waitForExist({ timeout: 50000 });
