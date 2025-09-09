@@ -27,7 +27,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  core: addFeaturePrefix("firebase", coreTools),
+  core: addFeaturePrefix("core", coreTools),
   firestore: addFeaturePrefix("firestore", firestoreTools),
   auth: addFeaturePrefix("auth", authTools),
   dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
@@ -63,10 +63,7 @@ export function markdownDocsOfTools(): string {
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
   for (const tool of allTools) {
-    let feature = tool.mcp?._meta?.feature || "";
-    if (feature === "firebase") {
-      feature = "core";
-    }
+    const feature = tool.mcp?._meta?.feature || "";
     doc += `
 | ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
   }
