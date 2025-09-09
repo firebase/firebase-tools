@@ -33,7 +33,8 @@ firebaseSuite("Gemini Install", async function () {
       const geminiView = await workbench
         .getActivityBar()
         .getViewControl("Gemini Code Assist");
-      await geminiView?.wait(30000);
+      expect(geminiView).toExist();
+      await geminiView!.wait(30000);
 
       // Verify that the Gemini chat view is focused
       const chatView = await workbench.getEditorView().webView$;

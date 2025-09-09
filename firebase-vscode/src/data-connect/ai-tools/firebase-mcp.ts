@@ -35,9 +35,7 @@ async function ensureGeminiExtension(): Promise<boolean> {
   const disposable = vscode.extensions.onDidChange(async () => {
     geminiExtension = vscode.extensions.getExtension(GEMINI_EXTENSION_ID);
     if (geminiExtension) {
-      writeToGeminiConfig();
-      await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
-      await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // opens a new chat when an old one exists;
+      openGeminiChat();
       disposable.dispose();
     }
   });
@@ -47,6 +45,13 @@ async function ensureGeminiExtension(): Promise<boolean> {
   );
 
   return false;
+}
+
+// Writes MCP config, then opens up Gemini with a new chat
+async function openGeminiChat() {
+  writeToGeminiConfig();
+  await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
+  await vscode.commands.executeCommand("geminicodeassist.agent.chat.new");
 }
 
 export function registerFirebaseMCP(
@@ -63,10 +68,7 @@ export function registerFirebaseMCP(
     if (!geminiReady) {
       return;
     }
-
-    writeToGeminiConfig();
-    await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
-    await vscode.commands.executeCommand("geminicodeassist.agent.chat.new"); // opens a new chat when an old one exists;
+    openGeminiChat();
   });
 
   const mcpDocsSub = broker.on("docs.mcp.clicked", () => {
