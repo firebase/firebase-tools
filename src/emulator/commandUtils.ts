@@ -137,6 +137,14 @@ export async function warnEmulatorNotSupported(
   }
 }
 
+export async function errorMissingProject(options: any): Promise<void> {
+  if (!options.project) {
+    throw new FirebaseError(
+      "Project is not defined. Either use `--project` or use `firebase use` to set your active project.",
+    );
+  }
+}
+
 /**
  * Utility method to be inserted in the "before" function for a command that
  * uses the emulator suite.
