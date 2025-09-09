@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { input, select } from "../../../prompt";
+import { input, select, confirm } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -54,6 +54,8 @@ export interface RequiredInfo {
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
+  // If true, we should provision a new Cloud SQL instance.
+  shouldProvisionCSQL: boolean;
   // If present, this is downloaded from an existing deployed service.
   serviceGql?: ServiceGQL;
 }
@@ -101,6 +103,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     locationId: "",
     cloudSqlInstanceId: "",
     cloudSqlDatabase: "",
+    shouldProvisionCSQL: false,
   };
   if (setup.projectId) {
     const hasBilling = await isBillingEnabled(setup);
@@ -191,8 +194,8 @@ async function actuateWithInfo(
       options,
     );
   }
-  const hasBilling = await isBillingEnabled(setup);
-  if (hasBilling) {
+  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
+  if (provisionCSQL) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await setupCloudSql({
       projectId: projectId,
@@ -247,7 +250,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      hasBilling,
+      provisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
@@ -623,6 +626,10 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       message: "What location would like to use?",
       choices,
       default: "us-central1",
+    });
+    info.shouldProvisionCSQL = await confirm({
+      message: `Would you like to provision your Cloud SQL instance and database now?`,
+      default: true,
     });
   }
 
