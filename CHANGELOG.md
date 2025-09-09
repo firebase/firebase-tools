@@ -1,4 +1,5 @@
 - Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
-- feat: [mcp] Add 'select' parameter to the `firestore_get_documents` tool. (#9043)
-- `firebase emulator:start` use a default project if no project can be found. (#9072)
-
+- Added 'select' parameter to the `firestore_get_documents` tool. (#9043)
+- `firebase emulator:start` use a default project `demo-no-project` if no project can be found. (#9072)
+- `firebase init dataconnect` also supports bootstrapping Flutter template. (#9084)
+- `firebase init dataconnect` confirms Cloud SQL provisioning. (#9095)
