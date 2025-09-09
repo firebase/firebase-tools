@@ -20,6 +20,12 @@ export const get_documents = tool(
         .describe(
           "One or more document paths (e.g. `collectionName/documentId` or `parentCollection/parentDocument/collectionName/documentId`)",
         ),
+      select: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "A list of fields to return. Nested fields can be accessed by separating each field with a period (ie 'nested.nested2.field') If not specified, returns the entire document. E.g. `['field1', 'nested.field2']`.",
+        ),
       use_emulator: z.boolean().default(false).describe("Target the Firestore emulator if true."),
     }),
     annotations: {
@@ -31,14 +37,20 @@ export const get_documents = tool(
       requiresProject: true,
     },
   },
-  async ({ paths, database, use_emulator }, { projectId, host }) => {
+  async ({ paths, database, use_emulator, select }, { projectId, host }) => {
     if (!paths || !paths.length) return mcpError("Must supply at least one document path.");
 
     let emulatorUrl: string | undefined;
     if (use_emulator) {
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
-    const { documents, missing } = await getDocuments(projectId, paths, database, emulatorUrl);
+    const { documents, missing } = await getDocuments(
+      projectId,
+      paths,
+      database,
+      emulatorUrl,
+      select,
+    );
     if (missing.length > 0 && documents && documents.length === 0) {
       return mcpError(`None of the specified documents were found in project '${projectId}'`);
     }
