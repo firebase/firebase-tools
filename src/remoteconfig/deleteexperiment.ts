@@ -28,11 +28,13 @@ export async function deleteExperiment(
       path: `projects/${projectId}/namespaces/${namespace}/experiments/${experimentId}`,
       timeout: TIMEOUT,
     });
-  } catch (err: any) {
-    logger.debug(err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      logger.debug(err.message);
+    }
     throw new FirebaseError(
-      `Failed to delete Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${getErrMsg(err)}}`,
-      { original: err },
+      `Failed to delete Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${getErrMsg(err)}`,
+      { original: err as Error },
     );
   }
 }

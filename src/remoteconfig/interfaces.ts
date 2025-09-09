@@ -60,15 +60,15 @@ export interface Version {
   versionNumber?: string; // int64 format
   updateTime?: string; // in UTC
   updateOrigin?:
-    | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
-    | "CONSOLE"
-    | "REST_API"
-    | "ADMIN_SDK_NOD";
+  | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
+  | "CONSOLE"
+  | "REST_API"
+  | "ADMIN_SDK_NOD";
   updateType?:
-    | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
-    | "INCREMENTAL_UPDATE"
-    | "FORCED_UPDATE"
-    | "ROLLBACK";
+  | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
+  | "INCREMENTAL_UPDATE"
+  | "FORCED_UPDATE"
+  | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
@@ -98,7 +98,7 @@ export interface RemoteConfigUser {
 }
 
 /** Interface representing a Remote Config experiment. */
-export interface GetExperimentResult {
+export interface RemoteConfigExperiment {
   name: string;
   definition: ExperimentDefinition;
   state: string;
@@ -111,8 +111,15 @@ export interface GetExperimentResult {
 /** Interface representing the definition of a Remote Config experiment. */
 interface ExperimentDefinition {
   displayName: string;
-  description?: string;
   service: string;
+}
+
+export interface GetExperimentResult extends RemoteConfigExperiment {
+  definition: GetExperimentDefinition;
+}
+
+interface GetExperimentDefinition extends ExperimentDefinition {
+  description?: string;
   objectives: ExperimentObjectives;
   variants: ExperimentVariant[];
 }
@@ -146,4 +153,10 @@ interface ExperimentCustomObjectiveDetails {
 interface ExperimentVariant {
   name: string;
   weight: number;
+}
+
+/** Interface representing a list of Remote Config experiments. */
+export interface ListExperimentsResult {
+  experiments: RemoteConfigExperiment[];
+  nextPageToken?: string;
 }

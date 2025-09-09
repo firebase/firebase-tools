@@ -54,11 +54,13 @@ export async function getExperiment(
       timeout: TIMEOUT,
     });
     return res.body;
-  } catch (err: any) {
-    logger.debug(err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      logger.debug(err.message);
+    }
     throw new FirebaseError(
       `Failed to get Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${getErrMsg(err)}}`,
-      { original: err },
+      { original: err as Error },
     );
   }
 }
