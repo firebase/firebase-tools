@@ -30,13 +30,7 @@ describe("login tool", () => {
     const result = await login.fn({ authCode: undefined }, { host: server } as any);
 
     const expectedResult = toContent(
-      {
-        uri: "https://fake.login.uri/auth",
-        sessionId: "FAKE_SESSION_ID",
-      },
-      {
-        contentSuffix: `\nPlease visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`,
-      },
+      `Please visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`,
     );
     expect(loginPrototyperStub.calledOnce).to.be.true;
     expect(result).to.deep.equal(expectedResult);
@@ -50,12 +44,7 @@ describe("login tool", () => {
     const result = await login.fn({ authCode: "fake_auth_code" }, { host: server } as any);
 
     expect(fakeAuthorize.calledOnceWith("fake_auth_code")).to.be.true;
-    expect(result).to.deep.equal(
-      toContent({
-        status: "success",
-        user: { email: "test@example.com" },
-      }),
-    );
+    expect(result).to.deep.equal(toContent(`Successfully logged in as test@example.com`));
     expect((server as any).__login_authorize).to.not.exist;
   });
 

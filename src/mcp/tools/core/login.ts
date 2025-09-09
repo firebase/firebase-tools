@@ -31,10 +31,7 @@ export const login = tool(
       try {
         const creds = await serverWithState.__login_authorize(authCode);
         delete serverWithState.__login_authorize;
-        return toContent({
-          status: "success",
-          user: creds.user,
-        });
+        return toContent(`Successfully logged in as ${creds.user.email}`);
       } catch (e: any) {
         delete serverWithState.__login_authorize;
         return mcpError(`Login failed: ${e.message}`);
@@ -46,8 +43,8 @@ export const login = tool(
         uri: prototyper.uri,
         sessionId: prototyper.sessionId,
       };
-      const humanReadable = `\nPlease visit this URL to login: ${result.uri}\nYour session ID is: ${result.sessionId}\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`;
-      return toContent(result, { contentSuffix: humanReadable });
+      const humanReadable = `Please visit this URL to login: ${result.uri}\nYour session ID is: ${result.sessionId}\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`;
+      return toContent(humanReadable);
     }
   },
 );
