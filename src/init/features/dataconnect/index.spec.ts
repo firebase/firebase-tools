@@ -250,6 +250,7 @@ function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredI
     locationId: "europe-north3",
     cloudSqlInstanceId: "csql-instance",
     cloudSqlDatabase: "csql-db",
+    shouldProvisionCSQL: true,
     ...info,
   };
 }
