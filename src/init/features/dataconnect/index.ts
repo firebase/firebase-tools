@@ -186,16 +186,10 @@ async function actuateWithInfo(
     info.analyticsFlow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
-<<<<<<< HEAD
 
   await ensureApis(projectId, /* silent =*/ true);
-
-  const hasBilling = await isBillingEnabled(setup);
-  if (hasBilling) {
-=======
   const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
   if (provisionCSQL) {
->>>>>>> origin/master
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await setupCloudSql({
       projectId: projectId,
