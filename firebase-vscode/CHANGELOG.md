@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
+
 ## 1.7.0
 
 - Update internal `firebase-tools` dependency to 14.15.2
