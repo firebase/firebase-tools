@@ -35,7 +35,7 @@ async function ensureGeminiExtension(): Promise<boolean> {
   const disposable = vscode.extensions.onDidChange(async () => {
     geminiExtension = vscode.extensions.getExtension(GEMINI_EXTENSION_ID);
     if (geminiExtension) {
-      openGeminiChat();
+      await openGeminiChat();
       disposable.dispose();
     }
   });
@@ -68,7 +68,7 @@ export function registerFirebaseMCP(
     if (!geminiReady) {
       return;
     }
-    openGeminiChat();
+    await openGeminiChat();
   });
 
   const mcpDocsSub = broker.on("docs.mcp.clicked", () => {
