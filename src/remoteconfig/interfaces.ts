@@ -114,10 +114,16 @@ interface ExperimentDefinition {
   service: string;
 }
 
+/**
+ * Interface representing the result of fetching a Remote Config experiment.
+ */
 export interface GetExperimentResult extends RemoteConfigExperiment {
   definition: GetExperimentDefinition;
 }
 
+/**
+ * Interface representing a detailed definition of a Remote Config experiment.
+ */
 interface GetExperimentDefinition extends ExperimentDefinition {
   description?: string;
   objectives: ExperimentObjectives;

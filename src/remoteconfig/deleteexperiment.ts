@@ -1,7 +1,7 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
-import { logger } from "../logger";
-import { FirebaseError, getErrMsg } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
+import { consoleUrl } from "../utils";
 
 const TIMEOUT = 30000;
 
@@ -29,12 +29,20 @@ export async function deleteExperiment(
       timeout: TIMEOUT,
     });
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      logger.debug(err.message);
+    const error: Error = getError(err);
+    if (error.message.includes("is running and cannot be deleted")) {
+      const rcConsoleUrl = consoleUrl(
+        projectId,
+        `/config/experiment/results/${experimentId}`,
+      );
+      throw new FirebaseError(
+        `Experiment ${experimentId} is currently running and cannot be deleted. If you want to delete this experiment, stop it at ${rcConsoleUrl}`,
+        { original: error },
+      );
     }
     throw new FirebaseError(
       `Failed to delete Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${getErrMsg(err)}`,
-      { original: err as Error },
+      { original: error },
     );
   }
 }

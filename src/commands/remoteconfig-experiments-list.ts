@@ -6,6 +6,7 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
+import { FirebaseError } from "../error";
 
 export const command = new Command("remoteconfig:experiments:list")
   .description("get a list of Remote Config experiments")
@@ -24,6 +25,9 @@ export const command = new Command("remoteconfig:experiments:list")
   .before(requireAuth)
   .before(requirePermissions, ["firebaseabt.experiments.list", "firebaseanalytics.resources.googleAnalyticsReadAndAnalyze"])
   .action(async (options: Options) => {
+    if (options.pageSize && isNaN(parseInt(options.pageSize as string))) {
+      throw new FirebaseError("Page size must be a number.");
+    }
     const projectNumber = await needProjectNumber(options);
     const { experiments, nextPageToken }: ListExperimentsResult = await rcExperiment.listExperiments(
       projectNumber,
@@ -32,7 +36,7 @@ export const command = new Command("remoteconfig:experiments:list")
       options.pageSize as string | undefined,
       options.filter as string | undefined
     );
-    logger.info(rcExperiment.parseExperimentIntoTable(experiments));
+    logger.info(rcExperiment.parseExperimentList(experiments));
     if (nextPageToken) {
       logger.info(`\nNext Page Token: \x1b[32m${nextPageToken}\x1b[0m\n`);
     }

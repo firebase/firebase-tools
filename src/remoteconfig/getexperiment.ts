@@ -1,21 +1,21 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import { FirebaseError, getErrMsg } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { GetExperimentResult } from "./interfaces";
 import * as Table from "cli-table3";
 import * as util from "util";
 
 const TIMEOUT = 30000;
+const TABLE_HEAD = ["Entry Name", "Value"];
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 
-export const parseExperimentIntoTable = (experiment: GetExperimentResult): string => {
-  const tableHead = ["Entry Name", "Value"];
-  const table = new Table({ head: tableHead, style: { head: ["green"] } });
+export const parseExperiment = (experiment: GetExperimentResult): string => {
+  const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   table.push(["Name", experiment.name]);
   table.push(["Display Name", experiment.definition.displayName]);
   table.push(["Service", experiment.definition.service]);
@@ -55,12 +55,11 @@ export async function getExperiment(
     });
     return res.body;
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      logger.debug(err.message);
-    }
+    const error: Error = getError(err);
+    logger.debug(error.message);
     throw new FirebaseError(
-      `Failed to get Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${getErrMsg(err)}}`,
-      { original: err as Error },
+      `Failed to get Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${error.message}}`,
+      { original: error },
     );
   }
 }
