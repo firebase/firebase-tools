@@ -4,6 +4,7 @@ import { Command } from "../command";
 import { command as firestoreBulkDelete } from "./firestore-bulkdelete";
 import * as fsi from "../firestore/api";
 import { FirebaseError } from "../error";
+import * as requireAuthModule from "../requireAuth";
 import { BulkDeleteDocumentsResponse } from "../firestore/api-types";
 
 describe("firestore:bulkdelete", () => {
@@ -13,11 +14,14 @@ describe("firestore:bulkdelete", () => {
 
   let command: Command;
   let firestoreApiStub: sinon.SinonStubbedInstance<fsi.FirestoreApi>;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     command = firestoreBulkDelete;
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
+    requireAuthStub = sinon.stub(requireAuthModule, "requireAuth");
     sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
+    requireAuthStub.resolves("a@b.com");
   });
 
   afterEach(() => {
