@@ -126,10 +126,10 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
 function isChildDir(parentDir: string, potentialChild: string): boolean {
   try {
     // 1. Resolve and normalize both paths to absolute paths
-    let resolvedParent = path.resolve(parentDir);
-    let resolvedChild = path.resolve(potentialChild);
+    const resolvedParent = path.resolve(parentDir);
+    const resolvedChild = path.resolve(potentialChild);
     // The child path must start with the parent path and not be the same path.
-    return resolvedChild.startsWith(resolvedParent) && resolvedChild != resolvedParent;
+    return resolvedChild.startsWith(resolvedParent) && resolvedChild !== resolvedParent;
   } catch (error) {
     // If either path does not exist, an error will be thrown.
     // In this case, the potential child cannot be a subdirectory.
