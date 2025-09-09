@@ -8,6 +8,8 @@ import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
 import * as cloudbilling from "../../../gcp/cloudbilling";
+import * as ensureApis from "../../../dataconnect/ensureApis";
+import * as client from "../../../dataconnect/client";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
@@ -28,6 +30,8 @@ describe("init dataconnect", () => {
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
       sdkActuateStub = sandbox.stub(sdk, "actuate").resolves();
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
+      sandbox.stub(ensureApis, "ensureApis").resolves();
+      sandbox.stub(client, "getSchema").resolves(undefined);
     });
 
     afterEach(() => {
