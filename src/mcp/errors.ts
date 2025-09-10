@@ -8,9 +8,10 @@ export const NO_PROJECT_ERROR = mcpError(
 );
 
 export function mcpAuthError(skipADC: boolean): CallToolResult {
-  const cmd = commandExistsSync("firebase") ? "firebase" : "npx -y firebase-tools";
   if (skipADC) {
-    return mcpError(`The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in.`);
+    return mcpError(
+      `The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in.`,
+    );
   }
   return mcpError(`The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in, or instruct the user to configure [Application Default Credentials][ADC] on their machine.
 [ADC]: https://cloud.google.com/docs/authentication/application-default-credentials`);
