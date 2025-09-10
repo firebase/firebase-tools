@@ -19,13 +19,13 @@ interface DeployServiceInfo {
   connectors?: Connector[];
 }
 
-export const info = tool(
+export const list_services = tool(
   {
-    name: "info",
-    description: "Get information about the Firebase Data Connect local and deployed resources.",
+    name: "list_services",
+    description: "List existing local and backend Firebase Data Connect services",
     inputSchema: z.object({}),
     annotations: {
-      title: "Get information about Firebase Data Connect",
+      title: "List existing Firebase Data Connect services",
       readOnlyHint: true,
     },
     _meta: {
