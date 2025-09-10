@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { logout_tool } from "./logout";
+import { logout } from "./logout";
 import * as auth from "../../../auth";
 import { toContent } from "../../util";
 import { Account } from "../../../types/auth";
@@ -47,7 +47,7 @@ describe("logout tool", () => {
 
   it("should inform if no user is logged in", async () => {
     getAllAccountsStub.returns([]);
-    const result = await logout_tool.fn({ email: undefined }, {} as any);
+    const result = await logout.fn({ email: undefined }, {} as any);
     expect(result).to.deep.equal(toContent("No need to logout, not logged in"));
   });
 
@@ -56,7 +56,7 @@ describe("logout tool", () => {
     getGlobalDefaultAccountStub.returns(fakeAccount1);
     getAdditionalAccountsStub.returns([]);
 
-    const result = await logout_tool.fn({ email: undefined }, {} as any);
+    const result = await logout.fn({ email: undefined }, {} as any);
 
     expect(logoutStub.calledOnceWith("token1")).to.be.true;
     expect(result.content[0].text).to.include("Logged out from test1@example.com");
@@ -67,7 +67,7 @@ describe("logout tool", () => {
     getGlobalDefaultAccountStub.returns(fakeAccount1);
     getAdditionalAccountsStub.returns([fakeAccount2]);
 
-    const result = await logout_tool.fn({ email: "test2@example.com" }, {} as any);
+    const result = await logout.fn({ email: "test2@example.com" }, {} as any);
 
     expect(logoutStub.calledOnceWith("token2")).to.be.true;
     expect(logoutStub.callCount).to.equal(1);
@@ -79,7 +79,7 @@ describe("logout tool", () => {
     getGlobalDefaultAccountStub.returns(fakeAccount1);
     getAdditionalAccountsStub.returns([fakeAccount2]);
 
-    await logout_tool.fn({ email: undefined }, {} as any);
+    await logout.fn({ email: undefined }, {} as any);
 
     expect(logoutStub.calledTwice).to.be.true;
     expect(logoutStub.calledWith("token1")).to.be.true;
@@ -91,7 +91,7 @@ describe("logout tool", () => {
     getGlobalDefaultAccountStub.returns(fakeAccount1);
     getAdditionalAccountsStub.returns([fakeAccount2]);
 
-    await logout_tool.fn({ email: "test1@example.com" }, {} as any);
+    await logout.fn({ email: "test1@example.com" }, {} as any);
 
     expect(setGlobalDefaultAccountStub.calledOnceWith(fakeAccount2)).to.be.true;
   });
