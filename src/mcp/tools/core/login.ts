@@ -14,7 +14,7 @@ export type ServerWithLoginState = FirebaseMcpServer & {
 export const login = tool(
   {
     name: "login",
-    description: "Logs the user into Firebase.",
+    description: "Logs the user into the Firebase CLI and MCP server.",
     inputSchema: LoginInputSchema,
     _meta: {
       requiresAuth: false,

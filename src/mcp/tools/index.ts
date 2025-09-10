@@ -63,7 +63,10 @@ export function markdownDocsOfTools(): string {
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
   for (const tool of allTools) {
-    const feature = tool.mcp?._meta?.feature || "";
+    let feature = tool.mcp?._meta?.feature || "";
+     if (feature === "firebase") {
+      feature = "core";
+    }
     doc += `
 | ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
   }
