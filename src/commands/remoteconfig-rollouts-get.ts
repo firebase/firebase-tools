@@ -3,7 +3,7 @@ import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
+import { needProjectId, needProjectNumber } from "../projectUtils";
 import { RemoteConfigRollout, NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/rolloutget";
 import { FirebaseError } from "../error";
@@ -11,12 +11,12 @@ import { FirebaseError } from "../error";
 export const command = new Command("remoteconfig:rollouts:get [rolloutId]")
     .description("get a Remote Config rollout")
     .before(requireAuth)
-    .before(requirePermissions, ["firebaseremoteconfig.configs.get"])
+    .before(requirePermissions, ["cloud.configs.get"])
     .action(async (rolloutId: string, options: Options) => {
         if (!rolloutId) {
             throw new FirebaseError("Rollout ID is required.");
         }
-        const projectId: string = needProjectId(options);
+        const projectId: string = await needProjectNumber(options);
         const rollout: RemoteConfigRollout = await rcRollout.getRollout(
             projectId,
             NAMESPACE_FIREBASE,

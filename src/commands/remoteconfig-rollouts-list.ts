@@ -3,7 +3,7 @@ import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
+import { needProjectId, needProjectNumber } from "../projectUtils";
 import { ListRollouts, NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/rolloutlist";
 import { FirebaseError } from "../error";
@@ -23,12 +23,12 @@ export const command = new Command("remoteconfig:rollouts:list")
         "filters rollouts by their full resource name. Format: `projects/{project_id}/namespaces/{namespace}/rollouts/{rollout_id}`",
     )
     .before(requireAuth)
-    .before(requirePermissions, ["firebaseremoteconfig.configs.get"])
+    .before(requirePermissions, ["cloud.configs.get"])
     .action(async (options: Options) => {
         if (options.pageSize && isNaN(parseInt(options.pageSize as string))) {
             throw new FirebaseError("Page size must be a number.");
         }
-        const projectId = await needProjectId(options);
+        const projectId = await needProjectNumber(options);
         // Note: The `await-thenable` lint error is likely a false positive.
         // The `listRollout` function is async and correctly returns a Promise.
         const { rollouts, nextPageToken }: ListRollouts = await rcRollout.listRollout(

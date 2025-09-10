@@ -4,6 +4,7 @@ import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
 import { ListRollouts, RemoteConfigRollout } from "./interfaces"; // Import from the single source of truth.
 import * as Table from "cli-table3";
+import * as util from "util";
 
 const TIMEOUT = 30000;
 
@@ -44,8 +45,8 @@ export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
       rollout.startTime,
       rollout.endTime,
       rollout.lastUpdateTime,
-      rollout.definition.controlVariant.name,
-      rollout.definition.enabledVariant.name,
+      util.inspect(rollout.definition.controlVariant, { showHidden: false, depth: null }),
+      util.inspect(rollout.definition.enabledVariant, { showHidden: false, depth: null }),
       rollout.etag,
     ]);
   }

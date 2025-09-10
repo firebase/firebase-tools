@@ -5,27 +5,16 @@ import { FirebaseError, getError } from "../error";
 // FIXED: Changed type to RemoteConfigRollout for consistency with your interfaces file.
 import { RemoteConfigRollout } from "./interfaces";
 import * as Table from "cli-table3";
+import * as util from "util";
+
 
 const TIMEOUT = 30000;
+const TABLE_HEAD = ["Entry Name", "Value"];
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
-
-const TABLE_HEAD = [
-  "Name",
-  "Display Name",
-  "Description",
-  "State",
-  "Create Time",
-  "Start Time",
-  "End Time",
-  "Last Update Time",
-  "Control Variant",
-  "Enabled Variant",
-  "ETag", // FIXED: Capitalized for consistency.
-];
 
 /**
  * Parses a single rollout object into a CLI table string.
@@ -34,20 +23,20 @@ const TABLE_HEAD = [
  */
 export const parseRolloutIntoTable = (rollout: RemoteConfigRollout): string => {
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
-  table.push([
-    rollout.name,
-    rollout.definition.displayName,
-    rollout.definition.description,
-    rollout.state,
-    rollout.createTime,
-    rollout.startTime,
-    rollout.endTime,
-    rollout.lastUpdateTime,
+  table.push(
+    ["Name", rollout.name],
+    ["Display Name",rollout.definition.displayName],
+    ["Description", rollout.definition.description],
+    ["State",rollout.state],
+    ["Create Time",rollout.createTime],
+    ["Start Time",rollout.startTime],
+    ["End Time",rollout.endTime],
+    ["Last Update Time",rollout.lastUpdateTime],
     // FIXED: Accessed the .name property to display the variant name string instead of [object Object].
-    rollout.definition.controlVariant.name,
-    rollout.definition.enabledVariant.name,
-    rollout.etag,
-  ]);
+    ["Control Variant",util.inspect(rollout.definition.controlVariant, { showHidden: false, depth: null })],
+    ["Enabled Variant",util.inspect(rollout.definition.enabledVariant, { showHidden: false, depth: null })],
+    ["ETag",rollout.etag],
+  );
   return table.toString();
 };
 
@@ -64,7 +53,7 @@ export async function getRollout(
   rolloutId: string,
 ): Promise<RemoteConfigRollout> {
   try {
-    const res = await apiClient.request<null, RemoteConfigRollout>({
+    const res = await apiClient.request<void, RemoteConfigRollout>({
       method: "GET",
       // FIXED: Corrected API path to use plural 'namespaces' and 'rollouts'.
       path: `/projects/${projectId}/namespaces/${namespace}/rollouts/${rolloutId}`,
