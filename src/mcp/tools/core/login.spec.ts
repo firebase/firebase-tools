@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { login } from "./login";
+import { login, ServerWithLoginState } from "./login";
 import * as auth from "../../../auth";
 import { FirebaseMcpServer } from "../../../mcp";
 import { toContent } from "../../util";
@@ -34,18 +34,18 @@ describe("login tool", () => {
     );
     expect(loginPrototyperStub.calledOnce).to.be.true;
     expect(result).to.deep.equal(expectedResult);
-    expect((server as any).__login_authorize).to.exist;
+    expect((server as ServerWithLoginState).authorize).to.exist;
   });
 
   it("should call authorize when authCode is provided", async () => {
-    (server as any).__login_authorize = fakeAuthorize;
+    (server as ServerWithLoginState).authorize = fakeAuthorize;
     fakeAuthorize.resolves({ user: { email: "test@example.com" } });
 
     const result = await login.fn({ authCode: "fake_auth_code" }, { host: server } as any);
 
     expect(fakeAuthorize.calledOnceWith("fake_auth_code")).to.be.true;
     expect(result).to.deep.equal(toContent(`Successfully logged in as test@example.com`));
-    expect((server as any).__login_authorize).to.not.exist;
+    expect((server as ServerWithLoginState).authorize).to.not.exist;
   });
 
   it("should return an error if authCode is provided without starting the flow", async () => {

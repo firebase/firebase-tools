@@ -27,7 +27,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  core: addFeaturePrefix("core", coreTools),
+  core: addFeaturePrefix("firebase", coreTools),
   firestore: addFeaturePrefix("firestore", firestoreTools),
   auth: addFeaturePrefix("auth", authTools),
   dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
