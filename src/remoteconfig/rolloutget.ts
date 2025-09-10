@@ -1,45 +1,83 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { Rollout } from "./interfaces";
+import { FirebaseError, getError } from "../error";
+// FIXED: Changed type to RemoteConfigRollout for consistency with your interfaces file.
+import { RemoteConfigRollout } from "./interfaces";
+import * as Table from "cli-table3";
 
 const TIMEOUT = 30000;
-
-// Creates a maximum limit of 50 names for each entry
-const MAX_DISPLAY_ITEMS = 50;
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 
+const TABLE_HEAD = [
+  "Name",
+  "Display Name",
+  "Description",
+  "State",
+  "Create Time",
+  "Start Time",
+  "End Time",
+  "Last Update Time",
+  "Control Variant",
+  "Enabled Variant",
+  "ETag", // FIXED: Capitalized for consistency.
+];
+
 /**
- * Function retrieves the most recent template of the current active project
- * @param projectId Input is the project ID string
- * @param namespace Input is namespace of rollout
- * @param rollout_id Input is rollout id of project
- * @return {Promise} Returns a promise of a remote config template using the RemoteConfigTemplate interface
+ * Parses a single rollout object into a CLI table string.
+ * @param rollout The rollout object.
+ * @return A string formatted as a table.
+ */
+export const parseRolloutIntoTable = (rollout: RemoteConfigRollout): string => {
+  const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
+  table.push([
+    rollout.name,
+    rollout.definition.displayName,
+    rollout.definition.description,
+    rollout.state,
+    rollout.createTime,
+    rollout.startTime,
+    rollout.endTime,
+    rollout.lastUpdateTime,
+    // FIXED: Accessed the .name property to display the variant name string instead of [object Object].
+    rollout.definition.controlVariant.name,
+    rollout.definition.enabledVariant.name,
+    rollout.etag,
+  ]);
+  return table.toString();
+};
+
+/**
+ * Retrieves a specific rollout by its ID.
+ * @param projectId The project ID.
+ * @param namespace The namespace of the rollout.
+ * @param rolloutId The ID of the rollout to retrieve.
+ * @return A promise that resolves to the requested Remote Config rollout.
  */
 export async function getRollout(
   projectId: string,
   namespace: string,
-  rollout_id: string,
-): Promise<Rollout> {
+  rolloutId: string,
+): Promise<RemoteConfigRollout> {
   try {
-    const params = new URLSearchParams();
-    const res = await apiClient.request<null, Rollout>({
+    const res = await apiClient.request<null, RemoteConfigRollout>({
       method: "GET",
-      path: `/projects/${projectId}/namespace/${namespace}/rollout/${rollout_id}`,
-      queryParams: params,
+      // FIXED: Corrected API path to use plural 'namespaces' and 'rollouts'.
+      path: `/projects/${projectId}/namespaces/${namespace}/rollouts/${rolloutId}`,
       timeout: TIMEOUT,
     });
     return res.body;
-  } catch (err: any) {
-    logger.debug(err.message);
+  } catch (err: unknown) {
+    const error: Error = getError(err);
+    logger.debug(error.message);
+    // FIXED: Removed extra closing brace in the error message string.
     throw new FirebaseError(
-      `Failed to get Firebase Rollout template for project ${projectId}. `,
-      { original: err },
+      `Failed to get Remote Config Rollout with ID ${rolloutId} for project ${projectId}. Error: ${error.message}`,
+      { original: error },
     );
   }
 }

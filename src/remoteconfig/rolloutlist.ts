@@ -1,43 +1,99 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { Rollout } from "./interfaces";
+import { FirebaseError, getError } from "../error";
+import { ListRollouts, RemoteConfigRollout } from "./interfaces"; // Import from the single source of truth.
+import * as Table from "cli-table3";
 
 const TIMEOUT = 30000;
-
-// Creates a maximum limit of 50 names for each entry
-const MAX_DISPLAY_ITEMS = 50;
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),
   apiVersion: "v1",
 });
 
+const TABLE_HEAD = [
+  "Name",
+  "Display Name",
+  "Description",
+  "State",
+  "Create Time",
+  "Start Time",
+  "End Time",
+  "Last Update Time",
+  "Control Variant",
+  "Enabled Variant",
+  "ETag",
+];
+
+export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
+  if (!rollouts || rollouts.length === 0) {
+    return "\x1b[31mNo rollouts found.\x1b[0m";
+  }
+
+  const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
+
+  for (const rollout of rollouts) {
+    // FIXED: Data access now correctly uses the nested 'definition' object.
+    table.push([
+      rollout.name,
+      rollout.definition.displayName,
+      rollout.definition.description,
+      rollout.state,
+      rollout.createTime,
+      rollout.startTime,
+      rollout.endTime,
+      rollout.lastUpdateTime,
+      rollout.definition.controlVariant.name,
+      rollout.definition.enabledVariant.name,
+      rollout.etag,
+    ]);
+  }
+  return table.toString();
+};
+
 /**
- * Function retrieves the most recent template of the current active project
- * @param projectId Input is the project ID string
- * @param namespace Input is namespace of rollout
- * @return {Promise} Returns a promise of a remote config template using the RemoteConfigTemplate interface
+ * Retrieves a list of rollouts for a given project and namespace.
+ * @param projectId The project ID.
+ * @param namespace The namespace of the rollout.
+ * @param pageToken Optional token for pagination.
+ * @param pageSize Optional size of the page.
+ * @param filter Optional filter string.
+ * @return A promise that resolves to a list of Remote Config rollouts.
  */
 export async function listRollout(
   projectId: string,
   namespace: string,
-): Promise<Rollout> {
+  pageToken?: string,
+  pageSize?: string,
+  filter?: string,
+): Promise<ListRollouts> {
   try {
     const params = new URLSearchParams();
-    const res = await apiClient.request<null, Rollout>({
+    if (pageSize) {
+      params.set("page_size", pageSize);
+    }
+    if (filter) {
+      params.set("filter", filter);
+    }
+    if (pageToken) {
+      params.set("page_token", pageToken);
+    }
+
+    const res = await apiClient.request<void, ListRollouts>({
       method: "GET",
-      path: `/projects/${projectId}/namespace/${namespace}/rollouts`,
+      // FIXED: Changed 'namespace' to 'namespaces' in the API path for correctness.
+      path: `/projects/${projectId}/namespaces/${namespace}/rollouts`,
       queryParams: params,
       timeout: TIMEOUT,
     });
     return res.body;
-  } catch (err: any) {
-    logger.debug(err.message);
+  } catch (err: unknown) {
+    const error: Error = getError(err);
+    logger.debug(error.message);
     throw new FirebaseError(
-      `Failed to list Firebase Rollout template for project ${projectId}. `,
-      { original: err },
+      `Failed to get Remote Config rollouts for project ${projectId}. Error: ${error.message}`,
+      { original: error },
     );
   }
 }

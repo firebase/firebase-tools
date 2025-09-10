@@ -1,13 +1,8 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
-import { Rollout } from "./interfaces";
+import { FirebaseError, getErrMsg, getError } from "../error";
 
 const TIMEOUT = 30000;
-
-// Creates a maximum limit of 50 names for each entry
-const MAX_DISPLAY_ITEMS = 50;
 
 const apiClient = new Client({
   urlPrefix: remoteConfigApiOrigin(),
@@ -15,31 +10,36 @@ const apiClient = new Client({
 });
 
 /**
- * Function retrieves the most recent template of the current active project
- * @param projectId Input is the project ID string
- * @param namespace Input is namespace of rollout
- * @param rollout_id Input is rollout id of project
- * @return {Promise} Returns a promise of a remote config template using the RemoteConfigTemplate interface
+ * Deletes a Remote Config rollout.
+ * @param projectId The project ID.
+ * @param namespace The namespace of the rollout.
+ * @param rolloutId The ID of the rollout to delete.
+ * @return A promise that resolves when the deletion is complete.
  */
-export async function getRollout(
+export async function deleteRollout(
   projectId: string,
   namespace: string,
-  rollout_id: string,
-): Promise<Rollout> {
+  rolloutId: string,
+): Promise<void> {
   try {
-    const params = new URLSearchParams();
-    const res = await apiClient.request<null, Rollout>({
-      method: "POST",
-      path: `/projects/${projectId}/namespace/${namespace}/rollouts/${rollout_id}`,
-      queryParams: params,
+    // FIXED: The generic type for the response is now 'void' as DELETE returns an empty body.
+    await apiClient.request<void, void>({
+      method: "DELETE",
+      // FIXED: Corrected API path to use plural 'namespaces'.
+      path: `/projects/${projectId}/namespaces/${namespace}/rollouts/${rolloutId}`,
       timeout: TIMEOUT,
     });
-    return res.body;
-  } catch (err: any) {
-    logger.debug(err.message);
+  } catch (err: unknown) {
+    const originalError = getError(err);
+    if (originalError.message.includes("is running and cannot be deleted")) {
+      throw new FirebaseError(
+        `Rollout '${rolloutId}' is currently running and cannot be deleted. You must stop the rollout before deleting it.`,
+        { original: originalError },
+      );
+    }
     throw new FirebaseError(
-      `Failed to delete Firebase Rollout template for project ${projectId}. `,
-      { original: err },
+      `Failed to delete Remote Config rollout '${rolloutId}'. Cause: ${getErrMsg(err)}`,
+      { original: originalError },
     );
   }
 }
