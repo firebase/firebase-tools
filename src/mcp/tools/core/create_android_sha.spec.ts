@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import { create_android_sha } from "./create_android_sha";
 import * as apps from "../../../management/apps";
 import { toContent } from "../../util";
+import { ServerToolContext } from "../../tool";
 
 describe("create_android_sha tool", () => {
   const projectId = "test-project";
@@ -28,7 +29,7 @@ describe("create_android_sha tool", () => {
 
     const result = await create_android_sha.fn({ app_id: appId, sha_hash: sha1Hash }, {
       projectId,
-    } as any);
+    } as ServerToolContext);
 
     expect(createAppAndroidShaStub).to.be.calledWith(projectId, appId, {
       shaHash: sha1Hash,
@@ -48,7 +49,7 @@ describe("create_android_sha tool", () => {
 
     const result = await create_android_sha.fn({ app_id: appId, sha_hash: sha256Hash }, {
       projectId,
-    } as any);
+    } as ServerToolContext);
 
     expect(createAppAndroidShaStub).to.be.calledWith(projectId, appId, {
       shaHash: sha256Hash,
@@ -62,13 +63,16 @@ describe("create_android_sha tool", () => {
     );
   });
 
+  // TODO(@joehan): Should this actually throw an error instead?
+  // should we adjust the tool to throw an error here and maybe validate before
+  // passing it to the server?
   it("should handle an unspecified hash type", async () => {
     const shaCertificate = { name: "sha-cert" };
     createAppAndroidShaStub.resolves(shaCertificate);
 
     const result = await create_android_sha.fn({ app_id: appId, sha_hash: unspecifiedHash }, {
       projectId,
-    } as any);
+    } as ServerToolContext);
 
     expect(createAppAndroidShaStub).to.be.calledWith(projectId, appId, {
       shaHash: unspecifiedHash,
