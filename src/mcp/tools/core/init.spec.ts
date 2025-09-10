@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import { init } from "./init";
 import * as initIndex from "../../../init/index";
 import { toContent } from "../../util";
+import { ServerToolContext } from "../../tool";
 
 describe("init tool", () => {
   const projectId = "test-project";
@@ -25,7 +26,7 @@ describe("init tool", () => {
 
   it("should initialize firestore", async () => {
     const features = { firestore: {} };
-    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as any);
+    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as ServerToolContext);
 
     expect(actuateStub).to.be.calledOnce;
     const setup = actuateStub.args[0][0];
@@ -36,7 +37,7 @@ describe("init tool", () => {
 
   it("should initialize database", async () => {
     const features = { database: {} };
-    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as any);
+    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as ServerToolContext);
 
     expect(actuateStub).to.be.calledOnce;
     const setup = actuateStub.args[0][0];
@@ -46,7 +47,7 @@ describe("init tool", () => {
 
   it("should initialize dataconnect", async () => {
     const features = { dataconnect: {} };
-    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as any);
+    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as ServerToolContext);
 
     expect(actuateStub).to.be.calledOnce;
     const setup = actuateStub.args[0][0];
@@ -56,7 +57,7 @@ describe("init tool", () => {
 
   it("should ignore the storage feature", async () => {
     const features = { storage: {} };
-    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as any);
+    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as ServerToolContext);
 
     const setup = actuateStub.args[0][0];
     expect(setup.features).to.be.empty;
@@ -64,7 +65,7 @@ describe("init tool", () => {
 
   it("should initialize multiple features", async () => {
     const features = { firestore: {}, database: {} };
-    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as any);
+    await init.fn({ features }, { projectId, config: baseConfig, rc: baseRc } as ServerToolContext);
 
     const setup = actuateStub.args[0][0];
     expect(setup.features).to.have.members(["firestore", "database"]);
