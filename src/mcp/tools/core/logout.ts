@@ -7,14 +7,14 @@ import {
   getGlobalDefaultAccount,
   getAdditionalAccounts,
   setRefreshToken,
-  logout,
+  logout as authLogout,
   setGlobalDefaultAccount,
 } from "../../../auth";
 import { logger } from "../../../logger";
 
-export const firebase_logout = tool(
+export const logout_tool = tool(
   {
-    name: "firebase_logout",
+    name: "logout",
     description: "Log the CLI out of Firebase",
     inputSchema: z.object({
       email: z
@@ -32,7 +32,7 @@ export const firebase_logout = tool(
   async ({ email }) => {
     const allAccounts = getAllAccounts();
     if (allAccounts.length === 0) {
-      return toContent("No need to logout, not logged in");
+      return toContent("No need to log out, not logged in");
     }
 
     const defaultAccount = getGlobalDefaultAccount();
@@ -61,7 +61,7 @@ export const firebase_logout = tool(
       if (token) {
         setRefreshToken(token);
         try {
-          await logout(token);
+          await authLogout(token);
           logoutMessages.push(`Logged out from ${clc.bold(account.user.email)}`);
         } catch (e: unknown) {
           if (e instanceof Error) {

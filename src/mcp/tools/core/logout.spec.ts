@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { firebase_logout as logout_tool } from "./firebase_logout";
+import { logout_tool } from "./logout";
 import * as auth from "../../../auth";
 import { toContent } from "../../util";
 import { Account } from "../../../types/auth";
@@ -15,11 +15,21 @@ describe("logout tool", () => {
 
   const fakeAccount1: Account = {
     user: { email: "test1@example.com" },
-    tokens: { refresh_token: "token1", access_token: "atok1", id_token: "idtok1", expires_at: 3600 },
+    tokens: {
+      refresh_token: "token1",
+      access_token: "atok1",
+      id_token: "idtok1",
+      expires_at: 3600,
+    },
   };
   const fakeAccount2: Account = {
     user: { email: "test2@example.com" },
-    tokens: { refresh_token: "token2", access_token: "atok2", id_token: "idtok2", expires_at: 3600 },
+    tokens: {
+      refresh_token: "token2",
+      access_token: "atok2",
+      id_token: "idtok2",
+      expires_at: 3600,
+    },
   };
 
   beforeEach(() => {
