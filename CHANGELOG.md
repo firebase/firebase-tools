@@ -6,3 +6,4 @@
 - `firebase init dataconnect` confirms Cloud SQL provisioning. (#9095)
 - MCP `firebase_init` tool can download an existing FDC service returned from `dataconnect_list_services` (#9091)
 - Updated the Firebase Data Connect local toolkit to v2.13.0, which adds validation that checks that `_insert` data includes all non-null columns without defaults. (#9106)
+- Added `firebase_login` and `firebase_logout` MCP tools.
