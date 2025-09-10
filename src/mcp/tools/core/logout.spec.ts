@@ -48,7 +48,7 @@ describe("logout tool", () => {
   it("should inform if no user is logged in", async () => {
     getAllAccountsStub.returns([]);
     const result = await logout.fn({ email: undefined }, {} as any);
-    expect(result).to.deep.equal(toContent("No need to logout, not logged in"));
+    expect(result).to.deep.equal(toContent("No need to log out, not logged in"));
   });
 
   it("should log out a single user", async () => {
