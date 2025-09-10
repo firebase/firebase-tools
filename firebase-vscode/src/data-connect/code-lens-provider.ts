@@ -71,8 +71,8 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    const projectId = this.watch(firebaseRC)?.tryReadValue?.projects.default;
+    if (!fdcConfigs) {
       return [];
     }
 
@@ -117,14 +117,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
             }),
           );
 
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (Production – Project: ${rc.projects.default})`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.PRODUCTION],
-            }),
-          );
+          if (projectId) {
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (Production – Project: ${projectId})`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [x, operationLocation, InstanceType.PRODUCTION],
+              }),
+            );
+          }
         }
       }
     }
@@ -201,8 +203,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    if (!fdcConfigs) {
       return [];
     }
 

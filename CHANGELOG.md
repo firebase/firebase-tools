@@ -1,4 +1,7 @@
-- Support auth token JSON in `dataconnect_execute` MPC tool. (#9046)
-- Fixed the bugs when MCP tools cannot connect to emulator due to CLI version mis-matched. (#9068)
-- Fix bug when `firebase dataconnect:sdk:generate --watch` swallow all logs. (#9055)
-- Add GA4 agent user property to tag CLI usage by coding agents. (#9070)
+- Added `firestore:bulkdelete` which initiates a Firestore managed bulk delete operation (#8974)
+- Added `firestore:operations:*` commands to list, describe, and cancel long-running operations (#8982)
+- `firebase emulator:start` use a default project `demo-no-project` if no project can be found. (#9072)
+- `firebase init dataconnect` also supports bootstrapping flutter template. (#9084)
+- Fixed a vulnerability in `unzip` util where files could be written outside of the expected output directory.
+- `firebase init dataconnect` confirms Cloud SQL provisioning. (#9095)
+- MCP `firebase_init` tool can download an existing FDC service returned from `dataconnect_list_services` (#9091)

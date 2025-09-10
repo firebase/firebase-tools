@@ -17,7 +17,6 @@ import {
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
-import { RC } from "../rc";
 import { BuildResult, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
@@ -36,7 +35,6 @@ export interface DataConnectEmulatorArgs {
   listen: ListenSpec[];
   configDir: string;
   auto_download?: boolean;
-  rc: RC;
   config: Config;
   autoconnectToPostgres: boolean;
   postgresListen?: ListenSpec[];

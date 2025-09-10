@@ -101,8 +101,13 @@ export function load(client: any): any {
   client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
+  client.firestore.bulkDelete = loadCommand("firestore-bulkdelete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
   client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.operations = {};
+  client.firestore.operations.cancel = loadCommand("firestore-operations-cancel");
+  client.firestore.operations.describe = loadCommand("firestore-operations-describe");
+  client.firestore.operations.list = loadCommand("firestore-operations-list");
   client.firestore.databases = {};
   client.firestore.databases.list = loadCommand("firestore-databases-list");
   client.firestore.databases.get = loadCommand("firestore-databases-get");
