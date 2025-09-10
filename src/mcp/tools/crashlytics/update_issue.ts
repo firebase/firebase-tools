@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { updateIssue, IssueState } from "../../../crashlytics/updateIssue";
+import { updateIssue } from "../../../crashlytics/updateIssue";
+import { State } from "../../../crashlytics/types";
 import { APP_ID_FIELD } from "./constants";
 
 export const update_issue = tool(
@@ -12,7 +13,7 @@ export const update_issue = tool(
       app_id: APP_ID_FIELD,
       issue_id: z.string().describe("The issue id to update."),
       state: z
-        .nativeEnum(IssueState)
+        .nativeEnum(State)
         .describe("The new state for the issue. Can be 'OPEN' or 'CLOSED'."),
     }),
     annotations: {

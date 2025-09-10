@@ -1,12 +1,13 @@
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
+import { Report } from "./types";
 
 export async function listTopIssues(
   appId: string,
   issueType: string,
   issueCount: number,
-): Promise<string> {
+): Promise<Report> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
@@ -16,7 +17,7 @@ export async function listTopIssues(
     logger.debug(
       `[mcp][crashlytics] listTopIssues called with appId: ${appId}, issueType: ${issueType}, issueCount: ${issueCount}`,
     );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",

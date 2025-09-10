@@ -1,12 +1,13 @@
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
+import { Report } from "./types";
 
 export async function listTopOperatingSystems(
   appId: string,
   osCount: number,
   issueId?: string,
-): Promise<string> {
+): Promise<Report> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
@@ -18,7 +19,7 @@ export async function listTopOperatingSystems(
     logger.debug(
       `[mcp][crashlytics] listTopOperatingSystems called with appId: ${appId}, osCount: ${osCount}, issueId: ${issueId}`,
     );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",

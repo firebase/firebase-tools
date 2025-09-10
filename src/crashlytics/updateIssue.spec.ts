@@ -2,7 +2,8 @@ import * as chai from "chai";
 import * as nock from "nock";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { updateIssue, IssueState } from "./updateIssue";
+import { updateIssue } from "./updateIssue";
+import { State } from "./types";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
 
@@ -19,7 +20,7 @@ describe("updateIssue", () => {
   });
 
   it("should resolve with the updated issue on success", async () => {
-    const state = IssueState.CLOSED;
+    const state = State.CLOSED;
     const mockResponse = {
       id: issueId,
       state: state,
@@ -39,7 +40,7 @@ describe("updateIssue", () => {
   });
 
   it("should throw a FirebaseError if the API call fails", async () => {
-    const state = IssueState.OPEN;
+    const state = State.OPEN;
     nock(crashlyticsApiOrigin())
       .patch(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`)
       .query({ updateMask: "state" })
@@ -53,7 +54,7 @@ describe("updateIssue", () => {
 
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
-    await expect(updateIssue(invalidAppId, issueId, IssueState.CLOSED)).to.be.rejectedWith(
+    await expect(updateIssue(invalidAppId, issueId, State.CLOSED)).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );

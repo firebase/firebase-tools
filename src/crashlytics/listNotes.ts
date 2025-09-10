@@ -6,7 +6,7 @@ export async function listNotes(
   appId: string,
   issueId: string,
   noteCount: number,
-): Promise<string> {
+): Promise<unknown> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     const queryParams = new URLSearchParams();
@@ -15,7 +15,7 @@ export async function listNotes(
     logger.debug(
       `[mcp][crashlytics] listNotes called with appId: ${appId}, issueId: ${issueId}, noteCount: ${noteCount}`,
     );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, unknown>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",

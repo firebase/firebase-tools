@@ -1,13 +1,14 @@
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
+import { ListEventsResponse } from "./types";
 
 export async function getSampleCrash(
   appId: string,
   issueId: string,
   sampleCount: number,
   variantId?: string,
-): Promise<string> {
+): Promise<ListEventsResponse> {
   const requestProjectNumber = parseProjectNumber(appId);
 
   logger.debug(
@@ -22,7 +23,7 @@ export async function getSampleCrash(
     }
 
     logger.debug(`[mcp][crashlytics] getSampleCrash query paramaters: ${queryParams}`);
-    const response = await CRASHLYTICS_API_CLIENT.request<void, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<void, unknown>({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -32,7 +33,7 @@ export async function getSampleCrash(
       timeout: TIMEOUT,
     });
 
-    return response.body;
+    return response.body as ListEventsResponse;
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(

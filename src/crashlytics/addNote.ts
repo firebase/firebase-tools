@@ -6,13 +6,13 @@ type NoteRequest = {
   body: string;
 };
 
-export async function addNote(appId: string, issueId: string, note: string): Promise<string> {
+export async function addNote(appId: string, issueId: string, note: string): Promise<unknown> {
   const requestProjectNumber = parseProjectNumber(appId);
   logger.debug(
     `[mcp][crashlytics] addNote called with appId: ${appId}, issueId: ${issueId}, note: ${note}`,
   );
   try {
-    const response = await CRASHLYTICS_API_CLIENT.request<NoteRequest, string>({
+    const response = await CRASHLYTICS_API_CLIENT.request<NoteRequest, unknown>({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
