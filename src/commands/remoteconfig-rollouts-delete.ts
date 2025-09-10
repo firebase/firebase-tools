@@ -10,21 +10,14 @@ import * as rcRollout from "../remoteconfig/rolloutdelete";
 import { FirebaseError } from "../error";
 
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
-  .description("delete a Remote Config rollout")
-  .before(requireAuth)
-  // Using a general update permission as a placeholder.
-  .before(requirePermissions, ["firebaseremoteconfig.configs.update"])
-  .action(async (rolloutId: string, options: Options) => {
-    if (!rolloutId) {
-      throw new FirebaseError("Rollout ID is required.");
-    }
-    const projectId: string = await needProjectId(options);
-    await rcRollout.deleteRollout(
-      projectId,
-      NAMESPACE_FIREBASE,
-      rolloutId
-    );
-    logger.info(
-      clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`)
-    );
-  });
+    .description("delete a Remote Config rollout")
+    .before(requireAuth)
+    .before(requirePermissions, ["firebaseremoteconfig.configs.update"])
+    .action(async (rolloutId: string, options: Options) => {
+        if (!rolloutId) {
+            throw new FirebaseError("Rollout ID must be provided.");
+        }
+        const projectId: string = await needProjectId(options);
+        await rcRollout.deleteRollout(projectId, NAMESPACE_FIREBASE, rolloutId);
+        logger.info(clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`));
+    });

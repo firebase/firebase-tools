@@ -5,7 +5,6 @@ import { Client } from "../../apiv2";
 import { FirebaseError } from "../../error";
 
 describe("deleteRollout", () => {
-  let apiClient: Client;
   let sandbox: sinon.SinonSandbox;
 
   const PROJECT_ID = "test-project-id-123";
