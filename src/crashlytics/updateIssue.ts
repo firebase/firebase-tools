@@ -1,28 +1,9 @@
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
+import { Issue, State, UpdateIssueRequest } from "./types";
 
-export enum IssueState {
-  OPEN = "OPEN",
-  CLOSED = "CLOSED",
-}
-
-type UpdateIssueRequest = {
-  state: IssueState;
-};
-
-// Based on https://cloud.google.com/firebase/docs/reference/crashlytics/rest/v1/projects.apps.issues#resource:-issue
-type Issue = {
-  name: string;
-  issueId: string;
-  state: IssueState;
-};
-
-export async function updateIssue(
-  appId: string,
-  issueId: string,
-  state: IssueState,
-): Promise<Issue> {
+export async function updateIssue(appId: string, issueId: string, state: State): Promise<Issue> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     logger.debug(
@@ -35,7 +16,7 @@ export async function updateIssue(
       },
       path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       queryParams: { updateMask: "state" },
-      body: { state },
+      body: { issue: { state } },
       timeout: TIMEOUT,
     });
 

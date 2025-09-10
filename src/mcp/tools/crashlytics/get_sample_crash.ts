@@ -2,7 +2,16 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getSampleCrash } from "../../../crashlytics/getSampleCrash";
+import { ErrorType, Event, ListEventsResponse } from "../../../crashlytics/types";
 import { APP_ID_FIELD } from "./constants";
+
+function pruneThreads(sample: Event): Event {
+  if (sample.issue?.errorType === ErrorType.FATAL || sample.issue?.errorType === ErrorType.ANR) {
+    // Remove irrelevant threads from the response to reduce token usage
+    sample.threads = sample.threads?.filter((t) => t.crashed || t.blamed);
+  }
+  return sample;
+}
 
 export const get_sample_crash = tool(
   {
@@ -39,6 +48,13 @@ export const get_sample_crash = tool(
     if (!sample_count) sample_count = 1;
     if (sample_count > 3) sample_count = 3;
 
-    return toContent(await getSampleCrash(app_id, issue_id, sample_count, variant_id));
+    const samples: ListEventsResponse = await getSampleCrash(
+      app_id,
+      issue_id,
+      sample_count,
+      variant_id,
+    );
+    samples.events = samples.events.map((e) => pruneThreads(e));
+    return toContent(samples);
   },
 );
