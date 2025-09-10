@@ -6,7 +6,6 @@ import {
   getAllAccounts,
   getGlobalDefaultAccount,
   getAdditionalAccounts,
-  setRefreshToken,
   logout as authLogout,
   setGlobalDefaultAccount,
 } from "../../../auth";
@@ -59,7 +58,6 @@ export const logout_tool = tool(
       const token = account.tokens.refresh_token;
 
       if (token) {
-        setRefreshToken(token);
         try {
           await authLogout(token);
           logoutMessages.push(`Logged out from ${clc.bold(account.user.email)}`);
