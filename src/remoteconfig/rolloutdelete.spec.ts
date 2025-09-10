@@ -15,12 +15,6 @@ describe("deleteRollout", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiClient = new Client({
-      urlPrefix: "https://firebaseremoteconfig.googleapis.com",
-      apiVersion: "v1",
-    });
-    // Stub the entire client to prevent actual API calls
-    sandbox.stub(Client.prototype, "request");
   });
 
   afterEach(() => {
@@ -28,8 +22,7 @@ describe("deleteRollout", () => {
   });
 
   it("should resolve when the rollout is deleted successfully", async () => {
-    const deleteStub = sandbox
-      .stub(apiClient, "request")
+    const deleteStub = sandbox.stub(Client.prototype, "request")
       .resolves({ body: {} }); // Successful DELETE resolves with an empty body
 
     // We need to use a real instance to call the method, but the stub will intercept the call.
@@ -46,8 +39,7 @@ describe("deleteRollout", () => {
     const runningError = new Error(
       "Failed request: Rollout is running and cannot be deleted."
     );
-    const deleteStub = sandbox
-      .stub(apiClient, "request")
+    const deleteStub = sandbox.stub(Client.prototype, "request")
       .rejects(runningError);
 
     await expect(
@@ -62,8 +54,7 @@ describe("deleteRollout", () => {
 
   it("should throw a generic FirebaseError for other API errors", async () => {
     const genericError = new Error("Permission denied.");
-    const deleteStub = sandbox
-      .stub(apiClient, "request")
+    const deleteStub = sandbox.stub(Client.prototype, "request")
       .rejects(genericError);
 
     await expect(
@@ -77,8 +68,7 @@ describe("deleteRollout", () => {
   });
 
   it("should correctly construct the API path", async () => {
-    const deleteStub = sandbox
-      .stub(apiClient, "request")
+    const deleteStub = sandbox.stub(Client.prototype, "request")
       .resolves({ body: {} });
 
     await deleteRollout(PROJECT_ID, NAMESPACE, ROLLOUT_ID);

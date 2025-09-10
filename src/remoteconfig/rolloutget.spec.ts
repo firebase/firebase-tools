@@ -33,12 +33,6 @@ describe("Get Rollout", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiClient = new Client({
-      urlPrefix: "https://firebaseremoteconfig.googleapis.com",
-      apiVersion: "v1",
-    });
-    // Stub the client's request method to prevent actual API calls
-    sandbox.stub(Client.prototype, "request");
   });
 
   afterEach(() => {
@@ -47,8 +41,7 @@ describe("Get Rollout", () => {
 
   describe("getRollout", () => {
     it("should resolve with a single rollout on success", async () => {
-      const getStub = sandbox
-        .stub(apiClient, "request")
+      const getStub = sandbox.stub(Client.prototype, "request")
         .resolves({ body: MOCK_ROLLOUT });
 
       const result = await getRollout(PROJECT_ID, NAMESPACE, ROLLOUT_ID);
@@ -63,7 +56,7 @@ describe("Get Rollout", () => {
 
     it("should throw a FirebaseError on API failure", async () => {
       const apiError = new Error("Not Found");
-      sandbox.stub(apiClient, "request").rejects(apiError);
+      sandbox.stub(Client.prototype, "request").rejects(apiError);
 
       await expect(
         getRollout(PROJECT_ID, NAMESPACE, ROLLOUT_ID)

@@ -49,11 +49,6 @@ describe("Rollout Listing", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiClient = new Client({
-      urlPrefix: "https://firebaseremoteconfig.googleapis.com",
-      apiVersion: "v1",
-    });
-    sandbox.stub(Client.prototype, "request");
   });
 
   afterEach(() => {
@@ -63,7 +58,7 @@ describe("Rollout Listing", () => {
   describe("listRollout", () => {
     it("should resolve with a list of rollouts on success", async () => {
       const expectedResponse = { rollouts: [MOCK_ROLLOUT_1, MOCK_ROLLOUT_2] };
-      const listStub = sandbox.stub(apiClient, "request").resolves({ body: expectedResponse });
+      const listStub = sandbox.stub(Client.prototype, "request").resolves({ body: expectedResponse });
 
       const result = await listRollout(PROJECT_ID, NAMESPACE);
 
@@ -77,7 +72,7 @@ describe("Rollout Listing", () => {
     });
 
     it("should construct the query parameters correctly", async () => {
-      const listStub = sandbox.stub(apiClient, "request").resolves({ body: {} });
+      const listStub = sandbox.stub(Client.prototype, "request").resolves({ body: {} });
       const pageSize = "10";
       const pageToken = "next-page-token";
       const filter = "state=RUNNING";
@@ -92,7 +87,7 @@ describe("Rollout Listing", () => {
 
     it("should throw a FirebaseError on API failure", async () => {
       const apiError = new Error("API call failed!");
-      sandbox.stub(apiClient, "request").rejects(apiError);
+      sandbox.stub(Client.prototype, "request").rejects(apiError);
 
       await expect(listRollout(PROJECT_ID, NAMESPACE)).to.be.rejectedWith(
         FirebaseError,
