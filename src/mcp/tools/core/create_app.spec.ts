@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import { create_app } from "./create_app";
 import * as apps from "../../../management/apps";
 import { toContent } from "../../util";
+import { ServerToolContext } from "../../tool";
 
 describe("create_app tool", () => {
   const projectId = "test-project";
@@ -33,7 +34,7 @@ describe("create_app tool", () => {
 
     const result = await create_app.fn(
       { display_name: displayName, platform: "android", android_config: androidConfig },
-      { projectId } as any,
+      { projectId } as ServerToolContext,
     );
 
     expect(createAndroidAppStub).to.be.calledWith(projectId, {
@@ -56,7 +57,7 @@ describe("create_app tool", () => {
 
     const result = await create_app.fn(
       { display_name: displayName, platform: "ios", ios_config: iosConfig },
-      { projectId } as any,
+      { projectId } as ServerToolContext,
     );
 
     expect(createIosAppStub).to.be.calledWith(projectId, {
@@ -79,7 +80,7 @@ describe("create_app tool", () => {
 
     const result = await create_app.fn({ display_name: displayName, platform: "web" }, {
       projectId,
-    } as any);
+    } as ServerToolContext);
 
     expect(createWebAppStub).to.be.calledWith(projectId, { displayName });
     expect(result).to.deep.equal(
@@ -92,13 +93,13 @@ describe("create_app tool", () => {
   });
 
   it("should throw an error if Android config is missing", async () => {
-    await expect(create_app.fn({ platform: "android" }, { projectId } as any)).to.be.rejectedWith(
+    await expect(create_app.fn({ platform: "android" }, { projectId } as ServerToolContext)).to.be.rejectedWith(
       "Android configuration is required when platform is 'android'",
     );
   });
 
   it("should throw an error if iOS config is missing", async () => {
-    await expect(create_app.fn({ platform: "ios" }, { projectId } as any)).to.be.rejectedWith(
+    await expect(create_app.fn({ platform: "ios" }, { projectId } as ServerToolContext)).to.be.rejectedWith(
       "iOS configuration is required when platform is 'ios'",
     );
   });
