@@ -30,7 +30,7 @@ describe("login tool", () => {
     const result = await login.fn({ authCode: undefined }, { host: server } as any);
 
     const expectedResult = toContent(
-      `Please visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`,
+      `Please visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\nInstruct the use to copy the authorization code from that link, and paste it into chat.\nThen, run this tool again with that as the authCode argument to complete the login.`,
     );
     expect(loginPrototyperStub.calledOnce).to.be.true;
     expect(result).to.deep.equal(expectedResult);

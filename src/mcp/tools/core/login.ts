@@ -10,7 +10,7 @@ const LoginInputSchema = z.object({
 
 export type ServerWithLoginState = FirebaseMcpServer & {
   authorize?: (authCode: string) => Promise<UserCredentials>;
-}
+};
 export const login = tool(
   {
     name: "login",
@@ -48,7 +48,7 @@ export const login = tool(
         uri: prototyper.uri,
         sessionId: prototyper.sessionId,
       };
-      const humanReadable = `Please visit this URL to login: ${result.uri}\nYour session ID is: ${result.sessionId}\nAfter you have the authorization code, call this tool again with the 'authCode' argument.`;
+      const humanReadable = `Please visit this URL to login: ${result.uri}\nYour session ID is: ${result.sessionId}\nInstruct the use to copy the authorization code from that link, and paste it into chat.\nThen, run this tool again with that as the authCode argument to complete the login.`;
       return toContent(humanReadable);
     }
   },
