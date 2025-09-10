@@ -3,10 +3,12 @@ import * as sinon from "sinon";
 import { list_apps } from "./list_apps";
 import * as apps from "../../../management/apps";
 import { toContent } from "../../util";
+import { ServerToolContext } from "../../tool";
 
 describe("list_apps tool", () => {
   const projectId = "test-project";
-  const appList = [{ appId: "app1", platform: "WEB" }];
+  const name = "test-app";
+  const appList = [{ appId: "app1", platform: "WEB", projectId, name }];
 
   let listFirebaseAppsStub: sinon.SinonStub;
 
@@ -21,7 +23,7 @@ describe("list_apps tool", () => {
   it("should list all apps when no platform is specified", async () => {
     listFirebaseAppsStub.resolves(appList);
 
-    const result = await list_apps.fn({}, { projectId } as any);
+    const result = await list_apps.fn({}, { projectId } as ServerToolContext);
 
     expect(listFirebaseAppsStub).to.be.calledWith(projectId, "ANY");
     expect(result).to.deep.equal(toContent(appList));
@@ -30,7 +32,7 @@ describe("list_apps tool", () => {
   it("should list apps for a specific platform", async () => {
     listFirebaseAppsStub.resolves(appList);
 
-    const result = await list_apps.fn({ platform: "web" }, { projectId } as any);
+    const result = await list_apps.fn({ platform: "web" }, { projectId } as ServerToolContext);
 
     expect(listFirebaseAppsStub).to.be.calledWith(projectId, "WEB");
     expect(result).to.deep.equal(toContent(appList));
@@ -39,7 +41,7 @@ describe("list_apps tool", () => {
   it("should handle the 'all' platform option", async () => {
     listFirebaseAppsStub.resolves(appList);
 
-    await list_apps.fn({ platform: "all" }, { projectId } as any);
+    await list_apps.fn({ platform: "all" }, { projectId } as ServerToolContext);
 
     expect(listFirebaseAppsStub).to.be.calledWith(projectId, "ANY");
   });
@@ -48,8 +50,8 @@ describe("list_apps tool", () => {
     const originalError = new Error("API call failed");
     listFirebaseAppsStub.rejects(originalError);
 
-    await expect(list_apps.fn({}, { projectId } as any)).to.be.rejectedWith(
-      `Failed to list Firebase apps`,
+    await expect(list_apps.fn({}, { projectId } as ServerToolContext)).to.be.rejectedWith(
+      `Failed to list Firebase apps${originalError.message}`,
     );
   });
 });
