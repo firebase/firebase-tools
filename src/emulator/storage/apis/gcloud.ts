@@ -13,7 +13,7 @@ import { EmulatorLogger } from "../../emulatorLogger";
 import { GetObjectResponse, ListObjectsResponse } from "../files";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { Upload, UploadNotActiveError, UploadStatus } from "../upload";
+import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import type { Query } from "express-serve-static-core";
@@ -190,47 +190,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      upload = uploadService.getResumableUpload(uploadId);
-
-      // It's OK to PUT an inactive resumable upload if the Content-Length is 0
-      // see https://cloud.google.com/storage/docs/performing-resumable-uploads#status-check
-      if (parseInt(req.headers["content-length"] ?? "0") === 0) {
-        if (upload.size === 0 || upload.status === UploadStatus.ACTIVE) {
-          if (upload.size > 0) {
-            res.header("Range", `bytes=0-${upload.size - 1}`);
-          }
-          return res.sendStatus(308);
-        } else {
-          const getObjectResponse = await adminStorageLayer.getObject({
-            bucketId: upload.bucketId,
-            decodedObjectId: upload.objectId,
-          });
-
-          return res.json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
-        }
-      } else {
-        upload = uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
-
-        const rangeHeader = req.headers["content-range"] ?? "bytes 0-0/*";
-        const rangeParts = rangeHeader.substring(rangeHeader.indexOf(" ")).split("/");
-        const range = rangeParts[0];
-
-        let rangeTotal = "*";
-        if (rangeParts.length === 2) {
-          rangeTotal = rangeParts[1];
-        }
-
-        const end = range.split("-")[1];
-
-        if (rangeTotal !== "*" && parseInt(end) >= parseInt(rangeTotal) - 1) {
-          upload = uploadService.finalizeResumableUpload(uploadId);
-        } else {
-          if (upload.size > 0) {
-            res.header("Range", `bytes=0-${upload.size - 1}`);
-          }
-          return res.sendStatus(308);
-        }
-      }
+      uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
+      upload = uploadService.finalizeResumableUpload(uploadId);
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
