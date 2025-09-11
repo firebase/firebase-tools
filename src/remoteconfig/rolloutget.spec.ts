@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { getRollout, parseRolloutIntoTable } from "../rolloutget";
-import { Client } from "../../apiv2";
-import { FirebaseError } from "../../error";
-import { RemoteConfigRollout } from "../interfaces";
+import { getRollout, parseRolloutIntoTable } from "./rolloutget";
+import { Client } from "../apiv2";
+import { FirebaseError } from "../error";
+import { RemoteConfigRollout } from "./interfaces";
 
 describe("Get Rollout", () => {
     let sandbox: sinon.SinonSandbox;

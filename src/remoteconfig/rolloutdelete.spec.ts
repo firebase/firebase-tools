@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { deleteRollout } from "../rolloutdelete";
-import { Client } from "../../apiv2";
-import { FirebaseError } from "../../error";
+import { deleteRollout } from "./rolloutdelete";
+import { Client } from "../apiv2";
+import { FirebaseError } from "../error";
 
 describe("deleteRollout", () => {
     let sandbox: sinon.SinonSandbox;

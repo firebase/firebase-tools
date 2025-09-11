@@ -1,6 +1,7 @@
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrMsg, getError } from "../error";
+import { consoleUrl } from "../utils";
 
 const TIMEOUT = 30000;
 
@@ -32,8 +33,12 @@ export async function deleteRollout(
   } catch (err: unknown) {
     const originalError = getError(err);
     if (originalError.message.includes("is running and cannot be deleted")) {
+      const rcConsoleUrl = consoleUrl(
+        projectId,
+        `/config/experiment/results/${rolloutId}`,
+      );
       throw new FirebaseError(
-        `Rollout '${rolloutId}' is currently running and cannot be deleted. You must stop the rollout before deleting it.`,
+        `Rollout '${rolloutId}' is currently running and cannot be deleted. If you want to delete this experiment, stop it at ${rcConsoleUrl}`,
         { original: originalError },
       );
     }

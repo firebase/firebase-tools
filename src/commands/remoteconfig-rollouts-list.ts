@@ -23,7 +23,7 @@ export const command = new Command("remoteconfig:rollouts:list")
         "filters rollouts by their full resource name. Format: `projects/{project_id}/namespaces/{namespace}/rollouts/{rollout_id}`",
     )
     .before(requireAuth)
-    .before(requirePermissions, ["cloud.configs.get"])
+    .before(requirePermissions, ["cloud.configs.get", "firebaseanalytics.resources.googleAnalyticsReadAndAnalyze"])
     .action(async (options: Options) => {
         if (options.pageSize && isNaN(parseInt(options.pageSize as string))) {
             throw new FirebaseError("Page size must be a number.");
