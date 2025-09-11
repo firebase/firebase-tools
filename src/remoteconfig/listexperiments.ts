@@ -23,7 +23,7 @@ const apiClient = new Client({
 });
 
 export const parseExperimentList = (experiments: RemoteConfigExperiment[]): string => {
-  if (!experiments) return "\x1b[31mNo experiments found\x1b[0m";
+  if (!experiments) return "\x1b[33mNo experiments found\x1b[0m";
   
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   for (const experiment of experiments) {
