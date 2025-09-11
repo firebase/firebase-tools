@@ -13,6 +13,7 @@ export const command = new Command("remoteconfig:experiments:get [experimentId]"
   .before(requireAuth)
   .before(requirePermissions, ["firebaseabt.experiments.get"])
   .action(async (experimentId: string, options: Options) => {
+    console.log("[VERIFY] ---------- local script is linked ----------- ");
     if (isNaN(parseInt(experimentId))) {
       throw new FirebaseError("Experiment ID must be a number.");
     }
