@@ -3,7 +3,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { input, confirm } from "../prompt";
-import { detectStartCommand } from "./apphosting/developmentServer";
+import { detectPackageManagerStartCommand } from "./apphosting/developmentServer";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators } from "./types";
 import { Env, maybeGenerateEmulatorYaml } from "../apphosting/config";
@@ -29,7 +29,7 @@ export const AdditionalInitFns: AdditionalInitFnsType = {
 
     const backendRoot = join(cwd, backendRelativeDir);
     try {
-      const startCommand = await detectStartCommand(backendRoot);
+      const startCommand = await detectPackageManagerStartCommand(backendRoot);
       additionalConfigs.set("startCommand", startCommand);
     } catch (e) {
       logger.log(

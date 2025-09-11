@@ -17,7 +17,7 @@ describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithCommandStringStub: sinon.SinonStub;
-  let detectStartCommandStub: sinon.SinonStub;
+  let detectPackageManagerStartCommandStub: sinon.SinonStub;
   let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
   let resolveProjectPathStub: sinon.SinonStub;
   let listRunningWithInfoStub: sinon.SinonStub;
@@ -28,7 +28,7 @@ describe("serve", () => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
     spawnWithCommandStringStub = sinon.stub(spawn, "spawnWithCommandString");
-    detectStartCommandStub = sinon.stub(utils, "detectStartCommand");
+    detectPackageManagerStartCommandStub = sinon.stub(utils, "detectPackageManagerStartCommand");
     configsStub = sinon.stub(configsImport);
     resolveProjectPathStub = sinon.stub(projectPathImport, "resolveProjectPath");
 
@@ -36,14 +36,14 @@ describe("serve", () => {
     setEnvVarsForEmulatorsStub = sinon.stub(emulatorEnvs, "setEnvVarsForEmulators");
 
     resolveProjectPathStub.returns("");
-    detectStartCommandStub.returns("npm run dev");
+    detectPackageManagerStartCommandStub.returns("npm run dev");
 
     accessSecretVersionStub = sinon.stub(secrets, "accessSecretVersion");
   });
 
   afterEach(() => {
     wrapSpawnStub.restore();
-    detectStartCommandStub.restore();
+    detectPackageManagerStartCommandStub.restore();
     checkListenableStub.restore();
     sinon.verifyAndRestore();
   });
