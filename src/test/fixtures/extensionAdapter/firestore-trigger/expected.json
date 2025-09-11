@@ -1,0 +1,20 @@
+{
+  "requiredAPIs": [],
+  "endpoints": {
+    "processDocument": {
+      "entryPoint": "processDocument",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["us-central1"],
+      "eventTrigger": {
+        "eventType": "providers/cloud.firestore/eventTypes/document.write",
+        "eventFilters": {
+          "resource": "projects/{project}/databases/{database}/documents/users/{userId}"
+        },
+        "retry": false
+      }
+    }
+  },
+  "params": []
+}
