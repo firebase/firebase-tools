@@ -105,8 +105,7 @@ describe("serve", () => {
 	/Specifying a port in the start command is not supported by the apphosting emulator/,
       );
 
-      expect(spawnWithCommandStringStub).to.be.called;
-      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      expect(spawnWithCommandStringStub).to.not.be.called;
     });
 
     it("Should pass plaintext environment variables", async () => {
