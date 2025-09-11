@@ -91,7 +91,8 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
  *  - Dev server runs on "localhost" when the package manager's dev command is
  *    run
  *  - Dev server will respect the PORT environment variable
- *    - This is not the case for Angular and we have a hack in place to work around this.
+ *    - This is not the case for Angular. When an `ng serve`
+ *       custom command is detected, we add --port <PORT> instead.
  */
 export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
   const hostname = DEFAULT_HOST;
@@ -105,8 +106,11 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   let startCommand;
   if (options?.startCommand) {
     startCommand = options?.startCommand;
-    // Angular and nextjs CLIs allow for specifying port options.
-    // NOTE: port may still be specified in an underlying command here.
+    // Angular and nextjs CLIs allow for specifying port options but the emulator is setting and
+    // specifying specific ports rather than use framework defaults or w/e the user has set, so we
+    // need to reject such custom commands.
+    // NOTE: this is not robust, a command could be a wrapper around another command and we cannot
+    // detect --port there.
     if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
       throw new FirebaseError(
         "Specifying a port in the start command is not supported by the apphosting emulator",
