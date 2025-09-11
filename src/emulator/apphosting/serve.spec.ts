@@ -88,12 +88,11 @@ describe("serve", () => {
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
-      await serve.start( {startCommand });
+      await serve.start({ startCommand });
 
       expect(spawnWithCommandStringStub).to.be.called;
-      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + ' --port 5002');
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
     });
-
 
     it("should reject the custom command if a port is specified", async () => {
       const startCommand = "ng serve --port 5004";
@@ -101,8 +100,8 @@ describe("serve", () => {
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
       await expect(serve.start({ startCommand })).to.be.rejectedWith(
-	FirebaseError,
-	/Specifying a port in the start command is not supported by the apphosting emulator/,
+        FirebaseError,
+        /Specifying a port in the start command is not supported by the apphosting emulator/,
       );
 
       expect(spawnWithCommandStringStub).to.not.be.called;
