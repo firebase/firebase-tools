@@ -1,8 +1,9 @@
 import * as opn from "open";
-import * as qs from "querystring";
+import { URLSearchParams } from "url";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import * as cloudlogging from "../gcp/cloudlogging";
 import * as functionsLog from "../functions/functionslog";
 import { needProjectId } from "../projectUtils";
@@ -21,13 +22,14 @@ export const command = new Command("functions:log")
     try {
       const projectId = needProjectId(options);
       const apiFilter = functionsLog.getApiFilter(options.only);
+      const filterParams = new URLSearchParams(apiFilter);
+      const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${filterParams.toString()}&project=${projectId}`;
+
       if (options.open) {
-        const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${qs.escape(
-          apiFilter,
-        )}&project=${projectId}`;
         opn(url);
         return;
       }
+
       const entries = await cloudlogging.listEntries(
         projectId,
         apiFilter,
@@ -35,6 +37,7 @@ export const command = new Command("functions:log")
         "desc",
       );
       functionsLog.logEntries(entries);
+      logger.info(`\nSee full logs at: ${url}`);
       return entries;
     } catch (err: any) {
       throw new FirebaseError(`Failed to list log entries ${err.message}`, { exit: 1 });
