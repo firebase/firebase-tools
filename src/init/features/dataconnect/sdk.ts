@@ -68,7 +68,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     const choice = await select({
       message: `Do you want to create an app template?`,
       choices: [
-        // TODO: Create template tailored to FDC.
+        // TODO: Create template tailored to FDC for React.
         { name: `React${npxMissingWarning}`, value: "react" },
         { name: `Next.JS${npxMissingWarning}`, value: "next" },
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
@@ -77,9 +77,23 @@ export async function askQuestions(setup: Setup): Promise<void> {
     });
     switch (choice) {
       case "react":
+        info.apps = [
+          {
+            directory: path.resolve('./', 'web-app'),
+            platform: Platform.WEB,
+            frameworks: ["react"],
+          }
+        ];
         await createReactApp(newUniqueId("web-app", listFiles(cwd)));
         break;
       case "next":
+          info.apps = [
+          {
+            directory: path.resolve('./dataconnect-nextjs-app'),
+            platform: Platform.WEB,
+            frameworks: ["react"],
+          }
+        ];
         await createNextApp(newUniqueId("web-app", listFiles(cwd)));
         break;
       case "flutter":
