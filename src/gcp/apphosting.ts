@@ -102,6 +102,8 @@ assertImplements<BuildOutputOnlyFields, RecursiveKeyOf<Build>>();
 export interface BuildConfig {
   minInstances?: number;
   memory?: string;
+  env?: string[];
+  runCommand?: string;
 }
 
 interface BuildSource {
@@ -129,6 +131,7 @@ interface ArchiveSource {
   // end oneof reference
   rootDirectory?: string;
   author?: SourceUserMetadata;
+  locallyBuiltSource?: boolean;
 }
 
 interface SourceUserMetadata {
