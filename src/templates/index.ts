@@ -6,6 +6,8 @@ import { Command } from "../command";
 import { AppConfig, AppPlatform, getSdkConfig, sdkInit } from "../management/apps";
 import { getOrPromptProject } from "../management/projects";
 import { Options } from "../options";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
 
 const cmd = new Command("dataconnect template");
 
@@ -20,20 +22,24 @@ async function getProjectInfo() {
   const project = await getOrPromptProject(options);
   let sdkConfig: AppConfig | null = null;
   options.projectId = project.projectId;
-  try {
-    sdkConfig = await getSdkConfig(options, AppPlatform.WEB);
-  } catch (e) {
-    if ((e as Error).message.includes("associated with this")) {
-      const webOptions = {
-        ...options,
-        project: project.projectId,
-        nonInteractive: true,
-        displayName: "CLI Web App",
-      };
-      await sdkInit(AppPlatform.WEB, webOptions);
+  while (!sdkConfig) {
+    try {
       sdkConfig = await getSdkConfig(options, AppPlatform.WEB);
-    } else {
-        console.error(e);
+    } catch (e) {
+      if (e instanceof FirebaseError) {
+        if (e.message.includes("associated with this Firebase project")) {
+          const webOptions = {
+            ...options,
+            project: project.projectId,
+            nonInteractive: true,
+            displayName: "CLI Web App",
+          };
+          sdkConfig = await sdkInit(AppPlatform.WEB, webOptions);
+        }
+      } else {
+        logger.error("Failed to get sdkConfiguration: " + e);
+        throw e;
+      }
     }
   }
   return { project, sdkConfig };
