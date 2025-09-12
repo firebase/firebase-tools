@@ -86,7 +86,8 @@
       },
       "bin": {
         "create-dataconnect-nextjs": "lib/templates/index.js",
-        "firebase": "lib/bin/firebase.js"
+        "firebase": "lib/bin/firebase.js",
+        "firebase-tools": "lib/bin/firebase.js"
       },
       "devDependencies": {
         "@angular-devkit/architect": "^0.1402.2",
