@@ -42,6 +42,7 @@ import {
   configForCodebase,
   normalizeAndValidate,
   ValidatedConfig,
+  requireLocal,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -100,6 +101,10 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
+  // Track whether legacy runtime config is present (i.e., any keys other than the default 'firebase').
+  // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
+  context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
+
   const wantBuilds = await loadCodebases(
     context.config,
     options,
@@ -123,23 +128,25 @@ export async function prepare(
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const localCfg = requireLocal(config, "Remote sources are not supported.");
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: options.config.path(config.source),
+      functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-    proto.convertIfPresent(userEnvOpt, config, "configDir", (cd) => options.config.path(cd));
+    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
-      userEnvOpt,
       userEnvs,
       nonInteractive: options.nonInteractive,
       isEmulator: false,
     });
+
+    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -203,8 +210,9 @@ export async function prepare(
   // ===Phase 3. Prepare source for upload.
   context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const config = configForCodebase(context.config, codebase);
-    const sourceDirName = config.source;
+    const cfg = configForCodebase(context.config, codebase);
+    const localCfg = requireLocal(cfg, "Remote sources are not supported.");
+    const sourceDirName = localCfg.source;
     const sourceDir = options.config.path(sourceDirName);
     const source: args.Source = {};
     if (backend.someEndpoint(wantBackend, () => true)) {
@@ -215,12 +223,12 @@ export async function prepare(
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, runtimeConfig);
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }
