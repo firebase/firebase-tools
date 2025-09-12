@@ -11,21 +11,12 @@ import { isVSCodeExtension } from "../vsCodeUtils";
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
   const nodeExecutable = isVSCodeExtension() ? "node" : process.execPath;
-  const crossEnvShellPath = isVSCodeExtension()
-    ? path.resolve(__dirname, "./cross-env/dist/bin/cross-env-shell.js")
-    : path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js");
+  const crossEnvShellPath = path.resolve(require.resolve("@yarnpkg/shell"), "..", "cli.js");
   const translatedCommand =
     '"' + nodeExecutable + '" "' + crossEnvShellPath + '" "' + escapedCommand + '"';
 
   return new Promise<void>((resolve, reject) => {
     logger.info("Running command: " + command);
-    if (command.includes("=")) {
-      utils.logWarning(
-        clc.yellow(clc.bold("Warning: ")) +
-          "Your command contains '=', it may result in the command not running." +
-          " Please consider removing it.",
-      );
-    }
     if (translatedCommand === "") {
       return resolve();
     }
