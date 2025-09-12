@@ -47,7 +47,7 @@ async function getProjectInfo() {
 
 async function run() {
   const { sdkConfig } = await getProjectInfo();
-  const webAppDir = path.resolve(__dirname, "../../templates/dataconnect-nextjs/web-app");
+  const webAppDir = path.resolve(__dirname, "../../templates/dataconnect/nextjs/web-app");
   const outputPath = path.resolve(process.cwd(), "dataconnect-nextjs-app")
   const spinner = ora({
     text: 'Initializing Data Connect Template',

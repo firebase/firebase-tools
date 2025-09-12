@@ -5,6 +5,7 @@
   "main": "./lib/index.js",
   "bin": {
     "firebase": "./lib/bin/firebase.js",
+    "firebase-tools": "./lib/bin/firebase.js",
     "create-dataconnect-nextjs": "./lib/templates/index.js"
   },
   "scripts": {
