@@ -52,24 +52,15 @@ export class DataConnectService {
     private context: ExtensionContext,
   ) {}
 
-  async servicePath(path: string): Promise<string | undefined> {
+  async servicePath(path: string): Promise<string> {
     const dataConnectConfigsValue = await firstWhereDefined(dataConnectConfigs);
     // TODO: avoid calling this here and in getApiServicePathByPath
-    const serviceId =
-      dataConnectConfigsValue?.tryReadValue?.findEnclosingServiceForPath(path)
-        ?.value.serviceId;
-    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-
-    if (serviceId === undefined || projectId === undefined) {
-      return undefined;
+    const dcs = dataConnectConfigsValue?.tryReadValue;
+    if (!dcs) {
+      throw new Error("cannot find dataconnect.yaml in the project");
     }
-
-    return (
-      dataConnectConfigsValue?.tryReadValue?.getApiServicePathByPath(
-        projectId,
-        path,
-      ) || `projects/p/locations/l/services/${serviceId}`
-    );
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+    return dcs?.getApiServicePathByPath(projectId, path);
   }
 
   private async decodeResponse(
