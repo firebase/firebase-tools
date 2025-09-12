@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution/execution";
@@ -31,14 +31,8 @@ import { registerWebview } from "../webview";
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
-import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
-import { emulators } from "../init/features";
-import { GCAToolClient } from "./ai-tools/gca-tool";
-import { GeminiToolController } from "./ai-tools/tool-controller";
-import {
-  registerFirebaseMCP,
-  writeToGeminiConfig,
-} from "./ai-tools/firebase-mcp";
+import { AnalyticsLogger } from "../analytics";
+import { registerFirebaseMCP } from "./ai-tools/firebase-mcp";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -238,7 +232,6 @@ export function registerFdc(
     registerTerminalTasks(broker, analyticsLogger),
     registerFirebaseMCP(broker, analyticsLogger),
     operationCodeLensProvider,
-
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
       // inside the test_projects folder.
