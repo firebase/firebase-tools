@@ -44,7 +44,7 @@ export default async function (context: Context, options: Options): Promise<void
             archive: {
               userStorageUri: storageUri,
               rootDirectory: config.rootDir,
-	      locallyBuiltSource: config.localBuild,
+              locallyBuiltSource: config.localBuild,
             },
           },
         },
