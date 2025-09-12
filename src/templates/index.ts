@@ -49,9 +49,15 @@ async function run() {
   fs.copySync(webAppDir, outputPath);
   const initFilePath = path.resolve(outputPath, "src/firebase/init.ts");
   const fileContents = fs.readFileSync(initFilePath, "utf8");
-  const newOutput = fileContents.replace("/* Replace with sdkConfig */", JSON.stringify(sdkConfig!, null, 2));
+  const newOutput = fileContents.replace(
+    "/* Replace with sdkConfig */",
+    JSON.stringify(sdkConfig!, null, 2),
+  );
   fs.writeFileSync(initFilePath, newOutput);
   spinner.succeed();
+  console.log(`Please run:
+    $ cd dataconnect-nextjs-app
+    $ npm install`);
 }
 
 run();

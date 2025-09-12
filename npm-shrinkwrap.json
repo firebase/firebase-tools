@@ -85,6 +85,7 @@
         "zod-to-json-schema": "^3.24.5"
       },
       "bin": {
+        "create-dataconnect-nextjs": "lib/templates/index.js",
         "firebase": "lib/bin/firebase.js"
       },
       "devDependencies": {

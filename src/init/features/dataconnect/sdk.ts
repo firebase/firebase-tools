@@ -79,22 +79,22 @@ export async function askQuestions(setup: Setup): Promise<void> {
       case "react":
         info.apps = [
           {
-            directory: path.resolve('./', 'web-app'),
+            directory: path.resolve("./", "web-app"),
             platform: Platform.WEB,
             frameworks: ["react"],
-          }
+          },
         ];
         await createReactApp(newUniqueId("web-app", listFiles(cwd)));
         break;
       case "next":
-          info.apps = [
+        info.apps = [
           {
-            directory: path.resolve('./dataconnect-nextjs-app'),
+            directory: path.resolve("./dataconnect-nextjs-app"),
             platform: Platform.WEB,
             frameworks: ["react"],
-          }
+          },
         ];
-        await createNextApp(newUniqueId("web-app", listFiles(cwd)));
+        await createNextApp();
         break;
       case "flutter":
         await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
