@@ -28,7 +28,7 @@ describe("updateIssue", () => {
 
     nock(crashlyticsApiOrigin())
       .patch(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`, {
-        state,
+        issue: { state: state },
       })
       .query({ updateMask: "state" })
       .reply(200, mockResponse);
