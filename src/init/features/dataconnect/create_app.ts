@@ -9,20 +9,8 @@ export async function createReactApp(webAppId: string): Promise<void> {
 }
 
 /** Create a Next.js app using create-next-app. */
-export async function createNextApp(webAppId: string): Promise<void> {
-  const args = [
-    "create-next-app@latest",
-    webAppId,
-    "--ts",
-    "--eslint",
-    "--tailwind",
-    "--src-dir",
-    "--app",
-    "--turbopack",
-    "--import-alias",
-    '"@/*"',
-    "--skip-install",
-  ];
+export async function createNextApp(): Promise<void> {
+  const args = ["create-dataconnect-nextjs"];
   await executeCommand("npx", args);
 }
 
