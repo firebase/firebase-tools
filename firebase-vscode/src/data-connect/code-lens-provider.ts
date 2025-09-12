@@ -97,17 +97,6 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           document.fileName,
         );
         if (service) {
-          // For demo purposes only
-          // codeLenses.push(
-          //   new vscode.CodeLens(range, {
-          //     title: `$(play) Refine Operation`,
-          //     command: "firebase.dataConnect.refineOperation",
-          //     tooltip:
-          //       "Execute the operation (⌘+enter or Ctrl+Enter)",
-          //     arguments: [x, operationLocation, InstanceType.LOCAL],
-          //   }),
-          // );
-
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (local)`,
@@ -124,6 +113,15 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
                 command: "firebase.dataConnect.executeOperation",
                 tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
                 arguments: [x, operationLocation, InstanceType.PRODUCTION],
+              }),
+            );
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Refine Operation`,
+                command: "firebase.dataConnect.generateOperation",
+                tooltip:
+                  "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [x, operationLocation, InstanceType.LOCAL],
               }),
             );
           }
