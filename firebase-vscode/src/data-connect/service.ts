@@ -53,27 +53,6 @@ export class DataConnectService {
     return dcs?.getApiServicePathByPath(projectId, path);
   }
 
-  private async decodeResponse(
-    response: Response,
-    format?: "application/json",
-  ): Promise<unknown> {
-    const contentType = response.headers.get("Content-Type");
-    if (!contentType) {
-      throw new Error("Invalid content type");
-    }
-
-    if (format && !contentType.includes(format)) {
-      throw new Error(
-        `Invalid content type. Expected ${format} but got ${contentType}`,
-      );
-    }
-
-    if (contentType.includes("application/json")) {
-      return response.json();
-    }
-
-    return response.text();
-  }
   private async handleProdResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
