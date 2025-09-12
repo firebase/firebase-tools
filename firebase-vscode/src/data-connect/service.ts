@@ -10,7 +10,7 @@ import { AuthService } from "../auth/service";
 import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
-import { dataConnectConfigs, VSCODE_ENV_VARS } from "../data-connect/config";
+import { dataConnectConfigs } from "../data-connect/config";
 
 import { firebaseRC } from "../core/config";
 import {
@@ -21,21 +21,11 @@ import {
 } from "../../../src/dataconnect/dataplaneClient";
 
 import {
-  cloudAICompationClient,
-  callCloudAICompanion,
-} from "../../../src/dataconnect/cloudAiCompanionClient";
-
-import {
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
   Impersonation,
 } from "../dataconnect/types";
-import {
-  CloudAICompanionResponse,
-  CallCloudAiCompanionRequest,
-  ChatMessage,
-} from "../dataconnect/cloudAICompanionTypes";
 import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
@@ -63,27 +53,6 @@ export class DataConnectService {
     return dcs?.getApiServicePathByPath(projectId, path);
   }
 
-  private async decodeResponse(
-    response: Response,
-    format?: "application/json",
-  ): Promise<unknown> {
-    const contentType = response.headers.get("Content-Type");
-    if (!contentType) {
-      throw new Error("Invalid content type");
-    }
-
-    if (format && !contentType.includes(format)) {
-      throw new Error(
-        `Invalid content type. Expected ${format} but got ${contentType}`,
-      );
-    }
-
-    if (contentType.includes("application/json")) {
-      return response.json();
-    }
-
-    return response.text();
-  }
   private async handleProdResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
@@ -256,32 +225,6 @@ export class DataConnectService {
 
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
-  }
-
-  // Start cloud section
-
-  async generateOperation(
-    path: string /** currently unused; instead reading the first service config */,
-    naturalLanguageQuery: string,
-    type: "schema" | "operation",
-    chatHistory: ChatMessage[],
-  ): Promise<CloudAICompanionResponse | undefined> {
-    const client = cloudAICompationClient();
-    const servicePath = await this.servicePath(
-      dataConnectConfigs.value?.tryReadValue?.values[0].path as string,
-    );
-
-    if (!servicePath) {
-      return undefined;
-    }
-
-    const request: CallCloudAiCompanionRequest = {
-      servicePath,
-      naturalLanguageQuery,
-      chatHistory,
-    };
-    const resp = await callCloudAICompanion(client, request, type);
-    return resp;
   }
 }
 
