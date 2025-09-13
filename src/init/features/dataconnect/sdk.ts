@@ -75,18 +75,22 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: "no", value: "no" },
       ],
     });
-    switch (choice) {
-      case "react":
-        await createReactApp(newUniqueId("web-app", listFiles(cwd)));
-        break;
-      case "next":
-        await createNextApp(newUniqueId("web-app", listFiles(cwd)));
-        break;
-      case "flutter":
-        await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
-        break;
-      case "no":
-        break;
+    try {
+      switch (choice) {
+        case "react":
+          await createReactApp(newUniqueId("web-app", listFiles(cwd)));
+          break;
+        case "next":
+          await createNextApp(newUniqueId("web-app", listFiles(cwd)));
+          break;
+        case "flutter":
+          await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
+          break;
+        case "no":
+          break;
+      }
+    } catch (err: any) {
+      logLabeledError("dataconnect", `Failed to create a ${choice} app template`);
     }
   }
 
