@@ -302,6 +302,12 @@ export function registerExecution(
     }
   }
 
+  async function generateOperation(
+    ast: OperationDefinitionNode,
+    { document, documentPath, position }: OperationLocation,
+  ) {
+  }
+
   const sub4 = broker.on(
     "definedDataConnectArgs",
     (value) => (executionArgsJSON.value = value),
@@ -334,6 +340,16 @@ export function registerExecution(
         );
         await vscode.window.activeTextEditor?.document.save();
         executeOperation(ast, location, instanceType);
+      },
+    ),
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.generateOperation",
+      async (ast, location) => {
+        analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
+        );
+        await vscode.window.activeTextEditor?.document.save();
+        generateOperation(ast, location);
       },
     ),
     vscode.commands.registerCommand(

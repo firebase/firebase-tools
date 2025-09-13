@@ -84,15 +84,28 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
 
     for (let i = 0; i < documentNode.definitions.length; i++) {
       const x = documentNode.definitions[i];
-      if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
-        const line = x.loc.startToken.line - 1;
-        const range = new vscode.Range(line, 0, line, 0);
-        const position = new vscode.Position(line, 0);
-        const operationLocation: OperationLocation = {
-          document: documentText,
-          documentPath: document.fileName,
-          position: position,
-        };
+      if (!x.loc) {
+        continue;
+      }
+      const line = x.loc.startToken.line - 1;
+      const range = new vscode.Range(line, 0, line, 0);
+      const position = new vscode.Position(line, 0);
+      const operationLocation: OperationLocation = {
+        document: documentText,
+        documentPath: document.fileName,
+        position: position,
+      };
+      if (projectId) {
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: `$(play) Generate Operation ${x.kind} ${x.loc}`,
+            command: "firebase.dataConnect.generateOperation",
+            tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+            arguments: [document.uri, operationLocation],
+          }),
+        );
+      }
+      if (x.kind === Kind.OPERATION_DEFINITION) {
         const service = fdcConfigs.findEnclosingServiceForPath(
           document.fileName,
         );
@@ -113,15 +126,6 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
                 command: "firebase.dataConnect.executeOperation",
                 tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
                 arguments: [x, operationLocation, InstanceType.PRODUCTION],
-              }),
-            );
-            codeLenses.push(
-              new vscode.CodeLens(range, {
-                title: `$(play) Refine Operation`,
-                command: "firebase.dataConnect.generateOperation",
-                tooltip:
-                  "Execute the operation (⌘+enter or Ctrl+Enter)",
-                arguments: [x, operationLocation, InstanceType.LOCAL],
               }),
             );
           }
