@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls:*)",
+      "Bash(npm view:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm install)",
+      "Bash(npm:*)",
+      "Bash(cat:*)",
+      "Bash(git checkout:*)",
+      "Bash(git ls-tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
