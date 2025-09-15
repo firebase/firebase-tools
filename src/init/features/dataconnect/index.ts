@@ -616,7 +616,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
-      default: "us-central1",
+      default: "us-east4",
     });
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?`,
@@ -649,14 +649,39 @@ async function locationChoices(setup: Setup) {
   } else {
     // Hardcoded locations for when there is no project set up.
     return [
-      { name: "us-central1", value: "us-central1" },
-      { name: "europe-north1", value: "europe-north1" },
-      { name: "europe-central2", value: "europe-central2" },
-      { name: "europe-west1", value: "europe-west1" },
-      { name: "southamerica-west1", value: "southamerica-west1" },
-      { name: "us-east4", value: "us-east4" },
-      { name: "us-west1", value: "us-west1" },
+      { name: "asia-east1", value: "asia-east1" },
+      { name: "asia-east2", value: "asia-east2" },
+      { name: "asia-northeast1", value: "asia-northeast1" },
+      { name: "asia-northeast2", value: "asia-northeast2" },
+      { name: "asia-northeast3", value: "asia-northeast3" },
+      { name: "asia-south1", value: "asia-south1" },
       { name: "asia-southeast1", value: "asia-southeast1" },
+      { name: "asia-southeast2", value: "asia-southeast2" },
+      { name: "australia-southeast1", value: "australia-southeast1" },
+      { name: "australia-southeast2", value: "australia-southeast2" },
+      { name: "europe-central2", value: "europe-central2" },
+      { name: "europe-north1", value: "europe-north1" },
+      { name: "europe-southwest1", value: "europe-southwest1" },
+      { name: "europe-west1", value: "europe-west1" },
+      { name: "europe-west2", value: "europe-west2" },
+      { name: "europe-west3", value: "europe-west3" },
+      { name: "europe-west4", value: "europe-west4" },
+      { name: "europe-west6", value: "europe-west6" },
+      { name: "europe-west8", value: "europe-west8" },
+      { name: "europe-west9", value: "europe-west9" },
+      { name: "me-west1", value: "me-west1" },
+      { name: "northamerica-northeast1", value: "northamerica-northeast1" },
+      { name: "northamerica-northeast2", value: "northamerica-northeast2" },
+      { name: "southamerica-east1", value: "southamerica-east1" },
+      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "us-central1", value: "us-central1" },
+      { name: "us-east1", value: "us-east1" },
+      { name: "us-east4", value: "us-east4" },
+      { name: "us-south1", value: "us-south1" },
+      { name: "us-west1", value: "us-west1" },
+      { name: "us-west2", value: "us-west2" },
+      { name: "us-west3", value: "us-west3" },
+      { name: "us-west4", value: "us-west4" },
     ];
   }
 }
