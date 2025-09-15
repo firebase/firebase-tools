@@ -24,7 +24,7 @@ export class FirestoreApi {
    * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
    * Keeps explicit __name__ fields with DESCENDING order.
    * @param indexes Array of indexes to process
-   * @returns Processed array of indexes with filtered fields
+   * @return Processed array of indexes with filtered fields
    */
   public static processIndexes(indexes: types.Index[]): types.Index[] {
     return indexes.map((index: types.Index): types.Index => {
@@ -836,6 +836,32 @@ export class FirestoreApi {
   }
 
   /**
+   * Bulk delete documents from a Firestore database.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param collectionIds the collection IDs to delete.
+   */
+  async bulkDeleteDocuments(
+    project: string,
+    databaseId: string,
+    collectionIds: string[],
+  ): Promise<types.BulkDeleteDocumentsResponse> {
+    const name = `/projects/${project}/databases/${databaseId}`;
+    const url = `${name}:bulkDeleteDocuments`;
+    const payload: types.BulkDeleteDocumentsRequest = {
+      name,
+      collectionIds,
+    };
+    const res = await this.apiClient.post<
+      types.BulkDeleteDocumentsRequest,
+      types.BulkDeleteDocumentsResponse
+    >(url, payload);
+    return {
+      name: res.body?.name,
+    };
+  }
+
+  /**
    * Restore a Firestore Database from a backup.
    * @param project the Firebase project id.
    * @param databaseId the ID of the Firestore Database to be restored into
@@ -865,5 +891,73 @@ export class FirestoreApi {
     }
 
     return database;
+  }
+
+  /**
+   * List the long-running Firestore operations.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param limit The maximum number of operations to list.
+   */
+  async listOperations(
+    project: string,
+    databaseId: string,
+    limit: number,
+  ): Promise<types.ListOperationsResponse> {
+    const url = `/projects/${project}/databases/${databaseId}/operations`;
+    const res = await this.apiClient.get<types.ListOperationsResponse>(url, {
+      queryParams: {
+        pageSize: limit,
+      },
+    });
+    return res.body;
+  }
+
+  /**
+   * Retrieves the information related to the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async describeOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}`;
+    const res = await this.apiClient.get<types.Operation>(url);
+    return res.body;
+  }
+
+  /**
+   * Cancels the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async cancelOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<{ success: boolean }> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}:cancel`;
+    try {
+      const res = await this.apiClient.post<void, void>(url);
+      return { success: res.status === 200 };
+    } catch (error) {
+      // For the cases when the user is trying to cancel an operation that has
+      // already completed, the response is not very useful. The error message is
+      // "Precondition check failed.". And one has to parse the details of the error
+      // stack to find out the real reason. We try to improve the error message here.
+      const reason = "Cannot cancel an operation that is completed.";
+      const details = (error as any).context?.body?.error?.details || [];
+      for (const detail of details) {
+        if (detail.detail?.includes(reason)) {
+          throw new FirebaseError(reason);
+        }
+      }
+      // If we weren't able to provide a better reason, rethrow the original error.
+      throw error;
+    }
   }
 }

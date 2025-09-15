@@ -4,14 +4,13 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "1.6.1",
+  "version": "1.8.0",
   "engines": {
     "vscode": "^1.69.0"
   },
   "repository": "https://github.com/firebase/firebase-tools",
   "sideEffects": false,
   "extensionDependencies": [
-    "google.geminicodeassist",
     "graphql.vscode-graphql-syntax"
   ],
   "categories": [
@@ -217,7 +216,7 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
-    "install:extensions": "code-server --install-extension Google.geminicodeassist --extensions-dir ./prebuilt-extensions/ && code-server --install-extension graphql.vscode-graphql-syntax --extensions-dir ./prebuilt-extensions/",
+    "install:extensions": "code-server --install-extension graphql.vscode-graphql-syntax --extensions-dir ./prebuilt-extensions/",
     "pretest:e2e": "curl -fsSL https://code-server.dev/install.sh | sh -s -- --edge && npm run install:extensions",
     "pretest:unit": "npm run test-compile && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",

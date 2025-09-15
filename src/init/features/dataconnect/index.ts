@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { input, select } from "../../../prompt";
+import { input, select, confirm } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -54,6 +54,8 @@ export interface RequiredInfo {
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
+  // If true, we should provision a new Cloud SQL instance.
+  shouldProvisionCSQL: boolean;
   // If present, this is downloaded from an existing deployed service.
   serviceGql?: ServiceGQL;
 }
@@ -68,28 +70,25 @@ export interface ServiceGQL {
   seedDataGql?: string;
 }
 
-const emptyConnector = {
-  id: "example",
-  path: "./example",
-  files: [],
-};
-
-const defaultConnector = {
-  id: "example",
-  path: "./example",
-  files: [
+const templateServiceInfo: ServiceGQL = {
+  schemaGql: [{ path: "schema.gql", content: SCHEMA_TEMPLATE }],
+  connectors: [
     {
-      path: "queries.gql",
-      content: QUERIES_TEMPLATE,
-    },
-    {
-      path: "mutations.gql",
-      content: MUTATIONS_TEMPLATE,
+      id: "example",
+      path: "./example",
+      files: [
+        {
+          path: "queries.gql",
+          content: QUERIES_TEMPLATE,
+        },
+        {
+          path: "mutations.gql",
+          content: MUTATIONS_TEMPLATE,
+        },
+      ],
     },
   ],
 };
-
-const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
@@ -101,6 +100,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     locationId: "",
     cloudSqlInstanceId: "",
     cloudSqlDatabase: "",
+    shouldProvisionCSQL: false,
   };
   if (setup.projectId) {
     const hasBilling = await isBillingEnabled(setup);
@@ -156,6 +156,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     void trackGA4("dataconnect_init", {
       project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
       flow: info.analyticsFlow,
+      provision_cloud_sql: String(info.shouldProvisionCSQL),
     });
   }
 
@@ -182,17 +183,14 @@ async function actuateWithInfo(
 ): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
-    // Use the static template if it starts from scratch.
+    // If no project is present, just save the template files.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(
-      config,
-      info,
-      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
-      options,
-    );
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
-  const hasBilling = await isBillingEnabled(setup);
-  if (hasBilling) {
+
+  await ensureApis(projectId, /* silent =*/ true);
+  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
+  if (provisionCSQL) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await setupCloudSql({
       projectId: projectId,
@@ -202,22 +200,23 @@ async function actuateWithInfo(
       requireGoogleMlIntegration: false,
     });
   }
+
+  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   if (!info.appDescription) {
-    // Download an existing service to a local workspace.
+    if (!info.serviceGql) {
+      // Try download the existing service if it exists.
+      // MCP tool `firebase_init` may setup an existing service.
+      await downloadService(info, serviceName);
+    }
     if (info.serviceGql) {
+      // Save the downloaded service from the backend.
       info.analyticsFlow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(
-      config,
-      info,
-      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
-      options,
-    );
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
-  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
 
   // Use Gemini to generate schema.
@@ -231,8 +230,8 @@ async function actuateWithInfo(
     // If the service already exists, fallback to save only the generated schema.
     // Later customer can run `firebase deploy` to override the existing service.
     //
-    // `firebase init dataconnect` always picks a new service ID, so it should never hit this case.
-    // However, `firebase_init` MCP tool may pass an existing service ID.
+    // - CLI cmd `firebase init dataconnect` always picks a new service ID, so it should never hit this case.
+    // - MCP tool `firebase_init` may pick an existing service ID, but shouldn't set app_description at the same time.
     logLabeledError(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
@@ -247,7 +246,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      hasBilling,
+      provisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
@@ -466,12 +465,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!existingServices.length) {
     return;
   }
-  const existingServicesAndSchemas = await Promise.all(
-    existingServices.map(async (s) => {
-      return { service: s, schema: await getSchema(s.name) };
-    }),
-  );
-  const choice = await chooseExistingService(existingServicesAndSchemas);
+  const choice = await chooseExistingService(existingServices);
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
@@ -480,46 +474,50 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   }
   // Choose to use an existing service.
   info.analyticsFlow += "_pick_existing_service";
-  const serviceName = parseServiceName(choice.service.name);
+  const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
-  info.serviceGql = {
-    schemaGql: [],
-    connectors: [emptyConnector],
-  };
-  if (choice.schema) {
-    const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-    if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-      const instanceName = parseCloudSQLInstanceName(
-        primaryDatasource.postgresql.cloudSql.instance,
-      );
-      info.cloudSqlInstanceId = instanceName.instanceId;
-    }
-    if (choice.schema.source.files?.length) {
-      info.serviceGql.schemaGql = choice.schema.source.files;
-    }
-    info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
-    const connectors = await listConnectors(choice.service.name, [
-      "connectors.name",
-      "connectors.source.files",
-    ]);
-    if (connectors.length) {
-      info.serviceGql.connectors = connectors.map((c) => {
-        const id = c.name.split("/").pop()!;
-        return {
-          id,
-          path: connectors.length === 1 ? "./example" : `./${id}`,
-          files: c.source.files || [],
-        };
-      });
-    }
-  }
-  return;
+  await downloadService(info, choice.name);
 }
 
-interface serviceAndSchema {
-  service: Service;
-  schema?: Schema;
+async function downloadService(info: RequiredInfo, serviceName: string): Promise<void> {
+  const schema = await getSchema(serviceName);
+  if (!schema) {
+    return;
+  }
+  info.serviceGql = {
+    schemaGql: [],
+    connectors: [
+      {
+        id: "example",
+        path: "./example",
+        files: [],
+      },
+    ],
+  };
+  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
+  if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+    const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
+    info.cloudSqlInstanceId = instanceName.instanceId;
+  }
+  if (schema.source.files?.length) {
+    info.serviceGql.schemaGql = schema.source.files;
+  }
+  info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+  const connectors = await listConnectors(serviceName, [
+    "connectors.name",
+    "connectors.source.files",
+  ]);
+  if (connectors.length) {
+    info.serviceGql.connectors = connectors.map((c) => {
+      const id = c.name.split("/").pop()!;
+      return {
+        id,
+        path: connectors.length === 1 ? "./example" : `./${id}`,
+        files: c.source.files || [],
+      };
+    });
+  }
 }
 
 /**
@@ -533,16 +531,14 @@ interface serviceAndSchema {
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param existing
  */
-async function chooseExistingService(
-  existing: serviceAndSchema[],
-): Promise<serviceAndSchema | undefined> {
+async function chooseExistingService(existing: Service[]): Promise<Service | undefined> {
   const fdcConnector = envOverride("FDC_CONNECTOR", "");
   const fdcService = envOverride("FDC_SERVICE", "");
   const serviceEnvVar = fdcConnector || fdcService;
   if (serviceEnvVar) {
     const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar.split("/");
     const serviceFromEnvVar = existing.find((s) => {
-      const serviceName = parseServiceName(s.service.name);
+      const serviceName = parseServiceName(s.name);
       return (
         serviceName.serviceId === serviceIdFromEnvVar &&
         serviceName.location === serviceLocationFromEnvVar
@@ -557,17 +553,15 @@ async function chooseExistingService(
     const envVarName = fdcConnector ? "FDC_CONNECTOR" : "FDC_SERVICE";
     logWarning(`Unable to pick up an existing service based on ${envVarName}=${serviceEnvVar}.`);
   }
-  const choices: Array<{ name: string; value: serviceAndSchema | undefined }> = existing.map(
-    (s) => {
-      const serviceName = parseServiceName(s.service.name);
-      return {
-        name: `${serviceName.location}/${serviceName.serviceId}`,
-        value: s,
-      };
-    },
-  );
+  const choices: Array<{ name: string; value: Service | undefined }> = existing.map((s) => {
+    const serviceName = parseServiceName(s.name);
+    return {
+      name: `${serviceName.location}/${serviceName.serviceId}`,
+      value: s,
+    };
+  });
   choices.push({ name: "Create a new service", value: undefined });
-  return await select<serviceAndSchema | undefined>({
+  return await select<Service | undefined>({
     message:
       "Your project already has existing services. Which would you like to set up local files for?",
     choices,
@@ -623,6 +617,10 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       message: "What location would like to use?",
       choices,
       default: "us-central1",
+    });
+    info.shouldProvisionCSQL = await confirm({
+      message: `Would you like to provision your Cloud SQL instance and database now?`,
+      default: true,
     });
   }
 

@@ -1,1 +1,0 @@
-- `firebase emulator:start` use a default project if no project can be found. (#9072)

@@ -20,7 +20,7 @@ import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import * as fs from "fs";
-import { EmulatorHub } from "../emulator/hub";
+import { EmulatorHub } from "../../../src/emulator/hub";
 
 export * from "../core/config";
 
