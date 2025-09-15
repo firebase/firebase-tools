@@ -73,9 +73,9 @@ const toolToParamMap: Record<string, string> = {
  * @param filter an EventFilter
  * @return URLSearchParams for a request to the GetReport endpoint
  */
-export function filterToUrlSearchParams(filter: EventFilter = {}): URLSearchParams {
+export function filterToUrlSearchParams(filter: EventFilter): URLSearchParams {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filter)) {
+  for (const [key, value] of Object.entries(filter || {})) {
     if (value === undefined) {
       continue;
     }
