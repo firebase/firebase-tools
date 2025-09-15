@@ -616,7 +616,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
-      default: "us-west1",
+      default: "us-east4",
     });
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?`,
@@ -652,10 +652,10 @@ async function locationChoices(setup: Setup) {
       { name: "us-central1", value: "us-central1" },
       { name: "europe-north1", value: "europe-north1" },
       { name: "europe-central2", value: "europe-central2" },
-      { name: "europe-west1", value: "europe-west1" },
-      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "europe-east4", value: "europe-east4" },
+      { name: "southamerica-east4", value: "southamerica-east4" },
       { name: "us-east4", value: "us-east4" },
-      { name: "us-west1", value: "us-west1" },
+      { name: "us-east4", value: "us-east4" },
       { name: "asia-southeast1", value: "asia-southeast1" },
     ];
   }
