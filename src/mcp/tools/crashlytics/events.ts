@@ -35,7 +35,6 @@ export const list_events = tool(
   async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
     if (!filter || !filter.issueId) return mcpError(`Must specify 'issue_id' parameter.`);
-    pageSize ??= 1;
 
     const samples: ListEventsResponse = await listEvents(appId, filter, pageSize);
     samples.events = samples.events.map((e) => pruneThreads(e));

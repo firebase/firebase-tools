@@ -10,15 +10,15 @@ import {
   filterToUrlSearchParams,
 } from "./filters";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export const ReportInputSchema = z.object({
   appId: ApplicationIdSchema,
   filter: EventFilterSchema,
-  pageSize: z.number().optional().describe("Number of rows to return").default(10),
+  pageSize: z.number().optional().describe("Number of rows to return").default(DEFAULT_PAGE_SIZE),
 });
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
-
-const DEFAULT_PAGE_SIZE = 10;
 
 export enum CrashlyticsReport {
   TopIssues = "topIssues",

@@ -15,7 +15,6 @@ function getReportContent(
 ): (input: ReportInput) => Promise<CallToolResult> {
   return async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
-    pageSize ??= 10;
     filter ??= {};
     return toContent(await getReport(report, appId, filter, pageSize));
   };

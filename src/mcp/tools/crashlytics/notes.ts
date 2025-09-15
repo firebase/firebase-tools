@@ -50,7 +50,6 @@ export const list_notes = tool(
   async ({ appId, issueId, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
     if (!issueId) return mcpError(`Must specify 'issueId' parameter.`);
-    pageSize ??= 20;
 
     return toContent(await listNotes(appId, issueId, pageSize));
   },
