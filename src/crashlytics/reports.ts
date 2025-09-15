@@ -49,8 +49,7 @@ export async function getReport(
     queryParams.set("page_size", `${pageSize}`);
 
     logger.debug(
-      `[crashlytics] report ${report} called with appId: ${appId}
-       filter: ${queryParams.toString()}, page_size: ${pageSize}`,
+      `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
     );
     const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
       method: "GET",
