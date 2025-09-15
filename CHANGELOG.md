@@ -1,1 +1,1 @@
-- Change `dataconnect`'s default region to `us-west1` (#9126)
+- Change `dataconnect`'s default region to `us-east4` (#9126)
