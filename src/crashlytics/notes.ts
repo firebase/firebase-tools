@@ -90,7 +90,7 @@ export async function listNotes(appId: string, issueId: string, pageSize = 20): 
       timeout: TIMEOUT,
     });
 
-    return response.body.notes;
+    return response.body.notes || [];
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to list notes for issue ${issueId}, app ${appId}`, {
       original: getError(err),
