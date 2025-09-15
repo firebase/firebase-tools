@@ -24,19 +24,25 @@ Active user: ${accountEmail || "<NONE>"}
 ## Required first steps! Absolutely required! Incredibly important!
 
   1. **Make sure the user is logged in. No Crashlytics tools will work if the user is not logged in.**
-    a. Use the \`firebase_get_environment\` tool to verify that the user is logged in,
-       and find the active Firebase project.
+    a. Use the \`firebase_get_environment\` tool to verify that the user is logged in.
     b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`firebase login\` 
-       before continuing. 
+       before continuing. Ignore other fields that are set to <NONE>. We are just making sure the
+       user is logged in. 
 
   2. **Get the app_id for the Firebase application.** 
-    a. If this is an Android app, read the mobilesdk_app_id value specified in the 
+    a. The file may be in .gitignore; make sure to check for it even if
+       it has been included in .gitignore. If running "glob", run it with 
+       "respect_git_ignore" disabled.
+    b. If you cannot find the file in the current directory, check sub-directories.
+    c. If this is an Android app, read the mobilesdk_app_id value specified in the 
        google-services.json file. If there are multiple files or multiple app ids in a 
-       single file, ask the user to choose one by providing a numbered list of all the package names.
-    b. If this is an iOS app, read the GOOGLE_APP_ID from GoogleService-Info.plist file. 
+       single file, ask the user to choose one by providing a numbered list of all the
+       package names. Ignore google-services.example.json, it is a template that won't 
+       have the right IDs.
+    d. If this is an iOS app, read the GOOGLE_APP_ID from GoogleService-Info.plist file. 
        If there are multiple files or multiple app ids in single file, ask the user to 
        choose one by providing a numbered list of all the bundle names.
-    c. If you can't find either of the above, just ask the user for the app id.
+    e. If you can't find either of the above, just ask the user for the app id.
 
 ## Next steps
 
