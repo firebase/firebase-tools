@@ -11,6 +11,7 @@ export enum TagColor {
   PURPLE = "Purple",
   TEAL = "Teal",
 }
+export const NAMESPACE_FIREBASE = "firebase";
 
 /** Interface representing a Remote Config parameter `value` in value options. */
 export interface ExplicitParameterValue {
@@ -58,15 +59,15 @@ export interface Version {
   versionNumber?: string; // int64 format
   updateTime?: string; // in UTC
   updateOrigin?:
-    | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
-    | "CONSOLE"
-    | "REST_API"
-    | "ADMIN_SDK_NOD";
+  | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
+  | "CONSOLE"
+  | "REST_API"
+  | "ADMIN_SDK_NOD";
   updateType?:
-    | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
-    | "INCREMENTAL_UPDATE"
-    | "FORCED_UPDATE"
-    | "ROLLBACK";
+  | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
+  | "INCREMENTAL_UPDATE"
+  | "FORCED_UPDATE"
+  | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
@@ -93,4 +94,41 @@ export interface RemoteConfigUser {
   email: string;
   name?: string;
   imageUrl?: string;
+}
+
+/** Interface representing a variant within a rollout definition. */
+export interface ExperimentVariant {
+  name: string;
+  weight: number;
+}
+
+/** Interface representing the definition of a Remote Config rollout. */
+export interface RolloutDefinition {
+  displayName: string;
+  description: string;
+  service: string;
+  controlVariant: ExperimentVariant;
+  enabledVariant: ExperimentVariant;
+}
+
+/**
+ * FIXED: This interface now correctly reflects the API response structure.
+ * Properties like description and variants are properly nested within the 'definition' object.
+ */
+export interface RemoteConfigRollout {
+  name: string;
+  definition: RolloutDefinition;
+  state: string;
+  createTime: string;
+  startTime: string;
+  endTime: string;
+  lastUpdateTime: string;
+  etag: string;
+}
+
+/** Interface representing a list of Remote Config rollouts with pagination. */
+export interface ListRollouts {
+  // FIXED: Made 'rollouts' optional to handle API responses with no rollouts.
+  rollouts?: RemoteConfigRollout[];
+  nextPageToken?: string;
 }
