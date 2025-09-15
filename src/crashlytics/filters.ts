@@ -1,9 +1,21 @@
 import { z } from "zod";
 
+export const ApplicationIdSchema = z
+  .string()
+  .describe(
+    "Firebase app id. For an Android application, read the " +
+      "mobilesdk_app_id value specified in the google-services.json file for " +
+      "the current package name. For an iOS Application, read the GOOGLE_APP_ID " +
+      "from GoogleService-Info.plist. If neither is available, ask the user to " +
+      "provide the app id.",
+  );
+
+export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexidecimal uuid");
+
 export const EventFilterSchema = z
   .object({
     intervalStartTime: z.string().optional().describe(`A timestamp in ISO 8601 string format`),
-    intervalEndTime: z.string().optional().describe(`A timestamp in ISO 8601 string format`),
+    intervalEndTime: z.string().optional().describe(`A timestamp in ISO 8601 string format.`),
     versionDisplayNames: z
       .array(z.string())
       .optional()
@@ -33,8 +45,9 @@ export const EventFilterSchema = z
       .optional()
       .describe(`Count events originating from the given device form factors`),
   })
-  .optional().describe(`Only events matching the given filters will be counted. 
-    All filters are optional.`);
+  .optional()
+  .describe(`Only events matching the given filters will be counted. All filters are optional. 
+    If setting a time interval, set both intervalStartTime and intervalEndTime.`);
 
 export type EventFilter = z.infer<typeof EventFilterSchema>;
 

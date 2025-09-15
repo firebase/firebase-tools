@@ -1,22 +1,17 @@
 import { z } from "zod";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Report } from "./types";
-import { EventFilter, EventFilterSchema, filterToUrlSearchParams } from "./filters";
-
-export const ApplicationIdSchema = z
-  .string()
-  .describe(
-    "Firebase app id. For an Android application, read the " +
-      "mobilesdk_app_id value specified in the google-services.json file for " +
-      "the current package name. For an iOS Application, read the GOOGLE_APP_ID " +
-      "from GoogleService-Info.plist. If neither is available, ask the user to " +
-      "provide the app id.",
-  );
+import {
+  ApplicationIdSchema,
+  EventFilter,
+  EventFilterSchema,
+  filterToUrlSearchParams,
+} from "./filters";
 
 export const ReportInputSchema = z.object({
-  app_id: ApplicationIdSchema,
+  appId: ApplicationIdSchema,
   filter: EventFilterSchema,
   pageSize: z.number().optional().describe("Number of rows to return").default(10),
 });
@@ -30,7 +25,8 @@ export enum CrashlyticsReport {
   TopVariants = "topVariants",
   TopVersions = "topVersions",
   TopOperatingSystems = "topOperatingSystems",
-  TopDevices = "topDevices",
+  TopAppleDevices = "topAppleDevices",
+  TopAndroidDevices = "topAndroidDevices",
 }
 
 /**
@@ -67,10 +63,9 @@ export async function getReport(
     });
 
     return response.body;
-  } catch (err: any) {
-    logger.debug(err.message);
-    throw new FirebaseError(`Failed to fetch ${report} report for app: ${appId}. Error: ${err}.`, {
-      original: err,
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to fetch ${report} report for app: ${appId}`, {
+      original: getError(err),
     });
   }
 }

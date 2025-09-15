@@ -13,11 +13,11 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 function getReportContent(
   report: CrashlyticsReport,
 ): (input: ReportInput) => Promise<CallToolResult> {
-  return async ({ app_id, filter, pageSize }) => {
-    if (!app_id) return mcpError(`Must specify 'app_id' parameter.`);
+  return async ({ appId, filter, pageSize }) => {
+    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
     pageSize ??= 10;
     filter ??= {};
-    return toContent(await getReport(report, app_id, filter, pageSize));
+    return toContent(await getReport(report, appId, filter, pageSize));
   };
 }
 
@@ -80,22 +80,42 @@ export const get_top_versions = tool(
   getReportContent(CrashlyticsReport.TopVersions),
 );
 
-export const get_top_devices = tool(
+export const get_top_apple_devices = tool(
   {
-    name: "get_top_devices",
-    description: `Counts events and distinct impacted users, grouped by *device*.
+    name: "get_top_apple_devices",
+    description: `Counts events and distinct impacted users, grouped by apple *device*.
       Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.`,
+      Only counts events matching the given filters.
+      Only relevant for iOS, iPadOS and MacOS applications.`,
     inputSchema: ReportInputSchema,
     annotations: {
-      title: "Get Crashlytics Top Devices Report",
+      title: "Get Crashlytics Top Apple Devices Report",
       readOnlyHint: true,
     },
     _meta: {
       requiresAuth: true,
     },
   },
-  getReportContent(CrashlyticsReport.TopDevices),
+  getReportContent(CrashlyticsReport.TopAppleDevices),
+);
+
+export const get_top_android_devices = tool(
+  {
+    name: "get_top_android_devices",
+    description: `Counts events and distinct impacted users, grouped by android *device*.
+      Groups are sorted by event count, in descending order.
+      Only counts events matching the given filters.
+      Only relevant for Android applications.`,
+    inputSchema: ReportInputSchema,
+    annotations: {
+      title: "Get Crashlytics Top Android Devices Report",
+      readOnlyHint: true,
+    },
+    _meta: {
+      requiresAuth: true,
+    },
+  },
+  getReportContent(CrashlyticsReport.TopAndroidDevices),
 );
 
 export const get_top_operating_systems = tool(
