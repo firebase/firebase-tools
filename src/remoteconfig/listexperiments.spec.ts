@@ -183,7 +183,7 @@ describe("Remote Config Experiment List", () => {
 
       const expectedTable = new Table({
         head: [
-          "Name",
+          "Experiment ID",
           "Display Name",
           "Service",
           "Description",
@@ -197,7 +197,7 @@ describe("Remote Config Experiment List", () => {
       });
       expectedTable.push(
         [
-          experiment2.name,
+          experiment2.name.split("/").pop(),
           experiment2.definition.displayName,
           experiment2.definition.service,
           experiment2.definition.description,
@@ -208,7 +208,7 @@ describe("Remote Config Experiment List", () => {
           experiment2.etag,
         ],
         [
-          experiment3.name,
+          experiment3.name.split("/").pop(),
           experiment3.definition.displayName,
           experiment3.definition.service,
           experiment3.definition.description,
@@ -219,7 +219,7 @@ describe("Remote Config Experiment List", () => {
           experiment3.etag,
         ],
         [
-          experiment1.name,
+          experiment1.name.split("/").pop(),
           experiment1.definition.displayName,
           experiment1.definition.service,
           experiment1.definition.description,
@@ -230,7 +230,7 @@ describe("Remote Config Experiment List", () => {
           experiment1.etag,
         ],
         [
-          experiment4.name,
+          experiment4.name.split("/").pop(),
           experiment4.definition.displayName,
           experiment4.definition.service,
           experiment4.definition.description,

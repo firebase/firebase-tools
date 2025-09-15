@@ -12,7 +12,6 @@ const PROJECT_ID = "1234567890";
 const EXPERIMENT_ID_1 = "1";
 const EXPERIMENT_ID_2 = "2";
 
-// Test sample experiment
 const expectedExperimentResult: GetExperimentResult = {
   name: "projects/1234567890/namespaces/firebase/experiments/1",
   definition: {
@@ -58,7 +57,7 @@ const expectedExperimentResult: GetExperimentResult = {
   etag: "e1",
 };
 
-describe("Remote Config Experiment", () => {
+describe("Remote Config Experiment Get", () => {
   describe("getExperiment", () => {
     afterEach(() => {
       expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");

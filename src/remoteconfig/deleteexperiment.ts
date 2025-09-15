@@ -2,6 +2,7 @@ import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { consoleUrl } from "../utils";
+import * as clc from "colorette";
 
 const TIMEOUT = 30000;
 
@@ -21,13 +22,14 @@ export async function deleteExperiment(
   projectId: string,
   namespace: string,
   experimentId: string,
-): Promise<void> {
+): Promise<string> {
   try {
     await apiClient.request<void, void>({
       method: "DELETE",
       path: `projects/${projectId}/namespaces/${namespace}/experiments/${experimentId}`,
       timeout: TIMEOUT,
     });
+    return clc.bold(`Successfully deleted experiment ${clc.yellow(experimentId)}`);
   } catch (err: unknown) {
     const error: Error = getError(err);
     if (error.message.includes("is running and cannot be deleted")) {

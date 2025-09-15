@@ -168,6 +168,7 @@ export interface ListExperimentsResult {
   nextPageToken?: string;
 }
 
+/** Interface representing a Remote Config list experiment options. */
 export interface ListExperimentOptions {
   pageSize: string;
   pageToken?: string;

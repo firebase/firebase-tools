@@ -4,11 +4,12 @@ import { remoteConfigApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { deleteExperiment } from "./deleteexperiment";
 import { NAMESPACE_FIREBASE } from "./interfaces";
+import * as clc from "colorette";
 
 const PROJECT_ID = "12345679";
 const EXPERIMENT_ID = "1";
 
-describe("remoteconfig: deleteExperiment", () => {
+describe("Remote Config Experiment Delete", () => {
   afterEach(() => {
     expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");
     nock.cleanAll();
@@ -21,7 +22,9 @@ describe("remoteconfig: deleteExperiment", () => {
       )
       .reply(200);
 
-    await expect(deleteExperiment(PROJECT_ID, NAMESPACE_FIREBASE, EXPERIMENT_ID)).to.be.fulfilled;
+    await expect(
+      deleteExperiment(PROJECT_ID, NAMESPACE_FIREBASE, EXPERIMENT_ID),
+    ).to.eventually.equal(clc.bold(`Successfully deleted experiment ${clc.yellow(EXPERIMENT_ID)}`));
   });
 
   it("should throw FirebaseError if experiment is running", async () => {

@@ -7,7 +7,7 @@ import { ListExperimentOptions, ListExperimentsResult, RemoteConfigExperiment } 
 
 const TIMEOUT = 30000;
 const TABLE_HEAD = [
-  "Name",
+  "Experiment ID",
   "Display Name",
   "Service",
   "Description",
@@ -34,7 +34,7 @@ export const parseExperimentList = (experiments: RemoteConfigExperiment[]): stri
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   for (const experiment of experiments) {
     table.push([
-      experiment.name,
+      experiment.name.split("/").pop(), // Extract the experiment number
       experiment.definition.displayName,
       experiment.definition.service,
       experiment.definition.description,
@@ -53,7 +53,7 @@ export const parseExperimentList = (experiments: RemoteConfigExperiment[]): stri
  * @param projectId The ID of the project.
  * @param namespace The namespace under which the experiment is created.
  * @param listExperimentOptions Options for listing experiments (e.g., page size, filter, page token).
- * @return A promise that resolves to a list of experiment objects.
+ * @return A promise that resolves to a list of experiment.
  */
 export async function listExperiments(
   projectId: string,
