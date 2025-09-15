@@ -17,7 +17,7 @@ describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithCommandStringStub: sinon.SinonStub;
-  let detectStartCommandStub: sinon.SinonStub;
+  let detectPackageManagerStartCommandStub: sinon.SinonStub;
   let configsStub: sinon.SinonStubbedInstance<typeof configsImport>;
   let resolveProjectPathStub: sinon.SinonStub;
   let listRunningWithInfoStub: sinon.SinonStub;
@@ -28,7 +28,7 @@ describe("serve", () => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
     wrapSpawnStub = sinon.stub(spawn, "wrapSpawn");
     spawnWithCommandStringStub = sinon.stub(spawn, "spawnWithCommandString");
-    detectStartCommandStub = sinon.stub(utils, "detectStartCommand");
+    detectPackageManagerStartCommandStub = sinon.stub(utils, "detectPackageManagerStartCommand");
     configsStub = sinon.stub(configsImport);
     resolveProjectPathStub = sinon.stub(projectPathImport, "resolveProjectPath");
 
@@ -36,14 +36,14 @@ describe("serve", () => {
     setEnvVarsForEmulatorsStub = sinon.stub(emulatorEnvs, "setEnvVarsForEmulators");
 
     resolveProjectPathStub.returns("");
-    detectStartCommandStub.returns("npm run dev");
+    detectPackageManagerStartCommandStub.returns("npm run dev");
 
     accessSecretVersionStub = sinon.stub(secrets, "accessSecretVersion");
   });
 
   afterEach(() => {
     wrapSpawnStub.restore();
-    detectStartCommandStub.restore();
+    detectPackageManagerStartCommandStub.restore();
     checkListenableStub.restore();
     sinon.verifyAndRestore();
   });
@@ -81,6 +81,30 @@ describe("serve", () => {
 
       expect(spawnWithCommandStringStub).to.be.called;
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+    });
+
+    it("should append --port if an ng serve command is detected", async () => {
+      const startCommand = "ng serve --verbose";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await serve.start({ startCommand });
+
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
+    });
+
+    it("should reject the custom command if a port is specified", async () => {
+      const startCommand = "ng serve --port 5004";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await expect(serve.start({ startCommand })).to.be.rejectedWith(
+        FirebaseError,
+        /Specifying a port in the start command is not supported by the apphosting emulator/,
+      );
+
+      expect(spawnWithCommandStringStub).to.not.be.called;
     });
 
     it("Should pass plaintext environment variables", async () => {
