@@ -74,9 +74,9 @@ export const delete_note = tool(
     },
   },
   async ({ appId, issueId, noteId }) => {
-    if (!appId) return mcpError(`Must specify 'app_id' parameter.`);
-    if (!issueId) return mcpError(`Must specify 'issue_id' parameter.`);
-    if (!noteId) return mcpError(`Must specify 'note_id' parameter.`);
+    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
+    if (!issueId) return mcpError(`Must specify 'issueId' parameter.`);
+    if (!noteId) return mcpError(`Must specify 'noteId' parameter.`);
 
     return toContent(await deleteNote(appId, issueId, noteId));
   },
