@@ -616,7 +616,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
-      default: "us-central1",
+      default: "us-east1",
     });
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?`,
