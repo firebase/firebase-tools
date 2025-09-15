@@ -82,10 +82,17 @@ export class FirebaseMcpServer {
   ): Promise<void> {
     // wait until ready or until 2s has elapsed
     if (!this.clientInfo) await timeoutFallback(this.ready(), null, 2000);
-    const clientInfoParams = {
+    const clientInfoParams: {
+      mcp_client_name: string;
+      mcp_client_version: string;
+      gemini_cli_extensiont?: string;
+    } = {
       mcp_client_name: this.clientInfo?.name || "<unknown-client>",
       mcp_client_version: this.clientInfo?.version || "<unknown-version>",
     };
+    if (process.env.IS_GEMINI_CLI_EXTENSION) {
+      clientInfoParams.gemini_cli_extensiont = "true";
+    }
     trackGA4(event, { ...params, ...clientInfoParams });
   }
 
