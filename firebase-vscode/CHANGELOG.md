@@ -1,5 +1,7 @@
 ## NEXT
 
+## 1.8.0
+
 - [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
 
 ## 1.7.0
