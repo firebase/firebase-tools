@@ -89,7 +89,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
         case "no":
           break;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      // The detailed error message are already piped into stderr. No need to repeat here.
       logLabeledError("dataconnect", `Failed to create a ${choice} app template`);
     }
   }
