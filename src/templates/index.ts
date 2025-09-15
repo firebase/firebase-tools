@@ -8,14 +8,28 @@ import { getOrPromptProject } from "../management/projects";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { parseArgs } from "util";
 
-const cmd = new Command("dataconnect template");
+const cmd = new Command("dataconnect:template:nextjs");
+cmd.description('Template for creating NextJS Data Connect apps.');
 
 async function resolveOptions() {
   const options: Partial<Options> = { cwd: process.cwd() };
   await cmd.prepare(options);
   return options as Options;
 }
+
+const { values } = parseArgs({
+    options: {
+        name: {
+            type: 'string',
+            short: 'n',
+            default: 'web-app'
+        }
+    },
+    allowPositionals: true
+});
+
 
 async function getProjectInfo() {
   const options = await resolveOptions();
@@ -47,8 +61,8 @@ async function getProjectInfo() {
 
 async function run() {
   const { sdkConfig } = await getProjectInfo();
-  const webAppDir = path.resolve(__dirname, "../../templates/dataconnect/nextjs/web-app");
-  const outputPath = path.resolve(process.cwd(), "dataconnect-nextjs-app")
+  const webAppDir = path.resolve(__dirname, "../../templates/dataconnect/nextjs");
+  const outputPath = path.resolve(process.cwd(), values.name || 'web-app');
   const spinner = ora({
     text: 'Initializing Data Connect Template',
   });
@@ -61,9 +75,9 @@ async function run() {
   );
   fs.writeFileSync(initFilePath, newOutput);
   spinner.succeed();
-  console.log(`Please run:
-    $ cd dataconnect-nextjs-app
-    $ npm install`);
+  logger.info(`Please run:
+$ cd web-app
+$ npm install`);
 }
 
 run();

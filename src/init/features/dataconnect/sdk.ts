@@ -78,23 +78,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
     switch (choice) {
       case "react":
         await createReactApp(newUniqueId("web-app", listFiles(cwd)));
-        info.apps = [
-          {
-            directory: path.resolve("./", "web-app"),
-            platform: Platform.WEB,
-            frameworks: ["react"],
-          },
-        ];
         break;
       case "next":
-        await createNextApp();
-        info.apps = [
-          {
-            directory: path.resolve("./dataconnect-nextjs-app"),
-            platform: Platform.WEB,
-            frameworks: ["react"],
-          },
-        ];
+        await createNextApp(newUniqueId("web-app", listFiles(cwd)));
         break;
       case "flutter":
         await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
