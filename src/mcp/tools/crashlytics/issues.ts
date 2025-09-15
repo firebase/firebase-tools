@@ -22,8 +22,8 @@ export const get_issue = tool(
     },
   },
   async ({ appId, issueId }) => {
-    if (!appId) return mcpError(`Must specify 'app_id' parameter.`);
-    if (!issueId) return mcpError(`Must specify 'issue_id' parameter.`);
+    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
+    if (!issueId) return mcpError(`Must specify 'issueId' parameter.`);
 
     return toContent(await getIssue(appId, issueId));
   },
