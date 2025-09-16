@@ -1,5 +1,5 @@
-import { localApphostingBuild } from "@apphosting/build";
+import { adapterBuild } from "@apphosting/build";
 
 export async function localBuild(projectRoot: string, framework: string): Promise<string> {
-  return await localApphostingBuild(projectRoot, framework);
+  return await adapterBuild(projectRoot, framework);
 }
