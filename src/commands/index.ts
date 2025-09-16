@@ -213,6 +213,10 @@ export function load(client: any): any {
   client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
   client.remoteconfig.versions = {};
   client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
+  client.remoteconfig.experiments = {};
+  client.remoteconfig.experiments.get = loadCommand("remoteconfig-experiments-get");
+  client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
+  client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
