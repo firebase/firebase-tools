@@ -11,7 +11,9 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -26,6 +28,7 @@ export default async function (context: Context, options: Options): Promise<void
   context.backendConfigs = new Map<string, AppHostingSingle>();
   context.backendLocations = new Map<string, string>();
   context.backendStorageUris = new Map<string, string>();
+  context.backendLocalBuildDir = {};
 
   const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");
@@ -144,6 +147,21 @@ export default async function (context: Context, options: Options): Promise<void
       `Skipping deployment of backend(s) ${skippedBackends.map((cfg) => cfg.backendId).join(", ")}.`,
     );
   }
+
+  for ( const [backendId, config] of context.backendConfigs ) {
+    if (!config.localBuild) {
+      continue;
+    }
+    logLabeledBullet("apphosting", `Starting local build for backend ${config.backendId}`);
+    let builtAppDir;
+    try {
+      builtAppDir = await localBuild(options.projectRoot || "./", "nextjs");
+    } catch (e) {
+      throw new FirebaseError(`Local Build for backend ${config.backendId} failed: ${e}`);
+    }
+    context.backendLocalBuildDir[config.backendId] = builtAppDir;
+  }
+
   return;
 }
 
