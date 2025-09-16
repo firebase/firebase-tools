@@ -1107,6 +1107,9 @@
                             },
                             "type": "array"
                         },
+                        "localBuild": {
+                            "type": "boolean"
+                        },
                         "rootDir": {
                             "type": "string"
                         }
@@ -1133,6 +1136,9 @@
                                     "type": "string"
                                 },
                                 "type": "array"
+                            },
+                            "localBuild": {
+                                "type": "boolean"
                             },
                             "rootDir": {
                                 "type": "string"
