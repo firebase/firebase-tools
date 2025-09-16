@@ -1,4 +1,4 @@
-import packageJson from "../package.json";
+import * as packageJson from "../package.json";
 import { select } from "../../src/prompt";
 import { Command } from "commander";
 import { setUpDataConnectTemplate } from "./templates/data-connect";
@@ -9,8 +9,8 @@ interface CreateFirebaseAppOptions {
 }
 
 const command = new Command(packageJson.name)
-  .option("-- framework <string>", "Whether you want an angular or Next.js app")
-  .option("-- product <string>", "What firebase product you want to use")
+  .option("--framework <string>", "Whether you want an angular or Next.js app")
+  .option("--product <string>", "What firebase product you want to use")
   .action(async (options: CreateFirebaseAppOptions) => {
     const framework =
       options.framework ||

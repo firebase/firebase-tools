@@ -10,8 +10,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "watch": "tsc -w",
-    "prepare": "npm run build"
+    "watch": "tsc -w"
   },
   "keywords": [
     "firebase",
@@ -26,11 +25,11 @@
     "commander": "^12.1.0",
     "firebase-admin": "^12.0.0",
     "inquirer": "^9.2.16",
-    "ora": "^8.2.0"
+    "ora": "^5.4.1"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.19.15",
-    "typescript": "^4.5.4"
+    "@types/node": "20.x",
+    "typescript": "^4.9.3"
   }
 }

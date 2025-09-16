@@ -1,33 +1,21 @@
 import * as fs from "fs-extra";
 import * as path from "path";
-import * as ora from 'ora';
+import ora from 'ora';
 import { Command } from "../../../src/command";
-import { AppConfig, AppPlatform, getSdkConfig, sdkInit } from "../../../src/management/apps";
-import { getOrPromptProject } from "../../../src/management/projects";
 import { Options } from "../../../src/options";
+import { getOrPromptProject } from "../../../src/management/projects";
+import { AppConfig, AppPlatform, getSdkConfig, sdkInit } from '../../../src/management/apps';
 import { FirebaseError } from "../../../src/error";
-import { logger } from "../../../src/logger";
-import { parseArgs } from "util";
+// import { logger } from "../../../src/logger";
 
 const cmd = new Command("dataconnect:template:nextjs");
 cmd.description('Template for creating NextJS Data Connect apps.');
 
-async function resolveOptions() {
-  const options: Partial<Options> = { cwd: process.cwd() };
-  await cmd.prepare(options);
-  return options as Options;
-}
-
-const { values } = parseArgs({
-    options: {
-        name: {
-            type: 'string',
-            short: 'n',
-            default: 'web-app'
-        }
-    },
-    allowPositionals: true
-});
+  async function resolveOptions() {
+    const options: Partial<Options> = { cwd: process.cwd() };
+    // await cmd.prepare(options);
+    return options as Options;
+  }
 
 
 async function getProjectInfo() {
@@ -50,7 +38,7 @@ async function getProjectInfo() {
           sdkConfig = await sdkInit(AppPlatform.WEB, webOptions);
         }
       } else {
-        logger.error("Failed to get sdkConfiguration: " + e);
+        console.error("Failed to get sdkConfiguration: " + e);
         throw e;
       }
     }
@@ -61,7 +49,8 @@ async function getProjectInfo() {
 export async function setUpDataConnectTemplate() {
   const { sdkConfig } = await getProjectInfo();
   const webAppDir = path.resolve(__dirname, "../../templates/dataconnect/nextjs");
-  const outputPath = path.resolve(process.cwd(), values.name || 'web-app');
+  // TODO: Replace this
+  const outputPath = path.resolve(process.cwd(), 'web-app');
   const spinner = ora({
     text: 'Initializing Data Connect Template',
   });
@@ -74,7 +63,8 @@ export async function setUpDataConnectTemplate() {
   );
   fs.writeFileSync(initFilePath, newOutput);
   spinner.succeed();
-  logger.info(`Please run:
+  console.log(`Please run:
 $ cd web-app
 $ npm install`);
+return sdkConfig;
 }
