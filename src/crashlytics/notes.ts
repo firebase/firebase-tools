@@ -44,7 +44,7 @@ export async function createNote(appId: string, issueId: string, note: string): 
  * @param issueId Crashlytics issue id
  * @param noteId Crashlytics note id
  */
-export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<void> {
+export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<string> {
   const requestProjectNumber = parseProjectNumber(appId);
 
   logger.debug(
@@ -56,6 +56,7 @@ export async function deleteNote(appId: string, issueId: string, noteId: string)
       path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
       timeout: TIMEOUT,
     });
+    return `Deleted note ${noteId}`;
   } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to delete note ${noteId} from issue ${issueId} for app ${appId}`,
