@@ -148,11 +148,11 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
-  for ( const [backendId, config] of context.backendConfigs ) {
+  for (const [backendId, config] of context.backendConfigs) {
     if (!config.localBuild) {
       continue;
     }
-    logLabeledBullet("apphosting", `Starting local build for backend ${config.backendId}`);
+    logLabeledBullet("apphosting", `Starting local build for backend ${backendId}`);
     let builtAppDir;
     try {
       builtAppDir = await localBuild(options.projectRoot || "./", "nextjs");
