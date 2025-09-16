@@ -73,7 +73,7 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   for (const cfg of context.backendConfigs.values()) {
-    const projectSourcePath = options.config.path(cfg.rootDir);
+    const projectSourcePath = options.projectRoot ? options.projectRoot : process.cwd();
     const zippedSourcePath = await createArchive(cfg, projectSourcePath);
     const backendLocation = context.backendLocations.get(cfg.backendId);
     if (!backendLocation) {
