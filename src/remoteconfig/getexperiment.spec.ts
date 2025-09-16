@@ -74,6 +74,7 @@ describe("Remote Config Experiment Get", () => {
         NAMESPACE_FIREBASE,
         EXPERIMENT_ID_1,
       );
+
       expect(experimentOne).to.deep.equal(expectedExperimentResult);
     });
 
@@ -94,7 +95,6 @@ describe("Remote Config Experiment Get", () => {
   describe("parseExperiment", () => {
     it("should correctly parse and format an experiment result into a tabular format", () => {
       const resultTable = rcExperiment.parseExperiment(expectedExperimentResult);
-
       const expectedTable = [
         ["Name", expectedExperimentResult.name],
         ["Display Name", expectedExperimentResult.definition.displayName],
@@ -124,8 +124,8 @@ describe("Remote Config Experiment Get", () => {
         head: ["Entry Name", "Value"],
         style: { head: ["green"] },
       });
-      expectedTableString.push(...expectedTable);
 
+      expectedTableString.push(...expectedTable);
       expect(resultTable).to.equal(expectedTableString.toString());
     });
   });

@@ -71,25 +71,6 @@ const experiment4: RemoteConfigExperiment = {
   etag: "e4",
 };
 
-const expectedResultWithAllExperiments: ListExperimentsResult = {
-  experiments: [experiment2, experiment3, experiment1, experiment4],
-};
-
-const expectedResultWithPageTokenAndPageSize: ListExperimentsResult = {
-  experiments: [experiment3, experiment1],
-  nextPageToken: "MTA5",
-};
-
-const expectedResultWithFilter: ListExperimentsResult = {
-  experiments: [experiment1],
-};
-
-const allExperiments: RemoteConfigExperiment[] = [
-  experiment2,
-  experiment3,
-  experiment1,
-  experiment4,
-];
 describe("Remote Config Experiment List", () => {
   afterEach(() => {
     expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");
@@ -101,11 +82,16 @@ describe("Remote Config Experiment List", () => {
       const listExperimentOptions: ListExperimentOptions = {
         pageSize: DEFAULT_PAGE_SIZE,
       };
+      const expectedResultWithAllExperiments: ListExperimentsResult = {
+        experiments: [experiment2, experiment3, experiment1, experiment4],
+      };
       nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments`)
         .query({ page_size: DEFAULT_PAGE_SIZE })
         .reply(200, expectedResultWithAllExperiments);
+
       const result = await listExperiments(PROJECT_ID, NAMESPACE_FIREBASE, listExperimentOptions);
+
       expect(result.experiments).to.deep.equal(expectedResultWithAllExperiments.experiments);
       expect(result.nextPageToken).to.equal(expectedResultWithAllExperiments.nextPageToken);
     });
@@ -117,11 +103,17 @@ describe("Remote Config Experiment List", () => {
         pageSize,
         pageToken,
       };
+      const expectedResultWithPageTokenAndPageSize: ListExperimentsResult = {
+        experiments: [experiment3, experiment1],
+        nextPageToken: "MTA5",
+      };
       nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments`)
         .query({ page_size: pageSize, page_token: pageToken })
         .reply(200, expectedResultWithPageTokenAndPageSize);
+
       const result = await listExperiments(PROJECT_ID, NAMESPACE_FIREBASE, listExperimentOptions);
+
       expect(result.experiments).to.deep.equal(expectedResultWithPageTokenAndPageSize.experiments);
       expect(result.nextPageToken).to.equal(expectedResultWithPageTokenAndPageSize.nextPageToken);
     });
@@ -131,6 +123,9 @@ describe("Remote Config Experiment List", () => {
         pageSize: DEFAULT_PAGE_SIZE,
         filter: `projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments/43`,
       };
+      const expectedResultWithFilter: ListExperimentsResult = {
+        experiments: [experiment1],
+      };
       nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments`)
         .query({
@@ -138,7 +133,9 @@ describe("Remote Config Experiment List", () => {
           page_size: DEFAULT_PAGE_SIZE,
         })
         .reply(200, expectedResultWithFilter);
+
       const result = await listExperiments(PROJECT_ID, NAMESPACE_FIREBASE, listExperimentOptions);
+
       expect(result.experiments).to.deep.equal(expectedResultWithFilter.experiments);
       expect(result.nextPageToken).to.equal(expectedResultWithFilter.nextPageToken);
     });
@@ -152,10 +149,12 @@ describe("Remote Config Experiment List", () => {
         .get(`/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments`)
         .query({ filter: `invalid-filter`, page_size: DEFAULT_PAGE_SIZE })
         .reply(200, {});
+
       const result = await listExperiments(PROJECT_ID, NAMESPACE_FIREBASE, {
         ...listExperimentOptions,
         filter: "invalid-filter",
       });
+
       expect(result.experiments).to.deep.equal(undefined);
     });
 
@@ -179,8 +178,13 @@ describe("Remote Config Experiment List", () => {
 
   describe("parseExperimentList", () => {
     it("should correctly parse and format a list of experiments into a tabular format.", () => {
+      const allExperiments: RemoteConfigExperiment[] = [
+        experiment2,
+        experiment3,
+        experiment1,
+        experiment4,
+      ];
       const resultTable = parseExperimentList(allExperiments);
-
       const expectedTable = new Table({
         head: [
           "Experiment ID",

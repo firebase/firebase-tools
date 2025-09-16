@@ -43,4 +43,23 @@ describe("Remote Config Experiment Delete", () => {
       deleteExperiment(PROJECT_ID, NAMESPACE_FIREBASE, EXPERIMENT_ID),
     ).to.be.rejectedWith(FirebaseError, errorMessage);
   });
+
+  it("should throw FirebaseError if an internal error occurred", async () => {
+    nock(remoteConfigApiOrigin())
+      .delete(
+        `/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/experiments/${EXPERIMENT_ID}`,
+      )
+      .reply(500, {
+        error: {
+          message: "Internal server error",
+        },
+      });
+
+    await expect(
+      deleteExperiment(PROJECT_ID, NAMESPACE_FIREBASE, EXPERIMENT_ID),
+    ).to.be.rejectedWith(
+      FirebaseError,
+      `Failed to delete Remote Config experiment with ID ${EXPERIMENT_ID} for project ${PROJECT_ID}. Error: Request to https://firebaseremoteconfig.googleapis.com/v1/projects/12345679/namespaces/firebase/experiments/1 had HTTP Error: 500, Internal server error`,
+    );
+  });
 });
