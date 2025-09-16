@@ -36,6 +36,7 @@ function initializeContext(): Context {
     backendStorageUris: new Map<string, string>([
       ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
     ]),
+    backendLocalBuildDir: {},
   };
 }
 
