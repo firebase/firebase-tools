@@ -10,12 +10,15 @@ printusage() {
   echo "  version: 'patch', 'minor', 'major', or 'artifactsOnly'"
 }
 
+touch /workspace/version_number.txt
+
 VERSION=$1
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
 elif [[ $VERSION == "artifactsOnly" ]]; then
   echo "Skipping npm package publish since VERSION is artifactsOnly."
+  npm view firebase-tools version > /workspace/version_number.txt
   exit 0
 elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
   printusage
@@ -81,6 +84,7 @@ echo "Ran tests."
 echo "Making a $VERSION version..."
 npm version $VERSION
 NEW_VERSION=$(jq -r ".version" package.json)
+echo $NEW_VERSION > /workspace/version_number.txt
 echo "Made a $VERSION version."
 
 echo "Making the release notes..."

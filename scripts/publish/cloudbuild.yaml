@@ -117,12 +117,6 @@ steps:
     entrypoint: "node"
     args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
 
-  # Grab the latest version, store in workspace
-  - id: "Read New Version Number from npm"
-    name: "node"
-    entrypoint: "sh"
-    args: ["-c", "npm view firebase-tools version > /workspace/version_number.txt"]
-
   # Publish the Firebase docker image
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "sh"
