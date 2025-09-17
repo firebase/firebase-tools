@@ -51,7 +51,7 @@ export async function updateIssue(appId: string, issueId: string, state: State):
       },
       path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       queryParams: { updateMask: "state" },
-      body: { issue: { state } },
+      body: { state },
       timeout: TIMEOUT,
     });
 
