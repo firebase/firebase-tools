@@ -66,7 +66,8 @@ export const delete_note = tool(
     }),
     annotations: {
       title: "Delete Crashlytics Issue Note",
-      readOnlyHint: true,
+      readOnlyHint: false,
+      destructiveHint: true,
     },
     _meta: {
       requiresAuth: true,

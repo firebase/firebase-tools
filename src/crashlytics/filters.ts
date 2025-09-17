@@ -14,8 +14,14 @@ export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexid
 
 export const EventFilterSchema = z
   .object({
-    intervalStartTime: z.string().optional().describe(`A timestamp in ISO 8601 string format`),
-    intervalEndTime: z.string().optional().describe(`A timestamp in ISO 8601 string format.`),
+    intervalStartTime: z
+      .string()
+      .optional()
+      .describe(`A timestamp in ISO 8601 string format. Defaults to 7 days ago.`),
+    intervalEndTime: z
+      .string()
+      .optional()
+      .describe(`A timestamp in ISO 8601 string format. Defaults to now.`),
     versionDisplayNames: z
       .array(z.string())
       .optional()

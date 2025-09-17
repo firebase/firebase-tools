@@ -53,8 +53,11 @@ they would like to perform. Here are some possibilities and instructions follow 
 
 Follow these steps to fetch issues and prioritize them.
 
-  1. Use the 'crashlytics_list_top_issues' tool to fetch up to 20 issues.
-  2. Use the 'crashlytics_list_top_versions' tool to fetch the top versions for this app.
+  1. Use the 'crashlytics_get_top_issues' tool to fetch up to 20 issues.
+    1a. Analyze the user's query and apply the appropriate filters.
+    1b. If the user asks for crashes, then set the issueErrorType filter to *FATAL*.
+    1c. If the user asks about a particular time range, then set both the intervalStartTime and intervalEndTime.
+  2. Use the 'crashlytics_get_top_versions' tool to fetch the top versions for this app.
   3. If the user instructions include statements about prioritization, use those instructions.
   4. If the user instructions do not include statements about prioritization, 
   then prioritize the returned issues using the following criteria:
@@ -73,8 +76,9 @@ Follow these steps to fetch issues and prioritize them.
 Follow these steps to diagnose and fix issues.
 
   1. Make sure you have a good understanding of the code structure and where different functionality exists
-  2. Use the 'crashlytics_get_issue_details' tool to get more context on the issue.
-  3. Use the 'crashlytics_get_sample_crash_for_issue' tool to get 3 example crashes for this issue.
+  2. Use the 'crashlytics_get_issue' tool to get more context on the issue.
+  3. Use the 'crashlytics_list_events' tool to get an example crash for this issue.
+    3a. Apply the same filtering criteria that you used to find the issue, so that you find an appropriate event.
   4. Read the files that exist in the stack trace of the issue to understand the crash deeply.
   5. Determine the root cause of the crash.
   6. Write out a plan using the following criteria:

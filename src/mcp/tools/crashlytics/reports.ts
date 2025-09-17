@@ -16,6 +16,10 @@ function getReportContent(
   return async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
     filter ??= {};
+    if (!!filter.intervalStartTime && !filter.intervalEndTime) {
+      // interval.end_time is required if interval.start_time is set but the agent likes to forget it
+      filter.intervalEndTime = new Date().toISOString();
+    }
     return toContent(await getReport(report, appId, filter, pageSize));
   };
 }
