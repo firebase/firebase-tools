@@ -22,6 +22,7 @@ export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.jso
 export const APP_PATHS_MANIFEST: typeof APP_PATHS_MANIFEST_TYPE = "app-paths-manifest.json";
 export const SERVER_REFERENCE_MANIFEST: `${typeof SERVER_REFERENCE_MANIFEST_TYPE}.json` =
   "server-reference-manifest.json";
+export const NEXTJS_IMAGE_OPTIMIZATION_MEMORY = "512MiB";
 
 export const CONFIG_FILES = ["next.config.js", "next.config.mjs"] as const;
 
