@@ -37,8 +37,9 @@ import * as api from "../api";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
+import * as serverJson from "./server.json";
 
-const SERVER_VERSION = "0.3.0";
+const SERVER_VERSION = serverJson.version;
 
 const cmd = new Command("experimental:mcp");
 

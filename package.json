@@ -58,6 +58,7 @@
     "type": "git",
     "url": "https://github.com/firebase/firebase-tools.git"
   },
+  "mcpName": "com.firebase/firebase-tools",
   "keywords": [
     "cdn",
     "cli",
