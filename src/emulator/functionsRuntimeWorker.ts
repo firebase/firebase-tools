@@ -114,23 +114,12 @@ export class RuntimeWorker {
     this.state = RuntimeWorkerState.IDLE;
   }
 
-  sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.runtime.process.send(JSON.stringify(debug), (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
+  
 
   request(
     req: http.RequestOptions,
     resp: http.ServerResponse,
-    body?: unknown,
-    debug?: boolean,
+    body?: unknown
   ): Promise<void> {
     if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
@@ -182,10 +171,6 @@ export class RuntimeWorker {
         const piped = _resp.pipe(resp);
         piped.on("finish", () => finishReq("finish"));
       });
-      if (debug) {
-        proxy.setSocketKeepAlive(false);
-        proxy.setTimeout(0);
-      }
       proxy.on("timeout", () => {
         this.logger.log(
           "ERROR",
@@ -365,7 +350,6 @@ export class RuntimeWorkerPool {
     req: http.RequestOptions,
     resp: http.ServerResponse,
     body: unknown,
-    debug?: FunctionsRuntimeBundle["debug"],
   ): Promise<void> {
     this.log(`submitRequest(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId);
@@ -374,10 +358,7 @@ export class RuntimeWorkerPool {
         "Internal Error: can't call submitRequest without checking for idle workers",
       );
     }
-    if (debug) {
-      await worker.sendDebugMsg(debug);
-    }
-    return worker.request(req, resp, body, !!debug);
+    return worker.request(req, resp, body);
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {

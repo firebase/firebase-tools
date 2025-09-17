@@ -927,25 +927,7 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
-async function handleMessage(message: string) {
-  let debug: FunctionsRuntimeBundle["debug"];
-  try {
-    debug = JSON.parse(message) as FunctionsRuntimeBundle["debug"];
-  } catch (e: any) {
-    new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
-    await flushAndExit(1);
-    return;
-  }
 
-  if (FUNCTION_DEBUG_MODE) {
-    if (debug) {
-      FUNCTION_TARGET_NAME = debug.functionTarget;
-      FUNCTION_SIGNATURE = debug.functionSignature;
-    } else {
-      new EmulatorLog("WARN", "runtime-warning", "Expected debug payload while in debug mode.");
-    }
-  }
-}
 
 async function main(): Promise<void> {
   // Since the functions run as attached processes they naturally inherit SIGINT
@@ -1015,6 +997,21 @@ async function main(): Promise<void> {
     res.status(404).send();
   });
   app.all(`/*`, async (req: express.Request, res: express.Response) => {
+    if (FUNCTION_DEBUG_MODE) {
+      const debugHeader = req.header("x-firebase-functions-debug");
+      if (debugHeader) {
+        try {
+          const debug = JSON.parse(decodeURIComponent(debugHeader)) as FunctionsRuntimeBundle["debug"];
+          FUNCTION_TARGET_NAME = debug.functionTarget;
+          FUNCTION_SIGNATURE = debug.functionSignature;
+        } catch (e) {
+          new EmulatorLog("WARN", "runtime-warning", "Could not parse x-firebase-functions-debug header");
+        }
+      } else {
+        new EmulatorLog("WARN", "runtime-warning", "Expected x-firebase-functions-debug header while in debug mode.");
+      }
+    }
+
     try {
       const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
         return mod?.[functionTargetPart];
@@ -1049,23 +1046,7 @@ async function main(): Promise<void> {
     logDebug(`Listening to port: ${process.env.PORT}`);
   });
 
-  // Event emitters do not work well with async functions, so we
-  // construct our own promise chain to make sure each message is
-  // handled only after the previous message handling is complete.
-  let messageHandlePromise = Promise.resolve();
-  process.on("message", (message: string) => {
-    messageHandlePromise = messageHandlePromise
-      .then(() => {
-        return handleMessage(message);
-      })
-      .catch((err) => {
-        // All errors *should* be handled within handleMessage. But just in case,
-        // we want to exit fatally on any error related to message handling.
-        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
-        new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
-        return flushAndExit(1);
-      });
-  });
+  
 }
 
 if (require.main === module) {

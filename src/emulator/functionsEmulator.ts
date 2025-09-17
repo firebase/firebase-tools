@@ -1859,22 +1859,23 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     let debugBundle;
+    const headers = { ...req.headers };
     if (this.debugMode) {
       debugBundle = {
         functionTarget: trigger.entryPoint,
         functionSignature: getSignatureType(trigger),
       };
+      headers["x-firebase-functions-debug"] = JSON.stringify(debugBundle);
     }
     await pool.submitRequest(
       trigger.id,
       {
         method,
         path,
-        headers: req.headers,
+        headers: headers,
       },
       res as http.ServerResponse,
       reqBody,
-      debugBundle,
     );
   }
 }
