@@ -458,16 +458,12 @@ export enum ThreadState {
 
 /** Request message for the ListEvents method. */
 export interface ListEventsRequest {
-  /** The Firebase application. Formatted like "projects/{project}/apps/{app_id}" */
-  parent: string;
   /** The maximum number of events per page. If omitted, defaults to 10. */
   pageSize?: number;
   /** A page token, received from a previous calls. */
   pageToken?: string;
   /** Filter only the desired events. */
   filter?: EventFilters;
-  /** The list of Event fields to include in the response. If omitted, the full event is returned. */
-  readMask?: string;
 }
 
 /** Response message for the ListEvents method. */
@@ -476,6 +472,22 @@ export interface ListEventsResponse {
   events: Event[];
   /** A pagination token to retrieve the next page of events. */
   nextPageToken?: string;
+}
+
+/** Request message for the BatchGetEvents method. */
+export interface BatchGetEventsRequest {
+  /**
+   * The resource names of the desired events.
+   * A maximum of 100 events can be retrieved in a batch.
+   * Format: "projects/{project}/apps/{app_id}/events/{event_id}"
+   */
+  names: string[];
+}
+
+/** Response message for the BatchGetEvents method. */
+export interface BatchGetEventsResponse {
+  /** Returns one or more events. */
+  events: Event[];
 }
 
 /**
@@ -590,8 +602,6 @@ export interface DeviceFilter {
 
 /** The request method for the GetReport method. */
 export interface GetReportRequest {
-  /** The report name. Formatted like "projects/{project}/apps/{app_id}/reports/{report}". */
-  name: string;
   /** Filters to customize the report. */
   filter?: ReportFilters;
   /** The maximum number of result groups to return. If omitted, defaults to 25. */
@@ -637,8 +647,6 @@ export interface ReportFilters {
 
 /** Request message for the UpdateIssue method. */
 export interface UpdateIssueRequest {
-  /** The issue to update. */
-  issue: Issue;
-  /** The list of Issue fields to update. Currently only "state" is mutable. */
-  updateMask?: string;
+  /** Only the "state" field is mutable. */
+  state: State;
 }

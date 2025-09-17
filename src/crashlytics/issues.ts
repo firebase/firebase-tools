@@ -38,24 +38,24 @@ export async function getIssue(appId: string, issueId: string): Promise<Issue> {
  * @param state State.OPEN or State.CLOSED
  * @return An updated Issue
  */
-export async function updateIssue(appId: string, issueId: string, state: State): Promise<string> {
+export async function updateIssue(appId: string, issueId: string, state: State): Promise<Issue> {
   const requestProjectNumber = parseProjectNumber(appId);
   try {
     logger.debug(
       `[crashlytics] updateIssue called with appId: ${appId}, issueId: ${issueId}, state: ${state}`,
     );
-    await CRASHLYTICS_API_CLIENT.request<UpdateIssueRequest, Issue>({
+    const response = await CRASHLYTICS_API_CLIENT.request<UpdateIssueRequest, Issue>({
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
       path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
       queryParams: { updateMask: "state" },
-      body: { issue: { state } },
+      body: { state },
       timeout: TIMEOUT,
     });
 
-    return `Issue ${issueId} state changed to ${state}`;
+    return response.body;
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to update issue ${issueId} for app ${appId}`, {
       original: getError(err),
