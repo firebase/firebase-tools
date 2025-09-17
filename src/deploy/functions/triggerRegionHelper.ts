@@ -10,10 +10,13 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
   const regionLookups: Array<Promise<void>> = [];
 
   for (const ep of backend.allEndpoints(want)) {
-    if (ep.platform === "gcfv1" || !backend.isEventTriggered(ep)) {
+    if (
+      ep.platform === "gcfv1" ||
+      (!backend.isEventTriggered(ep) && !backend.isScheduleTriggered(ep))
+    ) {
       continue;
     }
-    regionLookups.push(serviceForEndpoint(ep).ensureTriggerRegion(ep));
+    regionLookups.push(serviceForEndpoint(ep).ensureTriggerRegion(ep as any));
   }
   await Promise.all(regionLookups);
 }
