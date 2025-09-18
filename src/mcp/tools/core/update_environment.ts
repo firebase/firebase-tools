@@ -40,7 +40,7 @@ export const update_environment = tool(
       readOnlyHint: false,
     },
     _meta: {
-      optionalProjectDir: true,
+      optionalFirebaseProjectDir: true,
       requiresAuth: false,
       requiresProject: false,
     },

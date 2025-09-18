@@ -25,7 +25,7 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import { getProjectId } from "../projectUtils";
-import { mcpAuthError, noProjectRoot, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
+import { mcpAuthError, noProjectDirectory, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
 import { trackGA4 } from "../track";
 import { Config } from "../config";
 import { loadRC } from "../rc";
@@ -287,9 +287,9 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
-    if (!tool.mcp._meta?.optionalProjectDir) {
+    if (!tool.mcp._meta?.optionalFirebaseProjectDir) {
       if (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot)) {
-        return noProjectRoot(this.cachedProjectRoot);
+        return noProjectDirectory(this.cachedProjectRoot);
       }
     }
 

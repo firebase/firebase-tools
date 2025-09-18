@@ -30,7 +30,7 @@ export async function requireGeminiToS(projectId: string): Promise<CallToolResul
   return undefined;
 }
 
-export function noProjectRoot(projectRoot: string | undefined): CallToolResult {
+export function noProjectDirectory(projectRoot: string | undefined): CallToolResult {
   return mcpError(
     `The current project directory '${
       projectRoot || "<NO PROJECT DIRECTORY FOUND>"

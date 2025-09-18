@@ -38,7 +38,7 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
     };
     _meta?: {
       /** Set this on a tool if it cannot work without a Firebase project directory. */
-      optionalProjectDir?: boolean;
+      optionalFirebaseProjectDir?: boolean;
       /** Set this on a tool if it *always* requires a project to work. */
       requiresProject?: boolean;
       /** Set this on a tool if it *always* requires a signed-in user to work. */
