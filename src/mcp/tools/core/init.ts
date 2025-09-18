@@ -159,7 +159,7 @@ export const init = tool(
     }
     if (features.dataconnect) {
       if (features.dataconnect.app_description) {
-        // If app description is provided, check project and Gemini in Firebase API ToS.
+        // If app description is provided, ensure the Gemini in Firebase API is enabled.
         const err = await requireGeminiToS(projectId);
         if (err) return err;
       }
