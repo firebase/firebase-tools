@@ -41,7 +41,7 @@ describe("apphosting", () => {
       }),
     };
     it("Supports passing localBuild information", async () => {
-      const context = {
+      const context: Context = {
         backendConfigs: new Map<string, AppHostingSingle>([
           [
             "foo",
@@ -68,24 +68,30 @@ describe("apphosting", () => {
       };
 
       orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout");
+;
 
       await expect(release(context, opts)).to.eventually.not.rejected;
-      sinon.assert.calledOnceWithMatch(orchestrateRolloutStub, "my-project", "us-central1", "foo", {
-        config: {
-          env: [{ variable: "CHICKEN", value: "bok-bok" }],
-        },
-        source: {
-          archive: {
-            userStorageUri: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
-            rootDirecotry: "/",
-            locallyBuiltSource: true,
+      sinon.assert.calledOnceWithMatch(orchestrateRolloutStub, {
+	projectId: "my-project",
+	location: "us-central1",
+	backendId: "foo",
+	buildInput: {
+          config: {
+            env: [{ variable: "CHICKEN", value: "bok-bok" }],
           },
-        },
+          source: {
+            archive: {
+              userStorageUri: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+              rootDirectory: "/",
+              locallyBuiltSource: true,
+            },
+          },
+	},
       });
     });
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
-      const context = {
+      const context: Context = {
         backendConfigs: new Map<string, AppHostingSingle>([
           [
             "foo",
