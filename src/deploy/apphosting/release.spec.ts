@@ -58,13 +58,13 @@ describe("apphosting", () => {
           ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
         ]),
         backendLocalBuilds: {
-          "foo": {
-	    buildConfig: {
-	      env: [{ variable: "CHICKEN", value: "bok-bok" }],
+          foo: {
+            buildConfig: {
+              env: [{ variable: "CHICKEN", value: "bok-bok" }],
             },
-	    buildDir: "./",
+            buildDir: "./",
           },
-	},
+        },
       };
 
       orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout");
