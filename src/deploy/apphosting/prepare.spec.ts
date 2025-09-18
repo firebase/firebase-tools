@@ -29,6 +29,7 @@ function initializeContext(): Context {
     backendConfigs: new Map<string, AppHostingSingle>(),
     backendLocations: new Map<string, string>(),
     backendStorageUris: new Map<string, string>(),
+    backendLocalBuilds: {},
   };
 }
 

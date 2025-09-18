@@ -106,7 +106,7 @@ export interface Env {
   secret?: string;
   value?: string;
   availability?: Availability[];
-};
+}
 
 export interface BuildConfig {
   minInstances?: number;

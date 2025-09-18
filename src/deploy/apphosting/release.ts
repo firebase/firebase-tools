@@ -34,12 +34,17 @@ export default async function (context: Context, options: Options): Promise<void
       continue;
     }
     backendIds.push(backendId);
+    let buildConfig;
+    if (config.localBuild) {
+      buildConfig = context.backendLocalBuilds[backendId].buildConfig;
+    }
     rollouts.push(
       orchestrateRollout({
         projectId,
         location,
         backendId,
         buildInput: {
+	  config: buildConfig,
           source: {
             archive: {
               userStorageUri: storageUri,
