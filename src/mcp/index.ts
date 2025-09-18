@@ -286,15 +286,15 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
+    // Check if the current project directory exists.
     if (!tool.mcp._meta?.optionalProjectDir) {
-      // Always allow this tool only, to fix the issue
-      // Check if the current project directory exists.
       if (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot)) {
         return noProjectRoot(this.cachedProjectRoot);
       }
     }
-    let projectId = await this.getProjectId();
+
     // Check if the project ID is set.
+    let projectId = await this.getProjectId();
     if (tool.mcp._meta?.requiresProject && !projectId) {
       return NO_PROJECT_ERROR;
     }
