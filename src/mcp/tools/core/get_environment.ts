@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { getAliases } from "../../../projectUtils";
 import { dump } from "js-yaml";
 import { getAllAccounts } from "../../../auth";
+import { configstore } from "../../../configstore";
 
 export const get_environment = tool(
   {
@@ -22,6 +23,7 @@ export const get_environment = tool(
   },
   async (_, { projectId, host, accountEmail, rc, config }) => {
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
+    const geminiToS = !!configstore.get("gemini");
     return toContent(`# Environment Information
 
 Project Directory: ${host.cachedProjectRoot}
@@ -30,6 +32,7 @@ Active Project ID: ${
       projectId ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}` : "<NONE>"
     }
 Authenticated User: ${accountEmail || "<NONE>"}
+Gemini in Firebase Terms of Service: ${geminiToS ? "Accepted" : "Not Accepted"}
 
 # Available Project Aliases (format: '[alias]: [projectId]')
 

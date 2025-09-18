@@ -25,15 +25,13 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import { getProjectId } from "../projectUtils";
-import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors";
+import { mcpAuthError, noProjectRoot, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
 import { trackGA4 } from "../track";
 import { Config } from "../config";
 import { loadRC } from "../rc";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
 import { existsSync } from "node:fs";
-import { ensure, check } from "../ensureApiEnabled";
-import * as api from "../api";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
@@ -288,20 +286,15 @@ export class FirebaseMcpServer {
     const tool = this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
-    // Check if the current project directory exists.
-    if (
-      tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
-      (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
-    ) {
-      return mcpError(
-        `The current project directory '${
-          this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"
-        }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
-      );
+    if (!tool.mcp._meta?.optionalProjectDir) {
+      // Always allow this tool only, to fix the issue
+      // Check if the current project directory exists.
+      if (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot)) {
+        return noProjectRoot(this.cachedProjectRoot);
+      }
     }
-
-    // Check if the project ID is set.
     let projectId = await this.getProjectId();
+    // Check if the project ID is set.
     if (tool.mcp._meta?.requiresProject && !projectId) {
       return NO_PROJECT_ERROR;
     }
@@ -316,13 +309,8 @@ export class FirebaseMcpServer {
 
     // Check if the tool requires Gemini in Firebase API.
     if (tool.mcp._meta?.requiresGemini) {
-      if (configstore.get("gemini")) {
-        await ensure(projectId, api.cloudAiCompanionOrigin(), "");
-      } else {
-        if (!(await check(projectId, api.cloudAiCompanionOrigin(), ""))) {
-          return mcpGeminiError(projectId);
-        }
-      }
+      const err = await requireGeminiToS(projectId);
+      if (err) return err;
     }
 
     const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };

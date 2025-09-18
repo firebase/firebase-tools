@@ -4,12 +4,13 @@ import { mcpError, toContent } from "../../util";
 import { setNewActive } from "../../../commands/use";
 import { assertAccount, setProjectAccount } from "../../../auth";
 import { existsSync } from "node:fs";
+import { configstore } from "../../../configstore";
 
 export const update_environment = tool(
   {
     name: "update_environment",
     description:
-      "Updates Firebase environment config such as project directory, active project, active user account, and more. Use `firebase_get_environment` to see the currently configured environment.",
+      "Updates Firebase environment config such as project directory, active project, active user account, accept terms of service, and more. Use `firebase_get_environment` to see the currently configured environment.",
     inputSchema: z.object({
       project_dir: z
         .string()
@@ -29,17 +30,25 @@ export const update_environment = tool(
         .describe(
           "The email address of the signed-in user to authenticate as when interacting with the current project directory.",
         ),
+      accept_gemini_tos: z
+        .boolean()
+        .optional()
+        .describe("Accept the Gemini in Firebase terms of service."),
     }),
     annotations: {
       title: "Update Firebase Environment",
       readOnlyHint: false,
     },
     _meta: {
+      optionalProjectDir: true,
       requiresAuth: false,
       requiresProject: false,
     },
   },
-  async ({ project_dir, active_project, active_user_account }, { config, rc, host }) => {
+  async (
+    { project_dir, active_project, active_user_account, accept_gemini_tos },
+    { config, rc, host },
+  ) => {
     let output = "";
     if (project_dir) {
       if (!existsSync(project_dir))
@@ -58,9 +67,11 @@ export const update_environment = tool(
       setProjectAccount(host.cachedProjectRoot!, active_user_account);
       output += `- Updated active account to '${active_user_account}'\n`;
     }
-
+    if (accept_gemini_tos) {
+      configstore.set("gemini", true);
+      output += `- Accepted the Gemini terms of service acceptance\n`;
+    }
     if (output === "") output = "No changes were made.";
-
     return toContent(output);
   },
 );
