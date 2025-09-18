@@ -55,7 +55,7 @@ export class FirebaseMcpServer {
   private _ready: boolean = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
-  cachedProjectRoot?: string;
+  cachedProjectDir?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
@@ -154,11 +154,11 @@ export class FirebaseMcpServer {
 
   async detectProjectRoot(): Promise<string> {
     await timeoutFallback(this.ready(), null, 2000);
-    if (this.cachedProjectRoot) return this.cachedProjectRoot;
+    if (this.cachedProjectDir) return this.cachedProjectDir;
     const storedRoot = this.getStoredClientConfig().projectRoot;
-    this.cachedProjectRoot = storedRoot || this.startupRoot || process.cwd();
-    this.log("debug", "detected and cached project root: " + this.cachedProjectRoot);
-    return this.cachedProjectRoot;
+    this.cachedProjectDir = storedRoot || this.startupRoot || process.cwd();
+    this.log("debug", "detected and cached project root: " + this.cachedProjectDir);
+    return this.cachedProjectDir;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
@@ -233,14 +233,14 @@ export class FirebaseMcpServer {
 
   setProjectRoot(newRoot: string | null): void {
     this.updateStoredClientConfig({ projectRoot: newRoot });
-    this.cachedProjectRoot = newRoot || undefined;
+    this.cachedProjectDir = newRoot || undefined;
     this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
     void this.server.sendPromptListChanged();
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = { cwd: this.cachedProjectRoot, isMCP: true };
+    const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
     await cmd.prepare(options);
     return options;
   }
@@ -270,7 +270,7 @@ export class FirebaseMcpServer {
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -287,9 +287,9 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
-    if (!tool.mcp._meta?.optionalFirebaseProjectDir) {
-      if (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot)) {
-        return noProjectDirectory(this.cachedProjectRoot);
+    if (!tool.mcp._meta?.optionalProjectDir) {
+      if (!this.cachedProjectDir || !existsSync(this.cachedProjectDir)) {
+        return noProjectDirectory(this.cachedProjectDir);
       }
     }
 
@@ -313,7 +313,7 @@ export class FirebaseMcpServer {
       if (err) return err;
     }
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     const toolsCtx: ServerToolContext = {
       projectId: projectId,
       host: this,
@@ -350,7 +350,7 @@ export class FirebaseMcpServer {
         arguments: p.mcp.arguments,
       })),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -374,7 +374,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     const promptsCtx: ServerPromptContext = {
       projectId: projectId,
       host: this,

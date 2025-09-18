@@ -26,7 +26,7 @@ export const get_environment = tool(
     const geminiToS = !!configstore.get("gemini");
     return toContent(`# Environment Information
 
-Project Directory: ${host.cachedProjectRoot}
+Project Directory: ${host.cachedProjectDir}
 Project Config Path: ${config.projectFileExists("firebase.json") ? config.path("firebase.json") : "<NO CONFIG PRESENT>"}
 Active Project ID: ${
       projectId ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}` : "<NONE>"

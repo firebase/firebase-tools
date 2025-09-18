@@ -40,7 +40,7 @@ export const update_environment = tool(
       readOnlyHint: false,
     },
     _meta: {
-      optionalFirebaseProjectDir: true,
+      optionalProjectDir: true,
       requiresAuth: false,
       requiresProject: false,
     },
@@ -64,7 +64,7 @@ export const update_environment = tool(
     }
     if (active_user_account) {
       assertAccount(active_user_account, { mcp: true });
-      setProjectAccount(host.cachedProjectRoot!, active_user_account);
+      setProjectAccount(host.cachedProjectDir!, active_user_account);
       output += `- Updated active account to '${active_user_account}'\n`;
     }
     if (accept_gemini_tos) {
