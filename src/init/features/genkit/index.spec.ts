@@ -73,6 +73,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -120,6 +121,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -138,6 +140,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -163,6 +166,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.onFirstCall().resolves(true).onSecondCall().resolves(false);
@@ -179,6 +183,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.onFirstCall().resolves(true).onSecondCall().resolves(false);
@@ -203,6 +208,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(false);

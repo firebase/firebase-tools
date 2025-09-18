@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as path from "node:path";
 import { CommanderStatic } from "commander";
 import { first, last, size, head, keys, values } from "lodash";
 
@@ -355,9 +356,7 @@ export class Command {
   private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    let activeProject = options.projectRoot
-      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
-      : undefined;
+    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
@@ -389,6 +388,21 @@ export class Command {
       // If there's an alias named 'default', default to that.
       options.projectAlias = "default";
       options.project = aliases["default"];
+    }
+  }
+
+  private configstoreProject(dir: string) {
+    const projectMap = configstore.get("activeProjects") ?? {};
+    let currentDir = path.resolve(dir);
+    while (true) {
+      if (projectMap[currentDir]) {
+        return projectMap[currentDir];
+      }
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) {
+        return null;
+      }
+      currentDir = parentDir;
     }
   }
 

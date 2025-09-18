@@ -333,21 +333,6 @@ export async function getFunction(
 }
 
 /**
- *  List all functions in a region.
- *  Customers should generally use backend.existingBackend.
- */
-export async function listFunctions(
-  projectId: string,
-  region: string,
-): Promise<OutputCloudFunction[]> {
-  const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable.includes(region)) {
-    throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
-  }
-  return res.functions;
-}
-
-/**
  *  List all functions in all regions
  *  Customers should generally use backend.existingBackend and backend.checkAvailability.
  */

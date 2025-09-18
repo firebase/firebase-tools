@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 
-import { input, select } from "../../../prompt";
+import { input, select, confirm } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
@@ -17,7 +17,7 @@ import {
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, Platform, SCHEMA_ID } from "../../../dataconnect/types";
+import { Schema, Service, File, SCHEMA_ID } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -27,10 +27,10 @@ import {
   envOverride,
   promiseWithSpinner,
   logLabeledError,
+  newUniqueId,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
-import { getPlatformFromFolder } from "../../../dataconnect/fileUtils";
 import {
   generateOperation,
   generateSchema,
@@ -38,7 +38,6 @@ import {
   PROMPT_GENERATE_SEED_DATA,
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
-import { Options } from "../../../options";
 import { trackGA4 } from "../../../track";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
@@ -55,6 +54,8 @@ export interface RequiredInfo {
   locationId: string;
   cloudSqlInstanceId: string;
   cloudSqlDatabase: string;
+  // If true, we should provision a new Cloud SQL instance.
+  shouldProvisionCSQL: boolean;
   // If present, this is downloaded from an existing deployed service.
   serviceGql?: ServiceGQL;
 }
@@ -69,28 +70,25 @@ export interface ServiceGQL {
   seedDataGql?: string;
 }
 
-const emptyConnector = {
-  id: "example",
-  path: "./example",
-  files: [],
-};
-
-const defaultConnector = {
-  id: "example",
-  path: "./example",
-  files: [
+const templateServiceInfo: ServiceGQL = {
+  schemaGql: [{ path: "schema.gql", content: SCHEMA_TEMPLATE }],
+  connectors: [
     {
-      path: "queries.gql",
-      content: QUERIES_TEMPLATE,
-    },
-    {
-      path: "mutations.gql",
-      content: MUTATIONS_TEMPLATE,
+      id: "example",
+      path: "./example",
+      files: [
+        {
+          path: "queries.gql",
+          content: QUERIES_TEMPLATE,
+        },
+        {
+          path: "mutations.gql",
+          content: MUTATIONS_TEMPLATE,
+        },
+      ],
     },
   ],
 };
-
-const defaultSchema = { path: "schema.gql", content: SCHEMA_TEMPLATE };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
@@ -102,6 +100,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     locationId: "",
     cloudSqlInstanceId: "",
     cloudSqlDatabase: "",
+    shouldProvisionCSQL: false,
   };
   if (setup.projectId) {
     const hasBilling = await isBillingEnabled(setup);
@@ -128,6 +127,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
+
+  await sdk.askQuestions(setup);
 }
 
 // actuate writes product specific files and makes product specifc API calls.
@@ -150,12 +151,28 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   try {
     await actuateWithInfo(setup, config, info, options);
+    await sdk.actuate(setup, config);
   } finally {
     void trackGA4("dataconnect_init", {
       project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
       flow: info.analyticsFlow,
+      provision_cloud_sql: String(info.shouldProvisionCSQL),
     });
   }
+
+  if (info.appDescription) {
+    setup.instructions.push(
+      `You can visualize the Data Connect Schema in Firebase Console:
+
+    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
+    );
+  }
+  if (!setup.isBillingEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
+  }
+  setup.instructions.push(
+    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
+  );
 }
 
 async function actuateWithInfo(
@@ -166,17 +183,14 @@ async function actuateWithInfo(
 ): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
-    // Use the static template if it starts from scratch.
+    // If no project is present, just save the template files.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(
-      config,
-      info,
-      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
-      options,
-    );
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
-  const hasBilling = await isBillingEnabled(setup);
-  if (hasBilling) {
+
+  await ensureApis(projectId, /* silent =*/ true);
+  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
+  if (provisionCSQL) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
     await setupCloudSql({
       projectId: projectId,
@@ -186,22 +200,23 @@ async function actuateWithInfo(
       requireGoogleMlIntegration: false,
     });
   }
+
+  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   if (!info.appDescription) {
-    // Download an existing service to a local workspace.
+    if (!info.serviceGql) {
+      // Try download the existing service if it exists.
+      // MCP tool `firebase_init` may setup an existing service.
+      await downloadService(info, serviceName);
+    }
     if (info.serviceGql) {
+      // Save the downloaded service from the backend.
       info.analyticsFlow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
     info.analyticsFlow += "_save_template";
-    return await writeFiles(
-      config,
-      info,
-      { schemaGql: [defaultSchema], connectors: [defaultConnector] },
-      options,
-    );
+    return await writeFiles(config, info, templateServiceInfo, options);
   }
-  const serviceName = `projects/${projectId}/locations/${info.locationId}/services/${info.serviceId}`;
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
 
   // Use Gemini to generate schema.
@@ -215,8 +230,8 @@ async function actuateWithInfo(
     // If the service already exists, fallback to save only the generated schema.
     // Later customer can run `firebase deploy` to override the existing service.
     //
-    // `firebase init dataconnect` always picks a new service ID, so it should never hit this case.
-    // However, `firebase_init` MCP tool may pass an existing service ID.
+    // - CLI cmd `firebase init dataconnect` always picks a new service ID, so it should never hit this case.
+    // - MCP tool `firebase_init` may pick an existing service ID, but shouldn't set app_description at the same time.
     logLabeledError(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
@@ -231,7 +246,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      hasBilling,
+      provisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
@@ -340,49 +355,6 @@ function schemasDeploySequence(
   ];
 }
 
-export async function postSetup(setup: Setup, config: Config, options: Options): Promise<void> {
-  const info = setup.featureInfo?.dataconnect;
-  if (!info) {
-    throw new Error("Data Connect feature RequiredInfo is not provided");
-  }
-
-  const instructions: string[] = [];
-  const cwdPlatformGuess = await getPlatformFromFolder(process.cwd());
-  // If a platform can be detected or a connector is chosen via env var, always
-  // setup SDK. FDC_CONNECTOR is used for scripts under https://firebase.tools/.
-  if (cwdPlatformGuess !== Platform.NONE || envOverride("FDC_CONNECTOR", "")) {
-    await sdk.doSetup(setup, config, options);
-  } else {
-    instructions.push(
-      `To add the generated SDK to your app, run ${clc.bold("firebase init dataconnect:sdk")}`,
-    );
-  }
-
-  if (info.appDescription) {
-    instructions.push(
-      `You can visualize the Data Connect Schema in Firebase Console:
-
-    https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
-    );
-  }
-
-  if (setup.projectId) {
-    if (!setup.isBillingEnabled) {
-      instructions.push(upgradeInstructions(setup.projectId));
-    }
-  }
-  instructions.push(
-    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite or Cloud SQL Postgres Instance.`,
-  );
-
-  if (instructions.length) {
-    logger.info(`\n${clc.bold("To get started with Firebase Data Connect:")}`);
-    for (const i of instructions) {
-      logBullet(i + "\n");
-    }
-  }
-}
-
 async function writeFiles(
   config: Config,
   info: RequiredInfo,
@@ -440,6 +412,8 @@ async function writeConnectorFiles(
     join(dir, connectorInfo.path, "connector.yaml"),
     subbedConnectorYaml,
     !!options.force,
+    // Default to override connector.yaml
+    true,
   );
   for (const f of connectorInfo.files) {
     await config.askWriteProjectFile(
@@ -491,12 +465,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!existingServices.length) {
     return;
   }
-  const existingServicesAndSchemas = await Promise.all(
-    existingServices.map(async (s) => {
-      return { service: s, schema: await getSchema(s.name) };
-    }),
-  );
-  const choice = await chooseExistingService(existingServicesAndSchemas);
+  const choice = await chooseExistingService(existingServices);
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
@@ -505,46 +474,50 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   }
   // Choose to use an existing service.
   info.analyticsFlow += "_pick_existing_service";
-  const serviceName = parseServiceName(choice.service.name);
+  const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
-  info.serviceGql = {
-    schemaGql: [],
-    connectors: [emptyConnector],
-  };
-  if (choice.schema) {
-    const primaryDatasource = choice.schema.datasources.find((d) => d.postgresql);
-    if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-      const instanceName = parseCloudSQLInstanceName(
-        primaryDatasource.postgresql.cloudSql.instance,
-      );
-      info.cloudSqlInstanceId = instanceName.instanceId;
-    }
-    if (choice.schema.source.files?.length) {
-      info.serviceGql.schemaGql = choice.schema.source.files;
-    }
-    info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
-    const connectors = await listConnectors(choice.service.name, [
-      "connectors.name",
-      "connectors.source.files",
-    ]);
-    if (connectors.length) {
-      info.serviceGql.connectors = connectors.map((c) => {
-        const id = c.name.split("/").pop()!;
-        return {
-          id,
-          path: connectors.length === 1 ? "./connector" : `./${id}`,
-          files: c.source.files || [],
-        };
-      });
-    }
-  }
-  return;
+  await downloadService(info, choice.name);
 }
 
-interface serviceAndSchema {
-  service: Service;
-  schema?: Schema;
+async function downloadService(info: RequiredInfo, serviceName: string): Promise<void> {
+  const schema = await getSchema(serviceName);
+  if (!schema) {
+    return;
+  }
+  info.serviceGql = {
+    schemaGql: [],
+    connectors: [
+      {
+        id: "example",
+        path: "./example",
+        files: [],
+      },
+    ],
+  };
+  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
+  if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+    const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
+    info.cloudSqlInstanceId = instanceName.instanceId;
+  }
+  if (schema.source.files?.length) {
+    info.serviceGql.schemaGql = schema.source.files;
+  }
+  info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+  const connectors = await listConnectors(serviceName, [
+    "connectors.name",
+    "connectors.source.files",
+  ]);
+  if (connectors.length) {
+    info.serviceGql.connectors = connectors.map((c) => {
+      const id = c.name.split("/").pop()!;
+      return {
+        id,
+        path: connectors.length === 1 ? "./example" : `./${id}`,
+        files: c.source.files || [],
+      };
+    });
+  }
 }
 
 /**
@@ -558,16 +531,14 @@ interface serviceAndSchema {
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param existing
  */
-async function chooseExistingService(
-  existing: serviceAndSchema[],
-): Promise<serviceAndSchema | undefined> {
+async function chooseExistingService(existing: Service[]): Promise<Service | undefined> {
   const fdcConnector = envOverride("FDC_CONNECTOR", "");
   const fdcService = envOverride("FDC_SERVICE", "");
   const serviceEnvVar = fdcConnector || fdcService;
   if (serviceEnvVar) {
     const [serviceLocationFromEnvVar, serviceIdFromEnvVar] = serviceEnvVar.split("/");
     const serviceFromEnvVar = existing.find((s) => {
-      const serviceName = parseServiceName(s.service.name);
+      const serviceName = parseServiceName(s.name);
       return (
         serviceName.serviceId === serviceIdFromEnvVar &&
         serviceName.location === serviceLocationFromEnvVar
@@ -582,17 +553,15 @@ async function chooseExistingService(
     const envVarName = fdcConnector ? "FDC_CONNECTOR" : "FDC_SERVICE";
     logWarning(`Unable to pick up an existing service based on ${envVarName}=${serviceEnvVar}.`);
   }
-  const choices: Array<{ name: string; value: serviceAndSchema | undefined }> = existing.map(
-    (s) => {
-      const serviceName = parseServiceName(s.service.name);
-      return {
-        name: `${serviceName.location}/${serviceName.serviceId}`,
-        value: s,
-      };
-    },
-  );
+  const choices: Array<{ name: string; value: Service | undefined }> = existing.map((s) => {
+    const serviceName = parseServiceName(s.name);
+    return {
+      name: `${serviceName.location}/${serviceName.serviceId}`,
+      value: s,
+    };
+  });
   choices.push({ name: "Create a new service", value: undefined });
-  return await select<serviceAndSchema | undefined>({
+  return await select<Service | undefined>({
     message:
       "Your project already has existing services. Which would you like to set up local files for?",
     choices,
@@ -647,7 +616,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
-      default: "us-central1",
+      default: "us-east4",
+    });
+    info.shouldProvisionCSQL = await confirm({
+      message: `Would you like to provision your Cloud SQL instance and database now?`,
+      default: true,
     });
   }
 
@@ -676,30 +649,41 @@ async function locationChoices(setup: Setup) {
   } else {
     // Hardcoded locations for when there is no project set up.
     return [
-      { name: "us-central1", value: "us-central1" },
-      { name: "europe-north1", value: "europe-north1" },
-      { name: "europe-central2", value: "europe-central2" },
-      { name: "europe-west1", value: "europe-west1" },
-      { name: "southamerica-west1", value: "southamerica-west1" },
-      { name: "us-east4", value: "us-east4" },
-      { name: "us-west1", value: "us-west1" },
+      { name: "asia-east1", value: "asia-east1" },
+      { name: "asia-east2", value: "asia-east2" },
+      { name: "asia-northeast1", value: "asia-northeast1" },
+      { name: "asia-northeast2", value: "asia-northeast2" },
+      { name: "asia-northeast3", value: "asia-northeast3" },
+      { name: "asia-south1", value: "asia-south1" },
       { name: "asia-southeast1", value: "asia-southeast1" },
+      { name: "asia-southeast2", value: "asia-southeast2" },
+      { name: "australia-southeast1", value: "australia-southeast1" },
+      { name: "australia-southeast2", value: "australia-southeast2" },
+      { name: "europe-central2", value: "europe-central2" },
+      { name: "europe-north1", value: "europe-north1" },
+      { name: "europe-southwest1", value: "europe-southwest1" },
+      { name: "europe-west1", value: "europe-west1" },
+      { name: "europe-west2", value: "europe-west2" },
+      { name: "europe-west3", value: "europe-west3" },
+      { name: "europe-west4", value: "europe-west4" },
+      { name: "europe-west6", value: "europe-west6" },
+      { name: "europe-west8", value: "europe-west8" },
+      { name: "europe-west9", value: "europe-west9" },
+      { name: "me-west1", value: "me-west1" },
+      { name: "northamerica-northeast1", value: "northamerica-northeast1" },
+      { name: "northamerica-northeast2", value: "northamerica-northeast2" },
+      { name: "southamerica-east1", value: "southamerica-east1" },
+      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "us-central1", value: "us-central1" },
+      { name: "us-east1", value: "us-east1" },
+      { name: "us-east4", value: "us-east4" },
+      { name: "us-south1", value: "us-south1" },
+      { name: "us-west1", value: "us-west1" },
+      { name: "us-west2", value: "us-west2" },
+      { name: "us-west3", value: "us-west3" },
+      { name: "us-west4", value: "us-west4" },
     ];
   }
-}
-
-/**
- * Returns a unique ID that's either `recommended` or `recommended-{i}`.
- * Avoid existing IDs.
- */
-function newUniqueId(recommended: string, existingIDs: string[]): string {
-  let id = recommended;
-  let i = 1;
-  while (existingIDs.includes(id)) {
-    id = `${recommended}-${i}`;
-    i++;
-  }
-  return id;
 }
 
 function defaultServiceId(): string {
@@ -722,3 +706,4 @@ export function toDNSCompatibleId(id: string): string {
   }
   return id || "app";
 }
+export { newUniqueId };

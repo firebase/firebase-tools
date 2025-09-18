@@ -1,5 +1,14 @@
 ## NEXT
 
+## 1.8.0
+
+- [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
+
+## 1.7.0
+
+- Update internal `firebase-tools` dependency to 14.15.2
+- Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
+
 ## 1.6.1
 
 - Update internal `firebase-tools` dependency to 14.13.0

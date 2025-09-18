@@ -17,7 +17,6 @@ async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
         storageBucket: "foo.appspot.com",
         databaseURL: "https://foo.firebaseio.com",
       },
-      userEnvOpt: { functionsSource: "", projectId: "PROJECT" },
       userEnvs: {},
     })
   ).backend;

@@ -17,6 +17,9 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
+  if (!activeFeatures.includes("core")) {
+    activeFeatures.unshift("core");
+  }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
   }

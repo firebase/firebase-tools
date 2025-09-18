@@ -12,7 +12,6 @@ import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
-import { isVSCodeExtension } from "../vsCodeUtils";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -32,6 +31,7 @@ export interface EmulatorHubArgs {
 export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
 export class EmulatorHub extends ExpressBasedEmulator {
+  static MISSING_PROJECT_PLACEHOLDER = "demo-no-project";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
@@ -44,7 +44,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
    * This is useful so that multiple copies of the Firebase CLI can discover
    * each other.
    */
-  static readLocatorFile(projectId: string): Locator | undefined {
+  static readLocatorFile(projectId: string | undefined): Locator | undefined {
     const locatorPath = this.getLocatorFilePath(projectId);
     if (!fs.existsSync(locatorPath)) {
       return undefined;
@@ -53,19 +53,24 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
 
-    // TODO: In case the locator file format is changed, handle issues with format incompatability
-    if (!isVSCodeExtension() && locator.version !== this.CLI_VERSION) {
-      logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
-      return undefined;
+    if (locator.version !== this.CLI_VERSION) {
+      logger.debug(
+        `Found emulator locator with different version: ${JSON.stringify(locator)}, CLI_VERSION: ${this.CLI_VERSION}`,
+      );
     }
 
     return locator;
   }
 
-  static getLocatorFilePath(projectId: string): string {
+  static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
+    if (!projectId) {
+      projectId = EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    }
     const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
+    const locatorPath = path.join(dir, filename);
+    logger.debug(`Emulator locator file path: ${locatorPath}`);
+    return locatorPath;
   }
 
   constructor(private args: EmulatorHubArgs) {

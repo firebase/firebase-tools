@@ -12,8 +12,12 @@ import { get_environment } from "./get_environment";
 import { update_environment } from "./update_environment";
 import { list_projects } from "./list_projects";
 import { consult_assistant } from "./consult_assistant";
+import { login } from "./login";
+import { logout } from "./logout";
 
 export const coreTools: ServerTool[] = [
+  login,
+  logout,
   get_project,
   list_apps,
   get_admin_sdk_config,
