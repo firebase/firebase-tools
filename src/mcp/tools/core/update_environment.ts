@@ -69,7 +69,7 @@ export const update_environment = tool(
     }
     if (accept_gemini_tos) {
       configstore.set("gemini", true);
-      output += `- Accepted the Gemini terms of service acceptance\n`;
+      output += `- Accepted the Gemini in Firebase terms of service\n`;
     }
     if (output === "") output = "No changes were made.";
     return toContent(output);
