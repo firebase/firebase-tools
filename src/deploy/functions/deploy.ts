@@ -92,7 +92,8 @@ export async function uploadSourceV2(
     return res.storageSource;
   }
 
-  // New behavior: BYO bucket since we're moving away from the GCF API.
+  // Future behavior: BYO bucket if we're using the Cloud Run API directly because it does not provide a source upload API.
+  // We use this behavior whenever the "runfunctions" experiment is enabled for now just to help vet the codepath incrementally.
   // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
   const bucketName = `firebase-functions-src-${projectNumber}`;
   await gcs.upsertBucket({
@@ -106,21 +107,24 @@ export async function uploadSourceV2(
         rule: [
           {
             action: { type: "Delete" },
-            condition: { age: 1 }, // Delete objects after 1 day
+            // Delete objects after 1 day. A safe default to avoid unbounded storage costs;
+            // consider making this configurable in the future.
+            condition: { age: 1 },
           },
         ],
       },
     },
   });
+  const objectPath = `${source.functionsSourceV2Hash}.zip`;
   await gcs.upload(
     uploadOpts,
-    `${bucketName}/${source.functionsSourceV2Hash}.zip`,
+    `${bucketName}/${objectPath}`,
     undefined,
     true /* ignoreQuotaProject */,
   );
   return {
     bucket: bucketName,
-    object: source.functionsSourceV2Hash + ".zip",
+    object: objectPath,
   };
 }
 
