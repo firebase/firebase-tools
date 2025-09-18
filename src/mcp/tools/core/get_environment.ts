@@ -23,7 +23,7 @@ export const get_environment = tool(
   },
   async (_, { projectId, host, accountEmail, rc, config }) => {
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
-    const geminiToS = !!configstore.get("gemini");
+    const geminiTosAccepted = !!configstore.get("gemini");
     return toContent(`# Environment Information
 
 Project Directory: ${host.cachedProjectDir}
@@ -32,7 +32,7 @@ Active Project ID: ${
       projectId ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}` : "<NONE>"
     }
 Authenticated User: ${accountEmail || "<NONE>"}
-Gemini in Firebase Terms of Service: ${geminiToS ? "Accepted" : "Not Accepted"}
+Gemini in Firebase Terms of Service: ${geminiTosAccepted ? "Accepted" : "Not Accepted"}
 
 # Available Project Aliases (format: '[alias]: [projectId]')
 
