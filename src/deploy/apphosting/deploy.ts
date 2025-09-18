@@ -53,7 +53,8 @@ export default async function (context: Context, options: Options): Promise<void
 
   await Promise.all(
     Object.values(context.backendConfigs).map(async (cfg) => {
-      const { projectSourcePath, zippedSourcePath } = await createArchive(cfg, options.projectRoot);
+      const projectSourcePath = options.projectRoot ? options.projectRoot : process.cwd();
+      const zippedSourcePath = await createArchive(cfg, projectSourcePath);
       const backendLocation = context.backendLocations[cfg.backendId];
       if (!backendLocation) {
         throw new FirebaseError(
