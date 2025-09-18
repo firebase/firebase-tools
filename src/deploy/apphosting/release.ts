@@ -44,7 +44,7 @@ export default async function (context: Context, options: Options): Promise<void
         location,
         backendId,
         buildInput: {
-	  config: buildConfig,
+          config: buildConfig,
           source: {
             archive: {
               userStorageUri: storageUri,

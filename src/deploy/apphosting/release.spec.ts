@@ -42,70 +42,69 @@ describe("apphosting", () => {
     };
     it("Supports passing localBuild information", async () => {
       const context = {
-	backendConfigs: new Map<string, AppHostingSingle>([
-	  [
+        backendConfigs: new Map<string, AppHostingSingle>([
+          [
             "foo",
             {
               backendId: "foo",
               rootDir: "/",
               ignore: [],
-	      localBuild: true,
+              localBuild: true,
             },
-	  ],
-	]),
-	backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-	backendStorageUris: new Map<string, string>([
-	  ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-	]),
-	backendLocalBuilds: {
-	  foo: {
-	    env: [{variable: "CHICKEN", value: "bok-bok"}],
-	  },
+          ],
+        ]),
+        backendLocations: new Map<string, string>([["foo", "us-central1"]]),
+        backendStorageUris: new Map<string, string>([
+          ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
+        ]),
+        backendLocalBuilds: {
+          "foo": {
+	    buildConfig: {
+	      env: [{ variable: "CHICKEN", value: "bok-bok" }],
+            },
+	    buildDir: "./",
+          },
 	},
       };
 
       orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout");
-      sinon.assert.calledOnceWithMatch(
-	orchestrateRolloutStub,
-	"my-project",
-	"us-central1",
-	"foo",
-	{
-	  config: {
-	    env: [{variable: "CHICKEN", value: "bok-bok"}],
-	  },
-	  source: {
-	    archive: {
-	      userStorageUri: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
-	      rootDirecotry: "/",
-	      locallyBuiltSource: true,
-	    },
-	  },
-	},
-      );
+
+      await expect(release(context, opts)).to.eventually.not.rejected;
+      sinon.assert.calledOnceWithMatch(orchestrateRolloutStub, "my-project", "us-central1", "foo", {
+        config: {
+          env: [{ variable: "CHICKEN", value: "bok-bok" }],
+        },
+        source: {
+          archive: {
+            userStorageUri: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+            rootDirecotry: "/",
+            locallyBuiltSource: true,
+          },
+        },
+      });
     });
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
       const context = {
-	backendConfigs: new Map<string, AppHostingSingle>([
-	  [
+        backendConfigs: new Map<string, AppHostingSingle>([
+          [
             "foo",
             {
               backendId: "foo",
               rootDir: "/",
               ignore: [],
             },
-	  ],
-	]),
-	backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-	backendStorageUris: new Map<string, string>([
-	  ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-	]),
-	backendLocalBuilds: {},
+          ],
+        ]),
+        backendLocations: new Map<string, string>([["foo", "us-central1"]]),
+        backendStorageUris: new Map<string, string>([
+          ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
+        ]),
+        backendLocalBuilds: {},
       };
       orchestrateRolloutStub = sinon
-      .stub(rollout, "orchestrateRollout")
-      .throws("Unexpected orchestrateRollout call");
+        .stub(rollout, "orchestrateRollout")
+        .throws("Unexpected orchestrateRollout call");
 
       orchestrateRolloutStub.onFirstCall().rejects();
       orchestrateRolloutStub.onSecondCall().resolves();
