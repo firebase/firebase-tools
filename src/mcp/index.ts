@@ -25,15 +25,13 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import { getProjectId } from "../projectUtils";
-import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors";
+import { mcpAuthError, noProjectDirectory, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
 import { trackGA4 } from "../track";
 import { Config } from "../config";
 import { loadRC } from "../rc";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
 import { existsSync } from "node:fs";
-import { ensure, check } from "../ensureApiEnabled";
-import * as api from "../api";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
@@ -57,7 +55,7 @@ export class FirebaseMcpServer {
   private _ready: boolean = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
-  cachedProjectRoot?: string;
+  cachedProjectDir?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
@@ -156,11 +154,11 @@ export class FirebaseMcpServer {
 
   async detectProjectRoot(): Promise<string> {
     await timeoutFallback(this.ready(), null, 2000);
-    if (this.cachedProjectRoot) return this.cachedProjectRoot;
+    if (this.cachedProjectDir) return this.cachedProjectDir;
     const storedRoot = this.getStoredClientConfig().projectRoot;
-    this.cachedProjectRoot = storedRoot || this.startupRoot || process.cwd();
-    this.log("debug", "detected and cached project root: " + this.cachedProjectRoot);
-    return this.cachedProjectRoot;
+    this.cachedProjectDir = storedRoot || this.startupRoot || process.cwd();
+    this.log("debug", "detected and cached project root: " + this.cachedProjectDir);
+    return this.cachedProjectDir;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
@@ -235,14 +233,14 @@ export class FirebaseMcpServer {
 
   setProjectRoot(newRoot: string | null): void {
     this.updateStoredClientConfig({ projectRoot: newRoot });
-    this.cachedProjectRoot = newRoot || undefined;
+    this.cachedProjectDir = newRoot || undefined;
     this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
     void this.server.sendPromptListChanged();
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = { cwd: this.cachedProjectRoot, isMCP: true };
+    const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
     await cmd.prepare(options);
     return options;
   }
@@ -272,7 +270,7 @@ export class FirebaseMcpServer {
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -289,15 +287,10 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
-    if (
-      tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
-      (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
-    ) {
-      return mcpError(
-        `The current project directory '${
-          this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"
-        }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
-      );
+    if (!tool.mcp._meta?.optionalProjectDir) {
+      if (!this.cachedProjectDir || !existsSync(this.cachedProjectDir)) {
+        return noProjectDirectory(this.cachedProjectDir);
+      }
     }
 
     // Check if the project ID is set.
@@ -316,16 +309,11 @@ export class FirebaseMcpServer {
 
     // Check if the tool requires Gemini in Firebase API.
     if (tool.mcp._meta?.requiresGemini) {
-      if (configstore.get("gemini")) {
-        await ensure(projectId, api.cloudAiCompanionOrigin(), "");
-      } else {
-        if (!(await check(projectId, api.cloudAiCompanionOrigin(), ""))) {
-          return mcpGeminiError(projectId);
-        }
-      }
+      const err = await requireGeminiToS(projectId);
+      if (err) return err;
     }
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     const toolsCtx: ServerToolContext = {
       projectId: projectId,
       host: this,
@@ -362,7 +350,7 @@ export class FirebaseMcpServer {
         arguments: p.mcp.arguments,
       })),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -386,7 +374,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     const promptsCtx: ServerPromptContext = {
       projectId: projectId,
       host: this,
