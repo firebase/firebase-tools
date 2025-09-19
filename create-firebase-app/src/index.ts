@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as packageJson from "../package.json";
 import { select } from "../../src/prompt.js";
 import { Command as FirebaseCommand } from '../../src/command';
@@ -8,11 +9,13 @@ import { requireAuth } from "../../src/requireAuth";
 interface CreateFirebaseAppOptions {
   framework?: string;
   product?: string;
+  appName: string;
 }
 
 const command = new Command(packageJson.name)
   .option("--framework <string>", "Whether you want an angular or Next.js app")
   .option("--product <string>", "What firebase product you want to use")
+  .option("--app-name <string>", "Name of the app", "web-app")
   .action(async (options: CreateFirebaseAppOptions) => {
     const firebaseCmd = new FirebaseCommand(packageJson.name);
     firebaseCmd.prepare(options);
@@ -30,7 +33,7 @@ const command = new Command(packageJson.name)
             message: "What firebase product you want to use?",
         }));
         if(product === 'Data Connect') {
-            await setUpDataConnectTemplate();
+            await setUpDataConnectTemplate(options.appName);
         }
     }
   });

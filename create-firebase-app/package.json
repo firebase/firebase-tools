@@ -7,7 +7,7 @@
     "templates"
   ],
   "bin": {
-    "create-firebase-app": "./dist/create-firebase-app/index.js"
+    "create-firebase-app": "./dist/create-firebase-app/src/index.js"
   },
   "scripts": {
     "build": "npx tsc --build",

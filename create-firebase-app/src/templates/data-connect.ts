@@ -20,6 +20,8 @@ cmd.description('Template for creating NextJS Data Connect apps.');
 
 async function getProjectInfo() {
   const options = await resolveOptions();
+  const firebaseCmd = new Command('dataconnect:template');
+  firebaseCmd.prepare(options);
   const project = await getOrPromptProject(options);
   let sdkConfig: AppConfig | null = null;
   options.projectId = project.projectId;
@@ -46,11 +48,10 @@ async function getProjectInfo() {
   return { project, sdkConfig };
 }
 
-export async function setUpDataConnectTemplate() {
+export async function setUpDataConnectTemplate(appName: string) {
   const { sdkConfig } = await getProjectInfo();
   const webAppDir = path.resolve(__dirname, "../../../../templates/dataconnect/nextjs");
-  // TODO: Replace this
-  const outputPath = path.resolve(process.cwd(), 'web-app');
+  const outputPath = path.resolve(process.cwd(), appName);
   const spinner = ora({
     text: 'Initializing Data Connect Template',
   });
