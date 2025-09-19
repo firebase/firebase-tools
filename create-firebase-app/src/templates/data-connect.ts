@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import * as path from "path";
-import ora from 'ora';
+import * as ora from 'ora';
 import { Command } from "../../../src/command";
 import { Options } from "../../../src/options";
 import { getOrPromptProject } from "../../../src/management/projects";
@@ -48,7 +48,7 @@ async function getProjectInfo() {
 
 export async function setUpDataConnectTemplate() {
   const { sdkConfig } = await getProjectInfo();
-  const webAppDir = path.resolve(__dirname, "../../templates/dataconnect/nextjs");
+  const webAppDir = path.resolve(__dirname, "../../../../templates/dataconnect/nextjs");
   // TODO: Replace this
   const outputPath = path.resolve(process.cwd(), 'web-app');
   const spinner = ora({

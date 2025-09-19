@@ -1,1 +1,0 @@
-{"version":3,"file":"vsCodeUtils.js","sourceRoot":"","sources":["vsCodeUtils.ts"],"names":[],"mappings":";;;AAAA,IAAI,sBAAsB,GAAG,KAAK,CAAC;AACnC;;GAEG;AACH,SAAgB,iBAAiB;IAC/B,OAAO,sBAAsB,CAAC;AAChC,CAAC;AAFD,8CAEC;AAED,SAAgB,oBAAoB,CAAC,CAAU;IAC7C,sBAAsB,GAAG,CAAC,CAAC;AAC7B,CAAC;AAFD,oDAEC"}

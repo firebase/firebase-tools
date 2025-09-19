@@ -1,7 +1,9 @@
 import * as packageJson from "../package.json";
-import { select } from "../../src/prompt";
+import { select } from "../../src/prompt.js";
+import { Command as FirebaseCommand } from '../../src/command';
 import { Command } from "commander";
-import { setUpDataConnectTemplate } from "./templates/data-connect";
+import { setUpDataConnectTemplate } from "./templates/data-connect.js";
+import { requireAuth } from "../../src/requireAuth";
 
 interface CreateFirebaseAppOptions {
   framework?: string;
@@ -12,6 +14,9 @@ const command = new Command(packageJson.name)
   .option("--framework <string>", "Whether you want an angular or Next.js app")
   .option("--product <string>", "What firebase product you want to use")
   .action(async (options: CreateFirebaseAppOptions) => {
+    const firebaseCmd = new FirebaseCommand(packageJson.name);
+    firebaseCmd.prepare(options);
+  await requireAuth(options, false);
     const framework =
       options.framework ||
       (await select({
@@ -22,7 +27,7 @@ const command = new Command(packageJson.name)
       // ask follow-up question for what product to use.
         const product = options.product || (await select({
             choices: ['Data Connect'],
-            message: "What firebase product do you want to use?",
+            message: "What firebase product you want to use?",
         }));
         if(product === 'Data Connect') {
             await setUpDataConnectTemplate();

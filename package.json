@@ -8,9 +8,6 @@
     "firebase-tools": "./lib/bin/firebase.js",
     "create-dataconnect-nextjs": "./lib/templates/index.js"
   },
-  "workspaces": [
-    "create-firebase-app"
-  ],
   "scripts": {
     "build": "tsc && npm run copyfiles",
     "build:publish": "tsc --build tsconfig.publish.json && npm run copyfiles",

@@ -1,1 +1,0 @@
-{"version":3,"file":"getDefaultDatabaseInstance.js","sourceRoot":"","sources":["getDefaultDatabaseInstance.ts"],"names":[],"mappings":";;;AAAA,oDAA2D;AAE3D;;;;GAIG;AACI,KAAK,UAAU,0BAA0B,CAAC,OAAY;IAC3D,MAAM,cAAc,GAAG,MAAM,IAAA,6BAAkB,EAAC,OAAO,CAAC,OAAO,CAAC,CAAC;IACjE,OAAO,cAAc,CAAC,SAAS,EAAE,wBAAwB,IAAI,EAAE,CAAC;AAClE,CAAC;AAHD,gEAGC"}

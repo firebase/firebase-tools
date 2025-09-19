@@ -1,16 +1,25 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "outDir": "lib",
-    "rootDir": "..",
-    "strict": false,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
+    "strict": true /* enable all strict type-checking options */,
+    "allowJs": true,
+    "checkJs": false,
     "sourceMap": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react",
+    "outDir": "dist",
+    "module": "commonjs",
+    "target": "ES2017",
+    "lib": ["ES2020", "DOM"],
+    "moduleResolution": "node",
     "skipLibCheck": true,
-    "moduleResolution": "node"
+    "rootDirs": ["src", "../src", "common"],
+    "types": [
+      "node"
+    ]
   },
-  "include": ["../src/**/*.ts", "src/**/*.ts"],
-  "exclude": ["node_modules", "../node_modules", "lib", "../lib", "src/**/*.spec.ts", "../src/**/*.spec.ts"]
+  "ts-node": {
+    "esm": true
+  },
+  "include": ["src/**/*", "common/**/*", "../src/types/**/*", "package.json", "../package.json"]
 }
