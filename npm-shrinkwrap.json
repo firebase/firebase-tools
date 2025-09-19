@@ -91,7 +91,6 @@
       "devDependencies": {
         "@angular-devkit/architect": "^0.1402.2",
         "@angular-devkit/core": "^14.2.2",
-        "@apphosting/build": "*",
         "@google/events": "^5.1.1",
         "@types/archiver": "^6.0.0",
         "@types/async-lock": "^1.4.2",
@@ -183,7 +182,6 @@
     },
     "../firebase-framework-tools/packages/@apphosting/build": {
       "version": "0.1.3",
-      "dev": true,
       "license": "Apache-2.0",
       "dependencies": {
         "@apphosting/common": "*",
