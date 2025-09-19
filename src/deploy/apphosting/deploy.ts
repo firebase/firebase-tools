@@ -73,9 +73,9 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   for (const cfg of context.backendConfigs.values()) {
-    let rootDir = options.projectRoot ? options.projectRoot : process.cwd();
+    let rootDir = options.projectRoot ?? process.cwd();
     if (cfg.localBuild) {
-      rootDir = context.backendLocalBuildDir[cfg.backendId]
+      rootDir = context.backendLocalBuilds[cfg.backendId].buildDir;
       if (!rootDir) {
 	throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
       }

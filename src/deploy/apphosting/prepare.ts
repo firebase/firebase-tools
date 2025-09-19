@@ -28,7 +28,7 @@ export default async function (context: Context, options: Options): Promise<void
   context.backendConfigs = new Map<string, AppHostingSingle>();
   context.backendLocations = new Map<string, string>();
   context.backendStorageUris = new Map<string, string>();
-  context.backendLocalBuildDir = {};
+  context.backendLocalBuilds = {};
 
   const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");
@@ -159,7 +159,7 @@ export default async function (context: Context, options: Options): Promise<void
     } catch (e) {
       throw new FirebaseError(`Local Build for backend ${config.backendId} failed: ${e}`);
     }
-    context.backendLocalBuildDir[config.backendId] = builtAppDir;
+    context.backendLocalBuilds[config.backendId].buildDir = builtAppDir;
   }
 
   return;
