@@ -41,10 +41,11 @@ Active user: ${accountEmail || "<NONE>"}
       or in the appropriate google services file for the application type.
     * For Android apps, you will typically find the app ID in a file called google-services.json under the
       mobilesdk_app_id key. The file is most often located in the app directory that contains the src directory.
-    * For iOS apps, you will typically find the app ID in a file called GoogleService-Info.plist under the
-      GOOGLE_APP_ID key. The file is most often located in the main project directory.
+    * For iOS apps, you will typically find the app ID in a property list file called GoogleService-Info.plist under the
+      GOOGLE_APP_ID key. The plist file is most often located in the main project directory.
     * Sometimes developers will not check in the google services file because it is a shared or public
-      repository. If you can't find the file, check files that have been included in the .gitignore.
+      repository. If you can't find the file, the files may be included in the .gitignore. Check again for the file 
+      removing restrictions around looking for tracked files.
     * Developers may have multiple google services files that map to different releases. In cases like this,
       developers may create different directories to hold each like alpha/google-services.json or alpha/GoogleService-Info.plist.
       In other cases, developers may change the suffix of the file to something like google-services-alpha.json or 
@@ -97,8 +98,8 @@ Follow these steps to diagnose and fix issues.
   3. Use the 'crashlytics_list_events' tool to get an example crash for this issue.
     3a. Apply the same filtering criteria that you used to find the issue, so that you find an appropriate event.
   4. Read the files that exist in the stack trace of the issue to understand the crash deeply.
-  5. Determine possible root causes for the crash.
-  6. Critique your own determination, analyzing how plausible this scenario is.
+  5. Determine possible root causes for the crash - no more than 5 potential root causes.
+  6. Critique your own determination, analyzing how plausible each scenario is given the crash details.
   7. Choose the most likely root cause given your analysis.
   8. Write out a plan for the most likely root cause using the following criteria:
     8a. Write out a description of the issue and including
