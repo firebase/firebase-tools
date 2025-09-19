@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
+import { requireGeminiToS } from "../../errors";
 
 export const init = tool(
   {
@@ -157,6 +158,11 @@ export const init = tool(
       };
     }
     if (features.dataconnect) {
+      if (features.dataconnect.app_description) {
+        // If app description is provided, ensure the Gemini in Firebase API is enabled.
+        const err = await requireGeminiToS(projectId);
+        if (err) return err;
+      }
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
         analyticsFlow: "mcp",
