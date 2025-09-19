@@ -34,6 +34,7 @@ export default async function (context: Context, options: Options): Promise<void
       continue;
     }
     backendIds.push(backendId);
+    // TODO(9114): Add run_command
     let buildConfig;
     if (config.localBuild) {
       buildConfig = context.backendLocalBuilds[backendId].buildConfig;
