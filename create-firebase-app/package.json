@@ -10,8 +10,8 @@
     "create-firebase-app": "./dist/create-firebase-app/index.js"
   },
   "scripts": {
-    "build": "tsdown --format cjs",
-    "dev": "tsdown --format cjs && node dist/index.js",
+    "build": "npx tsc --build",
+    "dev": "npm run build && node dist/create-firebase-app/index.js",
     "dev:watch": "nodemon --watch dist --exec \"node dist/index.js\"",
     "watch": "tsc -w"
   },
