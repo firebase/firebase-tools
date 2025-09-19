@@ -38,6 +38,7 @@ function initializeContext(): Context {
     ]),
     backendLocations: new Map<string, string>([["foo", "us-central1"]]),
     backendStorageUris: new Map<string, string>(),
+    backendLocalBuilds: {},
   };
 }
 
