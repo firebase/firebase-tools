@@ -67,41 +67,39 @@ describe("apphosting", () => {
         },
       };
 
-      orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves(
-	{
-	  rollout: {
-	    name: "rollout-name",
-	    state: "QUEUED",
-	    pauseTime: "does not matter",
-	    build: "dnm",
-	    createTime: "dnm",
-	    updateTime: "dnm",
-	    uid: "dnm",
-	    etag: "dnm",
-	    reconciling: false,
-	  },
-	  build: {
-	    name: "build-name",
-	    state: "BUILDING",
-	    error: {code: 0, message: "everything good", details: "details"},
-	    image: "dnm",
-	    source: {},
-	    sourceRef: "",
-	    etag: "",
-	    uuid: "",
-	    reconciling: false,
-	    createTime: "",
-	    updateTime: "",
-	    deleteTime:"",
-	  }});
-;
-
+      orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves({
+        rollout: {
+          name: "rollout-name",
+          state: "QUEUED",
+          pauseTime: "does not matter",
+          build: "dnm",
+          createTime: "dnm",
+          updateTime: "dnm",
+          uid: "dnm",
+          etag: "dnm",
+          reconciling: false,
+        },
+        build: {
+          name: "build-name",
+          state: "BUILDING",
+          error: { code: 0, message: "everything good", details: "details" },
+          image: "dnm",
+          source: {},
+          sourceRef: "",
+          etag: "",
+          uuid: "",
+          reconciling: false,
+          createTime: "",
+          updateTime: "",
+          deleteTime: "",
+        },
+      });
       await expect(release(context, opts)).to.eventually.not.rejected;
       sinon.assert.calledOnceWithMatch(orchestrateRolloutStub, {
-	projectId: "my-project",
-	location: "us-central1",
-	backendId: "foo",
-	buildInput: {
+        projectId: "my-project",
+        location: "us-central1",
+        backendId: "foo",
+        buildInput: {
           config: {
             env: [{ variable: "CHICKEN", value: "bok-bok" }],
           },
@@ -112,7 +110,7 @@ describe("apphosting", () => {
               locallyBuiltSource: true,
             },
           },
-	},
+        },
       });
     });
 
