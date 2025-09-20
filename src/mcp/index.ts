@@ -13,6 +13,14 @@ import {
   ListPromptsResult,
   GetPromptResult,
   GetPromptRequest,
+  ListResourcesRequestSchema,
+  ListResourcesRequest,
+  ListResourcesResult,
+  ReadResourceRequest,
+  ReadResourceResult,
+  McpError,
+  ErrorCode,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { checkFeatureActive, mcpError } from "./util";
 import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types";
@@ -37,6 +45,8 @@ import * as api from "../api";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
+import { resources } from "./resources";
+import { ServerResourceContext } from "./resource";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -97,12 +107,15 @@ export class FirebaseMcpServer {
       tools: { listChanged: true },
       logging: {},
       prompts: { listChanged: true },
+      resources: {},
     });
 
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.server.setRequestHandler(ListPromptsRequestSchema, this.mcpListPrompts.bind(this));
     this.server.setRequestHandler(GetPromptRequestSchema, this.mcpGetPrompt.bind(this));
+    this.server.setRequestHandler(ListResourcesRequestSchema, this.mcpListResources.bind(this));
+    this.server.setRequestHandler(ReadResourceRequestSchema, this.mcpReadResource.bind(this));
 
     this.server.oninitialized = async () => {
       const clientInfo = this.server.getClientVersion();
@@ -411,6 +424,39 @@ export class FirebaseMcpServer {
       // TODO: should we return mcpError here?
       throw err;
     }
+  }
+
+  async mcpListResources(req: ListResourcesRequest): Promise<ListResourcesResult> {
+    return {
+      resources: resources.map((r) => r.mcp),
+    };
+  }
+
+  async mcpReadResource(req: ReadResourceRequest): Promise<ReadResourceResult> {
+    const resource = resources.find((r) => r.mcp.uri === req.params.uri);
+
+    let projectId = await this.getProjectId();
+    projectId = projectId || "";
+
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
+
+    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
+    const resourceCtx: ServerResourceContext = {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+      accountEmail,
+    };
+
+    if (!resource) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Resource '${req.params.uri}' could not be found.`,
+      );
+    }
+    return resource.fn(req.params.uri, resourceCtx);
   }
 
   async start(): Promise<void> {
