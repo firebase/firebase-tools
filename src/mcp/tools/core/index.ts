@@ -14,6 +14,7 @@ import { list_projects } from "./list_projects";
 import { consult_assistant } from "./consult_assistant";
 import { login } from "./login";
 import { logout } from "./logout";
+import { read_resources } from "./read_resources";
 
 export const coreTools: ServerTool[] = [
   login,
@@ -30,4 +31,5 @@ export const coreTools: ServerTool[] = [
   get_environment,
   update_environment,
   init,
+  read_resources,
 ];
