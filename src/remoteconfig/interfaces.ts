@@ -12,6 +12,7 @@ export enum TagColor {
   TEAL = "Teal",
 }
 export const NAMESPACE_FIREBASE = "firebase";
+export const DEFAULT_PAGE_SIZE = "10";
 
 /** Interface representing a Remote Config parameter `value` in value options. */
 export interface ExplicitParameterValue {
@@ -59,15 +60,15 @@ export interface Version {
   versionNumber?: string; // int64 format
   updateTime?: string; // in UTC
   updateOrigin?:
-  | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
-  | "CONSOLE"
-  | "REST_API"
-  | "ADMIN_SDK_NOD";
+    | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
+    | "CONSOLE"
+    | "REST_API"
+    | "ADMIN_SDK_NOD";
   updateType?:
-  | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
-  | "INCREMENTAL_UPDATE"
-  | "FORCED_UPDATE"
-  | "ROLLBACK";
+    | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
+    | "INCREMENTAL_UPDATE"
+    | "FORCED_UPDATE"
+    | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
@@ -131,4 +132,11 @@ export interface ListRollouts {
   // FIXED: Made 'rollouts' optional to handle API responses with no rollouts.
   rollouts?: RemoteConfigRollout[];
   nextPageToken?: string;
+}
+
+/** Interface representing a Remote Config list rollout options. */
+export interface ListRolloutOptions {
+  pageSize: string;
+  pageToken?: string;
+  filter?: string;
 }

@@ -7,7 +7,6 @@ import { RemoteConfigRollout } from "./interfaces";
 import * as Table from "cli-table3";
 import * as util from "util";
 
-
 const TIMEOUT = 30000;
 const TABLE_HEAD = ["Entry Name", "Value"];
 
@@ -25,17 +24,22 @@ export const parseRolloutIntoTable = (rollout: RemoteConfigRollout): string => {
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   table.push(
     ["Name", rollout.name],
-    ["Display Name",rollout.definition.displayName],
+    ["Display Name", rollout.definition.displayName],
     ["Description", rollout.definition.description],
-    ["State",rollout.state],
-    ["Create Time",rollout.createTime],
-    ["Start Time",rollout.startTime],
-    ["End Time",rollout.endTime],
-    ["Last Update Time",rollout.lastUpdateTime],
-    // FIXED: Accessed the .name property to display the variant name string instead of [object Object].
-    ["Control Variant",util.inspect(rollout.definition.controlVariant, { showHidden: false, depth: null })],
-    ["Enabled Variant",util.inspect(rollout.definition.enabledVariant, { showHidden: false, depth: null })],
-    ["ETag",rollout.etag],
+    ["State", rollout.state],
+    ["Create Time", rollout.createTime],
+    ["Start Time", rollout.startTime],
+    ["End Time", rollout.endTime],
+    ["Last Update Time", rollout.lastUpdateTime],
+    [
+      "Control Variant",
+      util.inspect(rollout.definition.controlVariant, { showHidden: false, depth: null }),
+    ],
+    [
+      "Enabled Variant",
+      util.inspect(rollout.definition.enabledVariant, { showHidden: false, depth: null }),
+    ],
+    ["ETag", rollout.etag],
   );
   return table.toString();
 };
@@ -55,7 +59,6 @@ export async function getRollout(
   try {
     const res = await apiClient.request<void, RemoteConfigRollout>({
       method: "GET",
-      // FIXED: Corrected API path to use plural 'namespaces' and 'rollouts'.
       path: `/projects/${projectId}/namespaces/${namespace}/rollouts/${rolloutId}`,
       timeout: TIMEOUT,
     });

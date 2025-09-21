@@ -2,9 +2,8 @@ import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
-import { ListRollouts, RemoteConfigRollout } from "./interfaces"; // Import from the single source of truth.
+import { ListRolloutOptions, ListRollouts, RemoteConfigRollout } from "./interfaces";
 import * as Table from "cli-table3";
-import * as util from "util";
 
 const TIMEOUT = 30000;
 
@@ -14,39 +13,34 @@ const apiClient = new Client({
 });
 
 const TABLE_HEAD = [
-  "Name",
+  "Rollout ID",
   "Display Name",
+  "Service",
   "Description",
   "State",
-  "Create Time",
   "Start Time",
   "End Time",
   "Last Update Time",
-  "Control Variant",
-  "Enabled Variant",
   "ETag",
 ];
 
 export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
   if (!rollouts || rollouts.length === 0) {
-    return "\x1b[31mNo rollouts found.\x1b[0m";
+    return "\x1b[31mNo rollouts found.\x1b[0m"; // Kept your red error message
   }
 
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
 
   for (const rollout of rollouts) {
-    // FIXED: Data access now correctly uses the nested 'definition' object.
     table.push([
-      rollout.name,
+      rollout.name.split("/").pop() || rollout.name, // Show just the ID
       rollout.definition.displayName,
+      rollout.definition.service,
       rollout.definition.description,
       rollout.state,
-      rollout.createTime,
       rollout.startTime,
       rollout.endTime,
       rollout.lastUpdateTime,
-      util.inspect(rollout.definition.controlVariant, { showHidden: false, depth: null }),
-      util.inspect(rollout.definition.enabledVariant, { showHidden: false, depth: null }),
       rollout.etag,
     ]);
   }
@@ -57,33 +51,28 @@ export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
  * Retrieves a list of rollouts for a given project and namespace.
  * @param projectId The project ID.
  * @param namespace The namespace of the rollout.
- * @param pageToken Optional token for pagination.
- * @param pageSize Optional size of the page.
- * @param filter Optional filter string.
+ * (Options are passed in listRolloutOptions object)
  * @return A promise that resolves to a list of Remote Config rollouts.
  */
 export async function listRollout(
   projectId: string,
   namespace: string,
-  pageToken?: string,
-  pageSize?: string,
-  filter?: string,
+  listRolloutOptions: ListRolloutOptions,
 ): Promise<ListRollouts> {
   try {
     const params = new URLSearchParams();
-    if (pageSize) {
-      params.set("page_size", pageSize);
+    if (listRolloutOptions.pageSize) {
+      params.set("page_size", listRolloutOptions.pageSize);
     }
-    if (filter) {
-      params.set("filter", filter);
+    if (listRolloutOptions.filter) {
+      params.set("filter", listRolloutOptions.filter);
     }
-    if (pageToken) {
-      params.set("page_token", pageToken);
+    if (listRolloutOptions.pageToken) {
+      params.set("page_token", listRolloutOptions.pageToken);
     }
 
     const res = await apiClient.request<void, ListRollouts>({
       method: "GET",
-      // FIXED: Changed 'namespace' to 'namespaces' in the API path for correctness.
       path: `/projects/${projectId}/namespaces/${namespace}/rollouts`,
       queryParams: params,
       timeout: TIMEOUT,
