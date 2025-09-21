@@ -56,13 +56,12 @@ describe("Remote Config Rollout Get", () => {
       nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/namespaces/firebase/rollouts/${ROLLOUT_ID_2}`)
         .reply(404, {});
+      // The error message must match the one from your implementation file
+      const expectedError = `Failed to get Remote Config Rollout with ID ${ROLLOUT_ID_2} for project ${PROJECT_ID}.`;
 
       await expect(
         rcRollout.getRollout(PROJECT_ID, NAMESPACE_FIREBASE, ROLLOUT_ID_2),
-      ).to.eventually.be.rejectedWith(
-        FirebaseError,
-        `Failed to get Remote Config rollout with ID 2 for project 1234567890.`,
-      );
+      ).to.eventually.be.rejectedWith(FirebaseError, expectedError);
     });
   });
   describe("parseRollout", () => {

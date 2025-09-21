@@ -24,25 +24,25 @@ export async function deleteRollout(
   rolloutId: string,
 ): Promise<string> {
   try {
-    // FIXED: The generic type for the response is now 'void' as DELETE returns an empty body.
     await apiClient.request<void, void>({
       method: "DELETE",
-      // FIXED: Corrected API path to use plural 'namespaces'.
       path: `/projects/${projectId}/namespaces/${namespace}/rollouts/${rolloutId}`,
       timeout: TIMEOUT,
     });
     return clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`);
   } catch (err: unknown) {
     const originalError = getError(err);
-    if (originalError.message.includes("is running and cannot be deleted")) {
-      const rcConsoleUrl = consoleUrl(projectId, `/config/experiment/results/${rolloutId}`);
+    const errorMessage = getErrMsg(err);
+
+    if (errorMessage.includes("is running and cannot be deleted")) {
+      const rcConsoleUrl = consoleUrl(projectId, `/config/env/firebase/rollout/${rolloutId}`);
       throw new FirebaseError(
         `Rollout '${rolloutId}' is currently running and cannot be deleted. If you want to delete this rollout, stop it at ${rcConsoleUrl}`,
         { original: originalError },
       );
     }
     throw new FirebaseError(
-      `Failed to delete Remote Config rollout '${rolloutId}'. Cause: ${getErrMsg(err)}`,
+      `Failed to delete Remote Config rollout '${rolloutId}'. Cause: ${errorMessage}`,
       { original: originalError },
     );
   }
