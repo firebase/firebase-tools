@@ -42,10 +42,7 @@ export const config: WebdriverIO.Config = {
   logLevel: "debug",
 
   beforeTest: async function () {    
-    await browser.pause(3000); // give some time for extension dependencies to load their README page
-    await browser.executeWorkbench((vscode) => {
-      vscode.commands.executeCommand("workbench.action.closeAllEditors"); // close GCA home page
-    });
+    await browser.pause(1000); // give some time for extension dependency to load
   },
 
   afterTest: async function (test) {

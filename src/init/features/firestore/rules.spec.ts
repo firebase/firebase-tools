@@ -34,6 +34,7 @@ describe("firestore rules", () => {
       const setup: Setup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       sandbox.stub(prompt, "input").resolves("firestore.rules");
@@ -59,6 +60,7 @@ describe("firestore rules", () => {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "test-project",
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       const getRulesetNameStub = sandbox

@@ -33,9 +33,31 @@ export class Notifications {
 
   async editVariablesFromNotification(notification: Notification) {
     // takeAction doesn't work in wdio vscode
-    const editButton = await notification.elem.$(".monaco-button=Edit variables");
+    const editButton = await notification.elem.$(
+      ".monaco-button=Edit variables",
+    );
     if (editButton) {
       await editButton.click();
+    }
+  }
+
+  async getGeminiInstallNotification() {
+    const notifications = await this.workbench.getNotifications();
+    return notifications.find(async (n) => {
+      const message = await n.getMessage();
+      return message.includes(
+        "The Firebase Assistant requires the Gemini Code Assist extension",
+      );
+    });
+  }
+
+  async clickYesFromGeminiInstallNotification(notification: Notification) {
+    // takeAction doesn't work in wdio vscode
+    const yesButton = await notification.elem.$(
+      ".monaco-button=Yes",
+    );
+    if (yesButton) {
+      await yesButton.click();
     }
   }
 }

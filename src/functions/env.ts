@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import { ParamValue } from "../deploy/functions/params";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -413,4 +414,25 @@ export function loadFirebaseEnvs(
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+}
+
+/**
+ * Writes newly resolved params to the appropriate .env file.
+ * Skips internal params and params that already exist in userEnvs.
+ */
+export function writeResolvedParams(
+  resolvedEnvs: Readonly<Record<string, ParamValue>>,
+  userEnvs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const paramName of Object.keys(resolvedEnvs)) {
+    const paramValue = resolvedEnvs[paramName];
+    if (!paramValue.internal && !Object.prototype.hasOwnProperty.call(userEnvs, paramName)) {
+      toWrite[paramName] = paramValue.toString();
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
 }

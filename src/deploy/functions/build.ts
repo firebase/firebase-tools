@@ -1,10 +1,9 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../.../../api";
+import * as api from "../../api";
 import * as params from "./params";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
@@ -284,38 +283,25 @@ export type DynamicExtension = {
 interface ResolveBackendOpts {
   build: Build;
   firebaseConfig: FirebaseConfig;
-  userEnvOpt: UserEnvsOpts;
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
 }
 
 /**
- * Resolves user-defined parameters inside a Build, and generates a Backend.
- * Returns both the Backend and the literal resolved values of any params, since
- * the latter also have to be uploaded so user code can see them in process.env
+ * Resolves user-defined parameters inside a Build and generates a Backend.
+ * Callers are responsible for persisting resolved env vars.
  */
 export async function resolveBackend(
   opts: ResolveBackendOpts,
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  let paramValues: Record<string, params.ParamValue> = {};
-  paramValues = await params.resolveParams(
+  const paramValues = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
     opts.isEmulator,
   );
-
-  const toWrite: Record<string, string> = {};
-  for (const paramName of Object.keys(paramValues)) {
-    const paramValue = paramValues[paramName];
-    if (Object.prototype.hasOwnProperty.call(opts.userEnvs, paramName) || paramValue.internal) {
-      continue;
-    }
-    toWrite[paramName] = paramValue.toString();
-  }
-  writeUserEnvs(toWrite, opts.userEnvOpt);
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues };
 }
