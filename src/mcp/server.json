@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "com.firebase/firebase-mcp",
+  "description": "An MCP server that helps you develop and manage Firebase projects and apps.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/firebase/firebase-tools",
+    "source": "github",
+    "subfolder": "src/mcp"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "firebase-tools",
+      "version": "latest",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
