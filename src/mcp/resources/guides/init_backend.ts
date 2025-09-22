@@ -8,7 +8,7 @@ export const init_backend = resource(
     description:
       "guides the coding agent through configuring Firebase backend services in the current project",
   },
-  async (uri, ctx) => {
+  async (uri) => {
     return {
       contents: [
         {

@@ -8,7 +8,7 @@ export const init_data_connect = resource(
     description:
       "guides the coding agent through configuring Data Connect for PostgreSQL access in the current project",
   },
-  async (uri, ctx) => {
+  async (uri) => {
     return {
       contents: [
         {

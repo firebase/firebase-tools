@@ -7,7 +7,7 @@ export const init_firestore = resource(
     title: "Firestore Init Guide",
     description: "guides the coding agent through configuring Firestore in the current project",
   },
-  async (uri, ctx) => {
+  async (uri) => {
     return {
       contents: [
         {

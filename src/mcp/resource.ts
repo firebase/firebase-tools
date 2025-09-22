@@ -1,15 +1,5 @@
 import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
-import type { FirebaseMcpServer } from "./index";
-import { Config } from "../config";
-import { RC } from "../rc";
-
-export interface ServerResourceContext {
-  projectId: string;
-  accountEmail: string | null;
-  config: Config;
-  host: FirebaseMcpServer;
-  rc: RC;
-}
+import { McpContext } from "./types";
 
 export interface ServerResource {
   mcp: {
@@ -24,7 +14,7 @@ export interface ServerResource {
       requiresGemini?: boolean;
     };
   };
-  fn: (uri: string, ctx: ServerResourceContext) => Promise<ReadResourceResult>;
+  fn: (uri: string, ctx: McpContext) => Promise<ReadResourceResult>;
 }
 
 export function resource(

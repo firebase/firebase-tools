@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import { set_claim } from "./set_claims";
 import * as auth from "../../../gcp/auth";
 import * as util from "../../util";
-import { ServerToolContext } from "../../tool";
+import { McpContext } from "../../types";
 
 describe("set_claim tool", () => {
   const projectId = "test-project";
@@ -26,7 +26,7 @@ describe("set_claim tool", () => {
     const value = true;
     setCustomClaimStub.resolves({ success: true });
 
-    const result = await set_claim.fn({ uid, claim, value }, { projectId } as ServerToolContext);
+    const result = await set_claim.fn({ uid, claim, value }, { projectId } as McpContext);
 
     expect(setCustomClaimStub).to.be.calledWith(
       projectId,
@@ -44,7 +44,7 @@ describe("set_claim tool", () => {
 
     const result = await set_claim.fn({ uid, claim, json_value }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(setCustomClaimStub).to.be.calledWith(
       projectId,
@@ -57,7 +57,7 @@ describe("set_claim tool", () => {
 
   it("should return an error for invalid JSON", async () => {
     const json_value = "invalid-json";
-    await set_claim.fn({ uid, claim, json_value }, { projectId } as ServerToolContext);
+    await set_claim.fn({ uid, claim, json_value }, { projectId } as McpContext);
     expect(mcpErrorStub).to.be.calledWith(
       `Provided \`json_value\` was not valid JSON: ${json_value}`,
     );
@@ -66,7 +66,7 @@ describe("set_claim tool", () => {
   it("should return an error if both value and json_value are provided", async () => {
     const value = "simple";
     const json_value = '{"complex": true}';
-    await set_claim.fn({ uid, claim, value, json_value }, { projectId } as ServerToolContext);
+    await set_claim.fn({ uid, claim, value, json_value }, { projectId } as McpContext);
     expect(mcpErrorStub).to.be.calledWith("Must supply only `value` or `json_value`, not both.");
   });
 });

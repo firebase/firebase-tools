@@ -14,7 +14,6 @@ import {
   GetPromptResult,
   GetPromptRequest,
   ListResourcesRequestSchema,
-  ListResourcesRequest,
   ListResourcesResult,
   ReadResourceRequest,
   ReadResourceResult,
@@ -23,11 +22,11 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { checkFeatureActive, mcpError } from "./util";
-import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types";
+import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
 import { availableTools } from "./tools/index";
-import { ServerTool, ServerToolContext } from "./tool";
+import { ServerTool } from "./tool";
 import { availablePrompts } from "./prompts/index";
-import { ServerPrompt, ServerPromptContext } from "./prompt";
+import { ServerPrompt } from "./prompt";
 import { configstore } from "../configstore";
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
@@ -44,7 +43,6 @@ import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resources } from "./resources";
-import { ServerResourceContext } from "./resource";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -327,7 +325,7 @@ export class FirebaseMcpServer {
     }
 
     const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
-    const toolsCtx: ServerToolContext = {
+    const toolsCtx: McpContext = {
       projectId: projectId,
       host: this,
       config: Config.load(options, true) || new Config({}, options),
@@ -388,7 +386,7 @@ export class FirebaseMcpServer {
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
     const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
-    const promptsCtx: ServerPromptContext = {
+    const promptsCtx: McpContext = {
       projectId: projectId,
       host: this,
       config: Config.load(options, true) || new Config({}, options),
@@ -414,7 +412,7 @@ export class FirebaseMcpServer {
     }
   }
 
-  async mcpListResources(req: ListResourcesRequest): Promise<ListResourcesResult> {
+  async mcpListResources(): Promise<ListResourcesResult> {
     return {
       resources: resources.map((r) => r.mcp),
     };
@@ -429,8 +427,8 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
-    const resourceCtx: ServerResourceContext = {
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
+    const resourceCtx: McpContext = {
       projectId: projectId,
       host: this,
       config: Config.load(options, true) || new Config({}, options),

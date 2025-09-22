@@ -8,7 +8,7 @@ export const init_ai = resource(
     description:
       "guides the coding agent through configuring GenAI capabilities in the current project utilizing Firebase",
   },
-  async (uri, ctx) => {
+  async (uri) => {
     return {
       contents: [
         {

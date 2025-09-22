@@ -8,7 +8,7 @@ export const init_rtdb = resource(
     description:
       "guides the coding agent through configuring Realtime Database in the current project",
   },
-  async (uri, ctx) => {
+  async (uri) => {
     return {
       contents: [
         {
