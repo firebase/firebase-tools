@@ -794,7 +794,7 @@ describe("IndexSpecMatching", () => {
 });
 
 describe("IndexListingWithNameFields", () => {
-  it("should filter out __name__ fields with in the default order, when the default is ASCENDING", () => {
+  it("should keep __name__ fields with in the default order, when the default is ASCENDING", () => {
     const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
@@ -811,9 +811,11 @@ describe("IndexListingWithNameFields", () => {
 
     expect(result[0].fields).to.have.length(1);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result[0].fields[1].fieldPath).to.equal("__name__");
+    expect(result[0].fields[1].order).to.equal(API.Order.ASCENDING);
   });
 
-  it("should filter out __name__ fields with in the default order, when the default is DESCENDING", () => {
+  it("should keep __name__ fields with in the default order, when the default is DESCENDING", () => {
     const mockIndexes: API.Index[] = [
       {
         name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
@@ -830,6 +832,8 @@ describe("IndexListingWithNameFields", () => {
 
     expect(result[0].fields).to.have.length(1);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result[0].fields[1].fieldPath).to.equal("__name__");
+    expect(result[0].fields[1].order).to.equal(API.Order.DESCENDING);
   });
 
   it("should keep __name__ fields with DESCENDING order, when the default is ASCENDING", () => {
@@ -898,11 +902,13 @@ describe("IndexListingWithNameFields", () => {
 
     const result = FirestoreApi.processIndexes(mockIndexes);
 
-    // First index should have __name__ field filtered out
-    expect(result[0].fields).to.have.length(1);
+    // Both indexes should keep __name__ field, first with ASCENDING order
+    expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result[1].fields[1].fieldPath).to.equal("__name__");
+    expect(result[1].fields[1].order).to.equal(API.Order.ASCENDING);
 
-    // Second index should keep __name__ field with DESCENDING order
+    // Second index has __name__ field with DESCENDING order
     expect(result[1].fields).to.have.length(2);
     expect(result[1].fields[0].fieldPath).to.equal("foo");
     expect(result[1].fields[1].fieldPath).to.equal("__name__");
