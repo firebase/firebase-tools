@@ -7,7 +7,6 @@ import { Client } from "../../../apiv2";
 import { updateRulesWithClient } from "../../../rtdb";
 import { getErrMsg } from "../../../error";
 
-// Based on `src/mcp/tools/rules/validate_rules.ts`
 interface SourcePosition {
   fileName?: string;
   line?: number;
