@@ -4,10 +4,26 @@ import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
-import { AppInput } from "./app-context";
+import { ServerToolContext } from "../../tool";
+import {
+  AppInput,
+  resolveAppContext,
+  handleConfigFileConflict,
+  createNewAppDirectory,
+} from "./app-context";
+import { IProvisioningService, ProvisionFirebaseAppOptions } from "./provisioning-interface";
+// import { ProvisioningService } from "./provision-service";
+import { MockProvisioningService } from "./mock-provision";
+import { writeConfigFile, extractProjectIdFromAppResource, updateFirebaseRC } from "./config-utils";
+import { AppPlatform } from "../../../management/apps";
 
 interface ProvisioningInput {
   enable?: boolean;
+}
+
+// Extended context for init tool with optional provisioning service injection
+interface InitToolContext extends ServerToolContext {
+  provisioningService?: IProvisioningService;
 }
 
 interface ProjectInput {
@@ -51,6 +67,109 @@ export function validateProvisioningInputs(
       );
     }
   }
+}
+
+// Type aliases for better readability and reusability
+type McpProjectInput = ProjectInput & {
+  display_name?: string;
+  location?: string;
+};
+
+type McpAppInput = AppInput & {
+  app_store_id?: string;
+  team_id?: string;
+  sha1_hashes?: string[];
+  sha256_hashes?: string[];
+};
+
+/**
+ * Converts MCP inputs to provisioning API format
+ */
+export function buildProvisionOptionsFromMcpInputs(
+  project?: McpProjectInput,
+  app?: McpAppInput,
+  features?: { ai_logic?: boolean },
+): ProvisionFirebaseAppOptions {
+  if (!project?.display_name || !app?.platform) {
+    throw new Error("Project display name and app platform are required for provisioning");
+  }
+
+  // Build app options based on platform with proper validation
+  let appOptions: any;
+  switch (app.platform) {
+    case "ios":
+      if (!app.bundleId) {
+        throw new Error("bundleId is required for iOS apps");
+      }
+      appOptions = {
+        platform: AppPlatform.IOS,
+        bundleId: app.bundleId,
+        appStoreId: app.app_store_id,
+        teamId: app.team_id,
+      };
+      break;
+    case "android":
+      if (!app.packageName) {
+        throw new Error("packageName is required for Android apps");
+      }
+      appOptions = {
+        platform: AppPlatform.ANDROID,
+        packageName: app.packageName,
+        sha1Hashes: app.sha1_hashes,
+        sha256Hashes: app.sha256_hashes,
+      };
+      break;
+    case "web":
+      if (!app.webAppId) {
+        throw new Error("webAppId is required for Web apps");
+      }
+      appOptions = {
+        platform: AppPlatform.WEB,
+        webAppId: app.webAppId,
+      };
+      break;
+    default:
+      throw new Error(`Unsupported platform: ${app.platform}`);
+  }
+
+  const provisionOptions: ProvisionFirebaseAppOptions = {
+    project: {
+      displayName: project.display_name,
+    },
+    app: appOptions,
+  };
+
+  // Handle parent resource if specified
+  if (project.parent) {
+    const parts = project.parent.split("/");
+    if (parts.length === 2) {
+      const [type, id] = parts;
+      switch (type) {
+        case "projects":
+          provisionOptions.project.parent = { type: "existing_project", projectId: id };
+          break;
+        case "folders":
+          provisionOptions.project.parent = { type: "folder", folderId: id };
+          break;
+        case "organizations":
+          provisionOptions.project.parent = { type: "organization", organizationId: id };
+          break;
+      }
+    }
+  }
+
+  // Add features if specified
+  if (project.location || features?.ai_logic) {
+    provisionOptions.features = {};
+    if (project.location) {
+      provisionOptions.features.location = project.location;
+    }
+    if (features?.ai_logic) {
+      provisionOptions.features.firebaseAiLogicInput = { enableAiLogic: true };
+    }
+  }
+
+  return provisionOptions;
 }
 
 export const init = tool(
@@ -247,8 +366,58 @@ export const init = tool(
       requiresAuth: false, // Will throw error if the specific feature needs it.
     },
   },
-  async ({ features, provisioning, project, app }, { projectId, config, rc }) => {
+  async (
+    { features, provisioning, project, app },
+    { projectId, config, rc, provisioningService }: InitToolContext,
+  ) => {
     validateProvisioningInputs(provisioning, project, app);
+
+    // Handle provisioning if enabled
+    if (provisioning?.enable && project && app) {
+      const service: IProvisioningService = provisioningService || new MockProvisioningService(); // Use injected service or default to mock
+
+      try {
+        // Build provisioning options from MCP inputs
+        const provisionOptions = buildProvisionOptionsFromMcpInputs(project, app, features);
+
+        // Provision Firebase app
+        const response = await service.provisionFirebaseApp(provisionOptions);
+
+        // Extract project ID from app resource
+        const provisionedProjectId = extractProjectIdFromAppResource(response.appResource);
+
+        // Update .firebaserc with the provisioned project ID
+        updateFirebaseRC(rc, provisionedProjectId, provisioning.overwrite_project || false);
+
+        // Resolve app context (existing vs new directory)
+        let appContext = await resolveAppContext(process.cwd(), app);
+
+        // Create directory if needed
+        if (appContext.shouldCreateDirectory) {
+          appContext = await createNewAppDirectory(process.cwd(), appContext.platform, app);
+        }
+
+        // Handle config file conflicts if needed
+        handleConfigFileConflict(
+          appContext.configFilePath,
+          provisioning.overwrite_configs || false,
+        );
+
+        // Write config file to the resolved path
+        await writeConfigFile(
+          appContext.configFilePath,
+          response.configData,
+          response.configMimeType,
+        );
+
+        // Update context with provisioned project ID for subsequent operations
+        projectId = provisionedProjectId;
+      } catch (error) {
+        throw new Error(
+          `Provisioning failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
     const featuresList: string[] = [];
     const featureInfo: SetupInfo = {};

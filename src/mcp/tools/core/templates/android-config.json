@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "123456789",
+    "project_id": "{{PROJECT_ID}}",
+    "storage_bucket": "{{PROJECT_ID}}.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "{{GOOGLE_APP_ID}}",
+        "android_client_info": {
+          "package_name": "{{PACKAGE_NAME}}"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "123456789-mock.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyMockApiKey123456789"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "123456789-mock.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
