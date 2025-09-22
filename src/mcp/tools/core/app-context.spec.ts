@@ -11,7 +11,11 @@ import {
   extractPackageNameFromAndroidConfig,
   findExistingIosApp,
   findExistingAndroidApp,
+  generateUniqueAppDirectoryName,
+  createNewAppDirectory,
+  resolveAppContext,
   SupportedPlatform,
+  AppInput,
 } from "./app-context";
 
 describe("app-context", () => {
@@ -351,6 +355,211 @@ describe("app-context", () => {
 
       const result = await findExistingAndroidApp("/project", "com.example.target");
       expect(result?.directory).to.equal("/project/android-valid");
+    });
+  });
+
+  describe("generateUniqueAppDirectoryName", () => {
+    let existsSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existsSyncStub = sandbox.stub(fs, "existsSync");
+    });
+
+    it("should return base directory name when no conflicts", () => {
+      existsSyncStub.returns(false);
+
+      const result = generateUniqueAppDirectoryName("/project", "ios");
+      expect(result).to.equal("ios");
+    });
+
+    it("should return numbered directory when base directory exists", () => {
+      existsSyncStub.withArgs("/project/ios").returns(true);
+      existsSyncStub.withArgs("/project/ios-2").returns(false);
+
+      const result = generateUniqueAppDirectoryName("/project", "ios");
+      expect(result).to.equal("ios-2");
+    });
+
+    it("should find next available number when multiple directories exist", () => {
+      existsSyncStub.withArgs("/project/android").returns(true);
+      existsSyncStub.withArgs("/project/android-2").returns(true);
+      existsSyncStub.withArgs("/project/android-3").returns(true);
+      existsSyncStub.withArgs("/project/android-4").returns(false);
+
+      const result = generateUniqueAppDirectoryName("/project", "android");
+      expect(result).to.equal("android-4");
+    });
+
+    it("should work with web platform", () => {
+      existsSyncStub.withArgs("/project/web").returns(true);
+      existsSyncStub.withArgs("/project/web-2").returns(false);
+
+      const result = generateUniqueAppDirectoryName("/project", "web");
+      expect(result).to.equal("web-2");
+    });
+  });
+
+  describe("createNewAppDirectory", () => {
+    let ensureDirStub: sinon.SinonStub;
+    let existsSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      ensureDirStub = sandbox.stub(fs, "ensureDir");
+      existsSyncStub = sandbox.stub(fs, "existsSync");
+    });
+
+    it("should create iOS app directory with correct structure", async () => {
+      existsSyncStub.returns(false);
+      ensureDirStub.resolves();
+
+      const appInput: AppInput = { platform: "ios", bundleId: "com.example.test" };
+      const result = await createNewAppDirectory("/project", "ios", appInput);
+
+      expect(ensureDirStub).to.have.been.calledWith("/project/ios");
+      expect(result.platform).to.equal("ios");
+      expect(result.directory).to.equal("/project/ios");
+      expect(result.configFilePath).to.equal("/project/ios/GoogleService-Info.plist");
+      expect(result.shouldCreateDirectory).to.be.false;
+      expect(result.bundleId).to.equal("com.example.test");
+    });
+
+    it("should create Android app directory with correct structure", async () => {
+      existsSyncStub.returns(false);
+      ensureDirStub.resolves();
+
+      const appInput: AppInput = { platform: "android", packageName: "com.example.test" };
+      const result = await createNewAppDirectory("/project", "android", appInput);
+
+      expect(ensureDirStub).to.have.been.calledWith("/project/android");
+      expect(result.platform).to.equal("android");
+      expect(result.directory).to.equal("/project/android");
+      expect(result.configFilePath).to.equal("/project/android/google-services.json");
+      expect(result.shouldCreateDirectory).to.be.false;
+      expect(result.packageName).to.equal("com.example.test");
+    });
+
+    it("should create Web app directory with correct structure", async () => {
+      existsSyncStub.returns(false);
+      ensureDirStub.resolves();
+
+      const appInput: AppInput = { platform: "web", webAppId: "web-app-123" };
+      const result = await createNewAppDirectory("/project", "web", appInput);
+
+      expect(ensureDirStub).to.have.been.calledWith("/project/web");
+      expect(result.platform).to.equal("web");
+      expect(result.directory).to.equal("/project/web");
+      expect(result.configFilePath).to.equal("/project/web/firebase-config.json");
+      expect(result.shouldCreateDirectory).to.be.false;
+      expect(result.webAppId).to.equal("web-app-123");
+    });
+
+    it("should use numbered directory when base exists", async () => {
+      existsSyncStub.withArgs("/project/ios").returns(true);
+      existsSyncStub.withArgs("/project/ios-2").returns(false);
+      ensureDirStub.resolves();
+
+      const appInput: AppInput = { platform: "ios", bundleId: "com.example.test" };
+      const result = await createNewAppDirectory("/project", "ios", appInput);
+
+      expect(ensureDirStub).to.have.been.calledWith("/project/ios-2");
+      expect(result.directory).to.equal("/project/ios-2");
+      expect(result.configFilePath).to.equal("/project/ios-2/GoogleService-Info.plist");
+    });
+  });
+
+  describe("resolveAppContext", () => {
+    let existsSyncStub: sinon.SinonStub;
+    let globStub: sinon.SinonStub;
+    let readFileStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existsSyncStub = sandbox.stub(fs, "existsSync");
+      globStub = sandbox.stub(globModule, "glob");
+      readFileStub = sandbox.stub(fs, "readFileSync");
+    });
+
+    it("should return existing iOS app when bundle ID matches", async () => {
+      globStub.resolves(["/project/ios/GoogleService-Info.plist"]);
+      readFileStub.returns(createMockPlistContent("com.example.existing"));
+
+      const appInput: AppInput = { platform: "ios", bundleId: "com.example.existing" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.platform).to.equal("ios");
+      expect(result.directory).to.equal("/project/ios");
+      expect(result.shouldCreateDirectory).to.be.false;
+      expect(result.bundleId).to.equal("com.example.existing");
+    });
+
+    it("should return existing Android app when package name matches", async () => {
+      globStub.resolves(["/project/android/google-services.json"]);
+      readFileStub.returns(createMockAndroidConfig("com.example.existing"));
+
+      const appInput: AppInput = { platform: "android", packageName: "com.example.existing" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.platform).to.equal("android");
+      expect(result.directory).to.equal("/project/android");
+      expect(result.shouldCreateDirectory).to.be.false;
+      expect(result.packageName).to.equal("com.example.existing");
+    });
+
+    it("should plan new directory for iOS when no matching app found", async () => {
+      globStub.resolves([]);
+      existsSyncStub.returns(false);
+
+      const appInput: AppInput = { platform: "ios", bundleId: "com.example.new" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.platform).to.equal("ios");
+      expect(result.directory).to.equal("/project/ios");
+      expect(result.shouldCreateDirectory).to.be.true;
+      expect(result.bundleId).to.equal("com.example.new");
+    });
+
+    it("should plan new directory for Android when no matching app found", async () => {
+      globStub.resolves([]);
+      existsSyncStub.returns(false);
+
+      const appInput: AppInput = { platform: "android", packageName: "com.example.new" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.platform).to.equal("android");
+      expect(result.directory).to.equal("/project/android");
+      expect(result.shouldCreateDirectory).to.be.true;
+      expect(result.packageName).to.equal("com.example.new");
+    });
+
+    it("should always plan new directory for web apps", async () => {
+      existsSyncStub.returns(false);
+
+      const appInput: AppInput = { platform: "web", webAppId: "web-app-123" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.platform).to.equal("web");
+      expect(result.directory).to.equal("/project/web");
+      expect(result.shouldCreateDirectory).to.be.true;
+      expect(result.webAppId).to.equal("web-app-123");
+    });
+
+    it("should use numbered directory when base directory exists", async () => {
+      globStub.resolves([]);
+      existsSyncStub.withArgs("/project/web").returns(true);
+      existsSyncStub.withArgs("/project/web-2").returns(false);
+
+      const appInput: AppInput = { platform: "web", webAppId: "web-app-123" };
+      const result = await resolveAppContext("/project", appInput);
+
+      expect(result.directory).to.equal("/project/web-2");
+      expect(result.configFilePath).to.equal("/project/web-2/firebase-config.json");
+    });
+
+    it("should throw error when platform is missing", async () => {
+      const appInput: AppInput = { bundleId: "com.example.test" };
+
+      await expect(resolveAppContext("/project", appInput)).to.be.rejectedWith(
+        "platform is required in app input",
+      );
     });
   });
 });
