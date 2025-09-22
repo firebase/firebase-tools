@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
+import { AppInput } from "./app-context";
 
 interface ProvisioningInput {
   enable?: boolean;
@@ -11,13 +12,6 @@ interface ProvisioningInput {
 
 interface ProjectInput {
   parent?: string;
-}
-
-interface AppInput {
-  platform?: string;
-  bundleId?: string;
-  packageName?: string;
-  webAppId?: string;
 }
 
 /**
