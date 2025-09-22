@@ -5,14 +5,131 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 
+interface ProvisioningInput {
+  enable?: boolean;
+}
+
+interface ProjectInput {
+  parent?: string;
+}
+
+interface AppInput {
+  platform?: string;
+  bundleId?: string;
+  packageName?: string;
+  webAppId?: string;
+}
+
+/**
+ * Validates provisioning inputs for required fields and format
+ */
+export function validateProvisioningInputs(
+  provisioning?: ProvisioningInput,
+  project?: ProjectInput,
+  app?: AppInput,
+): void {
+  if (!provisioning?.enable) return;
+
+  if (!app) {
+    throw new Error("app is required when provisioning is enabled");
+  }
+
+  const { platform } = app;
+  if (!platform) {
+    throw new Error("app.platform is required when provisioning is enabled");
+  }
+
+  if (platform === "ios" && !app.bundleId) {
+    throw new Error("bundle_id is required for iOS apps");
+  }
+  if (platform === "android" && !app.packageName) {
+    throw new Error("package_name is required for Android apps");
+  }
+  if (platform === "web" && !app.webAppId) {
+    throw new Error("web_app_id is required for Web apps");
+  }
+
+  if (project?.parent) {
+    const validParentPattern = /^(projects|folders|organizations)\/[\w-]+$/;
+    if (!validParentPattern.test(project.parent)) {
+      throw new Error(
+        "parent must be in format: 'projects/id', 'folders/id', or 'organizations/id'",
+      );
+    }
+  }
+}
+
 export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
+      provisioning: z
+        .object({
+          enable: z.boolean().describe("Enable Firebase project/app provisioning via API"),
+          overwrite_project: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe("Allow overwriting existing project in .firebaserc"),
+          overwrite_configs: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe("Allow overwriting existing config files"),
+        })
+        .optional()
+        .describe("Control how provisioning behaves and handles conflicts"),
+
+      project: z
+        .object({
+          display_name: z.string().optional().describe("Display name for the Firebase project"),
+          parent: z
+            .string()
+            .optional()
+            .describe(
+              "Parent resource: 'projects/existing-id', 'folders/123', or 'organizations/456'",
+            ),
+          location: z
+            .string()
+            .optional()
+            .describe("GCP region for resources (used by AI Logic and future products)"),
+        })
+        .optional()
+        .describe("Project context for provisioning or configuration"),
+
+      app: z
+        .object({
+          platform: z.enum(["ios", "android", "web"]).describe("Platform for the app"),
+          bundle_id: z
+            .string()
+            .optional()
+            .describe("iOS bundle identifier (required for iOS platform)"),
+          package_name: z
+            .string()
+            .optional()
+            .describe("Android package name (required for Android platform)"),
+          web_app_id: z
+            .string()
+            .optional()
+            .describe("Web app identifier (required for Web platform)"),
+          app_store_id: z.string().optional().describe("iOS App Store ID (optional)"),
+          team_id: z.string().optional().describe("iOS Team ID (optional)"),
+          sha1_hashes: z
+            .array(z.string())
+            .optional()
+            .describe("Android SHA1 certificate hashes (optional)"),
+          sha256_hashes: z
+            .array(z.string())
+            .optional()
+            .describe("Android SHA256 certificate hashes (optional)"),
+        })
+        .optional()
+        .describe("App context for provisioning or configuration"),
+
       features: z.object({
         database: z
           .object({
@@ -120,6 +237,10 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        ai_logic: z
+          .boolean()
+          .optional()
+          .describe("Enable Firebase AI Logic feature (requires provisioning to be enabled)"),
       }),
     }),
     annotations: {
@@ -132,7 +253,9 @@ export const init = tool(
       requiresAuth: false, // Will throw error if the specific feature needs it.
     },
   },
-  async ({ features }, { projectId, config, rc }) => {
+  async ({ features, provisioning, project, app }, { projectId, config, rc }) => {
+    validateProvisioningInputs(provisioning, project, app);
+
     const featuresList: string[] = [];
     const featureInfo: SetupInfo = {};
     if (features.database) {
@@ -171,6 +294,10 @@ export const init = tool(
         // Add FDC generated SDKs to all apps detected.
         apps: [],
       };
+    }
+    if (features.ai_logic) {
+      featuresList.push("ai_logic");
+      featureInfo.ailogic = {};
     }
     const setup: Setup = {
       config: config?.src,

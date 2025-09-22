@@ -38,6 +38,7 @@ export interface SetupInfo {
   dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
+  ailogic?: features.AiLogicInfo;
 }
 
 interface Feature {
@@ -96,11 +97,19 @@ const featuresList: Feature[] = [
     askQuestions: features.apptestingAskQuestions,
     actuate: features.apptestingAcutate,
   },
+  {
+    name: "ailogic",
+    askQuestions: features.aiLogicAskQuestions,
+    actuate: features.aiLogicActuate,
+  },
   { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
+/**
+ *
+ */
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
