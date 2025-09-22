@@ -5,6 +5,7 @@ import * as initIndex from "../../../init/index";
 import { FirebaseMcpServer } from "../../../mcp";
 import { toContent } from "../../util";
 import { ServerToolContext } from "../../tool";
+import { SupportedPlatform } from "./app-context";
 
 describe("init tool", () => {
   let sandbox: sinon.SinonSandbox;
@@ -60,43 +61,43 @@ describe("init tool", () => {
     });
 
     it("should require bundle_id for iOS apps", () => {
-      const app = { platform: "ios" };
+      const app = { platform: "ios" as SupportedPlatform };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.throw(
         "bundle_id is required for iOS apps",
       );
     });
 
     it("should require package_name for Android apps", () => {
-      const app = { platform: "android" };
+      const app = { platform: "android" as SupportedPlatform };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.throw(
         "package_name is required for Android apps",
       );
     });
 
     it("should require web_app_id for Web apps", () => {
-      const app = { platform: "web" };
+      const app = { platform: "web" as SupportedPlatform };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.throw(
         "web_app_id is required for Web apps",
       );
     });
 
     it("should validate valid iOS app configuration", () => {
-      const app = { platform: "ios", bundle_id: "com.example.app" };
+      const app = { platform: "ios" as SupportedPlatform, bundleId: "com.example.app" };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.not.throw();
     });
 
     it("should validate valid Android app configuration", () => {
-      const app = { platform: "android", package_name: "com.example.app" };
+      const app = { platform: "android" as SupportedPlatform, packageName: "com.example.app" };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.not.throw();
     });
 
     it("should validate valid Web app configuration", () => {
-      const app = { platform: "web", web_app_id: "web-app-id" };
+      const app = { platform: "web" as SupportedPlatform, webAppId: "web-app-id" };
       expect(() => validateProvisioningInputs({ enable: true }, {}, app)).to.not.throw();
     });
 
     it("should validate parent resource format", () => {
-      const app = { platform: "web", web_app_id: "web-app-id" };
+      const app = { platform: "web" as SupportedPlatform, webAppId: "web-app-id" };
 
       expect(() =>
         validateProvisioningInputs({ enable: true }, { parent: "projects/my-project" }, app),
@@ -151,7 +152,7 @@ describe("init tool", () => {
       const features = { ai_logic: true };
       const provisioning = { enable: true };
       const project = { display_name: "Test Project", location: "us-central1" };
-      const app = { platform: "web", web_app_id: "test-app" };
+      const app = { platform: "web" as SupportedPlatform, webAppId: "test-app" };
 
       const result = await init.fn({ features, provisioning, project, app }, mockContext);
 
