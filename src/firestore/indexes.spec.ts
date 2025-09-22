@@ -809,7 +809,7 @@ describe("IndexListingWithNameFields", () => {
 
     const result = FirestoreApi.processIndexes(mockIndexes);
 
-    expect(result[0].fields).to.have.length(1);
+    expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
     expect(result[0].fields[1].fieldPath).to.equal("__name__");
     expect(result[0].fields[1].order).to.equal(API.Order.ASCENDING);
@@ -830,7 +830,7 @@ describe("IndexListingWithNameFields", () => {
 
     const result = FirestoreApi.processIndexes(mockIndexes);
 
-    expect(result[0].fields).to.have.length(1);
+    expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
     expect(result[0].fields[1].fieldPath).to.equal("__name__");
     expect(result[0].fields[1].order).to.equal(API.Order.DESCENDING);
@@ -905,8 +905,8 @@ describe("IndexListingWithNameFields", () => {
     // Both indexes should keep __name__ field, first with ASCENDING order
     expect(result[0].fields).to.have.length(2);
     expect(result[0].fields[0].fieldPath).to.equal("foo");
-    expect(result[1].fields[1].fieldPath).to.equal("__name__");
-    expect(result[1].fields[1].order).to.equal(API.Order.ASCENDING);
+    expect(result[0].fields[1].fieldPath).to.equal("__name__");
+    expect(result[0].fields[1].order).to.equal(API.Order.ASCENDING);
 
     // Second index has __name__ field with DESCENDING order
     expect(result[1].fields).to.have.length(2);
