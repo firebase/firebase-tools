@@ -1,5 +1,6 @@
+import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
+import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
-import { detectWorkspacePlatform } from "../../util/detect";
 
 export const init = prompt(
   {
@@ -17,19 +18,7 @@ export const init = prompt(
     },
   },
   async ({ prompt }, { config, projectId, accountEmail }) => {
-    const platform = detectWorkspacePlatform(config);
-
-    if (["unity", "react-native"].includes(platform || "")) {
-      return [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Inform the user that the '${platform}' is not yet supported for initialization using this command.`,
-          },
-        },
-      ];
-    }
+    const platform = await getPlatformFromFolder(config.projectDir);
 
     return [
       {
@@ -47,7 +36,7 @@ Your goal is to help the user setup Firebase services in this workspace. Firebas
 
 Use this information to determine which Firebase services the user is already using (if any).
 
-Workspace platform: ${platform || "<UNABLE TO DETECT>"}
+Workspace platform: ${[Platform.NONE, Platform.MULTIPLE].includes(platform) ? "<UNABLE TO DETECT>" : platform}
 Active user: ${accountEmail || "<NONE>"}
 Active project: ${projectId || "<NONE>"}
 

@@ -60,7 +60,7 @@ const orderedLogLevels = [
 ] as const;
 
 export class FirebaseMcpServer {
-  private _ready: boolean = false;
+  private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
   cachedProjectDir?: string;
@@ -92,7 +92,7 @@ export class FirebaseMcpServer {
       mcp_client_name: this.clientInfo?.name || "<unknown-client>",
       mcp_client_version: this.clientInfo?.version || "<unknown-version>",
     };
-    trackGA4(event, { ...params, ...clientInfoParams });
+    return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
@@ -113,11 +113,11 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(ListResourcesRequestSchema, this.mcpListResources.bind(this));
     this.server.setRequestHandler(ReadResourceRequestSchema, this.mcpReadResource.bind(this));
 
-    this.server.oninitialized = async () => {
+    const onInitialized = (): void => {
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {
-        this.trackGA4("mcp_client_connected");
+        void this.trackGA4("mcp_client_connected");
       }
       if (!this.clientInfo?.name) this.clientInfo = { name: "<unknown-client>" };
 
@@ -125,6 +125,10 @@ export class FirebaseMcpServer {
       while (this._readyPromises.length) {
         this._readyPromises.pop()?.resolve();
       }
+    };
+
+    this.server.oninitialized = () => {
+      void onInitialized();
     };
 
     this.server.setRequestHandler(SetLevelRequestSchema, async ({ params }) => {
@@ -272,6 +276,17 @@ export class FirebaseMcpServer {
     }
   }
 
+  private _createMcpContext(projectId: string, accountEmail: string | null): McpContext {
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
+    return {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+      accountEmail,
+    };
+  }
+
   async mcpListTools(): Promise<ListToolsResult> {
     await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
     const hasActiveProject = !!(await this.getProjectId());
@@ -324,14 +339,7 @@ export class FirebaseMcpServer {
       if (err) return err;
     }
 
-    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
-    const toolsCtx: McpContext = {
-      projectId: projectId,
-      host: this,
-      config: Config.load(options, true) || new Config({}, options),
-      rc: loadRC(options),
-      accountEmail,
-    };
+    const toolsCtx = this._createMcpContext(projectId, accountEmail);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -385,14 +393,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
-    const promptsCtx: McpContext = {
-      projectId: projectId,
-      host: this,
-      config: Config.load(options, true) || new Config({}, options),
-      rc: loadRC(options),
-      accountEmail,
-    };
+    const promptsCtx = this._createMcpContext(projectId, accountEmail);
 
     try {
       const messages = await prompt.fn(promptArgs, promptsCtx);
@@ -427,14 +428,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
-    const resourceCtx: McpContext = {
-      projectId: projectId,
-      host: this,
-      config: Config.load(options, true) || new Config({}, options),
-      rc: loadRC(options),
-      accountEmail,
-    };
+    const resourceCtx = this._createMcpContext(projectId, accountEmail);
 
     if (!resource) {
       throw new McpError(
@@ -452,7 +446,7 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  private async log(level: LoggingLevel, message: unknown) {
+  private log(level: LoggingLevel, message: unknown): void {
     let data = message;
 
     // mcp protocol only takes jsons or it errors; for convienence, format
@@ -469,6 +463,6 @@ export class FirebaseMcpServer {
       return;
     }
 
-    if (this._ready) await this.server.sendLoggingMessage({ level, data });
+    if (this._ready) void this.server.sendLoggingMessage({ level, data });
   }
 }
