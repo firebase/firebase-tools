@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { listEvents } from "../../../crashlytics/events";
-import { ErrorType, Event, ListEventsResponse } from "../../../crashlytics/types";
+import { batchGetEvents, listEvents } from "../../../crashlytics/events";
+import {
+  BatchGetEventsResponse,
+  ErrorType,
+  Event,
+  ListEventsResponse,
+} from "../../../crashlytics/types";
 import { ApplicationIdSchema, EventFilterSchema } from "../../../crashlytics/filters";
 
 function pruneThreads(sample: Event): Event {
@@ -34,10 +39,44 @@ export const list_events = tool(
   },
   async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
-    if (!filter || !filter.issueId) return mcpError(`Must specify 'issue_id' parameter.`);
+    if (!filter || (!filter.issueId && !filter.issueVariantId))
+      return mcpError(`Must specify 'filter.issueId' or 'filter.issueVariantId' parameters.`);
 
-    const samples: ListEventsResponse = await listEvents(appId, filter, pageSize);
-    samples.events = samples.events.map((e) => pruneThreads(e));
-    return toContent(samples);
+    const response: ListEventsResponse = await listEvents(appId, filter, pageSize);
+    response.events = response.events.map((e) => pruneThreads(e));
+    return toContent(response);
+  },
+);
+
+export const batch_get_events = tool(
+  {
+    name: "batch_get_events",
+    description: `Gets specific events by resource name.
+      Can be used to fetch sample crashes and exceptions for an issue,
+      which will include stack traces and other data useful for debugging.`,
+    inputSchema: z.object({
+      appId: ApplicationIdSchema,
+      names: z
+        .array(z.string())
+        .describe(
+          "An array of the event resource names, as found in the sampleEvent field in reports.",
+        ),
+    }),
+    annotations: {
+      title: "Batch Get Crashlytics Events",
+      readOnlyHint: true,
+    },
+    _meta: {
+      requiresAuth: true,
+    },
+  },
+  async ({ appId, names }) => {
+    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
+    if (!names || names.length === 0)
+      return mcpError(`Must provide event resource names in name parameter.`);
+
+    const response: BatchGetEventsResponse = await batchGetEvents(appId, names);
+    response.events = response.events.map((e) => pruneThreads(e));
+    return toContent(response);
   },
 );

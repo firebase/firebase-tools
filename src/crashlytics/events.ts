@@ -63,7 +63,7 @@ export async function batchGetEvents(
   );
   const queryParams = new URLSearchParams();
   eventNames.forEach((en) => {
-    queryParams.append("event.names", en);
+    queryParams.append("names", en);
   });
 
   try {

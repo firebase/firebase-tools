@@ -97,7 +97,7 @@ describe("events", () => {
       nock(crashlyticsApiOrigin())
         .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`)
         .query({
-          "event.names": eventNames,
+          names: eventNames,
         })
         .reply(200, mockResponse);
 
@@ -111,7 +111,7 @@ describe("events", () => {
       nock(crashlyticsApiOrigin())
         .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`)
         .query({
-          "event.names": eventNames,
+          names: eventNames,
         })
         .reply(500, { error: "Internal Server Error" });
 

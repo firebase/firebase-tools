@@ -95,8 +95,9 @@ Follow these steps to diagnose and fix issues.
 
   1. Make sure you have a good understanding of the code structure and where different functionality exists
   2. Use the 'crashlytics_get_issue' tool to get more context on the issue.
-  3. Use the 'crashlytics_list_events' tool to get an example crash for this issue.
-    3a. Apply the same filtering criteria that you used to find the issue, so that you find an appropriate event.
+  3. Use the 'crashlytics_batch_get_events' tool to get an example crash for this issue. Use the event names in the sampleEvent fields.
+    3b. If you need to read more events, use the 'crashlytics_list_events' tool.
+    3a. Apply the same filtering criteria that you used to find the issue, so that you find a appropriate events.
   4. Read the files that exist in the stack trace of the issue to understand the crash deeply.
   5. Determine possible root causes for the crash - no more than 5 potential root causes.
   6. Critique your own determination, analyzing how plausible each scenario is given the crash details.
