@@ -10,7 +10,7 @@ export const NO_PROJECT_ERROR = mcpError(
 );
 
 const GEMINI_TOS_ERROR = mcpError(
-  "This tool requires the Gemini in Firebase API, please review the terms of service and accept it using `firebase_update_environment`.\n" +
+  "This tool requires the Gemini in Firebase features, please review the terms of service and accept it using `firebase_update_environment`.\n" +
     "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
   "PRECONDITION_FAILED",
 );
