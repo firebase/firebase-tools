@@ -181,3 +181,88 @@ export async function findExistingAndroidApp(
 
   return undefined;
 }
+
+/**
+ * Generates a unique directory name for a new app, avoiding conflicts with existing directories
+ */
+export function generateUniqueAppDirectoryName(
+  projectDirectory: string,
+  platform: SupportedPlatform,
+): string {
+  let directoryName: string = platform;
+  let counter = 1;
+
+  while (fs.existsSync(path.join(projectDirectory, directoryName)) && counter < 1000) {
+    counter++;
+    directoryName = `${platform}-${counter}`;
+  }
+
+  return directoryName;
+}
+
+/**
+ * Creates a new app directory and returns the LocalFirebaseAppState
+ */
+export async function createNewAppDirectory(
+  projectDirectory: string,
+  platform: SupportedPlatform,
+  appInput: AppInput,
+): Promise<LocalFirebaseAppState> {
+  const directoryName = generateUniqueAppDirectoryName(projectDirectory, platform);
+  const fullDirectoryPath = path.join(projectDirectory, directoryName);
+
+  // Create the directory
+  await fs.ensureDir(fullDirectoryPath);
+
+  const configFilePath = getFirebaseConfigFilePath(fullDirectoryPath, platform);
+
+  return {
+    platform,
+    directory: fullDirectoryPath,
+    configFilePath,
+    shouldCreateDirectory: false, // Already created
+    ...appInput,
+  };
+}
+
+/**
+ * Resolves app context by either finding existing app or planning new directory creation
+ */
+export async function resolveAppContext(
+  projectDirectory: string,
+  appInput: AppInput,
+): Promise<LocalFirebaseAppState> {
+  if (!appInput.platform) {
+    throw new Error("platform is required in app input");
+  }
+
+  const platform = appInput.platform;
+
+  // Try to find existing app (only for iOS/Android with identifiers)
+  if (platform === "ios" && appInput.bundleId) {
+    const existingApp = await findExistingIosApp(projectDirectory, appInput.bundleId);
+    if (existingApp) {
+      return existingApp;
+    }
+  }
+
+  if (platform === "android" && appInput.packageName) {
+    const existingApp = await findExistingAndroidApp(projectDirectory, appInput.packageName);
+    if (existingApp) {
+      return existingApp;
+    }
+  }
+
+  // No existing app found or web platform - plan new directory
+  const directoryName = generateUniqueAppDirectoryName(projectDirectory, platform);
+  const fullDirectoryPath = path.join(projectDirectory, directoryName);
+  const configFilePath = getFirebaseConfigFilePath(fullDirectoryPath, platform);
+
+  return {
+    platform,
+    directory: fullDirectoryPath,
+    configFilePath,
+    shouldCreateDirectory: true,
+    ...appInput,
+  };
+}
