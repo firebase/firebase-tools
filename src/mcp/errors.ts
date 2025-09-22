@@ -10,7 +10,7 @@ export const NO_PROJECT_ERROR = mcpError(
 );
 
 const GEMINI_TOS_ERROR = mcpError(
-  "This tool requires the Gemini in Firebase features, please review the terms of service and accept it using `firebase_update_environment`.\n" +
+  "This tool requires features from Gemini in Firebase. You can enable the usage of this service and accept its associated terms of service using `firebase_update_environment`.\n" +
     "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
   "PRECONDITION_FAILED",
 );
@@ -34,14 +34,14 @@ export function noProjectDirectory(projectRoot: string | undefined): CallToolRes
   return mcpError(
     `The current project directory '${
       projectRoot || "<NO PROJECT DIRECTORY FOUND>"
-    }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
+    }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`, 
   );
 }
 
 export function mcpAuthError(skipADC: boolean): CallToolResult {
   if (skipADC) {
     return mcpError(
-      `The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in.`,
+      `The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in.`, 
     );
   }
   return mcpError(`The user is not currently logged into the Firebase CLI, which is required to use this tool. Please run the 'firebase_login' tool to log in, or instruct the user to configure [Application Default Credentials][ADC] on their machine.
