@@ -9,6 +9,8 @@
       "version": "14.17.0",
       "license": "MIT",
       "dependencies": {
+        "@apphosting/build": "*",
+        "@apphosting/common": "*",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
@@ -299,6 +301,16 @@
         "call-me-maybe": "^1.0.1",
         "js-yaml": "^3.13.1"
       }
+    },
+    "node_modules/@apphosting/build": {
+      "resolved": "../firebase-framework-tools/packages/@apphosting/build",
+      "link": true
+    },
+    "node_modules/@apphosting/common": {
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ==",
+      "license": "Apache-2.0"
     },
     "node_modules/@astrojs/compiler": {
       "version": "1.3.1",
@@ -21926,6 +21938,27 @@
         "js-yaml": "^3.13.1"
       }
     },
+<<<<<<< Updated upstream
+=======
+    "@apphosting/build": {
+      "version": "file:../firebase-framework-tools/packages/@apphosting/build",
+      "requires": {
+        "@apphosting/common": "*",
+        "@types/commander": "*",
+        "colorette": "^2.0.20",
+        "commander": "^11.1.0",
+        "npm-pick-manifest": "^9.0.0",
+        "ts-mocha": "*",
+        "ts-node": "*",
+        "typescript": "*"
+      }
+    },
+    "@apphosting/common": {
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ=="
+    },
+>>>>>>> Stashed changes
     "@astrojs/compiler": {
       "version": "1.3.1",
       "resolved": "https://registry.npmjs.org/@astrojs/compiler/-/compiler-1.3.1.tgz",
