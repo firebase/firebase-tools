@@ -1,10 +1,11 @@
 import { expect } from "chai";
 import * as nock from "nock";
+import * as clc from "colorette";
+
 import { remoteConfigApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { deleteExperiment } from "./deleteexperiment";
 import { NAMESPACE_FIREBASE } from "./interfaces";
-import * as clc from "colorette";
 
 const PROJECT_ID = "12345679";
 const EXPERIMENT_ID = "1";

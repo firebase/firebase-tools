@@ -4,7 +4,7 @@ import * as nock from "nock";
 import * as Table from "cli-table3";
 import * as util from "util";
 
-import * as rcExperiment from "./getexperiment";
+import * as rcExperiment from "./getExperiment";
 import { GetExperimentResult, NAMESPACE_FIREBASE } from "./interfaces";
 import { FirebaseError } from "../error";
 

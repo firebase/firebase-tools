@@ -5,7 +5,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
 import { GetExperimentResult, NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
-import * as rcExperiment from "../remoteconfig/getexperiment";
+import * as rcExperiment from "../remoteconfig/getExperiment";
 
 export const command = new Command("remoteconfig:experiments:get [experimentId]")
   .description("retrieve a Remote Config experiment")

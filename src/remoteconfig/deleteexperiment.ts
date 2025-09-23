@@ -1,8 +1,9 @@
+import * as clc from "colorette";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { consoleUrl } from "../utils";
-import * as clc from "colorette";
 
 const TIMEOUT = 30000;
 

@@ -1,10 +1,11 @@
+import * as Table from "cli-table3";
+import * as util from "util";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
 import { GetExperimentResult } from "./interfaces";
-import * as Table from "cli-table3";
-import * as util from "util";
 
 const TIMEOUT = 30000;
 const TABLE_HEAD = ["Entry Name", "Value"];

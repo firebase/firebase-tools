@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { remoteConfigApiOrigin } from "../api";
 import * as nock from "nock";
 import * as Table from "cli-table3";
 
-import { listExperiments, parseExperimentList } from "./listexperiments";
+import { remoteConfigApiOrigin } from "../api";
+import { FirebaseError } from "../error";
 import {
   DEFAULT_PAGE_SIZE,
   ListExperimentOptions,
@@ -11,7 +11,7 @@ import {
   NAMESPACE_FIREBASE,
   RemoteConfigExperiment,
 } from "./interfaces";
-import { FirebaseError } from "../error";
+import { listExperiments, parseExperimentList } from "./listexperiments";
 
 const PROJECT_ID = "1234567890";
 

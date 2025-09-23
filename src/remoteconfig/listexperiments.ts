@@ -1,7 +1,8 @@
+import * as Table from "cli-table3";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import * as Table from "cli-table3";
 import { FirebaseError, getError } from "../error";
 import { ListExperimentOptions, ListExperimentsResult, RemoteConfigExperiment } from "./interfaces";
 
