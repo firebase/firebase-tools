@@ -39,10 +39,7 @@ describe("update_template", () => {
       .put(`/v1/projects/${PROJECT_ID}/remoteConfig`, TEMPLATE)
       .reply(200, TEMPLATE);
 
-    const result = await update_template.handler(
-      { template: TEMPLATE },
-      { projectId: PROJECT_ID },
-    );
+    const result = await update_template.handler({ template: TEMPLATE }, { projectId: PROJECT_ID });
     expect(result).to.deep.equal(toContent(TEMPLATE));
   });
 
@@ -67,9 +64,8 @@ describe("update_template", () => {
       .put(`/v1/projects/${PROJECT_ID}/remoteConfig`, TEMPLATE)
       .reply(404, {});
 
-    await expect(
-      update_template.handler({ template: TEMPLATE }, { projectId: PROJECT_ID }),
-    ).to.be.rejected;
+    await expect(update_template.handler({ template: TEMPLATE }, { projectId: PROJECT_ID })).to.be
+      .rejected;
   });
 
   it("should return a rollback to the version number specified", async () => {
@@ -77,10 +73,7 @@ describe("update_template", () => {
       .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=1`)
       .reply(200, TEMPLATE);
 
-    const result = await update_template.handler(
-      { version_number: 1 },
-      { projectId: PROJECT_ID },
-    );
+    const result = await update_template.handler({ version_number: 1 }, { projectId: PROJECT_ID });
     expect(result).to.deep.equal(toContent(TEMPLATE));
   });
 
@@ -89,8 +82,7 @@ describe("update_template", () => {
       .post(`/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=1`)
       .reply(404, {});
 
-    await expect(
-      update_template.handler({ version_number: 1 }, { projectId: PROJECT_ID }),
-    ).to.be.rejected;
+    await expect(update_template.handler({ version_number: 1 }, { projectId: PROJECT_ID })).to.be
+      .rejected;
   });
 });
