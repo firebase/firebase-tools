@@ -34,6 +34,14 @@ export const update_user = tool(
     },
   },
   async ({ uid, disabled, claim, value, json_value }, { projectId }) => {
+    if (disabled === undefined && !claim) {
+      return mcpError("At least one of 'disabled' or 'claim' must be provided to update the user.");
+    }
+    if (claim && value === undefined && json_value === undefined) {
+      return mcpError(
+        "When providing 'claim', you must also provide either 'value' or 'json_value'.",
+      );
+    }
     if (disabled !== undefined) {
       const res = await toggleUserEnablement(projectId, uid, disabled);
       if (!res) {
@@ -45,23 +53,32 @@ export const update_user = tool(
       if (value && json_value) {
         return mcpError("Must supply only `value` or `json_value`, not both.");
       }
+      let claimValue = value;
       if (json_value) {
         try {
-          value = JSON.parse(json_value);
+          claimValue = JSON.parse(json_value);
         } catch (e) {
           return mcpError(`Provided \`json_value\` was not valid JSON: ${json_value}`);
         }
       }
-      await setCustomClaim(projectId, uid, { [claim]: value }, { merge: true });
+      try {
+        await setCustomClaim(projectId, uid, { [claim]: claimValue }, { merge: true });
+      } catch (e: any) {
+        let errorMsg = `Failed to set claim: ${e.message}`;
+        if (disabled !== undefined) {
+          errorMsg = `User was successfully ${disabled ? "disabled" : "enabled"}, but setting the claim failed: ${e.message}`;
+        }
+        return mcpError(errorMsg);
+      }
     }
-    let message = `Successfully updated user ${uid}.`;
+    const messageParts = [];
     if (disabled !== undefined) {
-      message += ` User ${disabled ? "disabled" : "enabled"}.`;
+      messageParts.push(`User ${disabled ? "disabled" : "enabled"}`);
     }
     if (claim) {
-      message += ` Claim '${claim}' set.`;
+      messageParts.push(`Claim '${claim}' set`);
     }
 
-    return toContent(message);
+    return toContent(`Successfully updated user ${uid}. ${messageParts.join(". ")}.`);
   },
 );
