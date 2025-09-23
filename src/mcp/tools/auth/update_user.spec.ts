@@ -6,12 +6,12 @@ import { McpContext } from "../../types";
 
 describe("updateUser", () => {
   const projectId = "test-project";
-  let setCustomUserClaims: sinon.SinonStub;
-  let updateUserDisabled: sinon.SinonStub;
+  let setCustomClaimsStub: sinon.SinonStub;
+  let toggleuserEnablementStub: sinon.SinonStub;
 
   beforeEach(() => {
-    setCustomUserClaims = sinon.stub(auth, "setCustomClaim");
-    updateUserDisabled = sinon.stub(auth, "disableUser");
+    setCustomClaimsStub = sinon.stub(auth, "setCustomClaim");
+    toggleuserEnablementStub = sinon.stub(auth, "toggleUserEnablement");
   });
 
   afterEach(() => {
@@ -19,7 +19,7 @@ describe("updateUser", () => {
   });
 
   it("should disable a user", async () => {
-    updateUserDisabled.resolves({ uid: "123", disabled: true });
+    toggleuserEnablementStub.resolves({ uid: "123", disabled: true });
 
     const result = await update_user.fn({ uid: "123", disabled: true }, {
       projectId,
@@ -33,12 +33,12 @@ describe("updateUser", () => {
         },
       ],
     });
-    expect(updateUserDisabled).to.have.been.calledWith("123", true);
-    expect(setCustomUserClaims).to.not.have.been.called;
+    expect(toggleuserEnablementStub).to.have.been.calledWith(projectId, "123", true);
+    expect(setCustomClaimsStub).to.not.have.been.called;
   });
 
   it("should enable a user", async () => {
-    updateUserDisabled.resolves({ uid: "123", disabled: false });
+    toggleuserEnablementStub.resolves({ uid: "123", disabled: false });
 
     const result = await update_user.fn({ uid: "123", disabled: false }, {
       projectId,
@@ -52,18 +52,18 @@ describe("updateUser", () => {
         },
       ],
     });
-    expect(updateUserDisabled).to.have.been.calledWith("123", false);
-    expect(setCustomUserClaims).to.not.have.been.called;
+    expect(toggleuserEnablementStub).to.have.been.calledWith(projectId, "123", false);
+    expect(setCustomClaimsStub).to.not.have.been.called;
   });
 
   it("should set a custom claim", async () => {
-    setCustomUserClaims.resolves({ uid: "123", customClaims: { admin: true } });
+    setCustomClaimsStub.resolves({ uid: "123", customClaims: { admin: true } });
 
     const result = await update_user.fn(
       {
         uid: "123",
         claim: "admin",
-        claimValue: "true",
+        value: true,
       },
       {
         projectId,
@@ -73,24 +73,24 @@ describe("updateUser", () => {
     expect(result).to.deep.equal({
       content: [
         {
-          text: "Successfully updated user 123. Claim 'admin' set",
+          text: "Successfully updated user 123. Claim 'admin' set.",
           type: "text",
         },
       ],
     });
-    expect(setCustomUserClaims).to.have.been.calledWith("123", { admin: true });
-    expect(updateUserDisabled).to.not.have.been.called;
+    expect(setCustomClaimsStub).to.have.been.calledWith(projectId, "123", { admin: true });
+    expect(toggleuserEnablementStub).to.not.have.been.called;
   });
 
   it("should set a custom claim and disable a user", async () => {
-    setCustomUserClaims.resolves({ uid: "123", customClaims: { admin: true } });
-    updateUserDisabled.resolves({ uid: "123", disabled: true });
+    setCustomClaimsStub.resolves({ uid: "123", customClaims: { admin: true } });
+    toggleuserEnablementStub.resolves({ uid: "123", disabled: true });
 
     const result = await update_user.fn(
       {
         uid: "123",
         claim: "admin",
-        claimValue: "true",
+        value: true,
         disabled: true,
       },
       {
@@ -101,24 +101,24 @@ describe("updateUser", () => {
     expect(result).to.deep.equal({
       content: [
         {
-          text: "Successfully updated user 123. User disabled. Claim 'admin' set",
+          text: "Successfully updated user 123. User disabled. Claim 'admin' set.",
           type: "text",
         },
       ],
     });
-    expect(setCustomUserClaims).to.have.been.calledWith("123", { admin: true });
-    expect(updateUserDisabled).to.have.been.calledWith("123", true);
+    expect(setCustomClaimsStub).to.have.been.calledWith(projectId, "123", { admin: true });
+    expect(toggleuserEnablementStub).to.have.been.calledWith(projectId, "123", true);
   });
 
   it("should set a custom claim and enable a user", async () => {
-    setCustomUserClaims.resolves({ uid: "123", customClaims: { admin: true } });
-    updateUserDisabled.resolves({ uid: "123", disabled: false });
+    setCustomClaimsStub.resolves({ uid: "123", customClaims: { admin: true } });
+    toggleuserEnablementStub.resolves({ uid: "123", disabled: false });
 
     const result = await update_user.fn(
       {
         uid: "123",
         claim: "admin",
-        claimValue: "true",
+        value: true,
         disabled: false,
       },
       {
@@ -129,12 +129,12 @@ describe("updateUser", () => {
     expect(result).to.deep.equal({
       content: [
         {
-          text: "Successfully updated user 123. User enabled. Claim 'admin' set",
+          text: "Successfully updated user 123. User enabled. Claim 'admin' set.",
           type: "text",
         },
       ],
     });
-    expect(setCustomUserClaims).to.have.been.calledWith("123", { admin: true });
-    expect(updateUserDisabled).to.have.been.calledWith("123", false);
+    expect(setCustomClaimsStub).to.have.been.calledWith(projectId, "123", { admin: true });
+    expect(toggleuserEnablementStub).to.have.been.calledWith(projectId, "123", false);
   });
 });

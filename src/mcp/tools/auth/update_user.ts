@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { disableUser, setCustomClaim } from "../../../gcp/auth";
+import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 
 export const update_user = tool(
   {
@@ -35,7 +35,7 @@ export const update_user = tool(
   },
   async ({ uid, disabled, claim, value, json_value }, { projectId }) => {
     if (disabled !== undefined) {
-      const res = await disableUser(projectId, uid, disabled);
+      const res = await toggleUserEnablement(projectId, uid, disabled);
       if (!res) {
         return toContent(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
       }
