@@ -15,6 +15,7 @@ import { consult_assistant } from "./consult_assistant";
 import { login } from "./login";
 import { logout } from "./logout";
 import { get_rules } from "./get_rules";
+import { read_resources } from "./read_resources";
 
 export const coreTools: ServerTool[] = [
   login,
@@ -32,4 +33,5 @@ export const coreTools: ServerTool[] = [
   update_environment,
   init,
   get_rules,
+  read_resources,
 ];
