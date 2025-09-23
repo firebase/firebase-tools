@@ -61,10 +61,9 @@ describe("getUsersTool", () => {
     it("should get users by email", async () => {
       findUserStub.onFirstCall().resolves(users[0]);
       findUserStub.onSecondCall().resolves(users[1]);
-      const result = await getUsersTool.fn(
-        { emails: ["user1@example.com", "user2@example.com"] },
-        { projectId } as McpContext,
-      );
+      const result = await getUsersTool.fn({ emails: ["user1@example.com", "user2@example.com"] }, {
+        projectId,
+      } as McpContext);
       expect(findUserStub).to.be.calledWith(projectId, "user1@example.com", undefined, undefined);
       expect(findUserStub).to.be.calledWith(projectId, "user2@example.com", undefined, undefined);
       expect(result).to.deep.equal(toContent(prunedUsers));
