@@ -25,7 +25,9 @@ export const get_rules = tool(
   async ({ type }, { projectId }) => {
     if (type === "rtdb") {
       const dbUrl = await getDefaultDatabaseInstance(projectId);
-
+      if (dbUrl === "") {
+        return mcpError(`No default RTDB instance found for project ${projectId}`);
+      }
       const client = new Client({ urlPrefix: dbUrl });
       const response = await client.request<void, NodeJS.ReadableStream>({
         method: "GET",
