@@ -19,7 +19,7 @@ import { validate_rules } from "./validate_rules";
 export const coreTools: ServerTool[] = [
   login,
   logout,
-  validate_rules,
+  validate_rules, // TODO (joehan): Only enable this tool when at least once of rtdb/storage/firestore is active.
   get_project,
   list_apps,
   get_admin_sdk_config,

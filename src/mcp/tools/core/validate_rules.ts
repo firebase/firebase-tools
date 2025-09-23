@@ -6,6 +6,7 @@ import { resolve } from "path";
 import { Client } from "../../../apiv2";
 import { updateRulesWithClient } from "../../../rtdb";
 import { getErrMsg } from "../../../error";
+import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
 
 interface SourcePosition {
   fileName?: string;
@@ -66,7 +67,8 @@ function formatRulesetIssues(issues: Issue[], rulesSource: string): string {
 export const validate_rules = tool(
   {
     name: "validate_rules",
-    description: "Checks the provided Firebase Rules source for syntax and validation errors.",
+    description:
+      "Use this to check Firebase Security Rules for Firestore, Storage, or Realtime Database for syntax and validation errors.",
     inputSchema: z.object({
       type: z.enum(["firestore", "storage", "rtdb"]),
       source: z
@@ -79,15 +81,9 @@ export const validate_rules = tool(
         .describe(
           "A file path, relative to the project root, to a file containing the rules source you want to validate. Provide this or source, not both.",
         ),
-      databaseUrl: z
-        .string()
-        .optional()
-        .describe(
-          "For RTDB, connect to the database at url. If omitted, use default database instance. Can point to emulator URL.",
-        ),
     }),
     annotations: {
-      title: "Validate Firebase Rules",
+      title: "Validate Firebase Security Rules",
       readOnlyHint: true,
     },
     _meta: {
@@ -95,30 +91,11 @@ export const validate_rules = tool(
       requiresAuth: true,
     },
   },
-  async ({ type, source, source_file, databaseUrl }, { projectId, config, host }) => {
-    if (type === "rtdb") {
-      if (!source) {
-        return mcpError("For RTDB, `source` is required.");
-      }
-      const dbUrl =
-        databaseUrl ?? `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app`;
-      const client = new Client({ urlPrefix: dbUrl });
-      try {
-        await updateRulesWithClient(client, source, { dryRun: true });
-      } catch (e: unknown) {
-        host.logger.debug(`failed to validate rules at url ${dbUrl}`);
-        return mcpError(getErrMsg(e));
-      }
-      return toContent("The inputted rules are valid!");
-    }
-
-    // Firestore and Storage
+  async ({ type, source, source_file }, { projectId, config, host }) => {
+    let rulesSourceContent: string;
     if (source && source_file) {
       return mcpError("Must supply `source` or `source_file`, not both.");
-    }
-
-    let rulesSourceContent: string;
-    if (source_file) {
+    } else if (source_file) {
       try {
         const filePath = resolve(source_file, host.cachedProjectDir!);
         if (filePath.includes("../"))
@@ -130,9 +107,24 @@ export const validate_rules = tool(
     } else if (source) {
       rulesSourceContent = source;
     } else {
-      rulesSourceContent = "";
+      return mcpError("Must supply at least one of `source` or `source_file`.");
     }
 
+    if (type === "rtdb") {
+      const dbUrl = await getDefaultDatabaseInstance(projectId);
+      const client = new Client({ urlPrefix: dbUrl });
+      try {
+        await updateRulesWithClient(client, source, { dryRun: true });
+      } catch (e: unknown) {
+        host.logger.debug(`failed to validate rules at url ${dbUrl}`);
+        // TODO: This really should only return an MCP error if we couldn't validate
+        // If the rules are invalid, we should return that as content
+        return mcpError(getErrMsg(e));
+      }
+      return toContent("The inputted rules are valid!");
+    }
+
+    // Firestore and Storage
     const result = await testRuleset(projectId, [
       { name: "test.rules", content: rulesSourceContent },
     ]);
