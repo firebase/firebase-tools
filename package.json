@@ -102,6 +102,8 @@
     ]
   },
   "dependencies": {
+    "@apphosting/build": "*",
+    "@apphosting/common": "*",
     "@electric-sql/pglite": "^0.3.3",
     "@electric-sql/pglite-tools": "^0.2.8",
     "@google-cloud/cloud-sql-connector": "^1.3.3",
