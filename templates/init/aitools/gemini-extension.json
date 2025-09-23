@@ -4,7 +4,7 @@
   "mcpServers": {
     "firebase": {
       "command": "npx",
-      "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "{{PROJECT_PATH}}"]
+      "args": ["-y", "firebase-tools", "mcp", "--dir", "{{PROJECT_PATH}}"]
     }
   },
   "contextFileName": "FIREBASE.md"

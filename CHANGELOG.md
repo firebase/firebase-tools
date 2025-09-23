@@ -1,1 +1,2 @@
+- The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
 - `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
