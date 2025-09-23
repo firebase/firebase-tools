@@ -66,7 +66,9 @@ describe("apphosting", () => {
           },
         },
       };
-
+      // Promise.allSettled is not resolving as expected with stubbed Promise.
+      // We stub allSettled here as a hack.
+      sinon.stub(Promise, "allSettled").resolves([]);
       orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves({
         rollout: {
           name: "rollout-name",
