@@ -1,15 +1,5 @@
 import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
-import type { FirebaseMcpServer } from "./index";
-import type { Config } from "../config";
-import { RC } from "../rc";
-
-export interface ServerPromptContext {
-  projectId: string;
-  accountEmail: string | null;
-  config: Config;
-  host: FirebaseMcpServer;
-  rc: RC;
-}
+import { McpContext } from "./types";
 
 export interface ServerPrompt {
   mcp: {
@@ -25,7 +15,7 @@ export interface ServerPrompt {
       feature?: string;
     };
   };
-  fn: (args: Record<string, string>, ctx: ServerPromptContext) => Promise<PromptMessage[]>;
+  fn: (args: Record<string, string>, ctx: McpContext) => Promise<PromptMessage[]>;
 }
 
 export function prompt(options: ServerPrompt["mcp"], fn: ServerPrompt["fn"]): ServerPrompt {

@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import { disable_user } from "./disable_user";
 import * as auth from "../../../gcp/auth";
 import { toContent } from "../../util";
-import { ServerToolContext } from "../../tool";
+import { McpContext } from "../../types";
 
 describe("disable_user tool", () => {
   const projectId = "test-project";
@@ -24,7 +24,7 @@ describe("disable_user tool", () => {
 
     const result = await disable_user.fn({ uid, disabled: true }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(disableUserStub).to.be.calledWith(projectId, uid, true);
     expect(result).to.deep.equal(toContent(`User ${uid} has been disabled`));
@@ -35,7 +35,7 @@ describe("disable_user tool", () => {
 
     const result = await disable_user.fn({ uid, disabled: false }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(disableUserStub).to.be.calledWith(projectId, uid, false);
     expect(result).to.deep.equal(toContent(`User ${uid} has been enabled`));
@@ -46,7 +46,7 @@ describe("disable_user tool", () => {
 
     const result = await disable_user.fn({ uid, disabled: true }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(result).to.deep.equal(toContent(`Failed to disable user ${uid}`));
   });
@@ -56,7 +56,7 @@ describe("disable_user tool", () => {
 
     const result = await disable_user.fn({ uid, disabled: false }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(result).to.deep.equal(toContent(`Failed to enable user ${uid}`));
   });

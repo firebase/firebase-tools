@@ -13,30 +13,36 @@ import {
   ListPromptsResult,
   GetPromptResult,
   GetPromptRequest,
+  ListResourcesRequestSchema,
+  ListResourcesResult,
+  ReadResourceRequest,
+  ReadResourceResult,
+  McpError,
+  ErrorCode,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { checkFeatureActive, mcpError } from "./util";
-import { ClientConfig, SERVER_FEATURES, ServerFeature } from "./types";
+import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
 import { availableTools } from "./tools/index";
-import { ServerTool, ServerToolContext } from "./tool";
+import { ServerTool } from "./tool";
 import { availablePrompts } from "./prompts/index";
-import { ServerPrompt, ServerPromptContext } from "./prompt";
+import { ServerPrompt } from "./prompt";
 import { configstore } from "../configstore";
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import { getProjectId } from "../projectUtils";
-import { mcpAuthError, NO_PROJECT_ERROR, mcpGeminiError } from "./errors";
+import { mcpAuthError, noProjectDirectory, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
 import { trackGA4 } from "../track";
 import { Config } from "../config";
 import { loadRC } from "../rc";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
 import { existsSync } from "node:fs";
-import { ensure, check } from "../ensureApiEnabled";
-import * as api from "../api";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
+import { resources } from "./resources";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -54,10 +60,10 @@ const orderedLogLevels = [
 ] as const;
 
 export class FirebaseMcpServer {
-  private _ready: boolean = false;
+  private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
-  cachedProjectRoot?: string;
+  cachedProjectDir?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
@@ -91,7 +97,7 @@ export class FirebaseMcpServer {
       mcp_client_version: this.clientInfo?.version || "<unknown-version>",
       gemini_cli_extension: process.env.IS_GEMINI_CLI_EXTENSION ? "true" : "false",
     };
-    trackGA4(event, { ...params, ...clientInfoParams });
+    return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
   constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
@@ -102,18 +108,21 @@ export class FirebaseMcpServer {
       tools: { listChanged: true },
       logging: {},
       prompts: { listChanged: true },
+      resources: {},
     });
 
     this.server.setRequestHandler(ListToolsRequestSchema, this.mcpListTools.bind(this));
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.server.setRequestHandler(ListPromptsRequestSchema, this.mcpListPrompts.bind(this));
     this.server.setRequestHandler(GetPromptRequestSchema, this.mcpGetPrompt.bind(this));
+    this.server.setRequestHandler(ListResourcesRequestSchema, this.mcpListResources.bind(this));
+    this.server.setRequestHandler(ReadResourceRequestSchema, this.mcpReadResource.bind(this));
 
-    this.server.oninitialized = async () => {
+    const onInitialized = (): void => {
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {
-        this.trackGA4("mcp_client_connected");
+        void this.trackGA4("mcp_client_connected");
       }
       if (!this.clientInfo?.name) this.clientInfo = { name: "<unknown-client>" };
 
@@ -121,6 +130,10 @@ export class FirebaseMcpServer {
       while (this._readyPromises.length) {
         this._readyPromises.pop()?.resolve();
       }
+    };
+
+    this.server.oninitialized = () => {
+      void onInitialized();
     };
 
     this.server.setRequestHandler(SetLevelRequestSchema, async ({ params }) => {
@@ -161,11 +174,11 @@ export class FirebaseMcpServer {
 
   async detectProjectRoot(): Promise<string> {
     await timeoutFallback(this.ready(), null, 2000);
-    if (this.cachedProjectRoot) return this.cachedProjectRoot;
+    if (this.cachedProjectDir) return this.cachedProjectDir;
     const storedRoot = this.getStoredClientConfig().projectRoot;
-    this.cachedProjectRoot = storedRoot || this.startupRoot || process.cwd();
-    this.log("debug", "detected and cached project root: " + this.cachedProjectRoot);
-    return this.cachedProjectRoot;
+    this.cachedProjectDir = storedRoot || this.startupRoot || process.cwd();
+    this.log("debug", "detected and cached project root: " + this.cachedProjectDir);
+    return this.cachedProjectDir;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
@@ -240,14 +253,14 @@ export class FirebaseMcpServer {
 
   setProjectRoot(newRoot: string | null): void {
     this.updateStoredClientConfig({ projectRoot: newRoot });
-    this.cachedProjectRoot = newRoot || undefined;
+    this.cachedProjectDir = newRoot || undefined;
     this.detectedFeatures = undefined; // reset detected features
     void this.server.sendToolListChanged();
     void this.server.sendPromptListChanged();
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = { cwd: this.cachedProjectRoot, isMCP: true };
+    const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
     await cmd.prepare(options);
     return options;
   }
@@ -268,6 +281,17 @@ export class FirebaseMcpServer {
     }
   }
 
+  private _createMcpContext(projectId: string, accountEmail: string | null): McpContext {
+    const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
+    return {
+      projectId: projectId,
+      host: this,
+      config: Config.load(options, true) || new Config({}, options),
+      rc: loadRC(options),
+      accountEmail,
+    };
+  }
+
   async mcpListTools(): Promise<ListToolsResult> {
     await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
     const hasActiveProject = !!(await this.getProjectId());
@@ -277,7 +301,7 @@ export class FirebaseMcpServer {
     return {
       tools: this.availableTools.map((t) => t.mcp),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -294,15 +318,10 @@ export class FirebaseMcpServer {
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
-    if (
-      tool.mcp.name !== "firebase_update_environment" && // allow this tool only, to fix the issue
-      (!this.cachedProjectRoot || !existsSync(this.cachedProjectRoot))
-    ) {
-      return mcpError(
-        `The current project directory '${
-          this.cachedProjectRoot || "<NO PROJECT DIRECTORY FOUND>"
-        }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
-      );
+    if (!tool.mcp._meta?.optionalProjectDir) {
+      if (!this.cachedProjectDir || !existsSync(this.cachedProjectDir)) {
+        return noProjectDirectory(this.cachedProjectDir);
+      }
     }
 
     // Check if the project ID is set.
@@ -321,23 +340,11 @@ export class FirebaseMcpServer {
 
     // Check if the tool requires Gemini in Firebase API.
     if (tool.mcp._meta?.requiresGemini) {
-      if (configstore.get("gemini")) {
-        await ensure(projectId, api.cloudAiCompanionOrigin(), "");
-      } else {
-        if (!(await check(projectId, api.cloudAiCompanionOrigin(), ""))) {
-          return mcpGeminiError(projectId);
-        }
-      }
+      const err = await requireGeminiToS(projectId);
+      if (err) return err;
     }
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
-    const toolsCtx: ServerToolContext = {
-      projectId: projectId,
-      host: this,
-      config: Config.load(options, true) || new Config({}, options),
-      rc: loadRC(options),
-      accountEmail,
-    };
+    const toolsCtx = this._createMcpContext(projectId, accountEmail);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -367,7 +374,7 @@ export class FirebaseMcpServer {
         arguments: p.mcp.arguments,
       })),
       _meta: {
-        projectRoot: this.cachedProjectRoot,
+        projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
         authenticatedUser: await this.getAuthenticatedUser(skipAutoAuthForStudio),
         activeFeatures: this.activeFeatures,
@@ -391,14 +398,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const options = { projectDir: this.cachedProjectRoot, cwd: this.cachedProjectRoot };
-    const promptsCtx: ServerPromptContext = {
-      projectId: projectId,
-      host: this,
-      config: Config.load(options, true) || new Config({}, options),
-      rc: loadRC(options),
-      accountEmail,
-    };
+    const promptsCtx = this._createMcpContext(projectId, accountEmail);
 
     try {
       const messages = await prompt.fn(promptArgs, promptsCtx);
@@ -418,6 +418,32 @@ export class FirebaseMcpServer {
     }
   }
 
+  async mcpListResources(): Promise<ListResourcesResult> {
+    return {
+      resources: resources.map((r) => r.mcp),
+    };
+  }
+
+  async mcpReadResource(req: ReadResourceRequest): Promise<ReadResourceResult> {
+    const resource = resources.find((r) => r.mcp.uri === req.params.uri);
+
+    let projectId = await this.getProjectId();
+    projectId = projectId || "";
+
+    const skipAutoAuthForStudio = isFirebaseStudio();
+    const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
+
+    const resourceCtx = this._createMcpContext(projectId, accountEmail);
+
+    if (!resource) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Resource '${req.params.uri}' could not be found.`,
+      );
+    }
+    return resource.fn(req.params.uri, resourceCtx);
+  }
+
   async start(): Promise<void> {
     const transport = process.env.FIREBASE_MCP_DEBUG_LOG
       ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
@@ -425,7 +451,7 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  private async log(level: LoggingLevel, message: unknown) {
+  private log(level: LoggingLevel, message: unknown): void {
     let data = message;
 
     // mcp protocol only takes jsons or it errors; for convienence, format
@@ -442,6 +468,6 @@ export class FirebaseMcpServer {
       return;
     }
 
-    if (this._ready) await this.server.sendLoggingMessage({ level, data });
+    if (this._ready) void this.server.sendLoggingMessage({ level, data });
   }
 }
