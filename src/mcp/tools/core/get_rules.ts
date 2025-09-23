@@ -41,20 +41,16 @@ export const get_rules = tool(
       return toContent(rules);
     }
 
-    let releaseName: string;
-    let productName: string;
-    if (type === "firestore") {
-      productName = "Firestore";
-      releaseName = "cloud.firestore";
-    } else {
-      productName = "Storage";
-      releaseName = "firebase.storage";
-    }
+    const serviceInfo = {
+      firestore: { productName: "Firestore", releaseName: "cloud.firestore" },
+      storage: { productName: "Storage", releaseName: "firebase.storage" },
+    };
+    const { productName, releaseName } = serviceInfo[type];
 
     const rulesetName = await getLatestRulesetName(projectId, releaseName);
     if (!rulesetName)
       return mcpError(`No active ${productName} rules were found in project '${projectId}'`);
     const rules = await getRulesetContent(rulesetName);
-    return toContent(rules[0].content);
+    return toContent(rules?.[0].content ?? "Ruleset contains no rules files.");
   },
 );
