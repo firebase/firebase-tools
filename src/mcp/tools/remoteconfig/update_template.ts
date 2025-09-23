@@ -12,7 +12,11 @@ export const update_template = tool(
       "Publishes a new remote config template or rolls back to a specific version for the project",
     inputSchema: z
       .object({
-        template: z.object({}).passthrough().optional().describe("The Remote Config template object to publish."),
+        template: z
+          .object({})
+          .passthrough()
+          .optional()
+          .describe("The Remote Config template object to publish."),
         version_number: z.number().optional().describe("The version number to roll back to."),
         force: z
           .boolean()
