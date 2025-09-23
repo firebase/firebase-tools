@@ -3,19 +3,15 @@ import { Client } from "../../../apiv2";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
+import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
 
 export const get_rules = tool(
   {
     name: "get_rules",
     description: "Retrieves the security rules for a specified Firebase service.",
     inputSchema: z.object({
-        type: z.enum(["firestore", "rtdb", "storage"]).describe("The service to get rules for."),
-        databaseUrl: z
-        .string()
-        .optional()
-        .describe(
-          "Required for RTDB. The database URL to connect to. If omitted, use default database instance <project>-default-rtdb.firebaseio.com. Can point to emulator URL (e.g. localhost:6000/<instance>)",
-        ),
+      type: z.enum(["firestore", "rtdb", "storage"]).describe("The service to get rules for."),
+      // TODO: Add a resourceID argument that lets you choose non default buckets/dbs.
     }),
     annotations: {
       title: "Get Firebase Rules",
@@ -26,13 +22,9 @@ export const get_rules = tool(
       requiresAuth: true,
     },
   },
-  async ({ type, databaseUrl }, { projectId }) => {
-    if (databaseUrl && type !== "rtdb") {
-      return mcpError("The 'databaseUrl' argument is only applicable for type 'rtdb'.");
-    }
+  async ({ type }, { projectId }) => {
     if (type === "rtdb") {
-        const dbUrl =
-        databaseUrl ?? `https://${projectId}-default-rtdb.us-central1.firebasedatabase.app`;
+      const dbUrl = await getDefaultDatabaseInstance(projectId);
 
       const client = new Client({ urlPrefix: dbUrl });
       const response = await client.request<void, NodeJS.ReadableStream>({
@@ -52,11 +44,11 @@ export const get_rules = tool(
     let releaseName: string;
     let productName: string;
     if (type === "firestore") {
-        productName = "Firestore";
-        releaseName = "cloud.firestore";
+      productName = "Firestore";
+      releaseName = "cloud.firestore";
     } else {
-        productName = "Storage";
-        releaseName = "firebase.storage";
+      productName = "Storage";
+      releaseName = "firebase.storage";
     }
 
     const rulesetName = await getLatestRulesetName(projectId, releaseName);
