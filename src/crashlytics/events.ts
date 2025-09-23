@@ -1,5 +1,5 @@
 import { logger } from "../logger";
-import { FirebaseError, getError } from "../error";
+import { FirebaseError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { BatchGetEventsResponse, ListEventsResponse } from "./types";
 import { EventFilter, filterToUrlSearchParams } from "./filters";
@@ -17,31 +17,22 @@ export async function listEvents(
   pageSize = 1,
 ): Promise<ListEventsResponse> {
   const requestProjectNumber = parseProjectNumber(appId);
-
-  try {
-    const queryParams = filterToUrlSearchParams(filter);
-    queryParams.set("page_size", `${pageSize}`);
-
-    logger.debug(
-      `[crashlytics] listEvents called with appId: ${appId}, filter: ${queryParams.toString()}, pageSize: ${pageSize}`,
-    );
-
-    const response = await CRASHLYTICS_API_CLIENT.request<void, ListEventsResponse>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
-      queryParams: queryParams,
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to list events for app_id ${appId}.`, {
-      original: getError(err),
-    });
-  }
+  const queryParams = filterToUrlSearchParams(filter);
+  queryParams.set("page_size", `${pageSize}`);
+  logger.debug(
+    `[crashlytics] listEvents called with appId: ${appId}, filter: ${queryParams.toString()}, pageSize: ${pageSize}`,
+  );
+  const response = await CRASHLYTICS_API_CLIENT.request<void, ListEventsResponse>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
+    queryParams: queryParams,
+    timeout: TIMEOUT,
+  });
+  response.body.events ??= [];
+  return response.body;
 }
 
 /**
@@ -65,22 +56,15 @@ export async function batchGetEvents(
   eventNames.forEach((en) => {
     queryParams.append("names", en);
   });
-
-  try {
-    const response = await CRASHLYTICS_API_CLIENT.request<void, BatchGetEventsResponse>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`,
-      queryParams: queryParams,
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to batch get events for app_id ${appId}.`, {
-      original: getError(err),
-    });
-  }
+  const response = await CRASHLYTICS_API_CLIENT.request<void, BatchGetEventsResponse>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`,
+    queryParams: queryParams,
+    timeout: TIMEOUT,
+  });
+  response.body.events ??= [];
+  return response.body;
 }

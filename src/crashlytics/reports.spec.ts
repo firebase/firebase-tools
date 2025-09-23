@@ -41,17 +41,6 @@ describe("getReport", () => {
     expect(nock.isDone()).to.be.true;
   });
 
-  it("should throw a FirebaseError if the API call fails", async () => {
-    nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
-      .reply(500, { error: "Internal Server Error" });
-
-    await expect(getReport(CrashlyticsReport.TopIssues, appId, {})).to.be.rejectedWith(
-      FirebaseError,
-      /Failed to fetch topIssues report/,
-    );
-  });
-
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 

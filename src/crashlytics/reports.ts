@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { logger } from "../logger";
-import { FirebaseError, getError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Report } from "./types";
 import {
@@ -44,27 +43,19 @@ export async function getReport(
   pageSize = DEFAULT_PAGE_SIZE,
 ): Promise<Report> {
   const requestProjectNumber = parseProjectNumber(appId);
-  try {
-    const queryParams = filterToUrlSearchParams(filter);
-    queryParams.set("page_size", `${pageSize}`);
-
-    logger.debug(
-      `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
-    );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${report}`,
-      queryParams: queryParams,
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to fetch ${report} report for app: ${appId}`, {
-      original: getError(err),
-    });
-  }
+  const queryParams = filterToUrlSearchParams(filter);
+  queryParams.set("page_size", `${pageSize}`);
+  logger.debug(
+    `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
+  );
+  const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${report}`,
+    queryParams: queryParams,
+    timeout: TIMEOUT,
+  });
+  return response.body;
 }
