@@ -43,9 +43,10 @@ export const update_user = tool(
       );
     }
     if (disabled !== undefined) {
-      const res = await toggleUserEnablement(projectId, uid, disabled);
-      if (!res) {
-        return toContent(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
+      try {
+        await toggleUserEnablement(projectId, uid, disabled);
+      } catch (err: any) {
+        return mcpError(`Failed to ${disabled ? "disable" : "enable"} user ${uid}`);
       }
     }
 

@@ -19,7 +19,7 @@ describe("updateUser", () => {
   });
 
   it("should disable a user", async () => {
-    toggleuserEnablementStub.resolves({ uid: "123", disabled: true });
+    toggleuserEnablementStub.resolves(true);
 
     const result = await update_user.fn({ uid: "123", disabled: true }, {
       projectId,
@@ -38,7 +38,7 @@ describe("updateUser", () => {
   });
 
   it("should enable a user", async () => {
-    toggleuserEnablementStub.resolves({ uid: "123", disabled: false });
+    toggleuserEnablementStub.resolves(true);
 
     const result = await update_user.fn({ uid: "123", disabled: false }, {
       projectId,
@@ -84,7 +84,7 @@ describe("updateUser", () => {
 
   it("should set a custom claim and disable a user", async () => {
     setCustomClaimsStub.resolves({ uid: "123", customClaims: { admin: true } });
-    toggleuserEnablementStub.resolves({ uid: "123", disabled: true });
+    toggleuserEnablementStub.resolves(true);
 
     const result = await update_user.fn(
       {
@@ -112,7 +112,7 @@ describe("updateUser", () => {
 
   it("should set a custom claim and enable a user", async () => {
     setCustomClaimsStub.resolves({ uid: "123", customClaims: { admin: true } });
-    toggleuserEnablementStub.resolves({ uid: "123", disabled: false });
+    toggleuserEnablementStub.resolves(true);
 
     const result = await update_user.fn(
       {
