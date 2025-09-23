@@ -48,10 +48,10 @@ export const update_template = tool(
 
     if (template) {
       if (force === undefined) {
-        return toContent(await publishTemplate(projectId, template as RemoteConfigTemplate));
+        return toContent(await publishTemplate(projectId, template as any as RemoteConfigTemplate));
       }
       return toContent(
-        await publishTemplate(projectId, template as RemoteConfigTemplate, { force }),
+        await publishTemplate(projectId, template as any as RemoteConfigTemplate, { force }),
       );
     }
 
