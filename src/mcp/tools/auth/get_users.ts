@@ -32,32 +32,22 @@ export const getUsersTool = tool(
       const { passwordHash, salt, ...prunedUser } = user;
       return prunedUser;
     };
-
-    if (uids && uids.length > 0) {
-      const users: UserInfo[] = [];
-      for (const uid of uids) {
-        try {
-          const user = await findUser(projectId, undefined, undefined, uid);
-          users.push(user);
-        } catch (err: any) {
-          // Ignore not found error
-        }
-      }
-      return toContent(users.map(prune));
-    } else if (emails && emails.length > 0) {
-      const users: UserInfo[] = [];
-      for (const email of emails) {
-        try {
-          const user = await findUser(projectId, email, undefined, undefined);
-          users.push(user);
-        } catch (err: any) {
-          // Ignore not found error
-        }
-      }
-      return toContent(users.map(prune));
-    } else {
-      const users = await listUsers(projectId, 100);
-      return toContent(users.map(prune));
+    let users: UserInfo[] = [];
+    if (uids?.length) {
+      const promises = uids.map((uid) =>
+        findUser(projectId, undefined, undefined, uid).catch(() => null),
+      );
+      users.push(...(await Promise.all(promises)).filter((u): u is UserInfo => !!u));
     }
+    if (emails?.length) {
+      const promises = emails.map((email) =>
+        findUser(projectId, email, undefined, undefined).catch(() => null),
+      );
+      users.push(...(await Promise.all(promises)).filter((u): u is UserInfo => !!u));
+    }
+    if (!uids?.length && !emails?.length) {
+      users = await listUsers(projectId, 100);
+    }
+    return toContent(users.map(prune));
   },
 );
