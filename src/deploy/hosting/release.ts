@@ -12,7 +12,7 @@ import { Payload as FunctionsPayload } from "../functions/args";
 export async function release(
   context: Context,
   options: { message?: string },
-  functionsPayload: FunctionsPayload
+  functionsPayload: FunctionsPayload,
 ): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
@@ -24,7 +24,7 @@ export async function release(
       if (!deploy.version) {
         throw new FirebaseError(
           "Assertion failed: Hosting version should have been set in the prepare phase",
-          { exit: 2 }
+          { exit: 2 },
         );
       }
       utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "finalizing version...");
@@ -53,10 +53,10 @@ export async function release(
         deploy.config.site,
         context.hostingChannel || "live",
         deploy.version,
-        otherReleaseOpts
+        otherReleaseOpts,
       );
       logger.debug("[hosting] release:", release);
       utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
-    })
+    }),
   );
 }

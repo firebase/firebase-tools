@@ -1,4 +1,4 @@
-# Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
+# Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwiZXhwZXJpbWVudGFsOm1jcCIsIi0tZGlyIiwiLiJdfQ==)
 
 The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line.
 
@@ -117,15 +117,16 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Extensions Commands
 
-| Command           | Description                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| **ext**           | Display information on how to use ext commands and extensions installed to your project.    |
-| **ext:configure** | Configure an existing extension instance.                                                   |
-| **ext:info**      | Display information about an extension by name (extensionName@x.y.z for a specific version) |
-| **ext:install**   | Install an extension.                                                                       |
-| **ext:list**      | List all the extensions that are installed in your Firebase project.                        |
-| **ext:uninstall** | Uninstall an extension that is installed in your Firebase project by Instance ID.           |
-| **ext:update**    | Update an existing extension instance to the latest version.                                |
+| Command             | Description                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| **ext**             | Display information on how to use ext commands and extensions installed to your project.    |
+| **ext:configure**   | Configure an existing extension instance.                                                   |
+| **ext:info**        | Display information about an extension by name (extensionName@x.y.z for a specific version) |
+| **ext:install**     | Install an extension.                                                                       |
+| **ext:sdk:install** | Install and SDK for an extension so you can define the extension in a functions codebase.   |
+| **ext:list**        | List all the extensions that are installed in your Firebase project.                        |
+| **ext:uninstall**   | Uninstall an extension that is installed in your Firebase project by Instance ID.           |
+| **ext:update**      | Update an existing extension instance to the latest version.                                |
 
 ### Cloud Firestore Commands
 

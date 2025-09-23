@@ -23,7 +23,15 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
   return targets.some((t) => !t.includes(":"));
 }
 
-const FILTERABLE_TARGETS = new Set(["hosting", "functions", "firestore", "storage", "database"]);
+const FILTERABLE_TARGETS = new Set([
+  "hosting",
+  "functions",
+  "firestore",
+  "storage",
+  "database",
+  "dataconnect",
+  "apphosting",
+]);
 
 /**
  * Validates that the target filters in options.only are valid.
@@ -44,8 +52,8 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
     if (targetsForNonFilteredTypes.length && targetsHaveFilters(...targetsForNonFilteredTypes)) {
       return reject(
         new FirebaseError(
-          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, storage, and firestore"
-        )
+          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, storage, and firestore",
+        ),
       );
     }
     const targetsForFunctions = targetsForTypes(only, "functions");
@@ -56,8 +64,8 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
     ) {
       return reject(
         new FirebaseError(
-          'Cannot specify "--only functions" and "--only functions:<filter>" at the same time'
-        )
+          'Cannot specify "--only functions" and "--only functions:<filter>" at the same time',
+        ),
       );
     }
     return resolve();

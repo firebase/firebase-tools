@@ -6,6 +6,7 @@ import * as path from "path";
 
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions } from "../integration-helpers/framework";
+import { Resolver } from "../../src/emulator/dns";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -24,6 +25,17 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 60000;
+
+const r = new Resolver();
+let addr: string;
+async function localhost(): Promise<string> {
+  if (addr) {
+    return addr;
+  }
+  const a = await r.lookupFirst("localhost");
+  addr = a.address;
+  return addr;
+}
 
 function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
@@ -50,13 +62,13 @@ describe("import/export end to end", () => {
     await emulatorsCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
-      ["--only", "firestore"],
+      ["--only", "firestore", "--debug"],
       (data: unknown) => {
         if (typeof data !== "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     // Ask for export
@@ -84,7 +96,7 @@ describe("import/export end to end", () => {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     await importCLI.stop();
@@ -107,35 +119,36 @@ describe("import/export end to end", () => {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     // Write some data to export
     const config = readConfig();
     const port = config.emulators!.database.port;
+    const host = await localhost();
     const aApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-a`,
+        databaseURL: `http://${host}:${port}?ns=namespace-a`,
         credential: ADMIN_CREDENTIAL,
       },
-      "rtdb-export-a"
+      "rtdb-export-a",
     );
     const bApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-b`,
+        databaseURL: `http://${host}:${port}?ns=namespace-b`,
         credential: ADMIN_CREDENTIAL,
       },
-      "rtdb-export-b"
+      "rtdb-export-b",
     );
     const cApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-c`,
+        databaseURL: `http://${host}:${port}?ns=namespace-c`,
         credential: ADMIN_CREDENTIAL,
       },
-      "rtdb-export-c"
+      "rtdb-export-c",
     );
 
     // Write to two namespaces
@@ -178,7 +191,7 @@ describe("import/export end to end", () => {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     // Read the data
@@ -228,13 +241,13 @@ describe("import/export end to end", () => {
     const config = readConfig();
     const port = config.emulators!.auth.port;
     try {
-      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
       const adminApp = admin.initializeApp(
         {
           projectId: project,
           credential: ADMIN_CREDENTIAL,
         },
-        "admin-app"
+        "admin-app",
       );
       await adminApp
         .auth()
@@ -263,6 +276,9 @@ describe("import/export end to end", () => {
       expect(configData).to.deep.equal({
         signIn: {
           allowDuplicateEmails: false,
+        },
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: false,
         },
       });
 
@@ -300,7 +316,7 @@ describe("import/export end to end", () => {
             throw new Error(`data is not a string or buffer (${typeof data})`);
           }
           return data.includes(ALL_EMULATORS_STARTED_LOG);
-        }
+        },
       );
 
       // Check users are indeed imported correctly
@@ -335,13 +351,13 @@ describe("import/export end to end", () => {
     const config = readConfig();
     const port = config.emulators!.auth.port;
     try {
-      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
       const adminApp = admin.initializeApp(
         {
           projectId: project,
           credential: ADMIN_CREDENTIAL,
         },
-        "admin-app2"
+        "admin-app2",
       );
       for (let i = 0; i < accountCount; i++) {
         await adminApp
@@ -369,6 +385,9 @@ describe("import/export end to end", () => {
         signIn: {
           allowDuplicateEmails: false,
         },
+        emailPrivacyConfig: {
+          enableImprovedEmailPrivacy: false,
+        },
       });
 
       const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -386,7 +405,7 @@ describe("import/export end to end", () => {
             throw new Error(`data is not a string or buffer (${typeof data})`);
           }
           return data.includes(ALL_EMULATORS_STARTED_LOG);
-        }
+        },
       );
 
       // Check users are indeed imported correctly
@@ -434,6 +453,9 @@ describe("import/export end to end", () => {
       signIn: {
         allowDuplicateEmails: false,
       },
+      emailPrivacyConfig: {
+        enableImprovedEmailPrivacy: false,
+      },
     });
 
     const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
@@ -451,7 +473,7 @@ describe("import/export end to end", () => {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
+      },
     );
 
     await importCLI.stop();
@@ -467,7 +489,7 @@ describe("import/export end to end", () => {
       "emulators:start",
       FIREBASE_PROJECT,
       ["--only", "storage"],
-      logIncludes(ALL_EMULATORS_STARTED_LOG)
+      logIncludes(ALL_EMULATORS_STARTED_LOG),
     );
 
     const credPath = path.join(__dirname, "service-account-key.json");
@@ -477,7 +499,7 @@ describe("import/export end to end", () => {
 
     const config = readConfig();
     const port = config.emulators!.storage.port;
-    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
+    process.env.STORAGE_EMULATOR_HOST = `http://${await localhost()}:${port}`;
 
     // Write some data to export
     const aApp = admin.initializeApp(
@@ -486,7 +508,7 @@ describe("import/export end to end", () => {
         storageBucket: "bucket-a",
         credential,
       },
-      "storage-export-a"
+      "storage-export-a",
     );
     const bApp = admin.initializeApp(
       {
@@ -494,7 +516,7 @@ describe("import/export end to end", () => {
         storageBucket: "bucket-b",
         credential,
       },
-      "storage-export-b"
+      "storage-export-b",
     );
 
     // Write data to two buckets
@@ -510,7 +532,7 @@ describe("import/export end to end", () => {
       "emulators:export",
       FIREBASE_PROJECT,
       [exportPath],
-      logIncludes("Export complete")
+      logIncludes("Export complete"),
     );
     await exportCLI.stop();
 
@@ -528,7 +550,7 @@ describe("import/export end to end", () => {
       "emulators:start",
       FIREBASE_PROJECT,
       ["--only", "storage", "--import", exportPath],
-      logIncludes(ALL_EMULATORS_STARTED_LOG)
+      logIncludes(ALL_EMULATORS_STARTED_LOG),
     );
 
     // List the files
@@ -551,5 +573,7 @@ describe("import/export end to end", () => {
     // const [f] = await aApp.storage().bucket().file("a/b.txt").get();
     // const [buf] = await f.download();
     // expect(buf.toString()).to.eql("a/b hello, world!");
+
+    await importCLI.stop();
   });
 });

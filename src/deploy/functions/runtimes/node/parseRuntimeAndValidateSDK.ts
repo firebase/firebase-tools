@@ -1,50 +1,23 @@
 import * as path from "path";
-import * as clc from "colorette";
 
 import { FirebaseError } from "../../../../error";
-import { track } from "../../../../track";
-import * as runtimes from "../../runtimes";
+import * as supported from "../supported";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-const ENGINE_RUNTIMES: Record<number, runtimes.Runtime | runtimes.DeprecatedRuntime> = {
-  6: "nodejs6",
-  8: "nodejs8",
-  10: "nodejs10",
-  12: "nodejs12",
-  14: "nodejs14",
-  16: "nodejs16",
-  18: "nodejs18",
-};
-
-const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
+const supportedNodeVersions: string[] = Object.keys(supported.RUNTIMES)
+  .filter((s) => supported.runtimeIsLanguage(s as supported.Runtime, "nodejs"))
+  .filter((s) => !supported.isDecommissioned(s as supported.Runtime))
+  .map((s) => s.substring("nodejs".length));
 
 export const RUNTIME_NOT_SET =
-  "`runtime` field is required but was not found in firebase.json.\n" +
+  "`runtime` field is required but was not found in firebase.json or package.json.\n" +
   "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  '"runtime": "nodejs18"\n';
+  `"runtime": "${supported.latest("nodejs")}" or set the "engine" field in package.json\n`;
 
-export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
-  `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs{10|12|14|16|18}")}.`
-);
-
-export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
-  `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": 10|12|14|16|18}')}`
-);
-
-export const DEPRECATED_NODE_VERSION_INFO =
-  `\n\nDeploys to runtimes below Node.js 10 are now disabled in the Firebase CLI. ` +
-  `${clc.bold(
-    `Existing Node.js 8 functions ${clc.underline("will stop executing at a future date")}`
-  )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
-
-function getRuntimeChoiceFromPackageJson(
-  sourceDir: string
-): runtimes.Runtime | runtimes.DeprecatedRuntime {
+function getRuntimeChoiceFromPackageJson(sourceDir: string): supported.Runtime {
   const packageJsonPath = path.join(sourceDir, "package.json");
   let loaded;
   try {
@@ -61,7 +34,14 @@ function getRuntimeChoiceFromPackageJson(
     throw new FirebaseError(RUNTIME_NOT_SET);
   }
 
-  return ENGINE_RUNTIMES[engines.node];
+  const runtime = `nodejs${engines.node}`;
+  if (!supported.isRuntime(runtime)) {
+    throw new FirebaseError(
+      `Detected node engine ${engines.node} in package.json, which is not a ` +
+        `supported version. Valid versions are ${supportedNodeVersions.join(", ")}`,
+    );
+  }
+  return runtime;
 }
 
 /**
@@ -71,25 +51,9 @@ function getRuntimeChoiceFromPackageJson(
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
  * @return The runtime, e.g. `nodejs12`.
  */
-export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): runtimes.Runtime {
-  const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
-  const errorMessage =
-    (runtimeFromConfig
-      ? UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
-      : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) + DEPRECATED_NODE_VERSION_INFO;
-
-  if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
-    void track("functions_runtime_notices", "package_missing_runtime");
-    throw new FirebaseError(errorMessage, { exit: 1 });
-  }
-
-  // Note: the runtimes.isValidRuntime should always be true because we've verified
-  // it's in ENGINE_RUNTIME_NAMES and not in DEPRECATED_RUNTIMES. This is still a
-  // good defense in depth and also lets us upcast the response to Runtime safely.
-  if (runtimes.isDeprecatedRuntime(runtime) || !runtimes.isValidRuntime(runtime)) {
-    void track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
-    throw new FirebaseError(errorMessage, { exit: 1 });
-  }
-
-  return runtime;
+export function getRuntimeChoice(
+  sourceDir: string,
+  runtimeFromConfig?: supported.Runtime,
+): supported.Runtime {
+  return runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
 }

@@ -44,7 +44,7 @@ export function getProjectInfos(options: {
       if (Object.keys(result).includes(projectId)) {
         logWarning(
           `Multiple aliases found for ${clc.bold(projectId)}. ` +
-            `Preferring alias (${clc.bold(result[projectId])}) over (${clc.bold(alias)}).`
+            `Preferring alias (${clc.bold(result[projectId])}) over (${clc.bold(alias)}).`,
         );
         continue;
       }
@@ -81,7 +81,7 @@ export async function hydrateConfigs(pInfos: ProjectConfigInfo[]): Promise<void>
       })
       .catch((err) => {
         logger.debug(
-          `Failed to fetch runtime config for project ${info.projectId}: ${err.message}`
+          `Failed to fetch runtime config for project ${info.projectId}: ${err.message}`,
         );
       });
   });

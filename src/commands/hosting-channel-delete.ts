@@ -4,7 +4,7 @@ import { marked } from "marked";
 import { Command } from "../command";
 import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
@@ -21,7 +21,7 @@ export const command = new Command("hosting:channel:delete <channelId>")
   .action(
     async (
       channelId: string,
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<void> => {
       const projectId = needProjectId(options);
       const siteId = options.site;
@@ -29,17 +29,14 @@ export const command = new Command("hosting:channel:delete <channelId>")
       channelId = normalizeName(channelId);
       const channel = await getChannel(projectId, siteId, channelId);
 
-      const confirmed = await promptOnce(
-        {
-          name: "force",
-          type: "confirm",
-          message: `Are you sure you want to delete the Hosting Channel ${underline(
-            channelId
-          )} for site ${underline(siteId)}?`,
-          default: false,
-        },
-        options
-      );
+      const confirmed = await confirm({
+        message: `Are you sure you want to delete the Hosting Channel ${underline(
+          channelId,
+        )} for site ${underline(siteId)}?`,
+        default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      });
 
       if (!confirmed) {
         return;
@@ -52,12 +49,12 @@ export const command = new Command("hosting:channel:delete <channelId>")
         } catch (e: any) {
           logLabeledWarning(
             "hosting:channel",
-            marked(
+            await marked(
               `Unable to remove channel domain from Firebase Auth. Visit the Firebase Console at ${consoleUrl(
                 projectId,
-                "/authentication/providers"
-              )}`
-            )
+                "/authentication/providers",
+              )}`,
+            ),
           );
           logger.debug("[hosting] unable to remove auth domain", e);
         }
@@ -65,7 +62,7 @@ export const command = new Command("hosting:channel:delete <channelId>")
 
       logLabeledSuccess(
         "hosting:channels",
-        `Successfully deleted channel ${bold(channelId)} for site ${bold(siteId)}.`
+        `Successfully deleted channel ${bold(channelId)} for site ${bold(siteId)}.`,
       );
-    }
+    },
   );

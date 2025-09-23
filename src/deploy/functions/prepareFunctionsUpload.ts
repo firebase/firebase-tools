@@ -13,6 +13,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
+import { logFunctionsConfigDeprecationWarning } from "../../functions/deprecationWarnings";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -39,7 +40,7 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
         "Cloud Runtime Config is currently experiencing issues, " +
           "which is preventing your functions from being deployed. " +
           "Please wait a few minutes and then try to deploy your functions again." +
-          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project.",
       );
     }
   }
@@ -58,7 +59,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
 async function packageSource(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
-  runtimeConfig: any
+  runtimeConfig: any,
 ): Promise<PackagedSourceInfo | undefined> {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
@@ -76,7 +77,7 @@ async function packageSource(
   ignore.push(
     "firebase-debug.log",
     "firebase-debug.*.log",
-    CONFIG_DEST_FILE /* .runtimeconfig.json */
+    CONFIG_DEST_FILE /* .runtimeconfig.json */,
   );
   try {
     const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
@@ -99,6 +100,12 @@ async function packageSource(
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
       });
+
+      // Only warn about deprecated runtime config if there are user-defined values
+      // (i.e., keys other than the default 'firebase' key)
+      if (Object.keys(runtimeConfig).some((k) => k !== "firebase")) {
+        logFunctionsConfigDeprecationWarning();
+      }
     }
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
@@ -107,7 +114,7 @@ async function packageSource(
       {
         original: err,
         exit: 1,
-      }
+      },
     );
   }
 
@@ -117,7 +124,7 @@ async function packageSource(
       clc.bold(sourceDir) +
       " (" +
       filesize(archive.pointer()) +
-      ") for uploading"
+      ") for uploading",
   );
   const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
@@ -126,7 +133,7 @@ async function packageSource(
 export async function prepareFunctionsUpload(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
-  runtimeConfig?: backend.RuntimeConfigValues
+  runtimeConfig?: backend.RuntimeConfigValues,
 ): Promise<PackagedSourceInfo | undefined> {
   return packageSource(sourceDir, config, runtimeConfig);
 }

@@ -1,5 +1,6 @@
 import * as backend from "./backend";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -16,7 +17,7 @@ export interface EndpointFilter {
  */
 export function endpointMatchesAnyFilter(
   endpoint: backend.Endpoint,
-  filters?: EndpointFilter[]
+  filters?: EndpointFilter[],
 ): boolean {
   if (!filters) {
     return true;
@@ -125,6 +126,20 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 }
 
 /**
+ * Get human friendly name for the given function platform
+ */
+export function getHumanFriendlyPlatformName(platform: backend.Endpoint["platform"]): string {
+  if (platform === "gcfv1") {
+    return "1st Gen";
+  } else if (platform === "gcfv2") {
+    return "2nd Gen";
+  } else if (platform === "run") {
+    return "Cloud Run";
+  }
+  assertExhaustive(platform);
+}
+
+/**
  * Generate label for a function.
  */
 export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
@@ -166,14 +181,14 @@ export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilte
  *
  * An endpoint is part a codebase if:
  *   1. Endpoint is associated w/ the current codebase (duh).
- *   2. Endpoint name matches name of an endoint we want to deploy
+ *   2. Endpoint name matches name of an endpoint we want to deploy
  *
  * Condition (2) might feel wrong but is a practical conflict resolution strategy as it makes migrating a function
  * from one codebase to another straightforward.
  */
 export function groupEndpointsByCodebase(
   wantBackends: Record<string, backend.Backend>,
-  haveEndpoints: backend.Endpoint[]
+  haveEndpoints: backend.Endpoint[],
 ): Record<string, backend.Backend> {
   const grouped: Record<string, backend.Backend> = {};
   // endpointsToAssign will hold endpoints not assigned to any codebase.
@@ -184,7 +199,7 @@ export function groupEndpointsByCodebase(
   for (const codebase of Object.keys(wantBackends)) {
     const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
     grouped[codebase] = backend.of(
-      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e)))
+      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e))),
     );
     // Remove all endpoints we've assigned in this iteration.
     endpointsToAssign = endpointsToAssign.filter((e) => !names.includes(backend.functionName(e)));

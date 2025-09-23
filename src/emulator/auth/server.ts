@@ -118,12 +118,12 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
 export async function createApp(
   defaultProjectId: string,
   singleProjectMode = SingleProjectMode.NO_WARNING,
-  projectStateForId = new Map<string, AgentProjectState>()
+  projectStateForId = new Map<string, AgentProjectState>(),
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
 
-  // Retrun access-control-allow-private-network heder if requested
+  // Return access-control-allow-private-network heder if requested
   // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
   // Aligns with https://wicg.github.io/private-network-access/#headers
   // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
@@ -162,7 +162,7 @@ export async function createApp(
 
   registerLegacyRoutes(app);
   registerHandlers(app, (apiKey, tenantId) =>
-    getProjectStateById(getProjectIdByApiKey(apiKey), tenantId)
+    getProjectStateById(getProjectIdByApiKey(apiKey), tenantId),
   );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
@@ -197,7 +197,7 @@ export async function createApp(
       return undefined;
     }
     const scopes = Object.keys(
-      ctx.api.openApiDoc.components.securitySchemes.Oauth2.flows.authorizationCode.scopes
+      ctx.api.openApiDoc.components.securitySchemes.Oauth2.flows.authorizationCode.scopes,
     );
     const token = authorization.substr(AUTH_HEADER_PREFIX.length);
     if (token.toLowerCase() === "owner") {
@@ -209,7 +209,7 @@ export async function createApp(
       // will also assume that the token belongs to the default projectId.
       EmulatorLogger.forEmulator(Emulators.AUTH).log(
         "WARN",
-        `Received service account token ${token}. Assuming that it owns project "${defaultProjectId}".`
+        `Received service account token ${token}. Assuming that it owns project "${defaultProjectId}".`,
       );
       return { type: "success", user: defaultProjectId, scopes };
     }
@@ -223,7 +223,7 @@ export async function createApp(
           location: "Authorization",
           locationType: "header",
         },
-      ]
+      ],
     );
   };
   const apis = await exegesisExpress.middleware(specForRouter(), {
@@ -268,12 +268,12 @@ export async function createApp(
     onResponseValidationError({ errors }) {
       logError(
         new Error(
-          `An internal error occured when generating response. Details:\n${JSON.stringify(errors)}`
-        )
+          `An internal error occured when generating response. Details:\n${JSON.stringify(errors)}`,
+        ),
       );
       throw new InternalError(
         "An internal error occured when generating response.",
-        "emulator-response-validation"
+        "emulator-response-validation",
       );
     },
     customFormats: {
@@ -298,7 +298,7 @@ export async function createApp(
         return true;
       },
       byte() {
-        // Disable the "byte" format validation to allow stuffing arbitary
+        // Disable the "byte" format validation to allow stuffing arbitrary
         // strings in passwordHash etc. Needed because the emulator generates
         // non-base64 hash strings like "fakeHash:salt=foo:password=bar".
         return true;
@@ -330,7 +330,7 @@ export async function createApp(
                         location: "Authorization",
                         locationType: "header",
                       },
-                    ]
+                    ],
                   );
                 }
               }
@@ -474,7 +474,7 @@ function registerLegacyRoutes(app: express.Express): void {
 
 function toExegesisController(
   ops: AuthOps,
-  getProjectStateById: (projectId: string, tenantId?: string) => ProjectState
+  getProjectStateById: (projectId: string, tenantId?: string) => ProjectState,
 ): Record<string, PromiseController> {
   const result: Record<string, PromiseController> = {};
   processNested(ops, "");
@@ -518,7 +518,7 @@ function toExegesisController(
           // authenticated requests may specify targetProjectId.
           assert(
             ctx.security?.Oauth2,
-            "INSUFFICIENT_PERMISSION : Only authenticated requests can specify target_project_id."
+            "INSUFFICIENT_PERMISSION : Only authenticated requests can specify target_project_id.",
           );
         }
       } else {
@@ -538,7 +538,7 @@ function toExegesisController(
       // Perform initial token parsing to get correct project state
       if (ctx.requestBody?.idToken) {
         const idToken = ctx.requestBody?.idToken;
-        const decoded = decode(idToken, { complete: true }) as {
+        const decoded = decode(idToken, { complete: true }) as any as {
           header: JwtHeader;
           payload: FirebaseJwtPayload;
         } | null;
@@ -555,7 +555,7 @@ function toExegesisController(
           // Shouldn't ever reach this assertion, but adding for completeness
           assert(
             refreshTokenRecord.tenantId === targetTenantId,
-            "TENANT_ID_MISMATCH: ((Refresh token tenant ID does not match target tenant ID.))"
+            "TENANT_ID_MISMATCH: ((Refresh token tenant ID does not match target tenant ID.))",
           );
         }
         targetTenantId = targetTenantId || refreshTokenRecord.tenantId;
@@ -588,7 +588,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
 function validateAndFixRestMappingRequestBody(
   validate: ValidatorFunction,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any
+  body: any,
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 

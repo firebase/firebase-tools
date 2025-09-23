@@ -1,0 +1,10 @@
+type Post @table {
+  id: String!
+  content: String!
+}
+
+type Comment @table {
+  id: String!
+  content: String!
+  post: Post!
+}

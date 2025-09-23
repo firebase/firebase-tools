@@ -52,13 +52,16 @@ function encodeHelper(val: any): any {
   }
   throw new FirebaseError(
     `Cannot encode ${val} to a Firestore Value. ` +
-      "The emulator does not yet support Firestore document reference values or geo points."
+      "The emulator does not yet support Firestore document reference values or geo points.",
   );
 }
 
 export function encodeFirestoreValue(data: any): Record<string, any> {
-  return Object.entries(data).reduce((acc, [key, val]) => {
-    acc[key] = encodeHelper(val);
-    return acc;
-  }, {} as Record<string, any>);
+  return Object.entries(data).reduce(
+    (acc, [key, val]) => {
+      acc[key] = encodeHelper(val);
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
 }

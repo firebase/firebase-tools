@@ -2,9 +2,9 @@ import { needProjectNumber } from "../../projectUtils";
 import { loadCJSON } from "../../loadCJSON";
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
-import { Options } from "../../options";
+import { DeployOptions } from "../";
 
-export default async function (context: any, options: Options): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   if (!context) {
     return;
   }

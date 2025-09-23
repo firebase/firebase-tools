@@ -27,7 +27,7 @@ export function fetchMOTD(): void {
         ", need at least",
         clc.bold(motd.minVersion) + ")\n\nRun",
         clc.bold("npm install -g firebase-tools"),
-        "to upgrade."
+        "to upgrade.",
       );
       process.exit(1);
     }
@@ -42,7 +42,7 @@ export function fetchMOTD(): void {
       }
     }
   } else {
-    const origin = utils.addSubdomain(realtimeOrigin, "firebase-public");
+    const origin = utils.addSubdomain(realtimeOrigin(), "firebase-public");
     const c = new Client({ urlPrefix: origin, auth: false });
     c.get("/cli.json")
       .then((res) => {
@@ -51,7 +51,9 @@ export function fetchMOTD(): void {
         configstore.set("motd.fetched", Date.now());
       })
       .catch((err) => {
-        utils.logWarning("Unable to fetch the CLI MOTD and remote config.");
+        utils.logWarning(
+          "Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection.",
+        );
         logger.debug(`Failed to fetch MOTD ${err}`);
       });
   }

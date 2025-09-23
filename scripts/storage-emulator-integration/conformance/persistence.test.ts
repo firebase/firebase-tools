@@ -62,7 +62,10 @@ describe("Storage persistence conformance tests", () => {
       devtools: true,
     });
     page = await browser.newPage();
-    await page.goto("https://example.com", { waitUntil: "networkidle2" });
+    await page.goto("https://example.com", {
+      waitUntil: "networkidle2",
+      timeout: TEST_SETUP_TIMEOUT - 5000,
+    });
     await page.addScriptTag({
       url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
     });
@@ -86,7 +89,7 @@ describe("Storage persistence conformance tests", () => {
       TEST_ENV.appConfig,
       TEST_ENV.useProductionServers,
       TEST_ENV.authEmulatorHost,
-      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, ""),
     );
   });
 
@@ -134,7 +137,7 @@ describe("Storage persistence conformance tests", () => {
         await firebase.storage().ref(testFileName).putString(fileContent);
       },
       TEST_FILE_NAME,
-      fileContent
+      fileContent,
     );
 
     const [downloadedFileContent] = await testBucket.file(TEST_FILE_NAME).download();

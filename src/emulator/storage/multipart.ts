@@ -122,7 +122,7 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
  */
 export function parseObjectUploadMultipartRequest(
   contentTypeHeader: string,
-  body: Buffer
+  body: Buffer,
 ): ObjectUploadMultipartData {
   if (!contentTypeHeader.startsWith("multipart/related")) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);

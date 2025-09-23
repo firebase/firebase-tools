@@ -3,7 +3,6 @@ import { logger } from "../logger";
 import * as clc from "colorette";
 
 import * as utils from "../utils";
-import { promptOnce } from "../prompt";
 import { Options } from "../options";
 import { Account } from "../types/auth";
 import {
@@ -14,6 +13,7 @@ import {
   logout,
   setGlobalDefaultAccount,
 } from "../auth";
+import { select } from "../prompt";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
@@ -59,8 +59,7 @@ export async function logoutAction(email: string | undefined, options: Options):
         };
       });
 
-      newDefaultAccount = await promptOnce({
-        type: "list",
+      newDefaultAccount = await select<Account>({
         message:
           "You are logging out of your default account, which account should become the new default?",
         choices,
@@ -77,7 +76,7 @@ export async function logoutAction(email: string | undefined, options: Options):
         await logout(token);
       } catch (e: any) {
         utils.logWarning(
-          `Invalid refresh token for ${account.user.email}, did not need to deauthorize`
+          `Invalid refresh token for ${account.user.email}, did not need to deauthorize`,
         );
       }
 

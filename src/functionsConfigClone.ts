@@ -31,7 +31,7 @@ function cloneConfig(configName: string, toProject: any): Promise<any> {
     return Promise.all(
       variables.map((variable: { name: string }) => {
         return cloneVariable(variable.name, toProject);
-      })
+      }),
     );
   });
 }
@@ -62,13 +62,13 @@ export async function functionsConfigClone(
   fromProject: any,
   toProject: any,
   only: string[] | undefined,
-  except: string[] = []
+  except: string[] = [],
 ): Promise<any> {
   if (only) {
     return Promise.all(
       only.map((key) => {
         return cloneConfigOrVariable(key, fromProject, toProject);
-      })
+      }),
     );
   }
   return functionsConfig.materializeAll(fromProject).then((toClone) => {
@@ -77,7 +77,7 @@ export async function functionsConfigClone(
     return Promise.all(
       Object.entries(toClone).map(([configId, val]) => {
         return functionsConfig.setVariablesRecursive(toProject, configId, "", val);
-      })
+      }),
     );
   });
 }

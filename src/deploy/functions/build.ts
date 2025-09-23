@@ -1,17 +1,21 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../.../../api";
+import * as api from "../../api";
 import * as params from "./params";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
+import { Runtime } from "./runtimes/supported";
+import { ExprParseError } from "./cel";
+import { defineSecret } from "firebase-functions/params";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
   endpoints: Record<string, Endpoint>;
   params: params.Param[];
+  runtime?: Runtime;
+  extensions?: Record<string, DynamicExtension>;
 }
 
 /**
@@ -64,13 +68,14 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
-// eslint-disable-next-line
-interface CallableTrigger { }
+interface CallableTrigger {
+  genkitAction?: string;
+}
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
@@ -102,7 +107,7 @@ export interface EventTrigger {
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
   // The name of the channel where the function receives events.
   // Must be provided to receive CF3v2 custom events.
@@ -190,7 +195,7 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 
 export interface VpcSettings {
   connector: string | Expression<string>;
-  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
 }
 
 export interface SecretEnvVar {
@@ -201,14 +206,9 @@ export interface SecretEnvVar {
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
-/**
- * Is a given number a valid MemoryOption?
- */
-export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
-  return allMemoryOptions.includes(mem as MemoryOption);
-}
 
-export type FunctionsPlatform = backend.FunctionsPlatform;
+// Run is an automatic migration from gcfv2 and is not used on the wire.
+export type FunctionsPlatform = Exclude<backend.FunctionsPlatform, "run">;
 export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
@@ -233,7 +233,7 @@ export type Endpoint = Triggered & {
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -243,7 +243,7 @@ export type Endpoint = Triggered & {
   project: string;
 
   // The runtime being deployed to this endpoint. Currently targeting "nodejs16."
-  runtime: string;
+  runtime: Runtime;
 
   // Firebase default of 80. Cloud default of 1
   concurrency?: Field<number>;
@@ -271,42 +271,48 @@ export type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>> | null;
 };
 
-/**
- * Resolves user-defined parameters inside a Build, and generates a Backend.
- * Returns both the Backend and the literal resolved values of any params, since
- * the latter also have to be uploaded so user code can see them in process.env
- */
-export async function resolveBackend(
-  build: Build,
-  firebaseConfig: FirebaseConfig,
-  userEnvOpt: UserEnvsOpts,
-  userEnvs: Record<string, string>,
-  nonInteractive?: boolean
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  let paramValues: Record<string, params.ParamValue> = {};
-  paramValues = await params.resolveParams(
-    build.params,
-    firebaseConfig,
-    envWithTypes(build.params, userEnvs),
-    nonInteractive
-  );
+type SecretParam = ReturnType<typeof defineSecret>;
+export type DynamicExtension = {
+  params: Record<string, string | SecretParam>;
+  ref?: string;
+  localPath?: string;
+  events: string[];
+  labels?: Record<string, string>;
+};
 
-  const toWrite: Record<string, string> = {};
-  for (const paramName of Object.keys(paramValues)) {
-    const paramValue = paramValues[paramName];
-    if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
-      continue;
-    }
-    toWrite[paramName] = paramValue.toString();
-  }
-  writeUserEnvs(toWrite, userEnvOpt);
-
-  return { backend: toBackend(build, paramValues), envs: paramValues };
+interface ResolveBackendOpts {
+  build: Build;
+  firebaseConfig: FirebaseConfig;
+  userEnvs: Record<string, string>;
+  nonInteractive?: boolean;
+  isEmulator?: boolean;
 }
 
-function envWithTypes(
+/**
+ * Resolves user-defined parameters inside a Build and generates a Backend.
+ * Callers are responsible for persisting resolved env vars.
+ */
+export async function resolveBackend(
+  opts: ResolveBackendOpts,
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
+  const paramValues = await params.resolveParams(
+    opts.build.params,
+    opts.firebaseConfig,
+    envWithTypes(opts.build.params, opts.userEnvs),
+    opts.nonInteractive,
+    opts.isEmulator,
+  );
+
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+}
+
+// Exported for testing
+/**
+ *
+ */
+export function envWithTypes(
   definedParams: params.Param[],
-  rawEnvs: Record<string, string>
+  rawEnvs: Record<string, string>,
 ): Record<string, params.ParamValue> {
   const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
@@ -346,6 +352,16 @@ function envWithTypes(
             boolean: false,
             number: false,
             list: true,
+          };
+        } else if (param.type === "secret") {
+          // NOTE(danielylee): Secret values are not supposed to be
+          // provided in the env files. However, users may do it anyway.
+          // Secret values will be provided as strings in those cases.
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+            list: false,
           };
         }
       }
@@ -419,7 +435,7 @@ class Resolver {
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 export function toBackend(
   build: Build,
-  paramValues: Record<string, params.ParamValue>
+  paramValues: Record<string, params.ParamValue>,
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
@@ -431,9 +447,22 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion];
-    } else {
+      regions = [api.functionsDefaultRegion()];
+    } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
+    } else {
+      // N.B. setting region via GlobalOptions only accepts a String param.
+      // Therefore if we raise an exception by attempting to resolve a
+      // List param, we try resolving a String param instead.
+      try {
+        regions = params.resolveList(bdEndpoint.region, paramValues);
+      } catch (err: any) {
+        if (err instanceof ExprParseError) {
+          regions = [params.resolveString(bdEndpoint.region, paramValues)];
+        } else {
+          throw err;
+        }
+      }
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
@@ -456,8 +485,8 @@ export function toBackend(
         "environmentVariables",
         "labels",
         "secretEnvironmentVariables",
-        "serviceAccount"
       );
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {
@@ -470,33 +499,45 @@ export function toBackend(
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
           throw new FirebaseError(
             `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
-              allMemoryOptions
-            )}`
+              allMemoryOptions,
+            )}`,
           );
         }
         return (mem as backend.MemoryOptions) || null;
       });
 
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
       r.resolveInts(
         bkEndpoint,
         bdEndpoint,
         "timeoutSeconds",
         "maxInstances",
         "minInstances",
-        "concurrency"
+        "concurrency",
       );
       proto.convertIfPresent(
         bkEndpoint,
         bdEndpoint,
         "cpu",
-        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
+        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
       if (bdEndpoint.vpc) {
+        bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
         if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
           bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
         }
-        bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
-        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
+
+        bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
+        if (bdEndpoint.vpc.egressSettings) {
+          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
+          if (!backend.isValidEgressSetting(egressSettings)) {
+            throw new FirebaseError(
+              `Value "${egressSettings}" is an invalid ` +
+                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
+            );
+          }
+          bkEndpoint.vpc.egressSettings = egressSettings;
+        }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;
       }
@@ -519,7 +560,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     }
     return { httpsTrigger };
   } else if (isCallableTriggered(endpoint)) {
-    return { callableTrigger: {} };
+    const trigger: CallableTriggered = { callableTrigger: {} };
+    proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
+    return trigger;
   } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };
   } else if (isEventTriggered(endpoint)) {
@@ -533,7 +576,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     if (endpoint.eventTrigger.eventFilterPathPatterns) {
       eventTrigger.eventFilterPathPatterns = mapObject(
         endpoint.eventTrigger.eventFilterPathPatterns,
-        r.resolveString
+        r.resolveString,
       );
     }
     r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
@@ -554,7 +597,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "minBackoffSeconds",
         "maxRetrySeconds",
         "retryCount",
-        "maxDoublings"
+        "maxDoublings",
       );
       bkSchedule.retryConfig = bkRetry;
     } else if (endpoint.scheduleTrigger.retryConfig === null) {
@@ -569,7 +612,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         taskQueueTrigger.rateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
-        "maxDispatchesPerSecond"
+        "maxDispatchesPerSecond",
       );
     } else if (endpoint.taskQueueTrigger.rateLimits === null) {
       taskQueueTrigger.rateLimits = null;
@@ -583,7 +626,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "maxBackoffSeconds",
         "minBackoffSeconds",
         "maxRetrySeconds",
-        "maxDoublings"
+        "maxDoublings",
       );
     } else if (endpoint.taskQueueTrigger.retryConfig === null) {
       taskQueueTrigger.retryConfig = null;
@@ -596,4 +639,42 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     return { taskQueueTrigger };
   }
   assertExhaustive(endpoint);
+}
+
+/**
+ * Prefixes all endpoint IDs and secret names in a build with a given prefix.
+ * This ensures that functions and their associated secrets from different codebases
+ * remain isolated and don't conflict when deployed to the same project.
+ */
+export function applyPrefix(build: Build, prefix: string): void {
+  if (!prefix) {
+    return;
+  }
+  const newEndpoints: Record<string, Endpoint> = {};
+  for (const [id, endpoint] of Object.entries(build.endpoints)) {
+    const newId = `${prefix}-${id}`;
+
+    // Enforce function id constraints early for clearer errors.
+    if (newId.length > 63) {
+      throw new FirebaseError(
+        `Function id '${newId}' exceeds 63 characters after applying prefix '${prefix}'. Please shorten the prefix or function name.`,
+      );
+    }
+    const fnIdRegex = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
+    if (!fnIdRegex.test(newId)) {
+      throw new FirebaseError(
+        `Function id '${newId}' is invalid after applying prefix '${prefix}'. Function names must start with a letter and can contain letters, numbers, underscores, and hyphens, with a maximum length of 63 characters.`,
+      );
+    }
+
+    newEndpoints[newId] = endpoint;
+
+    if (endpoint.secretEnvironmentVariables) {
+      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
+        ...secret,
+        secret: `${prefix}-${secret.secret}`,
+      }));
+    }
+  }
+  build.endpoints = newEndpoints;
 }

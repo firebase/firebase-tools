@@ -5,10 +5,10 @@ import { FirebaseError } from "../../error";
 import { parseBoltRules } from "../../parseBoltRules";
 import * as rtdb from "../../rtdb";
 import * as utils from "../../utils";
-import { Options } from "../../options";
 import * as dbRulesConfig from "../../database/rulesConfig";
+import { DeployOptions } from "..";
 
-export function prepare(context: any, options: Options): Promise<any> {
+export function prepare(context: any, options: DeployOptions): Promise<any> {
   const rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
   const next = Promise.resolve();
 
@@ -55,9 +55,9 @@ export function prepare(context: any, options: Options): Promise<any> {
             clc.bold(clc.green("database: ")) +
               "rules syntax for database " +
               clc.bold(deploy.instance) +
-              " is valid"
+              " is valid",
           );
         });
-    })
+    }),
   );
 }

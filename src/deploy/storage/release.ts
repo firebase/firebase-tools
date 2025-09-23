@@ -29,7 +29,7 @@ export default async function (context: any, options: any): Promise<string[]> {
   await Promise.all(
     toRelease.map((r) => {
       return rulesDeploy.release(r.rules, RulesetServiceType.FIREBASE_STORAGE, r.bucket);
-    })
+    }),
   );
 
   return toRelease.map((r) => r.bucket);

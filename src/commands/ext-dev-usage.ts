@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { Command } from "../command";
@@ -6,19 +6,19 @@ import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudm
 import { requireAuth } from "../requireAuth";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils";
-import { getPublisherProfile, listExtensions } from "../extensions/extensionsApi";
+import { getPublisherProfile, listExtensions } from "../extensions/publisherApi";
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")
-  .description("get usage for an extension")
+  .description("get usage statistics for an extension")
   .help(
     "use this command to get the usage of extensions you published. " +
       "Specify the publisher ID you used to publish your extensions, " +
-      "or the extension ref of your published extension."
+      "or the extension ref of your published extension",
   )
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
@@ -37,24 +37,22 @@ export const command = new Command("ext:dev:usage <publisherId>")
       let extensions;
       try {
         extensions = await listExtensions(publisherId);
-      } catch (err: any) {
-        throw new FirebaseError(err);
+      } catch (err: unknown) {
+        throw new FirebaseError(getErrMsg(err));
       }
 
       if (extensions.length < 1) {
         throw new FirebaseError(
           `There are no published extensions associated with publisher ID ${clc.bold(
-            publisherId
+            publisherId,
           )}. This could happen for two reasons:\n` +
             "  - The publisher ID doesn't exist or could be misspelled\n" +
             "  - This publisher has not published any extensions\n\n" +
-            "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
+            "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again.",
         );
       }
 
-      extensionName = await promptOnce({
-        type: "list",
-        name: "extension",
+      extensionName = await select<string>({
         message: "Which published extension do you want to view the stats for?",
         choices: extensions.map((e) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -89,12 +87,12 @@ export const command = new Command("ext:dev:usage <publisherId>")
     let response;
     try {
       response = await queryTimeSeries(query, projectNumber);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError(
         `Error occurred when fetching usage data for extension ${extensionName}`,
         {
-          original: err,
-        }
+          original: getError(err),
+        },
       );
     }
     if (!response) {
@@ -122,7 +120,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
     logger.info(`* Due to privacy considerations, numbers are reported as ranges.`);
     logger.info(`* In the absence of significant changes, we will render a '-' symbol.`);
     logger.info(
-      `* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`
+      `* You will need more than 10 installs over a period of more than 28 days to render sufficient data.`,
     );
     // TODO(b/216289102): Add buildCloudMonitoringLink back after UI is fixed.
   });

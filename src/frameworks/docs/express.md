@@ -18,14 +18,11 @@ to extend integration support to frameworks other than Angular and Next.js.
 
 <<_includes/_before-you-begin.md>>
 
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
-
 <<_includes/_initialize-firebase.md>>
 
+1. Answer yes to "Do you want to use a web framework? (experimental)"
 1. Choose your hosting source directory; this could be an existing web app.
-1. Choose "Dynamic web hosting with web framework."
-1. Choose Express.js / custom
+1. If prompted, choose Express.js / custom
 
 ### Initialize an existing project
 

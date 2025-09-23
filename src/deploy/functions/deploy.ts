@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { logSuccess, logWarning } from "../../utils";
+import { logLabeledWarning, logLabeledSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
@@ -12,13 +12,14 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import { findEndpoint } from "./backend";
+import { deploy as extDeploy } from "../extensions";
 
 setGracefulCleanup();
 
 async function uploadSourceV1(
   projectId: string,
   source: args.Source,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<string | undefined> {
   const v1Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv1");
   if (v1Endpoints.length === 0) {
@@ -30,16 +31,27 @@ async function uploadSourceV1(
     file: source.functionsSourceV1!,
     stream: fs.createReadStream(source.functionsSourceV1!),
   };
-  await gcs.upload(uploadOpts, uploadUrl, {
-    "x-goog-content-length-range": "0,104857600",
-  });
+  if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
+    logLabeledWarning(
+      "functions",
+      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
+    );
+  }
+  await gcs.upload(
+    uploadOpts,
+    uploadUrl,
+    {
+      "x-goog-content-length-range": "0,104857600",
+    },
+    true, // ignoreQuotaProject
+  );
   return uploadUrl;
 }
 
 async function uploadSourceV2(
   projectId: string,
   source: args.Source,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<gcfv2.StorageSource | undefined> {
   const v2Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv2");
   if (v2Endpoints.length === 0) {
@@ -51,14 +63,20 @@ async function uploadSourceV2(
     file: source.functionsSourceV2!,
     stream: fs.createReadStream(source.functionsSourceV2!),
   };
-  await gcs.upload(uploadOpts, res.uploadUrl);
+  if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
+    logLabeledWarning(
+      "functions",
+      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
+    );
+  }
+  await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
   return res.storageSource;
 }
 
 async function uploadCodebase(
   context: args.Context,
   codebase: string,
-  wantBackend: backend.Backend
+  wantBackend: backend.Backend,
 ): Promise<void> {
   const source = context.sources?.[codebase];
   if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
@@ -78,11 +96,10 @@ async function uploadCodebase(
       source.storage = storage as gcfv2.StorageSource;
     }
 
-    const sourceDir = configForCodebase(context.config!, codebase).source;
+    const cfg = configForCodebase(context.config!, codebase);
+    const label = cfg.source ?? cfg.remoteSource?.dir ?? "remote";
     if (uploads.length) {
-      logSuccess(
-        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`
-      );
+      logLabeledSuccess("functions", `${clc.bold(label)} source uploaded successfully`);
     }
   } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
@@ -99,25 +116,25 @@ async function uploadCodebase(
 export async function deploy(
   context: args.Context,
   options: Options,
-  payload: args.Payload
+  payload: args.Payload,
 ): Promise<void> {
-  if (!context.config) {
-    return;
+  // Deploy extensions
+  if (payload.extensions && context.extensions) {
+    await extDeploy(context.extensions, options, payload.extensions);
   }
 
-  if (!payload.functions) {
-    return;
-  }
-
-  await checkHttpIam(context, options, payload);
-  const uploads: Promise<void>[] = [];
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
-      continue;
+  // Deploy functions
+  if (payload.functions && context.config) {
+    await checkHttpIam(context, options, payload);
+    const uploads: Promise<void>[] = [];
+    for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+      if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
+        continue;
+      }
+      uploads.push(uploadCodebase(context, codebase, wantBackend));
     }
-    uploads.push(uploadCodebase(context, codebase, wantBackend));
+    await Promise.all(uploads);
   }
-  await Promise.all(uploads);
 }
 
 /**
@@ -126,7 +143,7 @@ export async function deploy(
 export function shouldUploadBeSkipped(
   context: args.Context,
   wantBackend: backend.Backend,
-  haveBackend: backend.Backend
+  haveBackend: backend.Backend,
 ): boolean {
   // If function targets are specified by --only flag, assume that function will be deployed
   // and go ahead and upload the source.

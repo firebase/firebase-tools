@@ -1,6 +1,4 @@
 import * as clc from "colorette";
-import { marked } from "marked";
-import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -19,26 +17,20 @@ import { inferUpdateSource } from "../extensions/updateHelper";
 import * as secretsUtils from "../extensions/secretsUtils";
 import * as refs from "../extensions/refs";
 import { getProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import * as experiments from "../experiments";
+import { confirm } from "../prompt";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
-
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 /**
  * Command for updating an existing extension instance
  */
 export const command = new Command("ext:update <extensionInstanceId> [updateSource]")
   .description(
-    experiments.isEnabled("extdev")
-      ? "update an existing extension instance to the latest version or from a local or URL source"
-      : "update an existing extension instance to the latest version"
+    "update an existing extension instance to the latest version, or to a specific version if provided",
   )
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -47,39 +39,30 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .option("--local", "deprecated")
   .withForce()
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);
     const config = manifest.loadConfig(options);
-
-    if (options.local) {
-      utils.logLabeledWarning(
-        logPrefix,
-        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
-      );
-    }
-
     const oldRefOrPath = manifest.getInstanceTarget(instanceId, config);
     if (isLocalPath(oldRefOrPath)) {
       throw new FirebaseError(
         `Updating an extension with local source is not neccessary. ` +
           `Rerun "firebase deploy" or restart the emulator after making changes to your local extension source. ` +
           `If you've edited the extension param spec, you can edit an extension instance's params ` +
-          `interactively by running "firebase ext:configure --local {instance-id}"`
+          `interactively by running "firebase ext:configure --local {instance-id}"`,
       );
     }
 
     const oldRef = manifest.getInstanceRef(instanceId, config);
     const oldExtensionVersion = await extensionsApi.getExtensionVersion(
-      refs.toExtensionVersionRef(oldRef)
+      refs.toExtensionVersionRef(oldRef),
     );
     updateSource = inferUpdateSource(updateSource, refs.toExtensionRef(oldRef));
 
     const newSourceOrigin = getSourceOrigin(updateSource);
     if (
       ![SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
-        newSourceOrigin
+        newSourceOrigin,
       )
     ) {
       throw new FirebaseError(`Only updating to a published extension version is allowed`);
@@ -91,21 +74,21 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       utils.logLabeledBullet(
         logPrefix,
         `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
-          newExtensionVersion.ref
-        )}.`
+          newExtensionVersion.ref,
+        )}.`,
       );
       return;
     }
-
     utils.logLabeledBullet(
       logPrefix,
       `Updating ${clc.bold(instanceId)} from version ${clc.bold(
-        oldExtensionVersion.ref
-      )} to version ${clc.bold(newExtensionVersion.ref)}.`
+        oldExtensionVersion.ref,
+      )} to version ${clc.bold(newExtensionVersion.ref)}.`,
     );
 
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: false,
@@ -129,8 +112,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       newSpec: newExtensionVersion.spec,
       currentParams: oldParamValues,
       projectId,
-      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
-      paramsEnvPath: "",
       nonInteractive: options.nonInteractive,
       instanceId,
     });
@@ -138,7 +119,7 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       ? await askUserForEventsConfig.askForEventsConfig(
           newExtensionVersion.spec.events,
           "${param:PROJECT_ID}",
-          instanceId
+          instanceId,
         )
       : undefined;
     if (eventsConfig) {
@@ -161,8 +142,8 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       {
         nonInteractive: options.nonInteractive,
         force: true, // Skip asking for permission again
-      }
+      },
     );
-    manifest.showPostDeprecationNotice();
+    displayDeveloperTOSWarning();
     return;
   });

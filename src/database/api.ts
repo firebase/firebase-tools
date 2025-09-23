@@ -9,7 +9,7 @@ export function realtimeOriginOrEmulatorOrCustomUrl(host: string): string {
   return envOverride(
     Constants.FIREBASE_DATABASE_EMULATOR_HOST,
     envOverride("FIREBASE_REALTIME_URL", host),
-    addHttpIfRequired
+    addHttpIfRequired,
   );
 }
 

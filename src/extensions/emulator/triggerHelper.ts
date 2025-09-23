@@ -28,7 +28,7 @@ const SUPPORTED_SYSTEM_PARAMS = {
  */
 export function functionResourceToEmulatedTriggerDefintion(
   resource: Resource,
-  systemParams: Record<string, string> = {}
+  systemParams: Record<string, string> = {},
 ): ParsedTriggerDefinition {
   const resourceType = resource.type;
   if (resource.type === FUNCTIONS_RESOURCE_TYPE) {
@@ -43,21 +43,21 @@ export function functionResourceToEmulatedTriggerDefintion(
       systemParams,
       "regions",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].regions,
-      (str: string) => [str]
+      (str: string) => [str],
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "timeoutSeconds",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].timeoutSeconds,
-      (d) => +d
+      (d) => +d,
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "availableMemoryMb",
       SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].availableMemoryMb,
-      (d) => +d as backend.MemoryOptions
+      (d) => +d as backend.MemoryOptions,
     );
     // These don't, but we inject them anyway for consistency and forward compatability
     proto.convertIfPresent(
@@ -71,13 +71,14 @@ export function functionResourceToEmulatedTriggerDefintion(
           ret[key] = value;
         }
         return ret;
-      }
+      },
     );
     const properties = resource.properties || {};
     proto.convertIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
     proto.convertIfPresent(etd, properties, "regions", "location", (str: string) => [str]);
     proto.copyIfPresent(etd, properties, "availableMemoryMb");
-    if (properties.httpsTrigger) {
+    if (properties.httpsTrigger !== undefined) {
+      // Need to explcitly check undefined since {} is falsey
       etd.httpsTrigger = properties.httpsTrigger;
     }
     if (properties.eventTrigger) {
@@ -98,7 +99,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
-        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
+        `Function '${resource.name}' is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
       );
     }
     return etd;
@@ -118,7 +119,7 @@ export function functionResourceToEmulatedTriggerDefintion(
         properties.serviceConfig,
         "availableMemoryMb",
         "availableMemory",
-        (mem: string) => parseInt(mem) as backend.MemoryOptions
+        (mem: string) => parseInt(mem) as backend.MemoryOptions,
       );
     }
     if (properties.eventTrigger) {
@@ -137,13 +138,18 @@ export function functionResourceToEmulatedTriggerDefintion(
             eventFilterPathPatterns[filter.attribute] = filter.value;
           }
         }
+        if (properties.eventTrigger.eventType.includes("google.cloud.firestore")) {
+          // Fall back to '(default)' if unset, to match https://github.com/firebase/firebase-functions/blob/e3f9772a530860f7469434a91d344e3faa371765/src/v2/providers/firestore.ts#L511
+          eventFilters["database"] = eventFilters["database"] ?? "(default)";
+          eventFilters["namespace"] = eventFilters["namespace"] ?? "(default)";
+        }
         etd.eventTrigger.eventFilters = eventFilters;
         etd.eventTrigger.eventFilterPathPatterns = eventFilterPathPatterns;
       }
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "WARN",
-        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
+        `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`,
       );
     }
     return etd;

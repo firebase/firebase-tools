@@ -28,11 +28,11 @@ export const command = new Command("serve")
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
+    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")",
   )
   .option(
     "--except <targets>",
-    "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
+    "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")",
   )
   .before((options) => {
     if (
@@ -51,10 +51,10 @@ export const command = new Command("serve")
     if (options.targets.includes("database") || options.targets.includes("firestore")) {
       throw new FirebaseError(
         `Please use ${clc.bold(
-          "firebase emulators:start"
+          "firebase emulators:start",
         )} to start the Realtime Database or Cloud Firestore emulators. ${clc.bold(
-          "firebase serve"
-        )} only supports Hosting and Cloud Functions.`
+          "firebase serve",
+        )} only supports Hosting and Cloud Functions.`,
       );
     }
 
@@ -65,13 +65,13 @@ export const command = new Command("serve")
     if (options.config) {
       logger.info();
       logger.info(
-        clc.bold(clc.white("===") + " Serving from '" + options.config.projectDir + "'...")
+        clc.bold(clc.white("===") + " Serving from '" + options.config.projectDir + "'..."),
       );
       logger.info();
     } else {
       utils.logWarning(
         "No Firebase project directory detected. Serving static content from " +
-          clc.bold(options.cwd || process.cwd())
+          clc.bold(options.cwd || process.cwd()),
       );
     }
     options.targets = filterTargets(options, VALID_TARGETS);

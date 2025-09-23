@@ -25,9 +25,17 @@ export interface BaseOptions {
   debug: boolean;
 
   rc: RC;
+  // Emulator specific import/export options
+  exportOnExit?: boolean | string;
+  import?: string;
+
+  isMCP?: boolean;
 }
 
 export interface Options extends BaseOptions {
   // TODO(samstern): Remove this once options is better typed
   [key: string]: unknown;
+
+  // whether it's coming from the VS Code Extension
+  isVSCE?: true;
 }

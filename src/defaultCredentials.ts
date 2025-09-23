@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { auth } from "google-auth-library";
 
 import { clientId, clientSecret } from "./api";
 import { Tokens, User, Account } from "./types/auth";
@@ -63,8 +64,8 @@ export function clearCredentials(account: Account): void {
 function getCredential(tokens: Tokens): RefreshTokenCredential | undefined {
   if (tokens.refresh_token) {
     return {
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       refresh_token: tokens.refresh_token,
       type: "authorized_user",
     };
@@ -105,4 +106,13 @@ function userEmailSlug(user: User): string {
   const slug = email.replace("@", "_").replace(".", "_");
 
   return slug;
+}
+
+export async function hasDefaultCredentials(): Promise<boolean> {
+  try {
+    await auth.getApplicationDefault();
+    return true;
+  } catch (err: any) {
+    return false;
+  }
 }

@@ -1,0 +1,25 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.panelExpando {
+  appearance: none;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  line-height: 16px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  gap: 4px;
+  color: var(--vscode-descriptionForeground);
+
+  .panelExpandoIcon {
+    transition: transform 0.1s ease;
+  }
+
+  &:not(.isExpanded) .panelExpandoIcon {
+    transform: rotate(-90deg);
+  }
+}

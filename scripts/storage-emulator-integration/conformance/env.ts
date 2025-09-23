@@ -158,7 +158,7 @@ class ConformanceTestEnvironment {
     if (this.useProductionServers) {
       process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(
         __dirname,
-        TEST_CONFIG.prodServiceAccountKeyFilePath
+        TEST_CONFIG.prodServiceAccountKeyFilePath,
       );
     } else {
       process.env.STORAGE_EMULATOR_HOST = this.storageEmulatorHost;

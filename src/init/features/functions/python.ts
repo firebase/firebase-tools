@@ -1,16 +1,15 @@
-import * as fs from "fs";
 import * as spawn from "cross-spawn";
-import * as path from "path";
 
 import { Config } from "../../../config";
-import { getPythonBinary, LATEST_VERSION } from "../../../deploy/functions/runtimes/python";
+import { getPythonBinary } from "../../../deploy/functions/runtimes/python";
 import { runWithVirtualEnv } from "../../../functions/python";
-import { promptOnce } from "../../../prompt";
+import { confirm } from "../../../prompt";
+import { latest } from "../../../deploy/functions/runtimes/supported";
+import { readTemplateSync } from "../../../templates";
 
-const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/python");
-const MAIN_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "main.py"), "utf8");
-const REQUIREMENTS_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "requirements.txt"), "utf8");
-const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const MAIN_TEMPLATE = readTemplateSync("init/functions/python/main.py");
+const REQUIREMENTS_TEMPLATE = readTemplateSync("init/functions/python/requirements.txt");
+const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/python/_gitignore");
 
 /**
  * Create a Python Firebase Functions project.
@@ -18,18 +17,18 @@ const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"
 export async function setup(setup: any, config: Config): Promise<void> {
   await config.askWriteProjectFile(
     `${setup.functions.source}/requirements.txt`,
-    REQUIREMENTS_TEMPLATE
+    REQUIREMENTS_TEMPLATE,
   );
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await config.askWriteProjectFile(`${setup.functions.source}/main.py`, MAIN_TEMPLATE);
 
   // Write the latest supported runtime version to the config.
-  config.set("functions.runtime", LATEST_VERSION);
+  config.set("functions.runtime", latest("python"));
   // Add python specific ignores to config.
   config.set("functions.ignore", ["venv", "__pycache__"]);
 
   // Setup VENV.
-  const venvProcess = spawn(getPythonBinary(LATEST_VERSION), ["-m", "venv", "venv"], {
+  const venvProcess = spawn(getPythonBinary(latest("python")), ["-m", "venv", "venv"], {
     shell: true,
     cwd: config.path(setup.functions.source),
     stdio: [/* stdin= */ "pipe", /* stdout= */ "pipe", /* stderr= */ "pipe", "pipe"],
@@ -39,9 +38,7 @@ export async function setup(setup: any, config: Config): Promise<void> {
     venvProcess.on("error", reject);
   });
 
-  const install = await promptOnce({
-    name: "install",
-    type: "confirm",
+  const install = await confirm({
     message: "Do you want to install dependencies now?",
     default: true,
   });
@@ -51,17 +48,17 @@ export async function setup(setup: any, config: Config): Promise<void> {
       ["pip3", "install", "--upgrade", "pip"],
       config.path(setup.functions.source),
       {},
-      { stdio: ["inherit", "inherit", "inherit"] }
+      { stdio: ["inherit", "inherit", "inherit"] },
     );
     await new Promise((resolve, reject) => {
       upgradeProcess.on("exit", resolve);
       upgradeProcess.on("error", reject);
     });
     const installProcess = runWithVirtualEnv(
-      [getPythonBinary(LATEST_VERSION), "-m", "pip", "install", "-r", "requirements.txt"],
+      [getPythonBinary(latest("python")), "-m", "pip", "install", "-r", "requirements.txt"],
       config.path(setup.functions.source),
       {},
-      { stdio: ["inherit", "inherit", "inherit"] }
+      { stdio: ["inherit", "inherit", "inherit"] },
     );
     await new Promise((resolve, reject) => {
       installProcess.on("exit", resolve);

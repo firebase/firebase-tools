@@ -1,0 +1,29 @@
+@import "./globals/index.scss";
+
+a:not(:hover):not(:focus) {
+  text-decoration: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.integrationStatus {
+  padding-left: 28px;
+  position: relative;
+
+  &-label {
+    line-height: 16px;
+  }
+
+  &-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  &-loading {
+    width: 16px;
+    height: 16px;
+  }
+}

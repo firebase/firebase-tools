@@ -4,10 +4,10 @@ import * as fs from "fs-extra";
 
 import * as gcp from "./gcp";
 import { logger } from "./logger";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrStatus } from "./error";
 import * as utils from "./utils";
 
-import { promptOnce } from "./prompt";
+import { confirm } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 import { getProjectNumber } from "./getProjectNumber";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";
@@ -56,7 +56,10 @@ export class RulesDeploy {
    * @param options The CLI options object.
    * @param type The service type for which this ruleset is associated.
    */
-  constructor(public options: any, private type: RulesetServiceType) {
+  constructor(
+    public options: any,
+    private type: RulesetServiceType,
+  ) {
     this.project = options.project;
     this.rulesFiles = {};
     this.rulesetNames = {};
@@ -88,7 +91,7 @@ export class RulesDeploy {
     await Promise.all(
       Object.keys(this.rulesFiles).map((filename) => {
         return this.compileRuleset(filename, this.rulesFiles[filename]);
-      })
+      }),
     );
   }
 
@@ -98,7 +101,7 @@ export class RulesDeploy {
    * @return An object containing the latest name and content of the current rules.
    */
   private async getCurrentRules(
-    service: RulesetServiceType
+    service: RulesetServiceType,
   ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
     const latestName = await gcp.rules.getLatestRulesetName(this.options.project, service);
     let latestContent: RulesetFile[] | null = null;
@@ -128,27 +131,23 @@ export class RulesDeploy {
       }
 
       // Prompt user to ask if they want to add the service account
-      const addRole = await promptOnce(
-        {
-          type: "confirm",
-          name: "rulesRole",
-          message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
-          default: true,
-        },
-        this.options
-      );
+      const addRole = await confirm({
+        message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
+        default: true,
+        force: this.options.force,
+      });
 
       // Try to add the role to the service account
       if (addRole) {
         await addServiceAccountToRoles(projectNumber, saEmail, [CROSS_SERVICE_RULES_ROLE], true);
         utils.logLabeledBullet(
           RulesetType[this.type],
-          "updated service account for cross-service rules..."
+          "updated service account for cross-service rules...",
         );
       }
     } catch (e: any) {
       logger.warn(
-        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions."
+        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions.",
       );
       logger.warn("[rules] Cross-service Storage rules may not function properly", e.message);
     }
@@ -177,7 +176,7 @@ export class RulesDeploy {
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logLabeledBullet(
           RulesetType[this.type],
-          `latest version of ${bold(filename)} already up to date, skipping upload...`
+          `latest version of ${bold(filename)} already up to date, skipping upload...`,
         );
         this.rulesetNames[filename] = latestRulesetName;
         continue;
@@ -197,8 +196,8 @@ export class RulesDeploy {
         this.rulesetNames[filename] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
-    } catch (err: any) {
-      if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }
       utils.logLabeledBullet(RulesetType[this.type], "quota exceeded error while uploading rules");
@@ -206,16 +205,11 @@ export class RulesDeploy {
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
       if (history.length > RULESET_COUNT_LIMIT) {
-        const confirm = await promptOnce(
-          {
-            type: "confirm",
-            name: "force",
-            message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
-            default: false,
-          },
-          this.options
-        );
-        if (confirm) {
+        const confirmed = await confirm({
+          message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+          force: this.options.force,
+        });
+        if (confirmed) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
           const unreleased: ListRulesetsEntry[] = history.filter((ruleset) => {
@@ -245,7 +239,7 @@ export class RulesDeploy {
   async release(
     filename: string,
     resourceName: RulesetServiceType,
-    subResourceName?: string
+    subResourceName?: string,
   ): Promise<void> {
     // Cast as a RulesetServiceType to test the value against known types.
     if (resourceName === RulesetServiceType.FIREBASE_STORAGE && !subResourceName) {
@@ -254,11 +248,11 @@ export class RulesDeploy {
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
       this.rulesetNames[filename],
-      subResourceName ? `${resourceName}/${subResourceName}` : resourceName
+      subResourceName ? `${resourceName}/${subResourceName}` : resourceName,
     );
     utils.logLabeledSuccess(
       RulesetType[this.type],
-      `released rules ${bold(filename)} to ${bold(resourceName)}`
+      `released rules ${bold(filename)} to ${bold(resourceName)}`,
     );
   }
 

@@ -2,9 +2,10 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
+import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
-import { track, trackEmulator } from "../track";
+import { trackEmulator, trackGA4 } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -18,63 +19,74 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { AuthEmulator, SingleProjectMode } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
-import { PubsubEmulator } from "./pubsubEmulator";
+import { getProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
 } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
-import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+
+import { AuthEmulator, SingleProjectMode } from "./auth";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
+import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
+import { PubsubEmulator } from "./pubsubEmulator";
+import { StorageEmulator } from "./storage";
+import { readFirebaseJson } from "../dataconnect/load";
+import { TasksEmulator } from "./tasksEmulator";
+import { AppHostingEmulator } from "./apphosting";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { dataConnectLocalConnString } from "../api";
+import { AppHostingSingle } from "../firebaseConfig";
+import { resolveProjectPath } from "../projectPath";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
   "false",
-  (val) => val === "true"
+  (val) => val === "true",
 );
 
 /**
  * Exports emulator data on clean exit (SIGINT or process end)
  * @param options
  */
-export async function exportOnExit(options: any) {
-  const exportOnExitDir = options.exportOnExit;
+export async function exportOnExit(options: Options): Promise<void> {
+  // Note: options.exportOnExit is coerced to a string before this point in commandUtils.ts#setExportOnExitOptions
+  const exportOnExitDir = options.exportOnExit as string;
   if (exportOnExitDir) {
     try {
       utils.logBullet(
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
-          "please wait for the export to finish..."
+          "please wait for the export to finish...",
       );
       await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
-    } catch (e: any) {
-      utils.logWarning(e);
+    } catch (e: unknown) {
+      utils.logWarning(`${e}`);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
     }
   }
@@ -96,22 +108,27 @@ export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
     "emulators",
-    "Shutting down emulators."
+    "Shutting down emulators.",
   );
   await EmulatorRegistry.stopAll();
+  await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_SHUTDOWN });
 }
 
 /**
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: any): Emulators[] {
+export function filterEmulatorTargets(options: { only: string; config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
+
+  // Extensions may not be initialized but we can have SDK defined extensions
+  if (targets.includes(Emulators.FUNCTIONS) && !targets.includes(Emulators.EXTENSIONS)) {
+    targets.push(Emulators.EXTENSIONS);
+  }
 
   const onlyOptions: string = options.only;
   if (onlyOptions) {
@@ -131,8 +148,8 @@ export function filterEmulatorTargets(options: any): Emulators[] {
  */
 export function shouldStart(options: Options, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    // The hub only starts if we know the project ID.
-    return !!options.project;
+    // The emulator hub always starts.
+    return true;
   }
   const targets = filterEmulatorTargets(options);
   const emulatorInTargets = targets.includes(name);
@@ -149,23 +166,19 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     }
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
-    return (
-      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target))
-    );
+    return targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target));
   }
 
-  // Don't start the functions emulator if we can't find the source directory
+  // Don't start the functions emulator if we can't validate the functions config
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: any) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-        "WARN",
+        "ERROR",
         "functions",
-        `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
-          "firebase init functions"
-        )}?`
+        `Failed to start Functions emulator: ${err.message}`,
       );
       return false;
     }
@@ -176,8 +189,8 @@ export function shouldStart(options: Options, name: Emulators): boolean {
       "WARN",
       "hosting",
       `The hosting emulator is configured but there is no hosting configuration. Have you run ${clc.bold(
-        "firebase init hosting"
-      )}?`
+        "firebase init hosting",
+      )}?`,
     );
     return false;
   }
@@ -186,6 +199,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -214,7 +232,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
       "BULLET",
       "firestore",
-      `Detected non-emulator Firestore export at ${importPath}`
+      `Detected non-emulator Firestore export at ${importPath}`,
     );
 
     return metadata;
@@ -234,7 +252,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
       "BULLET",
       "firestore",
-      `Detected non-emulator Database export at ${importPath}`
+      `Detected non-emulator Database export at ${importPath}`,
     );
 
     return metadata;
@@ -243,6 +261,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
 /**
@@ -250,7 +269,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false,
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -272,7 +292,7 @@ export async function startAll(
 
   if (targets.length === 0) {
     throw new FirebaseError(
-      `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
+      `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`,
     );
   }
   if (targets.some(requiresJava)) {
@@ -281,16 +301,20 @@ export async function startAll(
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
+  if (options.logVerbosity) {
+    EmulatorLogger.setVerbosity(Verbosity[options.logVerbosity]);
+  }
+
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
+  const projectId = getProjectId(options) || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
   const isDemoProject = Constants.isDemoProject(projectId);
   if (isDemoProject) {
     hubLogger.logLabeled(
       "BULLET",
       "emulators",
-      `Detected demo project ID "${projectId}", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.`
+      `Detected demo project ID "${projectId}", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.`,
     );
   }
 
@@ -307,17 +331,17 @@ export async function startAll(
           "WARN",
           name,
           `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
-            "firebase init"
-          )}.`
+            "firebase init",
+          )}.`,
         );
       } else {
         // this should not work:
-        // firebase emulators:start --only doesnotexit
+        // firebase emulators:start --only doesnotexist
         throw new FirebaseError(
           `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
-            ALL_SERVICE_EMULATORS
+            ALL_SERVICE_EMULATORS,
           )}`,
-          { exit: 1 }
+          { exit: 1 },
         );
       }
     }
@@ -329,11 +353,24 @@ export async function startAll(
   // the Functions emulator needs to start.
   let extensionEmulator: ExtensionsEmulator | undefined = undefined;
   if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = isDemoProject
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
+    let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+    if (!isDemoProject) {
+      try {
+        projectNumber = await needProjectNumber(options);
+      } catch (err: any) {
+        EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
+          "ERROR",
+          Emulators.EXTENSIONS,
+          `Unable to look up project number for ${options.project}.\n` +
+            " If this is a real project, ensure that you are logged in and have access to it.\n" +
+            " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+            " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+        );
+      }
+    }
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
+      options,
       projectId,
       projectDir: options.config.projectDir,
       projectNumber,
@@ -341,11 +378,13 @@ export async function startAll(
       extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends
-    );
+    const filteredExtensionsBackends =
+      extensionEmulator.filterUnemulatedTriggers(extensionsBackends);
     emulatableBackends.push(...filteredExtensionsBackends);
+    trackGA4("extensions_emulated", {
+      number_of_extensions_emulated: filteredExtensionsBackends.length,
+      number_of_extensions_ignored: extensionsBackends.length - filteredExtensionsBackends.length,
+    });
   }
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
@@ -353,11 +392,13 @@ export async function startAll(
     // If we already know we need Functions (and Eventarc), assign them now.
     listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
     listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+    listenConfig[Emulators.TASKS] = getListenConfig(options, Emulators.TASKS);
   }
   for (const emulator of ALL_EMULATORS) {
     if (
       emulator === Emulators.FUNCTIONS ||
       emulator === Emulators.EVENTARC ||
+      emulator === Emulators.TASKS ||
       // Same port as Functions, no need for separate assignment
       emulator === Emulators.EXTENSIONS ||
       (emulator === Emulators.UI && !showUI)
@@ -379,6 +420,14 @@ export async function startAll(
           portFixed: !!wsPortConfig,
         };
       }
+      if (emulator === Emulators.DATACONNECT && !dataConnectLocalConnString()) {
+        const pglitePortConfig = options.config.src.emulators?.dataconnect?.postgresPort;
+        listenConfig["dataconnect.postgres"] = {
+          host: config.host,
+          port: pglitePortConfig || 5432,
+          portFixed: !!pglitePortConfig,
+        };
+      }
     }
   }
   let listenForEmulator = await resolveHostAndAssignPorts(listenConfig);
@@ -396,7 +445,6 @@ export async function startAll(
     const name = instance.getName();
 
     // Log the command for analytics
-    void track("Emulator Run", name);
     void trackEmulator("emulator_run", {
       emulator_name: name,
       is_demo_project: String(isDemoProject),
@@ -416,7 +464,6 @@ export async function startAll(
     // since we originally mistakenly reported emulators:start events
     // for each emulator, by reporting the "hub" we ensure that our
     // historical data can still be viewed.
-    void track("emulators:start", "hub");
     await startEmulator(hub);
   }
 
@@ -438,7 +485,7 @@ export async function startAll(
       hubLogger.logLabeled(
         "WARN",
         "emulators",
-        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
+        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`,
       );
     }
   }
@@ -463,7 +510,13 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators,
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
@@ -473,12 +526,26 @@ export async function startAll(
     utils.assertIsStringOrUndefined(options.extDevDir);
 
     for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
-      const runtime = (options.extDevRuntime as string | undefined) ?? cfg.runtime;
-      emulatableBackends.push({
+      const localCfg = requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator.",
+      );
+      const functionsDir = path.join(projectDir, localCfg.source);
+      const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
+      // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
+      // will dynamically detect it later.
+      // TODO: does runtime even need to be a part of EmultableBackend now that we have dynamic runtime
+      // detection? Might be an extensions thing.
+      if (runtime && !isRuntime(runtime)) {
+        throw new FirebaseError(
+          `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
+        );
+      }
+      const backend: EmulatableBackend = {
         functionsDir,
         runtime,
-        codebase: cfg.codebase,
+        codebase: localCfg.codebase,
+        prefix: localCfg.prefix,
         env: {
           ...options.extDevEnv,
         },
@@ -486,7 +553,10 @@ export async function startAll(
         // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-      });
+        ignore: localCfg.ignore,
+      };
+      proto.convertIfPresent(backend, localCfg, "configDir", (cd) => path.join(projectDir, cd));
+      emulatableBackends.push(backend);
     }
   }
 
@@ -494,13 +564,16 @@ export async function startAll(
     await startEmulator(extensionEmulator);
   }
 
+  const account = getProjectDefaultAccount(options.projectRoot);
+
   if (emulatableBackends.length) {
-    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc || !listenForEmulator.tasks) {
       // We did not know that we need Functions and Eventarc earlier but now we do.
       listenForEmulator = await resolveHostAndAssignPorts({
         ...listenForEmulator,
         functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
         eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+        tasks: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.TASKS),
       });
       hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
         user: listenForEmulator,
@@ -508,17 +581,14 @@ export async function startAll(
     }
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
-    const projectId = needProjectId(options);
 
-    let inspectFunctions: number | undefined;
-    if (options.inspectFunctions) {
-      inspectFunctions = commandUtils.parseInspectionPort(options);
-
+    const inspectFunctions = commandUtils.parseInspectionPort(options);
+    if (inspectFunctions) {
       // TODO(samstern): Add a link to documentation
       functionsLogger.logLabeled(
         "WARN",
         "functions",
-        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+        `You are running the Functions emulator in debug mode. This means that functions will execute in sequence rather than in parallel.`,
       );
     }
 
@@ -531,12 +601,10 @@ export async function startAll(
         "WARN",
         "functions",
         `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
-          emulatorsNotRunning.join(", ")
-        )}`
+          emulatorsNotRunning.join(", "),
+        )}`,
       );
     }
-
-    const account = getProjectDefaultAccount(options.projectRoot);
 
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
@@ -547,7 +615,9 @@ export async function startAll(
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
+      extensionsEmulator: extensionEmulator,
     });
     await startEmulator(functionsEmulator);
 
@@ -557,6 +627,14 @@ export async function startAll(
       port: eventarcAddr.port,
     });
     await startEmulator(eventarcEmulator);
+
+    const tasksAddr = legacyGetFirstAddr(Emulators.TASKS);
+    const tasksEmulator = new TasksEmulator({
+      host: tasksAddr.host,
+      port: tasksAddr.port,
+    });
+
+    await startEmulator(tasksEmulator);
   }
 
   if (listenForEmulator.firestore) {
@@ -577,13 +655,13 @@ export async function startAll(
       const importDirAbsPath = path.resolve(options.import);
       const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
-        exportMetadata.firestore.metadata_file
+        exportMetadata.firestore.metadata_file,
       );
 
       firestoreLogger.logLabeled(
         "BULLET",
         "firestore",
-        `Importing data from ${exportMetadataFilePath}`
+        `Importing data from ${exportMetadataFilePath}`,
       );
       args.seed_from_export = exportMetadataFilePath;
       void trackEmulator("emulator_import", {
@@ -599,19 +677,19 @@ export async function startAll(
     let rulesFileFound;
     const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
       projectId,
-      options
+      options,
     );
     if (!firestoreConfigs) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
-        `Cloud Firestore config does not exist in firebase.json.`
+        `Cloud Firestore config does not exist in firebase.json.`,
       );
     } else if (firestoreConfigs.length !== 1) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
-        `Cloud Firestore Emulator does not support multiple databases yet.`
+        `Cloud Firestore Emulator does not support multiple databases yet.`,
       );
     } else if (firestoreConfigs[0].rules) {
       rulesLocalPath = firestoreConfigs[0].rules;
@@ -625,14 +703,14 @@ export async function startAll(
         firestoreLogger.logLabeled(
           "WARN",
           "firestore",
-          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`,
         );
       }
     } else {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
-        "Did not find a Cloud Firestore rules file specified in a firebase.json config file."
+        "Did not find a Cloud Firestore rules file specified in a firebase.json config file.",
       );
     }
 
@@ -640,22 +718,14 @@ export async function startAll(
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
-        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration.",
       );
     }
 
     // undefined in the config defaults to setting single_project_mode.
     if (singleProjectModeEnabled) {
-      if (projectId) {
-        args.single_project_mode = true;
-        args.single_project_mode_error = false;
-      } else {
-        firestoreLogger.logLabeled(
-          "DEBUG",
-          "firestore",
-          "Could not enable single_project_mode: missing projectId."
-        );
-      }
+      args.single_project_mode = true;
+      args.single_project_mode_error = false;
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -663,7 +733,7 @@ export async function startAll(
     firestoreLogger.logLabeled(
       "SUCCESS",
       Emulators.FIRESTORE,
-      `Firestore Emulator UI websocket is running on ${websocketPort}.`
+      `Firestore Emulator UI websocket is running on ${websocketPort}.`,
     );
   }
 
@@ -689,13 +759,13 @@ export async function startAll(
     } catch (e: any) {
       databaseLogger.log(
         "DEBUG",
-        `Failed to retrieve default database instance: ${JSON.stringify(e)}`
+        `Failed to retrieve default database instance: ${JSON.stringify(e)}`,
       );
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
       dbRulesConfig.getRulesConfig(projectId, options),
-      options
+      options,
     );
     logger.debug("database rules config: ", JSON.stringify(rc));
 
@@ -705,7 +775,7 @@ export async function startAll(
       databaseLogger.logLabeled(
         "WARN",
         "database",
-        "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration.",
       );
     } else {
       for (const c of rc) {
@@ -715,8 +785,8 @@ export async function startAll(
             "WARN",
             "database",
             `Realtime Database rules file ${clc.bold(
-              rules
-            )} specified in firebase.json does not exist.`
+              rules,
+            )} specified in firebase.json does not exist.`,
           );
         }
       }
@@ -745,14 +815,6 @@ export async function startAll(
   }
 
   if (listenForEmulator.auth) {
-    if (!projectId) {
-      throw new FirebaseError(
-        `Cannot start the ${Constants.description(
-          Emulators.AUTH
-        )} without a project: run 'firebase init' or provide the --project flag`
-      );
-    }
-
     const authAddr = legacyGetFirstAddr(Emulators.AUTH);
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
@@ -774,12 +836,6 @@ export async function startAll(
   }
 
   if (listenForEmulator.pubsub) {
-    if (!projectId) {
-      throw new FirebaseError(
-        "Cannot start the Pub/Sub emulator without a project: run 'firebase init' or provide the --project flag"
-      );
-    }
-
     const pubsubAddr = legacyGetFirstAddr(Emulators.PUBSUB);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
@@ -790,13 +846,80 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
+  if (listenForEmulator.dataconnect) {
+    const config = readFirebaseJson(options.config);
+    if (!config.length) {
+      throw new FirebaseError("No Data Connect service found in firebase.json");
+    } else if (config.length > 1) {
+      logger.warn(
+        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+      );
+    }
+
+    const args: DataConnectEmulatorArgs = {
+      listen: listenForEmulator.dataconnect,
+      projectId,
+      auto_download: true,
+      configDir: config[0].source,
+      config: options.config,
+      autoconnectToPostgres: true,
+      postgresListen: listenForEmulator["dataconnect.postgres"],
+      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_schema_extensions: true,
+      debug: options.debug,
+      account,
+    };
+
+    if (exportMetadata.dataconnect) {
+      utils.assertIsString(options.import);
+      const importDirAbsPath = path.resolve(options.import);
+      const exportMetadataFilePath = path.resolve(
+        importDirAbsPath,
+        exportMetadata.dataconnect.path,
+      );
+      const dataDirectory = options.config.get("emulators.dataconnect.dataDir");
+      if (exportMetadataFilePath && dataDirectory) {
+        EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
+          "WARN",
+          "dataconnect",
+          "'firebase.json#emulators.dataconnect.dataDir' is set and `--import` flag was passed. " +
+            "This will overwrite any data saved from previous runs.",
+        );
+        if (
+          !options.nonInteractive &&
+          !(await confirm({
+            message: `Do you wish to continue and overwrite data in ${dataDirectory}?`,
+            default: false,
+          }))
+        ) {
+          await cleanShutdown();
+          throw new FirebaseError("Command aborted");
+        }
+      }
+
+      EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
+        "BULLET",
+        "dataconnect",
+        `Importing data from ${exportMetadataFilePath}`,
+      );
+      args.importPath = exportMetadataFilePath;
+      void trackEmulator("emulator_import", {
+        initiated_by: "start",
+        emulator_name: Emulators.DATACONNECT,
+      });
+    }
+
+    const dataConnectEmulator = new DataConnectEmulator(args);
+    await startEmulator(dataConnectEmulator);
+  }
+
   if (listenForEmulator.storage) {
     const storageAddr = legacyGetFirstAddr(Emulators.STORAGE);
 
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId: projectId,
+      projectId,
       rules: getStorageRulesConfig(projectId, options),
     });
     await startEmulator(storageEmulator);
@@ -822,14 +945,53 @@ export async function startAll(
     await startEmulator(hostingEmulator);
   }
 
-  if (showUI && !shouldStart(options, Emulators.UI)) {
-    hubLogger.logLabeled(
-      "WARN",
-      "emulators",
-      "The Emulator UI is not starting, either because none of the emulated " +
-        "products have an interaction layer in Emulator UI or it cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project."
-    );
+  /**
+   * Similar to the Hosting emulator, the App Hosting emulator should also
+   * start after the other emulators. This is because the service running on
+   * app hosting emulator may depend on other emulators (i.e auth, firestore,
+   * storage, etc).
+   */
+  const apphostingEmulatorConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+
+  if (listenForEmulator.apphosting) {
+    const rootDirectory = apphostingEmulatorConfig?.rootDirectory;
+    const backendRoot = resolveProjectPath({}, rootDirectory ?? "./");
+
+    // It doesn't seem as though App Hosting emulator supports multiple backends, infer the correct one
+    // from the root directory.
+    let apphostingConfig: AppHostingSingle | undefined;
+    if (Array.isArray(options.config.src.apphosting)) {
+      const matchingAppHostingConfig = options.config.src.apphosting.filter(
+        (config) => resolveProjectPath({}, path.join(".", config.rootDir ?? "/")) === backendRoot,
+      );
+      if (matchingAppHostingConfig.length === 1) {
+        apphostingConfig = matchingAppHostingConfig[0];
+      }
+    } else {
+      apphostingConfig = options.config.src.apphosting;
+    }
+
+    const apphostingAddr = legacyGetFirstAddr(Emulators.APPHOSTING);
+    if (apphostingEmulatorConfig?.startCommandOverride) {
+      const apphostingLogger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
+      apphostingLogger.logLabeled(
+        "WARN",
+        Emulators.APPHOSTING,
+        "The `firebase.json#emulators.apphosting.startCommandOverride` config is deprecated, please use `firebase.json#emulators.apphosting.startCommand` to set a custom start command instead",
+      );
+    }
+    const apphostingEmulator = new AppHostingEmulator({
+      projectId: options.project,
+      backendId: apphostingConfig?.backendId,
+      host: apphostingAddr.host,
+      port: apphostingAddr.port,
+      startCommand:
+        apphostingEmulatorConfig?.startCommand || apphostingEmulatorConfig?.startCommandOverride,
+      rootDirectory,
+      options,
+    });
+
+    await startEmulator(apphostingEmulator);
   }
 
   if (listenForEmulator.logging) {
@@ -842,10 +1004,18 @@ export async function startAll(
     await startEmulator(loggingEmulator);
   }
 
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI is not starting because none of the running " +
+        "emulators have a UI component.",
+    );
+  }
+
   if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
-      projectId: projectId,
-      auto_download: true,
+      projectId,
       listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);
@@ -874,7 +1044,7 @@ export async function startAll(
 
 function getListenConfig(
   options: EmulatorOptions,
-  emulator: Exclude<Emulators, Emulators.EXTENSIONS>
+  emulator: Exclude<Emulators, Emulators.EXTENSIONS>,
 ): EmulatorListenConfig {
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {
@@ -911,18 +1081,11 @@ function getListenConfig(
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
   const projectId = options.project;
-  if (!projectId) {
-    throw new FirebaseError(
-      "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
-      { exit: 1 }
-    );
-  }
-
   const hubClient = new EmulatorHubClient(projectId);
   if (!hubClient.foundHub()) {
     throw new FirebaseError(
       `Did not find any running emulators for project ${clc.bold(projectId)}.`,
-      { exit: 1 }
+      { exit: 1 },
     );
   }
 
@@ -933,7 +1096,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
-      { exit: 1 }
+      { exit: 1 },
     );
   }
 
@@ -943,22 +1106,24 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   const exportAbsPath = path.resolve(exportPath);
   if (!fs.existsSync(exportAbsPath)) {
     utils.logBullet(`Creating export directory ${exportAbsPath}`);
-    fs.mkdirSync(exportAbsPath);
+    fs.mkdirSync(exportAbsPath, { recursive: true });
   }
 
   // Check if there is already an export there and prompt the user about deleting it
   const existingMetadata = HubExport.readMetadata(exportAbsPath);
-  if (existingMetadata && !(options.force || options.exportOnExit)) {
+  const isExportDirEmpty = fs.readdirSync(exportAbsPath).length === 0;
+  if ((existingMetadata || !isExportDirEmpty) && !(options.force || options.exportOnExit)) {
     if (options.noninteractive) {
       throw new FirebaseError(
         "Export already exists in the target directory, re-run with --force to overwrite.",
-        { exit: 1 }
+        { exit: 1 },
       );
     }
 
-    const prompt = await promptOnce({
-      type: "confirm",
-      message: `The directory ${exportAbsPath} already contains export data. Exporting again to the same directory will overwrite all data. Do you want to continue?`,
+    const prompt = await confirm({
+      message: `The directory ${exportAbsPath} is not empty. Existing files in this directory will be overwritten. Do you want to continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
       default: false,
     });
 

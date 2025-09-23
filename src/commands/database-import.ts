@@ -5,12 +5,12 @@ import * as utils from "../utils";
 import { Command } from "../command";
 import DatabaseImporter from "../database/import";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { DatabaseInstance, populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
@@ -25,29 +25,29 @@ interface DatabaseImportOptions extends Options {
   concurrency?: string;
 }
 
-const MAX_CHUNK_SIZE_MB = 10;
+const MAX_CHUNK_SIZE_MB = 1;
 const MAX_PAYLOAD_SIZE_MB = 256;
 const CONCURRENCY_LIMIT = 5;
 
 export const command = new Command("database:import <path> [infile]")
   .description(
-    "non-atomically import the contents of a JSON file to the specified path in Realtime Database"
+    "non-atomically import the contents of a JSON file to the specified path in Realtime Database",
   )
   .withForce()
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
   .option(
     "--disable-triggers",
     "suppress any Cloud functions triggered by this operation, default to true",
-    true
+    true,
   )
   .option(
     "--filter <dataPath>",
-    "import only data at this path in the JSON file (if omitted, import entire file)"
+    "import only data at this path in the JSON file (if omitted, import entire file)",
   )
-  .option("--chunk-size <mb>", "max chunk size in megabytes, default to 10 MB")
+  .option("--chunk-size <mb>", "max chunk size in megabytes, default to 1 MB")
   .option("--concurrency <val>", "concurrency limit, default to 5")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
@@ -75,16 +75,11 @@ export const command = new Command("database:import <path> [infile]")
       dbUrl.searchParams.set("disableTriggers", "true");
     }
 
-    const confirm = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
-      },
-      options
-    );
-    if (!confirm) {
+    const areYouSure = await confirm({
+      message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
+      force: options.force,
+    });
+    if (!areYouSure) {
       throw new FirebaseError("Command aborted.");
     }
 
@@ -97,12 +92,14 @@ export const command = new Command("database:import <path> [infile]")
     let responses;
     try {
       responses = await importer.execute();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof FirebaseError) {
         throw err;
       }
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while importing data: ${err}`, { exit: 2 });
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while importing data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     if (responses.length) {
@@ -114,6 +111,6 @@ export const command = new Command("database:import <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, projectId, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, projectId, options.instance, path),
     );
   });

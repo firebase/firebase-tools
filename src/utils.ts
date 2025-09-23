@@ -1,35 +1,46 @@
+import * as fs from "fs-extra";
+import * as tty from "tty";
+import * as path from "node:path";
+import * as yaml from "yaml";
+import { Socket } from "node:net";
+import * as crypto from "node:crypto";
+
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
 import * as clc from "colorette";
+import * as open from "open";
 import * as ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
-import * as winston from "winston";
-import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const stripAnsi = require("strip-ansi");
+import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { Socket } from "net";
-
-const IS_WINDOWS = process.platform === "win32";
+import { input, password } from "./prompt";
+import { readTemplateSync } from "./templates";
+import { isVSCodeExtension } from "./vsCodeUtils";
+import { Config } from "./config";
+import { dirExistsSync, fileExistsSync } from "./fsutils";
+import { platform } from "node:os";
+import { execSync } from "node:child_process";
+export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
 const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
-
+export const vscodeEnvVars: { [key: string]: string } = {};
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
 export function consoleUrl(project: string, path: string): string {
   const api = require("./api");
-  return `${api.consoleOrigin}/project/${project}${path}`;
+  return `${api.consoleOrigin()}/project/${project}${path}`;
 }
 
 /**
@@ -47,6 +58,15 @@ export function getInheritedOption(options: any, key: string): any {
 }
 
 /**
+ * Sets the VSCode environment variables to be used by the CLI when called by VSCode
+ * @param envVar name of the environment variable
+ * @param value value of the environment variable
+ */
+export function setVSCodeEnvVars(envVar: string, value: string) {
+  vscodeEnvVars[envVar] = value;
+}
+
+/**
  * Override a value with supplied environment variable if present. A function
  * that returns the environment variable in an acceptable format can be
  * proivded. If it throws an error, the default value will be used.
@@ -54,9 +74,10 @@ export function getInheritedOption(options: any, key: string): any {
 export function envOverride(
   envname: string,
   value: string,
-  coerce?: (value: string, defaultValue: string) => any
+  coerce?: (value: string, defaultValue: string) => any,
 ): string {
-  const currentEnvValue = process.env[envname];
+  const currentEnvValue =
+    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
@@ -88,7 +109,7 @@ export function getDatabaseViewDataUrl(
   origin: string,
   project: string,
   namespace: string,
-  pathname: string
+  pathname: string,
 ): string {
   const urlObj = new url.URL(origin);
   if (urlObj.hostname.includes("firebaseio") || urlObj.hostname.includes("firebasedatabase")) {
@@ -129,7 +150,7 @@ export function addSubdomain(origin: string, subdomain: string): string {
 export function logSuccess(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
@@ -141,7 +162,7 @@ export function logLabeledSuccess(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
@@ -152,7 +173,7 @@ export function logLabeledSuccess(
 export function logBullet(
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
@@ -164,7 +185,7 @@ export function logLabeledBullet(
   label: string,
   message: string,
   type: LogLevel = "info",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
@@ -175,9 +196,17 @@ export function logLabeledBullet(
 export function logWarning(
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
+}
+
+/**
+ * Log a warning statement to stderr, regardless of logger configuration.
+ */
+export function logWarningToStderr(message: string): void {
+  const prefix = clc.bold(`${WARNING_CHAR} `);
+  process.stderr.write(clc.yellow(prefix + message) + "\n");
 }
 
 /**
@@ -187,19 +216,19 @@ export function logLabeledWarning(
   label: string,
   message: string,
   type: LogLevel = "warn",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
 /**
- * Log an rror statement with a red bullet at the start of the line.
+ * Log an error statement with a red bullet at the start of the line.
  */
 export function logLabeledError(
   label: string,
   message: string,
   type: LogLevel = "error",
-  data: LogDataOrUndefined = undefined
+  data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
@@ -255,7 +284,7 @@ export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<Promis
               status: "rejected",
               reason: err,
             };
-          }
+          },
         )
         .then(() => {
           if (!--remaining) {
@@ -340,8 +369,8 @@ export function getFunctionsEventProvider(eventType: string): string {
     const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
-  // New event types:
-  if (/google.pubsub/.exec(eventType)) {
+  // 1st gen event types:
+  if (/google.*pubsub/.exec(eventType)) {
     return "PubSub";
   } else if (/google.storage/.exec(eventType)) {
     return "Storage";
@@ -353,7 +382,7 @@ export function getFunctionsEventProvider(eventType: string): string {
     return "Auth";
   } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (/google.firestore/.exec(eventType)) {
+  } else if (/google.*firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
@@ -394,7 +423,7 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
 export async function promiseWhile<T>(
   action: () => Promise<T>,
   check: (value: T) => boolean,
-  interval = 2500
+  interval = 2500,
 ): Promise<T> {
   return new Promise<T>((resolve, promiseReject) => {
     const run = async () => {
@@ -404,7 +433,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return promiseReject(err);
       }
     };
@@ -429,7 +458,7 @@ export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<
       (err) => {
         clearTimeout(timeout);
         reject(err);
-      }
+      },
     );
   });
 }
@@ -445,22 +474,6 @@ export async function promiseProps(obj: any): Promise<any> {
     resultObj[key] = r;
   });
   return Promise.all(promises).then(() => resultObj);
-}
-
-/**
- * Attempts to call JSON.stringify on an object, if it throws return the original value
- * @param value
- */
-export function tryStringify(value: any) {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return value;
-  }
 }
 
 /**
@@ -480,34 +493,6 @@ export function tryParse(value: any) {
 }
 
 /**
- *
- */
-export function setupLoggers() {
-  if (process.env.DEBUG) {
-    logger.add(
-      new winston.transports.Console({
-        level: "debug",
-        format: winston.format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${stripAnsi(segments.join(" "))}`;
-        }),
-      })
-    );
-  } else if (process.env.IS_FIREBASE_CLI) {
-    logger.add(
-      new winston.transports.Console({
-        level: "info",
-        format: winston.format.printf((info) =>
-          [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk === "string")
-            .join(" ")
-        ),
-      })
-    );
-  }
-}
-
-/**
  * Runs a given function inside a spinner with a message
  */
 export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
@@ -516,7 +501,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail();
     throw err;
   }
@@ -524,12 +509,16 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   return data;
 }
 
+/** Creates a promise that resolves after a given timeout. await to "sleep". */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Return a "destroy" function for a Node.js HTTP server. MUST be called on
  * server creation (e.g. right after `.listen`), BEFORE any connections.
  *
  * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
- *
  * @return a function that destroys all connections and closes the server
  */
 export function createDestroyer(server: http.Server): () => Promise<void> {
@@ -596,21 +585,9 @@ export function thirtyDaysFromNow(): Date {
 }
 
 /**
- * See:
- * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions
+ * Verifies val is a string.
  */
-export function assertDefined<T>(val: T, message?: string): asserts val is NonNullable<T> {
-  if (val === undefined || val === null) {
-    throw new AssertionError({
-      message: message || `expected value to be defined but got "${val}"`,
-    });
-  }
-}
-
-/**
- *
- */
-export function assertIsString(val: any, message?: string): asserts val is string {
+export function assertIsString(val: unknown, message?: string): asserts val is string {
   if (typeof val !== "string") {
     throw new AssertionError({
       message: message || `expected "string" but got "${typeof val}"`,
@@ -619,9 +596,9 @@ export function assertIsString(val: any, message?: string): asserts val is strin
 }
 
 /**
- *
+ * Verifies val is a number.
  */
-export function assertIsNumber(val: any, message?: string): asserts val is number {
+export function assertIsNumber(val: unknown, message?: string): asserts val is number {
   if (typeof val !== "number") {
     throw new AssertionError({
       message: message || `expected "number" but got "${typeof val}"`,
@@ -630,11 +607,11 @@ export function assertIsNumber(val: any, message?: string): asserts val is numbe
 }
 
 /**
- *
+ * Assert val is a string or undefined.
  */
 export function assertIsStringOrUndefined(
-  val: any,
-  message?: string
+  val: unknown,
+  message?: string,
 ): asserts val is string | undefined {
   if (!(val === undefined || typeof val === "string")) {
     throw new AssertionError({
@@ -648,17 +625,20 @@ export function assertIsStringOrUndefined(
  */
 export function groupBy<T, K extends string | number | symbol>(
   arr: T[],
-  f: (item: T) => K
+  f: (item: T) => K,
 ): Record<K, T[]> {
-  return arr.reduce((result, item) => {
-    const key = f(item);
-    if (result[key]) {
-      result[key].push(item);
-    } else {
-      result[key] = [item];
-    }
-    return result;
-  }, {} as Record<K, T[]>);
+  return arr.reduce(
+    (result, item) => {
+      const key = f(item);
+      if (result[key]) {
+        result[key].push(item);
+      } else {
+        result[key] = [item];
+      }
+      return result;
+    },
+    {} as Record<K, T[]>,
+  );
 }
 
 function cloneArray<T>(arr: T[]): T[] {
@@ -723,7 +703,7 @@ type DebounceOptions = {
 export function debounce<T>(
   fn: (...args: T[]) => void,
   delay: number,
-  { leading }: DebounceOptions = {}
+  { leading }: DebounceOptions = {},
 ): (...args: T[]) => void {
   let timer: NodeJS.Timeout;
   return (...args) => {
@@ -763,4 +743,290 @@ export function connectableHostname(hostname: string): string {
     hostname = "[::1]";
   }
   return hostname;
+}
+
+/**
+ * We wrap and export the open() function from the "open" package
+ * to stub it out in unit tests.
+ */
+export async function openInBrowser(url: string): Promise<void> {
+  await open(url);
+}
+
+/**
+ * Like openInBrowser but opens the url in a popup.
+ */
+export async function openInBrowserPopup(
+  url: string,
+  buttonText: string,
+): Promise<{ url: string; cleanup: () => void }> {
+  const popupPage = readTemplateSync("popup.html")
+    .replace("${url}", url)
+    .replace("${buttonText}", buttonText);
+
+  const port = await getPort();
+
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, {
+      "Content-Length": popupPage.length,
+      "Content-Type": "text/html",
+    });
+    res.end(popupPage);
+    req.socket.destroy();
+  });
+
+  server.listen(port);
+
+  const popupPageUri = `http://localhost:${port}`;
+  await openInBrowser(popupPageUri);
+
+  return {
+    url: popupPageUri,
+    cleanup: () => {
+      server.close();
+    },
+  };
+}
+
+/**
+ * Get hostname from a given url or null if the url is invalid
+ */
+export function getHostnameFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch (e: unknown) {
+    return null;
+  }
+}
+
+/**
+ * Retrieves a file from the directory.
+ */
+export function readFileFromDirectory(
+  directory: string,
+  file: string,
+): Promise<{ source: string; sourceDirectory: string }> {
+  return new Promise<string>((resolve, reject) => {
+    fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          return reject(
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err }),
+          );
+        }
+        reject(
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err }),
+        );
+      } else {
+        resolve(data);
+      }
+    });
+  }).then((source) => {
+    return {
+      source,
+      sourceDirectory: directory,
+    };
+  });
+}
+
+/**
+ * Wrapps `yaml.safeLoad` with an error handler to present better YAML parsing
+ * errors.
+ */
+export function wrappedSafeLoad(source: string): any {
+  try {
+    return yaml.parse(source);
+  } catch (err: unknown) {
+    throw new FirebaseError(`YAML Error: ${getErrMsg(err)}`, { original: getError(err) });
+  }
+}
+
+/**
+ * Generate id meeting the following criterias:
+ *  - Lowercase, digits, and hyphens only
+ *  - Must begin with letter
+ *  - Cannot end with hyphen
+ */
+export function generateId(n = 6): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  let id = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < n; i++) {
+    const idx = Math.floor(Math.random() * allChars.length);
+    id += allChars[idx];
+  }
+  return id;
+}
+
+/**
+ * Generate a password meeting the following criterias:
+ *  - At least one lowercase, one uppercase, one number, and one special character.
+ */
+export function generatePassword(n = 20): string {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const all = lower + upper + numbers + special;
+
+  let pw = "";
+  pw += lower[crypto.randomInt(lower.length)];
+  pw += upper[crypto.randomInt(upper.length)];
+  pw += numbers[crypto.randomInt(numbers.length)];
+  pw += special[crypto.randomInt(special.length)];
+
+  for (let i = 4; i < n; i++) {
+    pw += all[crypto.randomInt(all.length)];
+  }
+
+  // Shuffle the password to randomize character order using Fisher-Yates shuffle
+  const pwArray = pw.split("");
+  for (let i = pwArray.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i);
+    [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
+  }
+  return pwArray.join("");
+}
+
+/**
+ * Reads a secret value from either a file or a prompt.
+ * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
+ */
+export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
+  if ((!dataFile || dataFile === "-") && tty.isatty(0)) {
+    return password({ message: prompt });
+  }
+  let input: string | number = 0;
+  if (dataFile && dataFile !== "-") {
+    input = dataFile;
+  }
+  try {
+    return Promise.resolve(fs.readFileSync(input, "utf-8"));
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${input}`, { original: e });
+    }
+    throw e;
+  }
+}
+
+/**
+ * Updates or creates a .gitignore file with the given entries in the given path
+ */
+export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
+  const gitignorePath = path.join(dirPath, ".gitignore");
+
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, entries.join("\n"));
+    return;
+  }
+
+  let content = fs.readFileSync(gitignorePath, "utf-8");
+  for (const entry of entries) {
+    if (!content.includes(entry)) {
+      content += `\n${entry}\n`;
+    }
+  }
+
+  fs.writeFileSync(gitignorePath, content);
+}
+
+/**
+ * Prompts for a directory name, and reprompts if that path does not exist
+ * N.B. Moved from the original prompt library to this file because it brings in a lot of
+ * dependencies. Moved to "utils" because this file arleady brings in the world.
+ */
+export async function promptForDirectory(args: {
+  message: string;
+  config: Config;
+  default?: boolean;
+  relativeTo?: string;
+}): Promise<string> {
+  let dir: string = "";
+  while (!dir) {
+    const promptPath = await input(args.message);
+    let target: string;
+    if (args.relativeTo) {
+      target = path.resolve(args.relativeTo, promptPath);
+    } else {
+      target = args.config.path(promptPath);
+    }
+    if (fileExistsSync(target)) {
+      logger.error(
+        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
+      );
+    } else if (!dirExistsSync(target)) {
+      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
+    } else {
+      dir = target;
+    }
+  }
+  return dir;
+}
+
+/*
+ * Deeply compares two JSON-serializable objects.
+ * It's a simplified version of a deep equal function, sufficient for comparing the structure
+ * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
+ */
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
+    return false;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Returns a unique ID that's either `recommended` or `recommended-{i}`.
+ * Avoid existing IDs.
+ */
+export function newUniqueId(recommended: string, existingIDs: string[]): string {
+  let id = recommended;
+  let i = 1;
+  while (existingIDs.includes(id)) {
+    id = `${recommended}-${i}`;
+    i++;
+  }
+  return id;
+}
+
+/**
+ * Checks if a command exists in the system.
+ */
+export function commandExistsSync(command: string): boolean {
+  try {
+    const isWindows = platform() === "win32";
+    // For Windows, `where` is more appropriate. It also often outputs the path.
+    // For Unix-like systems, `which` is standard.
+    // The `2> nul` (Windows) or `2>/dev/null` (Unix) redirects stderr to suppress error messages.
+    // The `>` nul / `>/dev/null` redirects stdout as we only care about the exit code.
+    const commandToCheck = isWindows
+      ? `where "${command}" > nul 2> nul`
+      : `which "${command}" > /dev/null 2> /dev/null`;
+
+    execSync(commandToCheck);
+    return true; // If execSync doesn't throw, the command was found (exit code 0)
+  } catch (error) {
+    // If the command is not found, execSync will throw an error (non-zero exit code)
+    return false;
+  }
 }

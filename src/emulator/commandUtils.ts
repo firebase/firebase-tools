@@ -13,13 +13,14 @@ import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -47,6 +48,10 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
 
 export const EXPORT_ON_EXIT_CWD_DANGER = `"${FLAG_EXPORT_ON_EXIT_NAME}" must not point to the current directory or parents. Please choose a new/dedicated directory for exports.`;
 
+export const FLAG_VERBOSITY_NAME = "--log-verbosity";
+export const FLAG_VERBOSITY = `${FLAG_VERBOSITY_NAME} <verbosity>`;
+export const DESC_VERBOSITY = "One of: DEBUG, INFO, QUIET, SILENT. "; // TODO complete the rest
+
 export const FLAG_UI = "--ui";
 export const DESC_UI = "run the Emulator UI";
 
@@ -59,7 +64,7 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-const DEFAULT_CONFIG = new Config(
+export const DEFAULT_CONFIG = new Config(
   {
     eventarc: {},
     database: {},
@@ -68,12 +73,17 @@ const DEFAULT_CONFIG = new Config(
     hosting: {},
     emulators: { auth: {}, pubsub: {} },
   },
-  {}
+  {},
 );
 
+/**
+ * Utility to be put in the "before" handler for a RTDB or Firestore command
+ * that supports the emulator. Prints a warning when environment variables
+ * specify an emulator address.
+ */
 export function printNoticeIfEmulated(
   options: any,
-  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE,
 ): void {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
@@ -88,16 +98,21 @@ export function printNoticeIfEmulated(
   if (envVal) {
     utils.logBullet(
       `You have set ${clc.bold(
-        `${envKey}=${envVal}`
-      )}, this command will execute against the ${emuName} running at that address.`
+        `${envKey}=${envVal}`,
+      )}, this command will execute against the ${emuName} running at that address.`,
     );
   }
 }
 
-export function warnEmulatorNotSupported(
+/**
+ * Utility to be put in the "before" handler for a RTDB or Firestore command
+ * that always talks to production. This warns customers if they've specified
+ * an emulator port that the command actually talks to production.
+ */
+export async function warnEmulatorNotSupported(
   options: any,
-  emulator: Emulators.DATABASE | Emulators.FIRESTORE
-): void | Promise<void> {
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE,
+): Promise<void> {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
   }
@@ -112,25 +127,28 @@ export function warnEmulatorNotSupported(
   if (envVal) {
     utils.logWarning(
       `You have set ${clc.bold(
-        `${envKey}=${envVal}`
-      )}, however this command does not support running against the ${emuName} so this action will affect production.`
+        `${envKey}=${envVal}`,
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`,
     );
 
-    const opts = {
-      confirm: undefined,
-    };
-    return promptOnce({
-      type: "confirm",
-      default: false,
-      message: "Do you want to continue?",
-    }).then(() => {
-      if (!opts.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
-      }
-    });
+    if (!(await confirm("Do you want to continue?"))) {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
+    }
   }
 }
 
+export async function errorMissingProject(options: any): Promise<void> {
+  if (!options.project) {
+    throw new FirebaseError(
+      "Project is not defined. Either use `--project` or use `firebase use` to set your active project.",
+    );
+  }
+}
+
+/**
+ * Utility method to be inserted in the "before" function for a command that
+ * uses the emulator suite.
+ */
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
     ...options,
@@ -146,16 +164,23 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
-  try {
-    await requireAuth(options);
-  } catch (e: any) {
-    logger.debug(e);
-    utils.logLabeledWarning(
-      "emulators",
-      `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
-        "firebase login"
-      )} to authenticate the CLI.`
-    );
+  // We generally should not check for auth if you are using a demo project since prod calls to a fake project will fail.
+  // However, extensions makes 'publishers/*' calls that require auth, so we'll requireAuth if you are using extensions.
+  if (
+    !Constants.isDemoProject(options.project) ||
+    controller.shouldStart(optionsWithConfig, Emulators.EXTENSIONS)
+  ) {
+    try {
+      await requireAuth(options);
+    } catch (e: any) {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
+          "firebase login",
+        )} to authenticate the CLI.`,
+      );
+    }
   }
 
   if (canStartWithoutConfig && !options.config) {
@@ -166,20 +191,31 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   }
 }
 
-export function parseInspectionPort(options: any): number {
-  let port = options.inspectFunctions;
-  if (port === true) {
-    port = "9229";
+/**
+ * Returns a literal port number if specified or true | false if enabled.
+ * A true value will later be turned into a dynamic port.
+ */
+export function parseInspectionPort(options: any): number | boolean {
+  const port = options.inspectFunctions;
+  if (typeof port === "undefined") {
+    return false;
+  } else if (typeof port === "boolean") {
+    return port;
   }
 
   const parsed = Number(port);
   if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
     throw new FirebaseError(
-      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`
+      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535 or true for a dynamic port.`,
     );
   }
 
   return parsed;
+}
+
+export interface ExportOnExitOptions {
+  exportOnExit?: boolean | string;
+  import?: string;
 }
 
 /**
@@ -190,7 +226,7 @@ export function parseInspectionPort(options: any): number {
  * export data the first time they start developing on a clean project.
  * @param options
  */
-export function setExportOnExitOptions(options: any) {
+export function setExportOnExitOptions(options: ExportOnExitOptions): void {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
     // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
     // --import ./data --export-on-exit
@@ -224,7 +260,7 @@ function processKillSignal(
   signal: Signals,
   res: (value?: void) => void,
   rej: (value?: unknown) => void,
-  options: any
+  options: any,
 ): SignalsListener {
   let lastSignal = new Date().getTime();
   let signalCount = 0;
@@ -248,11 +284,11 @@ function processKillSignal(
       if (signalCount === 1) {
         utils.logLabeledBullet(
           "emulators",
-          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`
+          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`,
         );
         utils.logLabeledBullet(
           "emulators",
-          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
+          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`,
         );
         // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
         await controller.onExit(options);
@@ -260,7 +296,7 @@ function processKillSignal(
       } else {
         logger.debug(`Skipping clean onExit() and cleanShutdown()`);
         const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter((i) =>
-          Boolean(i.pid)
+          Boolean(i.pid),
         );
 
         utils.logLabeledWarning(
@@ -269,7 +305,7 @@ function processKillSignal(
             runningEmulatorsInfosWithPid.length
           } subprocess${
             runningEmulatorsInfosWithPid.length > 1 ? "es" : ""
-          } to finish. These processes ${clc.bold("may")} still be running on your machine: `
+          } to finish. These processes ${clc.bold("may")} still be running on your machine: `,
         );
 
         const pids: number[] = [];
@@ -319,7 +355,7 @@ export function shutdownWhenKilled(options: any): Promise<void> {
     logger.debug(e);
     utils.logLabeledWarning(
       "emulators",
-      "emulators failed to shut down cleanly, see firebase-debug.log for details."
+      "emulators failed to shut down cleanly, see firebase-debug.log for details.",
     );
     throw e;
   });
@@ -431,12 +467,16 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     extraEnv[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
   }
   let exitCode = 0;
-  let deprecationNotices;
+  let deprecationNotices: string[] = [];
   try {
     const showUI = !!options.ui;
-    ({ deprecationNotices } = await controller.startAll(options, showUI));
+    ({ deprecationNotices } = await controller.startAll(options, showUI, true));
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
+  } catch (err: unknown) {
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+    throw err;
   } finally {
     await controller.cleanShutdown();
   }
@@ -459,7 +499,6 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
- *
  * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {
@@ -471,11 +510,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
         ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"],
         {
           stdio: ["inherit", "pipe", "pipe"],
-        }
+        },
       );
     } catch (err: any) {
       return reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
       );
     }
 
@@ -494,7 +533,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
     child.once("error", (err) => {
       reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err })
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
       );
     });
 
@@ -511,8 +550,8 @@ export async function checkJavaMajorVersion(): Promise<number> {
           new FirebaseError(
             `Process \`java -version\` has exited with code ${code}. ${JAVA_HINT}\n` +
               `-----Original stdout-----\n${output}` +
-              `-----Original stderr-----\n${error}`
-          )
+              `-----Original stderr-----\n${error}`,
+          ),
         );
       } else {
         // Join child process stdout and stderr for further parsing. Order does
@@ -530,7 +569,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
         utils.logLabeledWarning(
           "emulators",
           `Failed to parse Java version. Got "${match[0]}".`,
-          "warn"
+          "warn",
         );
       } else {
         logger.debug(`Parsed Java major version: ${versionInt}`);
@@ -550,5 +589,5 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools no longer supports Java version before 11. " +
-  "Please upgrade to Java version 11 or above to continue using the emulators.";
+  "firebase-tools no longer supports Java versions before 11. " +
+  "Please install a JDK at version 11 or above to get a compatible runtime.";

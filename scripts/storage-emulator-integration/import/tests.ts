@@ -3,7 +3,7 @@ import * as fs from "fs-extra";
 import { expect } from "chai";
 import supertest = require("supertest");
 
-import { createTmpDir } from "../../../src/test/emulators/fixtures";
+import { createTmpDir } from "../../../src/emulator/testing/fixtures";
 import { Emulators } from "../../../src/emulator/types";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
 import {

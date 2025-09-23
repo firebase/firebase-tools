@@ -31,9 +31,9 @@ export async function listEntries(
   projectId: string,
   filter: string,
   pageSize: number,
-  order: string
+  order: string,
 ): Promise<LogEntry[]> {
-  const client = new Client({ urlPrefix: cloudloggingOrigin, apiVersion: API_VERSION });
+  const client = new Client({ urlPrefix: cloudloggingOrigin(), apiVersion: API_VERSION });
   try {
     const result = await client.post<
       { resourceNames: string[]; filter: string; orderBy: string; pageSize: number },

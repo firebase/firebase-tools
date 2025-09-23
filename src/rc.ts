@@ -118,8 +118,8 @@ export class RC {
     if (!TARGET_TYPES[type]) {
       throw new FirebaseError(
         `Unrecognized target type ${clc.bold(type)}. Must be one of ${Object.keys(
-          TARGET_TYPES
-        ).join(", ")}`
+          TARGET_TYPES,
+        ).join(", ")}`,
       );
     }
 
@@ -208,10 +208,10 @@ export class RC {
     if (!target.length) {
       throw new FirebaseError(
         `Deploy target ${clc.bold(name)} not configured for project ${clc.bold(
-          project
+          project,
         )}. Configure with:
 
-  firebase target:apply ${type} ${name} <resources...>`
+  firebase target:apply ${type} ${name} <resources...>`,
       );
     }
 

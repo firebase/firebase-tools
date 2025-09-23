@@ -10,12 +10,21 @@ source scripts/set-default-credentials.sh
 # Prepare the storage emulator rules runtime
 firebase setup:emulators:storage
 
+mocha scripts/storage-emulator-integration/internal/tests.ts
+
+# Brief sleep between tests to make sure emulators shut down fully.
+sleep 5
+
 mocha scripts/storage-emulator-integration/rules/*.test.ts
+
+sleep 5
 
 mocha scripts/storage-emulator-integration/import/tests.ts
 
-mocha scripts/storage-emulator-integration/internal/tests.ts
+sleep 5
 
 mocha scripts/storage-emulator-integration/multiple-targets/tests.ts
+
+sleep 5
 
 mocha scripts/storage-emulator-integration/conformance/*.test.ts

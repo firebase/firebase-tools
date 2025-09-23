@@ -7,7 +7,7 @@ import { logger } from "../logger";
 import { last } from "../utils";
 
 export const command = new Command("experiments:describe <experiment>")
-  .description("enable an experiment on this machine")
+  .description("describe what an experiment does when enabled")
   .action((experiment: string) => {
     if (!experiments.isValidExperiment(experiment)) {
       let message = `Cannot find experiment ${bold(experiment)}`;
@@ -16,7 +16,7 @@ export const command = new Command("experiments:describe <experiment>")
         message = `${message}\nDid you mean ${potentials[0]}?`;
       } else if (potentials.length) {
         message = `${message}\nDid you mean ${potentials.slice(0, -1).join(",")} or ${last(
-          potentials
+          potentials,
         )}?`;
       }
       throw new FirebaseError(message);

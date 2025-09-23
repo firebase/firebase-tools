@@ -7,13 +7,14 @@ import {
   createFirebaseProjectAndLog,
   getFirebaseProject,
   getOrPromptProject,
-  PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
+  promptProjectCreation,
 } from "../../management/projects";
 import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
-import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
+import * as prompt from "../../prompt";
+import { Options } from "../../options";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -24,42 +25,43 @@ const OPTION_ADD_FIREBASE = "Add Firebase to an existing Google Cloud Platform p
  * Used in init flows to keep information about the project - basically
  * a shorter version of {@link FirebaseProjectMetadata} with some additional fields.
  */
-export interface ProjectInfo {
+export interface InitProjectInfo {
   id: string; // maps to FirebaseProjectMetadata.projectId
   label?: string;
   instance?: string; // maps to FirebaseProjectMetadata.resources.realtimeDatabaseInstance
   location?: string; // maps to FirebaseProjectMetadata.resources.locationId
 }
 
-function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
+function toInitProjectInfo(projectMetaData: FirebaseProjectMetadata): InitProjectInfo {
   const { projectId, displayName, resources } = projectMetaData;
   return {
     id: projectId,
     label: `${projectId}` + (displayName ? ` (${displayName})` : ""),
-    instance: _.get(resources, "realtimeDatabaseInstance"),
-    location: _.get(resources, "locationId"),
+    instance: resources?.realtimeDatabaseInstance,
+    location: resources?.locationId,
   };
 }
 
-async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
+async function promptAndCreateNewProject(options: Options): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
-      `"firebase projects:create" instead, and return to this command when you've created the project.`
+      `"firebase projects:create" instead, and return to this command when you've created the project.`,
   );
-  const promptAnswer: { projectId?: string; displayName?: string } = {};
-  await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
-  if (!promptAnswer.projectId) {
+  const { projectId, displayName } = await promptProjectCreation(options);
+  // N.B. This shouldn't be possible because of the validator on the input field, but it
+  // is being left around in case there's something I don't know.
+  if (!projectId) {
     throw new FirebaseError("Project ID cannot be empty");
   }
 
-  return await createFirebaseProjectAndLog(promptAnswer.projectId, {
-    displayName: promptAnswer.displayName,
-  });
+  return await createFirebaseProjectAndLog(projectId, { displayName });
 }
 
 async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMetadata> {
   const projectId = await promptAvailableProjectId();
   if (!projectId) {
+    // N.B. This shouldn't be possible because of the validator on the input field, but it
+    // is being left around in case there's something I don't know.
     throw new FirebaseError("Project ID cannot be empty");
   }
   return await addFirebaseToCloudProjectAndLog(projectId);
@@ -71,15 +73,8 @@ async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMeta
  * @return the project metadata, or undefined if no project was selected.
  */
 async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadata | undefined> {
-  const choices = [
-    { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
-    { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
-    { name: OPTION_ADD_FIREBASE, value: OPTION_ADD_FIREBASE },
-    { name: OPTION_NO_PROJECT, value: OPTION_NO_PROJECT },
-  ];
-  const projectSetupOption: string = await promptOnce({
-    type: "list",
-    name: "id",
+  const choices = [OPTION_USE_PROJECT, OPTION_NEW_PROJECT, OPTION_ADD_FIREBASE, OPTION_NO_PROJECT];
+  const projectSetupOption: string = await prompt.select<(typeof choices)[number]>({
     message: "Please select an option:",
     choices,
   });
@@ -88,7 +83,7 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
     case OPTION_USE_PROJECT:
       return getOrPromptProject(options);
     case OPTION_NEW_PROJECT:
-      return promptAndCreateNewProject();
+      return promptAndCreateNewProject(options);
     case OPTION_ADD_FIREBASE:
       return promptAndAddFirebaseToCloudProject();
     default:
@@ -109,35 +104,49 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   logger.info();
   logger.info(`First, let's associate this project directory with a Firebase project.`);
   logger.info(
-    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `
+    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `,
   );
   logger.info(`but for now we'll just set up a default project.`);
   logger.info();
 
-  const projectFromRcFile = _.get(setup.rcfile, "projects.default");
+  const projectFromRcFile = setup.rcfile?.projects?.default;
   if (projectFromRcFile && !options.project) {
     utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
     setup.projectId = rcProject.projectId;
-    setup.projectLocation = _.get(rcProject, "resources.locationId");
+    setup.projectLocation = rcProject?.resources?.locationId;
     return;
   }
 
   let projectMetaData;
-  // If the user presented a project with `--project`, try to fetch that project.
   if (options.project) {
+    // If the user presented a project with `--project`, try to fetch that project.
     logger.debug(`Using project from CLI flag: ${options.project}`);
     projectMetaData = await getFirebaseProject(options.project);
   } else {
-    projectMetaData = await projectChoicePrompt(options);
-    if (!projectMetaData) {
-      return;
+    const projectEnvVar = utils.envOverride("FIREBASE_PROJECT", "");
+    // If env var $FIREBASE_PROJECT is set, try to fetch that project.
+    // This is used in some shell scripts e.g. under https://firebase.tools/.
+    if (projectEnvVar) {
+      logger.debug(`Using project from $FIREBASE_PROJECT: ${projectEnvVar}`);
+      projectMetaData = await getFirebaseProject(projectEnvVar);
+    } else {
+      if (options.nonInteractive) {
+        logger.info(
+          "No default project found. Continuing without a project in non interactive mode.",
+        );
+        return;
+      }
+      projectMetaData = await projectChoicePrompt(options);
+      if (!projectMetaData) {
+        return;
+      }
     }
   }
 
-  const projectInfo = toProjectInfo(projectMetaData);
+  const projectInfo = toInitProjectInfo(projectMetaData);
   utils.logBullet(`Using project ${projectInfo.label}`);
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", projectInfo.id);

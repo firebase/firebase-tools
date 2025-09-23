@@ -21,7 +21,7 @@ export interface FunctionsProxyOptions {
  * hosted or live function.
  */
 export function functionsProxy(
-  options: FunctionsProxyOptions
+  options: FunctionsProxyOptions,
 ): (r: HostingRewrites) => Promise<RequestHandler> {
   return (rewrite: HostingRewrites) => {
     return new Promise((resolve) => {

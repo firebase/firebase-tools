@@ -6,7 +6,7 @@ import { FirebaseError } from "../../../error";
  * @param endpoint the test lab endpoint
  */
 export function ensureTestLabTriggerRegion(
-  endpoint: backend.Endpoint & backend.EventTriggered
+  endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = "global";

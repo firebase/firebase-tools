@@ -5,11 +5,12 @@ import * as proto from "./proto";
 import * as iam from "./iam";
 import { backoff } from "../throttler/throttler";
 import { logger } from "../logger";
+import { listEntries, LogEntry } from "./cloudlogging";
 
 const API_VERSION = "v1";
 
 const client = new Client({
-  urlPrefix: runOrigin,
+  urlPrefix: runOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -184,7 +185,7 @@ export function serviceIsResolved(service: Service): boolean {
     logger.debug(
       `Service ${service.metadata.name} is not resolved because` +
         `observed generation ${service.status?.observedGeneration} does not ` +
-        `match spec generation ${service.metadata.generation}`
+        `match spec generation ${service.metadata.generation}`,
     );
     return false;
   }
@@ -195,7 +196,7 @@ export function serviceIsResolved(service: Service): boolean {
   if (readyCondition?.status === "Unknown") {
     logger.debug(
       `Waiting for service ${service.metadata.name} to be ready. ` +
-        `Status is ${JSON.stringify(service.status?.conditions)}`
+        `Status is ${JSON.stringify(service.status?.conditions)}`,
     );
     return false;
   } else if (readyCondition?.status === "True") {
@@ -203,11 +204,11 @@ export function serviceIsResolved(service: Service): boolean {
   }
   logger.debug(
     `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
-      readyCondition
-    )}. It may have failed rollout.`
+      readyCondition,
+    )}. It may have failed rollout.`,
   );
   throw new FirebaseError(
-    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`,
   );
 }
 
@@ -234,7 +235,7 @@ export async function replaceService(name: string, service: Service): Promise<Se
 export async function setIamPolicy(
   name: string,
   policy: iam.Policy,
-  httpClient: Client = client
+  httpClient: Client = client,
 ): Promise<void> {
   // Cloud Run has an atypical REST binding for SetIamPolicy. Instead of making the body a policy and
   // the update mask a query parameter (e.g. Cloud Functions v1) the request body is the literal
@@ -261,7 +262,7 @@ export async function setIamPolicy(
  */
 export async function getIamPolicy(
   serviceName: string,
-  httpClient: Client = client
+  httpClient: Client = client,
 ): Promise<IamPolicy> {
   try {
     const response = await httpClient.get<IamPolicy>(`${serviceName}:getIamPolicy`);
@@ -284,7 +285,7 @@ export async function setInvokerCreate(
   projectId: string,
   serviceName: string,
   invoker: string[],
-  httpClient: Client = client // for unit testing
+  httpClient: Client = client, // for unit testing
 ) {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -313,7 +314,7 @@ export async function setInvokerUpdate(
   projectId: string,
   serviceName: string,
   invoker: string[],
-  httpClient: Client = client // for unit testing
+  httpClient: Client = client, // for unit testing
 ) {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -322,7 +323,7 @@ export async function setInvokerUpdate(
   const invokerRole = "roles/run.invoker";
   const currentPolicy = await getIamPolicy(serviceName, httpClient);
   const currentInvokerBinding = currentPolicy.bindings?.find(
-    (binding) => binding.role === invokerRole
+    (binding) => binding.role === invokerRole,
   );
   if (
     currentInvokerBinding &&
@@ -343,4 +344,26 @@ export async function setInvokerUpdate(
     version: 3,
   };
   await setIamPolicy(serviceName, policy, httpClient);
+}
+
+/**
+ * Fetches recent logs for a given Cloud Run service using the Cloud Logging API.
+ * @param projectId The Google Cloud project ID.
+ * @param serviceId The resource name of the Cloud Run service.
+ * @return A promise that resolves with the log entries.
+ */
+export async function fetchServiceLogs(projectId: string, serviceId: string): Promise<LogEntry[]> {
+  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}"`;
+  const pageSize = 100;
+  const order = "desc";
+
+  try {
+    const entries = await listEntries(projectId, filter, pageSize, order);
+    return entries || [];
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
+      original: err,
+      status: (err as any)?.context?.response?.statusCode,
+    });
+  }
 }

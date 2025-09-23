@@ -27,7 +27,7 @@ import { logLabeledBullet } from "../../utils";
 export async function handleSecretParams(
   payload: Payload,
   have: DeploymentInstanceSpec[],
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ) {
   for (const i of payload.instancesToCreate ?? []) {
     if (await checkSpecForSecrets(i)) {
@@ -65,7 +65,7 @@ async function handleSecretsCreateInstance(i: DeploymentInstanceSpec, nonInterac
 async function handleSecretsUpdateInstance(
   i: DeploymentInstanceSpec,
   prevSpec: DeploymentInstanceSpec,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ) {
   const extensionVersion = await getExtensionVersion(i);
   const prevExtensionVersion = await getExtensionVersion(prevSpec);
@@ -85,7 +85,7 @@ async function handleSecretsUpdateInstance(
 async function handleSecretParamForCreate(
   secretParam: Param,
   i: DeploymentInstanceSpec,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ): Promise<void> {
   const providedValue = i.params[secretParam.param];
   if (!providedValue) {
@@ -97,7 +97,7 @@ async function handleSecretParamForCreate(
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
-      }, but expected a secret version.`
+      }, but expected a secret version.`,
     );
   }
   // Then, go get all the info about the current state of the secret.
@@ -119,8 +119,8 @@ async function handleSecretParamForCreate(
       }. ` +
         `projects/${projectId}/secrets/${secretName} exists, but version ${version} does not. ` +
         `See more information about this secret at ${secretManager.secretManagerConsoleUri(
-          projectId
-        )}`
+          projectId,
+        )}`,
     );
   }
   // If the secret is managed, but by a different extension, error out.
@@ -136,7 +136,7 @@ async function handleSecretParamForCreate(
         `projects/${projectId}/secrets/${secretName} is managed by a different extension instance (${
           secretInfo.secret.labels[secretUtils.SECRET_LABEL]
         }), so reusing it here can lead to unexpected behavior. ` +
-        "Please choose a different name for this secret, and rerun this command."
+        "Please choose a different name for this secret, and rerun this command.",
     );
   }
   // If we get to this point, we're OK to just use what was included in the params.
@@ -148,7 +148,7 @@ async function handleSecretParamForUpdate(
   secretParam: Param,
   i: DeploymentInstanceSpec,
   prevValue: string,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ): Promise<void> {
   const providedValue = i.params[secretParam.param];
   if (!providedValue) {
@@ -159,7 +159,7 @@ async function handleSecretParamForUpdate(
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
-      }, but expected a secret version.`
+      }, but expected a secret version.`,
     );
   }
   // Don't allow changing secrets, only changing versions
@@ -172,7 +172,7 @@ async function handleSecretParamForUpdate(
         `but this instance was previously using a different secret projects/${prevProjectId}/secrets/${prevSecretName}.\n` +
         `Changing secrets is not supported. If you want to change the value of this secret, ` +
         `use a new version of projects/${prevProjectId}/secrets/${prevSecretName}.` +
-        `You can create a new version at ${secretManager.secretManagerConsoleUri(projectId)}`
+        `You can create a new version at ${secretManager.secretManagerConsoleUri(projectId)}`,
     );
   }
   const secretInfo = await getSecretInfo(projectId, secretName, version);
@@ -192,8 +192,8 @@ async function handleSecretParamForUpdate(
       }. ` +
         `projects/${projectId}/secrets/${secretName} exists, but version ${version} does not. ` +
         `See more information about this secret at ${secretManager.secretManagerConsoleUri(
-          projectId
-        )}`
+          projectId,
+        )}`,
     );
   }
   // Set the param value to the exact resource name we get from SecretManager,
@@ -207,7 +207,7 @@ async function handleSecretParamForUpdate(
 async function getSecretInfo(
   projectId: string,
   secretName: string,
-  version: string
+  version: string,
 ): Promise<{
   secret?: secretManager.Secret;
   secretVersion?: secretManager.SecretVersion;
@@ -233,13 +233,13 @@ async function promptForCreateSecret(args: {
   nonInteractive: boolean;
 }): Promise<string> {
   logger.info(
-    `${clc.bold(args.instanceId)}: Secret ${args.projectId}/${args.secretName} doesn't exist yet.`
+    `${clc.bold(args.instanceId)}: Secret ${args.projectId}/${args.secretName} doesn't exist yet.`,
   );
   if (args.nonInteractive) {
     throw new FirebaseError(
       `To create this secret, run this command in interactive mode, or go to ${secretManager.secretManagerConsoleUri(
-        args.projectId
-      )}`
+        args.projectId,
+      )}`,
     );
   }
   return promptCreateSecret(args.projectId, args.instanceId, args.secretParam, args.secretName);

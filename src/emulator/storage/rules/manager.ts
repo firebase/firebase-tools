@@ -38,7 +38,7 @@ export interface StorageRulesManager {
  */
 export function createStorageRulesManager(
   rules: SourceFile | RulesConfig[],
-  runtime: StorageRulesRuntime
+  runtime: StorageRulesRuntime,
 ): StorageRulesManager {
   return Array.isArray(rules)
     ? new ResourceBasedStorageRulesManager(rules, runtime)
@@ -55,7 +55,10 @@ class DefaultStorageRulesManager implements StorageRulesManager {
   private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  constructor(_rules: SourceFile, private _runtime: StorageRulesRuntime) {
+  constructor(
+    _rules: SourceFile,
+    private _runtime: StorageRulesRuntime,
+  ) {
     this._rules = _rules;
   }
 
@@ -85,7 +88,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
         this._logger.logLabeled(
           "BULLET",
           "storage",
-          "Change detected, updating rules for Cloud Storage..."
+          "Change detected, updating rules for Cloud Storage...",
         );
         this._rules.content = readFile(rulesFile);
         await this.loadRuleset();
@@ -107,7 +110,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
           "WARN",
           `${parsedIssue.description_.replace(/\.$/, "")} in ${
             parsedIssue.sourcePosition_.fileName_
-          }:${parsedIssue.sourcePosition_.line_}`
+          }:${parsedIssue.sourcePosition_.line_}`,
         );
       } catch {
         this._logger.logLabeled("WARN", "storage", issue);
@@ -124,7 +127,10 @@ class DefaultStorageRulesManager implements StorageRulesManager {
 class ResourceBasedStorageRulesManager implements StorageRulesManager {
   private _rulesManagers = new Map<string, DefaultStorageRulesManager>();
 
-  constructor(_rulesConfig: RulesConfig[], private _runtime: StorageRulesRuntime) {
+  constructor(
+    _rulesConfig: RulesConfig[],
+    private _runtime: StorageRulesRuntime,
+  ) {
     for (const { resource, rules } of _rulesConfig) {
       this.createRulesManager(resource, rules);
     }
@@ -144,7 +150,7 @@ class ResourceBasedStorageRulesManager implements StorageRulesManager {
 
   async stop(): Promise<void> {
     await Promise.all(
-      Array.from(this._rulesManagers.values(), async (rulesManager) => await rulesManager.stop())
+      Array.from(this._rulesManagers.values(), async (rulesManager) => await rulesManager.stop()),
     );
   }
 

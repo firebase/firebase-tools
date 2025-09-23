@@ -132,7 +132,7 @@ const MB_TO_GHZ = {
 
 /** Whether we have information in our price sheet to calculate the minInstance cost. */
 export function canCalculateMinInstanceCost(endpoint: backend.Endpoint): boolean {
-  if (!endpoint.minInstances) {
+  if (endpoint.minInstances === undefined || endpoint.minInstances === null) {
     return true;
   }
 
@@ -160,6 +160,12 @@ export function canCalculateMinInstanceCost(endpoint: backend.Endpoint): boolean
 const SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
 
 /** The cost of a series of endpoints at 100% idle in a 30d month. */
+// BUG BUG BUG!
+// This method incorrectly gives a disjoint free tier for GCF v1 and GCF v2 which
+// was broken and never fixed when GCF decided to vendor Run usage as the GCF SKU.
+// It should be a single free tier that applies to both. This will soon be wrong
+// in a _different_ way when GCF v2 un-vendors the SKU and instead v2 and Run should
+// share a free tier.
 export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   // Assertion: canCalculateMinInstanceCost
   type Usage = {
@@ -169,10 +175,11 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   const usage: Record<backend.FunctionsPlatform, Record<tier, Usage>> = {
     gcfv1: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
     gcfv2: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
+    run: { 1: { ram: 0, cpu: 0 }, 2: { ram: 0, cpu: 0 } },
   };
 
   for (const endpoint of endpoints) {
-    if (!endpoint.minInstances) {
+    if (endpoint.minInstances === undefined || endpoint.minInstances === null) {
       continue;
     }
 
@@ -188,10 +195,10 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
     } else {
       // V2 is currently fixed at 1vCPU.
       const tier = V2_REGION_TO_TIER[endpoint.region];
-      usage["gcfv2"][tier].ram =
-        usage["gcfv2"][tier].ram + ramGb * SECONDS_PER_MONTH * endpoint.minInstances;
-      usage["gcfv2"][tier].cpu =
-        usage["gcfv2"][tier].cpu +
+      usage[endpoint.platform][tier].ram =
+        usage[endpoint.platform][tier].ram + ramGb * SECONDS_PER_MONTH * endpoint.minInstances;
+      usage[endpoint.platform][tier].cpu =
+        usage[endpoint.platform][tier].cpu +
         (endpoint.cpu as number) * SECONDS_PER_MONTH * endpoint.minInstances;
     }
   }
@@ -218,5 +225,15 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
   v2CpuBill -= V2_FREE_TIER.vCpu * V2_RATES.vCpu[1];
   v2CpuBill = Math.max(v2CpuBill, 0);
 
-  return v1MemoryBill + v1CpuBill + v2MemoryBill + v2CpuBill;
+  let runMemoryBill =
+    usage["run"][1].ram * V2_RATES.memoryGb[1] + usage["run"][2].ram * V2_RATES.memoryGb[2];
+  runMemoryBill -= V2_FREE_TIER.memoryGb * V2_RATES.memoryGb[1];
+  runMemoryBill = Math.max(runMemoryBill, 0);
+
+  let runCpuBill =
+    usage["run"][1].cpu * V2_RATES.idleVCpu[1] + usage["run"][2].cpu * V2_RATES.idleVCpu[2];
+  runCpuBill -= V2_FREE_TIER.vCpu * V2_RATES.vCpu[1];
+  runCpuBill = Math.max(runCpuBill, 0);
+
+  return v1MemoryBill + v1CpuBill + v2MemoryBill + v2CpuBill + runMemoryBill + runCpuBill;
 }

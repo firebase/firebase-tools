@@ -33,8 +33,8 @@ export class Resolver {
   public constructor(
     private lookup: (
       hostname: string,
-      options: LookupAllOptions
-    ) => Promise<LookupAddress[]> = dnsPromises.lookup
+      options: LookupAllOptions,
+    ) => Promise<LookupAddress[]> = dnsPromises.lookup,
   ) {}
 
   /**
@@ -66,7 +66,7 @@ export class Resolver {
     logger.debug(
       `Resolved hostname "${hostname}" to the first result "${
         result.address
-      }" (ignoring candidates: ${discarded.join(",")}).`
+      }" (ignoring candidates: ${discarded.join(",")}).`,
     );
     return result;
   }

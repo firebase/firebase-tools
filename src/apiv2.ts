@@ -1,7 +1,7 @@
 import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import * as ProxyAgent from "proxy-agent";
+import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
@@ -18,17 +18,36 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
-const GOOG_QUOTA_USER = "x-goog-quota-user";
+export const STANDARD_HEADERS: Record<string, string> = {
+  Connection: "keep-alive",
+  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
+  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+};
 
-export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
+
+const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
+const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
+
+export type HttpMethod =
+  | "GET"
+  | "PUT"
+  | "POST"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "HEAD"
+  | "CONNECT"
+  | "TRACE";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
-  responseType?: "json" | "stream" | "xml";
+  responseType?: "json" | "xml" | "stream" | "arraybuffer" | "blob" | "text" | "unknown";
   redirect?: "error" | "follow" | "manual";
   compress?: boolean;
+  ignoreQuotaProject?: boolean;
 }
 
 interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
@@ -103,6 +122,21 @@ export function setAccessToken(token = ""): void {
   accessToken = token;
 }
 
+/**
+ * Gets a singleton access token
+ * @returns An access token
+ */
+export async function getAccessToken(): Promise<string> {
+  const valid = auth.haveValidTokens(refreshToken, []);
+  const usingADC = !auth.loggedIn();
+  if (accessToken && (valid || usingADC)) {
+    return accessToken;
+  }
+
+  const data = await auth.getAccessToken(refreshToken, []);
+  return data.access_token;
+}
+
 function proxyURIFromEnv(): string | undefined {
   return (
     process.env.HTTPS_PROXY ||
@@ -117,7 +151,6 @@ export type ClientOptions = {
   urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
-  proxy?: string;
 };
 
 export class Client {
@@ -141,7 +174,7 @@ export class Client {
   post<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions = {}
+    options: ClientVerbOptions = {},
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "POST",
@@ -154,7 +187,7 @@ export class Client {
   patch<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions = {}
+    options: ClientVerbOptions = {},
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PATCH",
@@ -167,7 +200,7 @@ export class Client {
   put<ReqT, ResT>(
     path: string,
     json?: ReqT,
-    options: ClientVerbOptions = {}
+    options: ClientVerbOptions = {},
   ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PUT",
@@ -185,6 +218,13 @@ export class Client {
     return this.request<unknown, ResT>(reqOptions);
   }
 
+  options<ResT>(path: string, options: ClientVerbOptions = {}): Promise<ClientResponse<ResT>> {
+    const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
+      method: "OPTIONS",
+      path,
+    });
+    return this.request<unknown, ResT>(reqOptions);
+  }
   /**
    * Makes a request as specified by the options.
    * By default, this will:
@@ -213,7 +253,7 @@ export class Client {
     if (reqOptions.responseType === "stream" && !reqOptions.resolveOnHTTPError) {
       throw new FirebaseError(
         "apiv2 will not handle HTTP errors while streaming and you must set `resolveOnHTTPError` and check for res.status >= 400 on your own",
-        { exit: 2 }
+        { exit: 2 },
       );
     }
 
@@ -244,26 +284,33 @@ export class Client {
   }
 
   private addRequestHeaders<T>(
-    reqOptions: InternalClientRequestOptions<T>
+    reqOptions: InternalClientRequestOptions<T>,
   ): InternalClientRequestOptions<T> {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    reqOptions.headers.set("Connection", "keep-alive");
-    if (!reqOptions.headers.has("User-Agent")) {
-      reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
+    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+      if (!reqOptions.headers.has(h)) {
+        reqOptions.headers.set(h, v);
+      }
     }
-    reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
     if (!reqOptions.headers.has("Content-Type")) {
       if (reqOptions.responseType === "json") {
         reqOptions.headers.set("Content-Type", "application/json");
       }
     }
+    if (
+      !reqOptions.ignoreQuotaProject &&
+      GOOGLE_CLOUD_QUOTA_PROJECT &&
+      GOOGLE_CLOUD_QUOTA_PROJECT !== ""
+    ) {
+      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, GOOGLE_CLOUD_QUOTA_PROJECT);
+    }
     return reqOptions;
   }
 
   private async addAuthHeader<T>(
-    reqOptions: InternalClientRequestOptions<T>
+    reqOptions: InternalClientRequestOptions<T>,
   ): Promise<InternalClientRequestOptions<T>> {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
@@ -272,23 +319,10 @@ export class Client {
     if (isLocalInsecureRequest(this.opts.urlPrefix)) {
       token = "owner";
     } else {
-      token = await this.getAccessToken();
+      token = await getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
-  }
-
-  private async getAccessToken(): Promise<string> {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
-    if (accessToken) {
-      return accessToken;
-    }
-    // TODO: remove the as any once auth.js is migrated to auth.ts
-    interface AccessToken {
-      access_token: string;
-    }
-    const data = (await auth.getAccessToken(refreshToken, [])) as AccessToken;
-    return data.access_token;
   }
 
   private requestURL(options: InternalClientRequestOptions<unknown>): string {
@@ -297,7 +331,7 @@ export class Client {
   }
 
   private async doRequest<ReqT, ResT>(
-    options: InternalClientRequestOptions<ReqT>
+    options: InternalClientRequestOptions<ReqT>,
   ): Promise<ClientResponse<ResT>> {
     if (!options.path.startsWith("/")) {
       options.path = "/" + options.path;
@@ -326,12 +360,8 @@ export class Client {
       compress: options.compress,
     };
 
-    if (this.opts.proxy) {
-      fetchOptions.agent = new ProxyAgent(this.opts.proxy);
-    }
-    const envProxy = proxyURIFromEnv();
-    if (envProxy) {
-      fetchOptions.agent = new ProxyAgent(envProxy);
+    if (proxyURIFromEnv()) {
+      fetchOptions.agent = new ProxyAgent();
     }
 
     if (options.signal) {
@@ -378,15 +408,17 @@ export class Client {
         try {
           if (currentAttempt > 1) {
             logger.debug(
-              `*** [apiv2] Attempting the request again. Attempt number ${currentAttempt}`
+              `*** [apiv2] Attempting the request again. Attempt number ${currentAttempt}`,
             );
           }
           this.logRequest(options);
-
           try {
             res = await fetch(fetchURL, fetchOptions);
           } catch (thrown: any) {
             const err = thrown instanceof Error ? thrown : new Error(thrown);
+            logger.debug(
+              `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
+            );
             const isAbortError = err.name.includes("AbortError");
             if (isAbortError) {
               throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, {
@@ -433,14 +465,24 @@ export class Client {
         this.logResponse(res, body, options);
 
         if (res.status >= 400) {
+          if (res.status === 401 && this.opts.auth) {
+            // If we get a 401, access token is expired or otherwise invalid.
+            // Throw it away and get a new one. We check for validity before using
+            // tokens, so this should not happen.
+            logger.debug(
+              "Got a 401 Unauthenticated error for a call that required authentication. Refreshing tokens.",
+            );
+            setAccessToken();
+            setAccessToken(await getAccessToken());
+          }
           if (options.retryCodes?.includes(res.status)) {
-            const err = responseToError({ statusCode: res.status }, body) || undefined;
+            const err = responseToError({ statusCode: res.status }, body, fetchURL) || undefined;
             if (operation.retry(err)) {
               return;
             }
           }
           if (!options.resolveOnHTTPError) {
-            return reject(responseToError({ statusCode: res.status }, body));
+            return reject(responseToError({ statusCode: res.status }, body, fetchURL));
           }
         }
 
@@ -467,11 +509,11 @@ export class Client {
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     const headers = options.headers;
-    if (headers && headers.has(GOOG_QUOTA_USER)) {
+    if (headers && headers.has(GOOG_QUOTA_USER_HEADER)) {
       logger.debug(
         `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
-          headers.get(GOOG_QUOTA_USER) || ""
-        }`
+          headers.get(GOOG_QUOTA_USER_HEADER) || ""
+        }`,
       );
     }
     if (options.body !== undefined) {
@@ -486,7 +528,7 @@ export class Client {
   private logResponse(
     res: Response,
     body: unknown,
-    options: InternalClientRequestOptions<unknown>
+    options: InternalClientRequestOptions<unknown>,
   ): void {
     const logURL = this.requestURL(options);
     logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);

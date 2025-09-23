@@ -3,30 +3,22 @@ import { copy, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import {
-  readJSON,
-  simpleProxy,
-  warnIfCustomBuildScript,
-  findDependency,
-  getNodeModuleBin,
-} from "../utils";
-import { getBootstrapScript, getConfig } from "./utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-
-function getAstroVersion(cwd: string): string | undefined {
-  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
-}
+export const supportedRange = "2 - 4";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
-  if (!getAstroVersion(dir)) return;
-  const { output, publicDir: publicDirectory } = await getConfig(dir);
+  const version = getAstroVersion(dir);
+  if (!version) return;
+  const { output } = await getConfig(dir);
   return {
-    mayWantBackend: output === "server",
-    publicDirectory,
+    mayWantBackend: output !== "static",
+    version,
   };
 }
 
@@ -36,20 +28,21 @@ export async function build(cwd: string): Promise<BuildResult> {
   const cli = getNodeModuleBin("astro", cwd);
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const { output, adapter } = await getConfig(cwd);
-  if (output === "server" && adapter?.name !== "@astrojs/node") {
+  const wantsBackend = output !== "static";
+  if (wantsBackend && adapter?.name !== "@astrojs/node") {
     throw new FirebaseError(
-      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter."
+      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/",
     );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
-  if (build.status) throw new FirebaseError("Unable to build your Astro app");
-  return { wantsBackend: output === "server" };
+  if (build.status !== 0) throw new FirebaseError("Unable to build your Astro app");
+  return { wantsBackend };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { outDir, output } = await getConfig(root);
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
-  const assetPath = join(root, outDir, output === "server" ? "client" : "");
+  const assetPath = join(root, outDir, output !== "static" ? "client" : "");
   await copy(assetPath, dest);
 }
 
@@ -64,7 +57,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export async function getDevModeHandle(cwd: string) {
-  const host = new Promise<string>((resolve) => {
+  const host = new Promise<string>((resolve, reject) => {
     const cli = getNodeModuleBin("astro", cwd);
     const serve = spawn(cli, ["dev"], { cwd });
     serve.stdout.on("data", (data: any) => {
@@ -75,6 +68,7 @@ export async function getDevModeHandle(cwd: string) {
     serve.stderr.on("data", (data: any) => {
       process.stderr.write(data);
     });
+    serve.on("exit", reject);
   });
   return simpleProxy(await host);
 }

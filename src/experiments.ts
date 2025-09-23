@@ -1,7 +1,6 @@
 import { bold, italic } from "colorette";
 import * as leven from "leven";
 import { basename } from "path";
-
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import { isRunningInGithubAction } from "./init/features/hosting/github";
@@ -32,19 +31,19 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbmanagement: {
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
-
-  // Extensions experiments
-  ext: {
-    shortDescription: `Enables the ${bold("ext:sources:create")} command`,
+  // Cloud Functions for Firebase experiments
+  functionsv2deployoptimizations: {
+    shortDescription: "Optimize deployments of v2 firebase functions",
+    fullDescription:
+      "Reuse build images across funtions to increase performance and reliaibility " +
+      "of deploys. This has been made an experiment due to backend bugs that are " +
+      "temporarily causing failures in some regions with this optimization enabled",
+    public: true,
+    default: true,
   },
-  extdev: {
-    shortDescription: `Enables the ${bold("ext:dev")} family of commands`,
-    docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
-  },
-
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
-      "functions:deletegcfartifacts"
+      "functions:deletegcfartifacts",
     )} command to purge docker build images`,
     fullDescription:
       `Add the ${bold("functions:deletegcfartifacts")}` +
@@ -58,10 +57,27 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  dangerouslyAllowFunctionsConfig: {
+    shortDescription: "Allows the use of deprecated functions.config() API",
+    fullDescription:
+      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
+      "This experiment allows continued use of the API during the migration period.",
+    default: true,
+    public: true,
+  },
+  runfunctions: {
+    shortDescription:
+      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
+  },
+  emulatorapphosting: {
+    shortDescription: "App Hosting emulator",
+    public: false,
   },
 
   // Hosting experiments
@@ -85,6 +101,8 @@ export const ALL_EXPERIMENTS = experiments({
       "exist per region. firebase-tools aggressively garbage collects tags it creates " +
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
+    public: true,
+    default: true,
   },
   // Access experiments
   crossservicerules: {
@@ -96,6 +114,47 @@ export const ALL_EXPERIMENTS = experiments({
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  apphosting: {
+    shortDescription: "Allow CLI option for Frameworks",
+    default: true,
+    public: false,
+  },
+
+  // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
+  dataconnect: {
+    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    public: false,
+  },
+
+  genkit: {
+    shortDescription: "Enable Genkit related features.",
+    fullDescription: "Enable Genkit related features.",
+    default: true,
+    public: false,
+  },
+  appsinit: {
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
+    default: false,
+    public: true,
+  },
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
+    default: true,
+    public: false,
+  },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: true,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
   },
 });
 
@@ -116,7 +175,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   if (isValidExperiment(malformed)) {
     throw new FirebaseError(
       "Assertion failed: experimentNameAutocorrect given actual experiment name",
-      { exit: 2 }
+      { exit: 2 },
     );
   }
 
@@ -124,7 +183,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4
+    (name) => leven(name, malformed) < malformed.length * 0.4,
   );
 }
 
@@ -193,7 +252,7 @@ export function assertEnabled(name: ExperimentName, task: string): void {
       const newValue = [process.env.FIREBASE_CLI_EXPERIMENTS, name].filter((it) => !!it).join(",");
       throw new FirebaseError(
         `${prefix} To enable add a ${bold(
-          "FIREBASE_CLI_EXPERIMENTS"
+          "FIREBASE_CLI_EXPERIMENTS",
         )} environment variable to ${filename}, like so: ${italic(`
 
 - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -201,11 +260,11 @@ export function assertEnabled(name: ExperimentName, task: string): void {
     ...
   env:
     FIREBASE_CLI_EXPERIMENTS: ${newValue}
-`)}`
+`)}`,
       );
     } else {
       throw new FirebaseError(
-        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`
+        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`,
       );
     }
   }

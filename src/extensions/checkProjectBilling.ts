@@ -16,8 +16,8 @@ function logBillingStatus(enabled: boolean, projectId: string): void {
   if (!enabled) {
     throw new FirebaseError(
       `${logPrefix}: ${clc.bold(
-        projectId
-      )} could not be upgraded. Please add a billing account via the Firebase console before proceeding.`
+        projectId,
+      )} could not be upgraded. Please add a billing account via the Firebase console before proceeding.`,
     );
   }
   utils.logLabeledSuccess(logPrefix, `${clc.bold(projectId)} has successfully been upgraded.`);
@@ -35,9 +35,7 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
     }
   }
 
-  await prompt.promptOnce({
-    name: "continue",
-    type: "confirm",
+  await prompt.confirm({
     message:
       "Press enter when finished upgrading your project to continue setting up your extension.",
     default: true,
@@ -50,14 +48,12 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
  */
 async function chooseBillingAccount(
   projectId: string,
-  accounts: cloudbilling.BillingAccount[]
+  accounts: cloudbilling.BillingAccount[],
 ): Promise<void> {
   const choices = accounts.map((m) => m.displayName);
   choices.push(ADD_BILLING_ACCOUNT);
 
-  const answer = await prompt.promptOnce({
-    name: "billing",
-    type: "list",
+  const answer = await prompt.select({
     message: `Extensions require your project to be upgraded to the Blaze plan. You have access to the following billing accounts.
 Please select the one that you would like to associate with this project:`,
     choices: choices,
@@ -84,15 +80,13 @@ async function setUpBillingAccount(projectId: string) {
 
   logger.info();
   logger.info(
-    `Extension require your project to be upgraded to the Blaze plan. Please visit the following link to add a billing account:`
+    `Extension require your project to be upgraded to the Blaze plan. Please visit the following link to add a billing account:`,
   );
   logger.info();
   logger.info(clc.bold(clc.underline(billingURL)));
   logger.info();
 
-  const open = await prompt.promptOnce({
-    name: "open-url",
-    type: "confirm",
+  const open = await prompt.confirm({
     message: "Press enter to open the URL.",
     default: true,
   });

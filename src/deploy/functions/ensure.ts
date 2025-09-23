@@ -1,20 +1,18 @@
 import * as clc from "colorette";
 
-import type { FirebaseProjectMetadata } from "../../types/project";
-
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { getFirebaseProject } from "../../management/projects";
+import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
+import { getProject, ProjectInfo } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import { track } from "../../track";
+import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
-const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
 
-const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
+const metadataCallCache: Map<string, Promise<ProjectInfo>> = new Map();
 
 /**
  *  By default:
@@ -24,20 +22,19 @@ const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
   let metadataCall = metadataCallCache.get(e.project);
   if (!metadataCall) {
-    metadataCall = getFirebaseProject(e.project);
+    metadataCall = getProject(e.project);
     metadataCallCache.set(e.project, metadataCall);
   }
   const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
-  } else if (e.platform === "gcfv2") {
-    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2" || e.platform === "run") {
+    return await getDefaultServiceAccount(metadata.projectNumber);
   }
   assertExhaustive(e.platform);
 }
 
 function nodeBillingError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
 
@@ -46,14 +43,13 @@ https://console.firebase.google.com/project/${projectId}/usage/details
 For additional information about this requirement, see Firebase FAQs:
 
 ${FAQ_URL}`,
-    { exit: 1 }
+    { exit: 1 },
   );
 }
 
 function nodePermissionError(projectId: string): FirebaseError {
-  void track("functions_runtime_notices", "nodejs10_permission_error");
   return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${clc.bold(
-    projectId
+    projectId,
   )}.
 
 Please ask a project owner to visit the following URL to enable Cloud Build:
@@ -77,7 +73,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  */
 export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
-    await ensure(projectId, CLOUD_BUILD_API, "functions");
+    await ensure(projectId, cloudbuildOrigin(), "functions");
   } catch (e: any) {
     if (isBillingError(e)) {
       throw nodeBillingError(projectId);
@@ -116,21 +112,36 @@ async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<stri
 export async function secretAccess(
   projectId: string,
   wantBackend: backend.Backend,
-  haveBackend: backend.Backend
+  haveBackend: backend.Backend,
+  dryRun?: boolean,
 ) {
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
     );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor"
-    );
+    if (dryRun) {
+      const check = await checkServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+      if (check.length) {
+        logLabeledBullet(
+          "functions",
+          `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
+        );
+      }
+    } else {
+      await ensureServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+    }
     logLabeledSuccess(
       "functions",
-      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`
+      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
     );
   };
 

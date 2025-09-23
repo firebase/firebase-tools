@@ -1,10 +1,26 @@
 import * as API from "./api-types";
 import * as Spec from "./api-spec";
 import * as util from "./util";
+import { Backup, BackupSchedule } from "../gcp/firestore";
 
 const QUERY_SCOPE_SEQUENCE = [
   API.QueryScope.COLLECTION_GROUP,
   API.QueryScope.COLLECTION,
+  undefined,
+];
+
+const API_SCOPE_SEQUENCE = [
+  API.ApiScope.ANY_API,
+  API.ApiScope.DATASTORE_MODE_API,
+  API.ApiScope.MONGODB_COMPATIBLE_API,
+  undefined,
+];
+
+const DENSITY_SEQUENCE = [
+  API.Density.DENSITY_UNSPECIFIED,
+  API.Density.SPARSE_ALL,
+  API.Density.SPARSE_ANY,
+  API.Density.DENSE,
   undefined,
 ];
 
@@ -19,6 +35,10 @@ const ARRAY_CONFIG_SEQUENCE = [API.ArrayConfig.CONTAINS, undefined];
  *   1) The collection group.
  *   2) The query scope.
  *   3) The fields list.
+ *   4) The API scope.
+ *   5) The index density.
+ *   6) Whether it's multikey.
+ *   7) Whether it's unique.
  */
 export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
   if (a.collectionGroup !== b.collectionGroup) {
@@ -29,7 +49,27 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
     return compareQueryScope(a.queryScope, b.queryScope);
   }
 
-  return compareArrays(a.fields, b.fields, compareIndexField);
+  let cmp = compareArrays(a.fields, b.fields, compareIndexField);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 /**
@@ -39,6 +79,10 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
  *   1) The collection group.
  *   2) The query scope.
  *   3) The fields list.
+ *   4) The API scope.
+ *   5) The index density.
+ *   6) Whether it's multikey.
+ *   7) Whether it's unique.
  */
 export function compareApiIndex(a: API.Index, b: API.Index): number {
   // When these indexes are used as part of a field override, the name is
@@ -56,7 +100,27 @@ export function compareApiIndex(a: API.Index, b: API.Index): number {
     return compareQueryScope(a.queryScope, b.queryScope);
   }
 
-  return compareArrays(a.fields, b.fields, compareIndexField);
+  let cmp = compareArrays(a.fields, b.fields, compareIndexField);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 /**
@@ -82,6 +146,42 @@ export function compareLocation(a: API.Location, b: API.Location): number {
 }
 
 /**
+ * Compare two Backup API entries for sorting.
+ * Ordered by: location, snapshotTime (descending), then name
+ */
+export function compareApiBackup(a: Backup, b: Backup): number {
+  // the location is embedded in the name (projects/myproject/locations/mylocation/backups/mybackup)
+  const aLocation = a.name!.split("/")[3];
+  const bLocation = b.name!.split("/")[3];
+  if (aLocation && bLocation && aLocation !== bLocation) {
+    return aLocation > bLocation ? 1 : -1;
+  }
+
+  if (a.snapshotTime && b.snapshotTime && a.snapshotTime !== b.snapshotTime) {
+    return a.snapshotTime > b.snapshotTime ? -1 : 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
+}
+
+/**
+ * Compare two BackupSchedule API entries for sorting.
+ *
+ * Daily schedules should precede weekly ones. Break ties by name.
+ */
+export function compareApiBackupSchedule(a: BackupSchedule, b: BackupSchedule): number {
+  if (a.dailyRecurrence && !b.dailyRecurrence) {
+    return -1;
+  } else if (a.weeklyRecurrence && b.dailyRecurrence) {
+    return 1;
+  }
+
+  // Name should always be unique and present
+  return a.name! > b.name! ? 1 : -1;
+}
+
+/**
  * Compare two Field api entries for sorting.
  *
  * Comparisons:
@@ -104,7 +204,7 @@ export function compareApiField(a: API.Field, b: API.Field): number {
   return compareArraysSorted(
     a.indexConfig.indexes || [],
     b.indexConfig.indexes || [],
-    compareApiIndex
+    compareApiIndex,
   );
 }
 
@@ -143,6 +243,7 @@ export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverrid
  *   1) Field path.
  *   2) Sort order (if it exists).
  *   3) Array config (if it exists).
+ *   4) Vector config (if it exists).
  */
 function compareIndexField(a: API.IndexField, b: API.IndexField): number {
   if (a.fieldPath !== b.fieldPath) {
@@ -155,6 +256,10 @@ function compareIndexField(a: API.IndexField, b: API.IndexField): number {
 
   if (a.arrayConfig !== b.arrayConfig) {
     return compareArrayConfig(a.arrayConfig, b.arrayConfig);
+  }
+
+  if (a.vectorConfig !== b.vectorConfig) {
+    return compareVectorConfig(a.vectorConfig, b.vectorConfig);
   }
 
   return 0;
@@ -173,19 +278,86 @@ function compareFieldIndex(a: Spec.FieldIndex, b: Spec.FieldIndex): number {
     return compareArrayConfig(a.arrayConfig, b.arrayConfig);
   }
 
-  return 0;
+  let cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 function compareQueryScope(a: API.QueryScope, b: API.QueryScope): number {
   return QUERY_SCOPE_SEQUENCE.indexOf(a) - QUERY_SCOPE_SEQUENCE.indexOf(b);
 }
 
+function compareApiScope(a?: API.ApiScope, b?: API.ApiScope): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return API_SCOPE_SEQUENCE.indexOf(a) - API_SCOPE_SEQUENCE.indexOf(b);
+}
+
+function compareDensity(a?: API.Density, b?: API.Density): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return DENSITY_SEQUENCE.indexOf(a) - DENSITY_SEQUENCE.indexOf(b);
+}
+
 function compareOrder(a?: API.Order, b?: API.Order): number {
   return ORDER_SEQUENCE.indexOf(a) - ORDER_SEQUENCE.indexOf(b);
 }
 
+function compareBoolean(a?: boolean, b?: boolean): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return Number(a) - Number(b);
+}
+
 function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {
   return ARRAY_CONFIG_SEQUENCE.indexOf(a) - ARRAY_CONFIG_SEQUENCE.indexOf(b);
+}
+
+function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number {
+  if (!a) {
+    if (!b) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if (!b) {
+    return -1;
+  }
+  return a.dimension - b.dimension;
 }
 
 /**

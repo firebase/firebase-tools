@@ -3,7 +3,7 @@ import { RC } from "../rc";
 export function saveEtags(
   rc: RC,
   projectId: string,
-  instances: { instanceId: string; etag?: string }[]
+  instances: { instanceId: string; etag?: string }[],
 ): void {
   rc.setEtags(projectId, "extensionInstances", etagsMap(instances));
 }
@@ -13,7 +13,7 @@ export function saveEtags(
 export function detectEtagChanges(
   rc: RC,
   projectId: string,
-  instances: { instanceId: string; etag?: string }[]
+  instances: { instanceId: string; etag?: string }[],
 ): string[] {
   const lastDeployedEtags = rc.getEtags(projectId).extensionInstances;
   const currentEtags = etagsMap(instances);
@@ -27,16 +27,19 @@ export function detectEtagChanges(
     .map((i) => i[0]);
   // find any instances that we installed out of band since last deploy
   const newExtensionInstances = Object.keys(currentEtags).filter(
-    (instanceName) => !lastDeployedEtags[instanceName]
+    (instanceName) => !lastDeployedEtags[instanceName],
   );
   return newExtensionInstances.concat(changedExtensionInstances);
 }
 
 function etagsMap(instances: { instanceId: string; etag?: string }[]): Record<string, string> {
-  return instances.reduce((acc, i) => {
-    if (i.etag) {
-      acc[i.instanceId] = i.etag;
-    }
-    return acc;
-  }, {} as Record<string, string>);
+  return instances.reduce(
+    (acc, i) => {
+      if (i.etag) {
+        acc[i.instanceId] = i.etag;
+      }
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 }

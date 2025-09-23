@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "testConfig": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "route": {
+          "type": "string",
+          "description": "URL route appended to the test target base URL at which to start the test"
+        }
+      }
+    },
+    "testStep": {
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "type": "string",
+          "description": "The goal of the test step"
+        },
+        "hint": {
+          "type": "string",
+          "description": "A hint to provide extra context to accomplish the goal"
+        },
+        "successCriteria": {
+          "type": "string",
+          "description": "Crtieria that the agent can use determine if the goal is complete"
+        }
+      }
+    },
+    "test": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A descriptive name of the test"
+        },
+        "testConfig": {
+          "$ref": "#/definitions/testConfig",
+          "description": "Configs to apply to the specific test"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testStep"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "defaultConfig": {
+      "$ref": "#/definitions/testConfig",
+      "description": "Default config to apply to each test within the file"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/test"
+      }
+    }
+  }
+}

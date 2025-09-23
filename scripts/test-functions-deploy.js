@@ -131,7 +131,7 @@ var testCreateUpdateWithFilter = function () {
         console.log(stdout);
         expect(err).to.be.null;
         resolve(checkFunctionsListMatch(["nested-dbAction", "httpsAction"]));
-      }
+      },
     );
   });
 };
@@ -155,7 +155,7 @@ var testDeleteWithFilter = function () {
         console.log(stdout);
         expect(err).to.be.null;
         resolve(checkFunctionsListMatch(["httpsAction"]));
-      }
+      },
     );
   });
 };
@@ -273,7 +273,7 @@ var testFunctionsTrigger = function () {
     return waitForAck(uuid, "storage triggered function");
   });
   var checkScheduleAction = triggerSchedule(
-    "firebase-schedule-pubsubScheduleAction-us-central1"
+    "firebase-schedule-pubsubScheduleAction-us-central1",
   ).then(function (/* uuid */) {
     return true;
   });
@@ -315,7 +315,7 @@ var main = function () {
     })
     .then(function () {
       console.log(
-        clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
+        clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier"),
       );
     })
     .catch(function (err) {

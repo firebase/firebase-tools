@@ -10,7 +10,7 @@ export const command = new Command("login:add [email]")
   .description("authorize the CLI for an additional account")
   .option(
     "--no-localhost",
-    "copy and paste a code instead of starting a local server for authentication"
+    "copy and paste a code instead of starting a local server for authentication",
   )
   .action(async (email: string | undefined, options: any) => {
     if (options.nonInteractive) {
@@ -23,8 +23,8 @@ export const command = new Command("login:add [email]")
     if (!account) {
       throw new FirebaseError(
         `No existing accounts found, please run "${clc.bold(
-          "firebase login"
-        )}" to add your first account`
+          "firebase login",
+        )}" to add your first account`,
       );
     }
 
@@ -33,8 +33,8 @@ export const command = new Command("login:add [email]")
     if (email && hintUser) {
       throw new FirebaseError(
         `Already signed in as ${email}, use "${clc.bold(
-          "firebase login --reauth"
-        )}" to reauthenticate.`
+          "firebase login --reauth",
+        )}" to reauthenticate.`,
       );
     }
 

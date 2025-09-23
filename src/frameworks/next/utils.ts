@@ -1,46 +1,44 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join } from "path";
-import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
+import { basename, extname, join, posix, sep, resolve, dirname } from "path";
+import { readFile } from "fs/promises";
+import { glob, sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
+import { coerce, satisfies } from "semver";
 
-import { isUrl, readJSON } from "../utils";
+import { findDependency, isUrl, readJSON } from "../utils";
 import type {
-  Manifest,
-  RoutesManifestRewrite,
+  RoutesManifest,
   ExportMarker,
   ImagesManifest,
   NpmLsDepdendency,
+  RoutesManifestRewrite,
+  RoutesManifestRedirect,
+  RoutesManifestHeader,
   MiddlewareManifest,
   MiddlewareManifestV1,
   MiddlewareManifestV2,
   AppPathsManifest,
-  AppPathRoutesManifest,
   HostingHeadersWithSource,
+  AppPathRoutesManifest,
+  ActionManifest,
+  NextConfigFileName,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
+  WEBPACK_LAYERS,
+  CONFIG_FILES,
+  ESBUILD_VERSION,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
-import { readFile } from "fs/promises";
+import { IS_WINDOWS } from "../../utils";
+import { execSync } from "child_process";
+import { FirebaseError } from "../../error";
 
-/**
- * Whether the given path has a regex or not.
- * According to the Next.js documentation:
- * ```md
- *  To match a regex path you can wrap the regex in parentheses
- *  after a parameter, for example /post/:slug(\\d{1,}) will match /post/123
- *  but not /post/abc.
- * ```
- * See: https://nextjs.org/docs/api-reference/next.config.js/redirects#regex-path-matching
- */
-export function pathHasRegex(path: string): boolean {
-  // finds parentheses that are not preceded by double backslashes
-  return /(?<!\\)\(/.test(path);
-}
+export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
@@ -61,22 +59,46 @@ export function cleanEscapedChars(path: string): string {
 }
 
 /**
+ * Remove Next.js internal i18n prefix from headers, redirects and rewrites.
+ */
+export function cleanCustomRouteI18n(path: string): string {
+  return path.replace(I18N_SOURCE, "");
+}
+
+export function cleanI18n<T = any>(it: T & { source: string; [key: string]: any }): T {
+  const [, localesRegex] = it.source.match(I18N_SOURCE) || [undefined, undefined];
+  const source = localesRegex ? cleanCustomRouteI18n(it.source) : it.source;
+  const destination =
+    "destination" in it && localesRegex ? cleanCustomRouteI18n(it.destination) : it.destination;
+  const regex =
+    "regex" in it && localesRegex ? it.regex.replace(`(?:/${localesRegex})`, "") : it.regex;
+  return {
+    ...it,
+    source,
+    destination,
+    regex,
+  };
+}
+
+/**
  * Whether a Next.js rewrite is supported by `firebase.json`.
  *
  * See: https://firebase.google.com/docs/hosting/full-config#rewrites
  *
  * Next.js unsupported rewrites includes:
- * - Rewrites with the `has` property that is used by Next.js for Header,
+ * - Rewrites with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/rewrites#header-cookie-and-query-matching
  *
- * - Rewrites using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/rewrites#regex-path-matching
- *
- * - Rewrites to external URLs
+ * - Rewrites to external URLs or URLs using parameters
  */
-export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
-  return !("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination));
+export function isRewriteSupportedByHosting(rewrite: RoutesManifestRewrite): boolean {
+  return !(
+    "has" in rewrite ||
+    "missing" in rewrite ||
+    isUrl(rewrite.destination) ||
+    rewrite.destination.includes("?")
+  );
 }
 
 /**
@@ -85,17 +107,19 @@ export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
  * See: https://firebase.google.com/docs/hosting/full-config#redirects
  *
  * Next.js unsupported redirects includes:
- * - Redirects with the `has` property that is used by Next.js for Header,
+ * - Redirects with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/redirects#header-cookie-and-query-matching
  *
- * - Redirects using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/redirects#regex-path-matching
- *
  * - Next.js internal redirects
  */
-export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
-  return !("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect);
+export function isRedirectSupportedByHosting(redirect: RoutesManifestRedirect): boolean {
+  return !(
+    "has" in redirect ||
+    "missing" in redirect ||
+    "internal" in redirect ||
+    redirect.destination.includes("?")
+  );
 }
 
 /**
@@ -104,15 +128,13 @@ export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
  * See: https://firebase.google.com/docs/hosting/full-config#headers
  *
  * Next.js unsupported headers includes:
- * - Custom header with the `has` property that is used by Next.js for Header,
+ * - Custom header with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/headers#header-cookie-and-query-matching
  *
- * - Custom header using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/headers#regex-path-matching
  */
-export function isHeaderSupportedByHosting(header: Header): boolean {
-  return !("has" in header || pathHasRegex(header.source));
+export function isHeaderSupportedByHosting(header: RoutesManifestHeader): boolean {
+  return !("has" in header || "missing" in header);
 }
 
 /**
@@ -125,14 +147,14 @@ export function isHeaderSupportedByHosting(header: Header): boolean {
  * See: https://nextjs.org/docs/api-reference/next.config.js/rewrites
  */
 export function getNextjsRewritesToUse(
-  nextJsRewrites: Manifest["rewrites"]
+  nextJsRewrites: RoutesManifest["rewrites"],
 ): RoutesManifestRewrite[] {
   if (Array.isArray(nextJsRewrites)) {
-    return nextJsRewrites;
+    return nextJsRewrites.map(cleanI18n);
   }
 
   if (nextJsRewrites?.beforeFiles) {
-    return nextJsRewrites.beforeFiles;
+    return nextJsRewrites.beforeFiles.map(cleanI18n);
   }
 
   return [];
@@ -147,6 +169,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
   const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
   return existsSync(appPathRoutesManifestPath);
 }
+
 /**
  * Check if the project is using the next/image component based on the export-marker.json file.
  * @param sourceDir location of the source directory
@@ -187,7 +210,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
     return middlewareJs || middlewareTs;
   } else {
     const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
-      join(dir, "server", MIDDLEWARE_MANIFEST)
+      join(dir, "server", MIDDLEWARE_MANIFEST),
     );
 
     return Object.keys(middlewareManifest.middleware).length > 0;
@@ -197,20 +220,56 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
 /**
  * Whether image optimization is being used
  *
- * @param dir path to `distDir` - where the manifests are located
+ * @param projectDir path to the project directory
+ * @param distDir path to `distDir` - where the manifests are located
  */
-export async function isUsingImageOptimization(dir: string): Promise<boolean> {
-  let { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+export async function isUsingImageOptimization(
+  projectDir: string,
+  distDir: string,
+): Promise<boolean> {
+  let isNextImageImported = await usesNextImage(projectDir, distDir);
+
   // App directory doesn't use the export marker, look it up manually
-  if (!isNextImageImported && isUsingAppDirectory(dir)) {
-    isNextImageImported = (await readFile(join(dir, "server", "client-reference-manifest.js")))
-      .toString()
-      .includes("node_modules/next/dist/client/image.js");
+  if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
+    if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
+      isNextImageImported = true;
+    }
   }
 
   if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImagesManifest>(
+      join(projectDir, distDir, IMAGES_MANIFEST),
+    );
     return !imagesManifest.images.unoptimized;
+  }
+
+  return false;
+}
+
+/**
+ * Whether next/image is being used in the app directory
+ */
+export async function isUsingNextImageInAppDirectory(
+  projectDir: string,
+  nextDir: string,
+): Promise<boolean> {
+  const nextImagePath = ["node_modules", "next", "dist", "client", "image"];
+  const nextImageString = IS_WINDOWS
+    ? // Note: Windows requires double backslashes to match Next.js generated file
+      nextImagePath.join(sep + sep)
+    : join(...nextImagePath);
+
+  const files = globSync(
+    join(projectDir, nextDir, "server", "**", "*client-reference-manifest.js"),
+  );
+
+  for (const filepath of files) {
+    const fileContents = await readFile(filepath, "utf-8");
+
+    // Return true when the first file containing the next/image component is found
+    if (fileContents.includes(nextImageString)) {
+      return true;
+    }
   }
 
   return false;
@@ -236,7 +295,7 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
   if (!mod.dependencies) return [];
   const dependencyNames = Object.keys(mod.dependencies).reduce(
     (acc, it) => [...acc, it, ...allDependencyNames(mod.dependencies![it])],
-    [] as string[]
+    [] as string[],
   );
   return dependencyNames;
 }
@@ -251,7 +310,7 @@ export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManife
 
   if (middlewareManifest.version === 1) {
     middlewareMatchers = middlewareObjectValues.map(
-      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp })
+      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp }),
     );
   } else {
     middlewareMatchers = middlewareObjectValues
@@ -268,7 +327,7 @@ export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManife
 export function getNonStaticRoutes(
   pagesManifestJSON: PagesManifest,
   prerenderedRoutes: string[],
-  dynamicRoutes: string[]
+  dynamicRoutes: string[],
 ): string[] {
   const nonStaticRoutes = Object.entries(pagesManifestJSON)
     .filter(
@@ -278,7 +337,7 @@ export function getNonStaticRoutes(
           ["/_app", "/_error", "/_document"].includes(it) ||
           prerenderedRoutes.includes(it) ||
           dynamicRoutes.includes(it)
-        )
+        ),
     )
     .map(([it]) => it);
 
@@ -292,8 +351,8 @@ export function getNonStaticServerComponents(
   appPathsManifest: AppPathsManifest,
   appPathRoutesManifest: AppPathRoutesManifest,
   prerenderedRoutes: string[],
-  dynamicRoutes: string[]
-): string[] {
+  dynamicRoutes: string[],
+): Set<string> {
   const nonStaticServerComponents = Object.entries(appPathsManifest)
     .filter(([it, src]) => {
       if (extname(src) !== ".js") return;
@@ -302,22 +361,24 @@ export function getNonStaticServerComponents(
     })
     .map(([it]) => it);
 
-  return nonStaticServerComponents;
+  return new Set(nonStaticServerComponents);
 }
 
 /**
- * Get headers from .meta files
+ * Get metadata from .meta files
  */
-export async function getHeadersFromMetaFiles(
+export async function getAppMetadataFromMetaFiles(
   sourceDir: string,
   distDir: string,
-  appPathRoutesManifest: AppPathRoutesManifest
-): Promise<HostingHeadersWithSource[]> {
+  basePath: string,
+  appPathRoutesManifest: AppPathRoutesManifest,
+): Promise<{ headers: HostingHeadersWithSource[]; pprRoutes: string[] }> {
   const headers: HostingHeadersWithSource[] = [];
+  const pprRoutes: string[] = [];
 
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
-      if (basename(key) !== "route") return;
+      if (!["route", "page"].includes(basename(key))) return;
       const parts = source.split("/").filter((it) => !!it);
       const partsOrIndex = parts.length > 0 ? parts : ["index"];
 
@@ -325,17 +386,20 @@ export async function getHeadersFromMetaFiles(
       const metadataPath = `${routePath}.meta`;
 
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        const meta = await readJSON<{ headers?: Record<string, string>; postponed?: string }>(
+          metadataPath,
+        );
         if (meta.headers)
           headers.push({
-            source,
+            source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
+        if (meta.postponed) pprRoutes.push(source);
       }
-    })
+    }),
   );
 
-  return headers;
+  return { headers, pprRoutes };
 }
 
 /**
@@ -346,4 +410,146 @@ export async function getBuildId(distDir: string): Promise<string> {
   const buildId = await readFile(join(distDir, "BUILD_ID"));
 
   return buildId.toString();
+}
+
+/**
+ * Get Next.js version in the following format: `major.minor.patch`, ignoring
+ * canary versions as it causes issues with semver comparisons.
+ */
+export function getNextVersion(cwd: string): string | undefined {
+  const dependency = findDependency("next", { cwd, depth: 0, omitDev: false });
+  if (!dependency) return undefined;
+
+  const nextVersionSemver = coerce(dependency.version);
+  if (!nextVersionSemver) return dependency.version;
+
+  return nextVersionSemver.toString();
+}
+
+/**
+ * Whether the Next.js project has a static `not-found` page in the app directory.
+ *
+ * The Next.js build manifests are misleading regarding the existence of a static
+ * `not-found` component. Therefore, we check if a `_not-found.html` file exists
+ * in the generated app directory files to know whether `not-found` is static.
+ */
+export async function hasStaticAppNotFoundComponent(
+  sourceDir: string,
+  distDir: string,
+): Promise<boolean> {
+  return pathExists(join(sourceDir, distDir, "server", "app", "_not-found.html"));
+}
+
+/**
+ * Find routes using server actions by checking the server-reference-manifest.json
+ */
+export function getRoutesWithServerAction(
+  serverReferenceManifest: ActionManifest,
+  appPathRoutesManifest: AppPathRoutesManifest,
+): string[] {
+  const routesWithServerAction = new Set<string>();
+
+  for (const key of Object.keys(serverReferenceManifest)) {
+    if (key !== "edge" && key !== "node") continue;
+
+    const edgeOrNode = serverReferenceManifest[key];
+
+    for (const actionId of Object.keys(edgeOrNode)) {
+      if (!edgeOrNode[actionId].layer) continue;
+
+      for (const [route, type] of Object.entries(edgeOrNode[actionId].layer)) {
+        if (type === WEBPACK_LAYERS.actionBrowser) {
+          routesWithServerAction.add(appPathRoutesManifest[route.replace("app", "")]);
+        }
+      }
+    }
+  }
+
+  return Array.from(routesWithServerAction);
+}
+
+/**
+ * Get files in the dist directory to be deployed to Firebase, ignoring development files.
+ *
+ * Return relative paths to the dist directory.
+ */
+export async function getProductionDistDirFiles(
+  sourceDir: string,
+  distDir: string,
+): Promise<string[]> {
+  return glob("**", {
+    ignore: [join("cache", "webpack", "*-development", "**"), join("cache", "eslint", "**")],
+    cwd: join(sourceDir, distDir),
+    nodir: true,
+    absolute: false,
+  });
+}
+
+/**
+ * Get the Next.js config file name in the project directory, either
+ * `next.config.js` or `next.config.mjs`.  If none of them exist, return null.
+ */
+export async function whichNextConfigFile(dir: string): Promise<NextConfigFileName | null> {
+  for (const file of CONFIG_FILES) {
+    if (await pathExists(join(dir, file))) return file;
+  }
+
+  return null;
+}
+
+/**
+ * Helper function to find the path of esbuild using `npm which`
+ */
+export function findEsbuildPath(): string | null {
+  try {
+    const esbuildBinPath = execSync("npx which esbuild", { encoding: "utf8" })?.trim();
+    if (!esbuildBinPath) {
+      return null;
+    }
+
+    const globalVersion = getGlobalEsbuildVersion(esbuildBinPath);
+    if (globalVersion && !satisfies(globalVersion, ESBUILD_VERSION)) {
+      console.warn(
+        `Warning: Global esbuild version (${globalVersion}) does not match the required version (${ESBUILD_VERSION}).`,
+      );
+    }
+    return resolve(dirname(esbuildBinPath), "../esbuild");
+  } catch (error) {
+    console.error(`Failed to find esbuild with npx which: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Helper function to get the global esbuild version
+ */
+export function getGlobalEsbuildVersion(binPath: string): string | null {
+  try {
+    const versionOutput = execSync(`"${binPath}" --version`, { encoding: "utf8" })?.trim();
+    if (!versionOutput) {
+      return null;
+    }
+
+    const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/);
+    return versionMatch ? versionMatch[0] : null;
+  } catch (error) {
+    console.error(`Failed to get global esbuild version: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Helper function to install esbuild dynamically
+ */
+export function installEsbuild(version: string): void {
+  const installCommand = `npm install esbuild@${version} --no-save`;
+  try {
+    execSync(installCommand, { stdio: "inherit" });
+  } catch (error: any) {
+    if (error instanceof FirebaseError) {
+      throw error;
+    } else {
+      throw new FirebaseError(`Failed to install esbuild: ${error}`, { original: error });
+    }
+  }
 }

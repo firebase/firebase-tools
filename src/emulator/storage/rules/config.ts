@@ -6,6 +6,7 @@ import { SourceFile } from "./types";
 import { Constants } from "../../constants";
 import { Emulators } from "../../types";
 import { EmulatorLogger } from "../../emulatorLogger";
+import { absoluteTemplateFilePath } from "../../../templates";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);
@@ -20,22 +21,21 @@ function getSourceFile(rules: string, options: Options): SourceFile {
  */
 export function getStorageRulesConfig(
   projectId: string,
-  options: Options
+  options: Options,
 ): SourceFile | RulesConfig[] {
   const storageConfig = options.config.data.storage;
+  const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   if (!storageConfig) {
     if (Constants.isDemoProject(projectId)) {
-      const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
       storageLogger.logLabeled(
         "BULLET",
         "storage",
-        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`,
       );
-      const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
-      return { name: path, content: readFile(path) };
+      return defaultStorageRules();
     }
     throw new FirebaseError(
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
     );
   }
 
@@ -43,13 +43,12 @@ export function getStorageRulesConfig(
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
       throw new FirebaseError(
-        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
+        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
       );
     }
 
     return getSourceFile(storageConfig.rules, options);
   }
-
   // Multiple targets
   const results: RulesConfig[] = [];
   const { rc } = options;
@@ -57,10 +56,31 @@ export function getStorageRulesConfig(
     if (!targetConfig.target) {
       throw new FirebaseError("Must supply 'target' in Storage configuration");
     }
-    rc.requireTarget(projectId, "storage", targetConfig.target);
-    rc.target(projectId, "storage", targetConfig.target).forEach((resource: string) => {
-      results.push({ resource, rules: getSourceFile(targetConfig.rules, options) });
-    });
+    const targets = rc.target(projectId, "storage", targetConfig.target);
+    if (targets.length === 0) {
+      // Fall back to open if this is a demo project
+      if (Constants.isDemoProject(projectId)) {
+        storageLogger.logLabeled(
+          "BULLET",
+          "storage",
+          `Detected demo project ID "${projectId}", using a default (open) rules configuration. Storage targets in firebase.json will be ignored.`,
+        );
+        return defaultStorageRules();
+      }
+      // Otherwise, requireTarget will error out
+      rc.requireTarget(projectId, "storage", targetConfig.target);
+    }
+    results.push(
+      ...rc.target(projectId, "storage", targetConfig.target).map((resource: string) => {
+        return { resource, rules: getSourceFile(targetConfig.rules, options) };
+      }),
+    );
   }
   return results;
+}
+
+function defaultStorageRules(): SourceFile {
+  const defaultRulesPath = "emulators/default_storage.rules";
+  const name = absoluteTemplateFilePath(defaultRulesPath);
+  return { name, content: readFile(name) };
 }

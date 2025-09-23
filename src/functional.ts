@@ -18,6 +18,7 @@ export function* flattenObject<T extends object>(obj: T): Generator<[string, unk
       }
     }
   }
+
   yield* helper([], obj);
 }
 
@@ -86,9 +87,9 @@ export const zipIn =
   };
 
 /** Used with type guards to guarantee that all cases have been covered. */
-export function assertExhaustive(val: never): never {
+export function assertExhaustive(val: never, message?: string): never {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  throw new Error(`Never has a value (${val}).`);
+  throw new Error(message || `Never has a value (${val}).`);
 }
 
 /**
@@ -102,7 +103,7 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
       acc[predicate(elem) ? 0 : 1].push(elem);
       return acc;
     },
-    [[], []]
+    [[], []],
   );
 }
 
@@ -113,14 +114,14 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
  */
 export function partitionRecord<T>(
   rec: Record<string, T>,
-  predicate: (key: string, val: T) => boolean
+  predicate: (key: string, val: T) => boolean,
 ): [Record<string, T>, Record<string, T>] {
   return Object.entries(rec).reduce<[Record<string, T>, Record<string, T>]>(
     (acc, [key, val]) => {
       acc[predicate(key, val) ? 0 : 1][key] = val;
       return acc;
     },
-    [{}, {}]
+    [{}, {}],
   );
 }
 
@@ -129,7 +130,7 @@ export function partitionRecord<T>(
  */
 export function mapObject<T, V>(
   input: Record<string, T>,
-  transform: (t: T) => V
+  transform: (t: T) => V,
 ): Record<string, V> {
   const result: Record<string, V> = {};
   for (const [k, v] of Object.entries(input)) {
@@ -146,3 +147,19 @@ export const nullsafeVisitor =
     }
     return func(first, ...rest);
   };
+
+/**
+ * Returns true if the given values match. If either one is undefined, the default value is used for comparison.
+ * @param lhs the first value.
+ * @param rhs the second value.
+ * @param defaultValue the value to use if either input is undefined.
+ */
+export function optionalValueMatches<T>(
+  lhs: T | undefined,
+  rhs: T | undefined,
+  defaultValue: T,
+): boolean {
+  lhs = lhs === undefined ? defaultValue : lhs;
+  rhs = rhs === undefined ? defaultValue : rhs;
+  return lhs === rhs;
+}

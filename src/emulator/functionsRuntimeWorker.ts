@@ -8,6 +8,7 @@ import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
+import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -51,7 +52,7 @@ export class RuntimeWorker {
     triggerId: string | undefined,
     readonly runtime: FunctionsRuntimeInstance,
     readonly extensionLogInfo: ExtensionLogInfo,
-    readonly timeoutSeconds?: number
+    readonly timeoutSeconds?: number,
   ) {
     this.id = uuid.v4();
     this.triggerKey = triggerId || FREE_WORKER_KEY;
@@ -125,7 +126,12 @@ export class RuntimeWorker {
     });
   }
 
-  request(req: http.RequestOptions, resp: http.ServerResponse, body?: unknown): Promise<void> {
+  request(
+    req: http.RequestOptions,
+    resp: http.ServerResponse,
+    body?: unknown,
+    debug?: boolean,
+  ): Promise<void> {
     if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
     }
@@ -138,7 +144,7 @@ export class RuntimeWorker {
         this.logInfo(
           `Finished "${this.triggerKey}" in ${
             elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
-          }ms`
+          }ms`,
         );
       }
 
@@ -161,17 +167,30 @@ export class RuntimeWorker {
       }
       const proxy = http.request(reqOpts, (_resp: http.IncomingMessage) => {
         resp.writeHead(_resp.statusCode || 200, _resp.headers);
+
+        let finished = false;
+        const finishReq = (event?: string): void => {
+          this.logger.log("DEBUG", `Finishing up request with event=${event}`);
+          if (!finished) {
+            finished = true;
+            onFinish();
+            resolve();
+          }
+        };
+        _resp.on("pause", () => finishReq("pause"));
+        _resp.on("close", () => finishReq("close"));
         const piped = _resp.pipe(resp);
-        piped.on("finish", () => {
-          onFinish();
-          resolve();
-        });
+        piped.on("finish", () => finishReq("finish"));
       });
+      if (debug) {
+        proxy.setSocketKeepAlive(false);
+        proxy.setTimeout(0);
+      }
       proxy.on("timeout", () => {
         this.logger.log(
           "ERROR",
           `Your function timed out after ~${this.timeoutSeconds}s. To configure this timeout, see
-      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`,
         );
         proxy.destroy();
       });
@@ -232,7 +251,7 @@ export class RuntimeWorker {
           // Set the worker state to IDLE for new work
           this.readyForWork();
           resolve();
-        }
+        },
       );
       req.end();
       req.on("error", (error) => {
@@ -246,7 +265,7 @@ export class RuntimeWorker {
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
         reject(new FirebaseError("Failed to load function."));
-      }, 30_000);
+      }, getFunctionDiscoveryTimeout() || 30_000);
     });
     while (true) {
       try {
@@ -346,19 +365,19 @@ export class RuntimeWorkerPool {
     req: http.RequestOptions,
     resp: http.ServerResponse,
     body: unknown,
-    debug?: FunctionsRuntimeBundle["debug"]
+    debug?: FunctionsRuntimeBundle["debug"],
   ): Promise<void> {
     this.log(`submitRequest(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId);
     if (!worker) {
       throw new FirebaseError(
-        "Internal Error: can't call submitRequest without checking for idle workers"
+        "Internal Error: can't call submitRequest without checking for idle workers",
       );
     }
     if (debug) {
       await worker.sendDebugMsg(debug);
     }
-    return worker.request(req, resp, body);
+    return worker.request(req, resp, body, !!debug);
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
@@ -386,7 +405,7 @@ export class RuntimeWorkerPool {
   addWorker(
     trigger: EmulatedTriggerDefinition | undefined,
     runtime: FunctionsRuntimeInstance,
-    extensionLogInfo: ExtensionLogInfo
+    extensionLogInfo: ExtensionLogInfo,
   ): RuntimeWorker {
     this.log(`addWorker(${this.getKey(trigger?.id)})`);
     // Disable worker timeout if:
@@ -397,7 +416,7 @@ export class RuntimeWorkerPool {
       trigger?.id,
       runtime,
       extensionLogInfo,
-      disableTimeout ? undefined : trigger?.timeoutSeconds
+      disableTimeout ? undefined : trigger?.timeoutSeconds,
     );
 
     const keyWorkers = this.getTriggerWorkers(trigger?.id);
@@ -425,7 +444,7 @@ export class RuntimeWorkerPool {
 
       if (notDoneWorkers.length !== keyWorkers.length) {
         this.log(
-          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`
+          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`,
         );
       }
       this.setTriggerWorkers(key, notDoneWorkers);

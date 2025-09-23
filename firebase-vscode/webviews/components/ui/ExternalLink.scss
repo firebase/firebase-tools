@@ -1,0 +1,10 @@
+.link-content {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.link:hover .link-text,
+.link:focus .link-text {
+  text-decoration: underline;
+}

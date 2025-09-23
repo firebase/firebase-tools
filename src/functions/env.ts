@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import { ParamValue } from "../deploy/functions/params";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -45,6 +46,8 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
+  "(?:export)?" +                       // Optional 'export' in a non-capture group
+  "\\s*" +                   //   more whitespaces
   "([\\w./]+)" +                 //   key
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
@@ -149,7 +152,10 @@ export function parse(data: string): ParseResult {
 }
 
 export class KeyValidationError extends Error {
-  constructor(public key: string, public message: string) {
+  constructor(
+    public key: string,
+    public message: string,
+  ) {
     super(`Failed to validate key ${key}: ${message}`);
   }
 }
@@ -168,13 +174,13 @@ export function validateKey(key: string): void {
     throw new KeyValidationError(
       key,
       `Key ${key} must start with an uppercase ASCII letter or underscore` +
-        ", and then consist of uppercase ASCII letters, digits, and underscores."
+        ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
   if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`
+      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
 }
@@ -213,10 +219,10 @@ export function parseStrict(data: string): Record<string, string> {
 }
 
 function findEnvfiles(
-  functionsSource: string,
+  configDir: string,
   projectId: string,
   projectAlias?: string,
-  isEmulator?: boolean
+  isEmulator?: boolean,
 ): string[] {
   const files: string[] = [".env"];
   files.push(`.env.${projectId}`);
@@ -228,13 +234,14 @@ function findEnvfiles(
   }
 
   return files
-    .map((f) => path.join(functionsSource, f))
+    .map((f) => path.join(configDir, f))
     .filter(fs.existsSync)
     .map((p) => path.basename(p));
 }
 
 export interface UserEnvsOpts {
   functionsSource: string;
+  configDir?: string;
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
@@ -245,13 +252,9 @@ export interface UserEnvsOpts {
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+export function hasUserEnvs(opts: UserEnvsOpts): boolean {
+  const configDir = opts.configDir || opts.functionsSource;
+  return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
 }
 
 /**
@@ -264,19 +267,20 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const { projectId, projectAlias, isEmulator } = envOpts;
+  const configDir = envOpts.configDir || envOpts.functionsSource;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const allEnvFiles = findEnvfiles(configDir, projectId, projectAlias, isEmulator);
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
   if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+    fs.writeFileSync(path.join(configDir, targetEnvFile), "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
-        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
+        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
     );
   }
 
@@ -292,13 +296,13 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   // Write all the keys in a single filesystem access
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`
+    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`,
   );
   let lines = "";
   for (const k of Object.keys(toWrite)) {
     lines += formatUserEnvForWrite(k, toWrite[k]);
   }
-  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
+  fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
 }
 
 /**
@@ -313,7 +317,7 @@ export function checkForDuplicateKeys(
   isEmulator: boolean,
   keys: string[],
   fullEnv: Record<string, string>,
-  envsWithoutLocal?: Record<string, string>
+  envsWithoutLocal?: Record<string, string>,
 ): void {
   for (const key of keys) {
     const definedInEnv = fullEnv.hasOwnProperty(key);
@@ -321,12 +325,12 @@ export function checkForDuplicateKeys(
       if (envsWithoutLocal && isEmulator && envsWithoutLocal.hasOwnProperty(key)) {
         logWarning(
           clc.cyan(clc.yellow("functions: ")) +
-            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`
+            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`,
         );
         continue;
       }
       throw new FirebaseError(
-        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`
+        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`,
       );
     }
   }
@@ -335,7 +339,7 @@ export function checkForDuplicateKeys(
 function formatUserEnvForWrite(key: string, value: string): string {
   const escapedValue = value.replace(
     ALL_ESCAPABLE_CHARACTERS_RE,
-    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match]
+    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match],
   );
   if (escapedValue !== value) {
     return `${key}="${escapedValue}"\n`;
@@ -358,23 +362,22 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * @return {Record<string, string>} Environment variables for the project.
  */
-export function loadUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): Record<string, string> {
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
+  const configDir = opts.configDir || opts.functionsSource;
+  const envFiles = findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
   if (envFiles.length === 0) {
     return {};
   }
 
   // Disallow setting both .env.<projectId> and .env.<projectAlias>
-  if (projectAlias) {
-    if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
+  if (opts.projectAlias) {
+    if (
+      envFiles.includes(`.env.${opts.projectId}`) &&
+      envFiles.includes(`.env.${opts.projectAlias}`)
+    ) {
       throw new FirebaseError(
-        `Can't have both dotenv files with projectId (env.${projectId}) ` +
-          `and projectAlias (.env.${projectAlias}) as extensions.`
+        `Can't have both dotenv files with projectId (env.${opts.projectId}) ` +
+          `and projectAlias (.env.${opts.projectAlias}) as extensions.`,
       );
     }
   }
@@ -382,7 +385,7 @@ export function loadUserEnvs({
   let envs: Record<string, string> = {};
   for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
+      const data = fs.readFileSync(path.join(configDir, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
@@ -392,7 +395,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`,
   );
 
   return envs;
@@ -405,10 +408,31 @@ export function loadUserEnvs({
  */
 export function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
-  projectId: string
+  projectId: string,
 ): Record<string, string> {
   return {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+}
+
+/**
+ * Writes newly resolved params to the appropriate .env file.
+ * Skips internal params and params that already exist in userEnvs.
+ */
+export function writeResolvedParams(
+  resolvedEnvs: Readonly<Record<string, ParamValue>>,
+  userEnvs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const paramName of Object.keys(resolvedEnvs)) {
+    const paramValue = resolvedEnvs[paramName];
+    if (!paramValue.internal && !Object.prototype.hasOwnProperty.call(userEnvs, paramName)) {
+      toWrite[paramName] = paramValue.toString();
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
 }

@@ -20,7 +20,7 @@ export type Work = {
 export class WorkQueue {
   private static MAX_PARALLEL_ENV = "FUNCTIONS_EMULATOR_PARALLEL";
   private static DEFAULT_MAX_PARALLEL = Number.parseInt(
-    utils.envOverride(WorkQueue.MAX_PARALLEL_ENV, "50")
+    utils.envOverride(WorkQueue.MAX_PARALLEL_ENV, "50"),
   );
 
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
@@ -37,13 +37,13 @@ export class WorkQueue {
 
   constructor(
     private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO,
-    private maxParallelWork: number = WorkQueue.DEFAULT_MAX_PARALLEL
+    private maxParallelWork: number = WorkQueue.DEFAULT_MAX_PARALLEL,
   ) {
     if (maxParallelWork < 1) {
       throw new FirebaseError(
         `Cannot run Functions emulator with less than 1 parallel worker (${
           WorkQueue.MAX_PARALLEL_ENV
-        }=${process.env[WorkQueue.MAX_PARALLEL_ENV]})`
+        }=${process.env[WorkQueue.MAX_PARALLEL_ENV]})`,
       );
     }
   }
@@ -81,7 +81,7 @@ export class WorkQueue {
         this.logger.logLabeled(
           "DEBUG",
           "work-queue",
-          `waiting for work to finish (running=${this.running})`
+          `waiting for work to finish (running=${this.running})`,
         );
         await new Promise<void>((res) => {
           this.notifyWorkFinish = res;

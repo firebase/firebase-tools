@@ -2,11 +2,12 @@ import * as semver from "semver";
 
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg } from "../../error";
 import {
   getFirebaseProjectParams,
   isLocalPath,
   substituteParams,
+  substituteSecretParams,
 } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
@@ -14,6 +15,8 @@ import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper
 import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
 import { ExtensionVersion, Extension, ExtensionSpec } from "../../extensions/types";
 import { partitionRecord } from "../../functional";
+import { getEventArcChannel } from "../../extensions/askUserForEventsConfig";
+import { DynamicExtension } from "../../extensions/runtimes/common";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -51,6 +54,7 @@ export interface DeploymentInstanceSpec extends InstanceSpec {
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   etag?: string;
+  labels?: Record<string, string>;
 }
 
 /**
@@ -60,7 +64,7 @@ export async function getExtensionVersion(i: InstanceSpec): Promise<ExtensionVer
   if (!i.extensionVersion) {
     if (!i.ref) {
       throw new FirebaseError(
-        `Can't get ExtensionVersion for ${i.instanceId} because it has no ref`
+        `Can't get ExtensionVersion for ${i.instanceId} because it has no ref`,
       );
     }
     i.extensionVersion = await extensionsApi.getExtensionVersion(refs.toExtensionVersionRef(i.ref));
@@ -81,7 +85,10 @@ export async function getExtension(i: InstanceSpec): Promise<Extension> {
   return i.extension;
 }
 
-/** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
+/**
+ * Caching fetcher for the corresponding ExtensionSpec for an instance spec.
+ * @param i The instance spec to get the extension spec for.
+ * @return the extension spec for the instance spec.
  */
 export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> {
   if (!i.extensionSpec) {
@@ -90,49 +97,160 @@ export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> 
       i.extensionSpec = extensionVersion.spec;
     } else if (i.localPath) {
       i.extensionSpec = await readExtensionYaml(i.localPath);
-      i.extensionSpec!.postinstallContent = await readPostinstall(i.localPath);
+      i.extensionSpec.postinstallContent = await readPostinstall(i.localPath);
     } else {
       throw new FirebaseError("InstanceSpec had no ref or localPath, unable to get extensionSpec");
     }
   }
-  return i.extensionSpec!;
+  if (!i.extensionSpec) {
+    throw new FirebaseError("Internal error getting extension");
+  }
+  return i.extensionSpec;
 }
 
 /**
- * have checks a project for what extension instances are currently installed,
- * and returns them as a list of instanceSpecs.
- * @param projectId
+ * haveDynamic checks a project for what extension instances created by SDK are
+ * currently installed, and returns them as a list of instanceSpecs.
+ * @param projectId The projectId we are getting a list of extensions for
+ * @return a list of extensions deployed from functions deploy
+ */
+export async function haveDynamic(projectId: string): Promise<DeploymentInstanceSpec[]> {
+  return (await extensionsApi.listInstances(projectId))
+    .filter((i) => i.labels?.createdBy === "SDK")
+    .map((i) => {
+      const instanceId = i.name.split("/").pop();
+      if (!instanceId) {
+        throw new FirebaseError(`Internal error getting instanceId from ${i.name}`);
+      }
+      const dep: DeploymentInstanceSpec = {
+        instanceId,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+        labels: i.labels,
+      };
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
+}
+
+/**
+ * have checks a project for what extension instances created by console or CLI
+ * are currently installed, and returns them as a list of instanceSpecs.
+ * @param projectId The projectId we are getting a list of extensions for
+ * @return a list extensions deployed from extensions deploy or console.
  */
 export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
-  const instances = await extensionsApi.listInstances(projectId);
-  return instances.map((i) => {
-    const dep: DeploymentInstanceSpec = {
-      instanceId: i.name.split("/").pop()!,
-      params: i.config.params,
-      systemParams: i.config.systemParams ?? {},
-      allowedEventTypes: i.config.allowedEventTypes,
-      eventarcChannel: i.config.eventarcChannel,
-      etag: i.etag,
-    };
-    if (i.config.extensionRef) {
-      const ref = refs.parse(i.config.extensionRef);
-      dep.ref = ref;
-      dep.ref.version = i.config.extensionVersion;
+  return (await extensionsApi.listInstances(projectId))
+    .filter((i) => !(i.labels?.createdBy === "SDK"))
+    .map((i) => {
+      const instanceId = i.name.split("/").pop();
+      if (!instanceId) {
+        throw new FirebaseError(`Internal error getting instanceId from ${i.name}`);
+      }
+      const dep: DeploymentInstanceSpec = {
+        instanceId,
+        params: i.config.params,
+        systemParams: i.config.systemParams ?? {},
+        allowedEventTypes: i.config.allowedEventTypes,
+        eventarcChannel: i.config.eventarcChannel,
+        etag: i.etag,
+      };
+      if (i.labels) {
+        dep.labels = i.labels;
+      }
+      if (i.config.extensionRef) {
+        const ref = refs.parse(i.config.extensionRef);
+        dep.ref = ref;
+        dep.ref.version = i.config.extensionVersion;
+      }
+      return dep;
+    });
+}
+
+/**
+ * wantDynamic checks the user's code for Extension SDKs usage and returns
+ * any extensions the user has defined that way.
+ * @param args The various args passed to wantDynamic
+ * @param args.projectId The project we are deploying to
+ * @param args.projectNumber The project number we are deploying to.
+ * @param args.extensions The extensions section of firebase.json
+ * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
+ */
+export async function wantDynamic(args: {
+  projectId: string;
+  projectNumber: string;
+  extensions: Record<string, DynamicExtension>;
+  emulatorMode?: boolean;
+}): Promise<DeploymentInstanceSpec[]> {
+  const instanceSpecs: DeploymentInstanceSpec[] = [];
+  const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
+  for (const [instanceId, ext] of Object.entries(args.extensions)) {
+    const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
+    const subbedParams = substituteParams(ext.params, autoPopulatedParams);
+    const eventarcChannel = ext.params["_EVENT_ARC_REGION"]
+      ? getEventArcChannel(args.projectId, ext.params["_EVENT_ARC_REGION"] as string)
+      : undefined;
+    delete subbedParams["_EVENT_ARC_REGION"]; // neither system nor regular param
+    const subbedSecretParams = await substituteSecretParams(args.projectNumber, subbedParams);
+    const [systemParams, params] = partitionRecord(subbedSecretParams, isSystemParam);
+
+    const allowedEventTypes = ext.events.length ? ext.events : undefined;
+    if (allowedEventTypes && !eventarcChannel) {
+      errors.push(
+        new FirebaseError("EventArcRegion must be specified if event handlers are defined"),
+      );
     }
-    return dep;
-  });
+    if (ext.localPath) {
+      instanceSpecs.push({
+        instanceId,
+        localPath: ext.localPath,
+        params,
+        systemParams,
+        allowedEventTypes,
+        eventarcChannel,
+        labels: ext.labels,
+      });
+    } else if (ext.ref) {
+      instanceSpecs.push({
+        instanceId,
+        ref: refs.parse(ext.ref),
+        params,
+        systemParams,
+        allowedEventTypes,
+        eventarcChannel,
+        labels: ext.labels,
+      });
+    }
+  }
+  if (errors.length) {
+    const messages = errors.map((err) => `- ${err.message}`).join("\n");
+    throw new FirebaseError(`Errors while reading 'extensions' in app code\n${messages}`);
+  }
+  return instanceSpecs;
 }
 
 /**
  * want checks firebase.json and the extensions directory for which extensions
  * the user wants installed on their project.
- * @param projectId The project we are deploying to
- * @param projectNumber The project number we are deploying to. Used for checking .env files.
- * @param aliases An array of aliases for the project we are deploying to. Used for checking .env files.
- * @param projectDir The directory containing firebase.json and extensions/
- * @param extensions The extensions section of firebase.jsonm
- * @param emulatorMode Whether the output will be used by the Extensions emulator.
+ * @param args The various args passed to want.
+ * @param args.projectId The project we are deploying to
+ * @param args.projectNumber The project number we are deploying to. Used for checking .env files.
+ * @param args.aliases An array of aliases for the project we are deploying to. Used for checking .env files.
+ * @param args.projectDir The directory containing firebase.json and extensions/
+ * @param args.extensions The extensions section of firebase.jsonm
+ * @param args.emulatorMode Whether the output will be used by the Extensions emulator.
  *                     If true, this will check {instanceId}.env.local for params and will respect `demo-` project rules.
+ * @return an array of deployment instance specs to deploy.
  */
 export async function want(args: {
   projectId: string;
@@ -144,6 +262,9 @@ export async function want(args: {
 }): Promise<DeploymentInstanceSpec[]> {
   const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
+  if (!args.extensions) {
+    return [];
+  }
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
@@ -194,8 +315,8 @@ export async function want(args: {
           eventarcChannel: eventarcChannel,
         });
       }
-    } catch (err: any) {
-      logger.debug(`Got error reading extensions entry ${e}: ${err}`);
+    } catch (err: unknown) {
+      logger.debug(`Got error reading extensions entry ${e[0]} (${e[1]}): ${getErrMsg(err)}`);
       errors.push(err as FirebaseError);
     }
   }
@@ -207,32 +328,43 @@ export async function want(args: {
 }
 
 /**
- * resolveVersion resolves a semver string to the max matching version.
- * Exported for testing.
- * @param publisherId
- * @param extensionId
- * @param version a semver or semver range
+ * Resolves a semver string to the max matching version. If no version is specified,
+ * it will default to the extension's latest approved version if set, otherwise to the latest version.
+ * @param ref the extension version ref
+ * @param extension the extension (optional)
  */
-export async function resolveVersion(ref: refs.Ref): Promise<string> {
+export async function resolveVersion(ref: refs.Ref, extension?: Extension): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
+  if (!ref.version && extension?.latestApprovedVersion) {
+    return extension.latestApprovedVersion;
+  }
+  if (ref.version === "latest-approved") {
+    if (!extension?.latestApprovedVersion) {
+      throw new FirebaseError(
+        `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`,
+      );
+    }
+    return extension.latestApprovedVersion;
+  }
+  if (!ref.version || ref.version === "latest") {
+    if (!extension?.latestVersion) {
+      throw new FirebaseError(
+        `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`,
+      );
+    }
+    return extension.latestVersion;
+  }
   const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
     throw new FirebaseError(`No versions found for ${extensionRef}`);
   }
-  if (!ref.version || ref.version === "latest") {
-    return versions
-      .filter((ev) => ev.spec.version !== undefined)
-      .map((ev) => ev.spec.version)
-      .sort(semver.compare)
-      .pop()!;
-  }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
-    ref.version
+    ref.version,
   );
   if (!maxSatisfying) {
     throw new FirebaseError(
-      `No version of ${extensionRef} matches requested version ${ref.version}`
+      `No version of ${extensionRef} matches requested version ${ref.version}`,
     );
   }
   return maxSatisfying;

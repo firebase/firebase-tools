@@ -1,4 +1,4 @@
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { needProjectId } from "./projectUtils";
 /**
  * Fetches the project number.
@@ -10,7 +10,7 @@ export async function getProjectNumber(options: any): Promise<string> {
     return options.projectNumber;
   }
   const projectId = needProjectId(options);
-  const metadata = await getFirebaseProject(projectId);
+  const metadata = await getProject(projectId);
   options.projectNumber = metadata.projectNumber;
   return options.projectNumber;
 }

@@ -1,5 +1,5 @@
 import { FirebaseConfig } from "../firebaseConfig";
-import { Implements } from "../metaprogramming";
+import { assertImplements } from "../metaprogramming";
 import { Options } from "../options";
 import { HostingResolved } from "./config";
 
@@ -27,5 +27,4 @@ export interface HostingOptions {
 
 // This line caues a compile-time error if HostingOptions has a field that is
 // missing in Options or incompatible with the type in Options.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const optionsAreHostingOptions: Implements<Options, HostingOptions> = true;
+assertImplements<Options, HostingOptions>();

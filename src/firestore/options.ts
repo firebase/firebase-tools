@@ -1,4 +1,5 @@
 import { Options } from "../options";
+import { DayOfWeek } from "../gcp/firestore";
 import * as types from "../firestore/api-types";
 
 /**
@@ -16,4 +17,25 @@ export interface FirestoreOptions extends Options {
   location?: string;
   type?: types.DatabaseType;
   deleteProtection?: types.DatabaseDeleteProtectionStateOption;
+  pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
+  edition?: string;
+
+  // backup schedules
+  backupSchedule?: string;
+  retention?: `${number}${"h" | "d" | "m" | "w"}`;
+  recurrence?: types.RecurrenceType;
+  dayOfWeek?: DayOfWeek;
+
+  // backups
+  backup?: string;
+
+  // CMEK
+  encryptionType?: EncryptionType;
+  kmsKeyName?: string;
+}
+
+export enum EncryptionType {
+  CUSTOMER_MANAGED_ENCRYPTION = "CUSTOMER_MANAGED_ENCRYPTION",
+  USE_SOURCE_ENCRYPTION = "USE_SOURCE_ENCRYPTION",
+  GOOGLE_DEFAULT_ENCRYPTION = "GOOGLE_DEFAULT_ENCRYPTION",
 }

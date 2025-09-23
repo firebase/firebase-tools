@@ -10,6 +10,7 @@ import { Options } from "../options";
 import * as projectConfig from "../functions/projectConfig";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "../emulator/registry";
+import { parseInspectionPort } from "../emulator/commandUtils";
 
 export class FunctionsServer {
   emulator?: FunctionsEmulator;
@@ -28,11 +29,15 @@ export class FunctionsServer {
 
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
-      const functionsDir = path.join(options.config.projectDir, cfg.source);
+      const localCfg = projectConfig.requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator.",
+      );
+      const functionsDir = path.join(options.config.projectDir, localCfg.source);
       backends.push({
         functionsDir,
-        codebase: cfg.codebase,
-        runtime: cfg.runtime,
+        codebase: localCfg.codebase,
+        runtime: localCfg.runtime,
         env: {},
         secretEnv: [],
       });
@@ -47,6 +52,8 @@ export class FunctionsServer {
       projectAlias: options.projectAlias,
       account,
       ...partialArgs,
+      // Non-optional; parseInspectionPort will set to false if missing.
+      debugPort: parseInspectionPort(options),
     };
 
     // Normally, these two fields are included in args (and typed as such).

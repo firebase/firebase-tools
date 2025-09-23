@@ -1,0 +1,38 @@
+.split-button {
+  display: flex;
+  position: relative;
+}
+
+.main-target,
+.menu-target {
+  &:focus {
+    z-index: 1;
+  }
+}
+
+.main-target {
+  flex: 1 1 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.menu-target {
+  position: relative;
+  padding: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  --divider-vert-margin: 4px;
+  --button-padding-horizontal: 4px;
+
+  &::before {
+    position: absolute;
+    left: 0;
+    top: var(--divider-vert-margin);
+    width: 1px;
+    height: calc(100% - var(--divider-vert-margin) * 2);
+    content: "";
+    background-color: var(--vscode-button-foreground);
+    opacity: 0.2;
+    pointer-events: none;
+  }
+}

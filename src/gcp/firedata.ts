@@ -1,40 +1,51 @@
-import { firedataOrigin } from "../api";
 import { Client } from "../apiv2";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { firedataOrigin } from "../api";
+import { FirebaseError } from "../error";
 
-export interface DatabaseInstance {
-  // The globally unique name of the Database instance.
-  // Required to be URL safe.  ex: 'red-ant'
-  instance: string;
+const client = new Client({ urlPrefix: firedataOrigin(), auth: true, apiVersion: "v1" });
+
+export const APPHOSTING_TOS_ID = "APP_HOSTING_TOS";
+export const APP_CHECK_TOS_ID = "APP_CHECK";
+export const DATA_CONNECT_TOS_ID = "FIREBASE_DATA_CONNECT";
+
+export type TosId = typeof APPHOSTING_TOS_ID | typeof APP_CHECK_TOS_ID | typeof DATA_CONNECT_TOS_ID;
+
+export type AcceptanceStatus = null | "ACCEPTED" | "TERMS_UPDATED";
+
+export interface TosAcceptanceStatus {
+  status: AcceptanceStatus;
 }
 
-function _handleErrorResponse(response: any): any {
-  if (response.body && response.body.error) {
-    return utils.reject(response.body.error, { code: 2 });
-  }
+export interface ServiceTosStatus {
+  tosId: TosId;
+  serviceStatus: TosAcceptanceStatus;
+}
 
-  logger.debug("[firedata] error:", response.status, response.body);
-  return utils.reject("Unexpected error encountered with FireData.", {
-    code: 2,
-  });
+export interface GetTosStatusResponse {
+  perServiceStatus: ServiceTosStatus[];
 }
 
 /**
- * List Realtime Database instances
- * @param projectNumber Project from which you want to list databases.
- * @return the list of databases.
+ * Fetches the Terms of Service status for the logged in user.
  */
-export async function listDatabaseInstances(projectNumber: string): Promise<DatabaseInstance[]> {
-  const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
-  const response = await client.get<{ instance: DatabaseInstance[] }>(
-    `/projects/${projectNumber}/databases`,
-    {
-      resolveOnHTTPError: true,
-    }
-  );
-  if (response.status === 200) {
-    return response.body.instance;
+export async function getTosStatus(): Promise<GetTosStatusResponse> {
+  const res = await client.get<GetTosStatusResponse>("accessmanagement/tos:getStatus");
+  return res.body;
+}
+
+/** Returns the AcceptanceStatus for a given product. */
+export function getAcceptanceStatus(
+  response: GetTosStatusResponse,
+  tosId: TosId,
+): AcceptanceStatus {
+  const perServiceStatus = response.perServiceStatus.find((tosStatus) => tosStatus.tosId === tosId);
+  if (perServiceStatus === undefined) {
+    throw new FirebaseError(`Missing terms of service status for product: ${tosId}`);
   }
-  return _handleErrorResponse(response);
+  return perServiceStatus.serviceStatus.status;
+}
+
+/** Returns true if a product's ToS has been accepted. */
+export function isProductTosAccepted(response: GetTosStatusResponse, tosId: TosId): boolean {
+  return getAcceptanceStatus(response, tosId) === "ACCEPTED";
 }

@@ -67,11 +67,11 @@ export class StorageEmulator implements EmulatorInstance {
         rulesValidator,
         getAdminCredentialValidator(),
         this._persistence,
-        this._cloudFunctions
+        this._cloudFunctions,
       );
     };
     this._storageLayer = createStorageLayer(
-      getFirebaseRulesValidator((resource: string) => this._rulesManager.getRuleset(resource))
+      getFirebaseRulesValidator((resource: string) => this._rulesManager.getRuleset(resource)),
     );
     this._adminStorageLayer = createStorageLayer(getAdminOnlyFirebaseRulesValidator());
   }
@@ -118,6 +118,7 @@ export class StorageEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     await this._persistence.deleteAll();
+    await this._rulesRuntime.stop();
     await this._rulesManager.stop();
     return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
@@ -141,14 +142,14 @@ export class StorageEmulator implements EmulatorInstance {
     return this._app!;
   }
 
+  private createRulesManager(rules: SourceFile | RulesConfig[]): StorageRulesManager {
+    return createStorageRulesManager(rules, this._rulesRuntime);
+  }
+
   async replaceRules(rules: SourceFile | RulesConfig[]): Promise<StorageRulesIssues> {
     await this._rulesManager.stop();
     this._rulesManager = this.createRulesManager(rules);
     return this._rulesManager.start();
-  }
-
-  private createRulesManager(rules: SourceFile | RulesConfig[]): StorageRulesManager {
-    return createStorageRulesManager(rules, this._rulesRuntime);
   }
 
   private getPersistenceTmpDir(): string {

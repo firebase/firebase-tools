@@ -21,6 +21,7 @@ import { connectableHostname } from "../utils";
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [
   events.v2.PUBSUB_PUBLISH_EVENT,
+  events.v2.FIREALERTS_EVENT,
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
   ...events.v2.FIRESTORE_EVENTS,
@@ -44,6 +45,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  taskQueueTrigger?: backend.TaskQueueTrigger;
   schedule?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
@@ -115,7 +117,10 @@ export class EmulatedTrigger {
   the actual module which contains multiple functions / definitions. We locate the one we need below using
   definition.entryPoint
    */
-  constructor(public definition: EmulatedTriggerDefinition, private module: any) {}
+  constructor(
+    public definition: EmulatedTriggerDefinition,
+    private module: any,
+  ) {}
 
   get memoryLimitBytes(): number {
     return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
@@ -159,7 +164,7 @@ export function prepareEndpoints(endpoints: backend.Endpoint[]) {
  * @return A list of all CloudFunctions in the deployment.
  */
 export function emulatedFunctionsFromEndpoints(
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const endpoint of endpoints) {
@@ -237,8 +242,20 @@ export function emulatedFunctionsFromEndpoints(
         options: endpoint.blockingTrigger.options || {},
       };
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Just expose TQ trigger as HTTPS. Useful for debugging.
       def.httpsTrigger = {};
+      def.taskQueueTrigger = {
+        retryConfig: {
+          maxAttempts: endpoint.taskQueueTrigger.retryConfig?.maxAttempts,
+          maxRetrySeconds: endpoint.taskQueueTrigger.retryConfig?.maxRetrySeconds,
+          maxBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.maxBackoffSeconds,
+          maxDoublings: endpoint.taskQueueTrigger.retryConfig?.maxDoublings,
+          minBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.minBackoffSeconds,
+        },
+        rateLimits: {
+          maxConcurrentDispatches: endpoint.taskQueueTrigger.rateLimits?.maxConcurrentDispatches,
+          maxDispatchesPerSecond: endpoint.taskQueueTrigger.rateLimits?.maxDispatchesPerSecond,
+        },
+      };
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
@@ -256,7 +273,7 @@ export function emulatedFunctionsFromEndpoints(
  */
 export function emulatedFunctionsByRegion(
   definitions: ParsedTriggerDefinition[],
-  secretEnvVariables: backend.SecretEnvVar[] = []
+  secretEnvVariables: backend.SecretEnvVar[] = [],
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const def of definitions) {
@@ -288,14 +305,14 @@ export function emulatedFunctionsByRegion(
  */
 export function getEmulatedTriggersFromDefinitions(
   definitions: EmulatedTriggerDefinition[],
-  module: any // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+  module: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 ): EmulatedTriggerMap {
   return definitions.reduce(
     (obj: { [triggerName: string]: EmulatedTrigger }, definition: EmulatedTriggerDefinition) => {
       obj[definition.id] = new EmulatedTrigger(definition, module);
       return obj;
     },
-    {}
+    {},
   );
 }
 
@@ -343,6 +360,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.httpsTrigger) {
     return "https";
   }
+  if (def.taskQueueTrigger) {
+    return Constants.SERVICE_CLOUD_TASKS;
+  }
 
   return "unknown";
 }
@@ -363,6 +383,9 @@ export function getServiceFromEventType(eventType: string): string {
   }
   if (eventType.includes("storage")) {
     return Constants.SERVICE_STORAGE;
+  }
+  if (eventType.includes("firebasealerts")) {
+    return Constants.SERVICE_FIREALERTS;
   }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
@@ -454,6 +477,9 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";
   }
+  if (def.platform === "gcfv2" && def.schedule) {
+    return "http";
+  }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
   // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
   // that allows CF3v1 functions to target GCFv2 and vice versa.
@@ -482,7 +508,8 @@ export function getSecretLocalPath(backend: EmulatableBackend, projectDir: strin
  */
 export function toBackendInfo(
   e: EmulatableBackend,
-  cf3Triggers: ParsedTriggerDefinition[]
+  cf3Triggers: ParsedTriggerDefinition[],
+  labels?: Record<string, string>,
 ): BackendInfo {
   const envWithSecrets = Object.assign({}, e.env);
   for (const s of e.secretEnv) {
@@ -493,7 +520,7 @@ export function toBackendInfo(
     extensionVersion = substituteParams<ExtensionVersion>(extensionVersion, e.env);
     if (extensionVersion.spec?.postinstallContent) {
       extensionVersion.spec.postinstallContent = replaceConsoleLinks(
-        extensionVersion.spec.postinstallContent
+        extensionVersion.spec.postinstallContent,
       );
     }
   }
@@ -514,9 +541,10 @@ export function toBackendInfo(
       extension: e.extension, // Only present on published extensions
       extensionVersion: extensionVersion, // Only present on published extensions
       extensionSpec: extensionSpec, // Only present on local extensions
+      labels,
       functionTriggers:
         // If we don't have predefinedTriggers, this is the CF3 backend.
         e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
-    })
+    }),
   );
 }

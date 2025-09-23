@@ -1,0 +1,19 @@
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+
+  &-label {
+    display: flex;
+    align-items: center;
+  }
+
+  &-icon {
+    margin-right: 8px;
+  }
+
+  &-project {
+    display: flex;
+    flex-direction: column;
+  }
+}

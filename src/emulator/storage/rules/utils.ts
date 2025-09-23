@@ -19,7 +19,7 @@ export interface FirebaseRulesValidator {
     variableOverrides: RulesVariableOverrides,
     projectId: string,
     authorization?: string,
-    delimiter?: string
+    delimiter?: string,
   ): Promise<boolean>;
 }
 
@@ -35,7 +35,7 @@ export type RulesetProvider = (resource: string) => StorageRulesetInstance | und
  * Returns a validator that pulls a Ruleset from a {@link RulesetProvider} on each run.
  */
 export function getFirebaseRulesValidator(
-  rulesetProvider: RulesetProvider
+  rulesetProvider: RulesetProvider,
 ): FirebaseRulesValidator {
   return {
     validate: async (
@@ -45,7 +45,7 @@ export function getFirebaseRulesValidator(
       variableOverrides: RulesVariableOverrides,
       projectId: string,
       authorization?: string,
-      delimiter?: string
+      delimiter?: string,
     ) => {
       return await isPermitted({
         ruleset: rulesetProvider(bucketId),
@@ -73,7 +73,7 @@ export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
       _method: RulesetOperationMethod,
       _variableOverrides: RulesVariableOverrides,
       _authorization?: string,
-      delimiter?: string
+      delimiter?: string,
     ) => {
       // TODO(tonyjhuang): This should check for valid admin credentials some day.
       // Unfortunately today, there's no easy way to set up the GCS SDK to pass
@@ -108,7 +108,7 @@ export async function isPermitted(opts: {
   if (!opts.ruleset) {
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "WARN",
-      `Can not process SDK request with no loaded ruleset`
+      `Can not process SDK request with no loaded ruleset`,
     );
     return false;
   }

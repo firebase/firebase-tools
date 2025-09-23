@@ -3,13 +3,12 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {},
   "engines": {
-    "node": "14"
+    "node": "20"
   },
   "dependencies": {
-    "firebase-admin": "^9.3.0",
-    "firebase-functions": "^3.22.0",
-    "fs-extra": "^5.0.0",
-    "rimraf": "^3.0.0"
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^5.1.0",
+    "fs-extra": "^5.0.0"
   },
   "private": true
 }

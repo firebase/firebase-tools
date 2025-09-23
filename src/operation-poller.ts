@@ -2,6 +2,17 @@ import { Client } from "./apiv2";
 import { FirebaseError } from "./error";
 import { Queue } from "./throttler/queue";
 
+export interface LongRunningOperation<T> {
+  // The identifier of the Operation.
+  readonly name: string;
+
+  // Set to `true` if the Operation is done.
+  readonly done: boolean;
+
+  // Additional metadata about the Operation.
+  readonly metadata: T | undefined;
+}
+
 export interface OperationPollerOptions {
   pollerName?: string;
   apiOrigin: string;
@@ -11,6 +22,8 @@ export interface OperationPollerOptions {
   maxBackoff?: number;
   masterTimeout?: number;
   onPoll?: (operation: OperationResult<any>) => any;
+  doneFn?: (op: any) => boolean;
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
@@ -20,8 +33,10 @@ export interface OperationResult<T> {
   done?: boolean;
   response?: T;
   error?: {
+    name: string;
     message: string;
     code: number;
+    details?: any[];
   };
   metadata?: {
     [key: string]: any;
@@ -51,7 +66,7 @@ export class OperationPoller<T> {
     if (error) {
       throw error instanceof FirebaseError
         ? error
-        : new FirebaseError(error.message, { status: error.code });
+        : new FirebaseError(error.message, { status: error.code, original: error });
     }
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response!;
@@ -66,7 +81,9 @@ export class OperationPoller<T> {
     return async () => {
       let res;
       try {
-        res = await apiClient.get<OperationResult<T>>(options.operationResourceName);
+        res = await apiClient.get<OperationResult<T>>(options.operationResourceName, {
+          headers: options.headers,
+        });
       } catch (err: any) {
         // Responses with 500 or 503 status code are treated as retriable errors.
         if (err.status === 500 || err.status === 503) {
@@ -77,7 +94,12 @@ export class OperationPoller<T> {
       if (options.onPoll) {
         options.onPoll(res.body);
       }
-      if (!res.body.done) {
+      if (options.doneFn) {
+        const done = options.doneFn(res.body);
+        if (!done) {
+          throw new Error("Polling incomplete, should trigger retry with backoff");
+        }
+      } else if (!res.body.done) {
         throw new Error("Polling incomplete, should trigger retry with backoff");
       }
       return res.body;

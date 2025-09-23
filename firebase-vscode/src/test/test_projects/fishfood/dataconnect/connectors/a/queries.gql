@@ -1,0 +1,22 @@
+query getPost($id: String!) @auth(level: PUBLIC) {
+  post(id: $id) {
+    content
+    comments: comments_on_post {
+      id
+      content
+    }
+  }
+}
+
+query listPostsForUser($userId: String!) @auth(level: PUBLIC) {
+  posts(where: { id: { eq: $userId } }) {
+    id
+    content
+  }
+}
+
+query listPostsOnlyId @auth(level: PUBLIC) {
+  posts {
+    id
+  }
+}

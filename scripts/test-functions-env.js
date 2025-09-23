@@ -93,12 +93,12 @@ async function runTest(description, envFiles, expected) {
     await runTest(
       "Inject environment variables from .env",
       { ".env": "FOO=foo\nBAR=bar\nCAR=car" },
-      { FOO: "foo", BAR: "bar", CAR: "car" }
+      { FOO: "foo", BAR: "bar", CAR: "car" },
     );
     await runTest(
       "Inject environment variables from .env and .env.<project>",
       { ".env": "FOO=foo\nSOURCE=env", [`.env.${projectId}`]: "SOURCE=env-project" },
-      { FOO: "foo", SOURCE: "env-project" }
+      { FOO: "foo", SOURCE: "env-project" },
     );
     console.log("Success");
   } catch (err) {

@@ -11,6 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
+import { DataConnectEmulator } from "./dataconnectEmulator";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -27,21 +28,23 @@ export interface EmulatorHubArgs {
   listenForEmulator: Record<PortName, ListenSpec[]>;
 }
 
-export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
+export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
 export class EmulatorHub extends ExpressBasedEmulator {
+  static MISSING_PROJECT_PLACEHOLDER = "demo-no-project";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
   static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
+  static PATH_CLEAR_DATA_CONNECT = "/dataconnect/clearData";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
    * This is useful so that multiple copies of the Firebase CLI can discover
    * each other.
    */
-  static readLocatorFile(projectId: string): Locator | undefined {
+  static readLocatorFile(projectId: string | undefined): Locator | undefined {
     const locatorPath = this.getLocatorFilePath(projectId);
     if (!fs.existsSync(locatorPath)) {
       return undefined;
@@ -51,17 +54,23 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locator = JSON.parse(data) as Locator;
 
     if (locator.version !== this.CLI_VERSION) {
-      logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
-      return undefined;
+      logger.debug(
+        `Found emulator locator with different version: ${JSON.stringify(locator)}, CLI_VERSION: ${this.CLI_VERSION}`,
+      );
     }
 
     return locator;
   }
 
-  static getLocatorFilePath(projectId: string): string {
+  static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
+    if (!projectId) {
+      projectId = EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    }
     const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
+    const locatorPath = path.join(dir, filename);
+    logger.debug(`Emulator locator file path: ${locatorPath}`);
+    return locatorPath;
   }
 
   constructor(private args: EmulatorHubArgs) {
@@ -73,6 +82,17 @@ export class EmulatorHub extends ExpressBasedEmulator {
   override async start(): Promise<void> {
     await super.start();
     await this.writeLocatorFile();
+  }
+
+  getRunningEmulatorsMapping(): GetEmulatorsResponse {
+    const emulators: GetEmulatorsResponse = {};
+    for (const info of EmulatorRegistry.listRunningWithInfo()) {
+      emulators[info.name] = {
+        listen: this.args.listenForEmulator[info.name],
+        ...info,
+      };
+    }
+    return emulators;
   }
 
   protected override async createExpressApp(): Promise<express.Express> {
@@ -87,17 +107,15 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
-      const body: GetEmulatorsResponse = {};
-      for (const info of EmulatorRegistry.listRunningWithInfo()) {
-        body[info.name] = {
-          listen: this.args.listenForEmulator[info.name],
-          ...info,
-        };
-      }
-      res.json(body);
+      res.json(this.getRunningEmulatorsMapping());
     });
 
     app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Export cannot be triggered by external callers.`,
+        });
+      }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
@@ -122,7 +140,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -139,7 +157,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
-        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
       );
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
@@ -151,6 +169,24 @@ export class EmulatorHub extends ExpressBasedEmulator {
       const emu = instance as FunctionsEmulator;
       await emu.reloadTriggers();
       res.status(200).json({ enabled: true });
+    });
+
+    app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Clear Data Connect cannot be triggered by external callers.`,
+        });
+      }
+      utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
+
+      const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+      if (!instance) {
+        res.status(400).json({ error: "The Data Connect emulator is not running." });
+        return;
+      }
+
+      await instance.clearData();
+      res.status(200).json({ success: true });
     });
 
     return app;
@@ -189,7 +225,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     if (fs.existsSync(locatorPath)) {
       utils.logLabeledWarning(
         "emulators",
-        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
     }
 
@@ -209,7 +245,8 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
     return new Promise((resolve, reject) => {
       fs.unlink(locatorPath, (e) => {
-        if (e) {
+        // If the file is already deleted, no need to throw.
+        if (e && e.code !== "ENOENT") {
           reject(e);
         } else {
           resolve();

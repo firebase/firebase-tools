@@ -20,15 +20,19 @@ export function exec(
   project: string,
   additionalArgs: string[],
   cwd: string,
-  quiet = true
+  quiet = true,
+  extraEnv: Record<string, string> = {},
 ): Promise<Result> {
   const args = [cmd, "--project", project];
 
   if (additionalArgs) {
     args.push(...additionalArgs);
   }
-
-  const proc = spawn("firebase", args, { cwd });
+  const env = {
+    ...process.env,
+    ...extraEnv,
+  };
+  const proc = spawn("firebase", args, { cwd, env });
   if (!proc) {
     throw new Error("Failed to start firebase CLI");
   }

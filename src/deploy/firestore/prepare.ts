@@ -5,6 +5,8 @@ import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 import * as fsConfig from "../../firestore/fsConfig";
+import { logger } from "../../logger";
+import { DeployOptions } from "..";
 
 export interface RulesContext {
   databaseId: string;
@@ -28,7 +30,7 @@ function prepareRules(
   context: any,
   rulesDeploy: RulesDeploy,
   databaseId: string,
-  rulesFile: string
+  rulesFile: string,
 ): void {
   rulesDeploy.addFile(rulesFile);
   context.firestore.rules.push({
@@ -48,13 +50,13 @@ function prepareIndexes(
   context: any,
   options: Options,
   databaseId: string,
-  indexesFileName: string
+  indexesFileName: string,
 ): void {
   const indexesPath = options.config.path(indexesFileName);
   const indexesRawSpec = loadCJSON(indexesPath);
 
   utils.logBullet(
-    `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
+    `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`,
   );
 
   context.firestore.indexes.push({
@@ -69,15 +71,24 @@ function prepareIndexes(
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
-    const onlyIndexes = targets.indexOf("firestore:indexes") >= 0;
-    const onlyRules = targets.indexOf("firestore:rules") >= 0;
+
+    // Used for edge case when deploying to a named database
+    // https://github.com/firebase/firebase-tools/pull/6129
+    const excludeRules = targets.indexOf("firestore:indexes") >= 0;
+    const excludeIndexes = targets.indexOf("firestore:rules") >= 0;
+
+    // Used for edge case when deploying --only firestore:rules,firestore:indexes
+    // https://github.com/firebase/firebase-tools/issues/6857
+    const includeRules = targets.indexOf("firestore:rules") >= 0;
+    const includeIndexes = targets.indexOf("firestore:indexes") >= 0;
+
     const onlyFirestore = targets.indexOf("firestore") >= 0;
 
-    context.firestoreIndexes = onlyIndexes || onlyFirestore;
-    context.firestoreRules = onlyRules || onlyFirestore;
+    context.firestoreIndexes = !excludeIndexes || includeIndexes || onlyFirestore;
+    context.firestoreRules = !excludeRules || includeRules || onlyFirestore;
   } else {
     context.firestoreIndexes = true;
     context.firestoreRules = true;
@@ -85,7 +96,7 @@ export default async function (context: any, options: any): Promise<void> {
 
   const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
     context.projectId,
-    options
+    options,
   );
   if (!firestoreConfigs || firestoreConfigs.length === 0) {
     return;
@@ -108,5 +119,18 @@ export default async function (context: any, options: any): Promise<void> {
 
   if (context.firestore.rules.length > 0) {
     await rulesDeploy.compile();
+  }
+
+  const rulesContext: RulesContext[] = context?.firestore?.rules;
+  for (const ruleContext of rulesContext) {
+    const databaseId = ruleContext.databaseId;
+    const rulesFile = ruleContext.rulesFile;
+    if (!rulesFile) {
+      logger.error(
+        `Invalid firestore config for ${databaseId} database: ${JSON.stringify(
+          options.config.src.firestore,
+        )}`,
+      );
+    }
   }
 }

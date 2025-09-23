@@ -8,12 +8,19 @@
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
+    "resolveJsonModule": true,
     "sourceMap": true,
+    "skipLibCheck": true,
     "typeRoots": [
       "node_modules/@types",
       "src/types"
     ]
   },
+  "lib": [
+    "dom",
+    "dom.iterable",
+    "ES2020"
+  ],
   "include": ["src/**/*"],
   "exclude": ["src/dynamicImport.js"]
 }

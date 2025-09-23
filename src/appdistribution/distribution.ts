@@ -1,5 +1,5 @@
 import * as fs from "fs-extra";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
 import * as pathUtil from "path";
 
@@ -33,8 +33,8 @@ export class Distribution {
     let stat;
     try {
       stat = fs.statSync(path);
-    } catch (err: any) {
-      logger.info(err);
+    } catch (err: unknown) {
+      logger.info(getErrMsg(err));
       throw new FirebaseError(`File ${path} does not exist: verify that file points to a binary`);
     }
     if (!stat.isFile()) {

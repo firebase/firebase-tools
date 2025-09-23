@@ -65,7 +65,7 @@ below under the `/* Handlers */` section like so:
 function signUp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
-  ctx: ExegesisContext
+  ctx: ExegesisContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
   return {
     /* response JSON body */

@@ -25,7 +25,7 @@ export interface User {
 
 export interface Account {
   user: User;
-  tokens: Tokens;
+  tokens: TokensWithExpiration;
 }
 export interface TokensWithExpiration extends Tokens {
   expires_at?: number;
@@ -33,6 +33,14 @@ export interface TokensWithExpiration extends Tokens {
 export interface TokensWithTTL extends Tokens {
   expires_in?: number;
 }
+
+export interface AuthError {
+  error?: string;
+  error_description?: string;
+  error_uri?: string;
+  error_subtype?: string;
+}
+
 export interface UserCredentials {
   user: string | User;
   tokens: TokensWithExpiration;

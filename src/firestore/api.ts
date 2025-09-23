@@ -5,16 +5,45 @@ import * as utils from "../utils";
 import * as validator from "./validator";
 
 import * as types from "./api-types";
+import { DatabaseEdition, Density } from "./api-types";
 import * as Spec from "./api-spec";
 import * as sort from "./api-sort";
 import * as util from "./util";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
+import { PrettyPrint } from "./pretty-print";
+import { optionalValueMatches } from "../functional";
 
 export class FirestoreApi {
-  apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
+  apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
+  printer = new PrettyPrint();
+
+  /**
+   * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
+   * Keeps explicit __name__ fields with DESCENDING order.
+   * @param indexes Array of indexes to process
+   * @return Processed array of indexes with filtered fields
+   */
+  public static processIndexes(indexes: types.Index[]): types.Index[] {
+    return indexes.map((index: types.Index): types.Index => {
+      // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
+      // this matches the direction of the last non-name field in the index.
+      let fields = index.fields;
+      const lastField = index.fields?.[index.fields.length - 1];
+      if (lastField?.fieldPath === "__name__") {
+        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
+        if (lastField?.order === defaultDirection) {
+          fields = fields.slice(0, -1);
+        }
+      }
+      return {
+        ...index,
+        fields,
+      };
+    });
+  }
 
   /**
    * Deploy an index specification to the specified project.
@@ -28,7 +57,7 @@ export class FirestoreApi {
     options: { project: string; nonInteractive: boolean; force: boolean },
     indexes: any[],
     fieldOverrides: any[],
-    databaseId: string = "(default)"
+    databaseId = "(default)",
   ): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
@@ -44,11 +73,13 @@ export class FirestoreApi {
     const existingIndexes: types.Index[] = await this.listIndexes(options.project, databaseId);
     const existingFieldOverrides: types.Field[] = await this.listFieldOverrides(
       options.project,
-      databaseId
+      databaseId,
     );
 
+    const database = await this.getDatabase(options.project, databaseId);
+    const edition = database.databaseEdition ?? DatabaseEdition.STANDARD;
     const indexesToDelete = existingIndexes.filter((index) => {
-      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec));
+      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec, edition));
     });
 
     // We only want to delete fields where there is nothing in the local file with the same
@@ -76,22 +107,22 @@ export class FirestoreApi {
         utils.logLabeledBullet(
           "firestore",
           `there are ${indexesToDelete.length} indexes defined in your project that are not present in your ` +
-            "firestore indexes file. To delete them, run this command with the --force flag."
+            "firestore indexes file. To delete them, run this command with the --force flag.",
         );
       } else if (!options.force) {
         const indexesString = indexesToDelete
-          .map((x) => this.prettyIndexString(x, false))
+          .map((x) => this.printer.prettyIndexString(x, false))
           .join("\n\t");
         utils.logLabeledBullet(
           "firestore",
-          `The following indexes are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+          `The following indexes are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`,
         );
       }
 
       if (!shouldDeleteIndexes) {
-        shouldDeleteIndexes = await promptOnce({
-          type: "confirm",
-          name: "confirm",
+        shouldDeleteIndexes = await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
           default: false,
           message:
             "Would you like to delete these indexes? Selecting no will continue the rest of the deployment.",
@@ -100,7 +131,7 @@ export class FirestoreApi {
     }
 
     for (const index of indexesToDeploy) {
-      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
+      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index, edition));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
       } else {
@@ -122,22 +153,22 @@ export class FirestoreApi {
         utils.logLabeledBullet(
           "firestore",
           `there are ${fieldOverridesToDelete.length} field overrides defined in your project that are not present in your ` +
-            "firestore indexes file. To delete them, run this command with the --force flag."
+            "firestore indexes file. To delete them, run this command with the --force flag.",
         );
       } else if (!options.force) {
         const indexesString = fieldOverridesToDelete
-          .map((x) => this.prettyFieldString(x))
+          .map((x) => this.printer.prettyFieldString(x))
           .join("\n\t");
         utils.logLabeledBullet(
           "firestore",
-          `The following field overrides are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+          `The following field overrides are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`,
         );
       }
 
       if (!shouldDeleteFields) {
-        shouldDeleteFields = await promptOnce({
-          type: "confirm",
-          name: "confirm",
+        shouldDeleteFields = await confirm({
+          nonInteractive: options.nonInteractive,
+          force: options.force,
           default: false,
           message:
             "Would you like to delete these field overrides? Selecting no will continue the rest of the deployment.",
@@ -161,7 +192,7 @@ export class FirestoreApi {
     if (shouldDeleteFields && fieldOverridesToDelete.length > 0) {
       utils.logLabeledBullet(
         "firestore",
-        `Deleting ${fieldOverridesToDelete.length} field overrides...`
+        `Deleting ${fieldOverridesToDelete.length} field overrides...`,
       );
       for (const field of fieldOverridesToDelete) {
         await this.deleteField(field);
@@ -173,7 +204,7 @@ export class FirestoreApi {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  async listIndexes(project: string, databaseId: string = "(default)"): Promise<types.Index[]> {
+  async listIndexes(project: string, databaseId = "(default)"): Promise<types.Index[]> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/-/indexes`;
     const res = await this.apiClient.get<{ indexes?: types.Index[] }>(url);
     const indexes = res.body.indexes;
@@ -181,30 +212,14 @@ export class FirestoreApi {
       return [];
     }
 
-    return indexes.map((index: any): types.Index => {
-      // Ignore any fields that point at the document ID, as those are implied
-      // in all indexes.
-      const fields = index.fields.filter((field: types.IndexField) => {
-        return field.fieldPath !== "__name__";
-      });
-
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      };
-    });
+    return FirestoreApi.processIndexes(indexes);
   }
 
   /**
    * List all field configuration overrides defined on the given project.
    * @param project the Firebase project.
    */
-  async listFieldOverrides(
-    project: string,
-    databaseId: string = "(default)"
-  ): Promise<types.Field[]> {
+  async listFieldOverrides(project: string, databaseId = "(default)"): Promise<types.Field[]> {
     const parent = `projects/${project}/databases/${databaseId}/collectionGroups/-`;
     const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:*`;
 
@@ -219,7 +234,7 @@ export class FirestoreApi {
 
     // Ignore the default config, only list other fields.
     return fields.filter((field) => {
-      return field.name.indexOf("__default__") < 0;
+      return !field.name.includes("__default__");
     });
   }
 
@@ -233,6 +248,10 @@ export class FirestoreApi {
         collectionGroup: util.parseIndexName(index.name).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
       };
     });
 
@@ -255,6 +274,10 @@ export class FirestoreApi {
             order: firstField.order,
             arrayConfig: firstField.arrayConfig,
             queryScope: index.queryScope,
+            apiScope: index.apiScope,
+            density: index.density,
+            multikey: index.multikey,
+            unique: index.unique,
           };
         }),
       };
@@ -266,104 +289,6 @@ export class FirestoreApi {
       indexes: sortedIndexes,
       fieldOverrides: sortedFields,
     };
-  }
-
-  /**
-   * Print an array of indexes to the console.
-   * @param indexes the array of indexes.
-   */
-  prettyPrintIndexes(indexes: types.Index[]): void {
-    if (indexes.length === 0) {
-      logger.info("None");
-      return;
-    }
-
-    const sortedIndexes = indexes.sort(sort.compareApiIndex);
-    sortedIndexes.forEach((index) => {
-      logger.info(this.prettyIndexString(index));
-    });
-  }
-
-  /**
-   * Print an array of databases to the console as an ASCII table.
-   * @param databases the array of Firestore databases.
-   */
-  prettyPrintDatabases(databases: types.DatabaseResp[]): void {
-    if (databases.length === 0) {
-      logger.info("No databases found.");
-      return;
-    }
-    const sortedDatabases: types.DatabaseResp[] = databases.sort(sort.compareApiDatabase);
-    const Table = require("cli-table");
-    const table = new Table({
-      head: ["Database Name"],
-      colWidths: [Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20)],
-    });
-
-    table.push(...sortedDatabases.map((database) => [this.prettyDatabaseString(database)]));
-    logger.info(table.toString());
-  }
-
-  /**
-   * Print important fields of a database to the console as an ASCII table.
-   * @param database the Firestore database.
-   */
-  prettyPrintDatabase(database: types.DatabaseResp): void {
-    const Table = require("cli-table");
-    const table = new Table({
-      head: ["Field", "Value"],
-      colWidths: [25, Math.max(50, 5 + database.name.length)],
-    });
-
-    table.push(
-      ["Name", clc.yellow(database.name)],
-      ["Create Time", clc.yellow(database.createTime)],
-      ["Last Update Time", clc.yellow(database.updateTime)],
-      ["Type", clc.yellow(database.type)],
-      ["Location", clc.yellow(database.locationId)],
-      ["Delete Protection State", clc.yellow(database.deleteProtectionState)]
-    );
-    logger.info(table.toString());
-  }
-
-  /**
-   * Print an array of locations to the console in an ASCII table. Group multi regions together
-   *  Example: United States: nam5
-   * @param locations the array of locations.
-   */
-  prettyPrintLocations(locations: types.Location[]): void {
-    if (locations.length === 0) {
-      logger.info("No Locations Available");
-      return;
-    }
-    const Table = require("cli-table");
-    const table = new Table({
-      head: ["Display Name", "LocationId"],
-      colWidths: [20, 30],
-    });
-
-    table.push(
-      ...locations
-        .sort(sort.compareLocation)
-        .map((location) => [location.displayName, location.locationId])
-    );
-    logger.info(table.toString());
-  }
-
-  /**
-   * Print an array of field overrides to the console.
-   * @param fields  the array of field overrides.
-   */
-  printFieldOverrides(fields: types.Field[]): void {
-    if (fields.length === 0) {
-      logger.info("None");
-      return;
-    }
-
-    const sortedFields = fields.sort(sort.compareApiField);
-    sortedFields.forEach((field) => {
-      logger.info(this.prettyFieldString(field));
-    });
   }
 
   /**
@@ -392,11 +317,30 @@ export class FirestoreApi {
     validator.assertHas(index, "queryScope");
     validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
 
+    if (index.apiScope) {
+      validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+    }
+
+    if (index.density) {
+      validator.assertEnum(index, "density", Object.keys(types.Density));
+    }
+
+    if (index.multikey) {
+      validator.assertType("multikey", index.multikey, "boolean");
+    }
+
+    if (index.unique !== undefined) {
+      validator.assertType("unique", index.unique, "boolean");
+      // TODO(b/439901837): Remove this check and update indexMatchesSpec once
+      //  unique index configuration is supported.
+      throw new FirebaseError("The `unique` index configuration is not supported yet.");
+    }
+
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "vectorConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(types.Order));
@@ -404,6 +348,11 @@ export class FirestoreApi {
 
       if (field.arrayConfig) {
         validator.assertEnum(field, "arrayConfig", Object.keys(types.ArrayConfig));
+      }
+
+      if (field.vectorConfig) {
+        validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
+        validator.assertHas(field.vectorConfig, "flat");
       }
     });
   }
@@ -435,6 +384,22 @@ export class FirestoreApi {
       if (index.queryScope) {
         validator.assertEnum(index, "queryScope", Object.keys(types.QueryScope));
       }
+
+      if (index.apiScope) {
+        validator.assertEnum(index, "apiScope", Object.keys(types.ApiScope));
+      }
+
+      if (index.density) {
+        validator.assertEnum(index, "density", Object.keys(types.Density));
+      }
+
+      if (index.multikey) {
+        validator.assertType("multikey", index.multikey, "boolean");
+      }
+
+      if (index.unique) {
+        validator.assertType("unique", index.unique, "boolean");
+      }
     });
   }
 
@@ -448,13 +413,17 @@ export class FirestoreApi {
   async patchField(
     project: string,
     spec: Spec.FieldOverride,
-    databaseId: string = "(default)"
+    databaseId = "(default)",
   ): Promise<any> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
     const indexes = spec.indexes.map((index) => {
       return {
         queryScope: index.queryScope,
+        apiScope: index.apiScope,
+        density: index.density,
+        multikey: index.multikey,
+        unique: index.unique,
         fields: [
           {
             fieldPath: spec.fieldPath,
@@ -497,11 +466,15 @@ export class FirestoreApi {
   /**
    * Create a new index on the specified project.
    */
-  createIndex(project: string, index: Spec.Index, databaseId: string = "(default)"): Promise<any> {
+  createIndex(project: string, index: Spec.Index, databaseId = "(default)"): Promise<any> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${index.collectionGroup}/indexes`;
     return this.apiClient.post(url, {
       fields: index.fields,
       queryScope: index.queryScope,
+      apiScope: index.apiScope,
+      density: index.density,
+      multikey: index.multikey,
+      unique: index.unique,
     });
   }
 
@@ -514,9 +487,50 @@ export class FirestoreApi {
   }
 
   /**
+   * Returns true if the given ApiScope values match.
+   * If either one is undefined, the default value is used for comparison.
+   * @param lhs the first ApiScope value.
+   * @param rhs the second ApiScope value.
+   */
+  optionalApiScopeMatches(
+    lhs: types.ApiScope | undefined,
+    rhs: types.ApiScope | undefined,
+  ): boolean {
+    return optionalValueMatches<types.ApiScope>(lhs, rhs, types.ApiScope.ANY_API);
+  }
+
+  /**
+   * Returns true if the given Density values match.
+   * If either one is undefined, the default value is used for comparison based on Database Edition.
+   * @param lhs the first Density value.
+   * @param rhs the second Density value.
+   * @param edition the database edition used to determine the default value.
+   */
+  optionalDensityMatches(
+    lhs: Density | undefined,
+    rhs: Density | undefined,
+    edition: types.DatabaseEdition,
+  ): boolean {
+    const defaultValue =
+      edition === DatabaseEdition.STANDARD ? types.Density.SPARSE_ALL : types.Density.DENSE;
+    return optionalValueMatches<types.Density>(lhs, rhs, defaultValue);
+  }
+
+  /**
+   * Returns true if the given Multikey values match.
+   * If either one is undefined, the default value is used for comparison.
+   * @param lhs the first Multikey value.
+   * @param rhs the second Multikey value.
+   */
+  optionalMultikeyMatches(lhs: boolean | undefined, rhs: boolean | undefined): boolean {
+    const defaultValue = false;
+    return optionalValueMatches<boolean>(lhs, rhs, defaultValue);
+  }
+
+  /**
    * Determine if an API Index and a Spec Index are functionally equivalent.
    */
-  indexMatchesSpec(index: types.Index, spec: Spec.Index): boolean {
+  indexMatchesSpec(index: types.Index, spec: Spec.Index, edition: types.DatabaseEdition): boolean {
     const collection = util.parseIndexName(index.name).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
@@ -525,6 +539,25 @@ export class FirestoreApi {
     if (index.queryScope !== spec.queryScope) {
       return false;
     }
+
+    // apiScope is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalApiScopeMatches(index.apiScope, spec.apiScope)) {
+      return false;
+    }
+
+    // density is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalDensityMatches(index.density, spec.density, edition)) {
+      return false;
+    }
+    // multikey is an optional value and may be missing in firestore.indexes.json,
+    // and may also be missing from the server value (when default is picked).
+    if (!this.optionalMultikeyMatches(index.multikey, spec.multikey)) {
+      return false;
+    }
+
+    // TODO(b/439901837): Compare `unique` index configuration when it's supported.
 
     if (index.fields.length !== spec.fields.length) {
       return false;
@@ -544,6 +577,11 @@ export class FirestoreApi {
       }
 
       if (iField.arrayConfig !== sField.arrayConfig) {
+        return false;
+      }
+
+      // Note: vectorConfig is an object, and using '!==' should not be used.
+      if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
         return false;
       }
 
@@ -573,7 +611,7 @@ export class FirestoreApi {
       utils.logLabeledBullet(
         "firestore",
         `there are TTL field overrides for collection ${spec.collectionGroup} defined in your project that are not present in your ` +
-          "firestore indexes file. The TTL policy won't be deleted since is not specified as false."
+          "firestore indexes file. The TTL policy won't be deleted since is not specified as false.",
       );
     }
 
@@ -594,7 +632,7 @@ export class FirestoreApi {
     // Confirms that the two objects have the same set of enabled indexes without
     // caring about specification order.
     for (const mode of fieldModes) {
-      if (specModes.indexOf(mode) < 0) {
+      if (!specModes.includes(mode)) {
         return false;
       }
     }
@@ -626,16 +664,28 @@ export class FirestoreApi {
           " your indexes indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
           clc.bold("firebase firestore:indexes") +
-          " again and saving the result."
+          " again and saving the result.",
       );
     }
 
     result.indexes = spec.indexes.map((index: any) => {
-      const i = {
+      const i: any = {
         collectionGroup: index.collectionGroup || index.collectionId,
         queryScope: index.queryScope || types.QueryScope.COLLECTION,
-        fields: [],
       };
+
+      if (index.apiScope) {
+        i.apiScope = index.apiScope;
+      }
+      if (index.density) {
+        i.density = index.density;
+      }
+      if (index.multikey !== undefined) {
+        i.multikey = index.multikey;
+      }
+      if (index.unique !== undefined) {
+        i.unique = index.unique;
+      }
 
       if (index.fields) {
         i.fields = index.fields.map((field: any) => {
@@ -647,6 +697,8 @@ export class FirestoreApi {
             f.order = field.order;
           } else if (field.arrayConfig) {
             f.arrayConfig = field.arrayConfig;
+          } else if (field.vectorConfig) {
+            f.vectorConfig = field.vectorConfig;
           } else if (field.mode === types.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = types.ArrayConfig.CONTAINS;
           } else {
@@ -711,30 +763,23 @@ export class FirestoreApi {
 
   /**
    * Create a named Firestore Database
-   * @param project the Firebase project id.
-   * @param databaseId the name of the Firestore Database
-   * @param locationId the id of the region the database will be created in
-   * @param type FIRESTORE_NATIVE or DATASTORE_MODE
-   * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
+   * @param req the request to create a database
    */
-  async createDatabase(
-    project: string,
-    databaseId: string,
-    locationId: string,
-    type: types.DatabaseType,
-    deleteProtectionState: types.DatabaseDeleteProtectionState
-  ): Promise<types.DatabaseResp> {
-    const url = `/projects/${project}/databases`;
+  async createDatabase(req: types.CreateDatabaseReq): Promise<types.DatabaseResp> {
+    const url = `/projects/${req.project}/databases`;
     const payload: types.DatabaseReq = {
-      type,
-      locationId,
-      deleteProtectionState,
+      locationId: req.locationId,
+      type: req.type,
+      databaseEdition: req.databaseEdition,
+      deleteProtectionState: req.deleteProtectionState,
+      pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
+      cmekConfig: req.cmekConfig,
     };
-    const options = { queryParams: { databaseId: databaseId } };
+    const options = { queryParams: { databaseId: req.databaseId } };
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
       payload,
-      options
+      options,
     );
     const database = res.body.response;
     if (!database) {
@@ -748,23 +793,23 @@ export class FirestoreApi {
    * Update a named Firestore Database
    * @param project the Firebase project id.
    * @param databaseId the name of the Firestore Database
-   * @param type FIRESTORE_NATIVE or DATASTORE_MODE
    * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
+   * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
    */
   async updateDatabase(
     project: string,
     databaseId: string,
-    type?: types.DatabaseType,
-    deleteProtectionState?: types.DatabaseDeleteProtectionState
+    deleteProtectionState?: types.DatabaseDeleteProtectionState,
+    pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
     const payload: types.DatabaseReq = {
-      type,
       deleteProtectionState,
+      pointInTimeRecoveryEnablement,
     };
     const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
-      payload
+      payload,
     );
     const database = res.body.response;
     if (!database) {
@@ -787,83 +832,132 @@ export class FirestoreApi {
       throw new FirebaseError("Not found");
     }
 
-    return database as types.DatabaseResp;
+    return database;
   }
 
   /**
-   * Get a colored, pretty-printed representation of an index.
+   * Bulk delete documents from a Firestore database.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param collectionIds the collection IDs to delete.
    */
-  private prettyIndexString(index: types.Index, includeState: boolean = true): string {
-    let result = "";
+  async bulkDeleteDocuments(
+    project: string,
+    databaseId: string,
+    collectionIds: string[],
+  ): Promise<types.BulkDeleteDocumentsResponse> {
+    const name = `/projects/${project}/databases/${databaseId}`;
+    const url = `${name}:bulkDeleteDocuments`;
+    const payload: types.BulkDeleteDocumentsRequest = {
+      name,
+      collectionIds,
+    };
+    const res = await this.apiClient.post<
+      types.BulkDeleteDocumentsRequest,
+      types.BulkDeleteDocumentsResponse
+    >(url, payload);
+    return {
+      name: res.body?.name,
+    };
+  }
 
-    if (index.state && includeState) {
-      const stateMsg = `[${index.state}] `;
-
-      if (index.state === types.State.READY) {
-        result += clc.green(stateMsg);
-      } else if (index.state === types.State.CREATING) {
-        result += clc.yellow(stateMsg);
-      } else {
-        result += clc.red(stateMsg);
-      }
+  /**
+   * Restore a Firestore Database from a backup.
+   * @param project the Firebase project id.
+   * @param databaseId the ID of the Firestore Database to be restored into
+   * @param backupName Name of the backup from which to restore
+   * @param encryptionConfig the encryption configuration of the restored database
+   */
+  async restoreDatabase(
+    project: string,
+    databaseId: string,
+    backupName: string,
+    encryptionConfig?: types.EncryptionConfig,
+  ): Promise<types.DatabaseResp> {
+    const url = `/projects/${project}/databases:restore`;
+    const payload: types.RestoreDatabaseReq = {
+      databaseId,
+      backup: backupName,
+      encryptionConfig: encryptionConfig,
+    };
+    const options = { queryParams: { databaseId: databaseId } };
+    const res = await this.apiClient.post<
+      types.RestoreDatabaseReq,
+      { response?: types.DatabaseResp }
+    >(url, payload, options);
+    const database = res.body.response;
+    if (!database) {
+      throw new FirebaseError("Not found");
     }
 
-    const nameInfo = util.parseIndexName(index.name);
+    return database;
+  }
 
-    result += clc.cyan(`(${nameInfo.collectionGroupId})`);
-    result += " -- ";
-
-    index.fields.forEach((field) => {
-      if (field.fieldPath === "__name__") {
-        return;
-      }
-
-      // Normal field indexes have an "order" while array indexes have an "arrayConfig",
-      // we want to display whichever one is present.
-      const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
-      result += `(${field.fieldPath},${orderOrArrayConfig}) `;
+  /**
+   * List the long-running Firestore operations.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param limit The maximum number of operations to list.
+   */
+  async listOperations(
+    project: string,
+    databaseId: string,
+    limit: number,
+  ): Promise<types.ListOperationsResponse> {
+    const url = `/projects/${project}/databases/${databaseId}/operations`;
+    const res = await this.apiClient.get<types.ListOperationsResponse>(url, {
+      queryParams: {
+        pageSize: limit,
+      },
     });
-
-    return result;
+    return res.body;
   }
 
   /**
-   * Get a colored, pretty-printed representation of a database
+   * Retrieves the information related to the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
    */
-  prettyDatabaseString(database: types.DatabaseResp): string {
-    return clc.yellow(database.name);
+  async describeOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}`;
+    const res = await this.apiClient.get<types.Operation>(url);
+    return res.body;
   }
 
   /**
-   * Get a colored, pretty-printed representation of a field
+   * Cancels the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
    */
-  private prettyFieldString(field: types.Field): string {
-    let result = "";
-
-    const parsedName = util.parseFieldName(field.name);
-
-    result +=
-      "[" +
-      clc.cyan(parsedName.collectionGroupId) +
-      "." +
-      clc.yellow(parsedName.fieldPath) +
-      "] --";
-
-    const fieldIndexes = field.indexConfig.indexes || [];
-    if (fieldIndexes.length > 0) {
-      fieldIndexes.forEach((index) => {
-        const firstField = index.fields[0];
-        const mode = firstField.order || firstField.arrayConfig;
-        result += ` (${mode})`;
-      });
-    } else {
-      result += " (no indexes)";
+  async cancelOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<{ success: boolean }> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}:cancel`;
+    try {
+      const res = await this.apiClient.post<void, void>(url);
+      return { success: res.status === 200 };
+    } catch (error) {
+      // For the cases when the user is trying to cancel an operation that has
+      // already completed, the response is not very useful. The error message is
+      // "Precondition check failed.". And one has to parse the details of the error
+      // stack to find out the real reason. We try to improve the error message here.
+      const reason = "Cannot cancel an operation that is completed.";
+      const details = (error as any).context?.body?.error?.details || [];
+      for (const detail of details) {
+        if (detail.detail?.includes(reason)) {
+          throw new FirebaseError(reason);
+        }
+      }
+      // If we weren't able to provide a better reason, rethrow the original error.
+      throw error;
     }
-    const fieldTtl = field.ttlConfig;
-    if (fieldTtl) {
-      result += ` TTL(${fieldTtl.state})`;
-    }
-
-    return result;
   }
 }

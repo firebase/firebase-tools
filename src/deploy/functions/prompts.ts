@@ -2,12 +2,14 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { promptOnce } from "../../prompt";
+import { confirm, number } from "../../prompt";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
+import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
+import { EndpointUpdate } from "./release/planner";
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -19,7 +21,7 @@ import { Options } from "../../options";
 export async function promptForFailurePolicies(
   options: Options,
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): Promise<void> {
   // Collect all the functions that have a retry policy
   const retryEndpoints = backend.allEndpoints(want).filter((e) => {
@@ -56,12 +58,7 @@ export async function promptForFailurePolicies(
       exit: 1,
     });
   }
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
@@ -75,11 +72,10 @@ export async function promptForFailurePolicies(
  */
 export async function promptForFunctionDeletion(
   functionsToDelete: (backend.TargetIds & { platform: backend.FunctionsPlatform })[],
-  force: boolean,
-  nonInteractive: boolean
+  options: Options,
 ): Promise<boolean> {
   let shouldDeleteFns = true;
-  if (functionsToDelete.length === 0 || force) {
+  if (functionsToDelete.length === 0 || options.force) {
     return true;
   }
   const deleteList = functionsToDelete
@@ -87,7 +83,7 @@ export async function promptForFunctionDeletion(
     .map((fn) => "\t" + getFunctionLabel(fn))
     .join("\n");
 
-  if (nonInteractive) {
+  if (options.nonInteractive) {
     const deleteCommands = functionsToDelete
       .map((func) => {
         return "\tfirebase functions:delete " + func.id + " --region " + func.region;
@@ -98,7 +94,7 @@ export async function promptForFunctionDeletion(
       "The following functions are found in your project but do not exist in your local source code:\n" +
         deleteList +
         "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
-        clc.bold(deleteCommands)
+        clc.bold(deleteCommands),
     );
   } else {
     logger.info(
@@ -106,17 +102,71 @@ export async function promptForFunctionDeletion(
         deleteList +
         "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
         "function first before deleting the old one to prevent event loss. For more info, visit " +
-        clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n")
+        clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n"),
     );
-    shouldDeleteFns = await promptOnce({
-      type: "confirm",
-      name: "confirm",
+    shouldDeleteFns = await confirm({
       default: false,
       message:
         "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
     });
   }
   return shouldDeleteFns;
+}
+
+/**
+ * Prompts users to confirm potentially unsafe function updates.
+ * Cases include:
+ * Migrating from 2nd gen Firestore  triggers to Firestore triggers with auth context
+ * @param fnsToUpdate An array of endpoint updates
+ * @param options
+ * @return An array of endpoints to proceed with updating
+ */
+export async function promptForUnsafeMigration(
+  fnsToUpdate: EndpointUpdate[],
+  options: Options,
+): Promise<EndpointUpdate[]> {
+  const unsafeUpdates = fnsToUpdate.filter((eu) => eu.unsafe);
+
+  if (unsafeUpdates.length === 0 || options.force) {
+    return fnsToUpdate;
+  }
+
+  const warnMessage =
+    "The following functions are unsafely changing event types: " +
+    clc.bold(
+      unsafeUpdates
+        .map((eu) => eu.endpoint)
+        .sort(backend.compareFunctions)
+        .map(getFunctionLabel)
+        .join(", "),
+    ) +
+    ". " +
+    "While automatic migration is allowed for these functions, updating the underlying event type may result in data loss. " +
+    "To avoid this, consider the best practices outlined in the migration guide: https://firebase.google.com/docs/functions/manage-functions?gen=2nd#modify-trigger";
+
+  utils.logLabeledWarning("functions", warnMessage);
+
+  const safeUpdates = fnsToUpdate.filter((eu) => !eu.unsafe);
+
+  if (options.nonInteractive) {
+    utils.logLabeledWarning(
+      "functions",
+      "Skipping updates for functions that may be unsafe to update. To update these functions anyway, deploy again in interactive mode or use the --force option.",
+    );
+    return safeUpdates;
+  }
+
+  for (const eu of unsafeUpdates) {
+    const shouldUpdate = await confirm({
+      message: `[${getFunctionLabel(
+        eu.endpoint,
+      )}] Would you like to proceed with the unsafe migration?`,
+    });
+    if (shouldUpdate) {
+      safeUpdates.push(eu);
+    }
+  }
+  return safeUpdates;
 }
 
 /**
@@ -130,7 +180,7 @@ export async function promptForFunctionDeletion(
 export async function promptForMinInstances(
   options: Options,
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): Promise<void> {
   if (options.force) {
     return;
@@ -163,7 +213,7 @@ export async function promptForMinInstances(
       "Pass the --force option to deploy functions that increase the minimum bill",
       {
         exit: 1,
-      }
+      },
     );
   }
 
@@ -203,13 +253,42 @@ export async function promptForMinInstances(
 
   utils.logLabeledWarning("functions", warnMessage);
 
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
+}
+
+/**
+ * Prompt users for days before containers are cleanuped up by the cleanup policy.
+ */
+export async function promptForCleanupPolicyDays(
+  options: Options,
+  locations: string[],
+): Promise<number> {
+  utils.logLabeledWarning(
+    "functions",
+    `No cleanup policy detected for repositories in ${locations.join(", ")}. ` +
+      "This may result in a small monthly bill as container images accumulate over time.",
+  );
+
+  if (options.force) {
+    return artifacts.DEFAULT_CLEANUP_DAYS;
+  }
+
+  if (options.nonInteractive) {
+    throw new FirebaseError(
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locations.length > 1 ? "locations" : "location"} ${locations.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to manually set up a cleanup policy.",
+    );
+  }
+
+  return await number({
+    default: artifacts.DEFAULT_CLEANUP_DAYS,
+    message: "How many days do you want to keep container images before they're deleted?",
+    validate: (days) =>
+      !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
+  });
 }

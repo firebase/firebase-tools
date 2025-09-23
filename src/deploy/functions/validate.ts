@@ -12,7 +12,7 @@ import { serviceForEndpoint } from "./services";
 
 function matchingIds(
   endpoints: backend.Endpoint[],
-  filter: (endpoint: backend.Endpoint) => boolean
+  filter: (endpoint: backend.Endpoint) => boolean,
 ): string {
   return endpoints
     .filter(filter)
@@ -39,7 +39,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
   const gcfV1WithConcurrency = matchingIds(
     endpoints,
-    (endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1"
+    (endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1",
   );
   if (gcfV1WithConcurrency.length) {
     const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency} because they are GCF gen 1`;
@@ -69,7 +69,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
 export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   const gcfV1WithCPU = matchingIds(
     endpoints,
-    (endpoint) => endpoint.platform === "gcfv1" && typeof endpoint["cpu"] !== "undefined"
+    (endpoint) => endpoint.platform === "gcfv1" && typeof endpoint["cpu"] !== "undefined",
   );
   if (gcfV1WithCPU.length) {
     const msg = `Cannot set CPU on the functions ${gcfV1WithCPU} because they are GCF gen 1`;
@@ -95,7 +95,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   const smallCPURegions = ["australia-southeast2", "asia-northeast3", "asia-south2"];
   const tooBigCPUForRegion = matchingIds(
     endpoints,
-    (endpoint) => smallCPURegions.includes(endpoint.region) && cpu(endpoint) > 4
+    (endpoint) => smallCPURegions.includes(endpoint.region) && cpu(endpoint) > 4,
   );
   if (tooBigCPUForRegion) {
     const msg = `The functions ${tooBigCPUForRegion} have > 4 CPU in a region that supports a maximum 4 CPU`;
@@ -104,7 +104,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
 
   const tooSmallCPUSmall = matchingIds(
     endpoints,
-    (endpoint) => mem(endpoint) > 512 && cpu(endpoint) < 0.5
+    (endpoint) => mem(endpoint) > 512 && cpu(endpoint) < 0.5,
   );
   if (tooSmallCPUSmall) {
     const msg = `The functions ${tooSmallCPUSmall} have too little CPU for their memory allocation. A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB`;
@@ -113,7 +113,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
 
   const tooSmallCPUBig = matchingIds(
     endpoints,
-    (endpoint) => mem(endpoint) > 1024 && cpu(endpoint) < 1
+    (endpoint) => mem(endpoint) > 1024 && cpu(endpoint) < 1,
   );
   if (tooSmallCPUBig) {
     const msg = `The functions ${tooSmallCPUSmall} have too little CPU for their memory allocation. A minimum of 1 CPU is needed to set a memory limit greater than 1GiB`;
@@ -121,7 +121,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   }
   const tooSmallMemory4CPU = matchingIds(
     endpoints,
-    (endpoint) => cpu(endpoint) === 4 && mem(endpoint) < 2 << 10
+    (endpoint) => cpu(endpoint) === 4 && mem(endpoint) < 2 << 10,
   );
   if (tooSmallMemory4CPU) {
     const msg = `The functions ${tooSmallMemory4CPU} have too little memory for their CPU. Functions with 4 CPU require at least 2GiB`;
@@ -129,7 +129,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   }
   const tooSmallMemory6CPU = matchingIds(
     endpoints,
-    (endpoint) => cpu(endpoint) === 6 && mem(endpoint) < 3 << 10
+    (endpoint) => cpu(endpoint) === 6 && mem(endpoint) < 3 << 10,
   );
   if (tooSmallMemory6CPU) {
     const msg = `The functions ${tooSmallMemory6CPU} have too little memory for their CPU. Functions with 6 CPU require at least 3GiB`;
@@ -137,7 +137,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   }
   const tooSmallMemory8CPU = matchingIds(
     endpoints,
-    (endpoint) => cpu(endpoint) === 8 && mem(endpoint) < 4 << 10
+    (endpoint) => cpu(endpoint) === 8 && mem(endpoint) < 4 << 10,
   );
   if (tooSmallMemory8CPU) {
     const msg = `The functions ${tooSmallMemory8CPU} have too little memory for their CPU. Functions with 8 CPU require at least 4GiB`;
@@ -171,7 +171,7 @@ export function endpointsAreUnique(backends: Record<string, backend.Backend>): v
 
   const msgs = Object.entries(conflicts).map(([fn, codebases]) => `${fn}: ${codebases.join(",")}`);
   throw new FirebaseError(
-    "More than one codebase claims following functions:\n\t" + `${msgs.join("\n\t")}`
+    "More than one codebase claims following functions:\n\t" + `${msgs.join("\n\t")}`,
   );
 }
 
@@ -233,7 +233,7 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`
+        `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`,
     );
   }
 }
@@ -257,7 +257,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       const sv = await getSecretVersion(projectId, secret, "latest");
       logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
       return sv;
-    })
+    }),
   );
 
   const secretVersions: Record<string, SecretVersion> = {};
@@ -268,8 +268,8 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       if (sv.state !== "ENABLED") {
         errs.push(
           new FirebaseError(
-            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
-          )
+            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`,
+          ),
         );
       }
       secretVersions[sv.secret.name] = sv;
@@ -287,7 +287,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
     s.version = secretVersions[s.secret].versionId;
     if (!s.version) {
       throw new FirebaseError(
-        "Secret version is unexpectedly undefined. This should never happen."
+        "Secret version is unexpectedly undefined. This should never happen.",
       );
     }
   }

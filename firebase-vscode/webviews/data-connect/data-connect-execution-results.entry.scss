@@ -1,0 +1,37 @@
+@import "../globals/index.scss";
+
+.l1 {
+  text-transform: capitalize;
+}
+
+body {
+  padding: 0;
+
+  // Somehow #root does not seem to be usable within this file.
+  & > div {
+    min-width: calc(100% - (var(--container-padding) * 2));
+    // Fill the horizontal space, and on text overflow,
+    // have the text-overflow expand the horizontal space
+    display: inline-flex !important;
+    // If one item overflows horizontally, have all items
+    // use the same width for consistency
+    align-items: stretch;
+
+    padding: var(--container-padding);
+  }
+
+  code {
+    pre {
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      padding: 1em;
+      margin-top: 0;
+      font-family: monospace;
+    }
+  }
+
+  // Placing in "body" to override the global styles
+  p {
+    margin-bottom: 1em;
+  }
+}

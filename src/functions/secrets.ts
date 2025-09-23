@@ -1,12 +1,15 @@
 import * as utils from "../utils";
 import * as poller from "../operation-poller";
-import * as gcf from "../gcp/cloudfunctions";
+import * as gcfV1 from "../gcp/cloudfunctions";
+import * as gcfV2 from "../gcp/cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
+import { functionsOrigin, functionsV2Origin } from "../api";
 import {
   createSecret,
   destroySecretVersion,
   getSecret,
   getSecretVersion,
+  isAppHostingManaged,
   listSecrets,
   listSecretVersions,
   parseSecretResourceName,
@@ -17,33 +20,37 @@ import {
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { validateKey } from "./env";
 import { logger } from "../logger";
-import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
+import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
+import { labels } from "../gcp/secretManager";
+import { needProjectId } from "../projectUtils";
+import * as Table from "cli-table3";
 
-const FIREBASE_MANAGED = "firebase-managed";
+// For mysterious reasons, importing the poller option in fabricator.ts leads to some
+// value of the poller option to be undefined at runtime. I can't figure out what's going on,
+// but don't have time to find out. Taking a shortcut and copying the values directly in
+// violation of DRY. Sorry!
+const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: functionsOrigin(),
+  apiVersion: "v1",
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
+};
+
+const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: functionsV2Origin(),
+  apiVersion: "v2",
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
+};
 
 type ProjectInfo = {
   projectId: string;
   projectNumber: string;
 };
-
-/**
- * Returns true if secret is managed by Firebase.
- */
-export function isFirebaseManaged(secret: Secret): boolean {
-  return Object.keys(secret.labels || []).includes(FIREBASE_MANAGED);
-}
-
-/**
- * Return labels to mark secret as managed by Firebase.
- * @internal
- */
-export function labels(): Record<string, string> {
-  return { [FIREBASE_MANAGED]: "true" };
-}
 
 function toUpperSnakeCase(key: string): string {
   return key
@@ -62,16 +69,13 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
     logWarning(`By convention, secret key must be in UPPER_SNAKE_CASE.`);
-    const confirm = await promptOnce(
-      {
-        name: "updateKey",
-        type: "confirm",
-        default: true,
-        message: `Would you like to use ${transformedKey} as key instead?`,
-      },
-      options
-    );
-    if (!confirm) {
+    const useTransformed = await confirm({
+      default: true,
+      message: `Would you like to use ${transformedKey} as key instead?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+    if (!useTransformed) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
   }
@@ -89,26 +93,40 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
 export async function ensureSecret(
   projectId: string,
   name: string,
-  options: Options
+  options: Options,
 ): Promise<Secret> {
   try {
     const secret = await getSecret(projectId, name);
-    if (!isFirebaseManaged(secret)) {
+    if (isAppHostingManaged(secret)) {
+      logWarning(
+        "Your secret is managed by Firebase App Hosting. Continuing will disable automatic deletion of old versions.",
+      );
+      const stopTracking = await confirm({
+        message: "Do you wish to continue?",
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
+      if (stopTracking) {
+        delete secret.labels[FIREBASE_MANAGED];
+        await patchSecret(secret.projectId, secret.name, secret.labels);
+      } else {
+        throw new Error(
+          "A secret cannot be managed by both Firebase App Hosting and Cloud Functions for Firebase",
+        );
+      }
+    } else if (!isFunctionsManaged(secret)) {
       if (!options.force) {
         logWarning(
-          "Your secret is not managed by Firebase. " +
-            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. "
+          "Your secret is not managed by Cloud Functions for Firebase. " +
+            "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
-        const confirm = await promptOnce(
-          {
-            name: "updateLabels",
-            type: "confirm",
-            default: true,
-            message: `Would you like to have your secret ${secret.name} managed by Firebase?`,
-          },
-          options
-        );
-        if (confirm) {
+        const updateLabels = await confirm({
+          default: true,
+          message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+        });
+        if (updateLabels) {
           return patchSecret(projectId, secret.name, {
             ...secret.labels,
             ...labels(),
@@ -131,7 +149,7 @@ export async function ensureSecret(
 export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
   return endpoints.reduce(
     (envs, endpoint) => [...envs, ...(endpoint.secretEnvironmentVariables || [])],
-    [] as backend.SecretEnvVar[]
+    [] as backend.SecretEnvVar[],
   );
 }
 
@@ -139,10 +157,13 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  * Generates an object mapping secret's with their versions.
  */
 export function getSecretVersions(endpoint: backend.Endpoint): Record<string, string> {
-  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
-    memo[secret] = version || "";
-    return memo;
-  }, {} as Record<string, string>);
+  return (endpoint.secretEnvironmentVariables || []).reduce(
+    (memo, { secret, version }) => {
+      memo[secret] = version || "";
+      return memo;
+    },
+    {} as Record<string, string>,
+  );
 }
 
 /**
@@ -162,11 +183,32 @@ export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backen
 }
 
 /**
+ * Checks whether a secret version in use by the given endpoint.
+ */
+export function versionInUse(
+  projectInfo: ProjectInfo,
+  sv: SecretVersion,
+  endpoint: backend.Endpoint,
+): boolean {
+  const { projectId, projectNumber } = projectInfo;
+  for (const sev of of([endpoint])) {
+    if (
+      (sev.projectId === projectId || sev.projectId === projectNumber) &&
+      sev.secret === sv.secret.name &&
+      sev.version === sv.versionId
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<Required<backend.SecretEnvVar>[]> {
   const { projectId, projectNumber } = projectInfo;
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
@@ -229,14 +271,14 @@ type PruneResult = {
  */
 export async function pruneAndDestroySecrets(
   projectInfo: ProjectInfo,
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): Promise<PruneResult> {
   const { projectId, projectNumber } = projectInfo;
 
   logger.debug("Pruning secrets to find unused secret versions...");
   const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
-    endpoints
+    endpoints,
   );
 
   if (unusedSecrets.length === 0) {
@@ -251,7 +293,7 @@ export async function pruneAndDestroySecrets(
     unusedSecrets.map(async (sev) => {
       await destroySecretVersion(sev.projectId, sev.secret, sev.version);
       return sev;
-    })
+    }),
   );
 
   for (const result of destroyResults) {
@@ -270,7 +312,7 @@ export async function pruneAndDestroySecrets(
 export async function updateEndpointSecret(
   projectInfo: ProjectInfo,
   secretVersion: SecretVersion,
-  endpoint: backend.Endpoint
+  endpoint: backend.Endpoint,
 ): Promise<backend.Endpoint> {
   const { projectId, projectNumber } = projectInfo;
 
@@ -291,29 +333,55 @@ export async function updateEndpointSecret(
   }
 
   if (endpoint.platform === "gcfv1") {
-    const fn = gcf.functionFromEndpoint(endpoint, "");
-    const op = await gcf.updateFunction({
+    const fn = gcfV1.functionFromEndpoint(endpoint, "");
+    const op = await gcfV1.updateFunction({
       name: fn.name,
       runtime: fn.runtime,
       entryPoint: fn.entryPoint,
       secretEnvironmentVariables: updatedSevs,
     });
-    // Using fabricator.gcfV1PollerOptions doesn't work - apiVersion is empty on that object.
-    // Possibly due to cyclical dependency? Copying the option in verbatim instead.
-    const gcfV1PollerOptions = {
-      apiOrigin: functionsOrigin,
-      apiVersion: gcf.API_VERSION,
-      masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
-      maxBackoff: 10_000,
-      pollerName: `update-${endpoint.region}-${endpoint.id}`,
+    const cfn = await poller.pollOperation<gcfV1.CloudFunction>({
+      ...gcfV1PollerOptions,
       operationResourceName: op.name,
-    };
-    const cfn = await poller.pollOperation<gcf.CloudFunction>(gcfV1PollerOptions);
-    return gcf.endpointFromFunction(cfn);
+    });
+    return gcfV1.endpointFromFunction(cfn);
   } else if (endpoint.platform === "gcfv2") {
-    // TODO add support for updating secrets in v2 functions once the feature lands.
-    throw new FirebaseError(`Unsupported platform ${endpoint.platform}`);
+    const fn = gcfV2.functionFromEndpoint(endpoint);
+    const op = await gcfV2.updateFunction({
+      ...fn,
+      serviceConfig: {
+        ...fn.serviceConfig,
+        secretEnvironmentVariables: updatedSevs,
+      },
+    });
+    const cfn = await poller.pollOperation<gcfV2.OutputCloudFunction>({
+      ...gcfV2PollerOptions,
+      operationResourceName: op.name,
+    });
+    return gcfV2.endpointFromFunction(cfn);
+  } else if (endpoint.platform === "run") {
+    // This may be tricky because the image has been deleted. How does this work
+    // with GCF?
+    throw new FirebaseError("Updating Cloud Run functions is not yet implemented.");
   } else {
     assertExhaustive(endpoint.platform);
   }
+}
+
+/**
+ * Describe the given secret.
+ */
+export async function describeSecret(key: string, options: Options): Promise<any> {
+  const projectId = needProjectId(options);
+  const versions = await listSecretVersions(projectId, key);
+
+  const table = new Table({
+    head: ["Version", "State"],
+    style: { head: ["yellow"] },
+  });
+  for (const version of versions) {
+    table.push([version.versionId, version.state]);
+  }
+  logger.info(table.toString());
+  return { secrets: versions };
 }

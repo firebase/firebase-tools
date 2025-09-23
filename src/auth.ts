@@ -1,25 +1,22 @@
 import * as clc from "colorette";
 import * as FormData from "form-data";
-import * as fs from "fs";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
-import * as path from "path";
 import * as portfinder from "portfinder";
 import * as url from "url";
-import * as util from "util";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { promptOnce } from "./prompt";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
-import { track } from "./track";
+import { trackGA4 } from "./track";
 import {
   authOrigin,
   authProxyOrigin,
@@ -32,6 +29,7 @@ import {
 } from "./api";
 import {
   Account,
+  AuthError,
   User,
   Tokens,
   TokensWithExpiration,
@@ -39,6 +37,8 @@ import {
   GitHubAuthResponse,
   UserCredentials,
 } from "./types/auth";
+import { readTemplate } from "./templates";
+import { refreshAuth } from "./requireAuth";
 
 portfinder.setBasePort(9005);
 
@@ -106,6 +106,23 @@ export function getAllAccounts(): Account[] {
 }
 
 /**
+ * Throw an error if the provided email is not a signed-in user.
+ */
+export function assertAccount(email: string, options?: { mcp?: boolean }) {
+  const allAccounts = getAllAccounts();
+  const accountExists = allAccounts.some((a) => a.user.email === email);
+  if (!accountExists) {
+    throw new FirebaseError(
+      `Account ${email} does not exist, ${
+        options?.mcp
+          ? `use the 'firebase_get_environment' tool to see available accounts or instruct the user to use the 'firebase login:add' terminal command to add a new account.`
+          : `run "${clc.bold("firebase login:list")} to see valid accounts`
+      }`,
+    );
+  }
+}
+
+/**
  * Set the globally active account. Modifies the options object
  * and sets global refresh token state.
  * @param options options object.
@@ -153,7 +170,7 @@ export function selectAccount(account?: string, projectRoot?: string): Account |
   }
 
   throw new FirebaseError(
-    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`
+    `Account ${account} not found, run "firebase login:list" to see existing accounts or "firebase login:add" to add a new one`,
   );
 }
 
@@ -188,9 +205,7 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
     utils.logWarning(`Already logged in as ${resultEmail}.`);
     updateAccount(newAccount);
   } else {
-    const additionalAccounts = getAdditionalAccounts();
-    additionalAccounts.push(newAccount);
-    configstore.set("additionalAccounts", additionalAccounts);
+    addAdditionalAccount(newAccount);
   }
 
   return newAccount;
@@ -212,7 +227,19 @@ export function setProjectAccount(projectDir: string, email: string) {
 /**
  * Set the global default account.
  */
-export function setGlobalDefaultAccount(account: Account) {
+export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
+  let account: Account;
+  if (typeof accountOrEmail === "string") {
+    const accountFromEmail = getAllAccounts().find((acc) => acc.user.email === accountOrEmail)!;
+    if (!accountFromEmail)
+      throw new FirebaseError(
+        `Account '${accountOrEmail}' is not a signed-in user on this device.`,
+      );
+    account = accountFromEmail;
+  } else {
+    account = accountOrEmail;
+  }
+
   configstore.set("user", account.user);
   configstore.set("tokens", account.tokens);
 
@@ -232,14 +259,14 @@ function open(url: string): void {
 
 // Always create a new error so that the stack is useful
 function invalidCredentialError(): FirebaseError {
-  return new FirebaseError(
+  const message =
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
-    { exit: 1 }
-  );
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci");
+  logger.error(message);
+  return new FirebaseError(message, { exit: 1 });
 }
 
 const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;
@@ -276,10 +303,10 @@ function queryParamString(args: { [key: string]: string | undefined }) {
 
 function getLoginUrl(callbackUrl: string, userHint?: string) {
   return (
-    authOrigin +
+    authOrigin() +
     "/o/oauth2/auth?" +
     queryParamString({
-      client_id: clientId,
+      client_id: clientId(),
       scope: SCOPES.join(" "),
       response_type: "code",
       state: _nonce,
@@ -292,12 +319,12 @@ function getLoginUrl(callbackUrl: string, userHint?: string) {
 async function getTokensFromAuthorizationCode(
   code: string,
   callbackUrl: string,
-  verifier?: string
+  verifier?: string,
 ) {
   const params: Record<string, string> = {
     code: code,
-    client_id: clientId,
-    client_secret: clientSecret,
+    client_id: clientId(),
+    client_secret: clientSecret(),
     redirect_uri: callbackUrl,
     grant_type: "authorization_code",
   };
@@ -308,7 +335,7 @@ async function getTokensFromAuthorizationCode(
 
   let res: apiv2.ClientResponse<TokensWithTTL>;
   try {
-    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: authOrigin(), auth: false });
     const form = new FormData();
     for (const [k, v] of Object.entries(params)) {
       form.append(k, v);
@@ -320,7 +347,7 @@ async function getTokensFromAuthorizationCode(
       headers: form.getHeaders(),
       skipLog: { body: true, queryParams: true, resBody: true },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Error) {
       logger.debug("Token Fetch Error:", err.stack || "");
     } else {
@@ -336,7 +363,7 @@ async function getTokensFromAuthorizationCode(
     {
       expires_at: Date.now() + res.body.expires_in! * 1000,
     },
-    res.body
+    res.body,
   );
   return lastAccessToken;
 }
@@ -345,10 +372,10 @@ const GITHUB_SCOPES = ["read:user", "repo", "public_repo"];
 
 function getGithubLoginUrl(callbackUrl: string) {
   return (
-    githubOrigin +
+    githubOrigin() +
     "/login/oauth/authorize?" +
     queryParamString({
-      client_id: githubClientId,
+      client_id: githubClientId(),
       state: _nonce,
       redirect_uri: callbackUrl,
       scope: GITHUB_SCOPES.join(" "),
@@ -357,10 +384,10 @@ function getGithubLoginUrl(callbackUrl: string) {
 }
 
 async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: string) {
-  const client = new apiv2.Client({ urlPrefix: githubOrigin, auth: false });
+  const client = new apiv2.Client({ urlPrefix: githubOrigin(), auth: false });
   const data = {
-    client_id: githubClientId,
-    client_secret: githubClientSecret,
+    client_id: githubClientId(),
+    client_secret: githubClientSecret(),
     code,
     redirect_uri: callbackUrl,
     state: _nonce,
@@ -380,18 +407,17 @@ async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: s
   return res.body.access_token;
 }
 
-async function respondWithFile(
+function respondHtml(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   statusCode: number,
-  filename: string
-) {
-  const response = await util.promisify(fs.readFile)(path.join(__dirname, filename));
+  html: string,
+): void {
   res.writeHead(statusCode, {
-    "Content-Length": response.length,
+    "Content-Length": html.length,
     "Content-Type": "text/html",
   });
-  res.end(response);
+  res.end(html);
   req.socket.destroy();
 }
 
@@ -399,9 +425,15 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(): Promise<UserCredentials> {
+interface PrototyperRes {
+  uri: string;
+  sessionId: string;
+  authorize: (authorizationCode: string) => Promise<UserCredentials>;
+}
+
+export async function loginPrototyper(): Promise<PrototyperRes> {
   const authProxyClient = new apiv2.Client({
-    urlPrefix: authProxyOrigin,
+    urlPrefix: authProxyOrigin(),
     auth: false,
   });
 
@@ -416,7 +448,56 @@ async function loginRemotely(): Promise<UserCredentials> {
     })
   ).body?.token;
 
-  const loginUrl = `${authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}&studio_prototyper=true}`;
+  return {
+    uri: loginUrl,
+    sessionId: sessionId.substring(0, 5).toUpperCase(),
+    authorize: async (code: string) => {
+      const tokens = await getTokensFromAuthorizationCode(
+        code,
+        `${authProxyOrigin()}/complete`,
+        codeVerifier,
+      );
+
+      const creds = {
+        user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+        tokens: tokens,
+        scopes: SCOPES,
+      };
+      recordCredentials(creds);
+      return creds;
+    },
+  };
+}
+
+// recordCredentials saves credentials to configstore to be used in future command runs.
+export function recordCredentials(creds: UserCredentials) {
+  configstore.set("user", creds.user);
+  configstore.set("tokens", creds.tokens);
+  // store login scopes in case mandatory scopes grow over time
+  configstore.set("loginScopes", creds.scopes);
+  // remove old session token, if it exists
+  configstore.delete("session");
+}
+
+async function loginRemotely(): Promise<UserCredentials> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: authProxyOrigin(),
+    auth: false,
+  });
+
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body.token;
+
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
   logger.info();
   logger.info("To sign in to the Firebase CLI:");
@@ -432,22 +513,19 @@ async function loginRemotely(): Promise<UserCredentials> {
   logger.info("3. Paste or enter the authorization code below once you have it:");
   logger.info();
 
-  const code = await promptOnce({
-    type: "input",
-    message: "Enter authorization code:",
-  });
+  const code = await input({ message: "Enter authorization code:" });
 
   try {
     const tokens = await getTokensFromAuthorizationCode(
       code,
-      `${authProxyOrigin}/complete`,
-      codeVerifier
+      `${authProxyOrigin()}/complete`,
+      codeVerifier,
     );
 
-    void track("login", "google_remote");
+    void trackGA4("login", { method: "google_remote" });
 
     return {
-      user: jwt.decode(tokens.id_token!) as User,
+      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
       tokens: tokens,
       scopes: SCOPES,
     };
@@ -459,20 +537,20 @@ async function loginRemotely(): Promise<UserCredentials> {
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getLoginUrl(callbackUrl, userHint);
-  const successTemplate = "../templates/loginSuccess.html";
+  const successHtml = await readTemplate("loginSuccess.html");
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
-    successTemplate,
-    getTokensFromAuthorizationCode
+    successHtml,
+    getTokensFromAuthorizationCode,
   );
 
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "google_localhost" });
   // getTokensFromAuthoirzationCode doesn't handle the --token case, so we know we'll
   // always have an id_token.
   return {
-    user: jwt.decode(tokens.id_token!) as User,
+    user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
     tokens: tokens,
     scopes: tokens.scopes!,
   };
@@ -481,15 +559,15 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
 async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
-  const successTemplate = "../templates/loginSuccessGithub.html";
+  const successHtml = await readTemplate("loginSuccessGithub.html");
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
     authUrl,
-    successTemplate,
-    getGithubTokensFromAuthorizationCode
+    successHtml,
+    getGithubTokensFromAuthorizationCode,
   );
-  void track("login", "google_localhost");
+  void trackGA4("login", { method: "github_localhost" });
   return tokens;
 }
 
@@ -497,8 +575,8 @@ async function loginWithLocalhost<ResultType>(
   port: number,
   callbackUrl: string,
   authUrl: string,
-  successTemplate: string,
-  getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>
+  successHtml: string,
+  getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
@@ -507,7 +585,8 @@ async function loginWithLocalhost<ResultType>(
       const queryCode = query.code;
 
       if (queryState !== _nonce || typeof queryCode !== "string") {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+        const html = await readTemplate("loginFailure.html");
+        respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
         server.close();
         return;
@@ -515,10 +594,11 @@ async function loginWithLocalhost<ResultType>(
 
       try {
         const tokens = await getTokens(queryCode, callbackUrl);
-        await respondWithFile(req, res, 200, successTemplate);
+        respondHtml(req, res, 200, successHtml);
         resolve(tokens);
-      } catch (err: any) {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+      } catch (err: unknown) {
+        const html = await readTemplate("loginFailure.html");
+        respondHtml(req, res, 400, html);
         reject(err);
       }
       server.close();
@@ -562,7 +642,20 @@ export function findAccountByEmail(email: string): Account | undefined {
   return getAllAccounts().find((a) => a.user.email === email);
 }
 
-function haveValidTokens(refreshToken: string, authScopes: string[]) {
+export function loggedIn() {
+  return !!lastAccessToken;
+}
+
+export function isExpired(tokens: Tokens | undefined): boolean {
+  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.expires_at;
+  if (hasExpiration(tokens)) {
+    return !(tokens && tokens.expires_at && tokens.expires_at > Date.now());
+  } else {
+    return !tokens;
+  }
+}
+
+export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
     if (refreshToken === tokens?.refresh_token) {
@@ -576,9 +669,16 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
   const hasSameScopes = oldScopesJSON === newScopesJSON;
   // To avoid token expiration in the middle of a long process we only hand out
   // tokens if they have a _long_ time before the server rejects them.
-  const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
-
-  return hasTokens && hasSameScopes && !isExpired;
+  const expired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
+  const valid = hasTokens && hasSameScopes && !expired;
+  if (hasTokens) {
+    logger.debug(
+      `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
+    );
+  } else {
+    logger.debug("No OAuth tokens found");
+  }
+  return valid;
 }
 
 function deleteAccount(account: Account) {
@@ -637,15 +737,15 @@ function logoutCurrentSession(refreshToken: string) {
 
 async function refreshTokens(
   refreshToken: string,
-  authScopes: string[]
+  authScopes: string[],
 ): Promise<TokensWithExpiration> {
   logger.debug("> refreshing access token with scopes:", JSON.stringify(authScopes));
   try {
-    const client = new apiv2.Client({ urlPrefix: googleOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: googleOrigin(), auth: false });
     const data = {
       refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId(),
+      client_secret: clientSecret(),
       grant_type: "refresh_token",
       scope: (authScopes || []).join(" "),
     };
@@ -653,7 +753,7 @@ async function refreshTokens(
     for (const [k, v] of Object.entries(data)) {
       form.append(k, v);
     }
-    const res = await client.request<FormData, TokensWithTTL>({
+    const res = await client.request<FormData, TokensWithTTL & AuthError>({
       method: "POST",
       path: "/oauth2/v3/token",
       body: form,
@@ -661,6 +761,15 @@ async function refreshTokens(
       skipLog: { body: true, queryParams: true, resBody: true },
       resolveOnHTTPError: true,
     });
+    const forceReauthErrs: AuthError[] = [
+      { error: "invalid_grant", error_subtype: "invalid_rapt" }, // Cloud Session Control expiry
+    ];
+    const matches = (a: AuthError, b: AuthError) => {
+      return a.error === b.error && a.error_subtype === b.error_subtype;
+    };
+    if (forceReauthErrs.some((a) => matches(a, res.body))) {
+      throw invalidCredentialError();
+    }
     if (res.status === 401 || res.status === 400) {
       // Support --token <token> commands. In this case we won't have an expiration
       // time, scopes, etc.
@@ -676,7 +785,7 @@ async function refreshTokens(
         refresh_token: refreshToken,
         scopes: authScopes,
       },
-      res.body
+      res.body,
     );
 
     const account = findAccountByRefreshToken(refreshToken);
@@ -694,7 +803,7 @@ async function refreshTokens(
           "\n\n" +
           "For CI servers and headless environments, generate a new token with " +
           clc.bold("firebase login:ci"),
-        { exit: 1 }
+        { exit: 1 },
       );
     }
 
@@ -702,12 +811,20 @@ async function refreshTokens(
   }
 }
 
-export async function getAccessToken(refreshToken: string, authScopes: string[]) {
-  if (haveValidTokens(refreshToken, authScopes)) {
+export async function getAccessToken(refreshToken: string, authScopes: string[]): Promise<Tokens> {
+  if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
-
-  return refreshTokens(refreshToken, authScopes);
+  if (refreshToken) {
+    return refreshTokens(refreshToken, authScopes);
+  } else {
+    try {
+      return refreshAuth();
+    } catch (err: unknown) {
+      logger.debug(`Unable to refresh token: ${getErrMsg(err)}`);
+    }
+    throw new FirebaseError("Unable to getAccessToken");
+  }
 }
 
 export async function logout(refreshToken: string) {
@@ -716,7 +833,7 @@ export async function logout(refreshToken: string) {
   }
   logoutCurrentSession(refreshToken);
   try {
-    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    const client = new apiv2.Client({ urlPrefix: authOrigin(), auth: false });
     await client.get("/o/oauth2/revoke", { queryParams: { token: refreshToken } });
   } catch (thrown: any) {
     const err: Error = thrown instanceof Error ? thrown : new Error(thrown);
@@ -725,4 +842,14 @@ export async function logout(refreshToken: string) {
       original: err,
     });
   }
+}
+
+/**
+ * adds an account to the list of additional accounts.
+ * @param account the account to add.
+ */
+export function addAdditionalAccount(account: Account): void {
+  const additionalAccounts = getAdditionalAccounts();
+  additionalAccounts.push(account);
+  configstore.set("additionalAccounts", additionalAccounts);
 }

@@ -27,7 +27,7 @@ import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
 import {
   _getCommand,
-  DownloadDetails,
+  getDownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
@@ -51,12 +51,12 @@ export class StorageRulesetInstance {
   constructor(
     private runtime: StorageRulesRuntime,
     private rulesVersion: number,
-    private rulesetName: string
+    private rulesetName: string,
   ) {}
 
   async verify(
     opts: RulesetVerificationOpts,
-    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
+    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {},
   ): Promise<{
     permitted?: boolean;
     issues: StorageRulesIssues;
@@ -64,7 +64,7 @@ export class StorageRulesetInstance {
     if (opts.method === RulesetOperationMethod.LIST && this.rulesVersion < 2) {
       const issues = new StorageRulesIssues();
       issues.warnings.push(
-        "Permission denied. List operations are only allowed for rules_version='2'."
+        "Permission denied. List operations are only allowed for rules_version='2'.",
       );
       return {
         permitted: false,
@@ -81,7 +81,10 @@ export class StorageRulesetInstance {
 }
 
 export class StorageRulesIssues {
-  constructor(public errors: string[] = [], public warnings: string[] = []) {}
+  constructor(
+    public errors: string[] = [],
+    public warnings: string[] = [],
+  ) {}
 
   static fromResponse(resp: RuntimeActionResponse) {
     return new StorageRulesIssues(resp.errors || [], resp.warnings || []);
@@ -118,7 +121,10 @@ export class StorageRulesRuntime {
   }
 
   async start(autoDownload = true) {
-    const downloadDetails = DownloadDetails[Emulators.STORAGE];
+    if (this.alive) {
+      return;
+    }
+    const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {
@@ -126,8 +132,8 @@ export class StorageRulesRuntime {
         if (process.env.CI) {
           utils.logWarning(
             `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
-              Emulators.STORAGE
-            )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
+              Emulators.STORAGE,
+            )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`,
           );
         }
 
@@ -144,11 +150,10 @@ export class StorageRulesRuntime {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this._childprocess.on("exit", (code) => {
+    this._childprocess.on("exit", () => {
       this._alive = false;
-      if (code !== 130 /* SIGINT */) {
-        throw new FirebaseError("Storage Emulator Rules runtime exited unexpectedly.");
-      }
+      this._childprocess?.removeAllListeners();
+      this._childprocess = undefined;
     });
 
     const startPromise = new Promise((resolve) => {
@@ -162,8 +167,8 @@ export class StorageRulesRuntime {
     });
 
     // This catches error when spawning the java process
-    this._childprocess.on("error", (err) => {
-      handleEmulatorProcessError(Emulators.STORAGE, err);
+    this._childprocess.on("error", (err: any) => {
+      void handleEmulatorProcessError(Emulators.STORAGE, err);
     });
 
     // This catches errors from the java process (i.e. missing jar file)
@@ -172,12 +177,12 @@ export class StorageRulesRuntime {
       if (error.includes("jarfile")) {
         EmulatorLogger.forEmulator(Emulators.STORAGE).log("ERROR", error);
         throw new FirebaseError(
-          "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again"
+          "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again",
         );
       } else {
         EmulatorLogger.forEmulator(Emulators.STORAGE).log(
           "WARN",
-          `Unexpected rules runtime error: ${buf.toString()}`
+          `Unexpected rules runtime error: ${buf.toString()}`,
         );
       }
     });
@@ -191,7 +196,7 @@ export class StorageRulesRuntime {
         } catch (err: any) {
           EmulatorLogger.forEmulator(Emulators.STORAGE).log(
             "INFO",
-            serializedRuntimeActionResponse
+            serializedRuntimeActionResponse,
           );
           return;
         }
@@ -221,14 +226,24 @@ export class StorageRulesRuntime {
     return startPromise;
   }
 
-  stop() {
-    this._childprocess?.kill("SIGINT");
+  stop(): Promise<void> {
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log("DEBUG", "Stopping rules runtime.");
+    return new Promise<void>((resolve) => {
+      if (this.alive) {
+        this._childprocess!.on("exit", () => {
+          resolve();
+        });
+        this._childprocess?.kill("SIGINT");
+      } else {
+        resolve();
+      }
+    });
   }
 
   private async _sendRequest(rab: RuntimeActionBundle, overrideId?: number) {
     if (!this._childprocess) {
       throw new FirebaseError(
-        "Attempted to send Cloud Storage rules request before child was ready"
+        "Failed to send Cloud Storage rules request due to rules runtime not available.",
       );
     }
 
@@ -282,7 +297,7 @@ export class StorageRulesRuntime {
     };
 
     const response = (await this._sendRequest(
-      runtimeActionRequest
+      runtimeActionRequest,
     )) as RuntimeActionLoadRulesetResponse;
 
     if (response.errors.length) {
@@ -295,7 +310,7 @@ export class StorageRulesRuntime {
         ruleset: new StorageRulesetInstance(
           this,
           response.result.rulesVersion,
-          runtimeActionRequest.context.rulesetName
+          runtimeActionRequest.context.rulesetName,
         ),
       };
     }
@@ -304,7 +319,7 @@ export class StorageRulesRuntime {
   async verifyWithRuleset(
     rulesetName: string,
     opts: RulesetVerificationOpts,
-    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
+    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {},
   ): Promise<
     Promise<{
       permitted?: boolean;
@@ -343,14 +358,14 @@ export class StorageRulesRuntime {
   private async _completeVerifyWithRuleset(
     projectId: string,
     runtimeActionRequest: RuntimeActionBundle,
-    overrideId?: number
+    overrideId?: number,
   ): Promise<{
     permitted?: boolean;
     issues: StorageRulesIssues;
   }> {
     const response = (await this._sendRequest(
       runtimeActionRequest,
-      overrideId
+      overrideId,
     )) as RuntimeActionVerifyResponse;
 
     if ("context" in response) {
@@ -433,13 +448,13 @@ function toExpressionValue(obj: any): ExpressionValue {
   }
 
   throw new FirebaseError(
-    `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`
+    `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`,
   );
 }
 
 async function fetchFirestoreDocument(
   projectId: string,
-  request: RuntimeActionFirestoreDataRequest
+  request: RuntimeActionFirestoreDataRequest,
 ): Promise<RuntimeActionFirestoreDataResponse> {
   const pathname = `projects/${projectId}${request.context.path}`;
 
@@ -459,7 +474,7 @@ function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionVal
   if (!opts.token) {
     return toExpressionValue(null);
   } else {
-    const tokenPayload = jwt.decode(opts.token) as any;
+    const tokenPayload = jwt.decode(opts.token, { json: true }) as any;
 
     const jsonValue = {
       uid: tokenPayload.user_id,

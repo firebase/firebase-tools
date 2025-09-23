@@ -8,22 +8,20 @@ import * as portfinder from "portfinder";
 import * as runtimes from "..";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
+import * as supported from "../supported";
 import { logger } from "../../../../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
-import { logLabeledWarning } from "../../../../utils";
-
-export const LATEST_VERSION: runtimes.Runtime = "python311";
+import { assertExhaustive } from "../../../../functional";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
- *
  * @param context runtimes.DelegateContext
  * @return Delegate Python runtime delegate
  */
 export async function tryCreateDelegate(
-  context: runtimes.DelegateContext
+  context: runtimes.DelegateContext,
 ): Promise<Delegate | undefined> {
   const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
 
@@ -31,9 +29,15 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Python code.");
     return;
   }
-  const runtime = context.runtime ? context.runtime : LATEST_VERSION;
-  if (!runtimes.isValidRuntime(runtime)) {
-    throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
+  const runtime = context.runtime ?? supported.latest("python");
+  if (!supported.isRuntime(runtime)) {
+    throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
+  }
+  if (!supported.runtimeIsLanguage(runtime, "python")) {
+    throw new FirebaseError(
+      `Internal error. Trying to construct a python runtime delegate for runtime ${runtime}`,
+      { exit: 1 },
+    );
   }
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
@@ -43,7 +47,9 @@ export async function tryCreateDelegate(
  *
  * By default, returns "python"
  */
-export function getPythonBinary(runtime: runtimes.Runtime): string {
+export function getPythonBinary(
+  runtime: supported.Runtime & supported.RuntimeOf<"python">,
+): string {
   if (process.platform === "win32") {
     // There is no easy way to get specific version of python executable in Windows.
     return "python.exe";
@@ -52,16 +58,20 @@ export function getPythonBinary(runtime: runtimes.Runtime): string {
     return "python3.10";
   } else if (runtime === "python311") {
     return "python3.11";
+  } else if (runtime === "python312") {
+    return "python3.12";
+  } else if (runtime === "python313") {
+    return "python3.13";
   }
-  return "python";
+  assertExhaustive(runtime, `Unhandled python runtime ${runtime as string}`);
 }
 
 export class Delegate implements runtimes.RuntimeDelegate {
-  public readonly name = "python";
+  public readonly language = "python";
   constructor(
     private readonly projectId: string,
     private readonly sourceDir: string,
-    public readonly runtime: runtimes.Runtime
+    public readonly runtime: supported.Runtime & supported.RuntimeOf<"python">,
   ) {}
 
   private _bin = "";
@@ -85,7 +95,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
           '"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))"',
         ],
         this.sourceDir,
-        {}
+        {},
       );
       child.stderr?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
@@ -106,7 +116,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
         if (stderr.includes("venv") && stderr.includes("activate")) {
           throw new FirebaseError(
             "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory. " +
-              `Did you forget to run '${this.bin} -m venv venv'?`
+              `Did you forget to run '${this.bin} -m venv venv'?`,
           );
         }
         const { command, args } = virtualEnvCmd(this.sourceDir, DEFAULT_VENV_DIR);
@@ -114,7 +124,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
           "Failed to find location of Firebase Functions SDK. " +
             `Did you forget to run '${command} ${args.join(" ")} && ${
               this.bin
-            } -m pip install -r requirements.txt'?`
+            } -m pip install -r requirements.txt'?`,
         );
       }
     }
@@ -144,58 +154,55 @@ export class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = [this.bin, path.join(modulesDir, "private", "serving.py")];
-    const stdout: string[] = [];
-    const stderr: string[] = [];
+    const args = [this.bin, `"${path.join(modulesDir, "private", "serving.py")}"`];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
-        envWithAdminPort
-      )} in ${this.sourceDir}`
+        envWithAdminPort,
+      )} in ${this.sourceDir}`,
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      stdout.push(chunkString);
-      logger.debug(`stdout: ${chunkString}`);
+      logger.info(chunk.toString("utf8"));
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      stderr.push(chunkString);
-      logger.debug(`stderr: ${chunkString}`);
+      logger.error(chunk.toString("utf8"));
     });
-    return Promise.resolve({
-      stderr,
-      stdout,
-      killProcess: async () => {
+    return Promise.resolve(async () => {
+      try {
         await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
-        const quitTimeout = setTimeout(() => {
-          if (!childProcess.killed) {
-            childProcess.kill("SIGKILL");
-          }
-        }, 10_000);
-        clearTimeout(quitTimeout);
-      },
+      } catch (e) {
+        logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
+      }
+      const quitTimeout = setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      clearTimeout(quitTimeout);
+      return new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
     });
   }
 
   async discoverBuild(
     _configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
+    envs: backend.EnvironmentVariables,
   ): Promise<Build> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const { killProcess, stderr } = await this.serveAdmin(adminPort, envs);
+      const killProcess = await this.serveAdmin(adminPort, envs);
       try {
-        discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
-      } catch (e: any) {
-        logLabeledWarning(
-          "functions",
-          `Failed to detect functions from source ${e}.\nstderr:${stderr.join("\n")}`
+        discovered = await discovery.detectFromPort(
+          adminPort,
+          this.projectId,
+          this.runtime,
+          500 /* initialDelay, python startup is slow */,
         );
-        throw e;
       } finally {
         await killProcess();
       }

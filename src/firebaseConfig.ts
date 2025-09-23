@@ -5,12 +5,19 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-import { RequireAtLeastOne } from "./metaprogramming";
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
+import { ActiveRuntime } from "./deploy/functions/runtimes/supported/types";
 
-// should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
+/**
+ * Creates a type that requires at least one key to be present in an interface
+ * type. For example, RequireAtLeastOne<{ foo: string; bar: string }> can hold
+ * a value of { foo: "a" }, { bar: "b" }, or { foo: "a", bar: "b" } but not {}
+ * Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+ */
+export type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
 
 export type Deployable = {
   predeploy?: string | string[];
@@ -31,6 +38,8 @@ type DatabaseMultiple = ({
 
 type FirestoreSingle = {
   database?: string;
+  location?: string;
+  edition?: string;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -46,7 +55,7 @@ type FirestoreMultiple = ({
 
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+export type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
@@ -157,12 +166,49 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
-export type FunctionConfig = {
-  source?: string;
+type FunctionConfigBase = {
+  // Optional: Directory containing the .env files for this codebase.
+  // Defaults to the same directory as source if not specified.
+  configDir?: string;
+  // Optional: List of glob patterns for files and directories to ignore during deployment.
+  // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];
-  runtime?: CloudFunctionRuntimes;
+  // Optional: The Node.js/Python runtime version to use for Cloud Functions.
+  // Example: "nodejs20", "python312". Must be a supported runtime version.
+  runtime?: ActiveRuntime;
+  // Optional: A unique identifier for this functions codebase when using multiple codebases.
+  // Must be unique across all codebases in firebase.json.
   codebase?: string;
+  // Optional: Applies a prefix to all function IDs (and secret names) discovered for this codebase.
+  // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
+  // cannot start or end with a dash; maximum length 30 characters.
+  prefix?: string;
 } & Deployable;
+
+export type LocalFunctionConfig = FunctionConfigBase & {
+  // Directory containing the Cloud Functions source code.
+  source: string;
+  // Forbid remoteSource when local source is provided
+  remoteSource?: never;
+};
+
+export type RemoteFunctionConfig = FunctionConfigBase & {
+  // Deploy functions from a remote Git repository.
+  remoteSource: {
+    // The URL of the Git repository.
+    repository: string;
+    // The git ref (tag, branch, or commit hash) to deploy.
+    ref: string;
+    // The directory within the repository containing the functions source.
+    dir?: string;
+  };
+  // Required for remote sources
+  runtime: ActiveRuntime;
+  // Forbid local source when remoteSource is provided
+  source?: never;
+};
+
+export type FunctionConfig = LocalFunctionConfig | RemoteFunctionConfig;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];
 
@@ -196,6 +242,16 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  apphosting?: {
+    host?: string;
+    port?: number;
+    startCommand?: string;
+    /**
+     * @deprecated
+     */
+    startCommandOverride?: string;
+    rootDirectory?: string;
+  };
   pubsub?: {
     host?: string;
     port?: number;
@@ -215,7 +271,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: number | string;
+    port?: number;
   };
   extensions?: {};
   eventarc?: {
@@ -223,11 +279,46 @@ export type EmulatorsConfig = {
     port?: number;
   };
   singleProjectMode?: boolean;
+  dataconnect?: {
+    host?: string;
+    port?: number;
+    postgresHost?: string;
+    postgresPort?: number;
+    dataDir?: string;
+  };
+  tasks?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;
 
+export type DataConnectSingle = {
+  // The directory containing dataconnect.yaml for this service
+  source: string;
+} & Deployable;
+
+export type DataConnectMultiple = DataConnectSingle[];
+
+export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
+
+export type AppHostingSingle = {
+  backendId: string;
+  rootDir: string;
+  ignore: string[];
+  alwaysDeployFromSource?: boolean;
+};
+
+export type AppHostingMultiple = AppHostingSingle[];
+
+export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
+
 export type FirebaseConfig = {
+  /**
+   * @TJS-format uri
+   */
+  $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
   functions?: FunctionsConfig;
@@ -236,4 +327,6 @@ export type FirebaseConfig = {
   remoteconfig?: RemoteConfigConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
+  dataconnect?: DataConnectConfig;
+  apphosting?: AppHostingConfig;
 };

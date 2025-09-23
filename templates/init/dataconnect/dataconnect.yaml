@@ -1,0 +1,13 @@
+specVersion: "v1"
+serviceId: __serviceId__
+location: __location__
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: __cloudSqlDatabase__
+      cloudSql:
+        instanceId: __cloudSqlInstanceId__
+        # schemaValidation: "STRICT"     # STRICT mode makes Postgres schema match Data Connect exactly.
+        # schemaValidation: "COMPATIBLE" # COMPATIBLE mode makes Postgres schema compatible with Data Connect.
+connectorDirs: __connectorDirs__

@@ -11,7 +11,7 @@ import * as args from "./deploy/functions/args";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 
-const apiClient = new Client({ urlPrefix: firebaseApiOrigin });
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin() });
 
 interface Id {
   config: string;
@@ -30,7 +30,7 @@ function setVariable(
   projectId: string,
   configId: string,
   varPath: string,
-  val: string | object
+  val: string | object,
 ): Promise<any> {
   if (configId === "" || varPath === "") {
     const msg = "Invalid argument, each config value must have a 2-part key (e.g. foo.bar).";
@@ -74,7 +74,7 @@ export function getAppEngineLocation(config: any): string {
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = needProjectId(options);
   const response = await apiClient.get<args.FirebaseConfig>(
-    `/v1beta1/projects/${projectId}/adminSdkConfig`
+    `/v1beta1/projects/${projectId}/adminSdkConfig`,
   );
   return response.body;
 }
@@ -85,7 +85,7 @@ export async function setVariablesRecursive(
   projectId: string,
   configId: string,
   varPath: string,
-  val: string | { [key: string]: any }
+  val: string | { [key: string]: any },
 ): Promise<any> {
   let parsed = val;
   if (typeof val === "string") {
@@ -102,7 +102,7 @@ export async function setVariablesRecursive(
       Object.entries(parsed).map(([key, item]) => {
         const newVarPath = varPath ? [varPath, key].join("/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
-      })
+      }),
     );
   }
 
@@ -113,7 +113,7 @@ export async function setVariablesRecursive(
 export async function materializeConfig(configName: string, output: any): Promise<any> {
   const materializeVariable = async function (varName: string) {
     const variable = await runtimeconfig.variables.get(varName);
-    const id = exports.varNameToIds(variable.name);
+    const id = varNameToIds(variable.name);
     const key = id.config + "." + id.variable.split("/").join(".");
     _.set(output, key, variable.text);
   };
@@ -122,7 +122,7 @@ export async function materializeConfig(configName: string, output: any): Promis
     return Promise.all(
       variables.map((variable) => {
         return materializeVariable(variable.name);
-      })
+      }),
     );
   };
 
@@ -143,8 +143,8 @@ export async function materializeAll(projectId: string): Promise<Record<string, 
         // ignore firebase config
         return;
       }
-      return exports.materializeConfig(config.name, output);
-    })
+      return materializeConfig(config.name, output);
+    }),
   );
   return output;
 }

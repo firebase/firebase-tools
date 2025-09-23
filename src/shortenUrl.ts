@@ -5,7 +5,7 @@ import { dynamicLinksKey, dynamicLinksOrigin } from "./api";
 const DYNAMIC_LINKS_PREFIX = "https://firebase.tools/l";
 
 const apiClient = new Client({
-  urlPrefix: dynamicLinksOrigin,
+  urlPrefix: dynamicLinksOrigin(),
   auth: false,
   apiVersion: "v1",
 });
@@ -33,14 +33,14 @@ interface DynamicLinksResponse {
 export async function shortenUrl(url: string, guessable = false): Promise<string> {
   try {
     const response = await apiClient.post<DynamicLinksRequest, DynamicLinksResponse>(
-      `shortLinks?key=${dynamicLinksKey}`,
+      `shortLinks?key=${dynamicLinksKey()}`,
       {
         dynamicLinkInfo: {
           link: url,
           domainUriPrefix: DYNAMIC_LINKS_PREFIX,
         },
         suffix: { option: guessable ? "SHORT" : "UNGUESSABLE" },
-      }
+      },
     );
 
     return response.body.shortLink;

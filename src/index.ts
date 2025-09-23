@@ -2,21 +2,20 @@ import * as program from "commander";
 import * as clc from "colorette";
 import * as leven from "leven";
 
-import { logger } from "./logger";
-import { setupLoggers } from "./utils";
+import { logger, useConsoleLoggers } from "./logger";
 
 const pkg = require("../package.json");
 
 program.version(pkg.version);
 program.option(
   "-P, --project <alias_or_project_id>",
-  "the Firebase project to use for this command"
+  "the Firebase project to use for this command",
 );
 program.option("--account <email>", "the Google account to use for authorization");
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option(
   "--token <token>",
-  "DEPRECATED - will be removed in a future major version - supply an auth token for this command"
+  "DEPRECATED - will be removed in a future major version - supply an auth token for this command",
 );
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
@@ -76,7 +75,7 @@ const RENAMED_COMMANDS: Record<string, string> = {
 
 // Default handler, this is called when no other command action matches.
 program.action((_, args) => {
-  setupLoggers();
+  useConsoleLoggers();
 
   const cmd = args[0];
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
@@ -86,7 +85,7 @@ program.action((_, args) => {
     logger.error(
       clc.bold(cmd) + " has been renamed, please run",
       clc.bold("firebase " + RENAMED_COMMANDS[cmd]),
-      "instead"
+      "instead",
     );
   } else {
     // Check if the first argument is close to a command.

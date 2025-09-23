@@ -15,6 +15,19 @@ export enum QueryScope {
   COLLECTION_GROUP = "COLLECTION_GROUP",
 }
 
+export enum ApiScope {
+  ANY_API = "ANY_API",
+  DATASTORE_MODE_API = "DATASTORE_MODE_API",
+  MONGODB_COMPATIBLE_API = "MONGODB_COMPATIBLE_API",
+}
+
+export enum Density {
+  DENSITY_UNSPECIFIED = "DENSITY_UNSPECIFIED",
+  SPARSE_ALL = "SPARSE_ALL",
+  SPARSE_ANY = "SPARSE_ANY",
+  DENSE = "DENSE",
+}
+
 export enum Order {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -22,6 +35,11 @@ export enum Order {
 
 export enum ArrayConfig {
   CONTAINS = "CONTAINS",
+}
+
+export interface VectorConfig {
+  dimension: number;
+  flat?: {};
 }
 
 export enum State {
@@ -44,6 +62,10 @@ export interface Index {
   queryScope: QueryScope;
   fields: IndexField[];
   state?: State;
+  apiScope?: ApiScope;
+  density?: Density;
+  multikey?: boolean;
+  unique?: boolean;
 }
 
 /**
@@ -53,6 +75,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  vectorConfig?: VectorConfig;
 }
 
 /**
@@ -105,10 +128,40 @@ export enum DatabaseDeleteProtectionState {
   DISABLED = "DELETE_PROTECTION_DISABLED",
 }
 
+export enum PointInTimeRecoveryEnablementOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
+export enum PointInTimeRecoveryEnablement {
+  ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
+  DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
+}
+
+export enum DatabaseEdition {
+  DATABASE_EDITION_UNSPECIFIED = "DATABASE_EDITION_UNSPECIFIED",
+  STANDARD = "STANDARD",
+  ENTERPRISE = "ENTERPRISE",
+}
+
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
+}
+
+export interface CreateDatabaseReq {
+  project: string;
+  databaseId: string;
+  locationId: string;
+  type: DatabaseType;
+  databaseEdition?: DatabaseEdition;
+  deleteProtectionState: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  cmekConfig?: CmekConfig;
 }
 
 export interface DatabaseResp {
@@ -122,5 +175,67 @@ export interface DatabaseResp {
   appEngineIntegrationMode: string;
   keyPrefix: string;
   deleteProtectionState: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
   etag: string;
+  versionRetentionPeriod: string;
+  earliestVersionTime: string;
+  cmekConfig?: CmekConfig;
+  databaseEdition?: DatabaseEdition;
 }
+
+export interface BulkDeleteDocumentsRequest {
+  // Database to operate. Should be of the form:
+  // `projects/{project_id}/databases/{database_id}`.
+  name: string;
+  // IDs of the collection groups to delete. Unspecified means *all* collection groups.
+  // Each collection group in this list must be unique.
+  collectionIds?: string[];
+}
+
+export type BulkDeleteDocumentsResponse = {
+  name?: string;
+};
+
+export interface Operation {
+  name: string;
+  done: boolean;
+  metadata: Record<string, any>;
+  response?: Record<string, any>;
+  error?: {
+    name: string;
+    message: string;
+    code: number;
+    details?: any[];
+  };
+}
+
+export interface ListOperationsResponse {
+  operations: Operation[];
+}
+
+export interface RestoreDatabaseReq {
+  databaseId: string;
+  backup: string;
+  encryptionConfig?: EncryptionConfig;
+}
+
+export enum RecurrenceType {
+  DAILY = "DAILY",
+  WEEKLY = "WEEKLY",
+}
+
+export interface CmekConfig {
+  kmsKeyName: string;
+  activeKeyVersion?: string[];
+}
+
+type UseGoogleDefaultEncryption = { googleDefaultEncryption: Record<string, never> };
+type UseSourceEncryption = { useSourceEncryption: Record<string, never> };
+type UseCustomerManagedEncryption = { customerManagedEncryption: CustomerManagedEncryptionOptions };
+type CustomerManagedEncryptionOptions = {
+  kmsKeyName: string;
+};
+export type EncryptionConfig =
+  | UseCustomerManagedEncryption
+  | UseSourceEncryption
+  | UseGoogleDefaultEncryption;

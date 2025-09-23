@@ -2,15 +2,15 @@ import * as _ from "lodash";
 
 import * as gcp from "../../gcp";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { Options } from "../../options";
 import { FirebaseError } from "../../error";
+import { DeployOptions } from "..";
 
 /**
  * Prepares for a Firebase Storage deployment.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: Options): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   let rulesConfig = options.config.get("storage");
   if (!rulesConfig) {
     return;
@@ -34,7 +34,7 @@ export default async function (context: any, options: Options): Promise<void> {
   const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
   const rulesConfigsToDeploy: any[] = [];
 
-  if (!Array.isArray(rulesConfig)) {
+  if (!Array.isArray(rulesConfig) && options.project) {
     const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
     rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
   }
@@ -53,7 +53,7 @@ export default async function (context: any, options: Options): Promise<void> {
 
   if (!allStorage && onlyTargets.size !== 0) {
     throw new FirebaseError(
-      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`
+      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`,
     );
   }
 

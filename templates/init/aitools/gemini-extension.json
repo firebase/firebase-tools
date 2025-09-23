@@ -1,0 +1,11 @@
+{
+  "name": "firebase",
+  "version": "0.0.1",
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "{{PROJECT_PATH}}"]
+    }
+  },
+  "contextFileName": "FIREBASE.md"
+}

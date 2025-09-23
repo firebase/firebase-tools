@@ -6,7 +6,7 @@ import { FirebaseError } from "../../../error";
  * @param endpoint the remote config endpoint
  */
 export function ensureRemoteConfigTriggerRegion(
-  endpoint: backend.Endpoint & backend.EventTriggered
+  endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = "global";

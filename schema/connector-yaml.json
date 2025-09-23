@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "javascriptSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        },
+        "packageJSONDir": {
+          "type": "string",
+          "description": "The directory containining the package.json to install the generated package in."
+        }
+      }
+    },
+    "dartSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        }
+      }
+    },
+    "kotlinSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        }
+      }
+    },
+    "swiftSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        }
+      }
+    },
+    "llmTools": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputFile": {
+          "type": "string",
+          "description": "Path where the JSON LLM tool definitions file should be generated."
+        }
+      }
+    }
+  },
+  "properties": {
+    "connectorId": {
+      "type": "string",
+      "description": "The ID of the Firebase Data Connect connector."
+    },
+    "generate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "javascriptSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/javascriptSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/javascriptSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Javascript SDK"
+        },
+        "dartSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/dartSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dartSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Dart SDK"
+        },
+        "kotlinSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/kotlinSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/kotlinSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Kotlin SDK"
+        },
+        "swiftSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/swiftSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/swiftSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Swift SDK"
+        },
+        "llmTools": {
+          "oneOf": [
+            { "$ref": "#/definitions/llmTools" },
+            { "type": "array", "items": { "$ref": "#/definitions/llmTools" } }
+          ]
+        }
+      }
+    }
+  }
+}

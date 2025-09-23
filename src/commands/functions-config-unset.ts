@@ -8,6 +8,7 @@ import * as functionsConfig from "../functionsConfig";
 import * as runtimeconfig from "../gcp/runtimeconfig";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
+import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 export const command = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
@@ -36,12 +37,13 @@ export const command = new Command("functions:config:unset [keys...]")
           return runtimeconfig.configs.delete(projectId, item.configId);
         }
         return runtimeconfig.variables.delete(projectId, item.configId, item.varId);
-      })
+      }),
     );
     utils.logSuccess("Environment updated.");
     logger.info(
       `\nPlease deploy your functions for the change to take effect by running ${clc.bold(
-        "firebase deploy --only functions"
-      )}\n`
+        "firebase deploy --only functions",
+      )}\n`,
     );
+    logFunctionsConfigDeprecationWarning();
   });

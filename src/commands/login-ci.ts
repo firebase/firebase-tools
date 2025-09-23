@@ -10,7 +10,7 @@ export const command = new Command("login:ci")
   .description("generate an access token for use in non-interactive environments")
   .option(
     "--no-localhost",
-    "copy and paste a code instead of starting a local server for authentication"
+    "copy and paste a code instead of starting a local server for authentication",
   )
   .action(async (options) => {
     if (options.nonInteractive) {
@@ -19,7 +19,7 @@ export const command = new Command("login:ci")
 
     utils.logWarning(
       "Authenticating with a `login:ci` token is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
 
     const userCredentials = await auth.loginGoogle(options.localhost);
@@ -27,7 +27,7 @@ export const command = new Command("login:ci")
     utils.logSuccess(
       "Success! Use this token to login on a CI server:\n\n" +
         clc.bold(userCredentials.tokens.refresh_token || "") +
-        '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n'
+        '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n',
     );
     return userCredentials;
   });
