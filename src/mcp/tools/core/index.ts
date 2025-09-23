@@ -14,11 +14,8 @@ import { list_projects } from "./list_projects";
 import { consult_assistant } from "./consult_assistant";
 import { login } from "./login";
 import { logout } from "./logout";
-<<<<<<< HEAD
 import { get_rules } from "./get_rules";
-=======
 import { validate_rules } from "./validate_rules";
->>>>>>> origin/refactor-validate-rules-tool
 import { read_resources } from "./read_resources";
 
 export const coreTools: ServerTool[] = [
