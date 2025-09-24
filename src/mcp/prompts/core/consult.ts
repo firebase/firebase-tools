@@ -1,4 +1,4 @@
-import { detectApps, getPlatformFromFolder } from "../../../dataconnect/appFinder";
+import { detectApps } from "../../../dataconnect/appFinder";
 import { chatWithFirebase } from "../../../gemini/fdcExperience";
 import { requireGeminiToS } from "../../errors";
 import { prompt } from "../../prompt";
