@@ -44,8 +44,8 @@ Here is an example firebase.json file with all 3 services. Note that you do not 
   },
   "functions": {
     "predeploy": [
-      "npm --prefix \"$RESOURCE_DIR\" run lint",
-      "npm --prefix \"$RESOURCE_DIR\" run build"
+      "npm --prefix "$RESOURCE_DIR" run lint",
+      "npm --prefix "$RESOURCE_DIR" run build"
     ]
   }
 }
