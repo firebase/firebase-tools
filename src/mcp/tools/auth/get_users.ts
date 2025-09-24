@@ -55,7 +55,7 @@ export const get_users = tool(
       users.push(...(await Promise.all(promises)).filter((u): u is UserInfo => !!u));
     }
     if (!uids?.length && !emails?.length && !phone_numbers?.length) {
-      users = await listUsers(projectId, limit);
+      users = await listUsers(projectId, limit || 100);
     }
     return toContent(users.map(prune));
   },
