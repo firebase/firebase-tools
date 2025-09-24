@@ -2,7 +2,6 @@ import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
-// FIXED: Changed type to RemoteConfigRollout for consistency with your interfaces file.
 import { RemoteConfigRollout } from "./interfaces";
 import * as Table from "cli-table3";
 import * as util from "util";
@@ -66,7 +65,6 @@ export async function getRollout(
   } catch (err: unknown) {
     const error: Error = getError(err);
     logger.debug(error.message);
-    // FIXED: Removed extra closing brace in the error message string.
     throw new FirebaseError(
       `Failed to get Remote Config Rollout with ID ${rolloutId} for project ${projectId}. Error: ${error.message}`,
       { original: error },

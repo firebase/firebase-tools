@@ -26,14 +26,14 @@ const TABLE_HEAD = [
 
 export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
   if (!rollouts || rollouts.length === 0) {
-    return "\x1b[31mNo rollouts found.\x1b[0m"; // Kept your red error message
+    return "\x1b[31mNo rollouts found.\x1b[0m";
   }
 
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
 
   for (const rollout of rollouts) {
     table.push([
-      rollout.name.split("/").pop() || rollout.name, // Show just the ID
+      rollout.name.split("/").pop() || rollout.name,
       rollout.definition.displayName,
       rollout.definition.service,
       rollout.definition.description,

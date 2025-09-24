@@ -112,10 +112,7 @@ export interface RolloutDefinition {
   enabledVariant: ExperimentVariant;
 }
 
-/**
- * FIXED: This interface now correctly reflects the API response structure.
- * Properties like description and variants are properly nested within the 'definition' object.
- */
+/** Interface representing a Remote Config rollout. */
 export interface RemoteConfigRollout {
   name: string;
   definition: RolloutDefinition;

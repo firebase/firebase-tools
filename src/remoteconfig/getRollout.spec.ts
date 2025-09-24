@@ -56,7 +56,6 @@ describe("Remote Config Rollout Get", () => {
       nock(remoteConfigApiOrigin())
         .get(`/v1/projects/${PROJECT_ID}/namespaces/firebase/rollouts/${ROLLOUT_ID_2}`)
         .reply(404, {});
-      // The error message must match the one from your implementation file
       const expectedError = `Failed to get Remote Config Rollout with ID ${ROLLOUT_ID_2} for project ${PROJECT_ID}.`;
 
       await expect(
@@ -76,7 +75,6 @@ describe("Remote Config Rollout Get", () => {
         ["Start Time", expectedRollout.startTime],
         ["End Time", expectedRollout.endTime],
         ["Last Update Time", expectedRollout.lastUpdateTime],
-        // Fixed: Removed the nested util.inspect call
         [
           "Control Variant",
           util.inspect(expectedRollout.definition.controlVariant, {
@@ -84,7 +82,6 @@ describe("Remote Config Rollout Get", () => {
             depth: null,
           }),
         ],
-        // Fixed: Removed the nested util.inspect call
         [
           "Enabled Variant",
           util.inspect(expectedRollout.definition.enabledVariant, {
