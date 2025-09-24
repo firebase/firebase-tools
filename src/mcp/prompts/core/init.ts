@@ -1,6 +1,7 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
+import { Config } from "../../../config";
 
 export const init = prompt(
   {
@@ -18,6 +19,11 @@ export const init = prompt(
     },
   },
   async ({ prompt }, { config, projectId, accountEmail }) => {
+    const shortCircuitUrl = {
+      "ai-logic": "firebase://guides/init/ai",
+      backend: "firebase://guides/init/backend",
+    }[prompt];
+
     const platform = await getPlatformFromFolder(config.projectDir);
 
     return [
@@ -25,7 +31,25 @@ export const init = prompt(
         role: "user" as const,
         content: {
           type: "text",
-          text: `
+          text: shortCircuitUrl
+            ? makeShortCircuitPrompt(shortCircuitUrl)
+            : makeDefaultPrompt(platform, projectId, accountEmail, config),
+        },
+      },
+    ];
+  },
+);
+
+export const makeShortCircuitPrompt = (guideUrl: string) =>
+  `Use the Firebase \`read_resources\` tool to load the instructions from ${guideUrl}`;
+
+export const makeDefaultPrompt = (
+  platform: Platform,
+  projectId: string,
+  accountEmail: string | null,
+  config: Config,
+) =>
+  `
 Your goal is to help the user setup Firebase services in this workspace. Firebase is a large platform with many potential uses, so you will:
 
 1. Detect which Firebase services are already in use in the workspace, if any
@@ -74,9 +98,4 @@ The following Firebase services are available to be configured. Use the Firebase
 - [GenAI Services](firebase://guides/init/ai): Read this resource to setup GenAI services for the user such as building agents, LLM usage, unstructured data analysis, image editing, video generation, etc.
 
 UNAVAILABLE SERVICES: Analytics, Remote Config (feature flagging), A/B testing, Crashlytics (crash reporting), and Cloud Messaging (push notifications) are not yet available for setup via this command.
-`.trim(),
-        },
-      },
-    ];
-  },
-);
+`.trim();
