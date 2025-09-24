@@ -6,23 +6,28 @@ import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 export const update_user = tool(
   {
     name: "update_user",
-    description: "Disables, enables, or sets a custom claim on a specific user's account.",
+    description:
+      "Disables, enables a user account or sets a custom claim on a specific user's account. The tool cannot do both at once.",
     inputSchema: z.object({
       uid: z.string().describe("the UID of the user to update"),
       disabled: z.boolean().optional().describe("true disables the user, false enables the user"),
-      claim: z.string().optional().describe("the name (key) of the claim to update, e.g. 'admin'"),
-      value: z
-        .union([z.string(), z.number(), z.boolean()])
-        .optional()
-        .describe(
-          "Set the value of the custom claim to the specified simple scalar value. One of `value` or `json_value` must be provided if setting a claim.",
-        ),
-      json_value: z
-        .string()
-        .optional()
-        .describe(
-          "Set the claim to a complex JSON value like an object or an array by providing stringified JSON. String must be parseable as valid JSON. One of `value` or `json_value` must be provided if setting a claim.",
-        ),
+      claim: z
+        .object({
+          key: z.string().describe("the name (key) of the claim to update, e.g. 'admin'"),
+          value: z
+            .union([z.string(), z.number(), z.boolean()])
+            .optional()
+            .describe(
+              "Set the value of the custom claim to the specified simple scalar value. One of `value` or `json_value` must be provided if setting a claim.",
+            ),
+          json_value: z
+            .string()
+            .optional()
+            .describe(
+              "Set the claim to a complex JSON value like an object or an array by providing stringified JSON. String must be parseable as valid JSON. One of `value` or `json_value` must be provided if setting a claim.",
+            ),
+        })
+        .optional(),
     }),
     annotations: {
       title: "Update a user",
@@ -33,13 +38,16 @@ export const update_user = tool(
       requiresProject: true,
     },
   },
-  async ({ uid, disabled, claim, value, json_value }, { projectId }) => {
+  async ({ uid, disabled, claim }, { projectId }) => {
+    if (disabled && claim) {
+      return mcpError("Can only enable/disable a user or set a claim, not both.");
+    }
     if (disabled === undefined && !claim) {
       return mcpError("At least one of 'disabled' or 'claim' must be provided to update the user.");
     }
-    if (claim && value === undefined && json_value === undefined) {
+    if (claim && claim.value === undefined && claim.json_value === undefined) {
       return mcpError(
-        "When providing 'claim', you must also provide either 'value' or 'json_value'.",
+        "When providing 'key' for the claim, you must also provide either 'value' or 'json_value' for the claim.",
       );
     }
     if (disabled !== undefined) {
@@ -51,19 +59,19 @@ export const update_user = tool(
     }
 
     if (claim) {
-      if (value && json_value) {
+      if (claim.value && claim.json_value) {
         return mcpError("Must supply only `value` or `json_value`, not both.");
       }
-      let claimValue = value;
-      if (json_value) {
+      let claimValue = claim.value;
+      if (claim.json_value) {
         try {
-          claimValue = JSON.parse(json_value);
+          claimValue = JSON.parse(claim.json_value);
         } catch (e) {
-          return mcpError(`Provided \`json_value\` was not valid JSON: ${json_value}`);
+          return mcpError(`Provided \`json_value\` was not valid JSON: ${claim.json_value}`);
         }
       }
       try {
-        await setCustomClaim(projectId, uid, { [claim]: claimValue }, { merge: true });
+        await setCustomClaim(projectId, uid, { [claim.key]: claimValue }, { merge: true });
       } catch (e: any) {
         let errorMsg = `Failed to set claim: ${e.message}`;
         if (disabled !== undefined) {
@@ -77,7 +85,7 @@ export const update_user = tool(
       messageParts.push(`User ${disabled ? "disabled" : "enabled"}`);
     }
     if (claim) {
-      messageParts.push(`Claim '${claim}' set`);
+      messageParts.push(`Claim '${claim.key}' set`);
     }
 
     return toContent(`Successfully updated user ${uid}. ${messageParts.join(". ")}.`);
