@@ -13,7 +13,6 @@ export const command = new Command("remoteconfig:rollouts:get [rolloutId]")
   .before(requireAuth)
   .before(requirePermissions, ["cloud.configs.get"])
   .action(async (rolloutId: string, options: Options) => {
-    console.log("[VERIFY] ---------- local script is linked ----------- ");
     if (!rolloutId) {
       throw new FirebaseError("Rollout ID is required.");
     }

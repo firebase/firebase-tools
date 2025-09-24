@@ -7,7 +7,9 @@ import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
 import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/deleteRollout";
+import { getRollout, parseRolloutIntoTable } from "../remoteconfig/getRollout";
 import { FirebaseError } from "../error";
+import { confirm } from "../prompt";
 
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
   .description("delete a Remote Config rollout")
@@ -17,7 +19,19 @@ export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
     if (!rolloutId) {
       throw new FirebaseError("Rollout ID must be provided.");
     }
-    const projectId: string = await needProjectNumber(options);
-    await rcRollout.deleteRollout(projectId, NAMESPACE_FIREBASE, rolloutId);
+    const projectNumber: string = await needProjectNumber(options);
+    const rollout = await getRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
+    logger.info(parseRolloutIntoTable(rollout));    
+    await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
     logger.info(clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`));
+    const confirmDeletion = await confirm({
+      message: "Are you sure you want to delete this experiment? This cannot be undone.",
+      default: false,
+    });
+    if (!confirmDeletion) {
+      return;
+    }
+    logger.info(
+      await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId),
+    );
   });
