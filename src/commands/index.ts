@@ -217,6 +217,10 @@ export function load(client: any): any {
   client.remoteconfig.rollouts.get = loadCommand("remoteconfig-rollouts-get");
   client.remoteconfig.rollouts.list = loadCommand("remoteconfig-rollouts-list");
   client.remoteconfig.rollouts.delete = loadCommand("remoteconfig-rollouts-delete");
+  client.remoteconfig.experiments = {};
+  client.remoteconfig.experiments.get = loadCommand("remoteconfig-experiments-get");
+  client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
+  client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
