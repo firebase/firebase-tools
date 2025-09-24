@@ -1,15 +1,15 @@
-import { localBuild as localApphostingBuild } from "@apphosting/build";
-import { OutputBundleConfig } from "@apphosting/common";
 import { BuildConfig, Env } from "../gcp/apphosting";
+import { localBuild as localAppHostingBuild } from "@apphosting/build";
 
 export async function localBuild(
   projectRoot: string,
   framework: string,
-): Promise<{ annotations: Record<string, string>; buildConfig: BuildConfig }> {
-  const apphostingBuildOutput: OutputBundleConfig = await localApphostingBuild(
-    projectRoot,
-    framework,
-  );
+): Promise<{
+  outputFiles: string[];
+  annotations: Record<string, string>;
+  buildConfig: BuildConfig;
+}> {
+  const apphostingBuildOutput = await localAppHostingBuild(projectRoot, framework);
 
   const annotations: Record<string, string> = Object.fromEntries(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
@@ -24,10 +24,11 @@ export async function localBuild(
   );
 
   return {
+    outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? ["poop"],
     annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,
-      env,
+      env: env ?? [],
     },
   };
 }
