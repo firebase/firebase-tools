@@ -69,7 +69,7 @@ describe("get_users tool", () => {
       expect(result).to.deep.equal(toContent(prunedUsers));
     });
   });
-  
+
   context("when phone_numbers are provided", () => {
     it("should get users by phone number", async () => {
       findUserStub.onFirstCall().resolves(users[0]);

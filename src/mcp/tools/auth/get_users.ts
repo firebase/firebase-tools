@@ -8,14 +8,8 @@ export const get_users = tool(
     name: "auth_get_users",
     description: "Retrieves users based on a list of UIDs or a list of emails.",
     inputSchema: z.object({
-      uids: z
-        .array(z.string())
-        .optional()
-        .describe("A list of user UIDs to retrieve."),
-      emails: z
-        .array(z.string())
-        .optional()
-        .describe("A list of user emails to retrieve."),
+      uids: z.array(z.string()).optional().describe("A list of user UIDs to retrieve."),
+      emails: z.array(z.string()).optional().describe("A list of user emails to retrieve."),
       phone_numbers: z
         .array(z.string())
         .optional()
