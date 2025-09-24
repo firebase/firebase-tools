@@ -5,7 +5,8 @@ export const init_auth = resource(
     uri: "firebase://guides/init/auth",
     name: "auth_init_guide",
     title: "Firebase Authentication Init Guide",
-    description: "guides the coding agent through configuring Firebase Authentication in the current project",
+    description:
+      "guides the coding agent through configuring Firebase Authentication in the current project",
   },
   async (uri) => {
     return {
@@ -28,4 +29,3 @@ export const init_auth = resource(
     };
   },
 );
-

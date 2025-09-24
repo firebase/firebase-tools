@@ -5,7 +5,8 @@ export const init_hosting = resource(
     uri: "firebase://guides/init/hosting",
     name: "hosting_init_guide",
     title: "Firebase Hosting Deployment Guide",
-    description: "guides the coding agent through deploying to Firebase Hosting in the current project",
+    description:
+      "guides the coding agent through deploying to Firebase Hosting in the current project",
   },
   async (uri) => {
     return {
@@ -26,4 +27,3 @@ export const init_hosting = resource(
     };
   },
 );
-
