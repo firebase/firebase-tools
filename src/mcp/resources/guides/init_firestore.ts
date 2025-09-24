@@ -30,35 +30,3 @@ export const init_firestore = resource(
     };
   },
 );
-
-// This guide walks you through setting up Firestore database in an app.
-
-//  1. Run the following shell command to create the database \`firebase firestore:databases:create <database-name>\`
-//  2. Come up with the database entities based on the user's request, and categorize them into public (viewable by any user) and private (viewable by only the owner of the data)
-//  3.
-
-// \`\`\`
-// rules_version = '2';
-
-// service cloud.firestore {
-//   match /databases/{database}/documents {
-//     match /personalData/{appId}/users/{uid}/{collectionName}/{docId} {
-//       allow get: if uid == request.auth.uid;
-//       allow list: if uid == request.auth.uid && request.query.limit <= 100
-//       allow write: if uid == request.auth.uid;
-//     }
-
-//     match /publicData/{appId}/{collectionName}/{docId} {
-//       allow get: if true;
-//       allow list: request.query.limit <= 100;
-//       allow write: if true;;
-//     }
-//   }
-// }
-// \`\`\`
-
-// - Initialize firestore with the firebase app
-//   - Determine entities, and try to ensure they don't need indexes
-//   - Come up with rules based on those entities
-// - Create rules
-// - Deploy rules
