@@ -1,0 +1,1 @@
+- `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.

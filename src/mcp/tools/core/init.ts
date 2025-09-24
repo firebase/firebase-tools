@@ -4,7 +4,6 @@ import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
-import { ServerToolContext } from "../../tool";
 import {
   extractProjectIdFromAppResource,
   generateUniqueAppDirectoryName,
@@ -23,6 +22,7 @@ import {
 import { AppPlatform } from "../../../management/apps";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { requireGeminiToS } from "../../errors";
 
 /**
  * Resolves app context by either finding existing app or planning new directory creation
@@ -337,7 +337,7 @@ const inputSchema = z.object({
           .optional()
           .describe(
             "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc. " +
-            "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
+              "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
           ),
         cloudsql_database: z
           .string()
@@ -350,13 +350,13 @@ const inputSchema = z.object({
           .default(false)
           .describe(
             "If true, provision the Cloud SQL instance if `cloudsql_instance_id` does not exist already. " +
-            `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
+              `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
           ),
       })
       .optional()
       .describe(
         "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
-        "It installs Data Connect Generated SDKs in all detected apps in the folder.",
+          "It installs Data Connect Generated SDKs in all detected apps in the folder.",
       ),
     storage: z
       .object({
@@ -403,10 +403,7 @@ export const init = tool(
       requiresAuth: true, // Required for provisioning and Firebase operations.
     },
   },
-  async (
-    { features, provisioning, project, app },
-    { projectId, config, rc }: ServerToolContext,
-  ) => {
+  async ({ features, provisioning, project, app }, { projectId, config, rc }) => {
     validateProvisioningInputs(provisioning, project, app);
 
     if (provisioning?.enable) {
@@ -414,7 +411,7 @@ export const init = tool(
         if (projectId && !!project?.parent && !provisioning.overwrite_project) {
           throw new Error(
             `Project already configured in .firebaserc as '${projectId}'. ` +
-            `To provision a new project, use overwrite_project: true to replace the existing configuration.`,
+              `To provision a new project, use overwrite_project: true to replace the existing configuration.`,
           );
         }
 
@@ -482,6 +479,11 @@ export const init = tool(
       };
     }
     if (features.dataconnect) {
+      if (features.dataconnect.app_description) {
+        // If app description is provided, ensure the Gemini in Firebase API is enabled.
+        const err = await requireGeminiToS(projectId);
+        if (err) return err;
+      }
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
         analyticsFlow: "mcp",
