@@ -39,7 +39,7 @@ App Platform: ${platform}
 Question: ${prompt}`;
 
     const result = await chatWithFirebase(gifPrompt, projectId);
-    const outputString = result.output.messages?.[0].content;
+    const outputString = result.output.messages?.[0].content ?? "";
 
     return [
       {
