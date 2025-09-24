@@ -12,7 +12,7 @@ import { FirebaseError } from "../error";
 import { confirm } from "../prompt";
 
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
-  .description("delete a Remote Config rollout")
+  .description("delete a Remote Config rollout.")
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfigs.config.update"])
   .action(async (rolloutId: string, options: Options) => {

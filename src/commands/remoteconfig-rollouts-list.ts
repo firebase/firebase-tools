@@ -14,7 +14,7 @@ import * as rcRollout from "../remoteconfig/listRollouts";
 import { FirebaseError } from "../error";
 
 export const command = new Command("remoteconfig:rollouts:list")
-  .description("get a list of Remote Config rollouts")
+  .description("get a list of Remote Config rollouts.")
   .option(
     "--pageSize <pageSize>",
     "the maximum number of rollouts to return per page. If no `pageToken` is specified, results begin from the first rollout",

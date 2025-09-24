@@ -166,6 +166,12 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
 | **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
 | **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
+| **remoteconfig:experiments:get**           | Get a Remote Config experiment.                                                           |
+| **remoteconfig:experiments:list**           | Get a list of Remote Config experiments                                                           |
+| **remoteconfig:experiments:delete**           | Delete a Remote Config experiment.                                                           |
+| **remoteconfig:rollouts:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:rollouts:list**           | Get a list of Remote Config rollouts.                                                           |
+| **remoteconfig:rollouts:delete**           | Delete a Remote Config rollout.                                                           |
 
 Use `firebase:deploy --only remoteconfig` to update and publish a project's Firebase Remote Config template.
 
