@@ -173,6 +173,9 @@ export async function provisionFirebaseApp(
       apiOrigin: firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name,
+      masterTimeout: 300000, // 5 minutes
+      backoff: 100, // Initial backoff of 100ms
+      maxBackoff: 5000, // Max backoff of 5s
     });
 
     return result;

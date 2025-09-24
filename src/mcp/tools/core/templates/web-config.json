@@ -1,8 +1,0 @@
-{
-  "apiKey": "AIzaSyMockApiKey123456789",
-  "authDomain": "{{PROJECT_ID}}.firebaseapp.com",
-  "projectId": "{{PROJECT_ID}}",
-  "storageBucket": "{{PROJECT_ID}}.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "{{GOOGLE_APP_ID}}"
-}
