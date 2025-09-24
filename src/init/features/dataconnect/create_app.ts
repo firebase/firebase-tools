@@ -4,7 +4,7 @@ import { logLabeledBullet } from "../../../utils";
 
 /** Create a React app using vite react template. */
 export async function createReactApp(webAppId: string): Promise<void> {
-  const args = ["create", "vite@latest", webAppId, "--", "--template", "react"];
+  const args = ["create", "vite@latest", webAppId, "--", "--template", "react", "--no-interactive"];
   await executeCommand("npm", args);
 }
 
