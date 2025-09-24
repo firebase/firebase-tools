@@ -14,12 +14,12 @@ import {
   findExistingAndroidApp,
   writeAppConfigFile,
 } from "./utils";
+import { provisionFirebaseApp } from "../../../management/provisioning/provision";
 import {
-  provisionFirebaseApp,
   ProvisionFirebaseAppOptions,
   ProvisionProjectOptions,
   ProvisionAppOptions,
-} from "../../../management/provision";
+} from "../../../management/provisioning/types";
 import { AppPlatform } from "../../../management/apps";
 import { RC } from "../../../rc";
 import * as fs from "fs-extra";

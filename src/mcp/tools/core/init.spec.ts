@@ -418,7 +418,7 @@ describe("init", () => {
 
       beforeEach(async () => {
         // Use dynamic imports to avoid require warnings
-        const provisionModule = await import("../../../management/provision");
+        const provisionModule = await import("../../../management/provisioning/provision");
         const fsModule = await import("fs-extra");
         const utilsModule = await import("./utils");
         appsModule = await import("../../../management/apps");
