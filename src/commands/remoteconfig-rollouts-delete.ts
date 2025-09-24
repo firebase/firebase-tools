@@ -21,7 +21,7 @@ export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
     }
     const projectNumber: string = await needProjectNumber(options);
     const rollout = await getRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
-    logger.info(parseRolloutIntoTable(rollout));    
+    logger.info(parseRolloutIntoTable(rollout));
     await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
     logger.info(clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`));
     const confirmDeletion = await confirm({
