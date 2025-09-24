@@ -1,6 +1,7 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
+import { resources } from "../../resources";
 
 export const init = prompt(
   {
@@ -17,7 +18,23 @@ export const init = prompt(
       title: "Initialize Firebase",
     },
   },
-  async ({ prompt }, { config, projectId, accountEmail }) => {
+  async ({ prompt }, mcp) => {
+    const { config, projectId, accountEmail } = mcp;
+
+    // This supports a special feature where if the user passes the name of a
+    // resource, we'll respond with that resource instead
+    const resource = resources.find((r) => r.mcp.uri === prompt);
+    if (resource) {
+      const response = await resource.fn(prompt, mcp);
+      return response.contents.filter((resourceContent) => resourceContent["text"]).map((resourceContent) => ({
+        role: "user" as const,
+        content: {
+          type: "text",
+          text: resourceContent.text,
+        },
+      }));
+    }
+
     const platform = await getPlatformFromFolder(config.projectDir);
 
     return [
