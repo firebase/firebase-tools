@@ -42,7 +42,7 @@ When user asks to set up Firebase AI Logic or asks to add Gemini to their app:
 
 ### 2. Initialize Firebase Project
 
-Start by asking the deveveloper if they want a new Firebase project or if they already have an existing Firebase project they would like to use
+Start by asking the developer if they want a new Firebase project or if they already have an existing Firebase project they would like to use
 
 **For New Firebase Project:**
 - Create a new Firebase project and web app using MCP server tools
@@ -58,14 +58,14 @@ Start by asking the deveveloper if they want a new Firebase project or if they a
 
 - Ask the developer to enable Firebase AI logic Developer API in the Firebase console: https://console.firebase.google.com/
 - **Never use the Vertex API. Always use the Developer API**
-- Identify the correct initialization code snippet from the "Initiatlization Code References" section based on the language, platform, or framework used in the developer's app. Ask the developer if you cannot identify it. Use that to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT!
+- Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app. Ask the developer if you cannot identify it. Use that to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT!
 - Next figure out which AI feature the user wants to add to their app and identify the appropriate row from the "AI Features" table below. Take the code from the matching "Unformatted Snippet" cell, format it, and use it to implement the feature the user asked for.
 
 ### 4. Code Snippet References
 
 #### Initialization Code References
 
-| Language, Framweork, Platform | Gemini API | Context URL |
+| Language, Framework, Platform | Gemini API | Context URL |
 | :--- | :--- | :--- |
 | Swift iOS | Gemini Developer API (Developer API) | https://firebase.google.com/docs/ai-logic/get-started?api=dev#initialize-service-and-model-swift |
 | Swift iOS | Vertex AI Gemini API (Vertex AI) | https://firebase.google.com/docs/ai-logic/get-started?api=vertex#initialize-service-and-model-swift |
@@ -84,7 +84,7 @@ Start by asking the deveveloper if they want a new Firebase project or if they a
 
 **Always use gemini-2.5-flash unless another model is provided in the table below**
 
-| Language, Framweork, Platform  | Feature | Gemini API  | Unformatted Snippet |
+| Language, Framework, Platform  | Feature | Gemini API  | Unformatted Snippet |
 | :--- | ---: | :--- | :--- |
 | Swift iOS | Generate text from text-only input | Gemini Developer API (Developer API) | import FirebaseAI// Initialize the Gemini Developer API backend servicelet ai = FirebaseAI.firebaseAI(backend: .googleAI())// Create a \`GenerativeModel\` instance with a model that supports your use caselet model = ai.generativeModel(modelName: "gemini-2.5-flash")// Provide a prompt that contains textlet prompt = "Write a story about a magic backpack."// To generate text output, call generateContent with the text inputlet response = try await model.generateContent(prompt)print(response.text ?? "No text in response.")|
 | Kotlin Android | Generate text from text-only input | Gemini Developer API (Developer API) | // Initialize the Gemini Developer API backend service// Create a \`GenerativeModel\` instance with a model that supports your use caseval model = Firebase.ai(backend = GenerativeBackend.googleAI())                        .generativeModel("gemini-2.5-flash")// Provide a prompt that contains textval prompt = "Write a story about a magic backpack."// To generate text output, call generateContent with the text inputval response = generativeModel.generateContent(prompt)print(response.text) |
