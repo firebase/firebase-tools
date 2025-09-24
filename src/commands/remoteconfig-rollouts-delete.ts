@@ -25,7 +25,7 @@ export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
     await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
     logger.info(clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`));
     const confirmDeletion = await confirm({
-      message: "Are you sure you want to delete this experiment? This cannot be undone.",
+      message: "Are you sure you want to delete this rollout? This cannot be undone.",
       default: false,
     });
     if (!confirmDeletion) {
