@@ -4,7 +4,7 @@ import * as clc from "colorette";
 
 import { remoteConfigApiOrigin } from "../api";
 import { FirebaseError } from "../error";
-import { deleteExperiment } from "./deleteexperiment";
+import { deleteExperiment } from "./deleteExperiment";
 import { NAMESPACE_FIREBASE } from "./interfaces";
 
 const PROJECT_ID = "12345679";

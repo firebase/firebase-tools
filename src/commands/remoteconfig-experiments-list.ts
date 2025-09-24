@@ -1,4 +1,4 @@
-import * as rcExperiment from "../remoteconfig/listexperiments";
+import * as rcExperiment from "../remoteconfig/listExperiments";
 import {
   DEFAULT_PAGE_SIZE,
   ListExperimentOptions,

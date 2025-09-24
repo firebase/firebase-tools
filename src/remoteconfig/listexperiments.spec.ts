@@ -11,7 +11,7 @@ import {
   NAMESPACE_FIREBASE,
   RemoteConfigExperiment,
 } from "./interfaces";
-import { listExperiments, parseExperimentList } from "./listexperiments";
+import { listExperiments, parseExperimentList } from "./listExperiments";
 
 const PROJECT_ID = "1234567890";
 

@@ -5,7 +5,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
 import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
-import * as rcExperiment from "../remoteconfig/deleteexperiment";
+import * as rcExperiment from "../remoteconfig/deleteExperiment";
 import { getExperiment, parseExperiment } from "../remoteconfig/getExperiment";
 import { confirm } from "../prompt";
 
