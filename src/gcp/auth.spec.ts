@@ -189,7 +189,7 @@ describe("auth", () => {
         })
         .reply(200, {});
 
-      const result = await auth.disableUser(PROJECT_ID, "test-uid", true);
+      const result = await auth.toggleUserEnablement(PROJECT_ID, "test-uid", true);
 
       expect(result).to.be.true;
       expect(nock.isDone()).to.be.true;
@@ -204,7 +204,9 @@ describe("auth", () => {
         })
         .reply(404, { error: { message: "Not Found" } });
 
-      await expect(auth.disableUser(PROJECT_ID, "test-uid", true)).to.be.rejectedWith("Not Found");
+      await expect(auth.toggleUserEnablement(PROJECT_ID, "test-uid", true)).to.be.rejectedWith(
+        "Not Found",
+      );
       expect(nock.isDone()).to.be.true;
     });
   });
