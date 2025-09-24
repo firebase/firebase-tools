@@ -24,8 +24,9 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
-  for (const loc of context.backendLocations.values()) {
-    const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
+  for (const [backendId, loc] of context.backendLocations) {
+    const cfg = context.backendConfigs.get(backendId);
+    const bucketName = `firebaseapphosting-${cfg?.localBuild ? "build" : "sources"}-${options.projectNumber}-${loc.toLowerCase()}`;
     try {
       await gcs.getBucket(bucketName);
     } catch (err) {
@@ -73,16 +74,15 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   for (const cfg of context.backendConfigs.values()) {
-    let rootDir;
+    const rootDir = options.projectRoot ?? process.cwd();
+    let builtAppDir;
     if (cfg.localBuild) {
-      rootDir = context.backendLocalBuilds[cfg.backendId].buildDir;
+      builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
       if (!rootDir) {
 	throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
       }
-    } else {
-      rootDir = options.projectRoot ?? process.cwd();
     }
-    const zippedSourcePath = await createArchive(cfg, rootDir);
+    const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
     logLabeledBullet("apphosting",`Zipped ${rootDir}`);
 
     const backendLocation = context.backendLocations.get(cfg.backendId);
