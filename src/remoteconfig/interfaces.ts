@@ -61,15 +61,15 @@ export interface Version {
   versionNumber?: string; // int64 format
   updateTime?: string; // in UTC
   updateOrigin?:
-  | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
-  | "CONSOLE"
-  | "REST_API"
-  | "ADMIN_SDK_NOD";
+    | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
+    | "CONSOLE"
+    | "REST_API"
+    | "ADMIN_SDK_NOD";
   updateType?:
-  | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
-  | "INCREMENTAL_UPDATE"
-  | "FORCED_UPDATE"
-  | "ROLLBACK";
+    | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
+    | "INCREMENTAL_UPDATE"
+    | "FORCED_UPDATE"
+    | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
