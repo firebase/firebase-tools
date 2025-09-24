@@ -5,7 +5,11 @@ import { BuildConfig, Env } from "../gcp/apphosting";
 export async function localBuild(
   projectRoot: string,
   framework: string,
-): Promise<{ annotations: Record<string, string>; buildConfig: BuildConfig }> {
+): Promise<{
+  outputFiles: string[];
+  annotations: Record<string, string>;
+  buildConfig: BuildConfig;
+}> {
   const apphostingBuildOutput: OutputBundleConfig = await localApphostingBuild(
     projectRoot,
     framework,
@@ -24,6 +28,7 @@ export async function localBuild(
   );
 
   return {
+    outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
     annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,

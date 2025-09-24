@@ -21,6 +21,11 @@ describe("localBuild", () => {
         adapterVersion: "14.1",
         framework: "nextjs",
       },
+      outputFiles: {
+        serverApp: {
+          include: ["./next/standalone/"],
+        },
+      },
     };
     const expectedAnnotations = {
       adapterPackageName: "@apphosting/angular-adapter",
@@ -28,6 +33,7 @@ describe("localBuild", () => {
       framework: "nextjs",
     };
     const expectedBuildConfig = {
+      outputFiles: ["./nextstandalone/"],
       runCommand: "npm run build:prod",
       env: [],
     };

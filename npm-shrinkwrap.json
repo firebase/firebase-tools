@@ -9,7 +9,7 @@
       "version": "14.17.0",
       "license": "MIT",
       "dependencies": {
-        "@apphosting/build": "^0.1.0",
+        "@apphosting/build": "^0.1.4",
         "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
@@ -303,9 +303,9 @@
       }
     },
     "node_modules/@apphosting/build": {
-      "version": "0.1.3",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.3.tgz",
-      "integrity": "sha512-9HXzGb2xGz/aH43U1NWx7fnhFPQ1Ni6wfowRXflvHlVhvZCDruLKTg5ZniLsNifPnOMK+LWFbDVUDKNi0CFDOQ==",
+      "version": "0.1.4",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.4.tgz",
+      "integrity": "sha512-HoBV/IYG8fUAuicGvfcU+dilCvxL3rDJO0ZxThP7rso9SmamRHJJcQNUS8e2ugeBdVALo6QNkmKcmnO6Fx6Bww==",
       "license": "Apache-2.0",
       "dependencies": {
         "@apphosting/common": "^0.0.8",
@@ -22030,9 +22030,9 @@
       }
     },
     "@apphosting/build": {
-      "version": "0.1.3",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.3.tgz",
-      "integrity": "sha512-9HXzGb2xGz/aH43U1NWx7fnhFPQ1Ni6wfowRXflvHlVhvZCDruLKTg5ZniLsNifPnOMK+LWFbDVUDKNi0CFDOQ==",
+      "version": "0.1.4",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.4.tgz",
+      "integrity": "sha512-HoBV/IYG8fUAuicGvfcU+dilCvxL3rDJO0ZxThP7rso9SmamRHJJcQNUS8e2ugeBdVALo6QNkmKcmnO6Fx6Bww==",
       "requires": {
         "@apphosting/common": "^0.0.8",
         "colorette": "^2.0.20",
