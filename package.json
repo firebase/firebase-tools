@@ -103,7 +103,7 @@
   },
   "dependencies": {
     "@apphosting/build": "^0.1.0",
-    "@apphosting/common": "^0.1.0",
+    "@apphosting/common": "^0.0.8",
     "@electric-sql/pglite": "^0.3.3",
     "@electric-sql/pglite-tools": "^0.2.8",
     "@google-cloud/cloud-sql-connector": "^1.3.3",
