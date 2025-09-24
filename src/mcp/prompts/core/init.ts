@@ -54,6 +54,8 @@ ${prompt || "<the user didn't supply specific instructions>"}
 
 Follow the steps below taking note of any user instructions provided above.
 
+IMPORTANT: If the user requests setup for only a backend, only continue if they are building a web app. The backend setup guide does not have support for mobile apps.
+
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
 2. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
    - If they would like to create a project, use the firebase_create_project with the project ID
