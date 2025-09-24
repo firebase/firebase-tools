@@ -28,7 +28,7 @@ The user will likely need to setup Firestore, Authentication, and Hosting. Read 
 The firebase.json file is used to deploy assets with the Firebase CLI. It contains configuration for firestore, hosting, and functions.
 
 Here is an example firebase.json file with all 3 services. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
-\`\`\`
+\`\`\`json
 {
   "hosting": {
     "public": "public",
