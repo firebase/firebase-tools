@@ -5,7 +5,7 @@ import * as auth from "../../../gcp/auth";
 import { McpContext } from "../../types";
 import * as util from "../../util";
 
-describe("updateUser", () => {
+describe("update_user test", () => {
   const projectId = "test-project";
   let setCustomClaimsStub: sinon.SinonStub;
   let toggleuserEnablementStub: sinon.SinonStub;
