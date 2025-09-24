@@ -3,7 +3,7 @@ import { remoteConfigApiOrigin } from "../api";
 import * as nock from "nock";
 import * as Table from "cli-table3";
 
-import { listRollout, parseRolloutList } from "./rolloutlist";
+import { listRollout, parseRolloutList } from "./listRollouts";
 import {
   DEFAULT_PAGE_SIZE,
   ListRolloutOptions,

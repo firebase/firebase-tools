@@ -6,7 +6,7 @@ import * as clc from "colorette";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
 import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
-import * as rcRollout from "../remoteconfig/rolloutdelete";
+import * as rcRollout from "../remoteconfig/deleteRollout";
 import { FirebaseError } from "../error";
 
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")

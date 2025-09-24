@@ -10,7 +10,7 @@ import {
   ListRolloutOptions,
   DEFAULT_PAGE_SIZE,
 } from "../remoteconfig/interfaces";
-import * as rcRollout from "../remoteconfig/rolloutlist";
+import * as rcRollout from "../remoteconfig/listRollouts";
 import { FirebaseError } from "../error";
 
 export const command = new Command("remoteconfig:rollouts:list")
