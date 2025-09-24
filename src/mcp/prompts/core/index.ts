@@ -1,10 +1,7 @@
 import { init } from "./init";
 import { deploy } from "./deploy";
-import { isEnabled } from "../../../experiments";
+import { consult } from "./consult";
 
-const corePrompts = [deploy];
-if (isEnabled("mcpalpha")) {
-  corePrompts.push(init);
-}
+const corePrompts = [deploy, init, consult];
 
 export { corePrompts };
