@@ -3,7 +3,7 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { findUser, listUsers, UserInfo } from "../../../gcp/auth";
 
-export const getUsersTool = tool(
+export const get_users = tool(
   {
     name: "auth_get_users",
     description: "Retrieves users based on a list of UIDs or a list of emails.",
@@ -11,11 +11,20 @@ export const getUsersTool = tool(
       uids: z
         .array(z.string())
         .optional()
-        .describe("A list of user UIDs to retrieve. At most 100 UIDs can be provided."),
+        .describe("A list of user UIDs to retrieve."),
       emails: z
         .array(z.string())
         .optional()
-        .describe("A list of user emails to retrieve. At most 100 emails can be provided."),
+        .describe("A list of user emails to retrieve."),
+      phone_numbers: z
+        .array(z.string())
+        .optional()
+        .describe("A list of user phone numbers to retrieve."),
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("The numbers of users to return. 500 is the upper limit. Defaults to 100."),
     }),
     annotations: {
       title: "Get Firebase Auth Users",
@@ -26,7 +35,7 @@ export const getUsersTool = tool(
       requiresProject: true,
     },
   },
-  async ({ uids, emails }, { projectId }) => {
+  async ({ uids, emails, phone_numbers, limit }, { projectId }) => {
     const prune = (user: UserInfo) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, salt, ...prunedUser } = user;
@@ -45,8 +54,14 @@ export const getUsersTool = tool(
       );
       users.push(...(await Promise.all(promises)).filter((u): u is UserInfo => !!u));
     }
-    if (!uids?.length && !emails?.length) {
-      users = await listUsers(projectId, 100);
+    if (phone_numbers?.length) {
+      const promises = phone_numbers.map((phone) =>
+        findUser(projectId, undefined, phone, undefined).catch(() => null),
+      );
+      users.push(...(await Promise.all(promises)).filter((u): u is UserInfo => !!u));
+    }
+    if (!uids?.length && !emails?.length && !phone_numbers?.length) {
+      users = await listUsers(projectId, limit);
     }
     return toContent(users.map(prune));
   },
