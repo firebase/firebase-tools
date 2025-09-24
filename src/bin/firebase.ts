@@ -13,7 +13,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 // we short-circuit the normal process for MCP
-if (isEnabled("mcp") && process.argv[2] === "experimental:mcp") {
+if (isEnabled("mcp") && ["mcp", "experimental:mcp"].includes(process.argv[2])) {
   const { mcp } = require("./mcp");
   mcp();
 } else {

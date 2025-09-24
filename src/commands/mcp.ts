@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 
-export const command = new Command("experimental:mcp")
+export const command = new Command("mcp")
   .description(
     "Start an MCP server with access to the current working directory's project and resources.",
   )
