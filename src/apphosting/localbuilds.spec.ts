@@ -1,11 +1,13 @@
-import { localBuild } from "./localbuilds";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
 import { OutputBundleConfig } from "@apphosting/common";
+
+// import { localBuild } from "./localbuilds";
 // import { BuildConfig, Env } from "../gcp/apphosting";
 
-describe("localBuild", () => {
+describe("localBuild", async () => {
+  const { localBuild } = await import("./localbuilds");
   afterEach(() => {
     sinon.verifyAndRestore();
   });

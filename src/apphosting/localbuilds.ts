@@ -1,4 +1,4 @@
-import { localBuild as localApphostingBuild } from "@apphosting/build";
+// import { localBuild as localApphostingBuild } from "@apphosting/build";
 import { OutputBundleConfig } from "@apphosting/common";
 import { BuildConfig, Env } from "../gcp/apphosting";
 
@@ -10,7 +10,8 @@ export async function localBuild(
   annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
-  const apphostingBuildOutput: OutputBundleConfig = await localApphostingBuild(
+  const { localBuild: localAppHostingBuild } = await import("@apphosting/build");
+  const apphostingBuildOutput: OutputBundleConfig = await localAppHostingBuild(
     projectRoot,
     framework,
   );
