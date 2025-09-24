@@ -24,6 +24,7 @@ import { RC } from "../../../rc";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { requireGeminiToS } from "../../errors";
+import { FirebaseError } from "../../../error";
 
 /**
  * Resolves app context by either finding existing app or planning new directory creation
@@ -147,6 +148,9 @@ export function buildProvisionOptions(
         case "organizations":
           projectOptions.parent = { type: "organization", organizationId: id };
           break;
+        default:
+          // This should be caught by validation, but as a safeguard:
+          throw new Error(`Unsupported parent type: ${type}`);
       }
     }
   }
@@ -450,8 +454,9 @@ export const init = tool(
         // Update context with provisioned project ID for subsequent operations
         projectId = provisionedProjectId;
       } catch (error) {
-        throw new Error(
+        throw new FirebaseError(
           `Provisioning failed: ${error instanceof Error ? error.message : String(error)}`,
+          { original: error instanceof Error ? error : new Error(String(error)), exit: 2 },
         );
       }
     }
