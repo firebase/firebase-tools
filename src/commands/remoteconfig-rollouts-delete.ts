@@ -31,7 +31,5 @@ export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
     if (!confirmDeletion) {
       return;
     }
-    logger.info(
-      await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId),
-    );
+    logger.info(await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId));
   });
