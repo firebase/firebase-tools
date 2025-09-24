@@ -1,3 +1,6 @@
+export const NAMESPACE_FIREBASE = "firebase";
+export const DEFAULT_PAGE_SIZE = "10";
+
 export enum TagColor {
   BLUE = "Blue",
   BROWN = "Brown",
@@ -93,4 +96,81 @@ export interface RemoteConfigUser {
   email: string;
   name?: string;
   imageUrl?: string;
+}
+
+/** Interface representing a Remote Config experiment. */
+export interface RemoteConfigExperiment {
+  name: string;
+  definition: ExperimentDefinition;
+  state: string;
+  startTime: string;
+  endTime: string;
+  lastUpdateTime: string;
+  etag: string;
+}
+
+/** Interface representing the definition of a Remote Config experiment. */
+interface ExperimentDefinition {
+  displayName: string;
+  service: string;
+  description?: string;
+}
+
+/**
+ * Interface representing the result of fetching a Remote Config experiment.
+ */
+export interface GetExperimentResult extends RemoteConfigExperiment {
+  definition: GetExperimentDefinition;
+}
+
+/**
+ * Interface representing a detailed definition of a Remote Config experiment.
+ */
+interface GetExperimentDefinition extends ExperimentDefinition {
+  objectives: ExperimentObjectives;
+  variants: ExperimentVariant[];
+}
+
+/** Interface representing all objectives of a Remote Config experiment. */
+interface ExperimentObjectives {
+  activationEvent: { event?: string };
+  eventObjectives: ExperimentEventObjectives[];
+}
+
+/** Type representing the event objectives of a Remote Config experiment. */
+type ExperimentEventObjectives = {
+  isPrimary?: boolean;
+} & (
+  | { systemObjectiveDetails: ExperimentSystemObjectiveDetails; customObjectiveDetails?: never }
+  | { customObjectiveDetails: ExperimentCustomObjectiveDetails; systemObjectiveDetails?: never }
+);
+
+/** Interface representing system objectives of a Remote Config experiment. */
+interface ExperimentSystemObjectiveDetails {
+  objective: string;
+}
+
+/** Interface representing custom objectives of a Remote Config experiment. */
+interface ExperimentCustomObjectiveDetails {
+  event: string;
+  countType: string;
+}
+
+/** Interface representing an experiment variant. */
+interface ExperimentVariant {
+  name: string;
+  weight: number;
+}
+
+/** Interface representing a list of Remote Config experiments. */
+export interface ListExperimentsResult {
+  experiments: RemoteConfigExperiment[];
+  nextPageToken?: string;
+}
+
+/** Interface representing a Remote Config list experiment options. */
+export interface ListExperimentOptions {
+  pageSize: string;
+  pageToken?: string;
+  filter?: string;
 }
