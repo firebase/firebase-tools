@@ -3,6 +3,7 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
+import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 
 export const init = tool(
   {
@@ -79,17 +80,27 @@ export const init = tool(
               .string()
               .optional()
               .describe(
-                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
+                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc. " +
+                  "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
               ),
             cloudsql_database: z
               .string()
               .optional()
               .default("fdcdb")
               .describe("The Postgres database ID to use in the Firebase Data Connect service."),
+            provision_cloudsql: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe(
+                "If true, provision the Cloud SQL instance if `cloudsql_instance_id` does not exist already. " +
+                  `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
+              ),
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.",
+            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
+              "It installs Data Connect Generated SDKs in all detected apps in the folder.",
           ),
         storage: z
           .object({
@@ -154,6 +165,11 @@ export const init = tool(
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
+        shouldProvisionCSQL: !!features.dataconnect.provision_cloudsql,
+      };
+      featureInfo.dataconnectSdk = {
+        // Add FDC generated SDKs to all apps detected.
+        apps: [],
       };
     }
     const setup: Setup = {
@@ -162,14 +178,26 @@ export const init = tool(
       projectId: projectId,
       features: [...featuresList],
       featureInfo: featureInfo,
+      instructions: [],
     };
     // Set force to true to avoid prompting the user for confirmation.
     await actuate(setup, config, { force: true });
     config.writeProjectFile("firebase.json", setup.config);
     config.writeProjectFile(".firebaserc", setup.rcfile);
+
+    if (featureInfo.dataconnectSdk && !featureInfo.dataconnectSdk.apps.length) {
+      setup.instructions.push(
+        `No app is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool with the same input without app_description to add Data Connect SDKs to your apps.
+  Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
+      );
+    }
     return toContent(
-      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}` +
-        " To deploy them, you can run `firebase deploy` in command line.",
+      `Successfully setup those features: ${featuresList.join(", ")}
+
+To get started:
+
+- ${setup.instructions.join("\n\n- ")}
+`,
     );
   },
 );

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "14.14.0",
+  "version": "14.16.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -13,6 +13,7 @@
     "clean": "node -e \"fs.rmSync('lib', { recursive: true, force: true }); fs.rmSync('dev', { recursive: true, force: true });\"",
     "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
     "format": "npm run format:ts && npm run format:other",
+    "lint:file": "eslint --config .eslintrc.js --ext .ts,.js",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
     "generate:auth-api": "ts-node scripts/gen-auth-api-spec.ts",

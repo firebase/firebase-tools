@@ -26,6 +26,7 @@ describe("firestore feature init", () => {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "test-project",
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       sandbox.stub(ensureApiEnabled, "ensure").resolves();
@@ -68,6 +69,7 @@ describe("firestore feature init", () => {
             locationId: "us-central",
           },
         },
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       const writeStub = sandbox.stub(cfg, "writeProjectFile");

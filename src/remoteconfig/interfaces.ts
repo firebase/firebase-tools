@@ -1,4 +1,5 @@
 export const NAMESPACE_FIREBASE = "firebase";
+export const DEFAULT_PAGE_SIZE = "10";
 
 export enum TagColor {
   BLUE = "Blue",
@@ -112,6 +113,7 @@ export interface RemoteConfigExperiment {
 interface ExperimentDefinition {
   displayName: string;
   service: string;
+  description?: string;
 }
 
 /**
@@ -125,7 +127,6 @@ export interface GetExperimentResult extends RemoteConfigExperiment {
  * Interface representing a detailed definition of a Remote Config experiment.
  */
 interface GetExperimentDefinition extends ExperimentDefinition {
-  description?: string;
   objectives: ExperimentObjectives;
   variants: ExperimentVariant[];
 }
@@ -165,4 +166,11 @@ interface ExperimentVariant {
 export interface ListExperimentsResult {
   experiments: RemoteConfigExperiment[];
   nextPageToken?: string;
+}
+
+/** Interface representing a Remote Config list experiment options. */
+export interface ListExperimentOptions {
+  pageSize: string;
+  pageToken?: string;
+  filter?: string;
 }

@@ -6,6 +6,7 @@ import { expect } from "chai";
 
 import * as env from "./env";
 import { FirebaseError } from "../error";
+import { ParamValue } from "../deploy/functions/params";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -756,6 +757,89 @@ FOO=foo
 	`;
       const expected = { FOO: "foo\nbar", BAR: "bar\tfoo", BAZ: "baz\rfoo" };
       expect(env.parseStrict(input)).to.deep.equal(expected);
+    });
+  });
+
+  describe("writeResolvedParams", () => {
+    let tmpdir: string;
+
+    beforeEach(() => {
+      tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-functions-test-"));
+    });
+
+    afterEach(() => {
+      rmSync(tmpdir, { recursive: true, force: true });
+    });
+
+    it("should write only new, non-internal params", () => {
+      const resolvedEnvs = {
+        EXISTING_PARAM: new ParamValue("existing", false, { string: true }),
+        NEW_PARAM: new ParamValue("new_value", false, { string: true }),
+        INTERNAL_PARAM: new ParamValue("internal", true, { string: true }),
+      };
+      const userEnvs = { EXISTING_PARAM: "old_value" };
+      const userEnvOpt = {
+        projectId: "test-project",
+        functionsSource: tmpdir,
+      };
+
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+
+      const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
+      expect(writtenContent).to.include("NEW_PARAM=new_value");
+      expect(writtenContent).not.to.include("EXISTING_PARAM");
+      expect(writtenContent).not.to.include("INTERNAL_PARAM");
+    });
+
+    it("should not create file when no params to write", () => {
+      const resolvedEnvs = {
+        EXISTING_PARAM: new ParamValue("existing", false, { string: true }),
+        INTERNAL_PARAM: new ParamValue("internal", true, { string: true }),
+      };
+      const userEnvs = { EXISTING_PARAM: "old_value" };
+      const userEnvOpt = {
+        projectId: "test-project",
+        functionsSource: tmpdir,
+      };
+
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+
+      const envFile = path.join(tmpdir, ".env.test-project");
+      expect(fs.existsSync(envFile)).to.be.false;
+    });
+
+    it("should write to .env.local for emulator", () => {
+      const resolvedEnvs = {
+        NEW_PARAM: new ParamValue("emulator_value", false, { string: true }),
+      };
+      const userEnvs = {};
+      const userEnvOpt = {
+        projectId: "test-project",
+        functionsSource: tmpdir,
+        isEmulator: true,
+      };
+
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+
+      const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.local"), "utf-8");
+      expect(writtenContent).to.include("NEW_PARAM=emulator_value");
+      expect(fs.existsSync(path.join(tmpdir, ".env.test-project"))).to.be.false;
+    });
+
+    it("should handle params with special characters in values", () => {
+      const resolvedEnvs = {
+        NEW_PARAM: new ParamValue("value with\nnewline", false, { string: true }),
+      };
+      const userEnvs = {};
+      const userEnvOpt = {
+        projectId: "test-project",
+        functionsSource: tmpdir,
+      };
+
+      env.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+
+      const writtenContent = fs.readFileSync(path.join(tmpdir, ".env.test-project"), "utf-8");
+      expect(writtenContent).to.include('NEW_PARAM="value with\\nnewline"');
     });
   });
 });

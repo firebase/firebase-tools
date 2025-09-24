@@ -1,1 +1,1 @@
-- Adds additional Crashlytics tools for debugging/analyzing crashes (#9020)
+- Added `remoteconfig:experiments:get`, `remoteconfig:experiments:list`, and `remoteconfig:experiments:delete` commands to manage Remote Config experiments.

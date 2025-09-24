@@ -20,7 +20,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
+import { getProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
@@ -42,7 +42,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -148,8 +148,8 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
  */
 export function shouldStart(options: Options, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    // The hub only starts if we know the project ID.
-    return !!options.project;
+    // The emulator hub always starts.
+    return true;
   }
   const targets = filterEmulatorTargets(options);
   const emulatorInTargets = targets.includes(name);
@@ -166,9 +166,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     }
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
-    return (
-      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target))
-    );
+    return targets.some((target) => EMULATORS_SUPPORTED_BY_UI.includes(target));
   }
 
   // Don't start the functions emulator if we can't validate the functions config
@@ -310,7 +308,7 @@ export async function startAll(
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
-  const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
+  const projectId = getProjectId(options) || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
   const isDemoProject = Constants.isDemoProject(projectId);
   if (isDemoProject) {
     hubLogger.logLabeled(
@@ -528,7 +526,11 @@ export async function startAll(
     utils.assertIsStringOrUndefined(options.extDevDir);
 
     for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
+      const localCfg = requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator.",
+      );
+      const functionsDir = path.join(projectDir, localCfg.source);
       const runtime = (options.extDevRuntime ?? cfg.runtime) as Runtime | undefined;
       // N.B. (Issue #6965) it's OK for runtime to be undefined because the functions discovery process
       // will dynamically detect it later.
@@ -542,8 +544,8 @@ export async function startAll(
       const backend: EmulatableBackend = {
         functionsDir,
         runtime,
-        codebase: cfg.codebase,
-        prefix: cfg.prefix,
+        codebase: localCfg.codebase,
+        prefix: localCfg.prefix,
         env: {
           ...options.extDevEnv,
         },
@@ -551,9 +553,9 @@ export async function startAll(
         // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        ignore: cfg.ignore,
+        ignore: localCfg.ignore,
       };
-      proto.convertIfPresent(backend, cfg, "configDir", (cd) => path.join(projectDir, cd));
+      proto.convertIfPresent(backend, localCfg, "configDir", (cd) => path.join(projectDir, cd));
       emulatableBackends.push(backend);
     }
   }
@@ -579,7 +581,6 @@ export async function startAll(
     }
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
-    const projectId = needProjectId(options);
 
     const inspectFunctions = commandUtils.parseInspectionPort(options);
     if (inspectFunctions) {
@@ -723,16 +724,8 @@ export async function startAll(
 
     // undefined in the config defaults to setting single_project_mode.
     if (singleProjectModeEnabled) {
-      if (projectId) {
-        args.single_project_mode = true;
-        args.single_project_mode_error = false;
-      } else {
-        firestoreLogger.logLabeled(
-          "DEBUG",
-          "firestore",
-          "Could not enable single_project_mode: missing projectId.",
-        );
-      }
+      args.single_project_mode = true;
+      args.single_project_mode_error = false;
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -822,14 +815,6 @@ export async function startAll(
   }
 
   if (listenForEmulator.auth) {
-    if (!projectId) {
-      throw new FirebaseError(
-        `Cannot start the ${Constants.description(
-          Emulators.AUTH,
-        )} without a project: run 'firebase init' or provide the --project flag`,
-      );
-    }
-
     const authAddr = legacyGetFirstAddr(Emulators.AUTH);
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
@@ -851,12 +836,6 @@ export async function startAll(
   }
 
   if (listenForEmulator.pubsub) {
-    if (!projectId) {
-      throw new FirebaseError(
-        "Cannot start the Pub/Sub emulator without a project: run 'firebase init' or provide the --project flag",
-      );
-    }
-
     const pubsubAddr = legacyGetFirstAddr(Emulators.PUBSUB);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
@@ -882,7 +861,6 @@ export async function startAll(
       projectId,
       auto_download: true,
       configDir: config[0].source,
-      rc: options.rc,
       config: options.config,
       autoconnectToPostgres: true,
       postgresListen: listenForEmulator["dataconnect.postgres"],
@@ -941,7 +919,7 @@ export async function startAll(
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
       port: storageAddr.port,
-      projectId: projectId,
+      projectId,
       rules: getStorageRulesConfig(projectId, options),
     });
     await startEmulator(storageEmulator);
@@ -1030,15 +1008,14 @@ export async function startAll(
     hubLogger.logLabeled(
       "WARN",
       "emulators",
-      "The Emulator UI is not starting, either because none of the running " +
-        "emulators have a UI component or the Emulator UI cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project.",
+      "The Emulator UI is not starting because none of the running " +
+        "emulators have a UI component.",
     );
   }
 
   if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
-      projectId: projectId,
+      projectId,
       listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);
@@ -1104,13 +1081,6 @@ function getListenConfig(
  */
 export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
   const projectId = options.project;
-  if (!projectId) {
-    throw new FirebaseError(
-      "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
-      { exit: 1 },
-    );
-  }
-
   const hubClient = new EmulatorHubClient(projectId);
   if (!hubClient.foundHub()) {
     throw new FirebaseError(

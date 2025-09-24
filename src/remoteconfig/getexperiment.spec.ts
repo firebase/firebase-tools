@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { remoteConfigApiOrigin } from "../api";
 import * as nock from "nock";
+import * as Table from "cli-table3";
+import * as util from "util";
 
-import * as rcExperiment from "./getexperiment";
+import * as rcExperiment from "./getExperiment";
 import { GetExperimentResult, NAMESPACE_FIREBASE } from "./interfaces";
 import { FirebaseError } from "../error";
 
@@ -10,7 +12,6 @@ const PROJECT_ID = "1234567890";
 const EXPERIMENT_ID_1 = "1";
 const EXPERIMENT_ID_2 = "2";
 
-// Test sample experiment
 const expectedExperimentResult: GetExperimentResult = {
   name: "projects/1234567890/namespaces/firebase/experiments/1",
   definition: {
@@ -56,8 +57,8 @@ const expectedExperimentResult: GetExperimentResult = {
   etag: "e1",
 };
 
-describe("Remote Config Experiment", () => {
-  describe.only("getExperiment", () => {
+describe("Remote Config Experiment Get", () => {
+  describe("getExperiment", () => {
     afterEach(() => {
       expect(nock.isDone()).to.equal(true, "all nock stubs should have been called");
       nock.cleanAll();
@@ -87,6 +88,44 @@ describe("Remote Config Experiment", () => {
         FirebaseError,
         `Failed to get Remote Config experiment with ID 2 for project 1234567890.`,
       );
+    });
+  });
+
+  describe("parseExperiment", () => {
+    it("should correctly parse and format an experiment result into a tabular format", () => {
+      const resultTable = rcExperiment.parseExperiment(expectedExperimentResult);
+      const expectedTable = [
+        ["Name", expectedExperimentResult.name],
+        ["Display Name", expectedExperimentResult.definition.displayName],
+        ["Service", expectedExperimentResult.definition.service],
+        [
+          "Objectives",
+          util.inspect(expectedExperimentResult.definition.objectives, {
+            showHidden: false,
+            depth: null,
+          }),
+        ],
+        [
+          "Variants",
+          util.inspect(expectedExperimentResult.definition.variants, {
+            showHidden: false,
+            depth: null,
+          }),
+        ],
+        ["State", expectedExperimentResult.state],
+        ["Start Time", expectedExperimentResult.startTime],
+        ["End Time", expectedExperimentResult.endTime],
+        ["Last Update Time", expectedExperimentResult.lastUpdateTime],
+        ["etag", expectedExperimentResult.etag],
+      ];
+
+      const expectedTableString = new Table({
+        head: ["Entry Name", "Value"],
+        style: { head: ["green"] },
+      });
+
+      expectedTableString.push(...expectedTable);
+      expect(resultTable).to.equal(expectedTableString.toString());
     });
   });
 });

@@ -136,7 +136,6 @@ export function registerExecution(
 
     const alwaysExecuteMutationsInProduction =
       "alwaysAllowMutationsInProduction";
-    const alwaysStartEmulator = "alwaysStartEmulator";
 
     // notify users that emulator is starting
     if (

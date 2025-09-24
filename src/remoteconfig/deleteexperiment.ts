@@ -1,3 +1,5 @@
+import * as clc from "colorette";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrMsg, getError } from "../error";
@@ -21,20 +23,18 @@ export async function deleteExperiment(
   projectId: string,
   namespace: string,
   experimentId: string,
-): Promise<void> {
+): Promise<string> {
   try {
     await apiClient.request<void, void>({
       method: "DELETE",
       path: `projects/${projectId}/namespaces/${namespace}/experiments/${experimentId}`,
       timeout: TIMEOUT,
     });
+    return clc.bold(`Successfully deleted experiment ${clc.yellow(experimentId)}`);
   } catch (err: unknown) {
     const error: Error = getError(err);
     if (error.message.includes("is running and cannot be deleted")) {
-      const rcConsoleUrl = consoleUrl(
-        projectId,
-        `/config/experiment/results/${experimentId}`,
-      );
+      const rcConsoleUrl = consoleUrl(projectId, `/config/experiment/results/${experimentId}`);
       throw new FirebaseError(
         `Experiment ${experimentId} is currently running and cannot be deleted. If you want to delete this experiment, stop it at ${rcConsoleUrl}`,
         { original: error },

@@ -1,10 +1,11 @@
+import * as Table from "cli-table3";
+import * as util from "util";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import { FirebaseError, getErrMsg, getError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { GetExperimentResult } from "./interfaces";
-import * as Table from "cli-table3";
-import * as util from "util";
 
 const TIMEOUT = 30000;
 const TABLE_HEAD = ["Entry Name", "Value"];
@@ -14,6 +15,11 @@ const apiClient = new Client({
   apiVersion: "v1",
 });
 
+/**
+ * Parses a Remote Config experiment object and formats it into a table.
+ * @param experiment The Remote Config experiment.
+ * @return A tabular representation of the experiment.
+ */
 export const parseExperiment = (experiment: GetExperimentResult): string => {
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   table.push(["Name", experiment.name]);

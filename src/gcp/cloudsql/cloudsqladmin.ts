@@ -213,6 +213,7 @@ export async function createUser(
   type: UserType,
   username: string,
   password?: string,
+  retryTimeout?: number,
 ): Promise<User> {
   const maxRetries = 3;
   let retries = 0;
@@ -244,7 +245,7 @@ export async function createUser(
       if (builtinRoleNotReady(err.message) && retries < maxRetries) {
         retries++;
         await new Promise((resolve) => {
-          setTimeout(resolve, 1000 * retries);
+          setTimeout(resolve, retryTimeout ?? 1000 * retries);
         });
       } else {
         throw err;

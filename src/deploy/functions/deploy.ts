@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { logLabeledWarning, logSuccess, logWarning } from "../../utils";
+import { logLabeledWarning, logLabeledSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
@@ -96,11 +96,10 @@ async function uploadCodebase(
       source.storage = storage as gcfv2.StorageSource;
     }
 
-    const sourceDir = configForCodebase(context.config!, codebase).source;
+    const cfg = configForCodebase(context.config!, codebase);
+    const label = cfg.source ?? cfg.remoteSource?.dir ?? "remote";
     if (uploads.length) {
-      logSuccess(
-        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`,
-      );
+      logLabeledSuccess("functions", `${clc.bold(label)} source uploaded successfully`);
     }
   } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);

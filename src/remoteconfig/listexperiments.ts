@@ -1,15 +1,17 @@
+import * as Table from "cli-table3";
+
 import { remoteConfigApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
-import * as Table from "cli-table3";
-import { FirebaseError, getErrMsg, getError } from "../error";
-import { ListExperimentsResult, RemoteConfigExperiment } from "./interfaces";
+import { FirebaseError, getError } from "../error";
+import { ListExperimentOptions, ListExperimentsResult, RemoteConfigExperiment } from "./interfaces";
 
 const TIMEOUT = 30000;
 const TABLE_HEAD = [
-  "Number",
+  "Experiment ID",
   "Display Name",
   "Service",
+  "Description",
   "State",
   "Start Time",
   "End Time",
@@ -22,16 +24,21 @@ const apiClient = new Client({
   apiVersion: "v1",
 });
 
+/**
+ * Parses a list of Remote Config experiments and formats it into a table.
+ * @param experiments A list of Remote Config experiments.
+ * @return A tabular representation of the experiments.
+ */
 export const parseExperimentList = (experiments: RemoteConfigExperiment[]): string => {
-  if (!experiments) return "\x1b[31mNo experiments found\x1b[0m";
-  
+  if (experiments.length === 0) return "\x1b[33mNo experiments found\x1b[0m";
+
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
   for (const experiment of experiments) {
-    const experimentNumber = experiment.name.split("/").pop();
     table.push([
-      experimentNumber,
+      experiment.name.split("/").pop(), // Extract the experiment number
       experiment.definition.displayName,
       experiment.definition.service,
+      experiment.definition.description,
       experiment.state,
       experiment.startTime,
       experiment.endTime,
@@ -42,24 +49,30 @@ export const parseExperimentList = (experiments: RemoteConfigExperiment[]): stri
   return table.toString();
 };
 
+/**
+ * Returns a list of Remote Config experiments.
+ * @param projectId The ID of the project.
+ * @param namespace The namespace under which the experiment is created.
+ * @param listExperimentOptions Options for listing experiments (e.g., page size, filter, page token).
+ * @return A promise that resolves to a list of experiment.
+ */
 export async function listExperiments(
   projectId: string,
   namespace: string,
-  pageToken?: string,
-  pageSize?: string,
-  filter?: string,
+  listExperimentOptions: ListExperimentOptions,
 ): Promise<ListExperimentsResult> {
   try {
     const params = new URLSearchParams();
-    if (pageSize) {
-      params.set("page_size", pageSize);
+    if (listExperimentOptions.pageSize) {
+      params.set("page_size", listExperimentOptions.pageSize);
     }
-    if (filter) {
-      params.set("filter", filter);
+    if (listExperimentOptions.filter) {
+      params.set("filter", listExperimentOptions.filter);
     }
-    if (pageToken) {
-      params.set("page_token", pageToken);
+    if (listExperimentOptions.pageToken) {
+      params.set("page_token", listExperimentOptions.pageToken);
     }
+    logger.debug(`Query parameters for listExperiments: ${params.toString()}`);
     const res = await apiClient.request<void, ListExperimentsResult>({
       method: "GET",
       path: `projects/${projectId}/namespaces/${namespace}/experiments`,
