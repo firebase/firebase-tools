@@ -169,7 +169,7 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | **remoteconfig:experiments:get**           | Get a Remote Config experiment.                                                           |
 | **remoteconfig:experiments:list**           | Get a list of Remote Config experiments                                                           |
 | **remoteconfig:experiments:delete**           | Delete a Remote Config experiment.                                                           |
-| **remoteconfig:rollouts:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:rollouts:get**           | Get a Remote Config rollout.                                                           |
 | **remoteconfig:rollouts:list**           | Get a list of Remote Config rollouts.                                                           |
 | **remoteconfig:rollouts:delete**           | Delete a Remote Config rollout.                                                           |
 
