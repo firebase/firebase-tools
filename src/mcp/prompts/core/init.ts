@@ -19,10 +19,11 @@ export const init = prompt(
     },
   },
   async ({ prompt }, { config, projectId, accountEmail }) => {
-    const shortCircuitUrl = {
+    const shortCircuitUrls: Record<string, string> = {
       "ai-logic": "firebase://guides/init/ai",
       backend: "firebase://guides/init/backend",
-    }[prompt];
+    };
+    const shortCircuitUrl = prompt ? shortCircuitUrls[prompt] : undefined;
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
