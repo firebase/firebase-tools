@@ -20,6 +20,7 @@ import {
   ProvisionAppOptions,
 } from "../../../management/provision";
 import { AppPlatform } from "../../../management/apps";
+import { RC } from "../../../rc";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { requireGeminiToS } from "../../errors";
@@ -65,7 +66,7 @@ async function resolveAppContext(
 /**
  * Updates .firebaserc with project ID (conflicts should be validated beforehand)
  */
-function updateFirebaseRC(rc: any, projectId: string): void {
+function updateFirebaseRC(rc: RC, projectId: string): void {
   if (!rc?.data) {
     throw new Error("Invalid .firebaserc configuration");
   }
