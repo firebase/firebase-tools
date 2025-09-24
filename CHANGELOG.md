@@ -1,1 +1,2 @@
 - Added `remoteconfig:experiments:get`, `remoteconfig:experiments:list`, and `remoteconfig:experiments:delete` commands to manage Remote Config experiments.
+- Added `remoteconfig:rollouts:get`, `remoteconfig:rollouts:list`, and `remoteconfig:rollouts:delete` commands to manage Remote Config rollouts.
