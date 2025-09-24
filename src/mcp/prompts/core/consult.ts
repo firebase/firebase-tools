@@ -1,5 +1,6 @@
-import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
+import { detectApps, getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { chatWithFirebase } from "../../../gemini/fdcExperience";
+import { requireGeminiToS } from "../../errors";
 import { prompt } from "../../prompt";
 
 export const consult = prompt(
@@ -19,22 +20,25 @@ export const consult = prompt(
     },
   },
   async ({ prompt }, { config, projectId }) => {
-    if (!projectId)
+    const gifTosError = await requireGeminiToS(projectId);
+    if (gifTosError) {
       return [
         {
-          role: "user" as const,
+          role: "user",
           content: {
             type: "text",
-            text: "Inform the user that this command requires an active project to execute. Use the `firebase_update_environment` tool if the user supplies a project. After setting the project, encourage them to re-run the `firebase:consult` command.",
+            text: `Missing required conditions to run this prompt:\n\n${gifTosError.content[0]?.text}`,
           },
         },
       ];
+    }
 
-    const platform = await getPlatformFromFolder(config.projectDir);
+    const apps = await detectApps(config.projectDir);
+    const platforms = apps.map((a) => a.platform);
 
     const gifPrompt = `I am using a coding agent to build with Firebase and I have a specific question that I would like answered. Provide a robust and detailed response that will help the coding agent act on my behalf in a local workspace.
 
-App Platform: ${platform}
+App Platform(s): ${platforms.join(", ")}
 
 Question: ${prompt}`;
 
