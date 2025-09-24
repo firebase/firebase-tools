@@ -5,12 +5,12 @@ import { check, ensure } from "../ensureApiEnabled";
 import { cloudAiCompanionOrigin } from "../api";
 
 export const NO_PROJECT_ERROR = mcpError(
-  "This tool requires an active project. Use the `firebase_update_environment` tool to set a project ID",
+  "To proceed requires an active project. Use the `firebase_update_environment` tool to set a project ID",
   "PRECONDITION_FAILED",
 );
 
 const GEMINI_TOS_ERROR = mcpError(
-  "This tool requires features from Gemini in Firebase. You can enable the usage of this service and accept its associated terms of service using `firebase_update_environment`.\n" +
+  "To proceed requires features from Gemini in Firebase. You can enable the usage of this service and accept its associated terms of service using `firebase_update_environment`.\n" +
     "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
   "PRECONDITION_FAILED",
 );
