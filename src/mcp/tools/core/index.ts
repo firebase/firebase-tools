@@ -11,7 +11,6 @@ import { init } from "./init";
 import { get_environment } from "./get_environment";
 import { update_environment } from "./update_environment";
 import { list_projects } from "./list_projects";
-import { consult_assistant } from "./consult_assistant";
 import { login } from "./login";
 import { logout } from "./logout";
 import { read_resources } from "./read_resources";
@@ -27,7 +26,6 @@ export const coreTools: ServerTool[] = [
   create_project,
   create_app,
   create_android_sha,
-  consult_assistant,
   get_environment,
   update_environment,
   init,

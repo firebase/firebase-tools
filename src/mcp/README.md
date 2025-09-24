@@ -22,7 +22,7 @@ If you are using an MCP client that is configured with a JSON, the following exa
   "mcpServers": {
     "firebase": {
       "command": "npx",
-      "args": ["-y", "firebase-tools", "experimental:mcp", "--dir", "."]
+      "args": ["-y", "firebase-tools", "mcp", "--dir", "."]
     }
   }
 }

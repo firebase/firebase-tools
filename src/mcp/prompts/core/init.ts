@@ -54,9 +54,19 @@ ${prompt || "<the user didn't supply specific instructions>"}
 
 Follow the steps below taking note of any user instructions provided above.
 
+IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
+
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
-2. Determine which of the services listed below are the best match for the user's needs based on their instructions or by asking them.
-3. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
+2. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
+   - If they would like to create a project, use the firebase_create_project with the project ID
+   - If they would like to use an existing project, run the shell command \`firebase use <project-id>\`
+3. Initialize the Firebase SDK
+  - Fetch the active configuration via \`firebase_list_apps\` and then \`firebase_get_sdk_config\`
+    - If there isn't an app that matches the current platform, use the \`firebase_create_app\` tool to create the app with the appropriate platform, and then run \`firebase_get_sdk_config\`
+  - Write the Firebase SDK config to a file
+  - Initialize the Firebase SDK for the appropriate platform
+4. Determine which of the services listed below are the best match for the user's needs based on their instructions or by asking them.
+5. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
 
 ## Available Services
 
