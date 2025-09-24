@@ -5,8 +5,10 @@ import {
   getReport,
   ReportInputSchema,
   ReportInput,
+  simplifyReport,
 } from "../../../crashlytics/reports";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { validateEventFilters } from "../../../crashlytics/filters";
 
 // Generates the tool call fn for requesting a Crashlytics report
 
@@ -24,20 +26,15 @@ function getReportContent(
     if (report === CrashlyticsReport.TopIssues && !!filter.issueId) {
       delete filter.issueId;
     }
-    const resultContent: CallToolResult = toContent(
-      await getReport(report, appId, filter, pageSize),
-    );
-    if (additionalPrompt) {
-      resultContent.content = resultContent.content
-        .concat({
-          type: "text",
-          text: "Instructions for using this report: " + additionalPrompt,
-        })
-        .reverse();
-      return resultContent;
-    } else {
-      return resultContent;
+    validateEventFilters(filter); // throws here if invalid filters
+    const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
+    if (!reportResponse.groups?.length) {
+      additionalPrompt = "This report response contains no results.";
     }
+    if (additionalPrompt) {
+      reportResponse.usage = (reportResponse.usage || "").concat("\n", additionalPrompt);
+    }
+    return toContent(reportResponse);
   };
 }
 
@@ -63,10 +60,10 @@ export const get_top_issues = tool(
   },
   getReportContent(
     CrashlyticsReport.TopIssues,
-    `To investigate and debug issues in this report, use the crashlytics_batch_get_event tool,
-    and pass the resource names from the sampleEvent field.
-    To get more than one event for an issue, use the crashlytics_list_events tool, and pass the
-    issue.id in the filter.issueId field.`,
+    `The crashlytics_batch_get_event tool can retrieve the sample events in this response.
+    Pass the sampleEvent in the names field.
+    The crashlytics_list_events tool can retrieve a list of events for an issue in this response.
+    Pass the issue.id in the filter.issueId field.`,
   ),
 );
 
@@ -87,10 +84,9 @@ export const get_top_variants = tool(
   },
   getReportContent(
     CrashlyticsReport.TopVariants,
-    `To investigate and debug issue variants in this report, use the crashlytics_batch_get_event tool,
-    and pass the resource names from the sampleEvent field.
-    To get more than one event for an issue variant, use the crashlytics_list_events tool, and pass the
-    variant.id in the filter.issueVariantId field.`,
+    `The crashlytics_get_top_issues tool can report the top issues for the variants in this response.
+    Pass the variant.displayName in the filter.variantDisplayNames field. 
+    The crashlytics_list_events tool can retrieve a list of events for a variant in this response.`,
   ),
 );
 
@@ -111,8 +107,9 @@ export const get_top_versions = tool(
   },
   getReportContent(
     CrashlyticsReport.TopVersions,
-    `To get the top issues for one of the versions in this report, use the 
-    crashlytics_get_top_versions tool and pass the displayName as filter.versionDisplayNames`,
+    `The crashlytics_get_top_issues tool can report the top issues for the versions in this response.
+    Pass the version.displayName in the filter.versionDisplayNames field. 
+    The crashlytics_list_events tool can retrieve a list of events for a version in this response.`,
   ),
 );
 
@@ -134,8 +131,9 @@ export const get_top_apple_devices = tool(
   },
   getReportContent(
     CrashlyticsReport.TopAppleDevices,
-    `To get the top issues for one of the devices in this report, use the 
-    crashlytics_get_top_versions tool and pass the displayName as filter.deviceDisplayNames`,
+    `The crashlytics_get_top_issues tool can report the top issues for the devices in this response.
+    Pass the device.displayName in the filter.deviceDisplayNames field. 
+    The crashlytics_list_events tool can retrieve a list of events for a device in this response.`,
   ),
 );
 
@@ -157,8 +155,9 @@ export const get_top_android_devices = tool(
   },
   getReportContent(
     CrashlyticsReport.TopAndroidDevices,
-    `To get the top issues for one of the devices in this report, use the 
-    crashlytics_get_top_versions tool and pass the displayName as filter.deviceDisplayNames`,
+    `The crashlytics_get_top_issues tool can report the top issues for the devices in this response.
+    Pass the device.displayName in the filter.deviceDisplayNames field. 
+    The crashlytics_list_events tool can retrieve a list of events for a device in this response.`,
   ),
 );
 
@@ -179,7 +178,8 @@ export const get_top_operating_systems = tool(
   },
   getReportContent(
     CrashlyticsReport.TopOperatingSystems,
-    `To get the top issues for one of the operating systems in this report, use the 
-    crashlytics_get_top_versions tool and pass the displayName as filter.operatingSystemDisplayNames`,
+    `The crashlytics_get_top_issues tool can report the top issues for the operating systems in this response.
+    Pass the operatingSystem.displayName in the filter.operatingSystemDisplayNames field. 
+    The crashlytics_list_events tool can retrieve a list of events for an operating system in this response.`,
   ),
 );

@@ -2,12 +2,121 @@ import * as chai from "chai";
 import * as nock from "nock";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { CrashlyticsReport, getReport } from "./reports";
+import { CrashlyticsReport, getReport, simplifyReport } from "./reports";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
+import { Report } from "./types";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
+
+describe("simplifyReport", () => {
+  it("should return report unchanged if groups is undefined", () => {
+    const report: Report = {
+      name: "test",
+      displayName: "Test Report",
+      totalSize: 0,
+      usage: "Test usage",
+    };
+
+    const result = simplifyReport(report);
+    expect(result).to.deep.equal(report);
+  });
+
+  it("should return report unchanged if groups is empty", () => {
+    const report: Report = {
+      groups: [],
+      name: "test",
+      displayName: "Test Report",
+      totalSize: 0,
+      usage: "Test usage",
+    };
+
+    const result = simplifyReport(report);
+    expect(result).to.deep.equal(report);
+  });
+
+  it("should remove device.model and device.manufacturer but keep displayName", () => {
+    const report: Report = {
+      groups: [
+        {
+          metrics: [],
+          subgroups: [],
+          device: {
+            model: "Pixel 6",
+            manufacturer: "Google",
+            displayName: "Google (Pixel 6)",
+          },
+        },
+      ],
+      name: "test",
+      displayName: "Test Report",
+      totalSize: 1,
+      usage: "Test usage",
+    };
+
+    const result = simplifyReport(report);
+    expect(result.groups?.[0].device).to.deep.equal({
+      displayName: "Google (Pixel 6)",
+    });
+    expect(result.groups?.[0].device?.model).to.be.undefined;
+    expect(result.groups?.[0].device?.manufacturer).to.be.undefined;
+  });
+
+  it("should remove version.buildVersion and version.displayVersion but keep displayName", () => {
+    const report: Report = {
+      groups: [
+        {
+          metrics: [],
+          subgroups: [],
+          version: {
+            displayVersion: "1.2.3",
+            buildVersion: "123",
+            displayName: "1.2.3 (123)",
+          },
+        },
+      ],
+      name: "test",
+      displayName: "Test Report",
+      totalSize: 1,
+      usage: "Test usage",
+    };
+
+    const result = simplifyReport(report);
+    expect(result.groups?.[0].version).to.deep.equal({
+      displayName: "1.2.3 (123)",
+    });
+    expect(result.groups?.[0].version?.displayVersion).to.be.undefined;
+    expect(result.groups?.[0].version?.buildVersion).to.be.undefined;
+  });
+
+  it("should remove operatingSystem.displayVersion and operatingSystem.os but keep displayName", () => {
+    const report: Report = {
+      groups: [
+        {
+          metrics: [],
+          subgroups: [],
+          operatingSystem: {
+            displayVersion: "14.0",
+            os: "Android",
+            displayName: "Android (14.0)",
+          },
+        },
+      ],
+      name: "test",
+      displayName: "Test Report",
+      totalSize: 1,
+      usage: "Test usage",
+    };
+
+    const result = simplifyReport(report);
+    expect(result.groups?.[0].operatingSystem).to.deep.equal({
+      displayName: "Android (14.0)",
+    });
+    expect(result.groups?.[0].operatingSystem?.displayVersion).to.be.undefined;
+    expect(result.groups?.[0].operatingSystem?.os).to.be.undefined;
+  });
+});
 
 describe("getReport", () => {
   const appId = "1:1234567890:android:abcdef1234567890";

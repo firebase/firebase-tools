@@ -36,6 +36,29 @@ export enum CrashlyticsReport {
  * @param pageSize Number of rows to return, generally defaulting to 10
  * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
  */
+/**
+ * Removes fields from the report which confuse the model
+ */
+export function simplifyReport(report: Report): Report {
+  if (!report.groups) return report;
+  report.groups.forEach((group) => {
+    // Leaves displayName only in each group, which is the appropriate field to use
+    if (group.device) {
+      delete group.device.model;
+      delete group.device.manufacturer;
+    }
+    if (group.version) {
+      delete group.version.buildVersion;
+      delete group.version.displayVersion;
+    }
+    if (group.operatingSystem) {
+      delete group.operatingSystem.displayVersion;
+      delete group.operatingSystem.os;
+    }
+  });
+  return report;
+}
+
 export async function getReport(
   report: CrashlyticsReport,
   appId: string,
