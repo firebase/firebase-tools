@@ -6,6 +6,7 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { debounce } from "../../../src/utils";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -17,6 +18,39 @@ abstract class ComputedCodeLensProvider implements vscode.CodeLensProvider {
   onDidChangeCodeLenses = this._onChangeCodeLensesEmitter.event;
 
   private readonly subscriptions: Map<Signal<any>, Disposable> = new Map();
+  private debouncedParse: () => void;
+  private document?: vscode.TextDocument;
+
+  constructor() {
+    this.debouncedParse = debounce(() => {
+      if (this.document) {
+        const documentText = this.document.getText();
+        // TODO: replace w/ online-parser to work with malformed documents
+        const documentNode = parse(documentText);
+        if (documentNode) {
+          this._onChangeCodeLensesEmitter.fire();
+        }
+      }
+    }, 1000);
+
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (this.document && event.document === this.document) {
+        this.debouncedParse();
+      }
+    });
+
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor) {
+        this.document = editor.document;
+        this.debouncedParse();
+      }
+    });
+
+    if (vscode.window.activeTextEditor) {
+      this.document = vscode.window.activeTextEditor.document;
+      this.debouncedParse();
+    }
+  }
 
   watch<T>(signal: Signal<T>): T {
     if (!this.subscriptions.has(signal)) {
