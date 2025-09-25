@@ -9,7 +9,7 @@
       "version": "14.17.0",
       "license": "MIT",
       "dependencies": {
-        "@apphosting/build": "^0.1.5",
+        "@apphosting/build": "^0.1.6",
         "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
@@ -303,13 +303,13 @@
       }
     },
     "node_modules/@apphosting/build": {
-      "version": "0.1.5",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.5.tgz",
-      "integrity": "sha512-9ezhhebBDA27xfofuY/4LhKowrjTbvDCZQrs+oUgFedA2g59U+uVinjRcrZ0oe8YYDEnOtxV3dhahbflSb5y3w==",
+      "version": "0.1.6",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
+      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
       "license": "Apache-2.0",
       "dependencies": {
         "@apphosting/common": "^0.0.8",
-        "@npmcli/promise-spawn": "*",
+        "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
         "npm-pick-manifest": "^9.0.0",
@@ -4312,15 +4312,15 @@
       }
     },
     "node_modules/@npmcli/promise-spawn": {
-      "version": "8.0.3",
-      "resolved": "https://registry.npmjs.org/@npmcli/promise-spawn/-/promise-spawn-8.0.3.tgz",
-      "integrity": "sha512-Yb00SWaL4F8w+K8YGhQ55+xE4RUNdMHV43WZGsiTM92gS+lC0mGsn7I4hLug7pbao035S6bj3Y3w0cUNGLfmkg==",
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/@npmcli/promise-spawn/-/promise-spawn-3.0.0.tgz",
+      "integrity": "sha512-s9SgS+p3a9Eohe68cSI3fi+hpcZUmXq5P7w0kMlAsWVtR7XbK3ptkZqKT2cK1zLDObJ3sR+8P59sJE0w/KTL1g==",
       "license": "ISC",
       "dependencies": {
-        "which": "^5.0.0"
+        "infer-owner": "^1.0.4"
       },
       "engines": {
-        "node": "^18.17.0 || >=20.5.0"
+        "node": "^12.13.0 || ^14.15.0 || >=16.0.0"
       }
     },
     "node_modules/@opentelemetry/api": {
@@ -12431,8 +12431,7 @@
     "node_modules/infer-owner": {
       "version": "1.0.4",
       "resolved": "https://registry.npmjs.org/infer-owner/-/infer-owner-1.0.4.tgz",
-      "integrity": "sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A==",
-      "optional": true
+      "integrity": "sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A=="
     },
     "node_modules/inflight": {
       "version": "1.0.6",
@@ -21439,21 +21438,6 @@
         "node": ">=18"
       }
     },
-    "node_modules/which": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/which/-/which-5.0.0.tgz",
-      "integrity": "sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ==",
-      "license": "ISC",
-      "dependencies": {
-        "isexe": "^3.1.1"
-      },
-      "bin": {
-        "node-which": "bin/which.js"
-      },
-      "engines": {
-        "node": "^18.17.0 || >=20.5.0"
-      }
-    },
     "node_modules/which-module": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/which-module/-/which-module-2.0.0.tgz",
@@ -21480,15 +21464,6 @@
       "dev": true,
       "engines": {
         "node": ">=4"
-      }
-    },
-    "node_modules/which/node_modules/isexe": {
-      "version": "3.1.1",
-      "resolved": "https://registry.npmjs.org/isexe/-/isexe-3.1.1.tgz",
-      "integrity": "sha512-LpB/54B+/2J5hqQ7imZHfdU31OlgQqx7ZicVlkm9kzg9/w8GKLEcFfJl/t7DCEDueOyBAD6zCCwTO6Fzs0NoEQ==",
-      "license": "ISC",
-      "engines": {
-        "node": ">=16"
       }
     },
     "node_modules/wide-align": {
@@ -22067,12 +22042,12 @@
       }
     },
     "@apphosting/build": {
-      "version": "0.1.5",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.5.tgz",
-      "integrity": "sha512-9ezhhebBDA27xfofuY/4LhKowrjTbvDCZQrs+oUgFedA2g59U+uVinjRcrZ0oe8YYDEnOtxV3dhahbflSb5y3w==",
+      "version": "0.1.6",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
+      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
       "requires": {
         "@apphosting/common": "^0.0.8",
-        "@npmcli/promise-spawn": "*",
+        "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
         "npm-pick-manifest": "^9.0.0",
@@ -24954,11 +24929,11 @@
       }
     },
     "@npmcli/promise-spawn": {
-      "version": "8.0.3",
-      "resolved": "https://registry.npmjs.org/@npmcli/promise-spawn/-/promise-spawn-8.0.3.tgz",
-      "integrity": "sha512-Yb00SWaL4F8w+K8YGhQ55+xE4RUNdMHV43WZGsiTM92gS+lC0mGsn7I4hLug7pbao035S6bj3Y3w0cUNGLfmkg==",
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/@npmcli/promise-spawn/-/promise-spawn-3.0.0.tgz",
+      "integrity": "sha512-s9SgS+p3a9Eohe68cSI3fi+hpcZUmXq5P7w0kMlAsWVtR7XbK3ptkZqKT2cK1zLDObJ3sR+8P59sJE0w/KTL1g==",
       "requires": {
-        "which": "^5.0.0"
+        "infer-owner": "^1.0.4"
       }
     },
     "@opentelemetry/api": {
@@ -31075,8 +31050,7 @@
     "infer-owner": {
       "version": "1.0.4",
       "resolved": "https://registry.npmjs.org/infer-owner/-/infer-owner-1.0.4.tgz",
-      "integrity": "sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A==",
-      "optional": true
+      "integrity": "sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A=="
     },
     "inflight": {
       "version": "1.0.6",
@@ -37704,21 +37678,6 @@
       "requires": {
         "tr46": "^5.0.0",
         "webidl-conversions": "^7.0.0"
-      }
-    },
-    "which": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/which/-/which-5.0.0.tgz",
-      "integrity": "sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ==",
-      "requires": {
-        "isexe": "^3.1.1"
-      },
-      "dependencies": {
-        "isexe": {
-          "version": "3.1.1",
-          "resolved": "https://registry.npmjs.org/isexe/-/isexe-3.1.1.tgz",
-          "integrity": "sha512-LpB/54B+/2J5hqQ7imZHfdU31OlgQqx7ZicVlkm9kzg9/w8GKLEcFfJl/t7DCEDueOyBAD6zCCwTO6Fzs0NoEQ=="
-        }
       }
     },
     "which-module": {

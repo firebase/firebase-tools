@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
 import { localBuild } from "./localbuilds";
 
-describe("localBuild", async () => {
+describe("localBuild", () => {
   afterEach(() => {
     sinon.restore();
   });

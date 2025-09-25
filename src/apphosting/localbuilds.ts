@@ -1,6 +1,9 @@
 import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 
+/**
+ * Triggers a local apphosting build.
+ */
 export async function localBuild(
   projectRoot: string,
   framework: string,
