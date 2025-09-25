@@ -93,7 +93,7 @@ echo "Ran tests."
 if [[ $VERSION == "preview" ]]; then
   echo "Making a preview version..."
   sanitized_branch=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
-  npm version prerelease --preid=preview-${sanitized_branch}
+  npm version prerelease --preid=${sanitized_branch}
   NEW_VERSION=$(jq -r ".version" package.json)
   echo "Made a preview version."
 else
@@ -112,13 +112,7 @@ cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
-if [[ $VERSION == "preview" ]]; then
-  # Note: we publish with a dynamic tag so that this does not become the "latest" version
-  sanitized_branch=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh --tag=preview-${sanitized_branch}
-else
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-fi
+npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
 echo "Published to npm."
 
 if [[ $VERSION != "preview" ]]; then
