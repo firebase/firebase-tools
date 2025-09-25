@@ -46,7 +46,7 @@ import { resources } from "./resources";
 
 const SERVER_VERSION = "0.3.0";
 
-const cmd = new Command("experimental:mcp");
+const cmd = new Command("mcp");
 
 const orderedLogLevels = [
   "debug",
