@@ -4,9 +4,10 @@ import * as clc from "colorette";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
+import * as utils from "../utils";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -142,7 +143,7 @@ interface GetDefaultBucketResponse {
   };
 }
 
-interface CreateBucketRequest {
+export interface CreateBucketRequest {
   name: string;
   location: string;
   lifecycle: {
@@ -150,7 +151,7 @@ interface CreateBucketRequest {
   };
 }
 
-interface LifecycleRule {
+export interface LifecycleRule {
   action: {
     type: string;
   };
@@ -223,9 +224,10 @@ export async function upload(
   uploadUrl: string,
   extraHeaders?: Record<string, string>,
   ignoreQuotaProject?: boolean,
-): Promise<any> {
-  const url = new URL(uploadUrl);
-  const localAPIClient = new Client({ urlPrefix: url.origin, auth: false });
+): Promise<{ generation: string | null }> {
+  const url = new URL(uploadUrl, storageOrigin());
+  const isSignedUrl = url.searchParams.has("GoogleAccessId");
+  const localAPIClient = new Client({ urlPrefix: url.origin, auth: !isSignedUrl });
   const res = await localAPIClient.request({
     method: "PUT",
     path: url.pathname,
@@ -329,17 +331,24 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
 export async function createBucket(
   projectId: string,
   req: CreateBucketRequest,
+  projectPrivate?: boolean,
 ): Promise<BucketResponse> {
+  const queryParams: Record<string, string> = {
+    project: projectId,
+  };
+  // TODO: This should probably be always on, but we need to audit the other cases of this method to
+  // make sure we don't break anything.
+  if (projectPrivate) {
+    queryParams["predefinedAcl"] = "projectPrivate";
+    queryParams["predefinedDefaultObjectAcl"] = "projectPrivate";
+  }
+
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.post<CreateBucketRequest, BucketResponse>(
       `/storage/v1/b`,
       req,
-      {
-        queryParams: {
-          project: projectId,
-        },
-      },
+      { queryParams },
     );
     return result.body;
   } catch (err: any) {
@@ -347,6 +356,48 @@ export async function createBucket(
     throw new FirebaseError("Failed to create the storage bucket", {
       original: err,
     });
+  }
+}
+
+/**
+ * Creates a storage bucket on GCP if it does not already exist.
+ */
+export async function upsertBucket(opts: {
+  product: string;
+  createMessage: string;
+  projectId: string;
+  req: CreateBucketRequest;
+}): Promise<void> {
+  try {
+    await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
+    return;
+  } catch (err) {
+    const errStatus = getErrStatus((err as FirebaseError).original);
+    // Unfortunately, requests for a non-existent bucket from the GCS API sometimes return 403 responses as well as 404s.
+    // We must attempt to create a new bucket on both 403s and 404s.
+    if (errStatus !== 403 && errStatus !== 404) {
+      throw err;
+    }
+  }
+
+  utils.logLabeledBullet(opts.product, opts.createMessage);
+  try {
+    await (exports as { createBucket: typeof createBucket }).createBucket(
+      opts.projectId,
+      opts.req,
+      true /* projectPrivate */,
+    );
+  } catch (err) {
+    if (getErrStatus((err as FirebaseError).original) === 403) {
+      utils.logLabeledWarning(
+        opts.product,
+        "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
+          "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
+          "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
+          "to grant you one of those roles.",
+      );
+    }
+    throw err;
   }
 }
 
