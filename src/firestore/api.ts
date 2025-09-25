@@ -21,6 +21,29 @@ export class FirestoreApi {
   printer = new PrettyPrint();
 
   /**
+   * Process indexes by appending the implicit __name__ fields with default order for STANDARD edition database.
+   * No-op if exists __name__ field at the end.
+   * No-op is ENTERPRISE edition databases.
+   * @param index Spec index to process
+   * @return Processed spec index with potential additional __name__ suffix
+   */
+  public static processIndex(index: Spec.Index): Spec.Index {
+    // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
+    // this matches the direction of the last non-name field in the index.
+    const fields = index.fields;
+    const lastField = index.fields?.[index.fields.length - 1];
+    if (lastField?.fieldPath !== "__name__") {
+      const defaultDirection = index.fields?.[index.fields.length - 1]?.order;
+      const nameSuffix = { fieldPath: "__name__", order: defaultDirection } as types.IndexField;
+      fields.push(nameSuffix);
+    }
+    return {
+      ...index,
+      fields,
+    };
+  }
+
+  /**
    * Deploy an index specification to the specified project.
    * @param options the CLI options.
    * @param indexes an array of objects, each will be validated and then converted
@@ -534,14 +557,19 @@ export class FirestoreApi {
 
     // TODO(b/439901837): Compare `unique` index configuration when it's supported.
 
-    if (index.fields.length !== spec.fields.length) {
+    let specIdx = spec;
+    if (edition === DatabaseEdition.STANDARD) {
+      specIdx = FirestoreApi.processIndex(specIdx);
+    }
+
+    if (index.fields.length !== specIdx.fields.length) {
       return false;
     }
 
     let i = 0;
     while (i < index.fields.length) {
       const iField = index.fields[i];
-      const sField = spec.fields[i];
+      const sField = specIdx.fields[i];
 
       if (iField.fieldPath !== sField.fieldPath) {
         return false;
