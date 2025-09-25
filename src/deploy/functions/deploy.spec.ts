@@ -1,8 +1,12 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import * as args from "./args";
 import * as backend from "./backend";
 import * as deploy from "./deploy";
+import * as gcs from "../../gcp/storage";
+import * as gcfv2 from "../../gcp/cloudfunctionsv2";
+import * as experiments from "../../experiments";
 
 describe("deploy", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -135,6 +139,117 @@ describe("deploy", () => {
 
       // Expect
       expect(result).to.be.false;
+    });
+  });
+
+  describe("uploadSourceV2", () => {
+    let gcsUploadStub: sinon.SinonStub;
+    let gcsUpsertBucketStub: sinon.SinonStub;
+    let gcfv2GenerateUploadUrlStub: sinon.SinonStub;
+    let createReadStreamStub: sinon.SinonStub;
+    let experimentEnabled: boolean;
+
+    const SOURCE: args.Source = {
+      functionsSourceV2: "source.zip",
+      functionsSourceV2Hash: "source-hash",
+    };
+    const CREATE_MESSAGE =
+      "Creating Cloud Storage bucket in region to store Functions source code uploads at firebase-functions-src-123456...";
+
+    before(() => {
+      experimentEnabled = experiments.isEnabled("runfunctions");
+    });
+    after(() => experiments.setEnabled("runfunctions", experimentEnabled));
+
+    beforeEach(() => {
+      gcsUploadStub = sinon.stub(gcs, "upload").resolves({ generation: "1" });
+      gcsUpsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves();
+      gcfv2GenerateUploadUrlStub = sinon.stub(gcfv2, "generateUploadUrl").resolves({
+        uploadUrl: "https://storage.googleapis.com/upload/url",
+        storageSource: {
+          bucket: "gcf-sources-123-us-central1",
+          object: "source-hash.zip",
+        },
+      });
+      createReadStreamStub = sinon.stub(deploy, "createReadStream").returns("stream" as any);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    describe("with runfunctions experiment enabled", () => {
+      before(() => experiments.setEnabled("runfunctions", true));
+
+      it("should call gcs.upsertBucket and gcs.upload for gcfv2 functions", async () => {
+        const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
+
+        await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
+
+        expect(gcsUpsertBucketStub).to.be.calledOnceWith({
+          product: "functions",
+          projectId: "project",
+          createMessage: CREATE_MESSAGE,
+          req: {
+            name: "firebase-functions-src-123456",
+            location: "region",
+            lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+          },
+        });
+        expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
+        expect(gcsUploadStub).to.be.calledOnceWith(
+          { file: "source.zip", stream: "stream" },
+          "firebase-functions-src-123456/source-hash.zip",
+          undefined,
+          true,
+        );
+        expect(gcfv2GenerateUploadUrlStub).not.to.be.called;
+      });
+
+      it("should call gcs.upsertBucket and gcs.upload for run functions", async () => {
+        const wantBackend = backend.of({ ...ENDPOINT, platform: "run" });
+
+        await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
+
+        expect(gcsUpsertBucketStub).to.be.calledOnceWith({
+          product: "functions",
+          projectId: "project",
+          createMessage: CREATE_MESSAGE,
+          req: {
+            name: "firebase-functions-src-123456",
+            location: "region",
+            lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
+          },
+        });
+        expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
+        expect(gcsUploadStub).to.be.calledOnceWith(
+          { file: "source.zip", stream: "stream" },
+          "firebase-functions-src-123456/source-hash.zip",
+          undefined,
+          true,
+        );
+        expect(gcfv2GenerateUploadUrlStub).not.to.be.called;
+      });
+    });
+
+    context("with runfunctions experiment disabled", () => {
+      before(() => experiments.setEnabled("runfunctions", false));
+
+      it("should call gcfv2.generateUploadUrl and gcs.upload", async () => {
+        const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
+
+        await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
+
+        expect(gcfv2GenerateUploadUrlStub).to.be.calledOnceWith("project", "region");
+        expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
+        expect(gcsUploadStub).to.be.calledOnceWith(
+          { file: "source.zip", stream: "stream" },
+          "https://storage.googleapis.com/upload/url",
+          undefined,
+          true,
+        );
+        expect(gcsUpsertBucketStub).not.to.be.called;
+      });
     });
   });
 });
