@@ -1,6 +1,14 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
+import { init_ai } from "../../resources/guides/init_ai";
+import { init_backend } from "../../resources/guides/init_backend";
+import { ServerResource } from "../../resource";
+
+const GUIDE_PARAMS: Record<string, ServerResource> = {
+  "ai-logic": init_ai,
+  backend: init_backend,
+};
 
 export const init = prompt(
   {
@@ -17,7 +25,25 @@ export const init = prompt(
       title: "Initialize Firebase",
     },
   },
-  async ({ prompt }, { config, projectId, accountEmail }) => {
+  async ({ prompt }, mcp) => {
+    const { config, projectId, accountEmail } = mcp;
+
+    // This allows a "short circuit" feature where you can pass a specific
+    // name, like "ai-logic" into the prompt and get a specific guide
+    const resourceDefinition = prompt ? GUIDE_PARAMS[prompt] : undefined;
+    if (resourceDefinition) {
+      const resource = await resourceDefinition.fn(resourceDefinition.mcp.uri, mcp);
+      return resource.contents
+        .filter((resContents) => !!resContents.text)
+        .map((resContents) => ({
+          role: "user" as const,
+          content: {
+            type: "text",
+            text: String(resContents.text),
+          },
+        }));
+    }
+
     const platform = await getPlatformFromFolder(config.projectDir);
 
     return [
