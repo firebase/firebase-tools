@@ -46,7 +46,7 @@ import { resources } from "./resources";
 
 const SERVER_VERSION = "0.3.0";
 
-const cmd = new Command("experimental:mcp");
+const cmd = new Command("mcp");
 
 const orderedLogLevels = [
   "debug",
@@ -88,9 +88,14 @@ export class FirebaseMcpServer {
   ): Promise<void> {
     // wait until ready or until 2s has elapsed
     if (!this.clientInfo) await timeoutFallback(this.ready(), null, 2000);
-    const clientInfoParams = {
+    const clientInfoParams: {
+      mcp_client_name: string;
+      mcp_client_version: string;
+      gemini_cli_extension: string;
+    } = {
       mcp_client_name: this.clientInfo?.name || "<unknown-client>",
       mcp_client_version: this.clientInfo?.version || "<unknown-version>",
+      gemini_cli_extension: process.env.IS_GEMINI_CLI_EXTENSION ? "true" : "false",
     };
     return trackGA4(event, { ...params, ...clientInfoParams });
   }

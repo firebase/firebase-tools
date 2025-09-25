@@ -1,6 +1,14 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
+import { init_ai } from "../../resources/guides/init_ai";
+import { init_backend } from "../../resources/guides/init_backend";
+import { ServerResource } from "../../resource";
+
+const GUIDE_PARAMS: Record<string, ServerResource> = {
+  "ai-logic": init_ai,
+  backend: init_backend,
+};
 
 export const init = prompt(
   {
@@ -17,7 +25,25 @@ export const init = prompt(
       title: "Initialize Firebase",
     },
   },
-  async ({ prompt }, { config, projectId, accountEmail }) => {
+  async ({ prompt }, mcp) => {
+    const { config, projectId, accountEmail } = mcp;
+
+    // This allows a "short circuit" feature where you can pass a specific
+    // name, like "ai-logic" into the prompt and get a specific guide
+    const resourceDefinition = prompt ? GUIDE_PARAMS[prompt] : undefined;
+    if (resourceDefinition) {
+      const resource = await resourceDefinition.fn(resourceDefinition.mcp.uri, mcp);
+      return resource.contents
+        .filter((resContents) => !!resContents.text)
+        .map((resContents) => ({
+          role: "user" as const,
+          content: {
+            type: "text",
+            text: String(resContents.text),
+          },
+        }));
+    }
+
     const platform = await getPlatformFromFolder(config.projectDir);
 
     return [
@@ -53,6 +79,8 @@ ${prompt || "<the user didn't supply specific instructions>"}
 ## Steps
 
 Follow the steps below taking note of any user instructions provided above.
+
+IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
 
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
 2. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
