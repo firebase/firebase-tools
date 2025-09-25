@@ -10,6 +10,9 @@ const apiClient = new Client({
   apiVersion: "v1alpha",
 });
 
+/**
+ * Builds the appropriate app namespace string based on the platform type.
+ */
 export function buildAppNamespace(app: types.ProvisionAppOptions): string {
   switch (app.platform) {
     case AppPlatform.IOS:
@@ -23,6 +26,9 @@ export function buildAppNamespace(app: types.ProvisionAppOptions): string {
   }
 }
 
+/**
+ * Builds the parent resource string for Firebase project provisioning.
+ */
 export function buildParentString(parent: types.ProjectParentInput): string {
   switch (parent.type) {
     case "existing_project":
@@ -36,52 +42,44 @@ export function buildParentString(parent: types.ProjectParentInput): string {
   }
 }
 
+/**
+ * Builds the complete provision request object from the provided options.
+ */
 export function buildProvisionRequest(
   options: types.ProvisionFirebaseAppOptions,
 ): types.ProvisionRequest {
-  const request: types.ProvisionRequest = {
+  const platformInput = (() => {
+    switch (options.app.platform) {
+      case AppPlatform.IOS:
+        return {
+          appleInput: {
+            appStoreId: options.app.appStoreId,
+            teamId: options.app.teamId,
+          },
+        };
+      case AppPlatform.ANDROID:
+        return {
+          androidInput: {
+            sha1Hashes: options.app.sha1Hashes,
+            sha256Hashes: options.app.sha256Hashes,
+          },
+        };
+      case AppPlatform.WEB:
+        return { webInput: {} };
+    }
+  })();
+
+  return {
     appNamespace: buildAppNamespace(options.app),
     displayName: options.project.displayName,
+    ...(options.project.parent && { parent: buildParentString(options.project.parent) }),
+    ...(options.features?.location && { location: options.features.location }),
+    ...(options.requestId && { requestId: options.requestId }),
+    ...(options.features?.firebaseAiLogicInput && {
+      firebaseAiLogicInput: options.features.firebaseAiLogicInput,
+    }),
+    ...platformInput,
   };
-
-  if (options.project.parent) {
-    request.parent = buildParentString(options.project.parent);
-  }
-
-  if (options.features?.location) {
-    request.location = options.features.location;
-  }
-
-  if (options.requestId) {
-    request.requestId = options.requestId;
-  }
-
-  // if (options.project.projectLabels) request.projectLabels = options.project.projectLabels;  // Not enabled yet
-  // if (options.project.cloudBillingAccountId) request.cloudBillingAccountId = options.project.cloudBillingAccountId;  // Not enabled yet
-
-  switch (options.app.platform) {
-    case AppPlatform.IOS:
-      request.appleInput = {
-        appStoreId: options.app.appStoreId,
-        teamId: options.app.teamId,
-      };
-      break;
-    case AppPlatform.ANDROID:
-      request.androidInput = {
-        sha1Hashes: options.app.sha1Hashes,
-        sha256Hashes: options.app.sha256Hashes,
-      };
-      break;
-    case AppPlatform.WEB:
-      request.webInput = {};
-      break;
-  }
-
-  if (options.features?.firebaseAiLogicInput) {
-    request.firebaseAiLogicInput = options.features.firebaseAiLogicInput;
-  }
-
-  return request;
 }
 
 /**
@@ -106,7 +104,7 @@ export async function provisionFirebaseApp(
       apiOrigin: firebaseApiOrigin(),
       apiVersion: "v1beta1",
       operationResourceName: response.body.name,
-      masterTimeout: 300000, // 5 minutes
+      masterTimeout: 180000, // 3 minutes
       backoff: 100, // Initial backoff of 100ms
       maxBackoff: 5000, // Max backoff of 5s
     });
