@@ -2,6 +2,14 @@ import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
 import { Config } from "../../../config";
+import { init_ai } from "../../resources/guides/init_ai";
+import { init_backend } from "../../resources/guides/init_backend";
+import { ServerResource } from "../../resource";
+
+const GUIDE_PARAMS: Record<string, ServerResource> = {
+  "ai-logic": init_ai,
+  backend: init_backend,
+};
 
 export const init = prompt(
   {
@@ -18,12 +26,20 @@ export const init = prompt(
       title: "Initialize Firebase",
     },
   },
-  async ({ prompt }, { config, projectId, accountEmail }) => {
-    const shortCircuitUrls: Record<string, string> = {
-      "ai-logic": "firebase://guides/init/ai",
-      backend: "firebase://guides/init/backend",
-    };
-    const shortCircuitUrl = prompt ? shortCircuitUrls[prompt] : undefined;
+  async ({ prompt }, mcp) => {
+    const { config, projectId, accountEmail } = mcp;
+
+    const shortCircuitResourceGetter = prompt ? GUIDE_PARAMS[prompt] : undefined;
+    if (shortCircuitResourceGetter) {
+      const resource = await shortCircuitResourceGetter.fn("", mcp);
+      return resource.contents.map((resContents) => ({
+        role: "user" as const,
+        content: {
+          type: "text",
+          text: resContents.text
+        },
+      }))
+    }
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
@@ -32,17 +48,12 @@ export const init = prompt(
         role: "user" as const,
         content: {
           type: "text",
-          text: shortCircuitUrl
-            ? makeShortCircuitPrompt(shortCircuitUrl)
-            : makeDefaultPrompt(platform, projectId, accountEmail, config),
+          text:  makeDefaultPrompt(platform, projectId, accountEmail, config),
         },
       },
     ];
   },
 );
-
-export const makeShortCircuitPrompt = (guideUrl: string) =>
-  `Use the Firebase \`read_resources\` tool to load the instructions from ${guideUrl}`;
 
 export const makeDefaultPrompt = (
   platform: Platform,
