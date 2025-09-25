@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cloneDeep } from "lodash";
 import { logger } from "../logger";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Report } from "./types";
@@ -40,8 +41,9 @@ export enum CrashlyticsReport {
  * Removes fields from the report which confuse the model
  */
 export function simplifyReport(report: Report): Report {
-  if (!report.groups) return report;
-  report.groups.forEach((group) => {
+  const simplifiedReport = cloneDeep(report);
+  if (!simplifiedReport.groups) return report;
+  simplifiedReport.groups.forEach((group) => {
     // Leaves displayName only in each group, which is the appropriate field to use
     if (group.device) {
       delete group.device.model;
@@ -56,7 +58,7 @@ export function simplifyReport(report: Report): Report {
       delete group.operatingSystem.os;
     }
   });
-  return report;
+  return simplifiedReport;
 }
 
 export async function getReport(

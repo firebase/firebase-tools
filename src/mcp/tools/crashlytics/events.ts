@@ -43,7 +43,7 @@ export const list_events = tool(
       return mcpError(`Must specify 'filter.issueId' or 'filter.issueVariantId' parameters.`);
 
     const response: ListEventsResponse = await listEvents(appId, filter, pageSize);
-    response.events = response.events.map((e) => pruneThreads(e));
+    response.events = response.events ? response.events.map((e) => pruneThreads(e)) : [];
     return toContent(response);
   },
 );
@@ -76,7 +76,7 @@ export const batch_get_events = tool(
       return mcpError(`Must provide event resource names in name parameter.`);
 
     const response: BatchGetEventsResponse = await batchGetEvents(appId, names);
-    response.events = response.events.map((e) => pruneThreads(e));
+    response.events = response.events ? response.events.map((e) => pruneThreads(e)) : [];
     return toContent(response);
   },
 );

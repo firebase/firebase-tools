@@ -469,7 +469,7 @@ export interface ListEventsRequest {
 /** Response message for the ListEvents method. */
 export interface ListEventsResponse {
   /** Returns one element per event, ordered descending by the event timestamp. */
-  events: Event[];
+  events?: Event[];
   /** A pagination token to retrieve the next page of events. */
   nextPageToken?: string;
 }
@@ -487,7 +487,7 @@ export interface BatchGetEventsRequest {
 /** Response message for the BatchGetEvents method. */
 export interface BatchGetEventsResponse {
   /** Returns one or more events. */
-  events: Event[];
+  events?: Event[];
 }
 
 /**
