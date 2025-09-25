@@ -1,7 +1,6 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
-import { Config } from "../../../config";
 import { init_ai } from "../../resources/guides/init_ai";
 import { init_backend } from "../../resources/guides/init_backend";
 import { ServerResource } from "../../resource";
