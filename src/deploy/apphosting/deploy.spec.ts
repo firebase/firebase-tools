@@ -1,8 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { Config } from "../../config";
-import { FirebaseError } from "../../error";
-import { AppHostingSingle } from "../../firebaseConfig";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
 import { Context } from "./args";
@@ -26,24 +24,20 @@ const BASE_OPTS = {
 
 function initializeContext(): Context {
   return {
-    backendConfigs: new Map<string, AppHostingSingle>([
-      [
-        "foo",
-        {
-          backendId: "foo",
-          rootDir: "/",
-          ignore: [],
-        },
-      ],
-    ]),
-    backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-    backendStorageUris: new Map<string, string>(),
+    backendConfigs: {
+      foo: {
+        backendId: "foo",
+        rootDir: "/",
+        ignore: [],
+      },
+    },
+    backendLocations: { foo: "us-central1" },
+    backendStorageUris: {},
   };
 }
 
 describe("apphosting", () => {
-  let getBucketStub: sinon.SinonStub;
-  let createBucketStub: sinon.SinonStub;
+  let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
   let createReadStreamStub: sinon.SinonStub;
@@ -53,8 +47,7 @@ describe("apphosting", () => {
     getProjectNumberStub = sinon
       .stub(getProjectNumber, "getProjectNumber")
       .throws("Unexpected getProjectNumber call");
-    getBucketStub = sinon.stub(gcs, "getBucket").throws("Unexpected getBucket call");
-    createBucketStub = sinon.stub(gcs, "createBucket").throws("Unexpected createBucket call");
+    upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
     createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
     createReadStreamStub = sinon
@@ -80,19 +73,11 @@ describe("apphosting", () => {
       }),
     };
 
-    it("creates regional GCS bucket if one doesn't exist yet", async () => {
+    it("upserts regional GCS bucket", async () => {
       const context = initializeContext();
       getProjectNumberStub.resolves("000000000000");
-      getBucketStub.onFirstCall().rejects(
-        new FirebaseError("error", {
-          original: new FirebaseError("original error", { status: 404 }),
-        }),
-      );
-      createBucketStub.resolves();
-      createArchiveStub.resolves({
-        projectSourcePath: "my-project/",
-        zippedSourcePath: "path/to/foo-1234.zip",
-      });
+      upsertBucketStub.resolves();
+      createArchiveStub.resolves("path/to/foo-1234.zip");
       uploadObjectStub.resolves({
         bucket: "firebaseapphosting-sources-12345678-us-central1",
         object: "foo-1234",
@@ -101,18 +86,31 @@ describe("apphosting", () => {
 
       await deploy(context, opts);
 
-      expect(createBucketStub).to.be.calledOnce;
+      expect(upsertBucketStub).to.be.calledWith({
+        product: "apphosting",
+        createMessage:
+          "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
+        projectId: "my-project",
+        req: {
+          name: "firebaseapphosting-sources-000000000000-us-central1",
+          location: "us-central1",
+          lifecycle: {
+            rule: [
+              {
+                action: { type: "Delete" },
+                condition: { age: 30 },
+              },
+            ],
+          },
+        },
+      });
     });
 
     it("correctly creates and sets storage URIs", async () => {
       const context = initializeContext();
       getProjectNumberStub.resolves("000000000000");
-      getBucketStub.resolves();
-      createBucketStub.resolves();
-      createArchiveStub.resolves({
-        projectSourcePath: "my-project/",
-        zippedSourcePath: "path/to/foo-1234.zip",
-      });
+      upsertBucketStub.resolves();
+      createArchiveStub.resolves("path/to/foo-1234.zip");
       uploadObjectStub.resolves({
         bucket: "firebaseapphosting-sources-12345678-us-central1",
         object: "foo-1234",
@@ -121,7 +119,7 @@ describe("apphosting", () => {
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris.get("foo")).to.equal(
+      expect(context.backendStorageUris["foo"]).to.equal(
         "gs://firebaseapphosting-sources-000000000000-us-central1/foo-1234.zip",
       );
     });
