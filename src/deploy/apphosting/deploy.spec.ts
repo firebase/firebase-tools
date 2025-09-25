@@ -35,10 +35,28 @@ function initializeContext(): Context {
           ignore: [],
         },
       ],
+      [
+        "foo-local-build",
+        {
+          backendId: "foo-local-build",
+          rootDir: "/",
+          ignore: [],
+          localBuild: true,
+        },
+      ],
     ]),
-    backendLocations: new Map<string, string>([["foo", "us-central1"]]),
+    backendLocations: new Map<string, string>([
+      ["foo", "us-central1"],
+      ["foo-local-build", "us-central1"],
+    ]),
     backendStorageUris: new Map<string, string>(),
-    backendLocalBuilds: {},
+    backendLocalBuilds: {
+      "foo-local-build": {
+        buildDir: "./nextjs/standalone",
+        buildConfig: {},
+        annotations: {},
+      },
+    },
   };
 }
 
@@ -67,17 +85,25 @@ describe("apphosting", () => {
     sinon.verifyAndRestore();
   });
 
-  describe("deploy", () => {
+  describe("deploy local source", () => {
     const opts = {
       ...BASE_OPTS,
       projectId: "my-project",
       only: "apphosting",
       config: new Config({
-        apphosting: {
-          backendId: "foo",
-          rootDir: "/",
-          ignore: [],
-        },
+        apphosting: [
+          {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+          },
+          {
+            backendId: "foo-local-build",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        ],
       }),
     };
 
@@ -89,17 +115,58 @@ describe("apphosting", () => {
           original: new FirebaseError("original error", { status: 404 }),
         }),
       );
+      getBucketStub.onSecondCall().rejects(
+        new FirebaseError("error", {
+          original: new FirebaseError("original error", { status: 404 }),
+        }),
+      );
       createBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves({
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+      uploadObjectStub.onFirstCall().resolves({
         bucket: "firebaseapphosting-sources-12345678-us-central1",
         object: "foo-1234",
       });
+      uploadObjectStub.onSecondCall().resolves({
+        bucket: "firebaseapphosting-build-12345678-us-central1",
+        object: "foo-local-build-1234",
+      });
+
       createReadStreamStub.resolves();
 
       await deploy(context, opts);
 
-      expect(createBucketStub).to.be.calledOnce;
+      // assert backend foo calls
+      expect(createBucketStub).to.be.calledWithMatch("my-project", {
+        name: "firebaseapphosting-sources-000000000000-us-central1",
+        location: "us-central1",
+        lifecycle: sinon.match.any,
+      });
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs.get("foo"),
+        process.cwd(),
+        undefined,
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+      );
+
+      // assert backend foo-local-build calls
+      expect(createBucketStub).to.be.calledWithMatch("my-project", {
+        name: "firebaseapphosting-build-000000000000-us-central1",
+        location: "us-central1",
+        lifecycle: sinon.match.any,
+      });
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs.get("foo-local-build"),
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-build-000000000000-us-central1",
+      );
     });
 
     it("correctly creates and sets storage URIs", async () => {
@@ -107,10 +174,17 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves("000000000000");
       getBucketStub.resolves();
       createBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves({
-        bucket: "firebaseapphosting-sources-12345678-us-central1",
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+
+      uploadObjectStub.onFirstCall().resolves({
+        bucket: "firebaseapphosting-sources-000000000000-us-central1",
         object: "foo-1234",
+      });
+
+      uploadObjectStub.onSecondCall().resolves({
+        bucket: "firebaseapphosting-build-000000000000-us-central1",
+        object: "foo-local-build-1234",
       });
       createReadStreamStub.resolves();
 
@@ -118,6 +192,9 @@ describe("apphosting", () => {
 
       expect(context.backendStorageUris.get("foo")).to.equal(
         "gs://firebaseapphosting-sources-000000000000-us-central1/foo-1234.zip",
+      );
+      expect(context.backendStorageUris.get("foo-local-build")).to.equal(
+        "gs://firebaseapphosting-build-000000000000-us-central1/foo-local-build-1234.zip",
       );
     });
   });

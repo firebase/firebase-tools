@@ -148,19 +148,22 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
-  for ( const [backendId, config] of context.backendConfigs ) {
+  for (const config of context.backendConfigs.values()) {
     if (!config.localBuild) {
       continue;
     }
     logLabeledBullet("apphosting", `Starting local build for backend ${config.backendId}`);
-    let builtAppDir;
     try {
-      const {outputFiles, annotations, buildConfig} = await localBuild(options.projectRoot || "./", "nextjs");
+      const { outputFiles, annotations, buildConfig } = await localBuild(
+        options.projectRoot || "./",
+        "nextjs",
+      );
       context.backendLocalBuilds[config.backendId] = {
-	buildDir: outputFiles[0] ?? "",
-	buildConfig
-      }
-
+        // TODO(9114): This only works for nextjs.
+        buildDir: outputFiles[0] ?? "",
+        buildConfig,
+        annotations,
+      };
     } catch (e) {
       throw new FirebaseError(`Local Build for backend ${config.backendId} failed: ${e}`);
     }

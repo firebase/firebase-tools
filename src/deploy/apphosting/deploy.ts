@@ -78,12 +78,12 @@ export default async function (context: Context, options: Options): Promise<void
     let builtAppDir;
     if (cfg.localBuild) {
       builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
-      if (!rootDir) {
-	throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+      if (!builtAppDir) {
+        throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
       }
     }
     const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
-    logLabeledBullet("apphosting",`Zipped ${rootDir}`);
+    logLabeledBullet("apphosting", `Zipped ${rootDir}`);
 
     const backendLocation = context.backendLocations.get(cfg.backendId);
     if (!backendLocation) {
@@ -91,10 +91,7 @@ export default async function (context: Context, options: Options): Promise<void
         `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
     }
-    logLabeledBullet(
-      "apphosting",
-      `Uploading ${rootDir} for backend ${cfg.backendId}...`,
-    );
+    logLabeledBullet("apphosting", `Uploading ${rootDir} for backend ${cfg.backendId}...`);
     const gcsBucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${backendLocation.toLowerCase()}`;
     const { bucket, object } = await gcs.uploadObject(
       {
