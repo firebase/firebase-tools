@@ -10,7 +10,7 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -121,6 +121,27 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        ailogic: z
+          .object({
+            app_platform: z
+              .enum(["android", "ios", "web"])
+              .optional()
+              .describe(
+                "Platform for app creation. If not provided, will auto-detect from current directory",
+              ),
+            app_namespace: z
+              .string()
+              .describe(
+                "Package name (Android), bundle ID (iOS), or app name (Web). Required for app creation",
+              ),
+            overwrite_config: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe("Allow overwriting existing config files"),
+          })
+          .optional()
+          .describe("Enable Firebase AI Logic feature"),
       }),
     }),
     annotations: {
@@ -176,6 +197,14 @@ export const init = tool(
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
         apps: [],
+      };
+    }
+    if (features.ailogic) {
+      featuresList.push("ailogic");
+      featureInfo.ailogic = {
+        appPlatform: features.ailogic.app_platform,
+        appNamespace: features.ailogic.app_namespace,
+        overwriteConfig: features.ailogic.overwrite_config,
       };
     }
     const setup: Setup = {
