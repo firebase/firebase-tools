@@ -26,21 +26,20 @@ describe("Remote Config Rollout Delete", () => {
   });
 
   it("should throw FirebaseError if rollout is running", async () => {
-        const errorMessage = `Rollout ${ROLLOUT_ID} is currently running and cannot be deleted. If you want to delete this rollout, stop it at https://console.firebase.google.com/project/${PROJECT_ID}/config/env/firebase/rollout/${ROLLOUT_ID}`;
-        nock(remoteConfigApiOrigin())
-          .delete(
-            `/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/rollouts/${ROLLOUT_ID}`,
-          )
-          .reply(400, {
-            error: {
-              message: errorMessage,
-            },
-          });
-    
-        await expect(
-          deleteRollout(PROJECT_ID, NAMESPACE_FIREBASE, ROLLOUT_ID),
-        ).to.be.rejectedWith(FirebaseError, errorMessage);
+    const errorMessage = `Rollout ${ROLLOUT_ID} is currently running and cannot be deleted. If you want to delete this rollout, stop it at https://console.firebase.google.com/project/${PROJECT_ID}/config/env/firebase/rollout/${ROLLOUT_ID}`;
+    nock(remoteConfigApiOrigin())
+      .delete(`/v1/projects/${PROJECT_ID}/namespaces/${NAMESPACE_FIREBASE}/rollouts/${ROLLOUT_ID}`)
+      .reply(400, {
+        error: {
+          message: errorMessage,
+        },
       });
+
+    await expect(deleteRollout(PROJECT_ID, NAMESPACE_FIREBASE, ROLLOUT_ID)).to.be.rejectedWith(
+      FirebaseError,
+      errorMessage,
+    );
+  });
 
   it("should throw FirebaseError if an internal error occurred", async () => {
     nock(remoteConfigApiOrigin())

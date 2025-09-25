@@ -2,19 +2,20 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
-import * as clc from "colorette";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
 import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/deleteRollout";
 import { getRollout, parseRolloutIntoTable } from "../remoteconfig/getRollout";
-import { FirebaseError } from "../error";
 import { confirm } from "../prompt";
 
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
   .description("delete a Remote Config rollout.")
   .before(requireAuth)
-  .before(requirePermissions, ["cloudconfigs.config.update", "firebaseanalytics.resources.googleAnalyticsEdit"])
+  .before(requirePermissions, [
+    "cloud.configs.update",
+    "firebaseanalytics.resources.googleAnalyticsEdit",
+  ])
   .action(async (rolloutId: string, options: Options) => {
     const projectNumber: string = await needProjectNumber(options);
     const rollout = await getRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
