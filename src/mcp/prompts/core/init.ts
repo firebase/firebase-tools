@@ -29,16 +29,18 @@ export const init = prompt(
   async ({ prompt }, mcp) => {
     const { config, projectId, accountEmail } = mcp;
 
-    const shortCircuitResourceGetter = prompt ? GUIDE_PARAMS[prompt] : undefined;
-    if (shortCircuitResourceGetter) {
-      const resource = await shortCircuitResourceGetter.fn("", mcp);
-      return resource.contents.map((resContents) => ({
-        role: "user" as const,
-        content: {
-          type: "text",
-          text: resContents.text
-        },
-      }))
+    const resourceDefinition = prompt ? GUIDE_PARAMS[prompt] : undefined;
+    if (resourceDefinition) {
+      const resource = await resourceDefinition.fn(resourceDefinition.mcp.uri, mcp);
+      return resource.contents
+        .filter((resContents) => !!resContents.text)
+        .map((resContents) => ({
+          role: "user" as const,
+          content: {
+            type: "text",
+            text: String(resContents.text),
+          },
+        }));
     }
 
     const platform = await getPlatformFromFolder(config.projectDir);
@@ -48,7 +50,7 @@ export const init = prompt(
         role: "user" as const,
         content: {
           type: "text",
-          text:  makeDefaultPrompt(platform, projectId, accountEmail, config),
+          text: makeDefaultPrompt(platform, projectId, accountEmail, config),
         },
       },
     ];
