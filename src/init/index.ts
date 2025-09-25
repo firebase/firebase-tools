@@ -107,9 +107,6 @@ const featuresList: Feature[] = [
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
-/**
- *
- */
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {

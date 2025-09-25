@@ -204,7 +204,7 @@ export const init = tool(
       featureInfo.ailogic = {
         appPlatform: features.ailogic.app_platform,
         appNamespace: features.ailogic.app_namespace,
-        overwriteConfig: features.ailogic.overwrite_config || false,
+        overwriteConfig: features.ailogic.overwrite_config,
       };
     }
     const setup: Setup = {
