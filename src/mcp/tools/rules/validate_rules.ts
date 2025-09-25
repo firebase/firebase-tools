@@ -105,7 +105,7 @@ export function validateRulesTool(productName: string) {
       let rulesSourceContent: string;
       if (source_file) {
         try {
-          const filePath = resolve(source_file, host.cachedProjectRoot!);
+          const filePath = resolve(source_file, host.cachedProjectDir!);
           if (filePath.includes("../"))
             return mcpError("Cannot read files outside of the project directory.");
           rulesSourceContent = config.readProjectFile(source_file);
