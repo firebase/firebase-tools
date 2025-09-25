@@ -1,3 +1,4 @@
+import * as prompt from "../../../prompt";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs-extra";
@@ -5,7 +6,6 @@ import * as init from "./index";
 import * as utils from "./utils";
 import { Setup } from "../..";
 import { Config } from "../../../config";
-import { Platform } from "../../../dataconnect/types";
 
 describe("init ailogic", () => {
   let sandbox: sinon.SinonSandbox;
@@ -19,14 +19,73 @@ describe("init ailogic", () => {
   });
 
   describe("askQuestions", () => {
-    it("should complete without throwing", async () => {
-      // Skip detailed testing of askQuestions for now - it involves complex prompt mocking
-      const mockSetup = { featureInfo: {} } as Setup;
-      const mockConfig = {} as Config;
+    let selectStub: sinon.SinonStub;
+    let inputStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
 
-      // This test just ensures the function signature is correct
-      // Real functionality testing would require mocking dynamic imports
-      expect(() => init.askQuestions(mockSetup, mockConfig)).to.not.throw();
+    beforeEach(() => {
+      selectStub = sandbox.stub(prompt, "select");
+      inputStub = sandbox.stub(prompt, "input");
+      confirmStub = sandbox.stub(prompt, "confirm");
+    });
+
+    it("should populate ailogic featureInfo for android", async () => {
+      selectStub.resolves("android");
+      inputStub.resolves("com.example.android"); // For Android package name
+      confirmStub.resolves(false); // For overwriteConfig
+      const mockSetup = {} as Setup;
+      await init.askQuestions(mockSetup);
+
+      expect(mockSetup.featureInfo).to.have.property("ailogic");
+      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
+        appPlatform: "android",
+        appNamespace: "com.example.android",
+        overwriteConfig: false,
+      });
+    });
+
+    it("should populate ailogic featureInfo for ios", async () => {
+      selectStub.resolves("ios");
+      inputStub.resolves("com.example.ios"); // For iOS bundle ID
+      confirmStub.resolves(false); // For overwriteConfig
+      const mockSetup = {} as Setup;
+      await init.askQuestions(mockSetup);
+
+      expect(mockSetup.featureInfo).to.have.property("ailogic");
+      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
+        appPlatform: "ios",
+        appNamespace: "com.example.ios",
+        overwriteConfig: false,
+      });
+    });
+
+    it("should populate ailogic featureInfo for web", async () => {
+      selectStub.resolves("web");
+      inputStub.resolves("my-web-app"); // For web app name
+      confirmStub.resolves(false); // For overwriteConfig
+      const mockSetup = {} as Setup;
+      await init.askQuestions(mockSetup);
+
+      expect(mockSetup.featureInfo).to.have.property("ailogic");
+      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
+        appPlatform: "web",
+        appNamespace: "my-web-app",
+        overwriteConfig: false,
+      });
+    });
+
+    it("should ask for overwrite confirmation if config exists", async () => {
+      selectStub.resolves("android");
+      inputStub.resolves("com.example.android"); // For Android package name
+      confirmStub.resolves(true); // For overwrite confirmation
+      const mockSetup = {} as Setup;
+      await init.askQuestions(mockSetup);
+
+      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
+        appPlatform: "android",
+        appNamespace: "com.example.android",
+        overwriteConfig: true,
+      });
     });
   });
 
@@ -96,7 +155,12 @@ describe("init ailogic", () => {
       // Should not call detectAppPlatform since platform is provided
       sinon.assert.notCalled(detectAppPlatformStub);
       sinon.assert.calledWith(getConfigFilePathStub, "/test/project", "android");
-      sinon.assert.calledWith(buildProvisionOptionsStub, "test-project", "android", "com.example.test");
+      sinon.assert.calledWith(
+        buildProvisionOptionsStub,
+        "test-project",
+        "android",
+        "com.example.test",
+      );
     });
 
     it("should auto-detect platform when not provided", async () => {
@@ -126,7 +190,7 @@ describe("init ailogic", () => {
       existsSyncStub.returns(true);
 
       await expect(init.actuate(setup, config)).to.be.rejectedWith(
-        "AI Logic setup failed: Config file /test/project/google-services.json already exists. Use overwrite_config: true to update it."
+        "AI Logic setup failed: Config file /test/project/google-services.json already exists. Use overwrite_config: true to update it.",
       );
     });
 
@@ -184,7 +248,7 @@ describe("init ailogic", () => {
 
       await init.actuate(setup, config);
 
-      expect(setup.rcfile!.projects!.default).to.equal("new-project");
+      expect(setup.rcfile.projects.default).to.equal("new-project");
     });
 
     it("should add appropriate instructions", async () => {
@@ -201,10 +265,16 @@ describe("init ailogic", () => {
 
       await init.actuate(setup, config);
 
-      expect(setup.instructions).to.include("Firebase AI Logic has been enabled with a new android app.");
+      expect(setup.instructions).to.include(
+        "Firebase AI Logic has been enabled with a new android app.",
+      );
       expect(setup.instructions).to.include(`Config file written to: ${configFilePath}`);
-      expect(setup.instructions).to.include("If you have multiple app directories, copy the config file to the appropriate app folder.");
-      expect(setup.instructions).to.include("Note: A new Firebase app was created. You can use existing Firebase apps with AI Logic (current API limitation).");
+      expect(setup.instructions).to.include(
+        "If you have multiple app directories, copy the config file to the appropriate app folder.",
+      );
+      expect(setup.instructions).to.include(
+        "Note: A new Firebase app was created. You can use existing Firebase apps with AI Logic (current API limitation).",
+      );
     });
 
     it("should handle provisioning errors gracefully", async () => {
@@ -216,7 +286,7 @@ describe("init ailogic", () => {
       provisionAiLogicAppStub.throws(new Error("Provisioning API failed"));
 
       await expect(init.actuate(setup, config)).to.be.rejectedWith(
-        "AI Logic setup failed: Provisioning API failed"
+        "AI Logic setup failed: Provisioning API failed",
       );
     });
 

@@ -35,7 +35,7 @@ describe("ailogic utils", () => {
 
     it("should throw error for unsupported platform", () => {
       expect(() => utils.getConfigFileName("unsupported" as any)).to.throw(
-        "Unsupported platform: unsupported"
+        "Unsupported platform: unsupported",
       );
     });
   });
@@ -82,7 +82,7 @@ describe("ailogic utils", () => {
       writeFileSyncStub.throws(new Error("Write failed"));
 
       expect(() => utils.writeAppConfigFile(filePath, base64Data)).to.throw(
-        "Failed to write config file to /test/project/config.json: Write failed"
+        "Failed to write config file to /test/project/config.json: Write failed",
       );
     });
   });
@@ -97,7 +97,7 @@ describe("ailogic utils", () => {
     it("should throw error for invalid app resource format", () => {
       const invalidResource = "invalid-resource-format";
       expect(() => utils.extractProjectIdFromAppResource(invalidResource)).to.throw(
-        "Invalid app resource format: invalid-resource-format"
+        "Invalid app resource format: invalid-resource-format",
       );
     });
   });
@@ -135,7 +135,7 @@ describe("ailogic utils", () => {
 
       await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
         "No app platform detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "or create an app first (e.g., 'npx create-react-app my-app', 'flutter create my-app')."
+          "or create an app first (e.g., 'npx create-react-app my-app', 'flutter create my-app').",
       );
     });
 
@@ -144,7 +144,7 @@ describe("ailogic utils", () => {
 
       await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
         "Multiple app platforms detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "to clarify which platform to use for Firebase app creation."
+          "to clarify which platform to use for Firebase app creation.",
       );
     });
 
@@ -152,7 +152,7 @@ describe("ailogic utils", () => {
       getPlatformFromFolderStub.returns(Platform.FLUTTER);
 
       await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
-        "Unsupported platform detected: FLUTTER. Please specify app_platform (android, ios, or web)."
+        "Unsupported platform detected: FLUTTER. Please specify app_platform (android, ios, or web).",
       );
     });
   });
@@ -251,7 +251,7 @@ describe("ailogic utils", () => {
 
       await expect(utils.provisionAiLogicApp(mockOptions as any)).to.be.rejectedWith(
         FirebaseError,
-        "AI Logic provisioning failed: API failed"
+        "AI Logic provisioning failed: API failed",
       );
     });
 
@@ -261,7 +261,7 @@ describe("ailogic utils", () => {
 
       await expect(utils.provisionAiLogicApp(mockOptions as any)).to.be.rejectedWith(
         FirebaseError,
-        "AI Logic provisioning failed: String error"
+        "AI Logic provisioning failed: String error",
       );
     });
   });
