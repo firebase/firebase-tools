@@ -1,5 +1,6 @@
 import * as fs from "fs-extra";
 import { Config } from "../../../config";
+import { select, input, confirm } from "../../../prompt";
 import { Setup } from "../..";
 import {
   SupportedPlatform,
@@ -20,10 +21,7 @@ export interface AiLogicInfo {
 /**
  * Ask questions for AI Logic setup via CLI
  */
-export async function askQuestions(setup: Setup, config: Config): Promise<void> {
-  const { select } = await import("../../../prompt");
-  const { input, confirm } = await import("../../../prompt");
-
+export async function askQuestions(setup: Setup): Promise<void> {
   // Ask for app platform
   const platform = await select<"android" | "ios" | "web">({
     message: "Which platform would you like to set up?",
