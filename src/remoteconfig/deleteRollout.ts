@@ -42,7 +42,7 @@ export async function deleteRollout(
       );
     }
     throw new FirebaseError(
-      `Failed to delete Remote Config rollout '${rolloutId}'. Cause: ${errorMessage}`,
+      `Failed to delete Remote Config rollout with ID '${rolloutId}' for project ${projectId}. Error: ${errorMessage}`,
       { original: originalError },
     );
   }

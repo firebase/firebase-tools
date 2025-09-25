@@ -13,12 +13,9 @@ export const command = new Command("remoteconfig:rollouts:get [rolloutId]")
   .before(requireAuth)
   .before(requirePermissions, ["cloud.configs.get"])
   .action(async (rolloutId: string, options: Options) => {
-    if (!rolloutId) {
-      throw new FirebaseError("Rollout ID is required.");
-    }
-    const projectId: string = await needProjectNumber(options);
+    const projectNumber: string = await needProjectNumber(options);
     const rollout: RemoteConfigRollout = await rcRollout.getRollout(
-      projectId,
+      projectNumber,
       NAMESPACE_FIREBASE,
       rolloutId,
     );

@@ -14,16 +14,11 @@ import { confirm } from "../prompt";
 export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
   .description("delete a Remote Config rollout.")
   .before(requireAuth)
-  .before(requirePermissions, ["cloudconfigs.config.update"])
+  .before(requirePermissions, ["cloudconfigs.config.update", "firebaseanalytics.resources.googleAnalyticsEdit"])
   .action(async (rolloutId: string, options: Options) => {
-    if (!rolloutId) {
-      throw new FirebaseError("Rollout ID must be provided.");
-    }
     const projectNumber: string = await needProjectNumber(options);
     const rollout = await getRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
     logger.info(parseRolloutIntoTable(rollout));
-    await rcRollout.deleteRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
-    logger.info(clc.bold(`Successfully deleted rollout ${clc.yellow(rolloutId)}`));
     const confirmDeletion = await confirm({
       message: "Are you sure you want to delete this rollout? This cannot be undone.",
       default: false,

@@ -25,7 +25,7 @@ const TABLE_HEAD = [
 ];
 
 export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
-  if (!rollouts || rollouts.length === 0) {
+  if (rollouts.length === 0) {
     return "\x1b[31mNo rollouts found.\x1b[0m";
   }
 
