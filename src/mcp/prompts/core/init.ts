@@ -29,6 +29,8 @@ export const init = prompt(
   async ({ prompt }, mcp) => {
     const { config, projectId, accountEmail } = mcp;
 
+    // This allows a "short circuit" feature where you can pass a specific
+    // name, like "ai-logic" into the prompt and get a specific guide
     const resourceDefinition = prompt ? GUIDE_PARAMS[prompt] : undefined;
     if (resourceDefinition) {
       const resource = await resourceDefinition.fn(resourceDefinition.mcp.uri, mcp);
@@ -50,20 +52,7 @@ export const init = prompt(
         role: "user" as const,
         content: {
           type: "text",
-          text: makeDefaultPrompt(platform, projectId, accountEmail, config),
-        },
-      },
-    ];
-  },
-);
-
-export const makeDefaultPrompt = (
-  platform: Platform,
-  projectId: string,
-  accountEmail: string | null,
-  config: Config,
-) =>
-  `
+          text: `
 Your goal is to help the user setup Firebase services in this workspace. Firebase is a large platform with many potential uses, so you will:
 
 1. Detect which Firebase services are already in use in the workspace, if any
@@ -112,4 +101,10 @@ The following Firebase services are available to be configured. Use the Firebase
 - [GenAI Services](firebase://guides/init/ai): Read this resource to setup GenAI services for the user such as building agents, LLM usage, unstructured data analysis, image editing, video generation, etc.
 
 UNAVAILABLE SERVICES: Analytics, Remote Config (feature flagging), A/B testing, Crashlytics (crash reporting), and Cloud Messaging (push notifications) are not yet available for setup via this command.
-`.trim();
+`.trim()
+        },
+      },
+    ];
+  },
+);
+
