@@ -63,6 +63,7 @@ describe("apphosting", () => {
               env: [{ variable: "CHICKEN", value: "bok-bok" }],
             },
             buildDir: "./",
+            annotations: {},
           },
         },
       };
