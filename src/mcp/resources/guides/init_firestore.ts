@@ -16,14 +16,23 @@ export const init_firestore = resource(
           text: `
 ### Setup Firestore Database
 
+**Database Setup:**
 - Set up Firebase Firestore as the primary database for the application
-- Implement client code for basic CRUD operations for the application
-- **Important**: Use the \`firebase deploy\` command to provision the database automatically. **Do not ask developers to go to the console to do it**.
-- **Environment**: Use production environment directly - avoid emulator for initial setup
-- **Verification**: Guide developers to verify database creation at the [Firebase Console](https://console.firebase.google.com/) by clicking on the "Firestore Database" tab in the left navigation to confirm the database is created.
-- **Testing**: Recommend developers test their application and verify data appears correctly in the console. Ask developers to confirm they can see their test data in the console before proceeding to the next step.
-- **Security**: Recommend implementing authentication if the application handles sensitive user data. Guide users to navigate to the "Firestore Database" section and click on the "Rules" tab to view and configure their security rules.
-- **Security Warning**: Alert developers against making Firestore security rules public (allowing read/write without authentication)
+- Implement client code for basic CRUD operations using Firestore SDK
+- Run \`firebase deploy\` command to provision the database automatically
+- Use production environment directly (avoid emulator for initial setup)
+
+**Verification & Testing:**
+- Only proceed to verification after running the \`firebase deploy\` command
+- Guide developers to verify database creation at the [Firebase Console](https://console.firebase.google.com/)
+- Navigate to "Firestore Database" in the left navigation to confirm database creation
+- Ask developers to test their application and confirm they can see test data in the console
+- Only proceed to the next step after confirmation
+
+**Security:**
+- Recommend implementing authentication if the application handles sensitive user data
+- Guide users to navigate to "Firestore Database" → "Rules" tab to configure security rules
+- **Warning**: Never make Firestore security rules public (allowing read/write without authentication)
 `.trim(),
         },
       ],
