@@ -92,7 +92,7 @@ describe("dialogs", () => {
       ]);
     });
 
-    it("uses 'service accounts' header if any backend uses more than one service accont", async () => {
+    it("uses 'service accounts' header if any backend uses more than one service account", async () => {
       const table = dialogs.tableForBackends(await dialogs.toMetadata("number", [legacy, modernA]));
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
