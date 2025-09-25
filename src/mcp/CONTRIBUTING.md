@@ -67,7 +67,7 @@ and manually list and execute tools.
 ```
 Transport Type: STDIO
 Command: firebase
-Arguments: experimental:mcp
+Arguments: mcp
 
 ```
 
@@ -170,7 +170,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
 Run the following command to add your new tool to the list in `src/mcp/README.md`
 
 ```
-node lib/bin/firebase.js experimental:mcp --generate-tool-list
+node lib/bin/firebase.js mcp --generate-tool-list
 ```
 
 ### Logging and terminal formatting
