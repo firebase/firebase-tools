@@ -29,7 +29,7 @@ export const update_template = tool(
         (data) =>
           (data.template && !data.version_number) || (!data.template && data.version_number),
         {
-          message: "Either a template or a version number must be specified, but not both.",
+          message: "Either provide a template for publish, or a version number to rollback to, but not both.",
         },
       ),
     annotations: {
