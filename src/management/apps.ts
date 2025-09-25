@@ -309,7 +309,7 @@ export interface AppConfigurationData {
 export interface AppAndroidShaData {
   name: string;
   shaHash: string;
-  certType: ShaCertificateType.SHA_1;
+  certType: ShaCertificateType;
 }
 
 export enum AppPlatform {
