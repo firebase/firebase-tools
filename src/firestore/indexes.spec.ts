@@ -306,13 +306,13 @@ describe("IndexSpecMatching", () => {
   const baseApiIndex: API.Index = {
     name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
     queryScope: API.QueryScope.COLLECTION,
-    fields: [],
+    fields: [{ fieldPath: "__name__", order: API.Order.ASCENDING }],
   };
 
   const baseSpecIndex: Spec.Index = {
     collectionGroup: "collection",
     queryScope: "COLLECTION",
-    fields: [],
+    fields: [{ fieldPath: "__name__", order: API.Order.ASCENDING }],
   } as Spec.Index;
 
   it("should identify a positive index spec match", () => {
@@ -323,6 +323,7 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: API.Order.ASCENDING },
         { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
       state: API.State.READY,
     };
@@ -334,6 +335,7 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: "ASCENDING" },
         { fieldPath: "bar", arrayConfig: "CONTAINS" },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
     } as Spec.Index;
 
@@ -616,8 +618,8 @@ describe("IndexSpecMatching", () => {
         fields: [{ fieldPath: "foo", order: "ASCENDING" }],
       } as Spec.Index;
 
-      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
       expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
     });
 
     it("__name__ field with non-default sort order, identified as matching", () => {
