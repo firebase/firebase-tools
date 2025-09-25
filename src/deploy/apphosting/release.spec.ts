@@ -1,7 +1,6 @@
 import * as sinon from "sinon";
 import * as rollout from "../../apphosting/rollout";
 import { Config } from "../../config";
-import { AppHostingSingle } from "../../firebaseConfig";
 import { RC } from "../../rc";
 import { Context } from "./args";
 import release from "./release";
@@ -42,21 +41,18 @@ describe("apphosting", () => {
     };
     it("Supports passing localBuild information", async () => {
       const context: Context = {
-        backendConfigs: new Map<string, AppHostingSingle>([
-          [
-            "foo",
-            {
-              backendId: "foo",
-              rootDir: "/",
-              ignore: [],
-              localBuild: true,
-            },
-          ],
-        ]),
-        backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-        backendStorageUris: new Map<string, string>([
-          ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-        ]),
+	backendConfigs: {
+	  foo: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+	    localBuild: true,
+	  },
+	},
+	backendLocations: { foo: "us-central1" },
+	backendStorageUris: {
+	  foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+	},
         backendLocalBuilds: {
           foo: {
             buildConfig: {
@@ -119,22 +115,20 @@ describe("apphosting", () => {
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
       const context: Context = {
-        backendConfigs: new Map<string, AppHostingSingle>([
-          [
-            "foo",
-            {
-              backendId: "foo",
-              rootDir: "/",
-              ignore: [],
-            },
-          ],
-        ]),
-        backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-        backendStorageUris: new Map<string, string>([
-          ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-        ]),
-        backendLocalBuilds: {},
+	backendConfigs: {
+	  foo: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+	  },
+	},
+	backendLocations: { foo: "us-central1" },
+	backendStorageUris: {
+	  foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+	},
+	backendLocalBuilds: {},
       };
+
       orchestrateRolloutStub = sinon
         .stub(rollout, "orchestrateRollout")
         .throws("Unexpected orchestrateRollout call");

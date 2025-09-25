@@ -60,7 +60,7 @@ export interface BuildConfig {
 export interface StorageSource {
   bucket: string;
   object: string;
-  generation: number;
+  generation?: number;
 }
 
 export interface RepoSource {

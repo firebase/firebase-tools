@@ -25,9 +25,9 @@ export default async function (context: Context, options: Options): Promise<void
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
 
-  context.backendConfigs = new Map<string, AppHostingSingle>();
-  context.backendLocations = new Map<string, string>();
-  context.backendStorageUris = new Map<string, string>();
+  context.backendConfigs = {};
+  context.backendLocations = {};
+  context.backendStorageUris = {};
   context.backendLocalBuilds = {};
 
   const configs = getBackendConfigs(options);
@@ -104,8 +104,8 @@ export default async function (context: Context, options: Options): Promise<void
         }
       }
     }
-    context.backendConfigs.set(cfg.backendId, cfg);
-    context.backendLocations.set(cfg.backendId, location);
+    context.backendConfigs[cfg.backendId] = cfg;
+    context.backendLocations[cfg.backendId] = location;
   }
 
   if (notFoundBackends.length > 0) {
@@ -134,8 +134,8 @@ export default async function (context: Context, options: Options): Promise<void
       for (const cfg of selectedBackends) {
         logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
         const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
-        context.backendConfigs.set(cfg.backendId, cfg);
-        context.backendLocations.set(cfg.backendId, location);
+        context.backendConfigs[cfg.backendId] = cfg;
+        context.backendLocations[cfg.backendId] = location;
       }
     } else {
       skippedBackends.push(...notFoundBackends);

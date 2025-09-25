@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
-import { AppHostingSingle } from "../../firebaseConfig";
 import * as apphosting from "../../gcp/apphosting";
 import * as devconnect from "../../gcp/devConnect";
 import * as prompt from "../../prompt";
@@ -27,9 +26,9 @@ const BASE_OPTS = {
 
 function initializeContext(): Context {
   return {
-    backendConfigs: new Map<string, AppHostingSingle>(),
-    backendLocations: new Map<string, string>(),
-    backendStorageUris: new Map<string, string>(),
+    backendConfigs: {},
+    backendLocations: {},
+    backendStorageUris: {},
     backendLocalBuilds: {},
   };
 }
@@ -140,13 +139,13 @@ describe("apphosting", () => {
 
       await prepare(context, opts);
 
-      expect(context.backendLocations.get("foo")).to.equal("us-central1");
-      expect(context.backendConfigs.get("foo")).to.deep.equal({
+      expect(context.backendLocations["foo"]).to.equal("us-central1");
+      expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",
         rootDir: "/",
         ignore: [],
       });
-      expect(context.backendLocalBuilds).to.deep.equal({});
+      expect(context.backendLocalBuilds["foo}).to.be.undefined;
     });
 
     it("creates a backend if it doesn't exist yet", async () => {
@@ -161,13 +160,13 @@ describe("apphosting", () => {
       await prepare(context, opts);
 
       expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo");
-      expect(context.backendLocations.get("foo")).to.equal("us-central1");
-      expect(context.backendConfigs.get("foo")).to.deep.equal({
+      expect(context.backendLocations["foo"]).to.equal("us-central1");
+      expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",
         rootDir: "/",
         ignore: [],
       });
-      expect(context.backendLocalBuilds).to.deep.equal({});
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("skips backend deployment if alwaysDeployFromSource is false", async () => {
@@ -196,9 +195,9 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithAlwaysDeploy);
 
-      expect(context.backendLocations.get("foo")).to.equal(undefined);
-      expect(context.backendConfigs.get("foo")).to.deep.equal(undefined);
-      expect(context.backendLocalBuilds).to.deep.equal({});
+      expect(context.backendLocations["foo"]).to.be.undefined;
+      expect(context.backendConfigs["foo"]).to.be.undefined;
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("prompts user if codebase is already connected and alwaysDeployFromSource is undefined", async () => {
@@ -221,14 +220,14 @@ describe("apphosting", () => {
 
       await prepare(context, opts);
 
-      expect(context.backendLocations.get("foo")).to.equal("us-central1");
-      expect(context.backendConfigs.get("foo")).to.deep.equal({
+      expect(context.backendLocations["foo"]).to.equal("us-central1");
+      expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",
         rootDir: "/",
         ignore: [],
         alwaysDeployFromSource: true,
       });
-      expect(context.backendLocalBuilds).to.deep.equal({});
+      expect(context.backendLocalBuilds["foo"]).to.undefined;
     });
   });
 
