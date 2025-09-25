@@ -83,7 +83,10 @@ export default async function (context: Context, options: Options): Promise<void
       }
     }
     const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
-    logLabeledBullet("apphosting", `Zipped ${rootDir}`);
+    logLabeledBullet(
+      "apphosting",
+      `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+    );
 
     const backendLocation = context.backendLocations.get(cfg.backendId);
     if (!backendLocation) {
@@ -91,7 +94,10 @@ export default async function (context: Context, options: Options): Promise<void
         `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
       );
     }
-    logLabeledBullet("apphosting", `Uploading ${rootDir} for backend ${cfg.backendId}...`);
+    logLabeledBullet(
+      "apphosting",
+      `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+    );
     const gcsBucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${backendLocation.toLowerCase()}`;
     const { bucket, object } = await gcs.uploadObject(
       {

@@ -4,7 +4,7 @@ import { BuildConfig } from "../../gcp/apphosting";
 export interface LocalBuild {
   buildConfig: BuildConfig;
   buildDir: string;
-  annotations: {};
+  annotations: Record<string, string>;
 }
 
 export interface Context {

@@ -158,9 +158,14 @@ export default async function (context: Context, options: Options): Promise<void
         options.projectRoot || "./",
         "nextjs",
       );
+      if (outputFiles.length !== 1) {
+        throw new FirebaseError(
+          `Local build for backend ${config.backendId} failed: No output files found.`,
+        );
+      }
       context.backendLocalBuilds[config.backendId] = {
         // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0] ?? "",
+        buildDir: outputFiles[0],
         buildConfig,
         annotations,
       };
