@@ -27,7 +27,7 @@ export function getConfigFileName(platform: SupportedPlatform): string {
     case "web":
       return "firebase-config.json";
     default:
-      throw new Error(`Unsupported platform: ${platform as string}`);
+      throw new FirebaseError(`Unsupported platform: ${platform as string}`, { exit: 2 });
   }
 }
 
@@ -48,8 +48,9 @@ export function writeAppConfigFile(filePath: string, base64Data: string): void {
     fs.ensureDirSync(path.dirname(filePath));
     fs.writeFileSync(filePath, configContent, "utf8");
   } catch (error) {
-    throw new Error(
+    throw new FirebaseError(
       `Failed to write config file to ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      { original: error instanceof Error ? error : new Error(String(error)), exit: 2 },
     );
   }
 }
@@ -60,7 +61,7 @@ export function writeAppConfigFile(filePath: string, base64Data: string): void {
 export function extractProjectIdFromAppResource(appResource: string): string {
   const match = /^projects\/([^/]+)/.exec(appResource);
   if (!match) {
-    throw new Error(`Invalid app resource format: ${appResource}`);
+    throw new FirebaseError(`Invalid app resource format: ${appResource}`, { exit: 2 });
   }
   return match[1];
 }
@@ -79,18 +80,21 @@ export async function detectAppPlatform(projectDir: string): Promise<SupportedPl
     case Platform.IOS:
       return "ios";
     case Platform.NONE:
-      throw new Error(
+      throw new FirebaseError(
         "No app platform detected in current directory. Please specify app_platform (android, ios, or web) " +
           "or create an app first (e.g., 'npx create-react-app my-app', 'flutter create my-app').",
+        { exit: 1 },
       );
     case Platform.MULTIPLE:
-      throw new Error(
+      throw new FirebaseError(
         "Multiple app platforms detected in current directory. Please specify app_platform (android, ios, or web) " +
           "to clarify which platform to use for Firebase app creation.",
+        { exit: 1 },
       );
     default:
-      throw new Error(
+      throw new FirebaseError(
         `Unsupported platform detected: ${detectedPlatform}. Please specify app_platform (android, ios, or web).`,
+        { exit: 1 },
       );
   }
 }

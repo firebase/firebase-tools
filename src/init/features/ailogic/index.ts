@@ -2,6 +2,7 @@ import * as fs from "fs-extra";
 import { Config } from "../../../config";
 import { select, input, confirm } from "../../../prompt";
 import { Setup } from "../..";
+import { FirebaseError } from "../../../error";
 import {
   SupportedPlatform,
   detectAppPlatform,
@@ -101,8 +102,9 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     // 2. Check for config file conflicts
     const configFilePath = getConfigFilePath(config.projectDir, platform);
     if (fs.existsSync(configFilePath) && !ailogicInfo.overwriteConfig) {
-      throw new Error(
+      throw new FirebaseError(
         `Config file ${configFilePath} already exists. Use overwrite_config: true to update it.`,
+        { exit: 1 },
       );
     }
 
@@ -139,8 +141,9 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
       "Note: A new Firebase app was created. You can use existing Firebase apps with AI Logic (current API limitation).",
     );
   } catch (error) {
-    throw new Error(
+    throw new FirebaseError(
       `AI Logic setup failed: ${error instanceof Error ? error.message : String(error)}`,
+      { original: error instanceof Error ? error : new Error(String(error)), exit: 2 },
     );
   }
 }
