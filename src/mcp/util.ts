@@ -11,6 +11,7 @@ import {
   storageOrigin,
   crashlyticsApiOrigin,
   realtimeOrigin,
+  appDistributionOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -71,6 +72,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   messaging: messagingApiOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
+  appdistribution: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
 };

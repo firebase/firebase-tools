@@ -8,6 +8,7 @@ import { storageTools } from "./storage/index";
 import { messagingTools } from "./messaging/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { crashlyticsTools } from "./crashlytics/index";
+import { appdistributionTools } from "./appdistribution/index";
 import { appHostingTools } from "./apphosting/index";
 import { realtimeDatabaseTools } from "./database/index";
 
@@ -35,6 +36,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   messaging: addFeaturePrefix("messaging", messagingTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
+  appdistribution: addFeaturePrefix("appdistribution", appdistributionTools),
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
   database: addFeaturePrefix("database", realtimeDatabaseTools),
 };
