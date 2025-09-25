@@ -50,7 +50,7 @@ describe("Remote Config Rollout Delete", () => {
         },
       });
 
-    const expectedErrorMessage = `Failed to delete Remote Config rollout '${ROLLOUT_ID}'. Cause: Request to https://firebaseremoteconfig.googleapis.com/v1/projects/12345679/namespaces/firebase/rollouts/${ROLLOUT_ID} had HTTP Error: 500, Internal server error`;
+    const expectedErrorMessage = `Failed to delete Remote Config rollout with ID '${ROLLOUT_ID}' for project ${PROJECT_ID}. Error: Request to https://firebaseremoteconfig.googleapis.com/v1/projects/12345679/namespaces/firebase/rollouts/${ROLLOUT_ID} had HTTP Error: 500, Internal server error`;
 
     await expect(deleteRollout(PROJECT_ID, NAMESPACE_FIREBASE, ROLLOUT_ID)).to.be.rejectedWith(
       FirebaseError,
