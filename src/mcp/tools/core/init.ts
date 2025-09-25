@@ -126,10 +126,14 @@ export const init = tool(
             app_platform: z
               .enum(["android", "ios", "web"])
               .optional()
-              .describe("Platform for app creation. If not provided, will auto-detect from current directory"),
+              .describe(
+                "Platform for app creation. If not provided, will auto-detect from current directory",
+              ),
             app_namespace: z
               .string()
-              .describe("Package name (Android), bundle ID (iOS), or app name (Web). Required for app creation"),
+              .describe(
+                "Package name (Android), bundle ID (iOS), or app name (Web). Required for app creation",
+              ),
             overwrite_config: z
               .boolean()
               .optional()

@@ -18,11 +18,72 @@ export interface AiLogicInfo {
 }
 
 /**
- * Questions are handled by the MCP schema.
+ * Ask questions for AI Logic setup via CLI
  */
-export async function askQuestions(): Promise<void> {
-  // No-op for MCP - questions handled by schema
-  // TODO: Implement CLI prompts for future
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
+  const { select } = await import("../../../prompt");
+  const { input, confirm } = await import("../../../prompt");
+
+  // Ask for app platform
+  const platform = await select<"android" | "ios" | "web">({
+    message: "Which platform would you like to set up?",
+    choices: [
+      { name: "Android", value: "android" },
+      { name: "iOS", value: "ios" },
+      { name: "Web", value: "web" },
+    ],
+  });
+
+  // Ask for app namespace
+  let appNamespace: string;
+  if (platform === "android") {
+    appNamespace = await input({
+      message: "Enter your Android package name (e.g., com.example.myapp):",
+      validate: (input: string) => {
+        if (!input || !/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(input)) {
+          return "Please enter a valid Android package name (e.g., com.example.myapp)";
+        }
+        return true;
+      },
+    });
+  } else if (platform === "ios") {
+    appNamespace = await input({
+      message: "Enter your iOS bundle ID (e.g., com.example.MyApp):",
+      validate: (input: string) => {
+        if (!input || !/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(input)) {
+          return "Please enter a valid iOS bundle ID (e.g., com.example.MyApp)";
+        }
+        return true;
+      },
+    });
+  } else {
+    appNamespace = await input({
+      message: "Enter your web app name:",
+      validate: (input: string) => {
+        if (!input) {
+          return "Please enter a web app name";
+        }
+        return true;
+      },
+    });
+  }
+
+  // Ask about overwriting existing config files
+  const overwriteConfig = await confirm({
+    message: "Would you like to overwrite existing config files if they exist?",
+    default: false,
+  });
+
+  // Set up the feature info
+  if (!setup.featureInfo) {
+    setup.featureInfo = {};
+  }
+
+  setup.featureInfo.ailogic = {
+    appPlatform: platform,
+    appNamespace: appNamespace,
+    overwriteConfig: overwriteConfig,
+  };
 }
 
 /**
