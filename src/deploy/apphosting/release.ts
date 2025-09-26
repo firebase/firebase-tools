@@ -29,13 +29,11 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter(
-    (id) => context.backendLocalBuilds[id]
-  );
+  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
   if (localBuildBackends.length > 0) {
     logLabeledWarning(
       "apphosting",
-      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`
+      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`,
     );
     backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
   }
@@ -47,17 +45,17 @@ export default async function (context: Context, options: Options): Promise<void
   const projectId = needProjectId(options);
   const rollouts = backendIds.map((backendId) =>
     // TODO(9114): Add run_command
+    // TODO(914): Set the buildConfig.
+    // TODO(914): Set locallyBuiltSource.
     orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        // TODO(914): Set the buildConfig.
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-	    // TODO(914): Set locallyBuiltSource.
           },
         },
       },
