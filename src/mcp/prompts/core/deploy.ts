@@ -42,7 +42,7 @@ ${prompt || "<the user didn't supply specific instructions>"}
 Follow the steps below taking note of any user instructions provided above.
 
 1. If there is no active user, prompt the user to run \`firebase login\` in an interactive terminal before continuing.
-2. Analyze the source code in the current working directory to determine if this is a web app. If it isn't, end this process and tell the user "The /deploy command only works with web apps."
+2. Analyze the source code in the current working directory to determine if this is a web app. If it isn't, end this process and tell the user "The /firebase:deploy command only works with web apps."
 3. Analyze the source code in the current working directory to determine if the app requires a server for Server-Side Rendering (SSR). This will determine whether or not to use Firebase App Hosting. Here are instructions to determine if the app needs a server:
   Objective: Analyze the provided codebase files to determine if the web application requires a backend for Server-Side Rendering (SSR). Your final output must be a clear "Yes" or "No" followed by a brief justification.
   Primary Analysis: package.json
