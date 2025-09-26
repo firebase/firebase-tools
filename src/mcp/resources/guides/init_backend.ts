@@ -25,9 +25,9 @@ The user will likely need to setup Firestore, Authentication, and Hosting. Read 
  3. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
 
 **firebase.json**
-The firebase.json file is used to deploy assets with the Firebase CLI. It contains configuration for firestore, hosting, and functions.
+The firebase.json file is used to deploy assets with the Firebase CLI.
 
-Here is an example firebase.json file with all 3 services. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
+Here is an example firebase.json file with Firebase Hosting, Firestore, and Cloud Functions. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
 \`\`\`json
 {
   "hosting": {

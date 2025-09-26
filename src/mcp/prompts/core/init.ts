@@ -85,7 +85,7 @@ IMPORTANT: The backend setup guide is for web apps only. If the user requests ba
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
 2. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
    - If they would like to create a project, use the firebase_create_project with the project ID
-   - If they would like to use an existing project, run the shell command \`firebase use <project-id>\`
+   - If they would like to use an existing project, use the firebase_update_environment tool with the active_project argument.
 3. Initialize the Firebase SDK
   - Fetch the active configuration via \`firebase_list_apps\` and then \`firebase_get_sdk_config\`
     - If there isn't an app that matches the current platform, use the \`firebase_create_app\` tool to create the app with the appropriate platform, and then run \`firebase_get_sdk_config\`
