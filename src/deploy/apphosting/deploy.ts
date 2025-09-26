@@ -1,11 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { FirebaseError, getErrStatus } from "../../error";
+import { FirebaseError } from "../../error";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
 import { createArchive } from "./util";
 
@@ -14,7 +14,7 @@ import { createArchive } from "./util";
  * build and deployment. Creates storage buckets if necessary.
  */
 export default async function (context: Context, options: Options): Promise<void> {
-  if (context.backendConfigs.size === 0) {
+  if (Object.entries(context.backendConfigs).length === 0) {
     return;
   }
   const projectId = needProjectId(options);
@@ -24,78 +24,58 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
-  for (const loc of context.backendLocations.values()) {
-    const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
-    try {
-      await gcs.getBucket(bucketName);
-    } catch (err) {
-      const errStatus = getErrStatus((err as FirebaseError).original);
-      // Unfortunately, requests for a non-existent bucket from the GCS API sometimes return 403 responses as well as 404s.
-      // We must attempt to create a new bucket on both 403s and 404s.
-      if (errStatus === 403 || errStatus === 404) {
-        logLabeledBullet(
-          "apphosting",
-          `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${bucketName}...`,
-        );
-        try {
-          await gcs.createBucket(projectId, {
-            name: bucketName,
-            location: loc,
-            lifecycle: {
-              rule: [
-                {
-                  action: {
-                    type: "Delete",
-                  },
-                  condition: {
-                    age: 30,
-                  },
+  await Promise.all(
+    Object.values(context.backendLocations).map(async (loc) => {
+      const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
+      await gcs.upsertBucket({
+        product: "apphosting",
+        createMessage: `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${bucketName}...`,
+        projectId,
+        req: {
+          name: bucketName,
+          location: loc,
+          lifecycle: {
+            rule: [
+              {
+                action: {
+                  type: "Delete",
                 },
-              ],
-            },
-          });
-        } catch (err) {
-          if (getErrStatus((err as FirebaseError).original) === 403) {
-            logLabeledWarning(
-              "apphosting",
-              "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
-                "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
-                "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
-                "to grant you one of those roles.",
-            );
-            throw (err as FirebaseError).original;
-          }
-        }
-      } else {
-        throw err;
-      }
-    }
-  }
+                condition: {
+                  age: 30,
+                },
+              },
+            ],
+          },
+        },
+      });
+    }),
+  );
 
-  for (const cfg of context.backendConfigs.values()) {
-    const projectSourcePath = options.projectRoot ? options.projectRoot : process.cwd();
-    const zippedSourcePath = await createArchive(cfg, projectSourcePath);
-    const backendLocation = context.backendLocations.get(cfg.backendId);
-    if (!backendLocation) {
-      throw new FirebaseError(
-        `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+  await Promise.all(
+    Object.values(context.backendConfigs).map(async (cfg) => {
+      const projectSourcePath = options.projectRoot ? options.projectRoot : process.cwd();
+      const zippedSourcePath = await createArchive(cfg, projectSourcePath);
+      const backendLocation = context.backendLocations[cfg.backendId];
+      if (!backendLocation) {
+        throw new FirebaseError(
+          `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+        );
+      }
+      logLabeledBullet(
+        "apphosting",
+        `Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`,
       );
-    }
-    logLabeledBullet(
-      "apphosting",
-      `Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`,
-    );
-    const { bucket, object } = await gcs.uploadObject(
-      {
-        file: zippedSourcePath,
-        stream: fs.createReadStream(zippedSourcePath),
-      },
-      `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`,
-    );
-    logLabeledBullet("apphosting", `Source code uploaded at gs://${bucket}/${object}`);
-    context.backendStorageUris.set(
-      cfg.backendId,
-      `gs://firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}/${path.basename(zippedSourcePath)}`,
-    );
-  }
+      const bucketName = `firebaseapphosting-sources-${options.projectNumber}-${backendLocation.toLowerCase()}`;
+      const { bucket, object } = await gcs.uploadObject(
+        {
+          file: zippedSourcePath,
+          stream: fs.createReadStream(zippedSourcePath),
+        },
+        bucketName,
+      );
+      logLabeledBullet("apphosting", `Source code uploaded at gs://${bucket}/${object}`);
+      context.backendStorageUris[cfg.backendId] =
+        `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
+    }),
+  );
 }

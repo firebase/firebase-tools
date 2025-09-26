@@ -754,7 +754,7 @@ export async function startAll(
     // can't because the user may be using a fake project.
     try {
       if (!options.instance) {
-        options.instance = await getDefaultDatabaseInstance(options);
+        options.instance = await getDefaultDatabaseInstance(projectId);
       }
     } catch (e: any) {
       databaseLogger.log(
