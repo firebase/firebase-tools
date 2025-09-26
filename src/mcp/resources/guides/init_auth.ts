@@ -17,19 +17,37 @@ export const init_auth = resource(
           text: `
 ### Configure Firebase Authentication
 
-**Permission & Setup:**
+**Authentication Setup:**
 - Request developer permission before implementing sign-up and login features
 - Guide developers to enable authentication providers (Email/Password, Google Sign-in, etc.) in the [Firebase Auth Console](https://console.firebase.google.com/)
 - Ask developers to confirm which authentication method they selected before proceeding
 
 **Implementation:**
-- Create sign-up and login pages using Firebase Authentication
-- Update Firestore security rules and deploy them to ensure only authenticated users can access their own data
-- Handle security rule updates automatically (do not ask developers to go to console)
+- Create sign-up and login pages using Firebase Authentication 
 
-**Testing & Deployment:**
+**Security Rules Integration:**
+- Update Firestore security rules to ensure only authenticated users can access their own data
+- Handle security rule deployment automatically (do not ask developers to go to console)
+- Explain to users in plain language how the current security rules work and ask their confirmation before deploying
+- Deploy updated security rules using \`firebase deploy --only firestore\`
+- Verify that security rules properly restrict data access to authenticated users only
+
+**Verification & Testing:**
 - Test the complete sign-up and sign-in flow to verify authentication functionality
-- Deploy the application to production once authentication is verified and working properly
+- Test both successful and failed authentication scenarios
+- Confirm user data is properly isolated and secure
+- Verify that security rules properly restrict data access to authenticated users only
+
+**Security Configuration:**
+- Guide users to navigate to "Firestore Database" → "Rules" tab to review security rules
+- **Critical Warning**: Never make Firestore security rules public (allowing read/write without authentication)
+- Ensure security rules are properly configured and tested before moving to production
+
+**Next Steps:**
+- **Production Deployment**: Recommend deploying the application to production once authentication is verified and working properly
+- **User Management**: Consider implementing additional user management features (password reset, account deletion, profile management, etc.)
+- **Additional Auth Providers**: Implement additional authentication providers by offering a menu of options (Google, GitHub, Apple, etc.)
+- **Advanced Security**: Implement multi-factor authentication for enhanced security
 `.trim(),
         },
       ],
