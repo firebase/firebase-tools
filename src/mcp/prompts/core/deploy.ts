@@ -3,7 +3,6 @@ import { prompt } from "../../prompt";
 export const deploy = prompt(
   {
     name: "deploy",
-    omitPrefix: true,
     description: "Use this command to deploy resources to Firebase.",
     arguments: [
       {
