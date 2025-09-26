@@ -121,7 +121,10 @@ export async function updateInstanceForDataConnect(
     {
       settings: {
         ipConfiguration: {
-          ipv4Enabled: true,
+          pscConfig: {
+            pscEnabled: true,
+            allowedConsumerProjects: [],
+          },
         },
         databaseFlags: dbFlags,
         enableGoogleMlIntegration,
