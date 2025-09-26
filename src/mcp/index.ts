@@ -17,9 +17,11 @@ import {
   ListResourcesResult,
   ReadResourceRequest,
   ReadResourceResult,
+  ReadResourceRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ListResourceTemplatesResult,
   McpError,
   ErrorCode,
-  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { checkFeatureActive, mcpError } from "./util";
 import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
@@ -42,7 +44,7 @@ import { existsSync } from "node:fs";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
-import { resources } from "./resources";
+import { resolveResource, resources, resourceTemplates } from "./resources";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -115,9 +117,12 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(CallToolRequestSchema, this.mcpCallTool.bind(this));
     this.server.setRequestHandler(ListPromptsRequestSchema, this.mcpListPrompts.bind(this));
     this.server.setRequestHandler(GetPromptRequestSchema, this.mcpGetPrompt.bind(this));
+    this.server.setRequestHandler(
+      ListResourceTemplatesRequestSchema,
+      this.mcpListResourceTemplates.bind(this),
+    );
     this.server.setRequestHandler(ListResourcesRequestSchema, this.mcpListResources.bind(this));
     this.server.setRequestHandler(ReadResourceRequestSchema, this.mcpReadResource.bind(this));
-
     const onInitialized = (): void => {
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
@@ -424,9 +429,13 @@ export class FirebaseMcpServer {
     };
   }
 
-  async mcpReadResource(req: ReadResourceRequest): Promise<ReadResourceResult> {
-    const resource = resources.find((r) => r.mcp.uri === req.params.uri);
+  async mcpListResourceTemplates(): Promise<ListResourceTemplatesResult> {
+    return {
+      resourceTemplates: resourceTemplates.map((rt) => rt.mcp),
+    };
+  }
 
+  async mcpReadResource(req: ReadResourceRequest): Promise<ReadResourceResult> {
     let projectId = await this.getProjectId();
     projectId = projectId || "";
 
@@ -435,13 +444,14 @@ export class FirebaseMcpServer {
 
     const resourceCtx = this._createMcpContext(projectId, accountEmail);
 
-    if (!resource) {
+    const resolved = await resolveResource(req.params.uri, resourceCtx);
+    if (!resolved) {
       throw new McpError(
         ErrorCode.InvalidParams,
         `Resource '${req.params.uri}' could not be found.`,
       );
     }
-    return resource.fn(req.params.uri, resourceCtx);
+    return resolved?.result;
   }
 
   async start(): Promise<void> {

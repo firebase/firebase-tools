@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { resources } from "../../resources";
+import { resolveResource, resources } from "../../resources";
 import { toContent } from "../../util";
 
 export const read_resources = tool(
@@ -36,14 +36,13 @@ export const read_resources = tool(
 
     const out: string[] = [];
     for (const uri of uris) {
-      const resource = resources.find((r) => r.mcp.uri === uri);
-      if (!resource) {
+      const resolved = await resolveResource(uri, ctx);
+      if (!resolved) {
         out.push(`<resource uri="${uri}" error>\nRESOURCE NOT FOUND\n</resource>`);
         continue;
       }
-      const result = await resource.fn(uri, ctx);
       out.push(
-        `<resource uri="${uri}" title="${resource?.mcp.title}">\n${result.contents.map((c) => c.text).join("")}\n</resource>`,
+        `<resource uri="${uri}" title="${resolved.mcp.title}">\n${resolved.result.contents.map((c) => c.text).join("")}\n</resource>`,
       );
     }
 
