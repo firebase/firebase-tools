@@ -8,7 +8,7 @@ import * as fsConfig from "../../firestore/fsConfig";
 import { logger } from "../../logger";
 import { DeployOptions } from "..";
 import { ensure } from "../../ensureApiEnabled";
-import { firebaseApiOrigin } from "../../api";
+import { firestoreOrigin } from "../../api";
 
 export interface RulesContext {
   databaseId: string;
@@ -74,7 +74,7 @@ function prepareIndexes(
  * @param options The CLI options object.
  */
 export default async function (context: any, options: DeployOptions): Promise<void> {
-  await ensure(context.projectId, firebaseApiOrigin(), "firestore");
+  await ensure(context.projectId, firestoreOrigin(), "firestore");
   if (options.only) {
     const targets = options.only.split(",");
 
