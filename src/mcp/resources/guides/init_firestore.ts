@@ -33,7 +33,7 @@ export const init_firestore = resource(
 
 **Verification & Testing:**
 - Only proceed with verification after successfully running \`firebase deploy --only firestore\`
-- Guide the user to visit `https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore` where `{PROJECT_ID}` is the project they're currently using (or use `_` if project id is unknown).
+- Guide the user to visit \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown).
 - Have developers test their application functionality and verify test data appears in the console
 - Only proceed to the next step after confirming successful database setup and data visibility
 
