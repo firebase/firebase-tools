@@ -90,7 +90,7 @@ IMPORTANT: The backend setup guide is for web apps only. If the user requests ba
    - If you run into issues creating the firebase project, ask the user to go to the [Firebase Console](http://console.firebase.google.com/) and create a project. Wait for the user to report back before continuing.
 3. Ensure there is an active Firebase App for their platform
    - Run the \`firebase_list_apps\` tool to list their apps, and find an app that matches their "Workspace platform"
-   - If there is not app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
+   - If there is no app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
 4. Now that we have a working environment, print out 1) Active user 2) Firebase Project and 3) Firebase App & platform they are using for this process.
    - Ask the user to confirm this is correct before continuing
 5. Initialize the Firebase SDK
