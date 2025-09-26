@@ -161,6 +161,7 @@ async function upsertDatabase(args: {
 export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
   let reason = "";
   const settings = instance.settings;
+  // console.log("settings", settings);
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
@@ -168,10 +169,10 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
     // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
-    if (!settings.ipConfiguration?.pscConfig?.pscEnabled) {
-      reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
+    if (!settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices) {
+      reason += "\n - to enable Private Path for Google Cloud Services.";
     }
-    reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
+    reason += "\n - to enable Private Path for Google Cloud Services.";
   }
 
   if (requireGoogleMlIntegration) {
