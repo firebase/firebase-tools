@@ -45,14 +45,14 @@ async function upsertInstance(args: {
       if (dryRun) {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${clc.bold(instanceId)} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
             `It will be updated on your next deploy.` +
             why,
         );
       } else {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${clc.bold(instanceId)} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
             why,
         );
         await promiseWithSpinner(
