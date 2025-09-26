@@ -11,6 +11,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
+import { i } from "pg-gateway/dist/connection-Wgmmyk18";
 
 export async function execute(
   sqlStatements: string[],
@@ -28,6 +29,10 @@ export async function execute(
   const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
   const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
   const connectionName = instance.connectionName;
+  const ipType = instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+    ? IpAddressTypes.PUBLIC
+    : IpAddressTypes.PRIVATE;
+  console.log("ipType", ipType);
   if (!connectionName) {
     throw new FirebaseError(
       `Could not get instance connection string for ${opts.instanceId}:${opts.databaseId}`,
@@ -42,7 +47,7 @@ export async function execute(
       });
       const clientOpts = await connector.getOptions({
         instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
+        ipType: ipType,
         authType: AuthTypes.IAM,
       });
       pool = new pg.Pool({
@@ -59,7 +64,7 @@ export async function execute(
       // FR to add support for OAuth2 tokens.
       const clientOpts = await connector.getOptions({
         instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
+        ipType: ipType,
         authType: AuthTypes.IAM,
       });
       pool = new pg.Pool({
@@ -79,7 +84,7 @@ export async function execute(
       });
       const clientOpts = await connector.getOptions({
         instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
+        ipType: ipType,
       });
       pool = new pg.Pool({
         ...clientOpts,

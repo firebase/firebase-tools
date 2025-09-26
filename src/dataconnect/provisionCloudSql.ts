@@ -1,5 +1,6 @@
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
+import * as clc from "colorette";
 import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
 import { Instance } from "../gcp/cloudsql/types";
 import { promiseWithSpinner } from "../utils";
@@ -159,7 +160,11 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   const settings = instance.settings;
   // Cloud SQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
-    reason += "\n - to enable public IP.";
+    utils.logLabeledWarning(
+      "dataconnect",
+      `Cloud SQL instance ${instance.name} does not have a public IP address.
+  ${clc.bold("firebase dataconnect:sql:migrate")} works only in the VPC that the Cloud SQL instance is in.`,
+    );
   }
 
   if (requireGoogleMlIntegration) {
