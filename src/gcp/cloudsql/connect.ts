@@ -31,7 +31,6 @@ export async function execute(
   const ipType = instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
     ? IpAddressTypes.PUBLIC
     : IpAddressTypes.PRIVATE;
-  console.log("ipType", ipType);
   if (!connectionName) {
     throw new FirebaseError(
       `Could not get instance connection string for ${opts.instanceId}:${opts.databaseId}`,
