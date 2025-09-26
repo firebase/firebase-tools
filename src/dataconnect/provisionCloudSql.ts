@@ -169,7 +169,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
     if (!settings.ipConfiguration?.pscConfig?.pscEnabled) {
-      reason += "\n - to enable VPC private service connection for Google Cloud Services.";
+      reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
     }
   }
 
