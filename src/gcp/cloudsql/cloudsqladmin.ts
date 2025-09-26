@@ -124,7 +124,7 @@ export async function updateInstanceForDataConnect(
         ipConfiguration: {
           pscConfig: {
             pscEnabled: true,
-            allowedConsumerProjects: [],
+            allowedConsumerProjects: [instance.project],
           },
         },
         databaseFlags: dbFlags,
