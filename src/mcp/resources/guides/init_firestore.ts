@@ -15,7 +15,6 @@ export const init_firestore = resource(
           type: "text",
           text: `
 ### Setup Firestore Database
-
 **Database Setup:**
 - Configure Firebase Firestore as the primary database for the application
 - Implement client code for basic CRUD operations using the Firestore SDK
