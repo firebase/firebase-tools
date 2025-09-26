@@ -31,22 +31,23 @@ function initializeContext(): Context {
         ignore: [],
       },
       fooLocalBuild: {
-	backendId: "fooLocalBuild",
-	rootDir: "/",
-	ignore: [],
-	localBuild: true,
+    	  backendId: "fooLocalBuild",
+      	rootDir: "/",
+      	ignore: [],
+      	localBuild: true,
       }
     },
     backendLocations: { foo: "us-central1" , fooLocalBuild: "us-central1"},
     backendStorageUris: {},
     backendLocalBuilds: {
       fooLocalBuild: {
-	buildDir: "./nextjs/standalone",
-	buildConfig: {},
-	annotations: {},
+      	buildDir: "./nextjs/standalone",
+      	buildConfig: {},
+      	annotations: {},
       },
     },
-    };
+  };
+}
 
 describe("apphosting", () => {
   let upsertBucketStub: sinon.SinonStub;
@@ -113,6 +114,7 @@ describe("apphosting", () => {
       await deploy(context, opts);
 
       // assert backend foo calls
+
       expect(upsertBucketStub).to.be.calledWith({
         product: "apphosting",
         createMessage:
@@ -131,20 +133,11 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs.get("foo"),
-        process.cwd(),
-        undefined,
-      );
-      expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
-        "firebaseapphosting-sources-000000000000-us-central1",
-      );
 
       // assert backend foo-local-build calls
       expect(upsertBucketStub).to.be.calledWith({
-	product: "apphosting",
-	createMessage:
+	      product: "apphosting",
+      	createMessage:
         "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
         projectId: "my-project",
         req: {

@@ -41,12 +41,12 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-	config: context.backendLocalBuilds[backendId].buildConfig,
+    	config: context.backendLocalBuilds[backendId].buildConfig,
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-	    locallBuiltSource: config.localBuild,
+      	    locallBuiltSource: config.localBuild,
           },
         },
       },

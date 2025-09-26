@@ -113,8 +113,8 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithLocalBuild);
 
-      expect(context.backendLocations.get("foo")).to.equal("us-central1");
-      expect(context.backendConfigs.get("foo")).to.deep.equal({
+      expect(context.backendLocations["foo"]).to.equal("us-central1");
+      expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",
         rootDir: "/",
         ignore: [],

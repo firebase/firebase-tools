@@ -56,15 +56,15 @@ export default async function (context: Context, options: Options): Promise<void
       const rootDir = options.projectRoot ?? process.cwd();
       let builtAppDir;
       if (cfg.localBuild) {
-	builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
-	if (!builtAppDir) {
+      	builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
+      	if (!builtAppDir) {
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
-	}
+      	}
       }
       const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
       logLabeledBullet(
-	"apphosting",
-	`Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+      	"apphosting",
+      	`Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
       );
 
       const backendLocation = context.backendLocations[cfg.backendId];
@@ -74,8 +74,8 @@ export default async function (context: Context, options: Options): Promise<void
         );
       }
       logLabeledBullet(
-	"apphosting",
-	`Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+      	"apphosting",
+      	`Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${backendLocation.toLowerCase()}`;
 
