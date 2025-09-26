@@ -18,7 +18,7 @@ export const init_hosting = resource(
 ### Configure Firebase Hosting
 
 - Introduce Firebase Hosting when developers are ready to deploy their application to production
-- **Alternative**: Developers can deploy later using the \`/deploy\` command
+- **Alternative**: Developers can deploy later using the \`/firebase:deploy\` command
 - **Permission Required**: Request developer permission before implementing Firebase Hosting
 - **Deployment**: Configure Firebase Hosting and deploy the application to production
 `.trim(),
