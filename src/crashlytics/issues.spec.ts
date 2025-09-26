@@ -37,17 +37,6 @@ describe("issues", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should throw a FirebaseError if the API call fails", async () => {
-      nock(crashlyticsApiOrigin())
-        .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`)
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(getIssue(appId, issueId)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to fetch issue for appId ${appId}, issueId ${issueId}`,
-      );
-    });
-
     it("should throw a FirebaseError if the appId is invalid", async () => {
       const invalidAppId = "invalid-app-id";
 
@@ -77,19 +66,6 @@ describe("issues", () => {
 
       expect(result).to.deep.equal(mockResponse);
       expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the API call fails", async () => {
-      const state = State.OPEN;
-      nock(crashlyticsApiOrigin())
-        .patch(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`)
-        .query({ updateMask: "state" })
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(updateIssue(appId, issueId, state)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to update issue ${issueId} for app ${appId}`,
-      );
     });
 
     it("should throw a FirebaseError if the appId is invalid", async () => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { cloneDeep } from "lodash";
 import { logger } from "../logger";
-import { FirebaseError, getError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Report } from "./types";
 import {
@@ -37,6 +37,30 @@ export enum CrashlyticsReport {
  * @param pageSize Number of rows to return, generally defaulting to 10
  * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
  */
+/**
+ * Removes fields from the report which confuse the model
+ */
+export function simplifyReport(report: Report): Report {
+  const simplifiedReport = cloneDeep(report);
+  if (!simplifiedReport.groups) return report;
+  simplifiedReport.groups.forEach((group) => {
+    // Leaves displayName only in each group, which is the appropriate field to use
+    if (group.device) {
+      delete group.device.model;
+      delete group.device.manufacturer;
+    }
+    if (group.version) {
+      delete group.version.buildVersion;
+      delete group.version.displayVersion;
+    }
+    if (group.operatingSystem) {
+      delete group.operatingSystem.displayVersion;
+      delete group.operatingSystem.os;
+    }
+  });
+  return simplifiedReport;
+}
+
 export async function getReport(
   report: CrashlyticsReport,
   appId: string,
@@ -44,27 +68,19 @@ export async function getReport(
   pageSize = DEFAULT_PAGE_SIZE,
 ): Promise<Report> {
   const requestProjectNumber = parseProjectNumber(appId);
-  try {
-    const queryParams = filterToUrlSearchParams(filter);
-    queryParams.set("page_size", `${pageSize}`);
-
-    logger.debug(
-      `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
-    );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${report}`,
-      queryParams: queryParams,
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to fetch ${report} report for app: ${appId}`, {
-      original: getError(err),
-    });
-  }
+  const queryParams = filterToUrlSearchParams(filter);
+  queryParams.set("page_size", `${pageSize}`);
+  logger.debug(
+    `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
+  );
+  const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${report}`,
+    queryParams: queryParams,
+    timeout: TIMEOUT,
+  });
+  return response.body;
 }

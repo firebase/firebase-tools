@@ -11,7 +11,7 @@ import { FirebaseError } from "../error";
 import { marked } from "marked";
 import { needProjectId } from "../projectUtils";
 import { consoleUrl } from "../utils";
-import { AppPlatform, listFirebaseApps } from "../management/apps";
+import { AppPlatform, listFirebaseApps, checkForApps } from "../management/apps";
 
 export const command = new Command("apptesting:execute <target>")
   .description("Run automated tests written in natural language driven by AI")
@@ -32,13 +32,28 @@ export const command = new Command("apptesting:execute <target>")
   .before(requireConfig)
   .action(async (target: string, options: any) => {
     const projectId = needProjectId(options);
-    const appList = await listFirebaseApps(projectId, AppPlatform.WEB);
-    let app = appList.find((a) => a.appId === options.app);
-    if (!app && appList.length === 1) {
-      app = appList[0];
-      logger.info(`No app specified, defaulting to ${app.appId}`);
-    } else if (!app) {
-      throw new FirebaseError("Invalid app id");
+    const apps = await listFirebaseApps(projectId, AppPlatform.WEB);
+    // Fail out early if there's no apps.
+    checkForApps(apps, AppPlatform.WEB);
+
+    let app = apps.find((a) => a.appId === options.app);
+    if (!app) {
+      if (options.app) {
+        // An app ID was provided, but it's invalid.
+        throw new FirebaseError(
+          `App with ID '${options.app}' was not found in project ${projectId}. You can list available apps with 'firebase apps:list'.`,
+        );
+      }
+      // if there's only one app, we don't need to prompt interactively
+      if (apps.length === 1) {
+        // If there's only one, use it.
+        app = apps[0];
+      } else {
+        // If there's > 1, fail
+        throw new FirebaseError(
+          `Project ${projectId} has multiple apps, must specify a web app id with '--app', you can list available apps with 'firebase apps:list'.`,
+        );
+      }
     }
 
     const testDir = options.config.src.apptesting?.testDir || "tests";
