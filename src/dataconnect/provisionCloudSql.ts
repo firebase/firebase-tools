@@ -161,7 +161,6 @@ async function upsertDatabase(args: {
 export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
   let reason = "";
   const settings = instance.settings;
-  // console.log("settings", settings);
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
