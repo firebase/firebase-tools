@@ -1,5 +1,6 @@
 import { Client } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
+import * as clc from "colorette";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
 import { needProjectId } from "../../projectUtils";
@@ -47,7 +48,7 @@ export async function getInstance(projectId: string, instanceId: string): Promis
   const res = await client.get<Instance>(`projects/${projectId}/instances/${instanceId}`);
   if (res.body.state === "FAILED") {
     throw new FirebaseError(
-      `Cloud SQL instance ${instanceId} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
+      `Cloud SQL instance ${clc.bold(instanceId)} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
     );
   }
   return res.body;

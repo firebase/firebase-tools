@@ -36,20 +36,23 @@ async function upsertInstance(args: {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-    utils.logLabeledBullet("dataconnect", `Found existing Cloud SQL instance ${instanceId}.`);
+    utils.logLabeledBullet(
+      "dataconnect",
+      `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
+    );
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
       if (dryRun) {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings not compatible with Firebase Data Connect. ` +
             `It will be updated on your next deploy.` +
             why,
         );
       } else {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings not compatible with Firebase Data Connect. ` +
             why,
         );
         await promiseWithSpinner(
@@ -84,7 +87,7 @@ async function createInstance(args: {
   if (dryRun) {
     utils.logLabeledBullet(
       "dataconnect",
-      `Cloud SQL Instance ${instanceId} not found. It will be created on your next deploy.`,
+      `Cloud SQL Instance ${clc.bold(instanceId)} not found. It will be created on your next deploy.`,
     );
   } else {
     await cloudSqlAdminClient.createInstance({
@@ -110,7 +113,7 @@ export function cloudSQLBeingCreated(
   includeFreeTrialToS?: boolean,
 ): string {
   return (
-    `Cloud SQL Instance ${instanceId} is being created.` +
+    `Cloud SQL Instance ${clc.bold(instanceId)} is being created.` +
     (includeFreeTrialToS
       ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
