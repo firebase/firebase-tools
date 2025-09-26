@@ -134,21 +134,23 @@ describe("apphosting", () => {
         },
       });
 
-      // assert backend foo-local-build calls
+      // assert backend fooLocalBuild calls
       expect(upsertBucketStub).to.be.calledWith({
         product: "apphosting",
         createMessage:
-          "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
+          "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-build-000000000000-us-central1...",
         projectId: "my-project",
         req: {
           name: "firebaseapphosting-build-000000000000-us-central1",
           location: "us-central1",
-          rule: [
-            {
-              action: { type: "Delete" },
-              condition: { age: 30 },
-            },
-          ],
+          lifecycle: {
+            rule: [
+              {
+                action: { type: "Delete" },
+                condition: { age: 30 },
+              },
+            ],
+          },
         },
       });
       expect(createArchiveStub).to.be.calledWithExactly(
@@ -185,7 +187,7 @@ describe("apphosting", () => {
       expect(context.backendStorageUris["foo"]).to.equal(
         "gs://firebaseapphosting-sources-000000000000-us-central1/foo-1234.zip",
       );
-      expect(context.backendStorageUris["foo-local-build"]).to.equal(
+      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
         "gs://firebaseapphosting-build-000000000000-us-central1/foo-local-build-1234.zip",
       );
     });
