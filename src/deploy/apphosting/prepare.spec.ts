@@ -145,7 +145,7 @@ describe("apphosting", () => {
         rootDir: "/",
         ignore: [],
       });
-      expect(context.backendLocalBuilds["foo}).to.be.undefined;
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("creates a backend if it doesn't exist yet", async () => {
