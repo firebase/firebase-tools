@@ -41,18 +41,18 @@ describe("apphosting", () => {
     };
     it("Supports passing localBuild information", async () => {
       const context: Context = {
-	backendConfigs: {
-	  foo: {
+        backendConfigs: {
+          foo: {
             backendId: "foo",
             rootDir: "/",
             ignore: [],
-	    localBuild: true,
-	  },
-	},
-	backendLocations: { foo: "us-central1" },
-	backendStorageUris: {
-	  foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
-	},
+            localBuild: true,
+          },
+        },
+        backendLocations: { foo: "us-central1" },
+        backendStorageUris: {
+          foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+        },
         backendLocalBuilds: {
           foo: {
             buildConfig: {
@@ -115,18 +115,18 @@ describe("apphosting", () => {
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
       const context: Context = {
-	backendConfigs: {
-	  foo: {
+        backendConfigs: {
+          foo: {
             backendId: "foo",
             rootDir: "/",
             ignore: [],
-	  },
-	},
-	backendLocations: { foo: "us-central1" },
-	backendStorageUris: {
-	  foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
-	},
-	backendLocalBuilds: {},
+          },
+        },
+        backendLocations: { foo: "us-central1" },
+        backendStorageUris: {
+          foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+        },
+        backendLocalBuilds: {},
       };
 
       orchestrateRolloutStub = sinon

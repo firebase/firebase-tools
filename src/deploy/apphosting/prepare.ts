@@ -148,11 +148,11 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
-  for (const config of context.backendConfigs.values()) {
-    if (!config.localBuild) {
-      continue;
+  Object.values(context.backendConfigs).forEach(async (cfg) => {
+    if (!cfg.localBuild) {
+      return;
     }
-    logLabeledBullet("apphosting", `Starting local build for backend ${config.backendId}`);
+    logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
         options.projectRoot || "./",
@@ -160,20 +160,20 @@ export default async function (context: Context, options: Options): Promise<void
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(
-          `Local build for backend ${config.backendId} failed: No output files found.`,
+          `Local build for backend ${cfg.backendId} failed: No output files found.`,
         );
       }
-      context.backendLocalBuilds[config.backendId] = {
+      context.backendLocalBuilds[cfg.backendId] = {
         // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
         buildConfig,
         annotations,
       };
     } catch (e) {
-      throw new FirebaseError(`Local Build for backend ${config.backendId} failed: ${e}`);
+      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
     }
-  }
-  return;
+    return;
+  });
 }
 
 /**

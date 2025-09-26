@@ -25,9 +25,15 @@ export default async function (context: Context, options: Options): Promise<void
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
   await Promise.all(
-    Object.entries(context.backendLocations).map(async (backendId, loc) => {
+    Object.entries(context.backendLocations).map(async ([backendId, loc]) => {
       const cfg = context.backendConfigs[backendId];
-      const bucketName = `firebaseapphosting-${cfg?.localBuild ? "build" : "sources"}-${options.projectNumber}-${loc.toLowerCase()}`;
+      if (!cfg) {
+        throw new FirebaseError(
+          `Failed to find config for backend ${backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+        );
+      }
+
+      const bucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${loc.toLowerCase()}`;
       await gcs.upsertBucket({
         product: "apphosting",
         createMessage: `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${bucketName}...`,
@@ -51,20 +57,22 @@ export default async function (context: Context, options: Options): Promise<void
       });
     }),
   );
+
+  // Zip and upload code to GCS bucket.
   await Promise.all(
     Object.values(context.backendConfigs).map(async (cfg) => {
       const rootDir = options.projectRoot ?? process.cwd();
       let builtAppDir;
       if (cfg.localBuild) {
-      	builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
-      	if (!builtAppDir) {
+        builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
+        if (!builtAppDir) {
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
-      	}
+        }
       }
       const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
       logLabeledBullet(
-      	"apphosting",
-      	`Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+        "apphosting",
+        `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
       );
 
       const backendLocation = context.backendLocations[cfg.backendId];
@@ -74,8 +82,8 @@ export default async function (context: Context, options: Options): Promise<void
         );
       }
       logLabeledBullet(
-      	"apphosting",
-      	`Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+        "apphosting",
+        `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${backendLocation.toLowerCase()}`;
 
