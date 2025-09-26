@@ -27,21 +27,16 @@ export const init_auth = resource(
 
 **Security Rules Integration:**
 - Update Firestore security rules to ensure only authenticated users can access their own data
-- Handle security rule deployment automatically (do not ask developers to go to console)
 - Explain to users in plain language how the current security rules work and ask their confirmation before deploying
-- Deploy updated security rules using \`firebase deploy --only firestore\`
-- Verify that security rules properly restrict data access to authenticated users only
+- Deploy updated security rules using \`firebase deploy\`
+- Guide users to navigate to console review the deployed security rules
+- **Critical Warning**: Never make Firestore security rules public (allowing read/write without authentication)
 
 **Verification & Testing:**
 - Test the complete sign-up and sign-in flow to verify authentication functionality
-- Test both successful and failed authentication scenarios
 - Confirm user data is properly isolated and secure
 - Verify that security rules properly restrict data access to authenticated users only
-
-**Security Configuration:**
-- Guide users to navigate to "Firestore Database" → "Rules" tab to review security rules
-- **Critical Warning**: Never make Firestore security rules public (allowing read/write without authentication)
-- Ensure security rules are properly configured and tested before moving to production
+- Test user session management and logout functionality
 
 **Next Steps:**
 - **Production Deployment**: Recommend deploying the application to production once authentication is verified and working properly
