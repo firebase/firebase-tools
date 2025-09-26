@@ -87,7 +87,7 @@ IMPORTANT: The backend setup guide is for web apps only. If the user requests ba
 2. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
    - If they would like to create a project, use the firebase_create_project with the project ID
    - If they would like to use an existing project, run the shell command \`firebase use <project-id>\`
-   - If you run into issues creating the firebase project, give the user 2 options: 1) Go to the [Firebase Console](http://console.firebase.google.com/) and create a project or 2) run \`npx firebase-tools projects:create <project-id>\` in a separate terminal. Wait for the user to report back before continuing.
+   - If you run into issues creating the firebase project, ask the user to go to the [Firebase Console](http://console.firebase.google.com/) and create a project. Wait for the user to report back before continuing.
 3. Ensure there is an active Firebase App for their platform
    - Run the \`firebase_list_apps\` tool to list their apps, and find an app that matches their "Workspace platform"
    - If there is not app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
