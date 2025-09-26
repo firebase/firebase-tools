@@ -197,7 +197,8 @@ export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): voi
   if (!apps.length) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project",
+        "associated with this Firebase project.\n" +
+        "You can create an app for this project with 'firebase apps:create'",
     );
   }
 }
