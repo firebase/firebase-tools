@@ -46,23 +46,15 @@ export async function createNote(appId: string, issueId: string, note: string): 
  */
 export async function deleteNote(appId: string, issueId: string, noteId: string): Promise<string> {
   const requestProjectNumber = parseProjectNumber(appId);
-
   logger.debug(
     `[crashlytics] deleteNote called with appId: ${appId}, issueId: ${issueId}, noteId: ${noteId}`,
   );
-  try {
-    await CRASHLYTICS_API_CLIENT.request<void, void>({
-      method: "DELETE",
-      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
-      timeout: TIMEOUT,
-    });
-    return `Deleted note ${noteId}`;
-  } catch (err: unknown) {
-    throw new FirebaseError(
-      `Failed to delete note ${noteId} from issue ${issueId} for app ${appId}`,
-      { original: getError(err) },
-    );
-  }
+  await CRASHLYTICS_API_CLIENT.request<void, void>({
+    method: "DELETE",
+    path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
+    timeout: TIMEOUT,
+  });
+  return `Deleted note ${noteId}`;
 }
 
 /**
@@ -74,27 +66,19 @@ export async function deleteNote(appId: string, issueId: string, noteId: string)
  */
 export async function listNotes(appId: string, issueId: string, pageSize = 20): Promise<Note[]> {
   const requestProjectNumber = parseProjectNumber(appId);
-  try {
-    const queryParams = new URLSearchParams();
-    queryParams.set("page_size", `${pageSize}`);
-
-    logger.debug(
-      `[crashlytics] listNotes called with appId: ${appId}, issueId: ${issueId}, pageSize: ${pageSize}`,
-    );
-    const response = await CRASHLYTICS_API_CLIENT.request<void, { notes: Note[] }>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
-      queryParams: queryParams,
-      timeout: TIMEOUT,
-    });
-
-    return response.body.notes || [];
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to list notes for issue ${issueId}, app ${appId}`, {
-      original: getError(err),
-    });
-  }
+  const queryParams = new URLSearchParams();
+  queryParams.set("page_size", `${pageSize}`);
+  logger.debug(
+    `[crashlytics] listNotes called with appId: ${appId}, issueId: ${issueId}, pageSize: ${pageSize}`,
+  );
+  const response = await CRASHLYTICS_API_CLIENT.request<void, { notes: Note[] }>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
+    queryParams: queryParams,
+    timeout: TIMEOUT,
+  });
+  return response.body.notes || [];
 }
