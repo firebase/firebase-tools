@@ -29,6 +29,17 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
+  const localBuildBackends = backendIds.filter(
+    (id) => context.backendLocalBuilds[id]
+  );
+  if (localBuildBackends.length > 0) {
+    logLabeledWarning(
+      "apphosting",
+      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`
+    );
+    backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
+  }
+
   if (backendIds.length === 0) {
     return;
   }
@@ -41,12 +52,12 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        config: context.backendLocalBuilds[backendId].buildConfig,
+        // TODO(914): Set the buildConfig.
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-            locallyBuiltSource: context.backendConfigs[backendId].localBuild,
+	    // TODO(914): Set locallyBuiltSource.
           },
         },
       },
