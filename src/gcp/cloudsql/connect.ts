@@ -11,7 +11,6 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { i } from "pg-gateway/dist/connection-Wgmmyk18";
 
 export async function execute(
   sqlStatements: string[],
