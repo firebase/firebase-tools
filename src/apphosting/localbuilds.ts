@@ -27,7 +27,7 @@ export async function localBuild(
   );
 
   return {
-    outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? ["poop"],
+    outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
     annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,
