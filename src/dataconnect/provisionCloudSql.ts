@@ -161,13 +161,13 @@ async function upsertDatabase(args: {
 export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
   let reason = "";
   const settings = instance.settings;
-  // Cloud SQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
       `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
     ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
+    // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
     if (!settings.ipConfiguration?.pscConfig?.pscEnabled) {
       reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
     }
