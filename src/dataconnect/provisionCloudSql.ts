@@ -162,8 +162,8 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
-      `Cloud SQL instance ${instance.name} does not have a public IP address.
-  ${clc.bold("firebase dataconnect:sql:migrate")} works only in the VPC that the Cloud SQL instance is in.`,
+      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
+    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
   }
 
