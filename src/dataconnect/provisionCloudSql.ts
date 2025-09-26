@@ -171,7 +171,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     if (!settings.ipConfiguration?.pscConfig?.pscEnabled) {
       reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
     }
-    reason += "\n - to enable public IP.";
+    reason += "\n - to enable VPC Private Service Connect (PSC) for Google Cloud Services.";
   }
 
   if (requireGoogleMlIntegration) {
