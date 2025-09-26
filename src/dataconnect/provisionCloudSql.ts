@@ -172,7 +172,6 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     if (!settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices) {
       reason += "\n - to enable Private Path for Google Cloud Services.";
     }
-    reason += "\n - to enable Private Path for Google Cloud Services.";
   }
 
   if (requireGoogleMlIntegration) {
