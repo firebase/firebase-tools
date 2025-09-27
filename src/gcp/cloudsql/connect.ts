@@ -50,6 +50,7 @@ export async function execute(
       });
       pool = new pg.Pool({
         ...clientOpts,
+        connectionTimeoutMillis: 1000,
         user: opts.username,
         database: opts.databaseId,
       });
@@ -67,6 +68,7 @@ export async function execute(
       });
       pool = new pg.Pool({
         ...clientOpts,
+        connectionTimeoutMillis: 1000,
         user: opts.username,
         database: opts.databaseId,
       });
@@ -86,6 +88,7 @@ export async function execute(
       });
       pool = new pg.Pool({
         ...clientOpts,
+        connectionTimeoutMillis: 1000,
         user: opts.username,
         password: opts.password,
         database: opts.databaseId,
