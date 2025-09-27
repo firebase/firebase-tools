@@ -38,6 +38,7 @@ export interface SetupInfo {
   dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
+  ailogic?: features.AiLogicInfo;
 }
 
 interface Feature {
@@ -95,6 +96,11 @@ const featuresList: Feature[] = [
     name: "apptesting",
     askQuestions: features.apptestingAskQuestions,
     actuate: features.apptestingAcutate,
+  },
+  {
+    name: "ailogic",
+    askQuestions: features.aiLogicAskQuestions,
+    actuate: features.aiLogicActuate,
   },
   { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
