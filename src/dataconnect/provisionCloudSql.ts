@@ -167,8 +167,11 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
       `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
     ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
-    // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
-    if (!settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices) {
+    if (
+      settings.ipConfiguration?.privateNetwork &&
+      !settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices
+    ) {
+      // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
       reason += "\n - to enable Private Path for Google Cloud Services.";
     }
   }
