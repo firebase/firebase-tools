@@ -123,25 +123,14 @@ export const init = tool(
           ),
         ailogic: z
           .object({
-            app_platform: z
-              .enum(["android", "ios", "web"])
-              .optional()
-              .describe(
-                "Platform for app creation. If not provided, will auto-detect from current directory",
-              ),
-            app_namespace: z
+            app_id: z
               .string()
               .describe(
-                "Package name (Android), bundle ID (iOS), or app name (Web). Required for app creation",
+                "Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID). Must be an existing app in your Firebase project.",
               ),
-            overwrite_config: z
-              .boolean()
-              .optional()
-              .default(false)
-              .describe("Allow overwriting existing config files"),
           })
           .optional()
-          .describe("Enable Firebase AI Logic feature"),
+          .describe("Enable Firebase AI Logic feature for existing app"),
       }),
     }),
     annotations: {
@@ -202,9 +191,7 @@ export const init = tool(
     if (features.ailogic) {
       featuresList.push("ailogic");
       featureInfo.ailogic = {
-        appPlatform: features.ailogic.app_platform,
-        appNamespace: features.ailogic.app_namespace,
-        overwriteConfig: features.ailogic.overwrite_config,
+        appId: features.ailogic.app_id,
       };
     }
     const setup: Setup = {

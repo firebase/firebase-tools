@@ -1,11 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as fs from "fs-extra";
-import * as path from "path";
 import * as utils from "./utils";
-import * as appFinder from "../../../dataconnect/appFinder";
 import * as provision from "../../../management/provisioning/provision";
-import { Platform } from "../../../dataconnect/types";
+import * as apps from "../../../management/apps";
 import { AppPlatform } from "../../../management/apps";
 import { FirebaseError } from "../../../error";
 
@@ -40,122 +37,61 @@ describe("ailogic utils", () => {
     });
   });
 
-  describe("getConfigFilePath", () => {
-    it("should return correct path for iOS", () => {
-      const result = utils.getConfigFilePath("/test/project", "ios");
-      expect(result).to.equal(path.join("/test/project", "GoogleService-Info.plist"));
+
+
+
+  describe("parseAppId", () => {
+    it("should parse valid app IDs and return AppInfo object", () => {
+      const validAppIds = [
+        {
+          appId: "1:123456789:ios:123456789abcdef",
+          expected: { projectNumber: "123456789", appId: "1:123456789:ios:123456789abcdef", platform: "ios" }
+        },
+        {
+          appId: "2:123456789:android:123456789abcdef",
+          expected: { projectNumber: "123456789", appId: "2:123456789:android:123456789abcdef", platform: "android" }
+        },
+        {
+          appId: "2:123456789:web:123456789abcdef",
+          expected: { projectNumber: "123456789", appId: "2:123456789:web:123456789abcdef", platform: "web" }
+        },
+        {
+          appId: "1:999999999:web:abcdef123456789",
+          expected: { projectNumber: "999999999", appId: "1:999999999:web:abcdef123456789", platform: "web" }
+        },
+      ];
+
+      validAppIds.forEach(({ appId, expected }) => {
+        const result = utils.parseAppId(appId);
+        expect(result).to.deep.equal(expected);
+      });
     });
 
-    it("should return correct path for Android", () => {
-      const result = utils.getConfigFilePath("/test/project", "android");
-      expect(result).to.equal(path.join("/test/project", "google-services.json"));
-    });
+    it("should throw error for invalid app ID formats", () => {
+      const invalidAppIds = [
+        "",
+        ":",
+        "1:",
+        "2:123456789",
+        "2:123456789:",
+        "2:123456789:test:",
+        "2:123456789:ios",
+        "2:123456789:web:",
+        "2:123456789:android:com_",
+        "invalid-id",
+        "1:abc:web:123456789abcdef", // non-numeric project number
+        "1:123456789:flutter:123456789abcdef", // unsupported platform
+      ];
 
-    it("should return correct path for Web", () => {
-      const result = utils.getConfigFilePath("/test/project", "web");
-      expect(result).to.equal(path.join("/test/project", "firebase-config.json"));
-    });
-  });
-
-  describe("writeAppConfigFile", () => {
-    let ensureDirSyncStub: sinon.SinonStub;
-    let writeFileSyncStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      ensureDirSyncStub = sandbox.stub(fs, "ensureDirSync");
-      writeFileSyncStub = sandbox.stub(fs, "writeFileSync");
-    });
-
-    it("should decode base64 and write config file", () => {
-      const filePath = "/test/project/google-services.json";
-      const base64Data = Buffer.from("test config content").toString("base64");
-
-      utils.writeAppConfigFile(filePath, base64Data);
-
-      sinon.assert.calledWith(ensureDirSyncStub, "/test/project");
-      sinon.assert.calledWith(writeFileSyncStub, filePath, "test config content", "utf8");
-    });
-
-    it("should throw error if file write fails", () => {
-      const filePath = "/test/project/config.json";
-      const base64Data = "validbase64";
-      writeFileSyncStub.throws(new Error("Write failed"));
-
-      expect(() => utils.writeAppConfigFile(filePath, base64Data)).to.throw(
-        "Failed to write config file to /test/project/config.json: Write failed",
-      );
-    });
-  });
-
-  describe("extractProjectIdFromAppResource", () => {
-    it("should extract project ID from valid app resource", () => {
-      const appResource = "projects/my-test-project/apps/my-app";
-      const result = utils.extractProjectIdFromAppResource(appResource);
-      expect(result).to.equal("my-test-project");
-    });
-
-    it("should throw error for invalid app resource format", () => {
-      const invalidResource = "invalid-resource-format";
-      expect(() => utils.extractProjectIdFromAppResource(invalidResource)).to.throw(
-        "Invalid app resource format: invalid-resource-format",
-      );
+      invalidAppIds.forEach((appId) => {
+        expect(() => utils.parseAppId(appId)).to.throw(
+          FirebaseError,
+          /Invalid app ID format/
+        );
+      });
     });
   });
 
-  describe("detectAppPlatform", () => {
-    let getPlatformFromFolderStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getPlatformFromFolderStub = sandbox.stub(appFinder, "getPlatformFromFolder");
-    });
-
-    it("should return 'web' for Platform.WEB", async () => {
-      getPlatformFromFolderStub.returns(Platform.WEB);
-
-      const result = await utils.detectAppPlatform("/test/project");
-      expect(result).to.equal("web");
-    });
-
-    it("should return 'android' for Platform.ANDROID", async () => {
-      getPlatformFromFolderStub.returns(Platform.ANDROID);
-
-      const result = await utils.detectAppPlatform("/test/project");
-      expect(result).to.equal("android");
-    });
-
-    it("should return 'ios' for Platform.IOS", async () => {
-      getPlatformFromFolderStub.returns(Platform.IOS);
-
-      const result = await utils.detectAppPlatform("/test/project");
-      expect(result).to.equal("ios");
-    });
-
-    it("should throw helpful error for Platform.NONE", async () => {
-      getPlatformFromFolderStub.returns(Platform.NONE);
-
-      await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
-        "No app platform detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "or create an app first (e.g., 'npx create-react-app my-app', 'flutter create my-app').",
-      );
-    });
-
-    it("should throw helpful error for Platform.MULTIPLE", async () => {
-      getPlatformFromFolderStub.returns(Platform.MULTIPLE);
-
-      await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
-        "Multiple app platforms detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "to clarify which platform to use for Firebase app creation.",
-      );
-    });
-
-    it("should throw error for unsupported platform", async () => {
-      getPlatformFromFolderStub.returns(Platform.FLUTTER);
-
-      await expect(utils.detectAppPlatform("/test/project")).to.be.rejectedWith(
-        "Unsupported platform detected: FLUTTER. Please specify app_platform (android, ios, or web).",
-      );
-    });
-  });
 
   describe("buildProvisionOptions", () => {
     it("should build options for Android app", () => {
@@ -262,6 +198,101 @@ describe("ailogic utils", () => {
       await expect(utils.provisionAiLogicApp(mockOptions as any)).to.be.rejectedWith(
         FirebaseError,
         "AI Logic provisioning failed: String error",
+      );
+    });
+  });
+
+  describe("validateProjectNumberMatch", () => {
+    it("should not throw when project numbers match", () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:web:abcdef",
+        platform: "web",
+      };
+      const projectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
+
+      expect(() => utils.validateProjectNumberMatch(appInfo, projectInfo)).to.not.throw();
+    });
+
+    it("should throw when project numbers don't match", () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:web:abcdef",
+        platform: "web",
+      };
+      const projectInfo = {
+        projectNumber: "987654321",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
+
+      expect(() => utils.validateProjectNumberMatch(appInfo, projectInfo)).to.throw(
+        FirebaseError,
+        "App 1:123456789:web:abcdef belongs to project number 123456789 but current project has number 987654321.",
+      );
+    });
+  });
+
+  describe("validateAppExists", () => {
+    let getAppConfigStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getAppConfigStub = sandbox.stub(apps, "getAppConfig");
+    });
+
+    it("should not throw when app exists for web platform", async () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:web:abcdef",
+        platform: "web",
+      };
+      getAppConfigStub.resolves({ mockConfig: true });
+
+      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
+      sinon.assert.calledWith(getAppConfigStub, "1:123456789:web:abcdef", AppPlatform.WEB);
+    });
+
+    it("should not throw when app exists for ios platform", async () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:ios:abcdef",
+        platform: "ios",
+      };
+      getAppConfigStub.resolves({ mockConfig: true });
+
+      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
+      sinon.assert.calledWith(getAppConfigStub, "1:123456789:ios:abcdef", AppPlatform.IOS);
+    });
+
+    it("should not throw when app exists for android platform", async () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef",
+        platform: "android",
+      };
+      getAppConfigStub.resolves({ mockConfig: true });
+
+      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
+      sinon.assert.calledWith(getAppConfigStub, "1:123456789:android:abcdef", AppPlatform.ANDROID);
+    });
+
+    it("should throw when app does not exist", async () => {
+      const appInfo: utils.AppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:web:nonexistent",
+        platform: "web",
+      };
+      getAppConfigStub.throws(new Error("App not found"));
+
+      await expect(utils.validateAppExists(appInfo)).to.be.rejectedWith(
+        FirebaseError,
+        "App 1:123456789:web:nonexistent does not exist or is not accessible.",
       );
     });
   });

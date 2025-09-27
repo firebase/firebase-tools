@@ -1,8 +1,3 @@
-import * as path from "path";
-import * as fs from "fs-extra";
-// TODO(caot): refactor appFinder to a common util later
-import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
-import { Platform } from "../../../dataconnect/types";
 import { provisionFirebaseApp } from "../../../management/provisioning/provision";
 import {
   ProvisionFirebaseAppOptions,
@@ -10,8 +5,9 @@ import {
   ProvisionAppOptions,
   ProvisionFirebaseAppResponse,
 } from "../../../management/provisioning/types";
-import { AppPlatform } from "../../../management/apps";
+import { AppPlatform, getAppConfig } from "../../../management/apps";
 import { FirebaseError } from "../../../error";
+import { FirebaseProjectMetadata } from "../../../types/project";
 
 export type SupportedPlatform = "ios" | "android" | "web";
 
@@ -31,73 +27,36 @@ export function getConfigFileName(platform: SupportedPlatform): string {
   }
 }
 
-/**
- * Returns the full file path for Firebase configuration file in the given app directory
- */
-export function getConfigFilePath(appDirectory: string, platform: SupportedPlatform): string {
-  const filename = getConfigFileName(platform);
-  return path.join(appDirectory, filename);
+
+export interface AppInfo {
+  projectNumber: string;
+  appId: string;
+  platform: SupportedPlatform;
 }
 
 /**
- * Writes config file from base64 data with proper decoding
+ * Parses Firebase app ID using official pattern - based on MobilesdkAppId.java
+ * Format: <version>:<projectNumber>:<platform>:<identifier>
  */
-export function writeAppConfigFile(filePath: string, base64Data: string): void {
-  try {
-    const configContent = Buffer.from(base64Data, "base64").toString("utf8");
-    fs.ensureDirSync(path.dirname(filePath));
-    fs.writeFileSync(filePath, configContent, "utf8");
-  } catch (error) {
+export function parseAppId(appId: string): AppInfo {
+  const pattern =
+    /^(?<version>\d+):(?<projectNumber>\d+):(?<platform>ios|android|web):([0-9a-fA-F]+)$/;
+  const match = pattern.exec(appId);
+
+  if (!match) {
     throw new FirebaseError(
-      `Failed to write config file to ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
-      { original: error instanceof Error ? error : new Error(String(error)), exit: 2 },
+      `Invalid app ID format: ${appId}. Expected format: 1:PROJECT_NUMBER:PLATFORM:IDENTIFIER`,
+      { exit: 1 },
     );
   }
+
+  return {
+    projectNumber: match.groups!.projectNumber,
+    appId: appId,
+    platform: match.groups?.platform as SupportedPlatform,
+  };
 }
 
-/**
- * Extracts project ID from app resource name
- */
-export function extractProjectIdFromAppResource(appResource: string): string {
-  const match = /^projects\/([^/]+)/.exec(appResource);
-  if (!match) {
-    throw new FirebaseError(`Invalid app resource format: ${appResource}`, { exit: 2 });
-  }
-  return match[1];
-}
-
-/**
- * Detects app platform using AppFinder with AI Logic specific logic
- */
-export async function detectAppPlatform(projectDir: string): Promise<SupportedPlatform> {
-  const detectedPlatform = await getPlatformFromFolder(projectDir);
-
-  switch (detectedPlatform) {
-    case Platform.WEB:
-      return "web";
-    case Platform.ANDROID:
-      return "android";
-    case Platform.IOS:
-      return "ios";
-    case Platform.NONE:
-      throw new FirebaseError(
-        "No app platform detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "or create an app first (e.g., 'npx create-react-app my-app', 'flutter create my-app').",
-        { exit: 1 },
-      );
-    case Platform.MULTIPLE:
-      throw new FirebaseError(
-        "Multiple app platforms detected in current directory. Please specify app_platform (android, ios, or web) " +
-          "to clarify which platform to use for Firebase app creation.",
-        { exit: 1 },
-      );
-    default:
-      throw new FirebaseError(
-        `Unsupported platform detected: ${detectedPlatform}. Please specify app_platform (android, ios, or web).`,
-        { exit: 1 },
-      );
-  }
-}
 
 /**
  * Builds provisioning options for AI Logic from feature inputs
@@ -147,6 +106,49 @@ export function buildProvisionOptions(
       firebaseAiLogicInput: {}, // Enable AI Logic
     },
   };
+}
+
+/**
+ * Step 2: Verify project number matches app ID's parsed project number
+ */
+export function validateProjectNumberMatch(
+  appInfo: AppInfo,
+  projectInfo: FirebaseProjectMetadata,
+): void {
+  if (projectInfo.projectNumber !== appInfo.projectNumber) {
+    throw new FirebaseError(
+      `App ${appInfo.appId} belongs to project number ${appInfo.projectNumber} but current project has number ${projectInfo.projectNumber}.`,
+      { exit: 1 },
+    );
+  }
+}
+
+/**
+ * Step 3: Validate that app exists
+ */
+export async function validateAppExists(appInfo: AppInfo): Promise<void> {
+  try {
+    // Convert to AppPlatform enum
+    let appPlatform: AppPlatform;
+    switch (appInfo.platform) {
+      case "web":
+        appPlatform = AppPlatform.WEB;
+        break;
+      case "ios":
+        appPlatform = AppPlatform.IOS;
+        break;
+      case "android":
+        appPlatform = AppPlatform.ANDROID;
+        break;
+    }
+
+    await getAppConfig(appInfo.appId, appPlatform);
+  } catch (error) {
+    throw new FirebaseError(`App ${appInfo.appId} does not exist or is not accessible.`, {
+      exit: 1,
+      original: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
 }
 
 /**
