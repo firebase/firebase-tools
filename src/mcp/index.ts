@@ -451,7 +451,7 @@ export class FirebaseMcpServer {
         `Resource '${req.params.uri}' could not be found.`,
       );
     }
-    return resolved?.result;
+    return resolved.result;
   }
 
   async start(): Promise<void> {
