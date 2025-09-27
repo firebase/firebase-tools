@@ -122,7 +122,8 @@ export async function updateInstanceForDataConnect(
     {
       settings: {
         ipConfiguration: {
-          enablePrivatePathForGoogleCloudServices: true,
+          enablePrivatePathForGoogleCloudServices:
+            !!instance?.settings?.ipConfiguration?.privateNetwork,
         },
         databaseFlags: dbFlags,
         enableGoogleMlIntegration,
