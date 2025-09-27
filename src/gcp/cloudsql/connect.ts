@@ -68,9 +68,8 @@ export async function execute(
       break;
     }
   }
-  const clientOpts = await connector.getOptions(connectionOpts);
   const pool = new pg.Pool({
-    ...clientOpts,
+    ...(await connector.getOptions(connectionOpts)),
     connectionTimeoutMillis: 1000,
     password: opts.password,
     user: opts.username,
