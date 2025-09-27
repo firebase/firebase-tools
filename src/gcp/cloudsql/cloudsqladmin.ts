@@ -122,10 +122,7 @@ export async function updateInstanceForDataConnect(
     {
       settings: {
         ipConfiguration: {
-          pscConfig: {
-            pscEnabled: true,
-            allowedConsumerProjects: [instance.project],
-          },
+          enablePrivatePathForGoogleCloudServices: true,
         },
         databaseFlags: dbFlags,
         enableGoogleMlIntegration,
