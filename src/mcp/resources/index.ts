@@ -1,4 +1,4 @@
-import { ErrorCode, McpError, ReadResourceResult } from "@modelcontextprotocol/sdk/types";
+import { ReadResourceResult } from "@modelcontextprotocol/sdk/types";
 import { McpContext } from "../types";
 import { docs } from "./docs";
 import { init_ai } from "./guides/init_ai";
