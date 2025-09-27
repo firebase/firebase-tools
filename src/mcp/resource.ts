@@ -67,5 +67,5 @@ export function resourceTemplate(
     typeof fnOrText === "string"
       ? async (uri) => ({ contents: [{ uri, text: fnOrText }] })
       : fnOrText;
-  return { mcp: options, match: matchFn, fn };
+  return { mcp, match: matchFn, fn };
 }
