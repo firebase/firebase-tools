@@ -37,22 +37,15 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let pool: pg.Pool;
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: ipType,
+    authType: AuthTypes.IAM,
+  };
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
-      });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: ipType,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        connectionTimeoutMillis: 1000,
-        user: opts.username,
-        database: opts.databaseId,
       });
       break;
     }
@@ -61,17 +54,6 @@ export async function execute(
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: ipType,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        connectionTimeoutMillis: 1000,
-        user: opts.username,
-        database: opts.databaseId,
-      });
       break;
     }
     default: {
@@ -82,20 +64,18 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: ipType,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        connectionTimeoutMillis: 1000,
-        user: opts.username,
-        password: opts.password,
-        database: opts.databaseId,
-      });
+      connectionOpts.authType = AuthTypes.PASSWORD;
       break;
     }
   }
+  const clientOpts = await connector.getOptions(connectionOpts);
+  const pool = new pg.Pool({
+    ...clientOpts,
+    connectionTimeoutMillis: 1000,
+    password: opts.password,
+    user: opts.username,
+    database: opts.databaseId,
+  });
 
   const cleanUpFn = async () => {
     conn.release();
