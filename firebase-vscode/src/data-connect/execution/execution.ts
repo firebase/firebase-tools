@@ -35,8 +35,9 @@ import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { EmulatorsController } from "../../core/emulators";
-import { getConnectorGQLText } from "../file-utils";
+import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import { pluginLogger } from "../../logger-wrapper";
+import * as gif from "../../../../src/gemini/fdcExperience";
 
 interface TypedInput {
   varName: string;
@@ -47,6 +48,14 @@ interface ExecutionInput {
   ast: OperationDefinitionNode;
   location: OperationLocation;
   instance: InstanceType;
+}
+
+export interface GenerateQueryInput {
+  projectId: string;
+  document: vscode.TextDocument;
+  description: string;
+  insertPosition: number;
+  existingQuery: string;
 }
 
 export const lastExecutionInputSignal = new Signal<ExecutionInput | null>(null);
@@ -302,10 +311,15 @@ export function registerExecution(
     }
   }
 
-  async function generateOperation(
-    ast: OperationDefinitionNode,
-    { document, documentPath, position }: OperationLocation,
-  ) {
+  async function generateOperation(arg: GenerateQueryInput) {
+    try {
+      const prompt = arg.description + (arg.existingQuery ? `\n\nRefine this existing query:\n${arg.existingQuery}` : '');
+      const serviceName = await dataConnectService.servicePath(arg.document.fileName);
+      const res = await gif.generateOperation(prompt, serviceName, arg.projectId);
+      await insertQueryAt(arg.document.uri, arg.insertPosition, arg.existingQuery, res);
+    } catch (e: any) {
+      vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
+    }
   }
 
   const sub4 = broker.on(
@@ -344,12 +358,11 @@ export function registerExecution(
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.generateOperation",
-      async (ast, location) => {
+      async (arg: GenerateQueryInput) => {
         analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
         );
-        await vscode.window.activeTextEditor?.document.save();
-        generateOperation(ast, location);
+        generateOperation(arg);
       },
     ),
     vscode.commands.registerCommand(

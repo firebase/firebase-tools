@@ -81,6 +81,7 @@ export async function generateOperation(
   project: string,
   chatHistory: CloudAICompanionMessage[] = [],
 ): Promise<string> {
+  console.log("generateOperation called", prompt, service, project, chatHistory);
   const res = await apiClient.post<CloudAICompanionRequest, GenerateOperationResponse>(
     `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
     {

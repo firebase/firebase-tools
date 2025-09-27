@@ -6,6 +6,7 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { GenerateQueryInput } from "./execution/execution";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -84,28 +85,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
 
     for (let i = 0; i < documentNode.definitions.length; i++) {
       const x = documentNode.definitions[i];
-      if (!x.loc) {
-        continue;
-      }
-      const line = x.loc.startToken.line - 1;
-      const range = new vscode.Range(line, 0, line, 0);
-      const position = new vscode.Position(line, 0);
-      const operationLocation: OperationLocation = {
-        document: documentText,
-        documentPath: document.fileName,
-        position: position,
-      };
-      if (projectId) {
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: `$(play) Generate Operation ${x.kind} ${x.loc}`,
-            command: "firebase.dataConnect.generateOperation",
-            tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
-            arguments: [document.uri, operationLocation],
-          }),
-        );
-      }
-      if (x.kind === Kind.OPERATION_DEFINITION) {
+      if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
+        // startToken.line is 1-indexed, range is 0-indexed
+        const line = x.loc.startToken.line - 1;
+        const range = new vscode.Range(line, 0, line, 0);
+        const position = new vscode.Position(line, 0);
+        const operationLocation: OperationLocation = {
+          document: documentText,
+          documentPath: document.fileName,
+          position: position,
+        };
         const service = fdcConfigs.findEnclosingServiceForPath(
           document.fileName,
         );
@@ -133,6 +122,33 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
       }
     }
 
+    if (projectId) {
+      const comments = findCommentsBlocks(documentText);
+      for (let i = 0; i < comments.length; i++) {
+        const c = comments[i];
+        const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
+        const queryDoc = documentNode.definitions.find((d) =>
+          d.kind === Kind.OPERATION_DEFINITION && 
+          // startToken.line is 1-indexed, endLine is 0-indexed
+          d.loc?.startToken.line === c.endLine + 2
+        );
+        const arg: GenerateQueryInput = {
+          projectId,
+          document: document,
+          description: c.text,
+          insertPosition: c.endIndex + 1,
+          existingQuery: queryDoc?.loc ? documentText.substring(c.endIndex + 1, queryDoc.loc.endToken.end) : '',
+        };
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: queryDoc ? `$(play) Refine Operation` : `$(play) Generate Operation`,
+            command: "firebase.dataConnect.generateOperation",
+            tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+            arguments: [arg],
+          }),
+        );
+      }
+    }
     return codeLenses;
   }
 }
@@ -230,4 +246,42 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
 
     return codeLenses;
   }
+}
+
+interface Comment {
+  text: string;
+  startLine: number;
+  endLine: number;
+  endIndex: number;
+}
+
+
+function findCommentsBlocks(text: string): Comment[] {
+  const lineEnds: number[] = [];
+  let searchIndex: number = -1;
+  while ((searchIndex = text.indexOf('\n', searchIndex + 1)) !== -1) {
+    lineEnds.push(searchIndex);
+  }
+  const comments: Comment[] = [];
+  for (let i = 0; i < lineEnds.length; i++) {
+    const lineStart = i === 0 ? 0 : lineEnds[i - 1] + 1;
+    const lineText = text.substring(lineStart, lineEnds[i]).trim();
+    if (lineText.startsWith('#')) {
+      comments.push({ startLine: i, endLine: i, text: lineText.substring(1).trim(), endIndex: lineEnds[i] });
+    }
+  }
+  const commentBlocks: Comment[] = [];
+  for (let i = 0; i < comments.length; i++) {
+    const current = comments[i];
+    if (i === 0 || current.startLine > comments[i - 1].endLine + 1) {
+      commentBlocks.push({ ...current });
+    } else {
+      // Continuation of the previous block
+      const lastBlock = commentBlocks[commentBlocks.length - 1];
+      lastBlock.endLine = current.endLine;
+      lastBlock.endIndex = current.endIndex;
+      lastBlock.text += '\n' + current.text;
+    }
+  }
+  return commentBlocks;
 }
