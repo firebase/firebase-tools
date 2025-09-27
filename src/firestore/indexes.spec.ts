@@ -306,13 +306,13 @@ describe("IndexSpecMatching", () => {
   const baseApiIndex: API.Index = {
     name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
     queryScope: API.QueryScope.COLLECTION,
-    fields: [],
+    fields: [{ fieldPath: "__name__", order: API.Order.ASCENDING }],
   };
 
   const baseSpecIndex: Spec.Index = {
     collectionGroup: "collection",
     queryScope: "COLLECTION",
-    fields: [],
+    fields: [{ fieldPath: "__name__", order: API.Order.ASCENDING }],
   } as Spec.Index;
 
   it("should identify a positive index spec match", () => {
@@ -323,6 +323,7 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: API.Order.ASCENDING },
         { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
       state: API.State.READY,
     };
@@ -334,6 +335,7 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: "ASCENDING" },
         { fieldPath: "bar", arrayConfig: "CONTAINS" },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
     } as Spec.Index;
 
@@ -574,6 +576,101 @@ describe("IndexSpecMatching", () => {
     });
   });
 
+  describe("With __name__ field in index", () => {
+    it("__name__ field with default sort order, identified as matching", () => {
+      const apiIndex = {
+        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "ASCENDING" },
+        ],
+        state: API.State.READY,
+      } as API.Index;
+
+      const specIndex = {
+        collectionGroup: "collection",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "ASCENDING" },
+        ],
+      } as Spec.Index;
+
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("__name__ field with default sort order stripped off, identified as matching if STANDARD", () => {
+      const apiIndex = {
+        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "ASCENDING" },
+        ],
+        state: API.State.READY,
+      } as API.Index;
+
+      const specIndex = {
+        collectionGroup: "collection",
+        queryScope: "COLLECTION",
+        fields: [{ fieldPath: "foo", order: "ASCENDING" }],
+      } as Spec.Index;
+
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+    });
+
+    it("__name__ field with non-default sort order, identified as matching", () => {
+      const apiIndex = {
+        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "DESCENDING" },
+        ],
+        state: API.State.READY,
+      } as API.Index;
+
+      const specIndex = {
+        collectionGroup: "collection",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "DESCENDING" },
+        ],
+      } as Spec.Index;
+
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(true);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(true);
+    });
+
+    it("__name__ field sort order mismatch, identified as not matching", () => {
+      const apiIndex = {
+        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "ASCENDING" },
+        ],
+        state: API.State.READY,
+      } as API.Index;
+
+      const specIndex = {
+        collectionGroup: "collection",
+        queryScope: "COLLECTION",
+        fields: [
+          { fieldPath: "foo", order: "ASCENDING" },
+          { fieldPath: "__name__", order: "DESCENDING" },
+        ],
+      } as Spec.Index;
+
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
+      expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+    });
+  });
+
   it("should identify a negative index spec match", () => {
     const apiIndex = {
       name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
@@ -793,143 +890,75 @@ describe("IndexSpecMatching", () => {
   });
 });
 
-describe("IndexListingWithNameFields", () => {
-  it("should filter out __name__ fields with in the default order, when the default is ASCENDING", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.ASCENDING },
-          { fieldPath: "__name__", order: API.Order.ASCENDING },
-        ],
-        state: API.State.READY,
-      },
-    ];
+describe("Normalize __name__ field for database indexes", () => {
+  it("No-op if exists __name__ field as the last field with default sort order", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
+      ],
+    } as Spec.Index;
 
-    const result = FirestoreApi.processIndexes(mockIndexes);
+    const result = FirestoreApi.processIndex(mockSpecIndex);
 
-    expect(result[0].fields).to.have.length(1);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result.fields).to.have.length(2);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
   });
 
-  it("should filter out __name__ fields with in the default order, when the default is DESCENDING", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.DESCENDING },
-          { fieldPath: "__name__", order: API.Order.DESCENDING },
-        ],
-        state: API.State.READY,
-      },
-    ];
+  it("No-op if exists __name__ field as the last field with non-default sort order", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "__name__", order: API.Order.DESCENDING },
+      ],
+    } as Spec.Index;
 
-    const result = FirestoreApi.processIndexes(mockIndexes);
+    const result = FirestoreApi.processIndex(mockSpecIndex);
 
-    expect(result[0].fields).to.have.length(1);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
+    expect(result.fields).to.have.length(2);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[1].order).to.equal(API.Order.DESCENDING);
   });
 
-  it("should keep __name__ fields with DESCENDING order, when the default is ASCENDING", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.ASCENDING },
-          { fieldPath: "__name__", order: API.Order.DESCENDING },
-        ],
-        state: API.State.READY,
-      },
-    ];
+  it("should attach __name__ suffix with the default order if not exists, ascending", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [{ fieldPath: "foo", order: API.Order.ASCENDING }],
+    } as Spec.Index;
 
-    const result = FirestoreApi.processIndexes(mockIndexes);
+    const result = FirestoreApi.processIndex(mockSpecIndex);
 
-    expect(result[0].fields).to.have.length(2);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
-    expect(result[0].fields[1].fieldPath).to.equal("__name__");
-    expect(result[0].fields[1].order).to.equal(API.Order.DESCENDING);
+    expect(result.fields).to.have.length(2);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
   });
 
-  it("should keep __name__ fields with ASCENDING order, when the default is DESCENDING", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.DESCENDING },
-          { fieldPath: "__name__", order: API.Order.ASCENDING },
-        ],
-        state: API.State.READY,
-      },
-    ];
+  it("should attach __name__ suffix with the default order if not exists, descending", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "bar", order: API.Order.DESCENDING },
+      ],
+    } as Spec.Index;
 
-    const result = FirestoreApi.processIndexes(mockIndexes);
+    const result = FirestoreApi.processIndex(mockSpecIndex);
 
-    expect(result[0].fields).to.have.length(2);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
-    expect(result[0].fields[1].fieldPath).to.equal("__name__");
-    expect(result[0].fields[1].order).to.equal(API.Order.ASCENDING);
-  });
-
-  it("should distinguish between indexes that differ only by __name__ order", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.ASCENDING },
-          { fieldPath: "__name__", order: API.Order.ASCENDING },
-        ],
-        state: API.State.READY,
-      },
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/def456",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.ASCENDING },
-          { fieldPath: "__name__", order: API.Order.DESCENDING },
-        ],
-        state: API.State.READY,
-      },
-    ];
-
-    const result = FirestoreApi.processIndexes(mockIndexes);
-
-    // First index should have __name__ field filtered out
-    expect(result[0].fields).to.have.length(1);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
-
-    // Second index should keep __name__ field with DESCENDING order
-    expect(result[1].fields).to.have.length(2);
-    expect(result[1].fields[0].fieldPath).to.equal("foo");
-    expect(result[1].fields[1].fieldPath).to.equal("__name__");
-    expect(result[1].fields[1].order).to.equal(API.Order.DESCENDING);
-
-    // The two processed indexes should be different (fixing the duplicate issue)
-    expect(JSON.stringify(result[0].fields)).to.not.equal(JSON.stringify(result[1].fields));
-  });
-
-  it("should handle indexes with no __name__ fields", () => {
-    const mockIndexes: API.Index[] = [
-      {
-        name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-        queryScope: API.QueryScope.COLLECTION,
-        fields: [
-          { fieldPath: "foo", order: API.Order.ASCENDING },
-          { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
-        ],
-        state: API.State.READY,
-      },
-    ];
-
-    const result = FirestoreApi.processIndexes(mockIndexes);
-
-    expect(result[0].fields).to.have.length(2);
-    expect(result[0].fields[0].fieldPath).to.equal("foo");
-    expect(result[0].fields[1].fieldPath).to.equal("bar");
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("bar");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[2].order).to.equal(API.Order.DESCENDING);
   });
 });
 
