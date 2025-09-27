@@ -469,7 +469,7 @@ export interface ListEventsRequest {
 /** Response message for the ListEvents method. */
 export interface ListEventsResponse {
   /** Returns one element per event, ordered descending by the event timestamp. */
-  events: Event[];
+  events?: Event[];
   /** A pagination token to retrieve the next page of events. */
   nextPageToken?: string;
 }
@@ -487,7 +487,7 @@ export interface BatchGetEventsRequest {
 /** Response message for the BatchGetEvents method. */
 export interface BatchGetEventsResponse {
   /** Returns one or more events. */
-  events: Event[];
+  events?: Event[];
 }
 
 /**
@@ -613,17 +613,17 @@ export interface GetReportRequest {
 /** Response message for the GetReport method. */
 export interface Report {
   /** Aggregate event statistics in the report will be grouped by a dimension, such as by issue or by version. */
-  groups: ReportGroup[];
+  groups?: ReportGroup[];
   /** A page token to use to retrieve additional report groups. */
   nextPageToken?: string;
   /** The total number of groups retrievable by the request. */
-  totalSize: number;
+  totalSize?: number;
   /** The name of the report. */
-  name: string;
+  name?: string;
   /** The displayable title of the report. */
-  displayName: string;
+  displayName?: string;
   /** Usage instructions for the report and a description of the result metrics. */
-  usage: string;
+  usage?: string;
 }
 
 /**
