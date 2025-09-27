@@ -1,24 +1,28 @@
 import type { ServerTool } from "../../tool";
-import { add_note } from "./add_note";
-import { delete_note } from "./delete_note";
-import { get_issue_details } from "./get_issue_details";
-import { get_sample_crash } from "./get_sample_crash";
-import { list_notes } from "./list_notes";
-import { list_top_devices } from "./list_top_devices";
-import { list_top_issues } from "./list_top_issues";
-import { list_top_operating_systems } from "./list_top_operating_systems";
-import { list_top_versions } from "./list_top_versions";
-import { update_issue } from "./update_issue";
+import { create_note, list_notes, delete_note } from "./notes";
+import { get_issue, update_issue } from "./issues";
+import { list_events, batch_get_events } from "./events";
+import {
+  get_top_issues,
+  get_top_variants,
+  get_top_versions,
+  get_top_apple_devices,
+  get_top_operating_systems,
+  get_top_android_devices,
+} from "./reports";
 
 export const crashlyticsTools: ServerTool[] = [
-  add_note,
+  create_note,
   delete_note,
-  get_issue_details,
-  get_sample_crash,
+  get_issue,
+  list_events,
+  batch_get_events,
   list_notes,
-  list_top_devices,
-  list_top_issues,
-  list_top_operating_systems,
-  list_top_versions,
+  get_top_issues,
+  get_top_variants,
+  get_top_versions,
+  get_top_apple_devices,
+  get_top_android_devices,
+  get_top_operating_systems,
   update_issue,
 ];

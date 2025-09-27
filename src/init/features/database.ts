@@ -110,7 +110,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
   await ensure(projectId, rtdbManagementOrigin(), "database", false);
   logger.info();
 
-  const instance = await getDefaultDatabaseInstance({ project: projectId });
+  const instance = await getDefaultDatabaseInstance(projectId);
   if (instance !== "") {
     return await getDatabaseInstanceDetails(projectId, instance);
   }
