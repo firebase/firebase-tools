@@ -28,29 +28,24 @@ export async function execute(
   const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
   const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
   const connectionName = instance.connectionName;
-  const ipType = instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
-    ? IpAddressTypes.PUBLIC
-    : IpAddressTypes.PRIVATE;
   if (!connectionName) {
     throw new FirebaseError(
       `Could not get instance connection string for ${opts.instanceId}:${opts.databaseId}`,
     );
   }
   let connector: Connector;
-  const connectionOpts = {
-    instanceConnectionName: connectionName,
-    ipType: ipType,
-    authType: AuthTypes.IAM,
-  };
+  let authType: AuthTypes;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
+      authType = AuthTypes.IAM;
       break;
     }
     case "CLOUD_IAM_SERVICE_ACCOUNT": {
       connector = new Connector();
+      authType = AuthTypes.IAM;
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
@@ -64,10 +59,17 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      connectionOpts.authType = AuthTypes.PASSWORD;
+      authType = AuthTypes.PASSWORD;
       break;
     }
   }
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+      ? IpAddressTypes.PUBLIC
+      : IpAddressTypes.PRIVATE,
+    authType: authType,
+  };
   const pool = new pg.Pool({
     ...(await connector.getOptions(connectionOpts)),
     connectionTimeoutMillis: 1000,
