@@ -138,6 +138,23 @@ export class DataConnectService {
     }
   }
 
+  // Fetch the local Data Connect Schema sources via the toolkit introspection service.
+  async schema(): Promise<string> {
+    try {
+      const res = await this.executeGraphQLRead({
+        query: `query { _service { schema } }`,
+        operationName: "",
+        variables: "{}",
+      });
+      console.log("introspection schema: ", res);
+      return (res as any)?.data?._service?.schema || "";
+    } catch (e) {
+      // TODO: surface error that emulator is not connected
+      pluginLogger.error("error: ", e);
+      return "";
+    }
+  }
+
   async executeGraphQLRead(params: {
     query: string;
     operationName: string;

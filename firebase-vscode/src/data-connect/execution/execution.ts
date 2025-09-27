@@ -313,7 +313,12 @@ export function registerExecution(
 
   async function generateOperation(arg: GenerateQueryInput) {
     try {
-      const prompt = arg.description + (arg.existingQuery ? `\n\nRefine this existing query:\n${arg.existingQuery}` : '');
+      const schema = await dataConnectService.schema();
+      const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
+${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ''}
+${schema ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
+${schema}
+\`\`\`` : ""}`;
       const serviceName = await dataConnectService.servicePath(arg.document.fileName);
       const res = await gif.generateOperation(prompt, serviceName, arg.projectId);
       await insertQueryAt(arg.document.uri, arg.insertPosition, arg.existingQuery, res);
