@@ -1,11 +1,10 @@
 import * as prompt from "../../../prompt";
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as fs from "fs-extra";
 import * as init from "./index";
 import * as utils from "./utils";
+import * as projects from "../../../management/projects";
 import { Setup } from "../..";
-import { Config } from "../../../config";
 
 describe("init ailogic", () => {
   let sandbox: sinon.SinonSandbox;
@@ -19,86 +18,55 @@ describe("init ailogic", () => {
   });
 
   describe("askQuestions", () => {
-    let selectStub: sinon.SinonStub;
     let inputStub: sinon.SinonStub;
-    let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
-      selectStub = sandbox.stub(prompt, "select");
       inputStub = sandbox.stub(prompt, "input");
-      confirmStub = sandbox.stub(prompt, "confirm");
     });
 
-    it("should populate ailogic featureInfo for android", async () => {
-      selectStub.resolves("android");
-      inputStub.resolves("com.example.android"); // For Android package name
-      confirmStub.resolves(false); // For overwriteConfig
+    it("should populate ailogic featureInfo with valid app ID", async () => {
+      inputStub.resolves("1:123456789:android:abcdef123456"); // Valid Android app ID
       const mockSetup = {} as Setup;
       await init.askQuestions(mockSetup);
 
       expect(mockSetup.featureInfo).to.have.property("ailogic");
       expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
-        appPlatform: "android",
-        appNamespace: "com.example.android",
-        overwriteConfig: false,
+        appId: "1:123456789:android:abcdef123456",
       });
     });
 
-    it("should populate ailogic featureInfo for ios", async () => {
-      selectStub.resolves("ios");
-      inputStub.resolves("com.example.ios"); // For iOS bundle ID
-      confirmStub.resolves(false); // For overwriteConfig
+    it("should validate app ID format and reject invalid format", async () => {
+      // Mock the input function to simulate user input and validation
+      let validationFunction: ((input: string) => string | boolean) | undefined;
+      inputStub.callsFake(async (options: any) => {
+        validationFunction = options.validate;
+        return "1:123456789:web:abcdef123456"; // Return valid app ID after validation
+      });
+
       const mockSetup = {} as Setup;
       await init.askQuestions(mockSetup);
 
-      expect(mockSetup.featureInfo).to.have.property("ailogic");
-      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
-        appPlatform: "ios",
-        appNamespace: "com.example.ios",
-        overwriteConfig: false,
-      });
-    });
-
-    it("should populate ailogic featureInfo for web", async () => {
-      selectStub.resolves("web");
-      inputStub.resolves("my-web-app"); // For web app name
-      confirmStub.resolves(false); // For overwriteConfig
-      const mockSetup = {} as Setup;
-      await init.askQuestions(mockSetup);
-
-      expect(mockSetup.featureInfo).to.have.property("ailogic");
-      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
-        appPlatform: "web",
-        appNamespace: "my-web-app",
-        overwriteConfig: false,
-      });
-    });
-
-    it("should ask for overwrite confirmation if config exists", async () => {
-      selectStub.resolves("android");
-      inputStub.resolves("com.example.android"); // For Android package name
-      confirmStub.resolves(true); // For overwrite confirmation
-      const mockSetup = {} as Setup;
-      await init.askQuestions(mockSetup);
-
-      expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
-        appPlatform: "android",
-        appNamespace: "com.example.android",
-        overwriteConfig: true,
-      });
+      // Test the validation function directly
+      expect(validationFunction!("")).to.equal("Please enter a Firebase app ID");
+      expect(validationFunction!("invalid-format")).to.equal(
+        "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
+      );
+      expect(validationFunction!("1:123456789:flutter:abcdef")).to.equal(
+        "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
+      );
+      expect(validationFunction!("1:123456789:web:abcdef123456")).to.equal(true);
     });
   });
 
   describe("actuate", () => {
     let setup: Setup;
-    let config: Config;
-    let detectAppPlatformStub: sinon.SinonStub;
+    let parseAppIdStub: sinon.SinonStub;
+    let getFirebaseProjectStub: sinon.SinonStub;
+    let validateProjectNumberMatchStub: sinon.SinonStub;
+    let validateAppExistsStub: sinon.SinonStub;
     let buildProvisionOptionsStub: sinon.SinonStub;
     let provisionAiLogicAppStub: sinon.SinonStub;
-    let writeAppConfigFileStub: sinon.SinonStub;
-    let extractProjectIdStub: sinon.SinonStub;
-    let getConfigFilePathStub: sinon.SinonStub;
-    let existsSyncStub: sinon.SinonStub;
+    let getConfigFileNameStub: sinon.SinonStub;
 
     beforeEach(() => {
       setup = {
@@ -106,207 +74,223 @@ describe("init ailogic", () => {
         rcfile: { projects: {}, targets: {}, etags: {} },
         featureInfo: {
           ailogic: {
-            appNamespace: "com.example.test",
-            appPlatform: "android",
-            overwriteConfig: false,
+            appId: "1:123456789:android:abcdef123456",
           },
         },
         projectId: "test-project",
         instructions: [],
       } as Setup;
 
-      config = {
-        projectDir: "/test/project",
-      } as Config;
-
       // Stub all utility functions
-      detectAppPlatformStub = sandbox.stub(utils, "detectAppPlatform");
+      parseAppIdStub = sandbox.stub(utils, "parseAppId");
+      getFirebaseProjectStub = sandbox.stub(projects, "getFirebaseProject");
+      validateProjectNumberMatchStub = sandbox.stub(utils, "validateProjectNumberMatch");
+      validateAppExistsStub = sandbox.stub(utils, "validateAppExists");
       buildProvisionOptionsStub = sandbox.stub(utils, "buildProvisionOptions");
       provisionAiLogicAppStub = sandbox.stub(utils, "provisionAiLogicApp");
-      writeAppConfigFileStub = sandbox.stub(utils, "writeAppConfigFile");
-      extractProjectIdStub = sandbox.stub(utils, "extractProjectIdFromAppResource");
-      getConfigFilePathStub = sandbox.stub(utils, "getConfigFilePath");
-      existsSyncStub = sandbox.stub(fs, "existsSync");
+      getConfigFileNameStub = sandbox.stub(utils, "getConfigFileName");
     });
 
     it("should return early if no ailogic feature info", async () => {
       setup.featureInfo = {};
 
-      await init.actuate(setup, config);
+      await init.actuate(setup);
 
       // No stubs should be called
-      sinon.assert.notCalled(detectAppPlatformStub);
+      sinon.assert.notCalled(parseAppIdStub);
       sinon.assert.notCalled(provisionAiLogicAppStub);
     });
 
-    it("should use provided app platform", async () => {
-      const configFilePath = "/test/project/google-services.json";
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
+    it("should validate and provision existing app successfully", async () => {
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef123456",
+        platform: "android" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
+      const mockConfigContent = '{"config": "content"}';
+      const base64Config = Buffer.from(mockConfigContent).toString("base64");
+
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateAppExistsStub.resolves();
       buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("test-project");
+      provisionAiLogicAppStub.resolves({ configData: base64Config });
+      getConfigFileNameStub.returns("google-services.json");
 
-      await init.actuate(setup, config);
+      await init.actuate(setup);
 
-      // Should not call detectAppPlatform since platform is provided
-      sinon.assert.notCalled(detectAppPlatformStub);
-      sinon.assert.calledWith(getConfigFilePathStub, "/test/project", "android");
+      sinon.assert.calledWith(parseAppIdStub, "1:123456789:android:abcdef123456");
+      sinon.assert.calledWith(getFirebaseProjectStub, "test-project");
+      sinon.assert.calledWith(validateProjectNumberMatchStub, mockAppInfo, mockProjectInfo);
+      sinon.assert.calledWith(validateAppExistsStub, mockAppInfo);
       sinon.assert.calledWith(
         buildProvisionOptionsStub,
         "test-project",
         "android",
-        "com.example.test",
+        "1:123456789:android:abcdef123456",
       );
-    });
 
-    it("should auto-detect platform when not provided", async () => {
-      setup.featureInfo!.ailogic!.appPlatform = undefined;
-      const configFilePath = "/test/project/firebase-config.json";
-
-      detectAppPlatformStub.returns("web");
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
-      buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("test-project");
-
-      await init.actuate(setup, config);
-
-      sinon.assert.calledWith(detectAppPlatformStub, "/test/project");
-      sinon.assert.calledWith(getConfigFilePathStub, "/test/project", "web");
-      sinon.assert.calledWith(buildProvisionOptionsStub, "test-project", "web", "com.example.test");
-    });
-
-    it("should throw error if config file exists and overwrite not enabled", async () => {
-      const configFilePath = "/test/project/google-services.json";
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(true);
-
-      await expect(init.actuate(setup, config)).to.be.rejectedWith(
-        "AI Logic setup failed: Config file /test/project/google-services.json already exists. Use overwrite_config: true to update it.",
+      expect(setup.instructions).to.include(
+        "Firebase AI Logic has been enabled for existing android app: 1:123456789:android:abcdef123456",
       );
+      expect(setup.instructions).to.include(
+        "Save the following content as google-services.json in your app's root directory:",
+      );
+      expect(setup.instructions).to.include(mockConfigContent);
     });
 
-    it("should proceed if config file exists and overwrite is enabled", async () => {
-      setup.featureInfo!.ailogic!.overwriteConfig = true;
-      const configFilePath = "/test/project/google-services.json";
+    it("should throw error if no project ID found", async () => {
+      setup.projectId = undefined;
 
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(true);
-      buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("test-project");
+      await expect(init.actuate(setup)).to.be.rejectedWith(
+        "AI Logic setup failed: No project ID found. Please ensure you are in a Firebase project directory or specify a project.",
+      );
 
-      await init.actuate(setup, config);
-
-      sinon.assert.called(provisionAiLogicAppStub);
-      sinon.assert.calledWith(writeAppConfigFileStub, configFilePath, "base64config");
+      sinon.assert.calledOnce(parseAppIdStub);
+      sinon.assert.notCalled(getFirebaseProjectStub);
     });
 
-    it("should provision app and write config file", async () => {
-      const configFilePath = "/test/project/google-services.json";
-      const mockResponse = {
-        appResource: "projects/new-project/apps/test-app",
-        configData: "base64configdata",
+    it("should handle project number mismatch error", async () => {
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef123456",
+        platform: "android" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "987654321",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
       };
 
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
-      buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns(mockResponse);
-      extractProjectIdStub.returns("new-project");
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateProjectNumberMatchStub.throws(new Error("Project number mismatch"));
 
-      await init.actuate(setup, config);
+      await expect(init.actuate(setup)).to.be.rejectedWith(
+        "AI Logic setup failed: Project number mismatch",
+      );
 
-      sinon.assert.calledWith(provisionAiLogicAppStub, { mock: "options" });
-      sinon.assert.calledWith(extractProjectIdStub, "projects/new-project/apps/test-app");
-      sinon.assert.calledWith(writeAppConfigFileStub, configFilePath, "base64configdata");
-      expect(setup.projectId).to.equal("new-project");
+      sinon.assert.calledWith(validateProjectNumberMatchStub, mockAppInfo, mockProjectInfo);
+      sinon.assert.notCalled(validateAppExistsStub);
     });
 
-    it("should update .firebaserc with new project", async () => {
-      const configFilePath = "/test/project/google-services.json";
+    it("should handle app validation error", async () => {
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef123456",
+        platform: "android" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
 
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
-      buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/new-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("new-project");
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateAppExistsStub.throws(new Error("App does not exist"));
 
-      await init.actuate(setup, config);
-
-      expect(setup.rcfile.projects.default).to.equal("new-project");
-    });
-
-    it("should add appropriate instructions", async () => {
-      const configFilePath = "/test/project/google-services.json";
-
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
-      buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("test-project");
-
-      await init.actuate(setup, config);
-
-      expect(setup.instructions).to.include(
-        "Firebase AI Logic has been enabled with a new android app.",
+      await expect(init.actuate(setup)).to.be.rejectedWith(
+        "AI Logic setup failed: App does not exist",
       );
-      expect(setup.instructions).to.include(`Config file written to: ${configFilePath}`);
-      expect(setup.instructions).to.include(
-        "If you have multiple app directories, copy the config file to the appropriate app folder.",
-      );
-      expect(setup.instructions).to.include(
-        "Note: A new Firebase app was created. You can use existing Firebase apps with AI Logic (current API limitation).",
-      );
+
+      sinon.assert.calledWith(validateAppExistsStub, mockAppInfo);
+      sinon.assert.notCalled(buildProvisionOptionsStub);
     });
 
     it("should handle provisioning errors gracefully", async () => {
-      const configFilePath = "/test/project/google-services.json";
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef123456",
+        platform: "android" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
 
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateAppExistsStub.resolves();
       buildProvisionOptionsStub.returns({ mock: "options" });
       provisionAiLogicAppStub.throws(new Error("Provisioning API failed"));
 
-      await expect(init.actuate(setup, config)).to.be.rejectedWith(
+      await expect(init.actuate(setup)).to.be.rejectedWith(
         "AI Logic setup failed: Provisioning API failed",
       );
     });
 
-    it("should handle missing rcfile gracefully", async () => {
-      setup.rcfile = undefined as any;
-      const configFilePath = "/test/project/google-services.json";
+    it("should include config file content in instructions for iOS", async () => {
+      setup.featureInfo!.ailogic!.appId = "1:123456789:ios:abcdef123456";
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:ios:abcdef123456",
+        platform: "ios" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
+      const mockConfigContent = '<?xml version="1.0" encoding="UTF-8"?>';
+      const base64Config = Buffer.from(mockConfigContent).toString("base64");
 
-      getConfigFilePathStub.returns(configFilePath);
-      existsSyncStub.returns(false);
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateAppExistsStub.resolves();
       buildProvisionOptionsStub.returns({ mock: "options" });
-      provisionAiLogicAppStub.returns({
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-      });
-      extractProjectIdStub.returns("test-project");
+      provisionAiLogicAppStub.resolves({ configData: base64Config });
+      getConfigFileNameStub.returns("GoogleService-Info.plist");
 
-      // Should not throw an error
-      await init.actuate(setup, config);
+      await init.actuate(setup);
 
-      sinon.assert.called(provisionAiLogicAppStub);
+      expect(setup.instructions).to.include(
+        "Firebase AI Logic has been enabled for existing ios app: 1:123456789:ios:abcdef123456",
+      );
+      expect(setup.instructions).to.include(
+        "Save the following content as GoogleService-Info.plist in your app's root directory:",
+      );
+      expect(setup.instructions).to.include(mockConfigContent);
+    });
+
+    it("should include platform placement guidance in instructions", async () => {
+      const mockAppInfo = {
+        projectNumber: "123456789",
+        appId: "1:123456789:android:abcdef123456",
+        platform: "android" as const,
+      };
+      const mockProjectInfo = {
+        projectNumber: "123456789",
+        projectId: "test-project",
+        name: "projects/test-project",
+        displayName: "Test Project",
+      };
+      const mockConfigContent = '{"config": "content"}';
+      const base64Config = Buffer.from(mockConfigContent).toString("base64");
+
+      parseAppIdStub.returns(mockAppInfo);
+      getFirebaseProjectStub.resolves(mockProjectInfo);
+      validateAppExistsStub.resolves();
+      buildProvisionOptionsStub.returns({ mock: "options" });
+      provisionAiLogicAppStub.resolves({ configData: base64Config });
+      getConfigFileNameStub.returns("google-services.json");
+
+      await init.actuate(setup);
+
+      expect(setup.instructions).to.include(
+        "Place this config file in the appropriate location for your platform.",
+      );
     });
   });
 });

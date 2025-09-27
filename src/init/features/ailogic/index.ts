@@ -1,76 +1,41 @@
-import * as fs from "fs-extra";
-import { Config } from "../../../config";
-import { select, input, confirm } from "../../../prompt";
+import { input } from "../../../prompt";
 import { Setup } from "../..";
 import { FirebaseError } from "../../../error";
 import {
-  SupportedPlatform,
-  detectAppPlatform,
+  parseAppId,
   buildProvisionOptions,
   provisionAiLogicApp,
-  getConfigFilePath,
-  writeAppConfigFile,
-  extractProjectIdFromAppResource,
+  getConfigFileName,
+  validateProjectNumberMatch,
+  validateAppExists,
 } from "./utils";
+import { getFirebaseProject } from "../../../management/projects";
 
 export interface AiLogicInfo {
-  appPlatform?: "android" | "ios" | "web";
-  appNamespace: string;
-  overwriteConfig?: boolean;
+  appId: string;
 }
 
 /**
  * Ask questions for AI Logic setup via CLI
  */
 export async function askQuestions(setup: Setup): Promise<void> {
-  // Ask for app platform
-  const platform = await select<"android" | "ios" | "web">({
-    message: "Which platform would you like to set up?",
-    choices: [
-      { name: "Android", value: "android" },
-      { name: "iOS", value: "ios" },
-      { name: "Web", value: "web" },
-    ],
-  });
+  // Ask for Firebase app ID
+  const appId = await input({
+    message: "Enter your Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID):",
+    validate: (input: string) => {
+      if (!input) {
+        return "Please enter a Firebase app ID";
+      }
 
-  // Ask for app namespace
-  let appNamespace: string;
-  if (platform === "android") {
-    appNamespace = await input({
-      message: "Enter your Android package name (e.g., com.example.myapp):",
-      validate: (input: string) => {
-        if (!input || !/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(input)) {
-          return "Please enter a valid Android package name (e.g., com.example.myapp)";
-        }
-        return true;
-      },
-    });
-  } else if (platform === "ios") {
-    appNamespace = await input({
-      message: "Enter your iOS bundle ID (e.g., com.example.MyApp):",
-      validate: (input: string) => {
-        if (!input || !/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(input)) {
-          return "Please enter a valid iOS bundle ID (e.g., com.example.MyApp)";
-        }
-        return true;
-      },
-    });
-  } else {
-    appNamespace = await input({
-      message: "Enter your web app name:",
-      validate: (input: string) => {
-        if (!input) {
-          return "Please enter a web app name";
-        }
-        return true;
-      },
-    });
-  }
+      // Validate app ID format using the same pattern as parseAppId
+      const pattern =
+        /^(?<version>\d+):(?<projectNumber>\d+):(?<platform>ios|android|web):([0-9a-fA-F]+)$/;
+      if (!pattern.test(input)) {
+        return "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)";
+      }
 
-  // Ask about overwriting existing config files
-  const overwriteConfig = await confirm({
-    message: "Would you like to overwrite existing config files if they exist?",
-    default: false,
+      return true;
+    },
   });
 
   // Set up the feature info
@@ -79,66 +44,48 @@ export async function askQuestions(setup: Setup): Promise<void> {
   }
 
   setup.featureInfo.ailogic = {
-    appPlatform: platform,
-    appNamespace: appNamespace,
-    overwriteConfig: overwriteConfig,
+    appId: appId,
   };
 }
 
 /**
- * AI Logic provisioning: auto-detects/creates project and app, provisions via API
+ * AI Logic provisioning: validates existing app and project, enables AI Logic via API
  */
-export async function actuate(setup: Setup, config: Config): Promise<void> {
+export async function actuate(setup: Setup): Promise<void> {
   const ailogicInfo = setup.featureInfo?.ailogic as AiLogicInfo;
   if (!ailogicInfo) {
     return;
   }
 
   try {
-    // 1. Determine app platform
-    const platform: SupportedPlatform =
-      ailogicInfo.appPlatform || (await detectAppPlatform(config.projectDir));
-
-    // 2. Check for config file conflicts
-    const configFilePath = getConfigFilePath(config.projectDir, platform);
-    if (fs.existsSync(configFilePath) && !ailogicInfo.overwriteConfig) {
+    const appInfo = parseAppId(ailogicInfo.appId);
+    if (!setup.projectId) {
       throw new FirebaseError(
-        `Config file ${configFilePath} already exists. Use overwrite_config: true to update it.`,
+        "No project ID found. Please ensure you are in a Firebase project directory or specify a project.",
         { exit: 1 },
       );
     }
+    const projectInfo = await getFirebaseProject(setup.projectId);
+    validateProjectNumberMatch(appInfo, projectInfo);
+    await validateAppExists(appInfo);
 
-    // 3. Build provisioning options
     const provisionOptions = buildProvisionOptions(
       setup.projectId,
-      platform,
-      ailogicInfo.appNamespace,
+      appInfo.platform,
+      ailogicInfo.appId, // Use app ID directly as namespace
     );
-
-    // 4. Provision Firebase app
     const response = await provisionAiLogicApp(provisionOptions);
 
-    // 5. Extract project ID and update setup
-    const projectId = extractProjectIdFromAppResource(response.appResource);
-    setup.projectId = projectId;
+    const configFileName = getConfigFileName(appInfo.platform);
+    const configContent = Buffer.from(response.configData, "base64").toString("utf8");
 
-    // 6. Write config file to current directory
-    writeAppConfigFile(configFilePath, response.configData);
-
-    // 7. Update .firebaserc if project was created
-    if (setup.rcfile && setup.projectId) {
-      if (!setup.rcfile.projects) {
-        setup.rcfile.projects = {};
-      }
-      setup.rcfile.projects.default = setup.projectId;
-    }
-
-    // 8. Add instructions for user
     setup.instructions.push(
-      `Firebase AI Logic has been enabled with a new ${platform} app.`,
-      `Config file written to: ${configFilePath}`,
-      "If you have multiple app directories, copy the config file to the appropriate app folder.",
-      "Note: A new Firebase app was created. You can use existing Firebase apps with AI Logic (current API limitation).",
+      `Firebase AI Logic has been enabled for existing ${appInfo.platform} app: ${ailogicInfo.appId}`,
+      `Save the following content as ${configFileName} in your app's root directory:`,
+      "",
+      configContent,
+      "",
+      "Place this config file in the appropriate location for your platform.",
     );
   } catch (error) {
     throw new FirebaseError(
