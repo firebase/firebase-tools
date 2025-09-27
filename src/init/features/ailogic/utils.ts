@@ -27,7 +27,6 @@ export function getConfigFileName(platform: SupportedPlatform): string {
   }
 }
 
-
 export interface AppInfo {
   projectNumber: string;
   appId: string;
@@ -51,12 +50,11 @@ export function parseAppId(appId: string): AppInfo {
   }
 
   return {
-    projectNumber: match.groups!.projectNumber,
+    projectNumber: match.groups?.projectNumber || "",
     appId: appId,
     platform: match.groups?.platform as SupportedPlatform,
   };
 }
-
 
 /**
  * Builds provisioning options for AI Logic from feature inputs

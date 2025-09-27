@@ -38,7 +38,7 @@ describe("init ailogic", () => {
     it("should validate app ID format and reject invalid format", async () => {
       // Mock the input function to simulate user input and validation
       let validationFunction: ((input: string) => string | boolean) | undefined;
-      inputStub.callsFake(async (options: any) => {
+      inputStub.callsFake(async (options: { validate?: (input: string) => string | boolean }) => {
         validationFunction = options.validate;
         return "1:123456789:web:abcdef123456"; // Return valid app ID after validation
       });
@@ -47,14 +47,16 @@ describe("init ailogic", () => {
       await init.askQuestions(mockSetup);
 
       // Test the validation function directly
-      expect(validationFunction!("")).to.equal("Please enter a Firebase app ID");
-      expect(validationFunction!("invalid-format")).to.equal(
-        "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
-      );
-      expect(validationFunction!("1:123456789:flutter:abcdef")).to.equal(
-        "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
-      );
-      expect(validationFunction!("1:123456789:web:abcdef123456")).to.equal(true);
+      if (validationFunction) {
+        expect(validationFunction("")).to.equal("Please enter a Firebase app ID");
+        expect(validationFunction("invalid-format")).to.equal(
+          "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
+        );
+        expect(validationFunction("1:123456789:flutter:abcdef")).to.equal(
+          "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)",
+        );
+        expect(validationFunction("1:123456789:web:abcdef123456")).to.equal(true);
+      }
     });
   });
 
@@ -70,7 +72,7 @@ describe("init ailogic", () => {
 
     beforeEach(() => {
       setup = {
-        config: {} as any,
+        config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
         featureInfo: {
           ailogic: {
@@ -231,7 +233,9 @@ describe("init ailogic", () => {
     });
 
     it("should include config file content in instructions for iOS", async () => {
-      setup.featureInfo!.ailogic!.appId = "1:123456789:ios:abcdef123456";
+      if (setup.featureInfo?.ailogic) {
+        setup.featureInfo.ailogic.appId = "1:123456789:ios:abcdef123456";
+      }
       const mockAppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:ios:abcdef123456",

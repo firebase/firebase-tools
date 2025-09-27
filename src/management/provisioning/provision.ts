@@ -1,6 +1,7 @@
 import { Client } from "../../apiv2";
 import { firebaseApiOrigin } from "../../api";
 import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
 import { pollOperation } from "../../operation-poller";
 import { AppPlatform } from "../apps";
 import * as types from "./types";
@@ -22,7 +23,7 @@ export function buildAppNamespace(app: types.ProvisionAppOptions): string {
     case AppPlatform.WEB:
       return app.webAppId;
     default:
-      throw new Error("Unsupported platform");
+      throw new FirebaseError("Unsupported platform", { exit: 2 });
   }
 }
 
@@ -38,7 +39,7 @@ export function buildParentString(parent: types.ProjectParentInput): string {
     case "folder":
       return `folders/${parent.folderId}`;
     default:
-      throw new Error("Unsupported parent type");
+      throw new FirebaseError("Unsupported parent type", { exit: 2 });
   }
 }
 
@@ -93,11 +94,17 @@ export async function provisionFirebaseApp(
   try {
     const request = buildProvisionRequest(options);
 
+    logger.debug("[provision] Starting Firebase app provisioning...");
+    logger.debug(`[provision] Request: ${JSON.stringify(request, null, 2)}`);
+
     const response = await apiClient.request<types.ProvisionRequest, { name: string }>({
       method: "POST",
       path: "/firebase:provisionFirebaseApp",
       body: request,
     });
+
+    logger.debug(`[provision] Operation started: ${response.body.name}`);
+    logger.debug("[provision] Polling for operation completion...");
 
     const result = await pollOperation<types.ProvisionFirebaseAppResponse>({
       pollerName: "Provision Firebase App Poller",
@@ -109,6 +116,7 @@ export async function provisionFirebaseApp(
       maxBackoff: 5000, // Max backoff of 5s
     });
 
+    logger.debug("[provision] Firebase app provisioning completed successfully");
     return result;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);

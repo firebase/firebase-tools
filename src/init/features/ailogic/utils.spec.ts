@@ -5,6 +5,7 @@ import * as provision from "../../../management/provisioning/provision";
 import * as apps from "../../../management/apps";
 import { AppPlatform } from "../../../management/apps";
 import { FirebaseError } from "../../../error";
+import { ProvisionFirebaseAppOptions } from "../../../management/provisioning/types";
 
 describe("ailogic utils", () => {
   let sandbox: sinon.SinonSandbox;
@@ -31,33 +32,46 @@ describe("ailogic utils", () => {
     });
 
     it("should throw error for unsupported platform", () => {
-      expect(() => utils.getConfigFileName("unsupported" as any)).to.throw(
+      expect(() => utils.getConfigFileName("unsupported" as utils.SupportedPlatform)).to.throw(
         "Unsupported platform: unsupported",
       );
     });
   });
-
-
-
 
   describe("parseAppId", () => {
     it("should parse valid app IDs and return AppInfo object", () => {
       const validAppIds = [
         {
           appId: "1:123456789:ios:123456789abcdef",
-          expected: { projectNumber: "123456789", appId: "1:123456789:ios:123456789abcdef", platform: "ios" }
+          expected: {
+            projectNumber: "123456789",
+            appId: "1:123456789:ios:123456789abcdef",
+            platform: "ios",
+          },
         },
         {
           appId: "2:123456789:android:123456789abcdef",
-          expected: { projectNumber: "123456789", appId: "2:123456789:android:123456789abcdef", platform: "android" }
+          expected: {
+            projectNumber: "123456789",
+            appId: "2:123456789:android:123456789abcdef",
+            platform: "android",
+          },
         },
         {
           appId: "2:123456789:web:123456789abcdef",
-          expected: { projectNumber: "123456789", appId: "2:123456789:web:123456789abcdef", platform: "web" }
+          expected: {
+            projectNumber: "123456789",
+            appId: "2:123456789:web:123456789abcdef",
+            platform: "web",
+          },
         },
         {
           appId: "1:999999999:web:abcdef123456789",
-          expected: { projectNumber: "999999999", appId: "1:999999999:web:abcdef123456789", platform: "web" }
+          expected: {
+            projectNumber: "999999999",
+            appId: "1:999999999:web:abcdef123456789",
+            platform: "web",
+          },
         },
       ];
 
@@ -84,14 +98,10 @@ describe("ailogic utils", () => {
       ];
 
       invalidAppIds.forEach((appId) => {
-        expect(() => utils.parseAppId(appId)).to.throw(
-          FirebaseError,
-          /Invalid app ID format/
-        );
+        expect(() => utils.parseAppId(appId)).to.throw(FirebaseError, /Invalid app ID format/);
       });
     });
   });
-
 
   describe("buildProvisionOptions", () => {
     it("should build options for Android app", () => {
@@ -174,7 +184,7 @@ describe("ailogic utils", () => {
       };
       provisionFirebaseAppStub.returns(mockResponse);
 
-      const result = await utils.provisionAiLogicApp(mockOptions as any);
+      const result = await utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions);
 
       sinon.assert.calledWith(provisionFirebaseAppStub, mockOptions);
       expect(result).to.equal(mockResponse);
@@ -185,20 +195,18 @@ describe("ailogic utils", () => {
       const originalError = new Error("API failed");
       provisionFirebaseAppStub.throws(originalError);
 
-      await expect(utils.provisionAiLogicApp(mockOptions as any)).to.be.rejectedWith(
-        FirebaseError,
-        "AI Logic provisioning failed: API failed",
-      );
+      await expect(
+        utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions),
+      ).to.be.rejectedWith(FirebaseError, "AI Logic provisioning failed: API failed");
     });
 
     it("should handle string errors", async () => {
       const mockOptions = { project: {}, app: {}, features: {} };
       provisionFirebaseAppStub.throws(new Error("String error"));
 
-      await expect(utils.provisionAiLogicApp(mockOptions as any)).to.be.rejectedWith(
-        FirebaseError,
-        "AI Logic provisioning failed: String error",
-      );
+      await expect(
+        utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions),
+      ).to.be.rejectedWith(FirebaseError, "AI Logic provisioning failed: String error");
     });
   });
 
