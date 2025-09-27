@@ -23,6 +23,7 @@ export interface IpConfiguration {
     allowedConsumerProjects: string[];
     pscEnabled: boolean;
   };
+  enablePrivatePathForGoogleCloudServices?: boolean;
 }
 
 export interface InstanceSettings {

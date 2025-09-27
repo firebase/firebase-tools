@@ -34,39 +34,21 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let pool: pg.Pool;
+  let authType: AuthTypes;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.IAM;
       break;
     }
     case "CLOUD_IAM_SERVICE_ACCOUNT": {
       connector = new Connector();
+      authType = AuthTypes.IAM;
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
       break;
     }
     default: {
@@ -77,19 +59,24 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        password: opts.password,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.PASSWORD;
       break;
     }
   }
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+      ? IpAddressTypes.PUBLIC
+      : IpAddressTypes.PRIVATE,
+    authType: authType,
+  };
+  const pool = new pg.Pool({
+    ...(await connector.getOptions(connectionOpts)),
+    connectionTimeoutMillis: 1000,
+    password: opts.password,
+    user: opts.username,
+    database: opts.databaseId,
+  });
 
   const cleanUpFn = async () => {
     conn.release();
