@@ -65,6 +65,10 @@ export async function insertQueryAt(uri: vscode.Uri, at: number, existing: strin
   if (text.slice(at, at + existing.length) !== existing) {
     throw new Error("The existing query was updated.");
   }
+  // Adds a new line before if inserting at the end of the file
+  if (at > text.length) {
+    replace = "\n" + replace;
+  }
   const newText = text.slice(0, at) + replace + text.slice(at + existing.length);
   await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(newText));
 }

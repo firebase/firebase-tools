@@ -38,6 +38,7 @@ import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
+import { ensureGIFApis } from "../../dataconnect/ensureApis";
 
 interface TypedInput {
   varName: string;
@@ -320,6 +321,7 @@ ${schema ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
 ${schema}
 \`\`\`` : ""}`;
       const serviceName = await dataConnectService.servicePath(arg.document.fileName);
+      await ensureGIFApis(arg.projectId);
       const res = await gif.generateOperation(prompt, serviceName, arg.projectId);
       await insertQueryAt(arg.document.uri, arg.insertPosition, arg.existingQuery, res);
     } catch (e: any) {
