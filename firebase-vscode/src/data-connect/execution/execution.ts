@@ -360,7 +360,7 @@ ${schema}
             : DATA_CONNECT_EVENT_NAME.RUN_PROD,
         );
         await vscode.window.activeTextEditor?.document.save();
-        executeOperation(ast, location, instanceType);
+        await executeOperation(ast, location, instanceType);
       },
     ),
     vscode.commands.registerCommand(
@@ -369,7 +369,7 @@ ${schema}
         analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
         );
-        generateOperation(arg);
+        await generateOperation(arg);
       },
     ),
     vscode.commands.registerCommand(
