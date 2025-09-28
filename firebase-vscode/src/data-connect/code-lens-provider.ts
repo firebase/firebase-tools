@@ -142,7 +142,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
         };
         codeLenses.push(
           new vscode.CodeLens(range, {
-            title: queryDoc ? `$(sparkle) Refine Operation` : `$(play) Generate Operation`,
+            title: queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
             command: "firebase.dataConnect.generateOperation",
             tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
             arguments: [arg],
