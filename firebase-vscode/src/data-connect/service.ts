@@ -120,7 +120,7 @@ export class DataConnectService {
         operationName: "IntrospectionQuery",
         variables: "{}",
       });
-      console.log("introspection: ", introspectionResults);
+      console.log("introspection result: ", introspectionResults);
       // TODO: handle errors
       if ((introspectionResults as any).errors.length > 0) {
         return { data: undefined };
@@ -146,7 +146,7 @@ export class DataConnectService {
         operationName: "",
         variables: "{}",
       });
-      console.log("introspection schema: ", res);
+      console.log("introspection schema result: ", res);
       return (res as any)?.data?._service?.schema || "";
     } catch (e) {
       // TODO: surface error that emulator is not connected
