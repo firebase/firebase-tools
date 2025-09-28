@@ -38,7 +38,8 @@ import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
-import { ensureGIFApis } from "../../../../src/dataconnect/ensureApis";
+import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
+import { configstore } from "../../../../src/configstore";
 
 interface TypedInput {
   varName: string;
@@ -321,12 +322,43 @@ ${schema ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
 ${schema}
 \`\`\`` : ""}`;
       const serviceName = await dataConnectService.servicePath(arg.document.fileName);
-      await ensureGIFApis(arg.projectId);
+      if (!(await ensureGIFApiTos(arg.projectId))) {
+        if (!(await showGiFToSModal(arg.projectId))) {
+          return; // ToS isn't accepted.
+        }
+      }
       const res = await gif.generateOperation(prompt, serviceName, arg.projectId);
       await insertQueryAt(arg.document.uri, arg.insertPosition, arg.existingQuery, res);
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
+  }
+
+  async function showGiFToSModal(projectId: string): Promise<boolean> {
+    const tos = "Terms of Service";
+    const enable = "Enable";
+    const result = await vscode.window.showWarningMessage(
+      "Gemini in Firebase",
+      {
+        modal: !process.env.VSCODE_TEST_MODE,
+        detail: "Gemini in Firebase helps you write Data Connect queries.",
+      },
+      enable,
+      tos,
+    );
+    switch (result) {
+      case enable:
+        configstore.set("gemini", true);
+        await ensureGIFApiTos(projectId);
+        return true;
+      case tos:
+        vscode.env.openExternal(
+          vscode.Uri.parse(
+            "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
+          ),
+        );
+    }
+    return false;
   }
 
   const sub4 = broker.on(
