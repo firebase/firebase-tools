@@ -52,7 +52,7 @@ interface ExecutionInput {
   instance: InstanceType;
 }
 
-export interface GenerateQueryInput {
+export interface GenerateOperationInput {
   projectId: string;
   document: vscode.TextDocument;
   description: string;
@@ -313,7 +313,7 @@ export function registerExecution(
     }
   }
 
-  async function generateOperation(arg: GenerateQueryInput) {
+  async function generateOperation(arg: GenerateOperationInput) {
     try {
       const schema = await dataConnectService.schema();
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
@@ -397,7 +397,7 @@ ${schema}
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.generateOperation",
-      async (arg: GenerateQueryInput) => {
+      async (arg: GenerateOperationInput) => {
         analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
         );

@@ -6,7 +6,7 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
-import { GenerateQueryInput } from "./execution/execution";
+import { GenerateOperationInput } from "./execution/execution";
 import { findCommentsBlocks } from "../utils/find_comments";
 
 export enum InstanceType {
@@ -133,7 +133,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           // startToken.line is 1-indexed, endLine is 0-indexed
           d.loc?.startToken.line === c.endLine + 2
         );
-        const arg: GenerateQueryInput = {
+        const arg: GenerateOperationInput = {
           projectId,
           document: document,
           description: c.text,
