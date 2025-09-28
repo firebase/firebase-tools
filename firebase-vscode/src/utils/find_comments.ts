@@ -1,4 +1,3 @@
-
 interface Comment {
   text: string;
   startLine: number;
