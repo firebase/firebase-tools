@@ -12,6 +12,7 @@ export function findCommentsBlocks(text: string): Comment[] {
   while ((searchIndex = text.indexOf('\n', searchIndex + 1)) !== -1) {
     lineEnds.push(searchIndex);
   }
+  lineEnds.push(text.length);
   const comments: Comment[] = [];
   for (let i = 0; i < lineEnds.length; i++) {
     const lineStart = i === 0 ? 0 : lineEnds[i - 1] + 1;
