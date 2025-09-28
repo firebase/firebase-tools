@@ -38,7 +38,7 @@ import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
-import { ensureGIFApis } from "../../dataconnect/ensureApis";
+import { ensureGIFApis } from "../../../../src/dataconnect/ensureApis";
 
 interface TypedInput {
   varName: string;
