@@ -140,7 +140,7 @@ export const init = tool(
               .object({
                 enabled: z.boolean().optional(),
                 host: z.string().optional(),
-                port: z.union([z.string(), z.number()]).optional(),
+                port: z.number().optional(),
               })
               .optional(),
             singleProjectMode: z
@@ -209,7 +209,7 @@ export const init = tool(
         apps: [],
       };
     }
-    if (features.storage) {
+    if (features.storage?.rules) {
       featuresList.push("storage");
       featureInfo.storage = {
         rulesFilename: features.storage.rules_filename,

@@ -9,13 +9,13 @@ import { AdditionalInitFns } from "../../emulator/initEmulators";
 import { Config } from "../../config";
 import { EmulatorsConfig } from "../../firebaseConfig";
 
-export interface EmulatorsInfo {
+export interface RequiredInfo {
   emulators: Emulators[];
   download: boolean;
   config: EmulatorsConfig;
 }
 
-export async function emulatorsAskQuestions(setup: Setup, config: Config): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
@@ -36,7 +36,7 @@ export async function emulatorsAskQuestions(setup: Setup, config: Config): Promi
   }
 
   setup.featureInfo = setup.featureInfo || {};
-  const emulatorsInfo: EmulatorsInfo = {
+  const emulatorsInfo: RequiredInfo = {
     emulators: selectedEmulators,
     config: {},
     download: false,
@@ -106,7 +106,7 @@ export async function emulatorsAskQuestions(setup: Setup, config: Config): Promi
   }
 }
 
-export async function emulatorsActuate(setup: Setup): Promise<void> {
+export async function actuate(setup: Setup): Promise<void> {
   const emulatorsInfo = setup.featureInfo?.emulators;
   if (!emulatorsInfo) {
     return;
