@@ -40,7 +40,7 @@ export const command = new Command("apphosting:env:import")
     let projectRoot: string;
     if (source) {
       envFilePath = path.resolve(source);
-      projectRoot = path.basename(envFilePath);
+      projectRoot = path.dirname(envFilePath);
     } else {
       const temp = config.discoverBackendRoot(process.cwd());
       if (!temp) {
@@ -95,6 +95,7 @@ export const command = new Command("apphosting:env:import")
             ),
         );
       }
+      config.store(outputFile, doc);
       return;
     }
 

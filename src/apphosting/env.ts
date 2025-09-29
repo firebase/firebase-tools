@@ -117,7 +117,6 @@ export async function importEnv(
       utils.logSuccess(
         `Created new secret version ${secretManager.toSecretVersionResourceName(version)}`,
       );
-      // TODO: What do we do if the YAML is pinned to a specific version?
     }
   }
 
