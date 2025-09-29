@@ -38,6 +38,7 @@ export interface SetupInfo {
   dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
+  emulators?: features.EmulatorsInfo;
 }
 
 interface Feature {
@@ -84,7 +85,11 @@ const featuresList: Feature[] = [
     askQuestions: features.storageAskQuestions,
     actuate: features.storageActuate,
   },
-  { name: "emulators", doSetup: features.emulators },
+  {
+    name: "emulators",
+    askQuestions: features.emulatorsAskQuestions,
+    actuate: features.emulatorsActuate,
+  },
   { name: "extensions", doSetup: features.extensions },
   { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
   { name: "remoteconfig", doSetup: features.remoteconfig },

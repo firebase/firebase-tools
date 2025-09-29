@@ -9,105 +9,138 @@ import { AdditionalInitFns } from "../../emulator/initEmulators";
 import { Config } from "../../config";
 import { EmulatorsConfig } from "../../firebaseConfig";
 
-interface EmulatorsInitSelections {
-  emulators?: Emulators[];
-  download?: boolean;
+export interface RequiredInfo {
+  emulators: Emulators[];
+  download: boolean;
+  config: EmulatorsConfig;
 }
 
-export async function doSetup(setup: Setup, config: Config) {
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
-      // TODO: latest versions of inquirer have a name vs description.
-      // We should learn more and whether it's worth investing in.
       name: Constants.description(e),
       checked: config?.has(e) || config?.has(`emulators.${e}`),
     };
   });
 
-  const selections: EmulatorsInitSelections = {};
-  selections.emulators = await checkbox<Emulators>({
+  const selectedEmulators = await checkbox<Emulators>({
     message:
       "Which Firebase emulators do you want to set up? " +
       "Press Space to select emulators, then Enter to confirm your choices.",
     choices: choices,
   });
 
-  if (!selections.emulators) {
+  if (!selectedEmulators || !selectedEmulators.length) {
     return;
   }
 
-  setup.config.emulators = setup.config.emulators || {};
-  const emulators: EmulatorsConfig = setup.config.emulators || {};
-  for (const selected of selections.emulators) {
-    if (selected === "extensions") continue;
-    const selectedEmulator = emulators[selected] || {};
+  setup.featureInfo = setup.featureInfo || {};
+  const emulatorsInfo: RequiredInfo = {
+    emulators: selectedEmulators,
+    config: {},
+    download: false,
+  };
+  setup.featureInfo.emulators = emulatorsInfo;
 
-    const currentPort = selectedEmulator.port;
+  const newConfig = emulatorsInfo.config;
+  const existingConfig = setup.config.emulators || {};
+
+  for (const selected of selectedEmulators) {
+    if (selected === "extensions") continue;
+    newConfig[selected] = {};
+    const currentPort = existingConfig[selected]?.port;
     if (currentPort) {
       utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
     } else {
-      selectedEmulator.port = await number({
+      newConfig[selected]!.port = await number({
         message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
         default: Constants.getDefaultPort(selected),
       });
     }
-    emulators[selected] = selectedEmulator;
 
     const additionalInitFn = AdditionalInitFns[selected];
     if (additionalInitFn) {
       const additionalOptions = await additionalInitFn(config);
       if (additionalOptions) {
-        emulators[selected] = {
-          ...setup.config.emulators[selected],
-          ...additionalOptions,
-        };
+        Object.assign(newConfig[selected]!, additionalOptions);
       }
     }
   }
 
-  if (selections.emulators.length) {
+  if (selectedEmulators.length) {
     const uiDesc = Constants.description(Emulators.UI);
-    if (setup.config.emulators.ui && setup.config.emulators.ui.enabled !== false) {
-      const currentPort = setup.config.emulators.ui.port || "(automatic)";
-      utils.logBullet(`${uiDesc} already enabled with port: ${clc.cyan(currentPort)}`);
-    } else {
-      const ui = setup.config.emulators.ui || {};
-      setup.config.emulators.ui = ui;
+    const existingUiConfig = existingConfig.ui || {};
+    newConfig.ui = {};
 
-      ui.enabled = await confirm({
+    let enableUi: boolean;
+    if (existingUiConfig.enabled !== undefined) {
+      utils.logBullet(`${uiDesc} already ${existingUiConfig.enabled ? "enabled" : "disabled"}.`);
+      enableUi = existingUiConfig.enabled;
+    } else {
+      enableUi = await confirm({
         message: `Would you like to enable the ${uiDesc}?`,
         default: true,
       });
+    }
+    newConfig.ui.enabled = enableUi;
 
-      if (ui.enabled) {
-        ui.port = await number({
+    if (newConfig.ui.enabled) {
+      const currentPort = existingUiConfig.port;
+      if (currentPort) {
+        utils.logBullet(`Port for ${uiDesc} already configured: ${clc.cyan(currentPort)}`);
+      } else {
+        newConfig.ui.port = await number({
           message: `Which port do you want to use for the ${clc.underline(uiDesc)} (leave empty to use any available port)?`,
           required: false,
         });
       }
     }
+  }
 
-    selections.download = await confirm({
+  if (selectedEmulators.length) {
+    emulatorsInfo.download = await confirm({
       message: "Would you like to download the emulators now?",
       default: true,
     });
   }
+}
 
-  // Set the default behavior to be single project mode.
-  if (setup.config.emulators.singleProjectMode === undefined) {
-    setup.config.emulators.singleProjectMode = true;
+export async function actuate(setup: Setup): Promise<void> {
+  const emulatorsInfo = setup.featureInfo?.emulators;
+  if (!emulatorsInfo) {
+    return;
   }
 
-  if (selections.download) {
-    for (const selected of selections.emulators) {
+  setup.config.emulators = setup.config.emulators || {};
+  const emulatorsConfig = setup.config.emulators;
+
+  // Merge the config from the questions into the main config.
+  for (const emulatorName of Object.keys(emulatorsInfo.config)) {
+    const key = emulatorName as keyof EmulatorsConfig;
+    if (key === "ui") {
+      emulatorsConfig.ui = { ...emulatorsConfig.ui, ...emulatorsInfo.config.ui };
+    } else if (key === "singleProjectMode") {
+      emulatorsConfig.singleProjectMode = emulatorsInfo.config[key];
+    } else if (emulatorsInfo.config[key]) {
+      emulatorsConfig[key] = { ...emulatorsConfig[key], ...emulatorsInfo.config[key] };
+    }
+  }
+
+  // Set the default behavior to be single project mode.
+  if (emulatorsConfig.singleProjectMode === undefined) {
+    emulatorsConfig.singleProjectMode = true;
+  }
+
+  if (emulatorsInfo.download) {
+    for (const selected of emulatorsInfo.emulators) {
       if (isDownloadableEmulator(selected)) {
         await downloadIfNecessary(selected);
       }
     }
 
-    if (setup?.config?.emulators?.ui?.enabled) {
-      downloadIfNecessary(Emulators.UI);
+    if (emulatorsConfig.ui?.enabled) {
+      await downloadIfNecessary(Emulators.UI);
     }
   }
 }
