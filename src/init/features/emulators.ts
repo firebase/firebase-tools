@@ -106,7 +106,7 @@ export async function emulatorsAskQuestions(setup: Setup, config: Config): Promi
   }
 }
 
-export async function emulatorsActuate(setup: Setup, config: Config): Promise<void> {
+export async function emulatorsActuate(setup: Setup): Promise<void> {
   const emulatorsInfo = setup.featureInfo?.emulators;
   if (!emulatorsInfo) {
     return;
@@ -120,7 +120,7 @@ export async function emulatorsActuate(setup: Setup, config: Config): Promise<vo
     const key = emulatorName as keyof EmulatorsConfig;
     if (key === "ui") {
       emulatorsConfig.ui = { ...emulatorsConfig.ui, ...emulatorsInfo.config.ui };
-    } else if (emulatorsInfo.config[key]) {
+    } else if (emulatorsInfo.config[key] && key !== "singleProjectMode") {
       emulatorsConfig[key] = { ...emulatorsConfig[key], ...emulatorsInfo.config[key] };
     }
   }
