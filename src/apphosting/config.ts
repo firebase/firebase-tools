@@ -1,4 +1,4 @@
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as clc from "colorette";
@@ -63,7 +63,7 @@ export function discoverBackendRoot(cwd: string): string | null {
 
   while (true) {
     const files = fs.listFiles(dir);
-    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file) || basename(file) === ".env")) {
       return dir;
     }
 
