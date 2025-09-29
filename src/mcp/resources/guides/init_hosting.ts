@@ -22,7 +22,7 @@ export const init_hosting = resource(
 
 **When to Deploy:**
 - Introduce Firebase Hosting when developers are ready to deploy their application to production
-- Alternative: Developers can deploy later using the \`/deploy\` command
+- Alternative: Developers can deploy later using the \`/firebase:deploy\` command
 
 **Deployment Process:**
 - Request developer permission before implementing Firebase Hosting
