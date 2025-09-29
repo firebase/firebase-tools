@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -118,7 +118,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
+        await ensureGIFApiTos(setup.projectId);
       }
     }
     if (hasBilling) {
