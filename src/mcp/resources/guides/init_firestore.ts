@@ -8,6 +8,7 @@ export const init_firestore = resource(
     description: "guides the coding agent through configuring Firestore in the current project",
   },
   async (uri) => {
+    const date = getTomorrowDate();
     return {
       contents: [
         {
@@ -18,6 +19,7 @@ export const init_firestore = resource(
 **Database Setup:**
 - Configure Firebase Firestore as the primary database for the application
 - Implement client code for basic CRUD operations using the Firestore SDK
+- Write the default \`firestore.rules\` file (see below)
 - Run \`firebase deploy --only firestore\` to provision the database automatically
 - Use production environment directly (avoid emulator for initial setup)
 
@@ -45,9 +47,31 @@ export const init_firestore = resource(
 - **Authentication**: Recommend implementing Firebase Authentication if the application handles sensitive user data or has open security rules
 - **User Management**: Implement user sign-up and login features with Firebase Authentication to establish proper data validation and access controls
 - **Security Rules**: Configure user-based security rules based on your application's specific requirements
+
+### Default \`firestore.rules\` file:
+
+\`\`\`
+// Allow reads and writes to all documents for authenticated users.
+// This rule will only be valid until tomorrow.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.time < timestamp.date(${date.year}, ${date.month}, ${date.day});
+    }
+  }
+}
+\`\`\`
 `.trim(),
         },
       ],
     };
   },
 );
+
+function getTomorrowDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Month is 0-indexed, so add 1
+  return { year: tomorrow.getFullYear(), month: tomorrow.getMonth() + 1, day: tomorrow.getDate() };
+}
