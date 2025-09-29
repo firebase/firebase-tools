@@ -1,3 +1,4 @@
+- CloudSQL instances created with `firebase dataconnect:connect` now default to Postgres 17.
 - Fixed an issue with deploying indexes to Firestore Enterprise edition databases where explicit `__name__` fields could be incorrectly handled.
 - The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
 - `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
