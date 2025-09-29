@@ -56,4 +56,3 @@ service cloud.firestore {
     };
   },
 );
-
