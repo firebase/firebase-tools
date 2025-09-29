@@ -120,7 +120,9 @@ export async function actuate(setup: Setup): Promise<void> {
     const key = emulatorName as keyof EmulatorsConfig;
     if (key === "ui") {
       emulatorsConfig.ui = { ...emulatorsConfig.ui, ...emulatorsInfo.config.ui };
-    } else if (emulatorsInfo.config[key] && key !== "singleProjectMode") {
+    } else if (key === "singleProjectMode") {
+      emulatorsConfig.singleProjectMode = emulatorsInfo.config[key];
+    }else if (emulatorsInfo.config[key]) {
       emulatorsConfig[key] = { ...emulatorsConfig[key], ...emulatorsInfo.config[key] };
     }
   }

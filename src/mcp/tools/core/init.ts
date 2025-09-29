@@ -209,11 +209,11 @@ export const init = tool(
         apps: [],
       };
     }
-    if (features.storage?.rules) {
+    if (features.storage) {
       featuresList.push("storage");
       featureInfo.storage = {
         rulesFilename: features.storage.rules_filename,
-        rules: features.storage.rules,
+        rules: features.storage.rules || "",
         writeRules: true,
       };
     }
