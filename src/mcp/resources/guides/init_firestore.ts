@@ -7,7 +7,7 @@ export const init_firestore = resource(
     title: "Firestore Init Guide",
     description: "guides the coding agent through configuring Firestore in the current project",
   },
-  async (uri, {projectId}) => {
+  async (uri, { projectId }) => {
     return {
       contents: [
         {
@@ -17,9 +17,7 @@ export const init_firestore = resource(
 ### Setup Firestore Database
 This guide walks you through setting up the user's Firestore database.
 
-A few notes on this setup process:
- - Do not use the Firestore emulator
- - Determine if the user setup Firebase Authentication. If they did, you can use their
+Important: do not use the Firestore emulator. You are setting up Firestore against prod resources.
 
 1. Provision the Firestore service for the user by running \`firebase deploy --only firestore\` in the terminal. This will ensure Firestore is setup
 2. Come up with a list of database entities for the app. Do not write them to a file just print them out for the user.
@@ -32,7 +30,7 @@ A few notes on this setup process:
  - Use the Firebase \`read_resources\` tool to load the [Firestore Rules](firebase://guides/init/firestore_rules) resource. Once that is complete, continue to the next step.
 5. For each database entity you came up with, add code to synchronize and update database entities in Firestore
  - Keep in mind what security rule path to use for each entity, and ensure the code to fetch, update, and list matches
-6. Ask the user to visit \`https://console.firebase.google.com/u/0/project/${projectId || '_'}/firestore\` to view their Firestore database and inspect their Firestore rules. In addition, have the user test their app to ensure that the functionality works. Only proceed to the next step after confirming successful database setup and data visibility.
+6. Ask the user to visit \`https://console.firebase.google.com/u/0/project/${projectId || "_"}/firestore\` to view their Firestore database and inspect their Firestore rules. In addition, have the user test their app to ensure that the functionality works. Only proceed to the next step after confirming successful database setup and data visibility.
 7. Continue to the next step in the setup
 `.trim(),
         },

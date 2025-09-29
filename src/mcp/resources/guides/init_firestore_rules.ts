@@ -5,9 +5,10 @@ export const init_firestore_rules = resource(
     uri: "firebase://guides/init/firestore_rules",
     name: "firestore_rules_init_guide",
     title: "Firestore Rules Init Guide",
-    description: "guides the coding agent through setting up Firestore security rules in the project",
+    description:
+      "guides the coding agent through setting up Firestore security rules in the project",
   },
-  async (uri, {config}) => {
+  async (uri, { config }) => {
     const date = getTomorrowDate();
     return {
       contents: [
@@ -24,12 +25,12 @@ Contents of the user's current \`firestore.rules\` file:
 ${config.readProjectFile("firestore.rules", { fallback: "<FILE DOES NOT EXIST>" })}
 \`\`\`
 
-1. Ask the user for how they would like their security rules implemented. If they have existing security rules that match one of these options, do not ask them, and go with the matching option. These options will determine how to write the user's \`firestore.rules\` file.
+1. Ask the user for how they would like their security rules implemented. Do not continue until the user confirms the option. If they have existing security rules that match one of these options, do not ask them, and go with the matching option. These options will determine how to write the user's \`firestore.rules\` file.
  - Option 1: Development security rules (rules will be open until tomorrow)
  - Option 2: Simple "personal" and "public" rules
  - Option 3: Custom security rules
 2. Validate & fix the security rules using the \`validate_rules\` tool. Only continue to the next step when the \`validate_rules\` tool succeeds
-3. Deploy the security rules using \`firebase deploy --only firestore\` in the terminal.
+3. Print the contents of the \`firestore.rules\` file. Ask the user for permission to deploy the rules. Do not continue until the user confirms. Deploy the security rules using \`firebase deploy --only firestore\` in the terminal.
 
 ### Option 1: Development security rules
 Write the following security rules into the user's \`firestore.rules\` file. Note that these rules are acceptable for development, but that further work is needed to secure their Firestore database.
@@ -87,5 +88,5 @@ function getTomorrowDate() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   // Month is 0-indexed, so add 1
-  return { year: tomorrow.getFullYear(), month: tomorrow.getMonth() + 1, day: tomorrow.getDate()};
+  return { year: tomorrow.getFullYear(), month: tomorrow.getMonth() + 1, day: tomorrow.getDate() };
 }
