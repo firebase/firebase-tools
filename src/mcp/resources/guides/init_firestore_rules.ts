@@ -21,7 +21,7 @@ This guide walks you through creating and editing the user's firestore.rules fil
 
 Contents of the user's current \`firestore.rules\` file:
 
-\`\`\`json
+\`\`\`
 ${config.readProjectFile("firestore.rules", { fallback: "<FILE DOES NOT EXIST>" })}
 \`\`\`
 
@@ -58,14 +58,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /personalData/{appId}/users/{uid}/{collectionName}/{docId} {
       allow get: if uid == request.auth.uid;
-      allow list: if uid == request.auth.uid && request.query.limit <= 100
+      allow list: if uid == request.auth.uid && request.query.limit <= 100;
       allow write: if uid == request.auth.uid;
     }
 
     match /publicData/{appId}/{collectionName}/{docId} {
       allow get: if true;
       allow list: request.query.limit <= 100;
-      allow write: if true;;
+      allow write: if true;
     }
   }
 }
