@@ -6,6 +6,7 @@ import { init_auth } from "./guides/init_auth";
 import { init_backend } from "./guides/init_backend";
 import { init_data_connect } from "./guides/init_data_connect";
 import { init_firestore } from "./guides/init_firestore";
+import { init_firestore_rules } from "./guides/init_firestore_rules";
 import { init_hosting } from "./guides/init_hosting";
 import { init_rtdb } from "./guides/init_rtdb";
 import { ServerResource, ServerResourceTemplate } from "../resource";
@@ -15,6 +16,7 @@ export const resources = [
   init_ai,
   init_data_connect,
   init_firestore,
+  init_firestore_rules,
   init_rtdb,
   init_auth,
   init_hosting,

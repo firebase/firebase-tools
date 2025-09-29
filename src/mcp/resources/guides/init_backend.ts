@@ -22,7 +22,8 @@ export const init_backend = resource(
 The user will likely need to setup Firestore, Authentication, and Hosting. Read the following guides in order. Do not run the app until you have completed all 3 guides.
  1. [Firestore](firebase://guides/init/firestore): read this to setup Firestore database
  2. [Authentication](firebase://guides/init/auth): read this to setup Firebase Authentication to support multi-user apps
- 3. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
+ 3. [Firestore Rules](firebase://guides/init/firestore_rules): read this to setup the \`firestore.rules\` file for securing your database
+ 4. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
 
 **firebase.json**
 The firebase.json file is used to deploy Firebase products with the firebase deploy command.
