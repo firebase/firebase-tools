@@ -5,12 +5,18 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
+import { Emulators } from "../../../emulator/types";
+
+const emulatorHostPortSchema = z.object({
+  host: z.string().optional().describe("The host to use for the emulator."),
+  port: z.number().optional().describe("The port to use for the emulator."),
+});
 
 export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Emulators). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -121,6 +127,31 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        emulators: z
+          .object({
+            auth: emulatorHostPortSchema.optional(),
+            database: emulatorHostPortSchema.optional(),
+            firestore: emulatorHostPortSchema.optional(),
+            functions: emulatorHostPortSchema.optional(),
+            hosting: emulatorHostPortSchema.optional(),
+            storage: emulatorHostPortSchema.optional(),
+            pubsub: emulatorHostPortSchema.optional(),
+            ui: z
+              .object({
+                enabled: z.boolean().optional(),
+                host: z.string().optional(),
+                port: z.union([z.string(), z.number()]).optional(),
+              })
+              .optional(),
+            singleProjectMode: z
+              .boolean()
+              .optional()
+              .describe("If true, do not warn on detection of multiple project IDs."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to configure Firebase emulators in this project directory.",
+          ),
       }),
     }),
     annotations: {
@@ -178,8 +209,32 @@ export const init = tool(
         apps: [],
       };
     }
+    if (features.storage) {
+      featuresList.push("storage");
+      featureInfo.storage = {
+        rulesFilename: features.storage.rules_filename,
+        rules: features.storage.rules,
+        writeRules: true,
+      };
+    }
+    if (features.emulators) {
+      featuresList.push("emulators");
+      const emulatorKeys = Object.keys(features.emulators).filter(
+        (key) =>
+          key !== "ui" &&
+          key !== "singleProjectMode" &&
+          Object.values(Emulators).includes(key as Emulators),
+      ) as Emulators[];
+
+      featureInfo.emulators = {
+        emulators: emulatorKeys,
+        config: features.emulators,
+        download: true, // Non-interactive, so default to downloading.
+      };
+    }
+
     const setup: Setup = {
-      config: config?.src,
+      config: config?.src || {},
       rcfile: rc?.data,
       projectId: projectId,
       features: [...featuresList],
