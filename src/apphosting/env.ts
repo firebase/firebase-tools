@@ -29,33 +29,34 @@ export async function diffEnvs(
   const matched: string[] = [];
   const conflicts: string[] = [];
 
-  // Note: Can conceivably optimize this by parallelizing lookups of secret values with fetchSecrets.
-  // Unlikely to actually cause noticeable benefits.
-  for (const [key, value] of Object.entries(envs)) {
-    const existingEnv = config.findEnv(doc, key);
-    if (!existingEnv) {
-      newVars.push(key);
-      continue;
-    }
-
-    let match = false;
-    if (existingEnv.value) {
-      match = existingEnv.value === value;
-    } else {
-      try {
-        match =
-          value ===
-          (await secretManager.accessSecretVersion(projectId, existingEnv.secret!, "latest"));
-      } catch (err) {
-        utils.logLabeledWarning(
-          "apphosting",
-          `Cannot read value of existing secret ${existingEnv.secret!} to see if it has changed. Assuming it has changed.`,
-        );
+  await Promise.all(
+    Object.entries(envs).map(async ([key, value]) => {
+      const existingEnv = config.findEnv(doc, key);
+      if (!existingEnv) {
+        newVars.push(key);
+        return;
       }
-    }
 
-    (match ? matched : conflicts).push(key);
-  }
+      let match = false;
+      if (existingEnv.value) {
+        match = existingEnv.value === value;
+      } else {
+        try {
+          match =
+            value ===
+            (await secretManager.accessSecretVersion(projectId, existingEnv.secret!, "latest"));
+        } catch (err) {
+          utils.logLabeledWarning(
+            "apphosting",
+            `Cannot read value of existing secret ${existingEnv.secret!} to see if it has changed. Assuming it has changed.`,
+          );
+        }
+      }
+
+      (match ? matched : conflicts).push(key);
+    }),
+  );
+
   return { newVars, matched, conflicts };
 }
 

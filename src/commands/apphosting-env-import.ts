@@ -9,7 +9,7 @@ import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
 import { promises as fs } from "fs";
 import * as path from "path";
-import * as env from "../functions/env";
+import * as functionsEnv from "../functions/env";
 import * as config from "../apphosting/config";
 import * as prompt from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -57,7 +57,7 @@ export const command = new Command("apphosting:env:import")
     }
 
     const envFileContent = await fs.readFile(envFilePath, "utf8");
-    const { envs, errors } = env.parse(envFileContent);
+    const { envs, errors } = functionsEnv.parse(envFileContent);
 
     if (errors.length > 0) {
       throw new FirebaseError(`Invalid .env file: ${errors.join(", ")}`);
