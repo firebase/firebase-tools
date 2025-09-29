@@ -18,7 +18,7 @@ export const init_auth = resource(
 ### Configure Firebase Authentication
 
 **Permission & Setup:**
-- Request developer permission before implementing sign-up and login features
+- Request developer permission before implementing sign-up and login features. Explain that Firebase Authentication is used for authenticating users with their Firebase backend.
 - Guide developers to enable authentication providers (Email/Password, Google Sign-in, etc.) in the [Firebase Auth Console](https://console.firebase.google.com/)
 - Ask developers to confirm which authentication method they selected before proceeding
 
