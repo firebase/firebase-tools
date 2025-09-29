@@ -24,8 +24,6 @@ export const init_auth = resource(
 
 **Implementation:**
 - Create sign-up and login pages using Firebase Authentication
-- Update Firestore security rules and deploy them to ensure only authenticated users can access their own data
-- Handle security rule updates automatically (do not ask developers to go to console)
 
 **Testing & Deployment:**
 - Test the complete sign-up and sign-in flow to verify authentication functionality

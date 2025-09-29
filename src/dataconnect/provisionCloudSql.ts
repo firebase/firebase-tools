@@ -1,5 +1,6 @@
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as utils from "../utils";
+import * as clc from "colorette";
 import { grantRolesToCloudSqlServiceAccount } from "./checkIam";
 import { Instance } from "../gcp/cloudsql/types";
 import { promiseWithSpinner } from "../utils";
@@ -35,20 +36,23 @@ async function upsertInstance(args: {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
-    utils.logLabeledBullet("dataconnect", `Found existing Cloud SQL instance ${instanceId}.`);
+    utils.logLabeledBullet(
+      "dataconnect",
+      `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
+    );
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
       if (dryRun) {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
             `It will be updated on your next deploy.` +
             why,
         );
       } else {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${instanceId} settings not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
             why,
         );
         await promiseWithSpinner(
@@ -83,7 +87,7 @@ async function createInstance(args: {
   if (dryRun) {
     utils.logLabeledBullet(
       "dataconnect",
-      `Cloud SQL Instance ${instanceId} not found. It will be created on your next deploy.`,
+      `Cloud SQL Instance ${clc.bold(instanceId)} not found. It will be created on your next deploy.`,
     );
   } else {
     await cloudSqlAdminClient.createInstance({
@@ -109,7 +113,7 @@ export function cloudSQLBeingCreated(
   includeFreeTrialToS?: boolean,
 ): string {
   return (
-    `Cloud SQL Instance ${instanceId} is being created.` +
+    `Cloud SQL Instance ${clc.bold(instanceId)} is being created.` +
     (includeFreeTrialToS
       ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
@@ -157,9 +161,19 @@ async function upsertDatabase(args: {
 export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: boolean): string {
   let reason = "";
   const settings = instance.settings;
-  // Cloud SQL instances must have public IP enabled to be used with Firebase Data Connect.
   if (!settings.ipConfiguration?.ipv4Enabled) {
-    reason += "\n - to enable public IP.";
+    utils.logLabeledWarning(
+      "dataconnect",
+      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
+    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
+    );
+    if (
+      settings.ipConfiguration?.privateNetwork &&
+      !settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices
+    ) {
+      // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
+      reason += "\n - to enable Private Path for Google Cloud Services.";
+    }
   }
 
   if (requireGoogleMlIntegration) {
