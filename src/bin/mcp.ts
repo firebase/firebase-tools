@@ -14,7 +14,7 @@ This is a running process of the Firebase MCP server. This command should only b
   "mcpServers": {
     "firebase": {
       "command": "firebase",
-      "args": ["experimental:mcp", "--dir", "/path/to/firebase/project"]
+      "args": ["mcp", "--dir", "/path/to/firebase/project"]
     }
   }
 }

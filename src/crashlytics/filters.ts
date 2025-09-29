@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FirebaseError } from "../error";
 
 export const ApplicationIdSchema = z
   .string()
@@ -17,39 +18,47 @@ export const EventFilterSchema = z
     intervalStartTime: z
       .string()
       .optional()
-      .describe(`A timestamp in ISO 8601 string format. Defaults to 7 days ago.`),
+      .describe(
+        `A timestamp in ISO 8601 string format. Must be within the last 90 days. Defaults to 7 days ago.`,
+      ),
     intervalEndTime: z
       .string()
       .optional()
-      .describe(`A timestamp in ISO 8601 string format. Defaults to now.`),
+      .describe(
+        `A timestamp in ISO 8601 string format. Must be within the last 90 days. Defaults to now.`,
+      ),
     versionDisplayNames: z
       .array(z.string())
       .optional()
-      .describe(`The version display names should be obtained from an API response.`),
+      .describe(
+        `Counts events originating from the given app versions. Must be obtained from the *displayName* field in an API response. `,
+      ),
     issueId: z.string().optional().describe(`Count events for the given issue`),
     issueVariantId: z.string().optional().describe(`Count events for the given issue variant`),
     issueErrorTypes: z
       .array(z.enum(["FATAL", "NON_FATAL", "ANR"]))
       .optional()
       .describe(
-        `Count FATAL events (crashes), NON_FATAL events (exceptions) or ANR events (application not responding)`,
+        `Counts FATAL events (crashes), NON_FATAL events (exceptions) or ANR events (application not responding)`,
       ),
     issueSignals: z
       .array(z.enum(["SIGNAL_EARLY", "SIGNAL_FRESH", "SIGNAL_REGRESSED", "SIGNAL_REPETITIVE"]))
       .optional()
-      .describe(`Count events matching the given signals`),
+      .describe(`Counts events matching the given signals`),
     operatingSystemDisplayNames: z
       .array(z.string())
       .optional()
-      .describe(`The operating system displayNames should be obtained from an API response`),
+      .describe(
+        `Counts events originating from the given operating systems. Must be obtained from the *displayName* field in an API response.`,
+      ),
     deviceDisplayNames: z
       .array(z.string())
       .optional()
-      .describe(`The operating system displayNames should be obtained from an API response`),
+      .describe(`Must be obtained from the *displayName* field in an API response.`),
     deviceFormFactors: z
       .array(z.enum(["PHONE", "TABLET", "DESKTOP", "TV", "WATCH"]))
       .optional()
-      .describe(`Count events originating from the given device form factors`),
+      .describe(`Counts events originating from the given device form factors`),
   })
   .optional()
   .describe(`Only events matching the given filters will be counted. All filters are optional. 
@@ -95,4 +104,40 @@ export function filterToUrlSearchParams(filter: EventFilter): URLSearchParams {
     }
   }
   return params;
+}
+
+const displayNamePattern = /^[^()]+\s+\([^()]+\)$/; // Regular expression like "xxxx (yyy)"
+
+/**
+ * Perform some simplistic validation on filters.
+ * @param filter filters to validate
+ * @throws FirebaseError if any of the filters are invalid.
+ */
+export function validateEventFilters(filter: EventFilter): void {
+  if (!filter) return;
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  if (filter.intervalStartTime && new Date(filter.intervalStartTime) < ninetyDaysAgo) {
+    throw new FirebaseError("intervalStartTime must be less than 90 days in the past");
+  }
+  if (filter.deviceDisplayNames) {
+    filter.deviceDisplayNames.forEach((dn) => {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError("deviceDisplayNames must match pattern 'manufacturer (device)'");
+      }
+    });
+  }
+  if (filter.operatingSystemDisplayNames) {
+    filter.operatingSystemDisplayNames.forEach((dn) => {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError("operatingSystemDisplayNames must match pattern 'os (version)'");
+      }
+    });
+  }
+  if (filter.versionDisplayNames) {
+    filter.versionDisplayNames.forEach((dn) => {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError("versionDisplayNames must match pattern 'version (build)'");
+      }
+    });
+  }
 }
