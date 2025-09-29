@@ -21,6 +21,7 @@ export enum DATA_CONNECT_EVENT_NAME {
   PROJECT_SELECTED = "project_selected",
   RUN_LOCAL = "run_local",
   RUN_PROD = "run_prod",
+  GENERATE_OPERATION = "generate_operation",
   ADD_DATA = "add_data",
   READ_DATA = "read_data",
   MOVE_TO_CONNECTOR = "move_to_connector",

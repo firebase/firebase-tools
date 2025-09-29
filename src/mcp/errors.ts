@@ -1,8 +1,6 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { mcpError } from "./util";
-import { configstore } from "../configstore";
-import { check, ensure } from "../ensureApiEnabled";
-import { cloudAiCompanionOrigin } from "../api";
+import { ensureGIFApiTos } from "../dataconnect/ensureApis";
 
 export const NO_PROJECT_ERROR = mcpError(
   "To proceed requires an active project. Use the `firebase_update_environment` tool to set a project ID",
@@ -20,12 +18,8 @@ export async function requireGeminiToS(projectId: string): Promise<CallToolResul
   if (!projectId) {
     return NO_PROJECT_ERROR;
   }
-  if (configstore.get("gemini")) {
-    await ensure(projectId, cloudAiCompanionOrigin(), "");
-  } else {
-    if (!(await check(projectId, cloudAiCompanionOrigin(), ""))) {
-      return GEMINI_TOS_ERROR;
-    }
+  if (!(await ensureGIFApiTos(projectId))) {
+    return GEMINI_TOS_ERROR;
   }
   return undefined;
 }
