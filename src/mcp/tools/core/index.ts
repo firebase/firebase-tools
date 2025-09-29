@@ -13,11 +13,14 @@ import { update_environment } from "./update_environment";
 import { list_projects } from "./list_projects";
 import { login } from "./login";
 import { logout } from "./logout";
+import { get_rules } from "./get_rules";
+import { validate_rules } from "./validate_rules";
 import { read_resources } from "./read_resources";
 
 export const coreTools: ServerTool[] = [
   login,
   logout,
+  validate_rules, // TODO (joehan): Only enable this tool when at least once of rtdb/storage/firestore is active.
   get_project,
   list_apps,
   get_admin_sdk_config,
@@ -29,5 +32,6 @@ export const coreTools: ServerTool[] = [
   get_environment,
   update_environment,
   init,
+  get_rules,
   read_resources,
 ];

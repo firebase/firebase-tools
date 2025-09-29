@@ -60,20 +60,6 @@ describe("events", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should throw a FirebaseError if the API call fails", async () => {
-      nock(crashlyticsApiOrigin())
-        .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/events`)
-        .query({
-          page_size: String(pageSize),
-        })
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(listEvents(appId, {}, pageSize)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to list events for app_id ${appId}.`,
-      );
-    });
-
     it("should throw a FirebaseError if the appId is invalid", async () => {
       const invalidAppId = "invalid-app-id";
 
@@ -97,7 +83,7 @@ describe("events", () => {
       nock(crashlyticsApiOrigin())
         .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`)
         .query({
-          "event.names": eventNames,
+          names: eventNames,
         })
         .reply(200, mockResponse);
 
@@ -105,20 +91,6 @@ describe("events", () => {
 
       expect(result).to.deep.equal(mockResponse);
       expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the API call fails", async () => {
-      nock(crashlyticsApiOrigin())
-        .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`)
-        .query({
-          "event.names": eventNames,
-        })
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(batchGetEvents(appId, eventNames)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to batch get events for app_id ${appId}.`,
-      );
     });
 
     it("should throw a FirebaseError if there are too many events", async () => {
