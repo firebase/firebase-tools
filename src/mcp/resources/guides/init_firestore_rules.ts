@@ -16,7 +16,7 @@ export const init_firestore_rules = resource(
           type: "text",
           text: `
 # Firestore Rules
-This guide walks you through creating and editing the user's firestore.rules file.
+This guide walks you through updating the Firestore security rules and deploying them to ensure only authenticated users can access their own data.
 
 Contents of the user's current \`firestore.rules\` file:
 
