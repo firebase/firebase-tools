@@ -10,7 +10,7 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -121,6 +121,16 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        ailogic: z
+          .object({
+            app_id: z
+              .string()
+              .describe(
+                "Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID). Must be an existing app in your Firebase project.",
+              ),
+          })
+          .optional()
+          .describe("Enable Firebase AI Logic feature for existing app"),
       }),
     }),
     annotations: {
@@ -176,6 +186,12 @@ export const init = tool(
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
         apps: [],
+      };
+    }
+    if (features.ailogic) {
+      featuresList.push("ailogic");
+      featureInfo.ailogic = {
+        appId: features.ailogic.app_id,
       };
     }
     const setup: Setup = {
