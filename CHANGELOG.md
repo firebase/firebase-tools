@@ -4,3 +4,4 @@
 - Fixed a bug when `firebase init dataconnect` failed to create a React app when launched from VS Code extension (#9171).
 - Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
 - Added 'emulators' to `firebase_init` MCP tool.
+- `firebase dataconnect:sql:migrate` now supports Cloud SQL instances with only private IPs. The command must be run in the same VPC of the instance to work. (##9200)
