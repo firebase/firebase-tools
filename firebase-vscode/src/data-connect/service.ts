@@ -120,7 +120,7 @@ export class DataConnectService {
         operationName: "IntrospectionQuery",
         variables: "{}",
       });
-      console.log("introspection: ", introspectionResults);
+      console.log("introspection result: ", introspectionResults);
       // TODO: handle errors
       if ((introspectionResults as any).errors.length > 0) {
         return { data: undefined };
@@ -135,6 +135,23 @@ export class DataConnectService {
       // TODO: surface error that emulator is not connected
       pluginLogger.error("error: ", e);
       return { data: undefined };
+    }
+  }
+
+  // Fetch the local Data Connect Schema sources via the toolkit introspection service.
+  async schema(): Promise<string> {
+    try {
+      const res = await this.executeGraphQLRead({
+        query: `query { _service { schema } }`,
+        operationName: "",
+        variables: "{}",
+      });
+      console.log("introspection schema result: ", res);
+      return (res as any)?.data?._service?.schema || "";
+    } catch (e) {
+      // TODO: surface error that emulator is not connected
+      pluginLogger.error("error: ", e);
+      return "";
     }
   }
 
