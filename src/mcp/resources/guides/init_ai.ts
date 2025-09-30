@@ -51,40 +51,14 @@ The following mobile and web applications are supported. Let the user know their
 
 Take the following actions depending on the language and platform or framework that is identified:
 
-- Javascript Web App \-\> Follow the setup instructions in section “2.1 \[WEB\] Set up a Firebase Project and Firebase AI Logic”  
-- Kotlin Android App \-\> Use the setup instructions in section “2.2 \[ANDROID\] Set up a Firebase Project and Firebase AI Logic”  
-- Java Android App \-\> Follow the setup instructions in section “2.2 \[ANDROID\] Set up a Firebase Project and Firebase AI Logic”  
-- Dart Flutter App \-\> Follow the setup instructions in section “2.3 \[FLUTTER\] Set up a Firebase Project and Firebase AI Logic”  
+- Supported Platform \-\> Set up Firebase AI Logic”  
 - Unsupported Platform \-\> Direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev)
 
-### 2.1 \[WEB\] Set up a Firebase Project and Firebase AI Logic
+### 2\. Set up Firebase AI Logic
 
-#### Set up Firebase AI Logic Backend
-
-- Use the firebase_init tool to set up ailogic
-- **Never use the Vertex AI Gemini API backend service (vertexAI). Always use the Gemini Developer API backend service (googleAI).**
-
-### 2.2 \[ANDROID\] Set up a Firebase Project and Firebase AI Logic
-
-#### Set up Firebase AI Logic Backend
+#### Set up the Firebase AI Logic Backend
 
 - Use the firebase_init tool to set up ailogic
-- **Never use the Vertex AI Gemini API backend service (vertexAI). Always use the Gemini Developer API backend service (googleAI).**
-
-### 2.3 \[FLUTTER\] Set up a Firebase Project and Firebase AI Logic
-
-#### Set up Flutterfire
-
-- Install the Flutterfire CLI 
-- Use the Flutterfire CLI tool to connect to the project  
-- Use the Flutterfire CLI to connect to the existing firebase project and register the appropriate applications based on the user’s input. Ask the user which combination of ios, android, and web targets they want then register the appropriate apps in the project using the flutterfire CLI  
-- **Do not ask developers to go to Firebase console** \- handle this automatically
-- Always import firebase_ai 
-
-#### Set up Firebase AI Logic Backend
-
-- Use the firebase_init tool to set up ailogic
-- **Never use the Vertex AI Gemini API backend service (vertexAI). Always use the Gemini Developer API backend service (googleAI).**
 
 ### 3\. Implement AI Features
 
@@ -120,19 +94,17 @@ Take the following actions depending on the language and platform or framework t
 | Java Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
 | Web | Generate images (text-only input) | Gemini Developer API (Developer API)  | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
 | Dart Flutter | Generate images (text-only input) | Gemini Developer API (Developer API)  | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
-| Kotlin Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.    | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
-| Java Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
-| Web Modular API | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
-| Dart Flutter | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
-
+| Kotlin Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.    | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
+| Java Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
+| Web Modular API | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
+| Dart Flutter | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | https://firebase.google.com/docs/ai-logic/generate-images-gemini.md.txt |
 
 
 ### 5 Validation
 
 #### Perform the following checks before finishing your test. Go over the steps you previoulsy took while doing this check.
-
-- Confirm you are using the right Gemini model as previoulsy instructed. You should not be using Gemini 1.5
-- Confirm you checked for a matching code snippet in the instructions from this document. Confirm you used the matching snippet as a base if you found a match.   
+- Reload the matching code snippet for the feature you implemented. Read it using the instructions in the "AI Features" section of the guide. Compare it to the code you generated. Do they follow they same pattern? Rewrite the code if you didn't apply the code snippet properly.
+- Confirm you are using the right Gemini model as previoulsy instructed. ***You should not be using Gemini 1.5*** Use gemini 2.5 flash unless otherwise instructed
           `,
         },
       ],
