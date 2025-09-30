@@ -7,8 +7,12 @@ export const init_firestore = resource(
     title: "Firestore Init Guide",
     description: "guides the coding agent through configuring Firestore in the current project",
   },
+<<<<<<< HEAD
   async (uri) => {
     const date = getTomorrowDate();
+=======
+  async (uri, {projectId}) => {
+>>>>>>> 003e536ef (rebase)
     return {
       contents: [
         {
@@ -16,19 +20,22 @@ export const init_firestore = resource(
           type: "text",
           text: `
 ### Setup Firestore Database
+<<<<<<< HEAD
 **Database Setup:**
 - Configure Firebase Firestore as the primary database for the application
 - Implement client code for basic CRUD operations using the Firestore SDK
 - Write the default \`firestore.rules\` file (see below)
 - Run \`firebase deploy --only firestore\` to provision the database automatically
 - Use production environment directly (avoid emulator for initial setup)
+=======
+This guide walks you through setting up the user's Firestore database.
+>>>>>>> 003e536ef (rebase)
 
-**Pre-Deployment Security Check:**
-- **Important**: Before running \`firebase deploy --only firestore\`, check if the project has open security rules
-- If open security rules are detected, show developers the current rule content
-- Recommend keeping open rules for a maximum of 24 hours for development purposes only
-- Explain that open rules are acceptable for development but must be restricted for production
+A few notes on this setup process:
+ - Do not use the Firestore emulator
+ - Determine if the user setup Firebase Authentication. If they did, you can use their
 
+<<<<<<< HEAD
 **Deployment:**
 - Run \`firebase deploy --only firestore\` to provision the database automatically
 
@@ -62,6 +69,21 @@ service cloud.firestore {
   }
 }
 \`\`\`
+=======
+1. Provision the Firestore service for the user by running \`firebase deploy --only firestore\` in the terminal. This will ensure Firestore is setup
+2. Come up with a list of database entities for the app. Do not write them to a file just print them out for the user.
+ - Think of only "persistent" entities that must persist over reloads of the app.
+ - For each entity, determine if it is "personal" data or "public", and note it beside the entity name.
+   - "personal" - only be read / written to by the current user
+   - "public" - can be read / written to by anyone
+3. Add Firestore initialization code
+4. Setup security rules
+ - Use the Firebase \`read_resources\` tool to load the [Firestore Rules](firebase://guides/init/firestore_rules) resource. Once that is complete, continue to the next step.
+5. For each database entity you came up with, add code to synchronize and update database entities in Firestore
+ - Keep in mind what security rule path to use for each entity, and ensure the code to fetch, update, and list matches
+6. Ask the user to visit \`https://console.firebase.google.com/u/0/project/${projectId || '_'}/firestore\` to view their Firestore database and inspect their Firestore rules. In addition, have the user test their app to ensure that the functionality works. Only proceed to the next step after confirming successful database setup and data visibility.
+7. Continue to the next step in the setup
+>>>>>>> 003e536ef (rebase)
 `.trim(),
         },
       ],
