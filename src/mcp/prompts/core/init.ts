@@ -46,18 +46,18 @@ ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })
 
 Follow the steps below taking note of any user instructions provided above.
 
-1.1 If the user supplied specific instructions, determine which of the services listed below are the best match for the user's needs. Skip to 1.2 if they didn't provide a prompt
+1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
+   - If you run into issues logging the user in, suggest that they run \`npx firebase-tools login --reauth\` in a separate terminal
+2.1 If the user supplied specific instructions, determine which of the services listed below are the best match for the user's needs. Skip to 2.2 if they didn't provide a prompt
   1. Backend Services: Backend services for the user such as user authentication, database, or cloud file storage.
   2. Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
   - UNAVAILABLE SERVICES: Analytics, Remote Config (feature flagging), A/B testing, Crashlytics (crash reporting), and Cloud Messaging (push notifications) are not yet available for setup via this command.
-1.2 Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user.
+2.2 Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user.
   1. Backend Services: Backend services for the user such as user authentication, database, or cloud file storage.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests. 
   2. Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
     - IMPORTANT: The Firebase AI Logic setup guide is for web, flutter, and android apps only. If the user requests firebase setup for unsupported platforms (iOS, Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
-2. After the user chooses an init option, create a plan based on the remaining steps in this guide, share it with the user, and give them an opportunity to accept or adjust it.   
-3. If there is no active user, use the \`firebase_login\` tool to help them sign in.
-   - If you run into issues logging the user in, suggest that they run \`npx firebase-tools login --reauth\` in a separate terminal
+3. After the user chooses an init option, create a plan based on the remaining steps in this guide, share it with the user, and give them an opportunity to accept or adjust it.   
 4. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
    - If they would like to create a project, use the firebase_create_project with the project ID
    - If they would like to use an existing project, use the firebase_update_environment tool with the active_project argument.
@@ -88,7 +88,7 @@ Follow the steps below taking note of any user instructions provided above.
     '''
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js'
     '''
-7. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
+8. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
 - Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 1 of this guide
   - [Backend Services](firebase://guides/init/backend): Read this resource to setup backend services for the user such as user authentication, database, or cloud file storage.
   - [Firebase AI Logic](firebase://guides/init/ai): Read this resource to add Gemini-powered AI features such as chat experiences, multimodal prompts, image generation, image editing (via nano banana), etc.
