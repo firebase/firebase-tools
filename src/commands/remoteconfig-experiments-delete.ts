@@ -10,7 +10,7 @@ import { getExperiment, parseExperiment } from "../remoteconfig/getExperiment";
 import { confirm } from "../prompt";
 
 export const command = new Command("remoteconfig:experiments:delete [experimentId]")
-  .description("delete a Remote Config experiment")
+  .description("delete a Remote Config experiment.")
   .before(requireAuth)
   .before(requirePermissions, [
     "firebaseabt.experiments.delete",

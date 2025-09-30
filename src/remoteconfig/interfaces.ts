@@ -174,3 +174,38 @@ export interface ListExperimentOptions {
   pageToken?: string;
   filter?: string;
 }
+
+/** Interface representing the definition of a Remote Config rollout. */
+export interface RolloutDefinition {
+  displayName: string;
+  description: string;
+  service: string;
+  controlVariant: ExperimentVariant;
+  enabledVariant: ExperimentVariant;
+}
+
+/** Interface representing a Remote Config rollout. */
+export interface RemoteConfigRollout {
+  name: string;
+  definition: RolloutDefinition;
+  state: string;
+  createTime: string;
+  startTime: string;
+  endTime: string;
+  lastUpdateTime: string;
+  etag: string;
+}
+
+/** Interface representing a list of Remote Config rollouts with pagination. */
+export interface ListRollouts {
+  // FIXED: Made 'rollouts' optional to handle API responses with no rollouts.
+  rollouts?: RemoteConfigRollout[];
+  nextPageToken?: string;
+}
+
+/** Interface representing a Remote Config list rollout options. */
+export interface ListRolloutOptions {
+  pageSize: string;
+  pageToken?: string;
+  filter?: string;
+}
