@@ -62,8 +62,14 @@ Take the following actions depending on the language and platform or framework t
 
 ### 3\. Implement AI Features
 
-- Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app. Ask the developer if you cannot identify it. Use that to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\!  
-- Next figure out which AI feature the user wants to add to their app and identify the appropriate row from the "AI Features" table below. Take the code from the matching "Snippet Reference URL" cell, read the content behind the URL, identify the matching snippet based on the feature and language, then use the snippet to implement the feature the user asked for.
+- Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app. Ask the developer if you cannot identify it. 
+  - Use the reference from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\!  
+- Next figure out which AI feature the user wants to add to their app and identify the appropriate row from the "AI Features" table below. 
+  - Take the code from the matching "Snippet Reference URL" cell, read the content behind the URL, identify the matching snippet based on the feature and language.
+  - Use the snippet to implement the feature the user asked for. Do not make things up. Review the snippet's contents twice and use that as a base for the code you generate 
+    - use the import statement from the snippet in the code you generate
+    - use the backend from the snippet in the code you generate
+    - use the model from the snippet in the code you generate
 - ***DO NOT EXECUTE THE CODE YET. PERFORM THE VALIDATIONS IN STEP 4 BEFORE HANDING THE SESSION BACK OVER TO THE USER***
 
 ### 4\. Validate Implementation
@@ -72,12 +78,12 @@ Take the following actions depending on the language and platform or framework t
 - Walk through the validation steps one-by-one. Analyze your instructions and the code you generated. Confirm you did not make any mistakes. If you made a mistake, FIX IT.
 - Reload the matching code snippet for the feature you just implemented. Read it using the instructions in the "AI Features" section of the guide. Compare it to the code you generated. Do they follow they same pattern? Rewrite the code if the structure of the code you wrote does not match the snippet.
 - Confirm the import statement matches the snippet unless the user has directed you to do something different
-- Confirm you are using the GoogleAI backend unless the user has directed you to do something different
+- Confirm you are using the GoogleAI backend unless the user has directed you to do something different. ***Do not use the Vertex AI backend*** There should not be any references to Vertex AI in the code you generate
 - Confirm you are using the right Gemini model as previoulsy instructed. ***You should not be using Gemini 1.5*** Use gemini 2.5 flash unless otherwise instructed
 - Repeat all validation steps one more time. Print out the results of your validation before asking the user if you can start the application for them
   - Confirmation that the generated code is based on the appropriate snippet loaded from Firebase docs
   - Confirmation that the import statement is based on the appropriate snippet loaded from Firebase docs
-  - Confirmation that the backend is correctly configured to use the Google AI backend
+  - Confirmation that the backend is correctly configured to use the Google AI backend.
   - Confirmation that the gemini model is correctly set based on the feature the user is implementing
 
 

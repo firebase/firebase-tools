@@ -89,7 +89,7 @@ Follow the steps below taking note of any user instructions provided above.
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js'
     '''
 8. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
-- Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 1 of this guide
+- Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 2 of this guide
   - [Backend Services](firebase://guides/init/backend): Read this resource to setup backend services for the user such as user authentication, database, or cloud file storage.
   - [Firebase AI Logic](firebase://guides/init/ai): Read this resource to add Gemini-powered AI features such as chat experiences, multimodal prompts, image generation, image editing (via nano banana), etc.
 `.trim(),
