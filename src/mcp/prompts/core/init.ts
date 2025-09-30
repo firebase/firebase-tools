@@ -1,14 +1,6 @@
 import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
 import { Platform } from "../../../dataconnect/types";
 import { prompt } from "../../prompt";
-import { init_ai } from "../../resources/guides/init_ai";
-import { init_backend } from "../../resources/guides/init_backend";
-import { ServerResource } from "../../resource";
-
-const GUIDE_PARAMS: Record<string, ServerResource> = {
-  "ai-logic": init_ai,
-  backend: init_backend,
-};
 
 export const init = prompt(
   {
@@ -20,7 +12,6 @@ export const init = prompt(
   },
   async (_, mcp) => {
     const { config, projectId, accountEmail } = mcp;
-
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
