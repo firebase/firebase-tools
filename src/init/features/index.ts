@@ -9,7 +9,12 @@ export {
   RequiredInfo as FirestoreInfo,
   actuate as firestoreActuate,
 } from "./firestore";
-export { doSetup as functions } from "./functions";
+export {
+  doSetup as functions,
+  askQuestions as functionsAskQuestions,
+  RequiredInfo as FunctionsInfo,
+  actuate as functionsActuate,
+} from "./functions";
 export { doSetup as hosting } from "./hosting";
 export {
   askQuestions as storageAskQuestions,

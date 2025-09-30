@@ -29,6 +29,7 @@ export interface Setup {
   isBillingEnabled?: boolean;
 
   hosting?: Record<string, any>;
+  functions?: Record<string, any>;
 }
 
 export interface SetupInfo {
@@ -37,6 +38,7 @@ export interface SetupInfo {
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
   storage?: features.StorageInfo;
+  functions?: features.FunctionsInfo;
   apptesting?: features.ApptestingInfo;
 }
 
@@ -77,7 +79,12 @@ const featuresList: Feature[] = [
     askQuestions: features.dataconnectSdkAskQuestions,
     actuate: features.dataconnectSdkActuate,
   },
-  { name: "functions", doSetup: features.functions },
+  {
+    name: "functions",
+    displayName: "Functions",
+    askQuestions: features.functionsAskQuestions,
+    actuate: features.functionsActuate,
+  },
   { name: "hosting", doSetup: features.hosting },
   {
     name: "storage",

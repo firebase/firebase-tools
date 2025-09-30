@@ -3,10 +3,12 @@ import { confirm } from "../../../prompt";
 import { wrapSpawn } from "../../spawn";
 
 export async function askInstallDependencies(setup: any, config: any): Promise<void> {
-  setup.npm = await confirm({
-    message: "Do you want to install dependencies with npm now?",
-    default: true,
-  });
+  if (setup.npm === undefined) {
+    setup.npm = await confirm({
+      message: "Do you want to install dependencies with npm now?",
+      default: true,
+    });
+  }
   if (setup.npm) {
     try {
       await wrapSpawn("npm", ["install"], config.projectDir + `/${setup.source}`);

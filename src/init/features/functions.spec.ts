@@ -70,7 +70,12 @@ describe("functions", () => {
   describe("doSetup", () => {
     describe("with an uninitialized Firebase project repository", () => {
       it("creates a new javascript codebase with the correct configuration", async () => {
-        const setup = { config: { functions: [] }, rcfile: {} };
+        const setup: Setup = {
+          config: { functions: [] } as any,
+          rcfile: {} as any,
+          instructions: [],
+          featureInfo: {},
+        };
         prompt.select.onFirstCall().resolves("javascript");
 
         // say "yes" to enabling eslint for the js project
@@ -82,7 +87,8 @@ describe("functions", () => {
 
         await doSetup(setup, emptyConfig, options);
 
-        expect(setup.config.functions[0]).to.deep.equal({
+        const functionsConfig = setup.config.functions as any;
+        expect(functionsConfig[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
@@ -97,7 +103,12 @@ describe("functions", () => {
       });
 
       it("creates a new typescript codebase with the correct configuration", async () => {
-        const setup = { config: { functions: [] }, rcfile: {} };
+        const setup: Setup = {
+          config: { functions: [] } as any,
+          rcfile: {} as any,
+          instructions: [],
+          featureInfo: {},
+        };
         prompt.select.onFirstCall().resolves("typescript");
         // Lint
         prompt.confirm.onFirstCall().resolves(true);
@@ -108,7 +119,8 @@ describe("functions", () => {
 
         await doSetup(setup, emptyConfig, options);
 
-        expect(setup.config.functions[0]).to.deep.equal({
+        const functionsConfig = setup.config.functions as any;
+        expect(functionsConfig[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],

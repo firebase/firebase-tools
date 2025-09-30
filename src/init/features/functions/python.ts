@@ -11,16 +11,29 @@ const MAIN_TEMPLATE = readTemplateSync("init/functions/python/main.py");
 const REQUIREMENTS_TEMPLATE = readTemplateSync("init/functions/python/requirements.txt");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/python/_gitignore");
 
+interface SetupOptions {
+  force?: boolean;
+}
+
 /**
  * Create a Python Firebase Functions project.
  */
-export async function setup(setup: any, config: Config): Promise<void> {
+export async function setup(setup: any, config: Config, options: SetupOptions = {}): Promise<void> {
   await config.askWriteProjectFile(
     `${setup.functions.source}/requirements.txt`,
     REQUIREMENTS_TEMPLATE,
+    options.force,
   );
-  await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
-  await config.askWriteProjectFile(`${setup.functions.source}/main.py`, MAIN_TEMPLATE);
+  await config.askWriteProjectFile(
+    `${setup.functions.source}/.gitignore`,
+    GITIGNORE_TEMPLATE,
+    options.force,
+  );
+  await config.askWriteProjectFile(
+    `${setup.functions.source}/main.py`,
+    MAIN_TEMPLATE,
+    options.force,
+  );
 
   // Write the latest supported runtime version to the config.
   config.set("functions.runtime", latest("python"));
@@ -38,10 +51,14 @@ export async function setup(setup: any, config: Config): Promise<void> {
     venvProcess.on("error", reject);
   });
 
-  const install = await confirm({
-    message: "Do you want to install dependencies now?",
-    default: true,
-  });
+  const install =
+    setup.installDependencies === undefined
+      ? await confirm({
+          message: "Do you want to install dependencies now?",
+          default: true,
+        })
+      : setup.installDependencies;
+  setup.installDependencies = install;
   if (install) {
     // Update pip to support dependencies like pyyaml.
     const upgradeProcess = runWithVirtualEnv(
