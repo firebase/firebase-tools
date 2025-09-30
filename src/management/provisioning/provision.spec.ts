@@ -48,6 +48,18 @@ describe("Provision module", () => {
 
   // Phase 1: buildAppNamespace helper function tests
   describe("buildAppNamespace", () => {
+    it("should return appId when provided (takes precedence)", () => {
+      const appWithAppId: ProvisionAppOptions = {
+        platform: AppPlatform.IOS,
+        bundleId: BUNDLE_ID,
+        appId: "1:123456789:ios:abcdef123456",
+      };
+
+      const result = buildAppNamespace(appWithAppId);
+
+      expect(result).to.equal("1:123456789:ios:abcdef123456");
+    });
+
     it("should return bundleId for iOS apps", () => {
       const iosApp: ProvisionAppOptions = {
         platform: AppPlatform.IOS,
@@ -88,6 +100,68 @@ describe("Provision module", () => {
       };
 
       expect(() => buildAppNamespace(unsupportedApp)).to.throw("Unsupported platform");
+    });
+
+    it("should throw error when iOS bundleId is empty", () => {
+      const iosApp: ProvisionAppOptions = {
+        platform: AppPlatform.IOS,
+        bundleId: "",
+      };
+
+      expect(() => buildAppNamespace(iosApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should throw error when Android packageName is empty", () => {
+      const androidApp: ProvisionAppOptions = {
+        platform: AppPlatform.ANDROID,
+        packageName: "",
+      };
+
+      expect(() => buildAppNamespace(androidApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should throw error when Web webAppId is empty", () => {
+      const webApp: ProvisionAppOptions = {
+        platform: AppPlatform.WEB,
+        webAppId: "",
+      };
+
+      expect(() => buildAppNamespace(webApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should throw error when iOS bundleId is missing", () => {
+      const iosApp: ProvisionAppOptions = {
+        platform: AppPlatform.IOS,
+      };
+
+      expect(() => buildAppNamespace(iosApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should throw error when Android packageName is missing", () => {
+      const androidApp: ProvisionAppOptions = {
+        platform: AppPlatform.ANDROID,
+      };
+
+      expect(() => buildAppNamespace(androidApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should throw error when Web webAppId is missing", () => {
+      const webApp: ProvisionAppOptions = {
+        platform: AppPlatform.WEB,
+      };
+
+      expect(() => buildAppNamespace(webApp)).to.throw("App namespace cannot be empty");
+    });
+
+    it("should fall back to bundleId when appId is empty string", () => {
+      const appWithEmptyId: ProvisionAppOptions = {
+        platform: AppPlatform.IOS,
+        bundleId: BUNDLE_ID,
+        appId: "",
+      };
+
+      const result = buildAppNamespace(appWithEmptyId);
+      expect(result).to.equal(BUNDLE_ID);
     });
   });
 

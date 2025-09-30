@@ -1,42 +1,66 @@
-import { input } from "../../../prompt";
+import { select } from "../../../prompt";
 import { Setup } from "../..";
 import { FirebaseError } from "../../../error";
+import { AppInfo, getConfigFileName, parseAppId } from "./utils";
+import { listFirebaseApps, AppMetadata, AppPlatform } from "../../../management/apps";
+import { provisionFirebaseApp } from "../../../management/provisioning/provision";
 import {
-  parseAppId,
-  buildProvisionOptions,
-  provisionAiLogicApp,
-  getConfigFileName,
-  validateProjectNumberMatch,
-  validateAppExists,
-} from "./utils";
-import { getFirebaseProject } from "../../../management/projects";
+  ProvisionAppOptions,
+  ProvisionFirebaseAppOptions,
+} from "../../../management/provisioning/types";
 
 export interface AiLogicInfo {
   appId: string;
+}
+
+function checkForApps(apps: AppMetadata[]): void {
+  if (!apps.length) {
+    throw new FirebaseError(
+      "No Firebase apps found in this project. Please create an app first using the Firebase Console or 'firebase apps:create'.",
+      { exit: 1 },
+    );
+  }
+}
+
+async function selectAppInteractively(apps: AppMetadata[]): Promise<AppMetadata> {
+  checkForApps(apps);
+
+  const choices = apps.map((app) => {
+    let displayText = app.displayName || app.appId;
+
+    if (!app.displayName) {
+      if (app.platform === AppPlatform.IOS && "bundleId" in app) {
+        displayText = app.bundleId as string;
+      } else if (app.platform === AppPlatform.ANDROID && "packageName" in app) {
+        displayText = app.packageName as string;
+      }
+    }
+
+    return {
+      name: `${displayText} - ${app.appId} (${app.platform})`,
+      value: app,
+    };
+  });
+
+  return await select<AppMetadata>({
+    message: "Select the Firebase app to enable AI Logic for:",
+    choices,
+  });
 }
 
 /**
  * Ask questions for AI Logic setup via CLI
  */
 export async function askQuestions(setup: Setup): Promise<void> {
-  // Ask for Firebase app ID
-  const appId = await input({
-    message: "Enter your Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID):",
-    validate: (input: string) => {
-      if (!input) {
-        return "Please enter a Firebase app ID";
-      }
+  if (!setup.projectId) {
+    throw new FirebaseError(
+      "No project ID found. Please ensure you are in a Firebase project directory or specify a project.",
+      { exit: 1 },
+    );
+  }
 
-      // Validate app ID format using the same pattern as parseAppId
-      const pattern =
-        /^(?<version>\d+):(?<projectNumber>\d+):(?<platform>ios|android|web):([0-9a-fA-F]+)$/;
-      if (!pattern.test(input)) {
-        return "Invalid app ID format. Expected: 1:PROJECT_NUMBER:PLATFORM:APP_ID (e.g., 1:123456789:web:abcdef123456)";
-      }
-
-      return true;
-    },
-  });
+  const apps = await listFirebaseApps(setup.projectId, AppPlatform.ANY);
+  const selectedApp = await selectAppInteractively(apps);
 
   // Set up the feature info
   if (!setup.featureInfo) {
@@ -44,12 +68,34 @@ export async function askQuestions(setup: Setup): Promise<void> {
   }
 
   setup.featureInfo.ailogic = {
-    appId: appId,
+    appId: selectedApp.appId,
   };
 }
 
+function getAppOptions(appInfo: AppInfo): ProvisionAppOptions {
+  switch (appInfo.platform) {
+    case AppPlatform.IOS:
+      return {
+        platform: AppPlatform.IOS,
+        appId: appInfo.appId,
+      };
+    case AppPlatform.ANDROID:
+      return {
+        platform: AppPlatform.ANDROID,
+        appId: appInfo.appId,
+      };
+    case AppPlatform.WEB:
+      return {
+        platform: AppPlatform.WEB,
+        appId: appInfo.appId,
+      };
+    default:
+      throw new FirebaseError(`Unsupported platform ${appInfo.platform}`, { exit: 1 });
+  }
+}
+
 /**
- * AI Logic provisioning: validates existing app and project, enables AI Logic via API
+ * AI Logic provisioning: enables AI Logic via API (assumes app and project are already validated)
  */
 export async function actuate(setup: Setup): Promise<void> {
   const ailogicInfo = setup.featureInfo?.ailogic as AiLogicInfo;
@@ -65,16 +111,20 @@ export async function actuate(setup: Setup): Promise<void> {
         { exit: 1 },
       );
     }
-    const projectInfo = await getFirebaseProject(setup.projectId);
-    validateProjectNumberMatch(appInfo, projectInfo);
-    await validateAppExists(appInfo);
 
-    const provisionOptions = buildProvisionOptions(
-      setup.projectId,
-      appInfo.platform,
-      ailogicInfo.appId, // Use app ID directly as namespace
-    );
-    const response = await provisionAiLogicApp(provisionOptions);
+    // Build provision options and call API directly
+    const provisionOptions: ProvisionFirebaseAppOptions = {
+      project: {
+        displayName: "Firebase Project",
+        parent: { type: "existing_project", projectId: setup.projectId },
+      },
+      app: getAppOptions(appInfo),
+      features: {
+        firebaseAiLogicInput: {},
+      },
+    };
+
+    const response = await provisionFirebaseApp(provisionOptions);
 
     const configFileName = getConfigFileName(appInfo.platform);
     const configContent = Buffer.from(response.configData, "base64").toString("utf8");

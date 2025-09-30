@@ -1,11 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as utils from "./utils";
-import * as provision from "../../../management/provisioning/provision";
 import * as apps from "../../../management/apps";
 import { AppPlatform } from "../../../management/apps";
 import { FirebaseError } from "../../../error";
-import { ProvisionFirebaseAppOptions } from "../../../management/provisioning/types";
 
 describe("ailogic utils", () => {
   let sandbox: sinon.SinonSandbox;
@@ -20,19 +18,19 @@ describe("ailogic utils", () => {
 
   describe("getConfigFileName", () => {
     it("should return correct filename for iOS", () => {
-      expect(utils.getConfigFileName("ios")).to.equal("GoogleService-Info.plist");
+      expect(utils.getConfigFileName(AppPlatform.IOS)).to.equal("GoogleService-Info.plist");
     });
 
     it("should return correct filename for Android", () => {
-      expect(utils.getConfigFileName("android")).to.equal("google-services.json");
+      expect(utils.getConfigFileName(AppPlatform.ANDROID)).to.equal("google-services.json");
     });
 
     it("should return correct filename for Web", () => {
-      expect(utils.getConfigFileName("web")).to.equal("firebase-config.json");
+      expect(utils.getConfigFileName(AppPlatform.WEB)).to.equal("firebase-config.json");
     });
 
     it("should throw error for unsupported platform", () => {
-      expect(() => utils.getConfigFileName("unsupported" as utils.SupportedPlatform)).to.throw(
+      expect(() => utils.getConfigFileName("unsupported" as AppPlatform)).to.throw(
         "Unsupported platform: unsupported",
       );
     });
@@ -46,7 +44,7 @@ describe("ailogic utils", () => {
           expected: {
             projectNumber: "123456789",
             appId: "1:123456789:ios:123456789abcdef",
-            platform: "ios",
+            platform: AppPlatform.IOS,
           },
         },
         {
@@ -54,7 +52,7 @@ describe("ailogic utils", () => {
           expected: {
             projectNumber: "123456789",
             appId: "2:123456789:android:123456789abcdef",
-            platform: "android",
+            platform: AppPlatform.ANDROID,
           },
         },
         {
@@ -62,7 +60,7 @@ describe("ailogic utils", () => {
           expected: {
             projectNumber: "123456789",
             appId: "2:123456789:web:123456789abcdef",
-            platform: "web",
+            platform: AppPlatform.WEB,
           },
         },
         {
@@ -70,7 +68,7 @@ describe("ailogic utils", () => {
           expected: {
             projectNumber: "999999999",
             appId: "1:999999999:web:abcdef123456789",
-            platform: "web",
+            platform: AppPlatform.WEB,
           },
         },
       ];
@@ -103,119 +101,12 @@ describe("ailogic utils", () => {
     });
   });
 
-  describe("buildProvisionOptions", () => {
-    it("should build options for Android app", () => {
-      const result = utils.buildProvisionOptions("test-project", "android", "com.example.app");
-
-      expect(result).to.deep.equal({
-        project: {
-          displayName: "Firebase Project",
-          parent: { type: "existing_project", projectId: "test-project" },
-        },
-        app: {
-          platform: AppPlatform.ANDROID,
-          packageName: "com.example.app",
-        },
-        features: {
-          firebaseAiLogicInput: {},
-        },
-      });
-    });
-
-    it("should build options for iOS app", () => {
-      const result = utils.buildProvisionOptions("test-project", "ios", "com.example.App");
-
-      expect(result).to.deep.equal({
-        project: {
-          displayName: "Firebase Project",
-          parent: { type: "existing_project", projectId: "test-project" },
-        },
-        app: {
-          platform: AppPlatform.IOS,
-          bundleId: "com.example.App",
-        },
-        features: {
-          firebaseAiLogicInput: {},
-        },
-      });
-    });
-
-    it("should build options for Web app", () => {
-      const result = utils.buildProvisionOptions("test-project", "web", "my-web-app");
-
-      expect(result).to.deep.equal({
-        project: {
-          displayName: "Firebase Project",
-          parent: { type: "existing_project", projectId: "test-project" },
-        },
-        app: {
-          platform: AppPlatform.WEB,
-          webAppId: "my-web-app",
-        },
-        features: {
-          firebaseAiLogicInput: {},
-        },
-      });
-    });
-
-    it("should build options without existing project", () => {
-      const result = utils.buildProvisionOptions(undefined, "web", "my-web-app");
-
-      expect(result.project).to.deep.equal({
-        displayName: "Firebase Project",
-      });
-      expect(result.project).to.not.have.property("parent");
-    });
-  });
-
-  describe("provisionAiLogicApp", () => {
-    let provisionFirebaseAppStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      provisionFirebaseAppStub = sandbox.stub(provision, "provisionFirebaseApp");
-    });
-
-    it("should call provisioning API and return response", async () => {
-      const mockOptions = { project: {}, app: {}, features: {} };
-      const mockResponse = {
-        appResource: "projects/test-project/apps/test-app",
-        configData: "base64config",
-        configMimeType: "application/json",
-      };
-      provisionFirebaseAppStub.returns(mockResponse);
-
-      const result = await utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions);
-
-      sinon.assert.calledWith(provisionFirebaseAppStub, mockOptions);
-      expect(result).to.equal(mockResponse);
-    });
-
-    it("should wrap provisioning errors in FirebaseError", async () => {
-      const mockOptions = { project: {}, app: {}, features: {} };
-      const originalError = new Error("API failed");
-      provisionFirebaseAppStub.throws(originalError);
-
-      await expect(
-        utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions),
-      ).to.be.rejectedWith(FirebaseError, "AI Logic provisioning failed: API failed");
-    });
-
-    it("should handle string errors", async () => {
-      const mockOptions = { project: {}, app: {}, features: {} };
-      provisionFirebaseAppStub.throws(new Error("String error"));
-
-      await expect(
-        utils.provisionAiLogicApp(mockOptions as ProvisionFirebaseAppOptions),
-      ).to.be.rejectedWith(FirebaseError, "AI Logic provisioning failed: String error");
-    });
-  });
-
   describe("validateProjectNumberMatch", () => {
     it("should not throw when project numbers match", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:web:abcdef",
-        platform: "web",
+        platform: AppPlatform.WEB,
       };
       const projectInfo = {
         projectNumber: "123456789",
@@ -231,7 +122,7 @@ describe("ailogic utils", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:web:abcdef",
-        platform: "web",
+        platform: AppPlatform.WEB,
       };
       const projectInfo = {
         projectNumber: "987654321",
@@ -258,7 +149,7 @@ describe("ailogic utils", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:web:abcdef",
-        platform: "web",
+        platform: AppPlatform.WEB,
       };
       getAppConfigStub.resolves({ mockConfig: true });
 
@@ -270,7 +161,7 @@ describe("ailogic utils", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:ios:abcdef",
-        platform: "ios",
+        platform: AppPlatform.IOS,
       };
       getAppConfigStub.resolves({ mockConfig: true });
 
@@ -282,7 +173,7 @@ describe("ailogic utils", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:android:abcdef",
-        platform: "android",
+        platform: AppPlatform.ANDROID,
       };
       getAppConfigStub.resolves({ mockConfig: true });
 
@@ -294,7 +185,7 @@ describe("ailogic utils", () => {
       const appInfo: utils.AppInfo = {
         projectNumber: "123456789",
         appId: "1:123456789:web:nonexistent",
-        platform: "web",
+        platform: AppPlatform.WEB,
       };
       getAppConfigStub.throws(new Error("App not found"));
 

@@ -5,6 +5,12 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
+import {
+  parseAppId,
+  validateProjectNumberMatch,
+  validateAppExists,
+} from "../../../init/features/ailogic/utils";
+import { getFirebaseProject } from "../../../management/projects";
 
 export const init = tool(
   {
@@ -189,6 +195,12 @@ export const init = tool(
       };
     }
     if (features.ailogic) {
+      // Validate AI Logic app for MCP flow
+      const appInfo = parseAppId(features.ailogic.app_id);
+      const projectInfo = await getFirebaseProject(projectId);
+      validateProjectNumberMatch(appInfo, projectInfo);
+      await validateAppExists(appInfo);
+
       featuresList.push("ailogic");
       featureInfo.ailogic = {
         appId: features.ailogic.app_id,

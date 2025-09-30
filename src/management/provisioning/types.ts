@@ -2,25 +2,26 @@ import { AppPlatform } from "../apps";
 
 interface BaseProvisionAppOptions {
   platform: AppPlatform;
+  appId?: string;
 }
 
 interface IosAppOptions extends BaseProvisionAppOptions {
   platform: AppPlatform.IOS;
-  bundleId: string;
+  bundleId?: string;
   appStoreId?: string;
   teamId?: string;
 }
 
 interface AndroidAppOptions extends BaseProvisionAppOptions {
   platform: AppPlatform.ANDROID;
-  packageName: string;
+  packageName?: string;
   sha1Hashes?: string[];
   sha256Hashes?: string[];
 }
 
 interface WebAppOptions extends BaseProvisionAppOptions {
   platform: AppPlatform.WEB;
-  webAppId: string;
+  webAppId?: string;
 }
 
 export type ProvisionAppOptions = IosAppOptions | AndroidAppOptions | WebAppOptions;

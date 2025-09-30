@@ -15,16 +15,30 @@ const apiClient = new Client({
  * Builds the appropriate app namespace string based on the platform type.
  */
 export function buildAppNamespace(app: types.ProvisionAppOptions): string {
+  let namespace;
+  if (app.appId) {
+    return app.appId;
+  }
+
   switch (app.platform) {
     case AppPlatform.IOS:
-      return app.bundleId;
+      namespace = app.bundleId || "";
+      break;
     case AppPlatform.ANDROID:
-      return app.packageName;
+      namespace = app.packageName || "";
+      break;
     case AppPlatform.WEB:
-      return app.webAppId;
+      namespace = app.webAppId || "";
+      break;
     default:
       throw new FirebaseError("Unsupported platform", { exit: 2 });
   }
+
+  if (!namespace) {
+    throw new FirebaseError("App namespace cannot be empty", { exit: 2 });
+  }
+
+  return namespace;
 }
 
 /**
