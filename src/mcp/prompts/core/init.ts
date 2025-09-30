@@ -114,7 +114,7 @@ IMPORTANT: The backend setup guide is for web apps only. If the user requests ba
 
 The following Firebase services are available to be configured. Use the Firebase \`read_resources\` tool to load their instructions for further guidance.
 
-- [Backend Services](firebase://guides/init/backend): Read this resource to setup backend services for the user such as user authentication, database, or cloud file storage.
+- [Backend Services](firebase://guides/init/backend): Read this resource to setup backend services for the user such as user authentication, database, or hosting.
 - [GenAI Services](firebase://guides/init/ai): Read this resource to setup GenAI services for the user such as building agents, LLM usage, unstructured data analysis, image editing, video generation, etc.
 
 UNAVAILABLE SERVICES: Analytics, Remote Config (feature flagging), A/B testing, Crashlytics (crash reporting), and Cloud Messaging (push notifications) are not yet available for setup via this command.
