@@ -51,7 +51,9 @@ The following mobile and web applications are supported. Let the user know their
 
 Take the following actions depending on the language and platform or framework that is identified:
 
-- Supported Platform \-\> Set up Firebase AI Logic  
+- Android Platform \-\> Set up Firebase AI Logic  
+- Web Platform \-\> Set up Firebase AI Logic 
+- Flutter Platform \-\> Set up Firebase AI Logic. Always do the subsequent firebase_init call using the web app
 - Unsupported Platform \-\> Direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev)
 
 ### 2\. Set up Firebase AI Logic
@@ -99,7 +101,6 @@ Take the following actions depending on the language and platform or framework t
   - Confirmation that the import statement is based on the appropriate snippet loaded from Firebase docs
   - Confirmation that the backend is correctly configured to use the Google AI backend.
   - Confirmation that the gemini model is correctly set based on the feature the user is implementing
-
 
 ### 5\. Code Snippet References
 

@@ -70,7 +70,7 @@ Follow the steps below taking note of any user instructions provided above.
      - Install the Flutterfire CLI 
      - Use the Flutterfire CLI tool to connect to the project  
      - Use the Flutterfire CLI to register the appropriate applications based on the user's input
-       - Explicitly Ask the user which combination of android, ios, macos, web, linux, and windows targets they want then register the appropriate apps in the project using the flutterfire CLI
+       - Let the developer know that you currently only support configuring web, ios, and android targets together in a bundle. Each of those targets will have appropriate apps registered in the project using the flutterfire CLI
        - Execute flutterfire config using the following pattern: flutterfire config --yes --project=<aliasOrProjectId> --platforms=<platforms> 
 6. Now that we have a working environment, print out 1) Active user 2) Firebase Project and 3) Firebase App & platform they are using for this process.
    - Ask the user to confirm this is correct before continuing
