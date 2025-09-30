@@ -5,6 +5,7 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
+import { FirebaseError } from "../../../error";
 import {
   parseAppId,
   validateProjectNumberMatch,
@@ -195,6 +196,14 @@ export const init = tool(
       };
     }
     if (features.ailogic) {
+      // AI Logic requires a project
+      if (!projectId) {
+        throw new FirebaseError(
+          "AI Logic feature requires a Firebase project. Please specify a project ID.",
+          { exit: 1 },
+        );
+      }
+
       // Validate AI Logic app for MCP flow
       const appInfo = parseAppId(features.ailogic.app_id);
       const projectInfo = await getFirebaseProject(projectId);
