@@ -35,7 +35,7 @@ export const init_firestore = resource(
 **Verification & Testing:**
 - Only proceed with verification after successfully running \`firebase deploy --only firestore\`
 - Guide the user to visit \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown).
-- Have developers test their application functionality and verify test data appears in the console
+- Have developers test their application functionality and verify test data appears in the console. Ask them to run a local version of their app in a separate terminal and suggest the command to run their dev app. For example, for web apps you can check their \`package.json\` to see how to run their app.
 - Only proceed to the next step after confirming successful database setup and data visibility
 
 **Security Configuration:**
