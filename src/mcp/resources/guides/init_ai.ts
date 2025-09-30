@@ -62,14 +62,28 @@ Take the following actions depending on the language and platform or framework t
 
 ### 3\. Implement AI Features
 
-- Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app. Ask the developer if you cannot identify it. 
-  - Use the reference from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\!  
-- Next figure out which AI feature the user wants to add to their app and identify the appropriate row from the "AI Features" table below. 
+#### Gather Building Blocks for Code Generation
+- Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app.
+  - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\! 
+  - For Android apps, always inlcude the following imports. do not forget or modify them
+    - import com.google.firebase.Firebase
+    - import com.google.firebase.ai.ai
+    - import com.google.firebase.ai.type.GenerativeBackend
+  - For Flutter apps, always include the following imports. do not forget or modify them
+    - import 'package:firebase_core/firebase_core.dart';
+    - import 'package:firebase_ai/firebase_ai.dart';
+    - import 'firebase_options.dart';
+  - For web apps, always include the following imports. do not forget or modify them
+    - import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
+
+#### Implement AI Features
+- Figure out which AI feature the user wants to add to their app and identify the appropriate row from the "AI Features" table below. 
   - Take the code from the matching "Snippet Reference URL" cell, read the content behind the URL, identify the matching snippet based on the feature and language.
-  - Use the snippet to implement the feature the user asked for. Do not make things up. Review the snippet's contents twice and use that as a base for the code you generate 
-    - use the import statement from the snippet in the code you generate
-    - use the backend from the snippet in the code you generate
-    - use the model from the snippet in the code you generate
+  - Make a plan for how you will implement the code. Use the snippet as a base to implement the feature in the app. Make sure the bullet points below are added to the implementation plan
+    - use the import statements from the building blocks section above
+    - use the the google ai backend. Do not use vertex. 
+    - use the gemini-2.5-flash-lite
+  - Now implement the feature according to the plan you put together. Do not stray away from the instructions provided to you. Always re-read them fully and consult them if you run into any issues. 
 - ***DO NOT EXECUTE THE CODE YET. PERFORM THE VALIDATIONS IN STEP 4 BEFORE HANDING THE SESSION BACK OVER TO THE USER***
 
 ### 4\. Validate Implementation
