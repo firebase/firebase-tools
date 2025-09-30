@@ -107,7 +107,7 @@ async function createDatabase(context: any, options: Options): Promise<void> {
     if (e.status === 404) {
       // Database is not found. Let's create it.
       utils.logLabeledBullet(
-        "firetore",
+        "firestore",
         `Creating the new Firestore database ${firestoreCfg.database}...`,
       );
       const createDatabaseReq: types.CreateDatabaseReq = {
