@@ -14,35 +14,13 @@ export const init = prompt(
   {
     name: "init",
     description: "Use this command to setup Firebase for the current workspace.",
-    arguments: [
-      {
-        name: "prompt",
-        description: "any Firebase products you want to use or the problems you're trying to solve",
-        required: false,
-      },
-    ],
     annotations: {
       title: "Initialize Firebase",
     },
   },
-  async ({ prompt }, mcp) => {
+  async (_, mcp) => {
     const { config, projectId, accountEmail } = mcp;
 
-    // This allows a "short circuit" feature where you can pass a specific
-    // name, like "ai-logic" into the prompt and get a specific guide
-    const resourceDefinition = prompt ? GUIDE_PARAMS[prompt] : undefined;
-    if (resourceDefinition) {
-      const resource = await resourceDefinition.fn(resourceDefinition.mcp.uri, mcp);
-      return resource.contents
-        .filter((resContents) => !!resContents.text)
-        .map((resContents) => ({
-          role: "user" as const,
-          content: {
-            type: "text",
-            text: String(resContents.text),
-          },
-        }));
-    }
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
@@ -72,9 +50,6 @@ Contents of \`firebase.json\` config file:
 ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })}
 \`\`\`
 
-## User Instructions
-
-${prompt || "<the user didn't supply specific instructions>"}
 
 ## Steps
 
