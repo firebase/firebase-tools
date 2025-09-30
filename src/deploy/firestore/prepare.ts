@@ -9,6 +9,10 @@ import { logger } from "../../logger";
 import { DeployOptions } from "..";
 import { ensure } from "../../ensureApiEnabled";
 import { firestoreOrigin } from "../../api";
+import { FirebaseError } from "../../error";
+import * as types from "../../firestore/api-types";
+import { FirestoreConfig } from "../../firebaseConfig";
+import { FirestoreApi } from "../../firestore/api";
 
 export interface RulesContext {
   databaseId: string;
@@ -67,6 +71,58 @@ function prepareIndexes(
     indexesRawSpec,
   } as IndexContext);
 }
+async function createDatabase(context: any, options: Options): Promise<void> {
+  let firestoreCfg: FirestoreConfig = options.config.data.firestore;
+  if (Array.isArray(firestoreCfg)) {
+    firestoreCfg = firestoreCfg[0];
+  }
+  if (!options.projectId) {
+    throw new FirebaseError("Project ID is required to create a Firestore database.");
+  }
+  if (!firestoreCfg) {
+    throw new FirebaseError("Firestore database configuration not found in firebase.json.");
+  }
+  if (!firestoreCfg.database) {
+    firestoreCfg.database = "(default)";
+  }
+
+  let edition: types.DatabaseEdition = types.DatabaseEdition.STANDARD;
+  if (firestoreCfg.edition) {
+    const upperEdition = firestoreCfg.edition.toUpperCase();
+    if (
+      upperEdition !== types.DatabaseEdition.STANDARD &&
+      upperEdition !== types.DatabaseEdition.ENTERPRISE
+    ) {
+      throw new FirebaseError(
+        `Invalid edition specified for database in firebase.json: ${firestoreCfg.edition}`,
+      );
+    }
+    edition = upperEdition as types.DatabaseEdition;
+  }
+
+  const api = new FirestoreApi();
+  try {
+    await api.getDatabase(options.projectId, firestoreCfg.database);
+  } catch (e: any) {
+    if (e.status === 404) {
+      // Database is not found. Let's create it.
+      utils.logLabeledBullet(
+        "firetore",
+        `Creating the new Firestore database ${firestoreCfg.database}...`,
+      );
+      const createDatabaseReq: types.CreateDatabaseReq = {
+        project: options.projectId,
+        databaseId: firestoreCfg.database,
+        locationId: firestoreCfg.location || "nam5", // Default to 'nam5' if location is not specified
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: edition,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+      };
+      await api.createDatabase(createDatabaseReq);
+    }
+  }
+}
 
 /**
  * Prepares Firestore deploys.
@@ -74,6 +130,7 @@ function prepareIndexes(
  * @param options The CLI options object.
  */
 export default async function (context: any, options: DeployOptions): Promise<void> {
+  await ensure(context.projectId, firestoreOrigin(), "firestore");
   await ensure(context.projectId, firestoreOrigin(), "firestore");
   if (options.only) {
     const targets = options.only.split(",");
@@ -111,6 +168,9 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
   context.firestore.rulesDeploy = rulesDeploy;
 
+  // We need to create the DB first if it doesn't exist
+  // Otherwise, prepare rules will fail when it calls the :test endpoint
+  await createDatabase(context, options);
   for (const firestoreConfig of firestoreConfigs) {
     if (firestoreConfig.indexes) {
       prepareIndexes(context, options, firestoreConfig.database, firestoreConfig.indexes);
