@@ -19,44 +19,42 @@ export async function release(
   }
 
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
-  await Promise.all(
-    context.hosting.deploys.map(async (deploy) => {
-      if (!deploy.version) {
-        throw new FirebaseError(
-          "Assertion failed: Hosting version should have been set in the prepare phase",
-          { exit: 2 },
-        );
-      }
-      utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "finalizing version...");
-
-      const update: Partial<api.Version> = {
-        status: "FINALIZED",
-        config: await convertConfig(context, functionsPayload, deploy),
-      };
-
-      const versionId = utils.last(deploy.version.split("/"));
-      const finalizedVersion = await api.updateVersion(deploy.config.site, versionId, update);
-
-      logger.debug(`[hosting] finalized version for ${deploy.config.site}:${finalizedVersion}`);
-      utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "version finalized");
-      utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "releasing new version...");
-
-      if (context.hostingChannel) {
-        logger.debug("[hosting] releasing to channel:", context.hostingChannel);
-      }
-
-      const otherReleaseOpts: Partial<Pick<api.Release, "message">> = {};
-      if (options.message) {
-        otherReleaseOpts.message = options.message;
-      }
-      const release = await api.createRelease(
-        deploy.config.site,
-        context.hostingChannel || "live",
-        deploy.version,
-        otherReleaseOpts,
+  for (const deploy of context.hosting.deploys) {
+    if (!deploy.version) {
+      throw new FirebaseError(
+        "Assertion failed: Hosting version should have been set in the prepare phase",
+        { exit: 2 },
       );
-      logger.debug("[hosting] release:", release);
-      utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
-    }),
-  );
+    }
+    utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "finalizing version...");
+
+    const update: Partial<api.Version> = {
+      status: "FINALIZED",
+      config: await convertConfig(context, functionsPayload, deploy),
+    };
+
+    const versionId = utils.last(deploy.version.split("/"));
+    const finalizedVersion = await api.updateVersion(deploy.config.site, versionId, update);
+
+    logger.debug(`[hosting] finalized version for ${deploy.config.site}:${finalizedVersion}`);
+    utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "version finalized");
+    utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "releasing new version...");
+
+    if (context.hostingChannel) {
+      logger.debug("[hosting] releasing to channel:", context.hostingChannel);
+    }
+
+    const otherReleaseOpts: Partial<Pick<api.Release, "message">> = {};
+    if (options.message) {
+      otherReleaseOpts.message = options.message;
+    }
+    const release = await api.createRelease(
+      deploy.config.site,
+      context.hostingChannel || "live",
+      deploy.version,
+      otherReleaseOpts,
+    );
+    logger.debug("[hosting] release:", release);
+    utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
+  }
 }
