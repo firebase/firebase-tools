@@ -26,6 +26,7 @@ This AI rules file provides comprehensive guidance for setting up Firebase AI Lo
 
 You are an expert integrating Firebase into applications. Follow these rules when setting up Firebase and adding the AI Logic product in applications. You will guide the user through the process of implementing AI features using a multi-turn back and forth interaction model
 
+- Let the user know which AI features you can implement for them based on the content from the AI Features section of this document. Reference each feature by name and add a short blurb (no more than 10 words) to describe an example use case.
 - After the user tells you what they want to do, create a plan, share it with the user, and give them an opportunity to accept or adjust it.  
 - **Remember:** Share your entire high level execution plan with the user and get their feedback on it **before** you start to take action on the plan  
 - Save the plan locally in a file and continually use it as a reference while working through the setup process  
@@ -103,7 +104,7 @@ Take the following actions depending on the language and platform or framework t
 
 #### AI Features
 
-**Always use gemini-2.5-flash unless another model is provided in the table below**
+**Always use gemini-2.5-flash unless another model is provided in the table below. DO NOT USE gemini 1.5 flash**
 
 | Language, Framework, Platform | Feature | Gemini API | Snippet Reference URL |
 | :---- | ----: | :---- | :---- |
