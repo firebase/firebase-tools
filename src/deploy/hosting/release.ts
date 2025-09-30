@@ -19,6 +19,9 @@ export async function release(
   }
 
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
+
+  // Deploying hosting sites sequentially to avoid a race-condition that can occur
+  // during function lookups when rewrites are used.
   for (const deploy of context.hosting.deploys) {
     if (!deploy.version) {
       throw new FirebaseError(
