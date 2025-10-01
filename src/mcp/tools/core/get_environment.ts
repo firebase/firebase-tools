@@ -5,6 +5,7 @@ import { getAliases } from "../../../projectUtils";
 import { dump } from "js-yaml";
 import { getAllAccounts } from "../../../auth";
 import { configstore } from "../../../configstore";
+import { detectApps } from "../../../appUtils";
 
 export const get_environment = tool(
   {
@@ -24,37 +25,53 @@ export const get_environment = tool(
   async (_, { projectId, host, accountEmail, rc, config }) => {
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
     const geminiTosAccepted = !!configstore.get("gemini");
+    const projectFileExists = config.projectFileExists("firebase.json");
+    const detectedApps = await detectApps(process.cwd());
+    const allAccounts = getAllAccounts().map((account) => account.user.email);
+    const hasOtherAccounts = allAccounts.filter((email) => email !== accountEmail).length > 0;
+
+    const projectConfigPathString = projectFileExists
+      ? config.path("firebase.json")
+      : "<NO CONFIG PRESENT>";
+    const detectedAppsMap = detectedApps
+      .filter((app) => !!app.appId)
+      .reduce((map, app) => {
+        if (app.appId) {
+          map.set(app.appId, app.bundleId ? app.bundleId : "<UNKNOWN BUNDLE ID>");
+        }
+        return map;
+      }, new Map<string, string>());
+    const activeProjectString = projectId
+      ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}`
+      : "<NONE>";
+    const acceptedGeminiTosString = geminiTosAccepted ? "Accepted" : "Not Accepted";
     return toContent(`# Environment Information
 
 Project Directory: ${host.cachedProjectDir}
-Project Config Path: ${config.projectFileExists("firebase.json") ? config.path("firebase.json") : "<NO CONFIG PRESENT>"}
-Active Project ID: ${
-      projectId ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}` : "<NONE>"
-    }
+Project Config Path: ${projectConfigPathString}
+Active Project ID: ${activeProjectString}
+Gemini in Firebase Terms of Service: ${acceptedGeminiTosString}
 Authenticated User: ${accountEmail || "<NONE>"}
-Gemini in Firebase Terms of Service: ${geminiTosAccepted ? "Accepted" : "Not Accepted"}
-
-# Available Project Aliases (format: '[alias]: [projectId]')
-
-${dump(rc.projects).trim()}
-
-# Available Accounts:
-
-${dump(getAllAccounts().map((account) => account.user.email)).trim()}
+Detected App IDs: ${detectedAppsMap.size > 0 ? `\n\n${dump(Object.fromEntries(detectedAppsMap)).trim()}\n` : "<NONE>"}
+Available Project Aliases (format: '[alias]: [projectId]'): ${Object.entries(rc.projects).length > 0 ? `\n\n${dump(rc.projects).trim()}\n` : "<NONE>"}
+Available Accounts: ${hasOtherAccounts ? `\n\n${dump(allAccounts).trim()}` : "<NONE>"}
 ${
-  config.projectFileExists("firebase.json")
-    ? `
-# firebase.json contents:
+  projectFileExists
+    ? `\nfirebase.json contents:
 
 \`\`\`json
 ${config.readProjectFile("firebase.json")}
 \`\`\``
-    : `\n# Empty Environment
+    : `\nNo firebase.json file was found.
+      
+If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
 
-It looks like the current directory is not initialized as a Firebase project. The user will most likely want to:
+If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
 
 a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.`
+b) Initialize a new Firebase project directory using the 'firebase_init' tool.
+
+Confirm with the user before taking action.`
 }`);
   },
 );

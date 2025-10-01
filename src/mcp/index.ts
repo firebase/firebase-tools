@@ -66,6 +66,7 @@ export class FirebaseMcpServer {
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
   cachedProjectDir?: string;
+  cachedProjectId?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
@@ -102,7 +103,11 @@ export class FirebaseMcpServer {
     return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
-  constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
+  constructor(options: {
+    activeFeatures?: ServerFeature[];
+    projectRoot?: string;
+    projectId?: string;
+  }) {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
@@ -146,6 +151,7 @@ export class FirebaseMcpServer {
       return {};
     });
 
+    this.cachedProjectId = options.projectId;
     this.detectProjectRoot();
     this.detectActiveFeatures();
   }
@@ -237,6 +243,7 @@ export class FirebaseMcpServer {
   }
 
   get availableTools(): ServerTool[] {
+    this.log("error", `active features for prompts: ${this.activeFeatures || "<none>"}`);
     return availableTools(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );
@@ -247,6 +254,7 @@ export class FirebaseMcpServer {
   }
 
   get availablePrompts(): ServerPrompt[] {
+    this.log("error", `active features for prompts: ${this.activeFeatures || "<none>"}`);
     return availablePrompts(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );
@@ -265,7 +273,11 @@ export class FirebaseMcpServer {
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
+    const options: Partial<Options> = {
+      cwd: this.cachedProjectDir,
+      isMCP: true,
+      projectId: this.cachedProjectId,
+    };
     await cmd.prepare(options);
     return options;
   }
