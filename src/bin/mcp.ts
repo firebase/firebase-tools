@@ -12,6 +12,7 @@ import { resolve } from "path";
 const STARTUP_MESSAGE = `
 This is a running process of the Firebase MCP server. This command should only be executed by an MCP client. An example MCP client configuration might be:
 
+An example MCP client configuration for apps using Firebase Build tools might be:
 {
   "mcpServers": {
     "firebase": {
@@ -27,6 +28,7 @@ export async function mcp(): Promise<void> {
     options: {
       only: { type: "string", default: "" },
       dir: { type: "string" },
+      project: { type: "string" },
       "generate-tool-list": { type: "boolean", default: false },
       "generate-prompt-list": { type: "boolean", default: false },
       "generate-resource-list": { type: "boolean", default: false },
@@ -54,9 +56,11 @@ export async function mcp(): Promise<void> {
   const activeFeatures = (values.only || "")
     .split(",")
     .filter((f) => SERVER_FEATURES.includes(f as ServerFeature)) as ServerFeature[];
+
   const server = new FirebaseMcpServer({
     activeFeatures,
     projectRoot: values.dir ? resolve(values.dir) : undefined,
+    projectId: values["project"],
   });
   await server.start();
   if (process.stdin.isTTY) process.stderr.write(STARTUP_MESSAGE);
