@@ -2,7 +2,7 @@
 - The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
 - `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
 - Fixed a bug when `firebase init dataconnect` failed to create a React app when launched from VS Code extension (#9171).
-- Added seed_data.gql to Data Connect's initial movie template ().
+- Added seed_data.gql to Data Connect's initial movie template (#9232).
 - `firebase dataconnect:sql:migrate` now supports Cloud SQL instances with only private IPs. The command must be run in the same VPC of the instance to work. (##9200)
 - CloudSQL instances created with `firebase dataconnect:connect` now default to Postgres 17.
 - Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
