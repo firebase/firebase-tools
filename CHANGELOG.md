@@ -4,6 +4,6 @@
 - Fixed a bug when `firebase init dataconnect` failed to create a React app when launched from VS Code extension (#9171).
 - Added seed_data.gql to Data Connect's initial movie template (#9232).
 - `firebase dataconnect:sql:migrate` now supports Cloud SQL instances with only private IPs. The command must be run in the same VPC of the instance to work. (##9200)
-- CloudSQL instances created with `firebase dataconnect:connect` now default to Postgres 17.
+- CloudSQL instances created with `firebase deploy` now default to Postgres 17.
 - Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
 - Fixed an issue where `firebase deploy --only firestore` would fail with 403 errors on projects that never had a database created.
