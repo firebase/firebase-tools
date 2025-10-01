@@ -38,7 +38,7 @@ export const command = new Command("remoteconfig:rollouts:list")
       pageToken: options.pageToken as string,
       filter: options.filter as string,
     };
-    const { rollouts, nextPageToken }: ListRollouts = await rcRollout.listRollout(
+    const { rollouts, nextPageToken }: ListRollouts = await rcRollout.listRollouts(
       projectNumber,
       NAMESPACE_FIREBASE,
       listRolloutOptions,
