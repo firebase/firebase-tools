@@ -51,6 +51,7 @@ describe("init ailogic", () => {
       expect(mockSetup.featureInfo).to.have.property("ailogic");
       expect(mockSetup.featureInfo?.ailogic).to.deep.equal({
         appId: "1:123456789:android:abcdef123456",
+        displayName: "Test Android App",
       });
     });
 

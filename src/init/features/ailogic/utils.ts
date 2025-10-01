@@ -1,4 +1,4 @@
-import { AppPlatform, getAppConfig } from "../../../management/apps";
+import { AppPlatform, listFirebaseApps, AppMetadata } from "../../../management/apps";
 import { FirebaseError } from "../../../error";
 import { FirebaseProjectMetadata } from "../../../types/project";
 
@@ -81,10 +81,23 @@ export function validateProjectNumberMatch(
 /**
  * Validate that app exists
  */
-export async function validateAppExists(appInfo: AppInfo): Promise<void> {
+export async function validateAppExists(appInfo: AppInfo, projectId: string): Promise<AppMetadata> {
   try {
-    await getAppConfig(appInfo.appId, appInfo.platform);
+    // Get apps list to find the specific app with metadata
+    const apps = await listFirebaseApps(projectId, appInfo.platform);
+    const app = apps.find((a) => a.appId === appInfo.appId);
+
+    if (!app) {
+      throw new FirebaseError(`App ${appInfo.appId} does not exist in project ${projectId}.`, {
+        exit: 1,
+      });
+    }
+
+    return app;
   } catch (error) {
+    if (error instanceof FirebaseError) {
+      throw error;
+    }
     throw new FirebaseError(`App ${appInfo.appId} does not exist or is not accessible.`, {
       exit: 1,
       original: error instanceof Error ? error : new Error(String(error)),

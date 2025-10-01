@@ -11,6 +11,7 @@ import {
 
 export interface AiLogicInfo {
   appId: string;
+  displayName?: string;
 }
 
 function checkForApps(apps: AppMetadata[]): void {
@@ -69,25 +70,29 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
   setup.featureInfo.ailogic = {
     appId: selectedApp.appId,
+    displayName: selectedApp.displayName,
   };
 }
 
-function getAppOptions(appInfo: AppInfo): ProvisionAppOptions {
+function getAppOptions(appInfo: AppInfo, displayName?: string): ProvisionAppOptions {
   switch (appInfo.platform) {
     case AppPlatform.IOS:
       return {
         platform: AppPlatform.IOS,
         appId: appInfo.appId,
+        displayName,
       };
     case AppPlatform.ANDROID:
       return {
         platform: AppPlatform.ANDROID,
         appId: appInfo.appId,
+        displayName,
       };
     case AppPlatform.WEB:
       return {
         platform: AppPlatform.WEB,
         appId: appInfo.appId,
+        displayName,
       };
     default:
       throw new FirebaseError(`Unsupported platform ${appInfo.platform}`, { exit: 1 });
@@ -115,10 +120,9 @@ export async function actuate(setup: Setup): Promise<void> {
     // Build provision options and call API directly
     const provisionOptions: ProvisionFirebaseAppOptions = {
       project: {
-        displayName: "Firebase Project",
         parent: { type: "existing_project", projectId: setup.projectId },
       },
-      app: getAppOptions(appInfo),
+      app: getAppOptions(appInfo, ailogicInfo.displayName),
       features: {
         firebaseAiLogicInput: {},
       },
