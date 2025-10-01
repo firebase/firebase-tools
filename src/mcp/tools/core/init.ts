@@ -208,11 +208,12 @@ export const init = tool(
       const appInfo = parseAppId(features.ailogic.app_id);
       const projectInfo = await getFirebaseProject(projectId);
       validateProjectNumberMatch(appInfo, projectInfo);
-      await validateAppExists(appInfo);
+      const appData = await validateAppExists(appInfo, projectId);
 
       featuresList.push("ailogic");
       featureInfo.ailogic = {
         appId: features.ailogic.app_id,
+        displayName: appData.displayName,
       };
     }
     const setup: Setup = {

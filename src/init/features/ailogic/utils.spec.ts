@@ -139,10 +139,10 @@ describe("ailogic utils", () => {
   });
 
   describe("validateAppExists", () => {
-    let getAppConfigStub: sinon.SinonStub;
+    let listFirebaseAppsStub: sinon.SinonStub;
 
     beforeEach(() => {
-      getAppConfigStub = sandbox.stub(apps, "getAppConfig");
+      listFirebaseAppsStub = sandbox.stub(apps, "listFirebaseApps");
     });
 
     it("should not throw when app exists for web platform", async () => {
@@ -151,10 +151,14 @@ describe("ailogic utils", () => {
         appId: "1:123456789:web:abcdef",
         platform: AppPlatform.WEB,
       };
-      getAppConfigStub.resolves({ mockConfig: true });
+      const mockApps = [
+        { appId: "1:123456789:web:abcdef", displayName: "Test App", platform: AppPlatform.WEB },
+      ];
+      listFirebaseAppsStub.resolves(mockApps);
 
-      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
-      sinon.assert.calledWith(getAppConfigStub, "1:123456789:web:abcdef", AppPlatform.WEB);
+      const result = await utils.validateAppExists(appInfo, "test-project");
+      expect(result).to.deep.equal(mockApps[0]);
+      sinon.assert.calledWith(listFirebaseAppsStub, "test-project", AppPlatform.WEB);
     });
 
     it("should not throw when app exists for ios platform", async () => {
@@ -163,10 +167,14 @@ describe("ailogic utils", () => {
         appId: "1:123456789:ios:abcdef",
         platform: AppPlatform.IOS,
       };
-      getAppConfigStub.resolves({ mockConfig: true });
+      const mockApps = [
+        { appId: "1:123456789:ios:abcdef", displayName: "Test iOS App", platform: AppPlatform.IOS },
+      ];
+      listFirebaseAppsStub.resolves(mockApps);
 
-      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
-      sinon.assert.calledWith(getAppConfigStub, "1:123456789:ios:abcdef", AppPlatform.IOS);
+      const result = await utils.validateAppExists(appInfo, "test-project");
+      expect(result).to.deep.equal(mockApps[0]);
+      sinon.assert.calledWith(listFirebaseAppsStub, "test-project", AppPlatform.IOS);
     });
 
     it("should not throw when app exists for android platform", async () => {
@@ -175,10 +183,18 @@ describe("ailogic utils", () => {
         appId: "1:123456789:android:abcdef",
         platform: AppPlatform.ANDROID,
       };
-      getAppConfigStub.resolves({ mockConfig: true });
+      const mockApps = [
+        {
+          appId: "1:123456789:android:abcdef",
+          displayName: "Test Android App",
+          platform: AppPlatform.ANDROID,
+        },
+      ];
+      listFirebaseAppsStub.resolves(mockApps);
 
-      await expect(utils.validateAppExists(appInfo)).to.not.be.rejected;
-      sinon.assert.calledWith(getAppConfigStub, "1:123456789:android:abcdef", AppPlatform.ANDROID);
+      const result = await utils.validateAppExists(appInfo, "test-project");
+      expect(result).to.deep.equal(mockApps[0]);
+      sinon.assert.calledWith(listFirebaseAppsStub, "test-project", AppPlatform.ANDROID);
     });
 
     it("should throw when app does not exist", async () => {
@@ -187,11 +203,11 @@ describe("ailogic utils", () => {
         appId: "1:123456789:web:nonexistent",
         platform: AppPlatform.WEB,
       };
-      getAppConfigStub.throws(new Error("App not found"));
+      listFirebaseAppsStub.resolves([]);
 
-      await expect(utils.validateAppExists(appInfo)).to.be.rejectedWith(
+      await expect(utils.validateAppExists(appInfo, "test-project")).to.be.rejectedWith(
         FirebaseError,
-        "App 1:123456789:web:nonexistent does not exist or is not accessible.",
+        "App 1:123456789:web:nonexistent does not exist in project test-project.",
       );
     });
   });

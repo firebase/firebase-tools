@@ -86,7 +86,7 @@ export function buildProvisionRequest(
 
   return {
     appNamespace: buildAppNamespace(options.app),
-    displayName: options.project.displayName,
+    displayName: options.app.displayName,
     ...(options.project.parent && { parent: buildParentString(options.project.parent) }),
     ...(options.features?.location && { location: options.features.location }),
     ...(options.requestId && { requestId: options.requestId }),
