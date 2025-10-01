@@ -3,6 +3,7 @@ import { AppPlatform } from "../apps";
 interface BaseProvisionAppOptions {
   platform: AppPlatform;
   appId?: string;
+  displayName?: string;
 }
 
 interface IosAppOptions extends BaseProvisionAppOptions {
