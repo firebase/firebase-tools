@@ -110,12 +110,6 @@ mutation {
         genre: "romance"
       },
       {
-        id: "550e8400-e29b-41d4-a716-446655440018",
-        title: "Parallel Justice",
-        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fparalel_justice.jpeg?alt=media&token=4544b5e2-7a1d-46ca-a97f-eb6a490d4288",
-        genre: "crime"
-      },
-      {
         id: "550e8400-e29b-41d4-a716-446655440019",
         title: "Veil of Illusion",
         imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fveil_illusion.jpeg?alt=media&token=7bf09a3c-c531-478a-9d02-5d99fca9393b",
