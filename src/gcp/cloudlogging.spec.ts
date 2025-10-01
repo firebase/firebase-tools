@@ -25,7 +25,7 @@ describe("cloudlogging", () => {
 
       await expect(
         cloudlogging.listEntries("project", "filter", 10, "desc"),
-      ).to.eventually.deep.equal(entries);
+      ).to.eventually.deep.equal({ entries, nextPageToken: undefined });
     });
 
     it("should reject if the API call fails", async () => {
@@ -34,6 +34,23 @@ describe("cloudlogging", () => {
       await expect(cloudlogging.listEntries("project", "filter", 10, "desc")).to.be.rejectedWith(
         FirebaseError,
         "Failed to retrieve log entries from Google Cloud.",
+      );
+    });
+
+    it("should include nextPageToken when provided", async () => {
+      const entries = [{ logName: "log1" }];
+      nock(cloudloggingOrigin())
+        .post("/v2/entries:list", (body) => {
+          expect(body.pageToken).to.equal("token");
+          return true;
+        })
+        .reply(200, { entries, nextPageToken: "next" });
+
+      await expect(cloudlogging.listEntries("project", "filter", 10, "asc", "token")).to.eventually.deep.equal(
+        {
+          entries,
+          nextPageToken: "next",
+        },
       );
     });
   });
