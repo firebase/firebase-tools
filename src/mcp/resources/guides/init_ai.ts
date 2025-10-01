@@ -70,6 +70,14 @@ Take the following actions depending on the language and platform or framework t
     - import com.google.firebase.Firebase
     - import com.google.firebase.ai.ai
     - import com.google.firebase.ai.type.GenerativeBackend
+    - Java Only
+      - implementation(platform("com.google.firebase:firebase-bom:34.3.0")) or a higher bom version if it is available
+      - implementation("com.google.firebase:firebase-ai")
+      - implementation("com.google.guava:guava:31.0.1-android")
+      - implementation("org.reactivestreams:reactive-streams:1.0.4")
+    - Kotlin Only
+      - implementation(platform("com.google.firebase:firebase-bom:34.3.0")) or a higher bom version if it is available
+      - implementation("com.google.firebase:firebase-ai")
   - For Flutter apps, always include the following imports. do not forget or modify them
     - import 'package:firebase_core/firebase_core.dart';
     - import 'package:firebase_ai/firebase_ai.dart';
@@ -119,21 +127,21 @@ Take the following actions depending on the language and platform or framework t
 | Language, Framework, Platform | Feature | Gemini API | Snippet Reference URL |
 | :---- | ----: | :---- | :---- |
 | Kotlin Android | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text |
-| Java Android | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Web | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Dart Flutter | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Kotlin Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Java Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Web | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt |
-| Dart Flutter | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text.md.txt  |
-| Kotlin Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Java Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Web | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Dart Flutter | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Kotlin Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.    | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Java Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Web Modular API | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini.md.txt |
-| Dart Flutter | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini.md.txt |
+| Java Android | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Web | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Dart Flutter | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Kotlin Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Java Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Web | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Dart Flutter | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text |
+| Kotlin Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
+| Java Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
+| Web | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
+| Dart Flutter | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
+| Kotlin Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.    | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
+| Java Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
+| Web Modular API | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
+| Dart Flutter | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
 
 
           `,
