@@ -98,12 +98,6 @@ mutation {
         genre: "horror"
       },
       {
-        id: "550e8400-e29b-41d4-a716-446655440016",
-        title: "Phoenix Rising",
-        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fpheonix_rising.jpeg?alt=media&token=7298b1fd-833c-471c-a55d-e8fc798b4ab2",
-        genre: "action"
-      },
-      {
         id: "550e8400-e29b-41d4-a716-446655440017",
         title: "The Infinite Knot",
         imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Finfinite_knot.jpeg?alt=media&token=93d54d93-d933-4663-a6fe-26b707ef823e",
