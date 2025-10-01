@@ -215,7 +215,7 @@ describe("Provision module", () => {
     it("should build basic request with minimal options", () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       const result = buildProvisionRequest(options);
@@ -233,7 +233,7 @@ describe("Provision module", () => {
           displayName: PROJECT_DISPLAY_NAME,
           parent: { type: "existing_project", projectId: "my-project-123" },
         },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       const result = buildProvisionRequest(options);
@@ -249,7 +249,7 @@ describe("Provision module", () => {
     it("should include location when specified", () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         features: { location: LOCATION },
       };
 
@@ -266,7 +266,7 @@ describe("Provision module", () => {
     it("should include requestId when specified", () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         requestId: REQUEST_ID,
       };
 
@@ -288,6 +288,7 @@ describe("Provision module", () => {
           bundleId: BUNDLE_ID,
           appStoreId: "12345",
           teamId: "TEAM123",
+          displayName: PROJECT_DISPLAY_NAME,
         },
       };
 
@@ -311,6 +312,7 @@ describe("Provision module", () => {
           packageName: PACKAGE_NAME,
           sha1Hashes: ["sha1hash1", "sha1hash2"],
           sha256Hashes: ["sha256hash1"],
+          displayName: PROJECT_DISPLAY_NAME,
         },
       };
 
@@ -329,7 +331,7 @@ describe("Provision module", () => {
     it("should build Web-specific request correctly", () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       const result = buildProvisionRequest(options);
@@ -345,7 +347,7 @@ describe("Provision module", () => {
       const aiFeatures = { enableAiLogic: true, model: "gemini-pro" };
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         features: { firebaseAiLogicInput: aiFeatures },
       };
 
@@ -411,7 +413,7 @@ describe("Provision module", () => {
     it("should provision Web app successfully", async () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       // Mock API call
@@ -434,7 +436,7 @@ describe("Provision module", () => {
           displayName: PROJECT_DISPLAY_NAME,
           parent: { type: "existing_project", projectId: "parent-project-123" },
         },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       // Mock API call with parent verification
@@ -459,7 +461,7 @@ describe("Provision module", () => {
           displayName: PROJECT_DISPLAY_NAME,
           parent: { type: "organization", organizationId: "987654321" },
         },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       // Mock API call with parent verification
@@ -484,7 +486,7 @@ describe("Provision module", () => {
           displayName: PROJECT_DISPLAY_NAME,
           parent: { type: "folder", folderId: "123456789" },
         },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       // Mock API call with parent verification
@@ -506,7 +508,7 @@ describe("Provision module", () => {
     it("should provision with requestId for idempotency", async () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         requestId: REQUEST_ID,
       };
 
@@ -529,7 +531,7 @@ describe("Provision module", () => {
     it("should provision with custom location", async () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         features: { location: LOCATION },
       };
 
@@ -553,7 +555,7 @@ describe("Provision module", () => {
       const aiFeatures = { enableAiLogic: true, model: "gemini-pro" };
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
         features: { firebaseAiLogicInput: aiFeatures },
       };
 
@@ -644,7 +646,7 @@ describe("Provision module", () => {
 
     const baseOptions: ProvisionFirebaseAppOptions = {
       project: { displayName: PROJECT_DISPLAY_NAME },
-      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
     };
 
     it("should work without requestId (undefined)", async () => {
@@ -770,7 +772,7 @@ describe("Provision module", () => {
   describe("provisionFirebaseApp - Error Cases", () => {
     const baseOptions: ProvisionFirebaseAppOptions = {
       project: { displayName: PROJECT_DISPLAY_NAME },
-      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
     };
 
     it("should reject if API call fails with 404", async () => {
@@ -976,7 +978,7 @@ describe("Provision module", () => {
     it("should require webAppId for Web apps", async () => {
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
-        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+        app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
       };
 
       // Mock API call to verify webAppId is included as appNamespace
@@ -1094,7 +1096,7 @@ describe("Provision module", () => {
 
     const baseOptions: ProvisionFirebaseAppOptions = {
       project: { displayName: PROJECT_DISPLAY_NAME },
-      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID },
+      app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
     };
 
     it("should call correct API endpoint", async () => {
