@@ -254,7 +254,7 @@ describe("Remote Config Rollout List", () => {
 
     it("should return a message if no rollouts are found.", () => {
       const result = parseRolloutList([]);
-      expect(result).to.equal("\x1b[31mNo rollouts found.\x1b[0m");
+      expect(result).to.equal("\x1b[33mNo rollouts found.\x1b[0m");
     });
   });
 });
