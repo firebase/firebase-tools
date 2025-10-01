@@ -23,11 +23,10 @@ export const init_firestore = resource(
 - Write the default \`firestore.rules\` file (see below) explain what they do, and obtain the user's confirmation before deploying.
 - Run \`firebase deploy --only firestore\` to create the database automatically Do not ask the user to create it in the console.
 - Use production environment directly (avoid emulator for initial setup)
-- Move to verification only after \`firebase deploy --only firestore\` completes successfully.
 
 **Verify and test:**
 - Guide the user to open \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown) to confirm their database is created.
-- Have the user exercise the app and confirm that test data appears in the Firestore console.
+- Have the user try out the app and confirm that test data appears in the Firestore console.
 - Proceed only after the user confirms the database exists and the data is visible in the Firestore console.
 
 **Next Steps:**
