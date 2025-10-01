@@ -92,7 +92,6 @@ Follow the steps below taking note of any user instructions provided above.
 - Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 2 of this guide
   - [Backend Services](firebase://guides/init/backend): Read this resource to setup backend services for the user such as user authentication, database, or hosting.
   - [Firebase AI Logic](firebase://guides/init/ai): Read this resource to add Gemini-powered AI features such as chat experiences, multimodal prompts, image generation, image editing (via nano banana), etc.
-
 `.trim(),
         },
       },
