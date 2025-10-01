@@ -66,7 +66,7 @@ Take the following actions depending on the language and platform or framework t
 #### Gather Building Blocks for Code Generation
 - Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app.
   - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\! 
-  - For Android apps, always inlcude the following imports. do not forget or modify them
+  - For Android apps, always include the following imports. do not forget or modify them
     - import com.google.firebase.Firebase
     - import com.google.firebase.ai.ai
     - import com.google.firebase.ai.type.GenerativeBackend
