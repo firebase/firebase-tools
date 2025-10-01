@@ -3,7 +3,7 @@ import { remoteConfigApiOrigin } from "../api";
 import * as nock from "nock";
 import * as Table from "cli-table3";
 
-import { listRollout, parseRolloutList } from "./listRollouts";
+import { listRollouts, parseRolloutList } from "./listRollouts";
 import {
   DEFAULT_PAGE_SIZE,
   ListRolloutOptions,
@@ -88,7 +88,7 @@ describe("Remote Config Rollout List", () => {
     nock.cleanAll();
   });
 
-  describe("listRollout", () => {
+  describe("listRollouts", () => {
     it("should list all rollouts with default page size", async () => {
       const listRolloutOptions: ListRolloutOptions = {
         pageSize: DEFAULT_PAGE_SIZE,
@@ -101,7 +101,7 @@ describe("Remote Config Rollout List", () => {
         .query({ page_size: DEFAULT_PAGE_SIZE })
         .reply(200, expectedResultWithAllRollouts);
 
-      const result = await listRollout(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
+      const result = await listRollouts(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
 
       expect(result.rollouts).to.deep.equal(expectedResultWithAllRollouts.rollouts);
       expect(result.nextPageToken).to.equal(expectedResultWithAllRollouts.nextPageToken);
@@ -123,7 +123,7 @@ describe("Remote Config Rollout List", () => {
         .query({ page_size: pageSize, page_token: pageToken })
         .reply(200, expectedResultWithPageTokenAndPageSize);
 
-      const result = await listRollout(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
+      const result = await listRollouts(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
 
       expect(result.rollouts).to.deep.equal(expectedResultWithPageTokenAndPageSize.rollouts);
       expect(result.nextPageToken).to.equal(expectedResultWithPageTokenAndPageSize.nextPageToken);
@@ -145,7 +145,7 @@ describe("Remote Config Rollout List", () => {
         })
         .reply(200, expectedResultWithFilter);
 
-      const result = await listRollout(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
+      const result = await listRollouts(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
 
       expect(result.rollouts).to.deep.equal(expectedResultWithFilter.rollouts);
       expect(result.nextPageToken).to.equal(expectedResultWithFilter.nextPageToken);
@@ -161,7 +161,7 @@ describe("Remote Config Rollout List", () => {
         .query({ filter: `invalid-filter`, page_size: DEFAULT_PAGE_SIZE })
         .reply(200, {});
 
-      const result = await listRollout(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
+      const result = await listRollouts(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions);
 
       expect(result.rollouts).to.deep.equal(undefined);
     });
@@ -176,7 +176,7 @@ describe("Remote Config Rollout List", () => {
         .reply(400, {});
 
       await expect(
-        listRollout(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions),
+        listRollouts(PROJECT_ID, NAMESPACE_FIREBASE, listRolloutOptions),
       ).to.eventually.be.rejectedWith(
         FirebaseError,
         `Failed to get Remote Config rollouts for project ${PROJECT_ID}.`,
