@@ -17,36 +17,22 @@ export const init_firestore = resource(
           text: `
 ### Setup Firestore Database
 **Database Setup:**
-- Configure Firebase Firestore as the primary database for the application
-- Implement client code for basic CRUD operations using the Firestore SDK
-- Write the default \`firestore.rules\` file (see below)
-- Run \`firebase deploy --only firestore\` to provision the database automatically
+- Configure Firestore as the application's primary database.
+- Implement client-side CRUD using the Firebase SDK.
+- Write the default \`firestore.rules\` file (see below) explain what they do, and obtain the user's confirmation before deploying.
+- Run \`firebase deploy --only firestore\` to create the database automatically Do not ask the user to create it in the console.
 - Use production environment directly (avoid emulator for initial setup)
+- Move to verification only after \`firebase deploy --only firestore\` completes successfully.
 
-**Pre-Deployment Security Check:**
-- **Important**: Before running \`firebase deploy --only firestore\`, check if the project has open security rules
-- If open security rules are detected, show developers the current rule content
-- Recommend keeping open rules for a maximum of 24 hours for development purposes only
-- Explain that open rules are acceptable for development but must be restricted for production
-
-**Deployment:**
-- Run \`firebase deploy --only firestore\` to provision the database automatically
-
-**Verification & Testing:**
-- Only proceed with verification after successfully running \`firebase deploy --only firestore\`
-- Guide the user to visit \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown).
-- Have developers test their application functionality and verify test data appears in the console
-- Only proceed to the next step after confirming successful database setup and data visibility
-
-**Security Configuration:**
-- Guide users to navigate to "Firestore Database" → "Rules" tab to configure security rules
-- **Critical Warning**: Never make Firestore security rules public (allowing read/write without authentication)
-- Ensure security rules are properly configured and tested before moving to production
+**Verify and test:**
+- Guide the user to open \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown) to confirm their database is created.
+- Have the user exercise the app and confirm that test data appears in the Firestore console.
+- Proceed only after the user confirms the database exists and the data is visible.
 
 **Next Steps:**
 - **Authentication**: Recommend implementing Firebase Authentication if the application handles sensitive user data or has open security rules
-- **User Management**: Implement user sign-up and login features with Firebase Authentication to establish proper data validation and access controls
-- **Security Rules**: Configure user-based security rules based on your application's specific requirements
+- **User Management**: Implement sign-up and sign-in flows to support user-based access control and update security rules accordingly.
+- **Security Rules**: Configure user-based security rules based on your application's specific requirements.
 
 ### Default \`firestore.rules\` file:
 
