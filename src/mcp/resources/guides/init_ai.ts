@@ -91,7 +91,7 @@ Take the following actions depending on the language and platform or framework t
 
 #### Perform the following checks before handing the session back to the user.
 - Walk through the validation steps one-by-one. Analyze your instructions and the code you generated. Confirm you did not make any mistakes. If you made a mistake, FIX IT.
-- Reload the matching code snippet for the feature you just implemented. Read it using the instructions in the "AI Features" section of the guide. Compare it to the code you generated. Do they follow they same pattern? Rewrite the code if the structure of the code you wrote does not match the snippet.
+- Reload the matching code snippet for the feature you just implemented. Read it using the instructions in the "AI Features" section of the guide. Compare it to the code you generated. Do they follow the same pattern? Rewrite the code if the structure of the code you wrote does not match the snippet.
 - Confirm the import statement matches the snippet unless the user has directed you to do something different
 - Confirm you are using the GoogleAI backend unless the user has directed you to do something different. ***Do not use the Vertex AI backend*** There should not be any references to Vertex AI in the code you generate
 - Confirm you are using the right Gemini model as previously instructed. ***You should not be using Gemini 1.5*** Use gemini 2.5 flash unless otherwise instructed
