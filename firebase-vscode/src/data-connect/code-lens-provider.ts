@@ -6,6 +6,8 @@ import { Disposable } from "vscode";
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { GenerateOperationInput } from "./execution/execution";
+import { findCommentsBlocks } from "../utils/find_comments";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -85,6 +87,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     for (let i = 0; i < documentNode.definitions.length; i++) {
       const x = documentNode.definitions[i];
       if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
+        // startToken.line is 1-indexed, range is 0-indexed
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const position = new vscode.Position(line, 0);
@@ -97,17 +100,6 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
           document.fileName,
         );
         if (service) {
-          // For demo purposes only
-          // codeLenses.push(
-          //   new vscode.CodeLens(range, {
-          //     title: `$(play) Refine Operation`,
-          //     command: "firebase.dataConnect.refineOperation",
-          //     tooltip:
-          //       "Execute the operation (⌘+enter or Ctrl+Enter)",
-          //     arguments: [x, operationLocation, InstanceType.LOCAL],
-          //   }),
-          // );
-
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(play) Run (local)`,
@@ -131,6 +123,33 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
       }
     }
 
+    if (projectId) {
+      const comments = findCommentsBlocks(documentText);
+      for (let i = 0; i < comments.length; i++) {
+        const c = comments[i];
+        const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
+        const queryDoc = documentNode.definitions.find((d) =>
+          d.kind === Kind.OPERATION_DEFINITION && 
+          // startToken.line is 1-indexed, endLine is 0-indexed
+          d.loc?.startToken.line === c.endLine + 2
+        );
+        const arg: GenerateOperationInput = {
+          projectId,
+          document: document,
+          description: c.text,
+          insertPosition: c.endIndex + 1,
+          existingQuery: queryDoc?.loc ? documentText.substring(c.endIndex + 1, queryDoc.loc.endToken.end) : '',
+        };
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
+            command: "firebase.dataConnect.generateOperation",
+            tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+            arguments: [arg],
+          }),
+        );
+      }
+    }
     return codeLenses;
   }
 }

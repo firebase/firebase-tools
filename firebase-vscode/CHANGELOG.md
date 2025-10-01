@@ -1,5 +1,9 @@
 ## NEXT
 
+- [Added] Refine / Generate Operation Code Lens.
+
+## 1.8.0
+
 - [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
 
 ## 1.7.0
