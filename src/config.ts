@@ -303,7 +303,7 @@ export class Config {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
         let data: unknown = {};
-        if (fs.readFileSync(filePath, "utf-8") !== "") {
+        if (fs.statSync(filePath).size > 0) {
           data = loadCJSON(filePath);
         }
 
