@@ -26,7 +26,7 @@ const TABLE_HEAD = [
 
 export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
   if (rollouts.length === 0) {
-    return "\x1b[31mNo rollouts found.\x1b[0m";
+    return "\x1b[33mNo rollouts found.\x1b[0m";
   }
 
   const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
@@ -54,7 +54,7 @@ export const parseRolloutList = (rollouts: RemoteConfigRollout[]): string => {
  * (Options are passed in listRolloutOptions object)
  * @return A promise that resolves to a list of Remote Config rollouts.
  */
-export async function listRollout(
+export async function listRollouts(
   projectId: string,
   namespace: string,
   listRolloutOptions: ListRolloutOptions,

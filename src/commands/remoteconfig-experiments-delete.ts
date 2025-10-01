@@ -9,7 +9,7 @@ import * as rcExperiment from "../remoteconfig/deleteExperiment";
 import { getExperiment, parseExperiment } from "../remoteconfig/getExperiment";
 import { confirm } from "../prompt";
 
-export const command = new Command("remoteconfig:experiments:delete [experimentId]")
+export const command = new Command("remoteconfig:experiments:delete <experimentId>")
   .description("delete a Remote Config experiment.")
   .before(requireAuth)
   .before(requirePermissions, [

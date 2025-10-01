@@ -7,7 +7,7 @@ import { needProjectNumber } from "../projectUtils";
 import { RemoteConfigRollout, NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/getRollout";
 
-export const command = new Command("remoteconfig:rollouts:get [rolloutId]")
+export const command = new Command("remoteconfig:rollouts:get <rolloutId>")
   .description("get a Remote Config rollout")
   .before(requireAuth)
   .before(requirePermissions, ["cloud.configs.get"])

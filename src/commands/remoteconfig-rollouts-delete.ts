@@ -9,7 +9,7 @@ import * as rcRollout from "../remoteconfig/deleteRollout";
 import { getRollout, parseRolloutIntoTable } from "../remoteconfig/getRollout";
 import { confirm } from "../prompt";
 
-export const command = new Command("remoteconfig:rollouts:delete [rolloutId]")
+export const command = new Command("remoteconfig:rollouts:delete <rolloutId>")
   .description("delete a Remote Config rollout.")
   .before(requireAuth)
   .before(requirePermissions, [

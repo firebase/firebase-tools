@@ -164,7 +164,7 @@ interface ExperimentVariant {
 
 /** Interface representing a list of Remote Config experiments. */
 export interface ListExperimentsResult {
-  experiments: RemoteConfigExperiment[];
+  experiments?: RemoteConfigExperiment[];
   nextPageToken?: string;
 }
 
@@ -198,7 +198,6 @@ export interface RemoteConfigRollout {
 
 /** Interface representing a list of Remote Config rollouts with pagination. */
 export interface ListRollouts {
-  // FIXED: Made 'rollouts' optional to handle API responses with no rollouts.
   rollouts?: RemoteConfigRollout[];
   nextPageToken?: string;
 }

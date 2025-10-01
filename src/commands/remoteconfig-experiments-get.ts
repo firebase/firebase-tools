@@ -7,7 +7,7 @@ import { needProjectNumber } from "../projectUtils";
 import { GetExperimentResult, NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcExperiment from "../remoteconfig/getExperiment";
 
-export const command = new Command("remoteconfig:experiments:get [experimentId]")
+export const command = new Command("remoteconfig:experiments:get <experimentId>")
   .description("get a Remote Config experiment.")
   .before(requireAuth)
   .before(requirePermissions, ["firebaseabt.experiments.get"])

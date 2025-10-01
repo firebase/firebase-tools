@@ -64,7 +64,7 @@ export async function getExperiment(
     const error: Error = getError(err);
     logger.debug(error.message);
     throw new FirebaseError(
-      `Failed to get Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${error.message}}`,
+      `Failed to get Remote Config experiment with ID ${experimentId} for project ${projectId}. Error: ${error.message}`,
       { original: error },
     );
   }
