@@ -5,12 +5,19 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
+import { FirebaseError } from "../../../error";
+import {
+  parseAppId,
+  validateProjectNumberMatch,
+  validateAppExists,
+} from "../../../init/features/ailogic/utils";
+import { getFirebaseProject } from "../../../management/projects";
 
 export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -121,6 +128,16 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        ailogic: z
+          .object({
+            app_id: z
+              .string()
+              .describe(
+                "Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID). Must be an existing app in your Firebase project.",
+              ),
+          })
+          .optional()
+          .describe("Enable Firebase AI Logic feature for existing app"),
       }),
     }),
     annotations: {
@@ -176,6 +193,26 @@ export const init = tool(
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
         apps: [],
+      };
+    }
+    if (features.ailogic) {
+      // AI Logic requires a project
+      if (!projectId) {
+        throw new FirebaseError(
+          "AI Logic feature requires a Firebase project. Please specify a project ID.",
+          { exit: 1 },
+        );
+      }
+
+      // Validate AI Logic app for MCP flow
+      const appInfo = parseAppId(features.ailogic.app_id);
+      const projectInfo = await getFirebaseProject(projectId);
+      validateProjectNumberMatch(appInfo, projectInfo);
+      await validateAppExists(appInfo);
+
+      featuresList.push("ailogic");
+      featureInfo.ailogic = {
+        appId: features.ailogic.app_id,
       };
     }
     const setup: Setup = {

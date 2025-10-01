@@ -15,6 +15,7 @@ import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
 import { optionalValueMatches } from "../functional";
+import { pollOperation } from "../operation-poller";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
@@ -779,11 +780,16 @@ export class FirestoreApi {
       cmekConfig: req.cmekConfig,
     };
     const options = { queryParams: { databaseId: req.databaseId } };
-    const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
-      url,
-      payload,
-      options,
-    );
+    const res = await this.apiClient.post<
+      types.DatabaseReq,
+      { name: string; response?: types.DatabaseResp }
+    >(url, payload, options);
+    await pollOperation({
+      apiOrigin: firestoreOrigin(),
+      apiVersion: "v1",
+      operationResourceName: res.body.name,
+      masterTimeout: 600000,
+    });
     const database = res.body.response;
     if (!database) {
       throw new FirebaseError("Not found");
