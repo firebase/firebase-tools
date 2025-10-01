@@ -45,6 +45,7 @@ const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yam
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
@@ -88,6 +89,7 @@ const templateServiceInfo: ServiceGQL = {
       ],
     },
   ],
+  seedDataGql: SEED_DATA_TEMPLATE,
 };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
