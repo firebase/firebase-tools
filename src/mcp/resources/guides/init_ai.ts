@@ -82,7 +82,7 @@ Take the following actions depending on the language and platform or framework t
   - Take the code from the matching "Snippet Reference URL" cell, read the content behind the URL, identify the matching snippet based on the feature and language.
   - Make a plan for how you will implement the code. Use the snippet as a base to implement the feature in the app. Make sure the bullet points below are added to the implementation plan
     - use the import statements from the building blocks section above
-    - use the the google ai backend. Do not use vertex. 
+    - use the google ai backend. Do not use vertex. 
     - use the gemini-2.5-flash-lite
   - Now implement the feature according to the plan you put together. Do not stray away from the instructions provided to you. Always re-read them fully and consult them if you run into any issues. 
 - ***DO NOT EXECUTE THE CODE YET. PERFORM THE VALIDATIONS IN STEP 4 BEFORE HANDING THE SESSION BACK OVER TO THE USER***
