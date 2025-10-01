@@ -19,11 +19,11 @@ export const init_firestore = resource(
 **Database Setup:**
 - Configure Firestore as the application's primary database.
 - Implement client-side CRUD using the Firebase SDK.
+- Present the app's Firestore data model to the user. Do not confuse Firestore's document model (NoSQL) with Firebase Data Connect's schema.
 - Write the default \`firestore.rules\` file (see below) explain what they do, and obtain the user's confirmation before deploying.
 - Run \`firebase deploy --only firestore\` to create the database automatically Do not ask the user to create it in the console.
 - Use production environment directly (avoid emulator for initial setup)
 - Move to verification only after \`firebase deploy --only firestore\` completes successfully.
-- If the user asks about the app's schema, present the app's Firestore data model. Do not confuse Firestore's document model (NoSQL) with Firebase Data Connect's schema.
 
 **Verify and test:**
 - Guide the user to open \`https://console.firebase.google.com/u/0/project/{PROJECT_ID}/firestore\` where \`{PROJECT_ID}\` is the project they're currently using (or use \`_\` if project id is unknown) to confirm their database is created.
@@ -31,7 +31,7 @@ export const init_firestore = resource(
 - Proceed only after the user confirms the database exists and the data is visible in the Firestore console.
 
 **Next Steps:**
-- **Authentication**: Recommend implementing Firebase Authentication if the application handles sensitive user data or has open security rules
+- **Authentication**: Recommend implementing Firebase Authentication if the application handles sensitive user data or has open security rules.
 - **User Management**: Implement sign-up and sign-in flows to support user-based access control and update security rules accordingly.
 - **Security Rules**: Configure user-based security rules based on your application's specific requirements.
 
