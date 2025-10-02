@@ -29,6 +29,7 @@
 | dataconnect_execute              | dataconnect   | Use this to execute a GraphQL operation against a Data Connect service or its emulator.                                                                                                                                                                                                                                                                                                                                                                                                  |
 | storage_get_object_download_url  | storage       | Use this to retrieve the download URL for an object in a Cloud Storage for Firebase bucket.                                                                                                                                                                                                                                                                                                                                                                                              |
 | messaging_send_message           | messaging     | Use this to send a message to a Firebase Cloud Messaging registration token or topic. ONLY ONE of `registration_token` or `topic` may be supplied in a specific call.                                                                                                                                                                                                                                                                                                                    |
+| functions_get_logs               | functions     | Retrieves a page of Cloud Functions log entries using Google Cloud Logging advanced filters.                                                                                                                                                                                                                                                                                                                                                                                             |
 | remoteconfig_get_template        | remoteconfig  | Use this to retrieve the specified Firebase Remote Config template from the currently active Firebase Project.                                                                                                                                                                                                                                                                                                                                                                           |
 | remoteconfig_update_template     | remoteconfig  | Use this to publish a new remote config template or roll back to a specific version for the project                                                                                                                                                                                                                                                                                                                                                                                      |
 | crashlytics_create_note          | crashlytics   | Add a note to an issue from crashlytics.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -39,28 +40,28 @@
       Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging. |
 
-| crashlytics*batch_get_events | crashlytics | Gets specific events by resource name.
+| crashlytics_batch_get_events | crashlytics | Gets specific events by resource name.
 Can be used to fetch sample crashes and exceptions for an issue,
 which will include stack traces and other data useful for debugging. |
 | crashlytics_list_notes | crashlytics | Use this to list all notes for an issue in Crashlytics. |
-| crashlytics_get_top_issues | crashlytics | Use this to count events and distinct impacted users, grouped by \_issue*.
+| crashlytics_get_top_issues | crashlytics | Use this to count events and distinct impacted users, grouped by _issue_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics*get_top_variants | crashlytics | Counts events and distinct impacted users, grouped by issue \_variant*.
+| crashlytics_get_top_variants | crashlytics | Counts events and distinct impacted users, grouped by issue _variant_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics*get_top_versions | crashlytics | Counts events and distinct impacted users, grouped by \_version*.
+| crashlytics_get_top_versions | crashlytics | Counts events and distinct impacted users, grouped by _version_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics*get_top_apple_devices | crashlytics | Counts events and distinct impacted users, grouped by apple \_device*.
+| crashlytics_get_top_apple_devices | crashlytics | Counts events and distinct impacted users, grouped by apple _device_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters.
 Only relevant for iOS, iPadOS and MacOS applications. |
-| crashlytics*get_top_android_devices | crashlytics | Counts events and distinct impacted users, grouped by android \_device*.
+| crashlytics_get_top_android_devices | crashlytics | Counts events and distinct impacted users, grouped by android _device_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters.
 Only relevant for Android applications. |
-| crashlytics*get_top_operating_systems | crashlytics | Counts events and distinct impacted users, grouped by \_operating system*.
+| crashlytics_get_top_operating_systems | crashlytics | Counts events and distinct impacted users, grouped by _operating system_.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
 | crashlytics_update_issue | crashlytics | Use this to update the state of Crashlytics issue. |
