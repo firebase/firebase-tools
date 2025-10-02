@@ -4,6 +4,7 @@ import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getApiFilter } from "../../../functions/functionslog";
 import { listEntries } from "../../../gcp/cloudlogging";
+import { getErrMsg } from "../../../error";
 
 const SEVERITY_LEVELS = [
   "DEFAULT",
@@ -100,8 +101,9 @@ export const get_logs = tool(
     { function_names, page_size, order, page_token, min_severity, start_time, end_time, filter },
     { projectId },
   ) => {
-    const resolvedOrder = order;
-    const resolvedPageSize = page_size;
+    const normalizedOrder = typeof order === "string" ? order.toLowerCase() : undefined;
+    const resolvedOrder: "asc" | "desc" = normalizedOrder === "asc" ? "asc" : normalizedOrder === "desc" ? "desc" : "desc";
+    const resolvedPageSize = page_size ?? 50;
 
     const normalizedSelectors = normalizeFunctionSelectors(function_names);
     const filterParts: string[] = [getApiFilter(normalizedSelectors)];
@@ -175,9 +177,8 @@ export const get_logs = tool(
 
       return toContent(response);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to retrieve Cloud Logging entries.";
-      return mcpError(message);
+      const errMsg = getErrMsg(err, "Failed to retrieve Cloud Logging entries.");
+      return mcpError(errMsg);
     }
   },
 );
