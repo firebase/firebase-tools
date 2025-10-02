@@ -10,6 +10,7 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
+  appDistributionOrigin,
   realtimeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
@@ -71,6 +72,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   messaging: messagingApiOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
+  appdistribution: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
 };

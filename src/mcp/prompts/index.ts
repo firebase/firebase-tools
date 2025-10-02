@@ -13,6 +13,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   messaging: [],
   remoteconfig: [],
   crashlytics: crashlyticsPrompts,
+  appdistribution: [],
   apphosting: [],
   database: [],
 };
