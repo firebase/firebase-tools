@@ -516,7 +516,7 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
  * @param forceRefresh If true, ignores and overwrites the cache. These cases should eventually go away.
  * @return The backend
  */
-export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
+export function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
   if (!context.existingBackendPromise || forceRefresh) {
     context.existingBackendPromise = loadExistingBackend(context);
   }
@@ -526,33 +526,31 @@ export async function existingBackend(context: Context, forceRefresh?: boolean):
 async function loadExistingBackend(ctx: Context): Promise<Backend> {
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
-  ctx.existingBackend = {
+  const existingBackend = {
     ...empty(),
   };
-  ctx.unreachableRegions = {
-    gcfV1: [],
-    gcfV2: [],
-    run: [],
+  const unreachableRegions = {
+    gcfV1: [] as string[],
+    gcfV2: [] as string[],
+    run: [] as string[],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction);
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+    existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
-  ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
+  unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      ctx.existingBackend.endpoints[endpoint.region] =
-        ctx.existingBackend.endpoints[endpoint.region] || {};
-      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
-    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       // customer has preview enabled without allowlist set
@@ -560,6 +558,9 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       throw err;
     }
   }
+
+  ctx.existingBackend = existingBackend;
+  ctx.unreachableRegions = unreachableRegions;
   return ctx.existingBackend;
 }
 
