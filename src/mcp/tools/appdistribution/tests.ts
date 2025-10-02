@@ -2,6 +2,12 @@ import { z } from "zod";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
+import {
+  parseTestDevices,
+  parseIntoStringArray,
+  toAppName,
+} from "../../../appdistribution/options-parser-util";
+import { Distribution } from "../../../appdistribution/distribution";
 
 export const run_tests = tool(
   {
@@ -24,8 +30,10 @@ export const run_tests = tool(
     if (!testDevices) return mcpError(`Must specify 'testDevices' parameter.`);
     if (!testCaseIds) return mcpError(`Must specify 'testCaseIds' parmeter.`);
 
+    const distribution = new Distribution(releaseBinaryFile);
+
     return toContent(
-      `Finished: appId=${appId}, testDevices=${testDevices}, testCaseIds=${testCaseIds}`,
+      `Finished: appName=${toAppName(appId)}, testDevices=${parseTestDevices(testDevices)}, testCaseIds=${parseIntoStringArray(testCaseIds)}, distribution=${distribution}`,
     );
   },
 );
