@@ -7,7 +7,8 @@ import { Emulators } from "../../../emulator/types";
 export const get_object_download_url = tool(
   {
     name: "get_object_download_url",
-    description: "Use this to retrieve the download URL for an object in a Cloud Storage for Firebase bucket.",
+    description:
+      "Use this to retrieve the download URL for an object in a Cloud Storage for Firebase bucket.",
     inputSchema: z.object({
       bucket: z
         .string()
