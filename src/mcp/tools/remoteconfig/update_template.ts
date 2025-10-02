@@ -15,7 +15,6 @@ export const update_template = tool(
         template: z.object({}).optional().describe("The Remote Config template object to publish."),
         version_number: z
           .number()
-          .positive()
           .optional()
           .describe("The version number to roll back to."),
         force: z
