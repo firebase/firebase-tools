@@ -11,7 +11,7 @@
     "version": "1.20.2",
     "expectedSize": 123046947,
     "expectedChecksum": "3b04168138ff8ab17025fe7756e05dc9",
-    "expectedChecksumSHA256": "9d43599ed6151199e8d604dc87fac51218e49e5f3a48519b1ae560bbe5e3382d",
+    "expectedChecksumSHA256": "4a117fc297b1441eac1b7756e80442e86ef88865b9e3caf6f59eabf83da574f8",
     "remoteUrl": "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.20.2.jar",
     "downloadPathRelativeToCacheDir": "cloud-firestore-emulator-v1.20.2.jar"
   },
