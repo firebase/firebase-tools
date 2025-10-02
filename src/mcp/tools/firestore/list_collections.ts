@@ -8,7 +8,7 @@ export const list_collections = tool(
   {
     name: "list_collections",
     description:
-      "Retrieves a list of collections from a Firestore database in the current project.",
+      "Use this to retrieve a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
       // TODO: support multiple databases
       database: z
