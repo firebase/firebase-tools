@@ -3,7 +3,11 @@ import { ApplicationIdSchema } from "../../../crashlytics/filters";
 import { distribute, Distribution } from "../../../appdistribution/distribution";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { parseIntoStringArray, parseTestDevices, toAppName } from "../../../appdistribution/options-parser-util";
+import {
+  parseIntoStringArray,
+  parseTestDevices,
+  toAppName,
+} from "../../../appdistribution/options-parser-util";
 
 export const run_tests = tool(
   {
