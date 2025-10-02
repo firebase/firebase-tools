@@ -60,7 +60,7 @@ export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
  * This is used for generating documentation.
  */
 export function markdownDocsOfPrompts(): string {
-  const allPrompts = availablePrompts([]);
+  const allPrompts = availablePrompts();
   let doc = `
 | Prompt Name | Feature Group | Description |
 | ----------- | ------------- | ----------- |`;
