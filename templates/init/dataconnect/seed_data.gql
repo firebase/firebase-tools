@@ -1,4 +1,4 @@
-mutation {
+mutation @transaction {
   movie_insertMany(
     data: [
       {
@@ -210,22 +210,10 @@ mutation {
         description: "When a group of marine biologists descends into the unexplored depths of the ocean, they encounter a terrifying and ancient force. Now, they must survive as the abyss comes alive."
       },
       {
-        movieId: "550e8400-e29b-41d4-a716-446655440016",
-        rating: 8.6,
-        releaseYear: 2025,
-        description: "A special forces operative, presumed dead, returns to avenge his fallen comrades. With nothing to lose, he faces a powerful enemy in a relentless pursuit for justice."
-      },
-      {
         movieId: "550e8400-e29b-41d4-a716-446655440017",
         rating: 7.4,
         releaseYear: 2026,
         description: "Two souls destined to meet across multiple lifetimes struggle to find each other in a chaotic world. With each incarnation, they get closer, but time itself becomes their greatest obstacle."
-      },
-      {
-        movieId: "550e8400-e29b-41d4-a716-446655440018",
-        rating: 8.1,
-        releaseYear: 2024,
-        description: "A lawyer who can see the outcomes of different timelines must choose between justice and personal gain. When a high-stakes case arises, he faces a moral dilemma that could alter his life forever."
       },
       {
         movieId: "550e8400-e29b-41d4-a716-446655440019",
