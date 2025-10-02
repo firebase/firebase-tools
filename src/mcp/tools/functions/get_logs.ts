@@ -44,14 +44,13 @@ export const get_logs = tool(
   {
     name: "get_logs",
     description:
-      "Retrieves a page of Cloud Functions log entries using Google Cloud Logging advanced filters.",
+      "Use this to retrieve a page of Cloud Functions log entries using Google Cloud Logging advanced filters.",
     inputSchema: z.object({
       function_names: z
-        .union([z.string(), z.array(z.string()).min(1)])
+        .array(z.string())
+        .min(1)
         .optional()
-        .describe(
-          "Optional list of deployed Cloud Function names to filter logs (string or array).",
-        ),
+        .describe("Optional list of deployed Cloud Function IDs to filter logs (e.g. ['fnA','fnB'])."),
       page_size: z
         .number()
         .int()
