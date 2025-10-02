@@ -39,28 +39,28 @@
       Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging. |
 
-| crashlytics_batch_get_events | crashlytics | Gets specific events by resource name.
+| crashlytics*batch_get_events | crashlytics | Gets specific events by resource name.
 Can be used to fetch sample crashes and exceptions for an issue,
 which will include stack traces and other data useful for debugging. |
 | crashlytics_list_notes | crashlytics | Use this to list all notes for an issue in Crashlytics. |
-| crashlytics_get_top_issues | crashlytics | Use this to count events and distinct impacted users, grouped by _issue_.
+| crashlytics_get_top_issues | crashlytics | Use this to count events and distinct impacted users, grouped by \_issue*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics_get_top_variants | crashlytics | Counts events and distinct impacted users, grouped by issue _variant_.
+| crashlytics*get_top_variants | crashlytics | Counts events and distinct impacted users, grouped by issue \_variant*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics_get_top_versions | crashlytics | Counts events and distinct impacted users, grouped by _version_.
+| crashlytics*get_top_versions | crashlytics | Counts events and distinct impacted users, grouped by \_version*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
-| crashlytics_get_top_apple_devices | crashlytics | Counts events and distinct impacted users, grouped by apple _device_.
+| crashlytics*get_top_apple_devices | crashlytics | Counts events and distinct impacted users, grouped by apple \_device*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters.
 Only relevant for iOS, iPadOS and MacOS applications. |
-| crashlytics_get_top_android_devices | crashlytics | Counts events and distinct impacted users, grouped by android _device_.
+| crashlytics*get_top_android_devices | crashlytics | Counts events and distinct impacted users, grouped by android \_device*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters.
 Only relevant for Android applications. |
-| crashlytics_get_top_operating_systems | crashlytics | Counts events and distinct impacted users, grouped by _operating system_.
+| crashlytics*get_top_operating_systems | crashlytics | Counts events and distinct impacted users, grouped by \_operating system*.
 Groups are sorted by event count, in descending order.
 Only counts events matching the given filters. |
 | crashlytics_update_issue | crashlytics | Use this to update the state of Crashlytics issue. |
