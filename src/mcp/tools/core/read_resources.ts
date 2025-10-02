@@ -25,7 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
-      await trackGA4("mcp_read_resource", { resource_name: "listAvaiable" });
+      await trackGA4("mcp_read_resource", { resource_name: "__list__" });
       return toContent(
         resources
           .map(
