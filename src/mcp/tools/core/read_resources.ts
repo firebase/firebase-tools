@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { resolveResource, resources } from "../../resources";
 import { toContent } from "../../util";
+import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
   {
@@ -24,6 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
+      void trackGA4("mcp_read_resource", { resource_name: "__list__" });
       return toContent(
         resources
           .map(

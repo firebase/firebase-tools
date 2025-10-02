@@ -7,3 +7,4 @@
 - CloudSQL instances created with `firebase deploy` now default to Postgres 17.
 - Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
 - Fixed an issue where `firebase deploy --only firestore` would fail with 403 errors on projects that never had a database created.
+- Fixed an issue where deploying multiple Hosting sites with Functions could encounter a race condition (#9235).
