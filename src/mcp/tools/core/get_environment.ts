@@ -10,7 +10,7 @@ export const get_environment = tool(
   {
     name: "get_environment",
     description:
-      "Retrieves information about the current Firebase environment including current authenticated user, project directory, active project, and more.",
+      "Use this to retrieve the current Firebase **environment** configuration for the Firebase CLI and Firebase MCP server, including current authenticated user, project directory, active Firebase Project, and more.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Firebase Environment Info",

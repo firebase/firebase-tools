@@ -32,7 +32,7 @@ export const get_issue = tool(
 export const update_issue = tool(
   {
     name: "update_issue",
-    description: "Update the state of Crashlytics issue.",
+    description: "Use this to update the state of Crashlytics issue.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
