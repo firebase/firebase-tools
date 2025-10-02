@@ -51,7 +51,9 @@ export const get_logs = tool(
         .array(z.string())
         .min(1)
         .optional()
-        .describe("Optional list of deployed Cloud Function IDs to filter logs (e.g. ['fnA','fnB'])."),
+        .describe(
+          "Optional list of deployed Cloud Function IDs to filter logs (e.g. ['fnA','fnB']).",
+        ),
       page_size: z
         .number()
         .int()
@@ -101,8 +103,7 @@ export const get_logs = tool(
     { function_names, page_size, order, page_token, min_severity, start_time, end_time, filter },
     { projectId },
   ) => {
-    const normalizedOrder = typeof order === "string" ? order.toLowerCase() : undefined;
-    const resolvedOrder: "asc" | "desc" = normalizedOrder === "asc" ? "asc" : normalizedOrder === "desc" ? "desc" : "desc";
+    const resolvedOrder: "asc" | "desc" = order?.toLowerCase() === "asc" ? "asc" : "desc";
     const resolvedPageSize = page_size ?? 50;
 
     const normalizedSelectors = normalizeFunctionSelectors(function_names);
@@ -177,7 +178,10 @@ export const get_logs = tool(
 
       return toContent(response);
     } catch (err) {
-      const errMsg = getErrMsg(err, "Failed to retrieve Cloud Logging entries.");
+      const errMsg = getErrMsg(
+        (err as any)?.original || err,
+        "Failed to retrieve Cloud Logging entries.",
+      );
       return mcpError(errMsg);
     }
   },
