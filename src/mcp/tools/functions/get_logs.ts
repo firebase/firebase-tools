@@ -107,18 +107,8 @@ export const get_logs = tool(
     },
     { projectId },
   ) => {
-    const normalizedOrder = typeof order === "string" ? order.toLowerCase() : undefined;
-    let resolvedOrder: "asc" | "desc" = "desc";
-    if (normalizedOrder) {
-      if (normalizedOrder !== "asc" && normalizedOrder !== "desc") {
-        return mcpError('`order` must be either "asc" or "desc".');
-      }
-      resolvedOrder = normalizedOrder;
-    }
-    const resolvedPageSize = page_size ?? 50;
-    if (resolvedPageSize < 1 || resolvedPageSize > 1000) {
-      return mcpError("`page_size` must be between 1 and 1000.");
-    }
+    const resolvedOrder = order;
+    const resolvedPageSize = page_size;
 
     const normalizedSelectors = normalizeFunctionSelectors(function_names);
     const filterParts: string[] = [getApiFilter(normalizedSelectors)];
@@ -145,35 +135,31 @@ export const get_logs = tool(
 
     const combinedFilter = filterParts.join("\n");
 
-    let entries: Awaited<ReturnType<typeof listEntries>>["entries"];
-    let nextPageToken: string | undefined;
     try {
-      const result = await listEntries(
+      const { entries, nextPageToken } = await listEntries(
         projectId,
         combinedFilter,
         resolvedPageSize,
         resolvedOrder,
         page_token,
       );
-      entries = result.entries;
-      nextPageToken = result.nextPageToken;
+
+      const formatted = formatLogEntries(entries, {
+        filter: combinedFilter,
+        order: resolvedOrder,
+        page_size: resolvedPageSize,
+        nextPageToken,
+      });
+
+      if (!entries.length) {
+        return toContent(formatted, {
+          contentPrefix: "No log entries matched the provided filters.\n\n",
+        });
+      }
+
+      return toContent(formatted);
     } catch (err) {
       return mcpError(formatLoggingError(err));
     }
-
-    const formatted = formatLogEntries(entries, {
-      filter: combinedFilter,
-      order: resolvedOrder,
-      page_size: resolvedPageSize,
-      nextPageToken,
-    });
-
-    if (!entries.length) {
-      return toContent(formatted, {
-        contentPrefix: "No log entries matched the provided filters.\n\n",
-      });
-    }
-
-    return toContent(formatted);
   },
 );
