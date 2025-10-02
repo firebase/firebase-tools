@@ -13,10 +13,7 @@ export const update_template = tool(
     inputSchema: z
       .object({
         template: z.object({}).optional().describe("The Remote Config template object to publish."),
-        version_number: z
-          .number()
-          .optional()
-          .describe("The version number to roll back to."),
+        version_number: z.number().optional().describe("The version number to roll back to."),
         force: z
           .boolean()
           .optional()
