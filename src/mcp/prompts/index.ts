@@ -11,6 +11,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   dataconnect: dataconnectPrompts,
   auth: [],
   messaging: [],
+  functions: [],
   remoteconfig: [],
   crashlytics: crashlyticsPrompts,
   apphosting: [],
