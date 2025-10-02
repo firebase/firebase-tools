@@ -2,13 +2,6 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
-import {
-  DEFAULT_CODEBASE as FUNCTIONS_DEFAULT_CODEBASE,
-  DEFAULT_INSTALL_DEPENDENCIES as FUNCTIONS_DEFAULT_INSTALL_DEPENDENCIES,
-  DEFAULT_LANGUAGE as FUNCTIONS_DEFAULT_LANGUAGE,
-  DEFAULT_LINT as FUNCTIONS_DEFAULT_LINT,
-  DEFAULT_SOURCE as FUNCTIONS_DEFAULT_SOURCE,
-} from "../../../init/features/functions";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
@@ -110,55 +103,6 @@ export const init = tool(
             "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
               "It installs Data Connect Generated SDKs in all detected apps in the folder.",
           ),
-        functions: z
-          .object({
-            codebase: z
-              .string()
-              .optional()
-              .default(FUNCTIONS_DEFAULT_CODEBASE)
-              .describe(
-                "Optional. Logical codebase identifier written to firebase.json. Leave unset to use the default codebase; only provide a value when you intentionally want an additional named codebase.",
-              ),
-            source: z
-              .string()
-              .optional()
-              .default(FUNCTIONS_DEFAULT_SOURCE)
-              .describe(
-                "Optional. Filesystem directory for the Cloud Functions source (relative to the project root). Defaults to 'functions'. Override only if you already have functions code in a different folder or want to scaffold into a new location.",
-              ),
-            language: z
-              .enum(["javascript", "typescript", "python"])
-              .optional()
-              .default(FUNCTIONS_DEFAULT_LANGUAGE)
-              .describe(
-                "Optional. Programming language for the generated sample. Defaults to TypeScript because it is recommended for most new projects.",
-              ),
-            lint: z
-              .boolean()
-              .optional()
-              .default(FUNCTIONS_DEFAULT_LINT)
-              .describe(
-                "Optional. Set true to include ESLint configuration. Defaults to false to avoid extra scripts unless you explicitly want linting.",
-              ),
-            install_dependencies: z
-              .boolean()
-              .optional()
-              .default(FUNCTIONS_DEFAULT_INSTALL_DEPENDENCIES)
-              .describe(
-                "Optional. Set true to run npm install in the chosen functions directory after scaffolding. Defaults to false so you can decide when to install dependencies.",
-              ),
-            overwrite: z
-              .boolean()
-              .optional()
-              .default(false)
-              .describe(
-                "Optional. Set true to replace an existing codebase that shares the same name/source. Leave false to avoid clobbering files when the directory already exists.",
-              ),
-          })
-          .optional()
-          .describe(
-            "Provide this object to initialize Cloud Functions for Firebase in this project directory.",
-          ),
         storage: z
           .object({
             rules_filename: z
@@ -232,18 +176,6 @@ export const init = tool(
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
         apps: [],
-      };
-    }
-    if (features.functions) {
-      featuresList.push("functions");
-      featureInfo.functions = {
-        overwrite: !!features.functions.overwrite,
-        codebase: features.functions.codebase || FUNCTIONS_DEFAULT_CODEBASE,
-        source: features.functions.source || FUNCTIONS_DEFAULT_SOURCE,
-        language: features.functions.language || FUNCTIONS_DEFAULT_LANGUAGE,
-        lint: features.functions.lint ?? FUNCTIONS_DEFAULT_LINT,
-        installDependencies:
-          features.functions.install_dependencies ?? FUNCTIONS_DEFAULT_INSTALL_DEPENDENCIES,
       };
     }
     const setup: Setup = {

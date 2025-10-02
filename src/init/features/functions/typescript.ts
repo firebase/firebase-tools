@@ -14,17 +14,13 @@ const TSCONFIG_DEV_TEMPLATE = readTemplateSync("init/functions/typescript/tsconf
 const INDEX_TEMPLATE = readTemplateSync("init/functions/typescript/index.ts");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
 
-interface SetupOptions {
-  force?: boolean;
-}
-
-export async function setup(setup: any, config: any, options: SetupOptions = {}): Promise<any> {
-  if (setup.functions.lint === undefined) {
-    setup.functions.lint = await confirm({
+export async function setup(setup: any, config: any): Promise<any> {
+  setup.functions.lint =
+    setup.functions.lint ||
+    (await confirm({
       message: "Do you want to use ESLint to catch probable bugs and enforce style?",
-      default: false,
-    });
-  }
+      default: true,
+    }));
 
   const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
   cbconfig.predeploy = [];
@@ -37,18 +33,12 @@ export async function setup(setup: any, config: any, options: SetupOptions = {})
         "{{RUNTIME}}",
         supported.latest("nodejs").replace("nodejs", ""),
       ),
-      options.force,
     );
-    await config.askWriteProjectFile(
-      `${setup.functions.source}/.eslintrc.js`,
-      ESLINT_TEMPLATE,
-      options.force,
-    );
+    await config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
     // TODO: isn't this file out of date now?
     await config.askWriteProjectFile(
       `${setup.functions.source}/tsconfig.dev.json`,
       TSCONFIG_DEV_TEMPLATE,
-      options.force,
     );
   } else {
     cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');
@@ -58,25 +48,12 @@ export async function setup(setup: any, config: any, options: SetupOptions = {})
         "{{RUNTIME}}",
         supported.latest("nodejs").replace("nodejs", ""),
       ),
-      options.force,
     );
   }
 
-  await config.askWriteProjectFile(
-    `${setup.functions.source}/tsconfig.json`,
-    TSCONFIG_TEMPLATE,
-    options.force,
-  );
+  await config.askWriteProjectFile(`${setup.functions.source}/tsconfig.json`, TSCONFIG_TEMPLATE);
 
-  await config.askWriteProjectFile(
-    `${setup.functions.source}/src/index.ts`,
-    INDEX_TEMPLATE,
-    options.force,
-  );
-  await config.askWriteProjectFile(
-    `${setup.functions.source}/.gitignore`,
-    GITIGNORE_TEMPLATE,
-    options.force,
-  );
+  await config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
+  await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await askInstallDependencies(setup.functions, config);
 }
