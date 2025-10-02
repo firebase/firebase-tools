@@ -6,8 +6,7 @@ import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 export const update_user = tool(
   {
     name: "update_user",
-    description:
-      "Use this to disable, enable, or set a custom claim on a specific user's account.",
+    description: "Use this to disable, enable, or set a custom claim on a specific user's account.",
     inputSchema: z.object({
       uid: z.string().describe("the UID of the user to update"),
       disabled: z.boolean().optional().describe("true disables the user, false enables the user"),

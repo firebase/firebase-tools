@@ -8,7 +8,8 @@ const PROJECT_LIST_PAGE_SIZE = 20;
 export const list_projects = tool(
   {
     name: "list_projects",
-    description: "Use this to retrieve a list of Firebase Projects that the signed-in user has access to.",
+    description:
+      "Use this to retrieve a list of Firebase Projects that the signed-in user has access to.",
     inputSchema: z.object({
       page_size: z
         .number()

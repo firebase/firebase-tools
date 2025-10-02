@@ -9,7 +9,7 @@ export const update_template = tool(
   {
     name: "update_template",
     description:
-      "Use this to publishe a new remote config template or roll back to a specific version for the project",
+      "Use this to publish a new remote config template or roll back to a specific version for the project",
     inputSchema: z
       .object({
         template: z.object({}).optional().describe("The Remote Config template object to publish."),

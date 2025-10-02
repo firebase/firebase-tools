@@ -10,7 +10,8 @@ import { Client } from "../../../apiv2";
 export const execute = tool(
   {
     name: "execute",
-    description: "Use this to execute a GraphQL operation against a Data Connect service or its emulator.",
+    description:
+      "Use this to execute a GraphQL operation against a Data Connect service or its emulator.",
     inputSchema: z.object({
       query: z.string().describe(`A Firebase Data Connect GraphQL query or mutation to execute.
 You can use the \`dataconnect_generate_operation\` tool to generate a query.

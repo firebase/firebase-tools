@@ -14,13 +14,13 @@
 | firebase_get_environment | core | Use this to retrieve the current Firebase **environment** configuration for the Firebase CLI and Firebase MCP server, including current authenticated user, project directory, active Firebase Project, and more. |
 | firebase_update_environment | core | Use this to update environment config for the Firebase CLI and Firebase MCP server, such as project directory, active project, active user account, accept terms of service, and more. Use `firebase_get_environment` to see the currently configured environment. |
 | firebase_init | core | Use this to initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool. |
-| firebase_get_security_rules | core | Use this to retreive the security rules for a specified Firebase service. If there are multiple instances of that service in the product, the rules for the defualt instance are returned. |
+| firebase_get_security_rules | core | Use this to retrieve the security rules for a specified Firebase service. If there are multiple instances of that service in the product, the rules for the defualt instance are returned. |
 | firebase_read_resources | core | Use this to read the contents of `firebase://` resources or list available resources |
 | firestore_delete_document | firestore | Use this to delete a Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document. |
 | firestore_get_documents | firestore | Use this to retrieve one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document. |
 | firestore_list_collections | firestore | Use this to retrieve a list of collections from a Firestore database in the current project. |
 | firestore_query_collection | firestore | Use this to retrieve one or more Firestore documents from a collection is a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document. |
-| auth_auth_get_users | auth | Use this to retrieve a Firebase app user's account information by specifying an email address, phone number, or UID. |
+| auth_get_users | auth | Use this to retrieve one or more Firebase Auth users based on a list of UIDs or a list of emails. |
 | auth_update_user | auth | Use this to disable, enable, or set a custom claim on a specific user's account. |
 | auth_set_sms_region_policy | auth | Use this to set an SMS region policy for Firebase Authentication to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set. |
 | dataconnect_build | dataconnect | Use this to compile Firebase Data Connect schema, operations, and/or connectors and check for build errors. |
@@ -31,7 +31,7 @@
 | storage_get_object_download_url | storage | Use this to retrieve the download URL for an object in Firebase Storage. |
 | messaging_send_message | messaging | Use this to send a message to a Firebase Cloud Messaging registration token or topic. ONLY ONE of `registration_token` or `topic` may be supplied in a specific call. |
 | remoteconfig_get_template | remoteconfig | Use this to retrieve a remote config template for the project |
-| remoteconfig_update_template | remoteconfig | Use this to publishe a new remote config template or roll back to a specific version for the project |
+| remoteconfig_update_template | remoteconfig | Use this to publish a new remote config template or roll back to a specific version for the project |
 | crashlytics_create_note | crashlytics | Add a note to an issue from crashlytics. |
 | crashlytics_delete_note | crashlytics | Delete a note from a Crashlytics issue. |
 | crashlytics_get_issue | crashlytics | Gets data for a Crashlytics issue, which can be used as a starting point for debugging. |
@@ -65,5 +65,5 @@
 | crashlytics_update_issue | crashlytics | Use this to update the state of Crashlytics issue. |
 | apphosting_fetch_logs | apphosting | Use this to fetch the most recent logs for a specified App Hosting backend. If `buildLogs` is specified, the logs from the build process for the latest build are returned. The most recent logs are listed first. |
 | apphosting_list_backends | apphosting | Use this to retrieve a list of App Hosting backends in the current project. An empty list means that there are no backends. The `uri` is the public URL of the backend. A working backend will have a `managed_resources` array that will contain a `run_service` entry. That `run_service.service` is the resource name of the Cloud Run service serving the App Hosting backend. The last segment of that name is the service ID. `domains` is the list of domains that are associated with the backend. They either have type `CUSTOM` or `DEFAULT`.   Every backend should have a `DEFAULT` domain.   The actual domain that a user would use to conenct to the backend is the last parameter of the domain resource name.   If a custom domain is correctly set up, it will have statuses ending in `ACTIVE`. |
-| realtime_database_get_data | realtime_database | Use this to retreive data from the specified location in a Firebase Realtime Database. |
+| realtime_database_get_data | realtime_database | Use this to retrieve data from the specified location in a Firebase Realtime Database. |
 | realtime_database_set_data | realtime_database | Use this to write data to the specified location in a Firebase Realtime Database. |

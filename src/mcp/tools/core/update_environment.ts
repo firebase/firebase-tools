@@ -33,7 +33,9 @@ export const update_environment = tool(
       accept_gemini_tos: z
         .boolean()
         .optional()
-        .describe("Accept the Gemini in Firebase terms of service. Always prompt the user for confirmation before accepting on their behalf."),
+        .describe(
+          "Accept the Gemini in Firebase terms of service. Always prompt the user for confirmation before accepting on their behalf.",
+        ),
     }),
     annotations: {
       title: "Update Firebase Environment",
