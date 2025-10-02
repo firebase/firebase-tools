@@ -59,7 +59,10 @@ export async function listEntries(
     body.pageToken = pageToken;
   }
   try {
-    const result = await client.post<ListEntriesRequest, ListEntriesResponse>("/entries:list", body);
+    const result = await client.post<ListEntriesRequest, ListEntriesResponse>(
+      "/entries:list",
+      body,
+    );
     return {
       entries: result.body.entries ?? [],
       nextPageToken: result.body.nextPageToken,

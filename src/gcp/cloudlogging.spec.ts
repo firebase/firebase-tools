@@ -46,12 +46,12 @@ describe("cloudlogging", () => {
         })
         .reply(200, { entries, nextPageToken: "next" });
 
-      await expect(cloudlogging.listEntries("project", "filter", 10, "asc", "token")).to.eventually.deep.equal(
-        {
-          entries,
-          nextPageToken: "next",
-        },
-      );
+      await expect(
+        cloudlogging.listEntries("project", "filter", 10, "asc", "token"),
+      ).to.eventually.deep.equal({
+        entries,
+        nextPageToken: "next",
+      });
     });
   });
 });

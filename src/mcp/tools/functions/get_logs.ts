@@ -4,8 +4,6 @@ import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getApiFilter } from "../../../functions/functionslog";
 import { listEntries } from "../../../gcp/cloudlogging";
-import { formatLogEntries } from "./formatter";
-import { formatLoggingError } from "./errors";
 
 const SEVERITY_LEVELS = [
   "DEFAULT",
@@ -19,6 +17,8 @@ const SEVERITY_LEVELS = [
   "EMERGENCY",
 ] as const;
 
+// normalizeFunctionSelectors standardizes tool input into the comma-separated
+// list that the existing logging filter helper expects (matching CLI behaviour).
 function normalizeFunctionSelectors(selectors?: string | string[]): string | undefined {
   if (!selectors) return undefined;
   if (Array.isArray(selectors)) {
@@ -49,7 +49,9 @@ export const get_logs = tool(
       function_names: z
         .union([z.string(), z.array(z.string()).min(1)])
         .optional()
-        .describe("Optional list of deployed Cloud Function names to filter logs (string or array)."),
+        .describe(
+          "Optional list of deployed Cloud Function names to filter logs (string or array).",
+        ),
       page_size: z
         .number()
         .int()
@@ -57,10 +59,7 @@ export const get_logs = tool(
         .max(1000)
         .default(50)
         .describe("Maximum number of log entries to return."),
-      order: z
-        .enum(["asc", "desc"])
-        .default("desc")
-        .describe("Sort order by timestamp (desc matches the Firebase CLI default)."),
+      order: z.enum(["asc", "desc"]).default("desc").describe("Sort order by timestamp"),
       page_token: z
         .string()
         .optional()
@@ -72,11 +71,15 @@ export const get_logs = tool(
       start_time: z
         .string()
         .optional()
-        .describe("RFC3339 timestamp. Only entries with timestamp greater than or equal to this are returned."),
+        .describe(
+          "RFC3339 timestamp (YYYY-MM-DDTHH:MM:SSZ). Only entries with timestamp greater than or equal to this are returned.",
+        ),
       end_time: z
         .string()
         .optional()
-        .describe("RFC3339 timestamp. Only entries with timestamp less than or equal to this are returned."),
+        .describe(
+          "RFC3339 timestamp (YYYY-MM-DDTHH:MM:SSZ). Only entries with timestamp less than or equal to this are returned.",
+        ),
       filter: z
         .string()
         .optional()
@@ -85,7 +88,7 @@ export const get_logs = tool(
         ),
     }),
     annotations: {
-      title: "Get Cloud Functions Logs",
+      title: "Get Functions Logs from Cloud Logging",
       readOnlyHint: true,
       openWorldHint: true,
     },
@@ -95,16 +98,7 @@ export const get_logs = tool(
     },
   },
   async (
-    {
-      function_names,
-      page_size,
-      order,
-      page_token,
-      min_severity,
-      start_time,
-      end_time,
-      filter,
-    },
+    { function_names, page_size, order, page_token, min_severity, start_time, end_time, filter },
     { projectId },
   ) => {
     const resolvedOrder = order;
@@ -144,22 +138,47 @@ export const get_logs = tool(
         page_token,
       );
 
-      const formatted = formatLogEntries(entries, {
+      const formattedEntries = entries.map((entry) => {
+        const functionName =
+          entry.resource?.labels?.function_name ?? entry.resource?.labels?.service_name ?? null;
+        const payload =
+          entry.textPayload ?? entry.jsonPayload ?? entry.protoPayload ?? entry.labels ?? null;
+        return {
+          timestamp: entry.timestamp ?? entry.receiveTimestamp ?? null,
+          severity: entry.severity ?? "DEFAULT",
+          function: functionName,
+          message:
+            entry.textPayload ??
+            (entry.jsonPayload ? JSON.stringify(entry.jsonPayload) : undefined) ??
+            (entry.protoPayload ? JSON.stringify(entry.protoPayload) : undefined) ??
+            "",
+          payload,
+          log_name: entry.logName,
+          trace: entry.trace ?? null,
+          span_id: entry.spanId ?? null,
+        };
+      });
+
+      const response = {
         filter: combinedFilter,
         order: resolvedOrder,
         page_size: resolvedPageSize,
-        nextPageToken,
-      });
+        entries: resolvedOrder === "asc" ? formattedEntries : formattedEntries.reverse(),
+        next_page_token: nextPageToken ?? null,
+        has_more: Boolean(nextPageToken),
+      };
 
       if (!entries.length) {
-        return toContent(formatted, {
+        return toContent(response, {
           contentPrefix: "No log entries matched the provided filters.\n\n",
         });
       }
 
-      return toContent(formatted);
+      return toContent(response);
     } catch (err) {
-      return mcpError(formatLoggingError(err));
+      const message =
+        err instanceof Error ? err.message : "Failed to retrieve Cloud Logging entries.";
+      return mcpError(message);
     }
   },
 );
