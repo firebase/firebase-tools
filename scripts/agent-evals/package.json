@@ -1,0 +1,19 @@
+{
+  "name": "agent-evals",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tests.js",
+  "type": "module",
+  "scripts": {
+    "test": "tsx ./tests.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "strip-ansi": "^7.1.0",
+    "tsx": "^4.11.0",
+    "vitest": "^1.6.0"
+  }
+}
