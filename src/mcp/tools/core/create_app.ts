@@ -10,7 +10,7 @@ const CREATE_APP_OUTUT_SUFFIX =
 export const create_app = tool(
   {
     name: "create_app",
-    description: "Creates a new app in your Firebase project for Web, iOS, or Android.",
+    description: "Use this to create a new Firebase App in the currently active Firebase Project. Firebase Apps can be iOS, Android, or Web.",
     inputSchema: z.object({
       display_name: z
         .string()

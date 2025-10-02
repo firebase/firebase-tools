@@ -22,7 +22,7 @@ interface DeployServiceInfo {
 export const list_services = tool(
   {
     name: "list_services",
-    description: "List existing local and backend Firebase Data Connect services",
+    description: "Use this to list existing local and backend Firebase Data Connect services",
     inputSchema: z.object({}),
     annotations: {
       title: "List existing Firebase Data Connect services",

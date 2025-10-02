@@ -25,7 +25,7 @@ ${config.readProjectFile("firestore.rules", { fallback: "<FILE DOES NOT EXIST>" 
 \`\`\`
 
 1. Create the personalData and publicData security rules (seen below). If they have existing \`firestore.rules\`, integrate these with the user's existing rules.
-2. Validate & fix the security rules using the \`validate_rules\` tool. Only continue to the next step when the \`validate_rules\` tool succeeds
+2. Validate & fix the security rules using the \`firebase_validate_security_rules\` tool. Only continue to the next step when the \`firebase_validate_security_rules\` tool succeeds
 3. Update queries in the user's app to use the updated security rules
 4. Print the contents of the \`firestore.rules\` file, and then explain what they enforce below them (for example, what changes you've made to the rules, and what actions are allowed / prohibited on each entity). Ask the user for permission to deploy the rules. Do not continue until the user confirms. Deploy the security rules using \`firebase deploy --only firestore\` in the terminal. Do not tell the user to go to the console to deploy rules as this command will do it automatically.
 

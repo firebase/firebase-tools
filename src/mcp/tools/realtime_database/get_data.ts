@@ -9,7 +9,7 @@ import path from "node:path";
 export const get_data = tool(
   {
     name: "get_data",
-    description: "Returns RTDB data from the specified location",
+    description: "Use this to retreive data from the specified location in a Firebase Realtime Database.",
     inputSchema: z.object({
       databaseUrl: z
         .string()

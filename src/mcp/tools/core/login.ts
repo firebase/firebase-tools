@@ -14,7 +14,7 @@ export type ServerWithLoginState = FirebaseMcpServer & {
 export const login = tool(
   {
     name: "login",
-    description: "Logs the user into the Firebase CLI and MCP server.",
+    description: "Use this to sign the user into the Firebase CLI and Firebase MCP server. This requires a Google Account, and sign in is required to create and work with Firebase Projects.",
     inputSchema: LoginInputSchema,
     _meta: {
       requiresAuth: false,

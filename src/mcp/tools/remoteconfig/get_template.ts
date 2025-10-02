@@ -6,7 +6,7 @@ import { getTemplate } from "../../../remoteconfig/get";
 export const get_template = tool(
   {
     name: "get_template",
-    description: "Retrieves a remote config template for the project",
+    description: "Use this to retrieve a remote config template for the project",
     inputSchema: z.object({
       version_number: z
         .string()

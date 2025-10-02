@@ -17,7 +17,7 @@ function getCertHashType(shaHash: string): string {
 export const create_android_sha = tool(
   {
     name: "create_android_sha",
-    description: "Adds a SHA certificate hash to an existing Android app.",
+    description: "Use this to add the specified SHA certificate hash to the specified Firebase Android App.",
     inputSchema: z.object({
       app_id: z.string().describe("The Android app ID to add the SHA certificate to."),
       sha_hash: z.string().describe("The SHA certificate hash to add (SHA-1 or SHA-256)."),

@@ -10,7 +10,7 @@ import path from "node:path";
 export const set_data = tool(
   {
     name: "set_data",
-    description: "Writes RTDB data to the specified location",
+    description: "Use this to write data to the specified location in a Firebase Realtime Database.",
     inputSchema: z.object({
       databaseUrl: z
         .string()

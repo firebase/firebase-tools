@@ -6,7 +6,7 @@ import { AppPlatform, listFirebaseApps } from "../../../management/apps";
 export const list_apps = tool(
   {
     name: "list_apps",
-    description: "Retrieves apps registered in the current Firebase project.",
+    description: "Use this to retrieve a list of the Firebase Apps registered in the currently active Firebase project. Firebase Apps can be iOS, Android, or Web.",
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web", "all"])

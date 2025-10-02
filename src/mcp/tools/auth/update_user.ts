@@ -7,7 +7,7 @@ export const update_user = tool(
   {
     name: "update_user",
     description:
-      "Disables, enables a user account or sets a custom claim on a specific user's account. The tool cannot do both at once.",
+      "Use this to disable, enable, or set a custom claim on a specific user's account.",
     inputSchema: z.object({
       uid: z.string().describe("the UID of the user to update"),
       disabled: z.boolean().optional().describe("true disables the user, false enables the user"),
