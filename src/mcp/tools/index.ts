@@ -36,7 +36,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
-  database: addFeaturePrefix("realtime_database", realtimeDatabaseTools),
+  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
 };
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
