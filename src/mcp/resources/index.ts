@@ -10,6 +10,7 @@ import { init_firestore_rules } from "./guides/init_firestore_rules";
 import { init_hosting } from "./guides/init_hosting";
 import { init_rtdb } from "./guides/init_rtdb";
 import { ServerResource, ServerResourceTemplate } from "../resource";
+import { trackGA4 } from "../../track";
 
 export const resources = [
   init_backend,
@@ -27,6 +28,7 @@ export const resourceTemplates = [docs];
 export async function resolveResource(
   uri: string,
   ctx: McpContext,
+  track: boolean = true,
 ): Promise<
   | ({
       result: ReadResourceResult;
@@ -39,6 +41,7 @@ export async function resolveResource(
   // check if an exact resource name matches first
   const resource = resources.find((r) => r.mcp.uri === uri);
   if (resource) {
+    if (track) void trackGA4("mcp_read_resource", { resource_name: uri });
     const result = await resource.fn(uri, ctx);
     return { type: "resource", mcp: resource.mcp, result };
   }
@@ -46,9 +49,10 @@ export async function resolveResource(
   // then check if any templates match
   const template = resourceTemplates.find((rt) => rt.match(uri));
   if (template) {
+    if (track) void trackGA4("mcp_read_resource", { resource_name: uri });
     const result = await template.fn(uri, ctx);
     return { type: "template", mcp: template.mcp, result };
   }
-
+  if (track) void trackGA4("mcp_read_resource", { resource_name: uri, not_found: "true" });
   return null;
 }
