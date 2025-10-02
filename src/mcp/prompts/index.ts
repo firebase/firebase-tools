@@ -70,11 +70,11 @@ export function markdownDocsOfPrompts(): string {
       feature = "core";
     }
     let description = prompt.mcp.description || "";
-    if (prompt.mcp.arguments && prompt.mcp.arguments.length > 0) {
-      description += ' <br><br>Arguments:';
-      for (const arg of prompt.mcp.arguments) {
-        description += ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`
-      }
+    if (prompt.mcp.arguments?.length) {
+      const argsList = prompt.mcp.arguments.map(
+        (arg) => ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`
+      );
+      description += ` <br><br>Arguments:${argsList.join("")}`;
     }
     doc += `
 | ${prompt.mcp.name} | ${feature} | ${description} |`;
