@@ -28,12 +28,12 @@ const TEST_POLLING_INTERVAL_MILLIS = 30_000;
 export async function distribute(
   appName: string,
   distribution: Distribution,
-  releaseNotes: string,
-  testers: string[],
-  groups: string[],
   testCases: string[],
   testDevices: TestDevice[],
-  testNonBlocking: boolean,
+  releaseNotes?: string,
+  testers?: string[],
+  groups?: string[],
+  testNonBlocking?: boolean,
   loginCredential?: LoginCredential,
 ) {
   const requests = new AppDistributionClient();

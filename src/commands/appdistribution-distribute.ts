@@ -96,11 +96,11 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     await distribute(
       appName,
       distribution,
+      testCases,
+      testDevices,
       releaseNotes,
       testers,
       groups,
-      testCases,
-      testDevices,
       options.testNonBlocking,
       loginCredential,
     );
