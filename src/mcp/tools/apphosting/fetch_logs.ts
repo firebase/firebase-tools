@@ -61,8 +61,8 @@ export const fetch_logs = tool(
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const timestampFilter = `timestamp >= "${thirtyDaysAgo.toISOString()}"`;
       const filter = `resource.type="build" resource.labels.build_id="${buildId}" ${timestampFilter}`;
-      const entries = await listEntries(projectId, filter, 100, "asc");
-      if (!Array.isArray(entries) || !entries.length) {
+      const { entries } = await listEntries(projectId, filter, 100, "asc");
+      if (!entries.length) {
         return toContent("No logs found.");
       }
       return toContent(entries);

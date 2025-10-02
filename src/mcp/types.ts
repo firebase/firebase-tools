@@ -9,6 +9,7 @@ export const SERVER_FEATURES = [
   "dataconnect",
   "auth",
   "messaging",
+  "functions",
   "remoteconfig",
   "crashlytics",
   "apphosting",
