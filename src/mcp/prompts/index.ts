@@ -66,9 +66,6 @@ export function markdownDocsOfPrompts(): string {
 | ----------- | ------------- | ----------- |`;
   for (const prompt of allPrompts) {
     let feature = prompt.mcp._meta?.feature || "";
-    if (feature === "firebase") {
-      feature = "core";
-    }
     let description = prompt.mcp.description || "";
     if (prompt.mcp.arguments?.length) {
       const argsList = prompt.mcp.arguments.map(
