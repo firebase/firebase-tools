@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { resolveResource, resources } from "../../resources";
 import { toContent } from "../../util";
+import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
   {
@@ -24,6 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
+      await trackGA4("mcp_read_resource", { resource_name: "listAvaiable" });
       return toContent(
         resources
           .map(
@@ -36,6 +38,7 @@ export const read_resources = tool(
 
     const out: string[] = [];
     for (const uri of uris) {
+      await trackGA4("mcp_read_resource", { resource_name: uri });
       const resolved = await resolveResource(uri, ctx);
       if (!resolved) {
         out.push(`<resource uri="${uri}" error>\nRESOURCE NOT FOUND\n</resource>`);
