@@ -54,6 +54,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
+          "dataconnect/seed_data.gql",
           "dataconnect/schema/schema.gql",
           "dataconnect/example/connector.yaml",
           "dataconnect/example/queries.gql",
@@ -69,6 +70,7 @@ describe("init dataconnect", () => {
         expectedSource: "not-dataconnect",
         expectedFiles: [
           "not-dataconnect/dataconnect.yaml",
+          "not-dataconnect/seed_data.gql",
           // Populate the default template.
           "not-dataconnect/schema/schema.gql",
           "not-dataconnect/example/connector.yaml",
@@ -133,6 +135,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
+          "dataconnect/seed_data.gql",
           "dataconnect/schema/schema.gql",
           "dataconnect/example/connector.yaml",
           "dataconnect/example/queries.gql",
