@@ -517,15 +517,13 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
  * @return The backend
  */
 export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
-  if (!context.loadedExistingBackend || forceRefresh) {
-    await loadExistingBackend(context);
+  if (!context.existingBackendPromise || forceRefresh) {
+    context.existingBackendPromise = loadExistingBackend(context);
   }
-  // loadExisting guarantees the validity of existingBackend and unreachableRegions
-  return context.existingBackend!;
+  return context.existingBackendPromise;
 }
 
-async function loadExistingBackend(ctx: Context): Promise<void> {
-  ctx.loadedExistingBackend = true;
+async function loadExistingBackend(ctx: Context): Promise<Backend> {
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
   ctx.existingBackend = {
@@ -557,10 +555,12 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
     ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      return; // customer has preview enabled without allowlist set
+      // customer has preview enabled without allowlist set
+    } else {
+      throw err;
     }
-    throw err;
   }
+  return ctx.existingBackend;
 }
 
 /**
@@ -572,9 +572,7 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
-  if (!context.loadedExistingBackend) {
-    await loadExistingBackend(context);
-  }
+  await existingBackend(context);
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
