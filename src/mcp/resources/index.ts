@@ -41,7 +41,7 @@ export async function resolveResource(
   // check if an exact resource name matches first
   const resource = resources.find((r) => r.mcp.uri === uri);
   if (resource) {
-    track || (await trackGA4("mcp_read_resource", { resource_name: uri }));
+    if (track) (void trackGA4("mcp_read_resource", { resource_name: uri }));
     const result = await resource.fn(uri, ctx);
     return { type: "resource", mcp: resource.mcp, result };
   }
@@ -49,10 +49,10 @@ export async function resolveResource(
   // then check if any templates match
   const template = resourceTemplates.find((rt) => rt.match(uri));
   if (template) {
-    track || (await trackGA4("mcp_read_resource", { resource_name: uri }));
+    if (track) (void trackGA4("mcp_read_resource", { resource_name: uri }));
     const result = await template.fn(uri, ctx);
     return { type: "template", mcp: template.mcp, result };
   }
-  track || (await trackGA4("mcp_read_resource", { resource_name: uri, not_found: "true" }));
+  if (track) (void trackGA4("mcp_read_resource", { resource_name: uri, not_found: "true" }));
   return null;
 }

@@ -25,7 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
-      await trackGA4("mcp_read_resource", { resource_name: "__list__" });
+      void trackGA4("mcp_read_resource", { resource_name: "__list__" });
       return toContent(
         resources
           .map(
@@ -38,7 +38,6 @@ export const read_resources = tool(
 
     const out: string[] = [];
     for (const uri of uris) {
-      await trackGA4("mcp_read_resource", { resource_name: uri });
       const resolved = await resolveResource(uri, ctx);
       if (!resolved) {
         out.push(`<resource uri="${uri}" error>\nRESOURCE NOT FOUND\n</resource>`);
