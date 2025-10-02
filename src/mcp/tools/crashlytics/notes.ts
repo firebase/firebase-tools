@@ -33,7 +33,7 @@ export const create_note = tool(
 export const list_notes = tool(
   {
     name: "list_notes",
-    description: "List all notes for an issue in Crashlytics.",
+    description: "Use this to list all notes for an issue in Crashlytics.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
