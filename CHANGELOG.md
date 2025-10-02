@@ -1,3 +1,4 @@
+- Minor bug fixes in Firestore Emulator for Datastore Mode
 - Fixed an issue with deploying indexes to Firestore Enterprise edition databases where explicit `__name__` fields could be incorrectly handled.
 - Graduated the MCP server from experiemental, and renamed the `experimental:mcp` command to `mcp`. The old name is now an alias.
 - Consolidated some MCP tools to reduce the total number presented to LLMs.
