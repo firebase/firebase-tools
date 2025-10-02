@@ -116,7 +116,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
+        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
