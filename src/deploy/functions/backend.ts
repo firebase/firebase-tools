@@ -516,51 +516,52 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
  * @param forceRefresh If true, ignores and overwrites the cache. These cases should eventually go away.
  * @return The backend
  */
-export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
-  if (!context.loadedExistingBackend || forceRefresh) {
-    await loadExistingBackend(context);
+export function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
+  if (!context.existingBackendPromise || forceRefresh) {
+    context.existingBackendPromise = loadExistingBackend(context);
   }
-  // loadExisting guarantees the validity of existingBackend and unreachableRegions
-  return context.existingBackend!;
+  return context.existingBackendPromise;
 }
 
-async function loadExistingBackend(ctx: Context): Promise<void> {
-  ctx.loadedExistingBackend = true;
+async function loadExistingBackend(ctx: Context): Promise<Backend> {
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
-  ctx.existingBackend = {
+  const existingBackend = {
     ...empty(),
   };
-  ctx.unreachableRegions = {
-    gcfV1: [],
-    gcfV2: [],
-    run: [],
+  const unreachableRegions = {
+    gcfV1: [] as string[],
+    gcfV2: [] as string[],
+    run: [] as string[],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction);
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+    existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
-  ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
+  unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      ctx.existingBackend.endpoints[endpoint.region] =
-        ctx.existingBackend.endpoints[endpoint.region] || {};
-      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
-    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      return; // customer has preview enabled without allowlist set
+      // customer has preview enabled without allowlist set
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  ctx.existingBackend = existingBackend;
+  ctx.unreachableRegions = unreachableRegions;
+  return ctx.existingBackend;
 }
 
 /**
@@ -572,9 +573,7 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
-  if (!context.loadedExistingBackend) {
-    await loadExistingBackend(context);
-  }
+  await existingBackend(context);
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
