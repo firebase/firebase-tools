@@ -70,9 +70,9 @@ Only counts events matching the given filters. |
 | realtimedatabase_get_data | realtimedatabase | Use this to retrieve data from the specified location in a Firebase Realtime Database. |
 | realtimedatabase_set_data | realtimedatabase | Use this to write data to the specified location in a Firebase Realtime Database. |
 
-| Prompt Name | Feature Group | Description |
-| ----------- | ------------- | ----------- |
-| firebase:deploy | core | Use this command to deploy resources to Firebase. <br><br>Arguments: <br>&lt;prompt&gt; (optional): any specific instructions you wish to provide about deploying |
-| firebase:init | core | Use this command to setup Firebase for the current workspace. |
-| firebase:consult | core | Use this command to consult the Firebase Assistant with access to detailed up-to-date documentation for the Firebase platform. <br><br>Arguments: <br>&lt;prompt&gt;: a question to pass to the Gemini in Firebase model |
-| crashlytics:connect | crashlytics | Access a Firebase application's Crashlytics data. |
+| Prompt Name         | Feature Group | Description                                                                                                                                                                                                              |
+| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| firebase:deploy     | core          | Use this command to deploy resources to Firebase. <br><br>Arguments: <br>&lt;prompt&gt; (optional): any specific instructions you wish to provide about deploying                                                        |
+| firebase:init       | core          | Use this command to setup Firebase for the current workspace.                                                                                                                                                            |
+| firebase:consult    | core          | Use this command to consult the Firebase Assistant with access to detailed up-to-date documentation for the Firebase platform. <br><br>Arguments: <br>&lt;prompt&gt;: a question to pass to the Gemini in Firebase model |
+| crashlytics:connect | crashlytics   | Access a Firebase application's Crashlytics data.                                                                                                                                                                        |
