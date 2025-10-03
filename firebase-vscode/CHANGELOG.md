@@ -1,6 +1,7 @@
 ## NEXT
 
 - [Added] Refine / Generate Operation Code Lens.
+- []
 
 ## 1.8.0
 
