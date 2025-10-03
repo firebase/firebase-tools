@@ -35,7 +35,6 @@ const defaultBackoff: BackoffOptions = {
   timeMultiple: Number(process.env.FIREBASE_TOOLS_FUNC_RETRY_MULTIPLIER ?? 2),
   maxDelay: Number(process.env.FIREBASE_TOOLS_FUNC_RETRY_MAX_MS ?? 20 * 60 * 1_000),
   jitter: "full",
-  delayFirstAttempt: true,
 };
 
 /**
