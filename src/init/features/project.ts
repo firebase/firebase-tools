@@ -44,7 +44,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
       return;
     }
     await requireAuth(options);
-    await usingProject(setup, config, options.project, "--project flag");
+    await usingProject(setup, config, options.project);
     return;
   }
   const projectFromRcFile = setup.rcfile?.projects?.default;
@@ -103,11 +103,11 @@ async function usingProject(
   setup: any,
   config: any,
   projectId: string,
-  from: string,
+  from: string = "",
 ): Promise<void> {
   const pm = await getFirebaseProject(projectId);
   const label = `${pm.projectId}` + (pm.displayName ? ` (${pm.displayName})` : "");
-  utils.logBullet(`Using project ${label} from ${from}.`);
+  utils.logBullet(`Using project ${label} ${from ? "from ${from}" : ""}.`);
   await usingProjectMetadata(setup, config, pm);
 }
 

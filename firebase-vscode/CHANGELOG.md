@@ -1,7 +1,7 @@
 ## NEXT
 
 - [Added] Refine / Generate Operation Code Lens.
-- []
+- [Added] Support run "firebase init" without login and project.
 
 ## 1.8.0
 
