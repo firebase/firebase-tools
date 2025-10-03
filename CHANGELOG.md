@@ -1,1 +1,2 @@
 - Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
+- `firebase init` only requires `firebase login` when a valid project is passed. It accepts demo projects without login. (#9251)

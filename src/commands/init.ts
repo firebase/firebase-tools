@@ -8,7 +8,6 @@ import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
 import { checkbox, confirm } from "../prompt";
-import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
@@ -147,7 +146,6 @@ ${[...featureNames]
 export const command = new Command("init [feature]")
   .description("interactively configure the current directory as a Firebase project directory")
   .help(HELP)
-  .before(requireAuth)
   .action(initAction);
 
 /**
