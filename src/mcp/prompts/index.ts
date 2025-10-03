@@ -74,6 +74,7 @@ export function markdownDocsOfPrompts(): string {
       );
       description += ` <br><br>Arguments:${argsList.join("")}`;
     }
+    description = description.replaceAll("\n", "<br>");
     doc += `
 | ${prompt.mcp.name} | ${feature} | ${description} |`;
   }
