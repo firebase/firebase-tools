@@ -8,6 +8,7 @@ import * as projectManager from "../../management/projects";
 import { Config } from "../../config";
 import { FirebaseProjectMetadata } from "../../types/project";
 import * as promptImport from "../../prompt";
+import * as requireAuthImport from "../../requireAuth";
 
 const TEST_FIREBASE_PROJECT: FirebaseProjectMetadata = {
   projectId: "my-project-123",
@@ -34,6 +35,7 @@ describe("project", () => {
   let emptyConfig: Config;
 
   beforeEach(() => {
+    sandbox.stub(requireAuthImport, "requireAuth").resolves();
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
     createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
     getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
