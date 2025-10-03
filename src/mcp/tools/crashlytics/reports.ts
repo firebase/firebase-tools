@@ -46,7 +46,7 @@ function getReportContent(
 export const get_top_issues = tool(
   {
     name: "get_top_issues",
-    description: `Counts events and distinct impacted users, grouped by *issue*.
+    description: `Use this to count events and distinct impacted users, grouped by *issue*.
       Groups are sorted by event count, in descending order.
       Only counts events matching the given filters.`,
     inputSchema: ReportInputSchema,

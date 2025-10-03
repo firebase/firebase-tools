@@ -28,6 +28,10 @@ export const init_auth = resource(
 **Testing & Deployment:**
 - Test the complete sign-up and sign-in flow to verify authentication functionality
 - Deploy the application to production once authentication is verified and working properly
+
+**Next Steps:**
+- **Security Rules**: If an app uses *Cloud Firestore database*, *Cloud Storage for Firebase*, or *Firebase Realtime Database*, then please update user-based Security Rules that are structured according to the app's specific requirements.
+- **App Deployment**: Deploy the app to production after Security Rules are verified to be working properly.
 `.trim(),
         },
       ],

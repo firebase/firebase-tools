@@ -7,7 +7,7 @@ export const generate_schema = tool(
   {
     name: "generate_schema",
     description:
-      "Generates a Firebase Data Connect Schema based on the users description of an app.",
+      "Use this to generate a Firebase Data Connect Schema based on the users description of an app.",
     inputSchema: z.object({
       prompt: z.string().describe("A description of an app that you are interested in building"),
     }),

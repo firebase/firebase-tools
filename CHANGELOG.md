@@ -1,8 +1,1 @@
-- CloudSQL instances created with `firebase dataconnect:connect` now default to Postgres 17.
-- Fixed an issue with deploying indexes to Firestore Enterprise edition databases where explicit `__name__` fields could be incorrectly handled.
-- The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
-- `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
-- Fixed a bug when `firebase init dataconnect` failed to create a React app when launched from VS Code extension (#9171).
-- Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
-- `firebase dataconnect:sql:migrate` now supports Cloud SQL instances with only private IPs. The command must be run in the same VPC of the instance to work. (##9200)
-- Fixed an issue where `firebase deploy --only firestore` would fail with 403 errors on projects that never had a database created.
+- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
