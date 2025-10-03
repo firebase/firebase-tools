@@ -6,7 +6,6 @@ import * as _ from "lodash";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
-const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
@@ -303,7 +302,10 @@ export class Config {
     if (pd) {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
-        const data = cjson.load(filePath);
+        let data: unknown = {};
+        if (fs.statSync(filePath).size > 0) {
+          data = loadCJSON(filePath);
+        }
 
         // Validate config against JSON Schema. For now we just print these to debug
         // logs but in a future CLI version they could be warnings and/or errors.
