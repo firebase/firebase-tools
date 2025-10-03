@@ -102,8 +102,8 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
  */
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {
   setup.project = {};
-  if (options.projectId === EmulatorHub.MISSING_PROJECT_PLACEHOLDER) {
-    logger.info(`Skipping Firebase project given --project=${options.projectId}`);
+  if (options.project === EmulatorHub.MISSING_PROJECT_PLACEHOLDER) {
+    logger.info(`Skipping Firebase project setup given --project=${options.project}`);
     return;
   }
   await requireAuth(options);
