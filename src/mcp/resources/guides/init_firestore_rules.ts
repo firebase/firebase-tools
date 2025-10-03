@@ -32,7 +32,7 @@ ${config.readProjectFile("firestore.rules", { fallback: "<FILE DOES NOT EXIST>" 
 For database entities that neatly fall into the "personal" and "public categories, you can use the personalData and publicData rules. Use the following firestore.rules file, and add a comment above 'personalData' and 'publicData' to note what entities apply to each rule.
 
 **Next Steps:**
-- **App Deployment**: Deploy the application to production once authentication is verified and working properly
+- **App Deployment**: Deploy the app to production after Security Rules are verified to be working properly.
 \`\`\`
 rules_version = '2';
 
