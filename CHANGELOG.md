@@ -1,0 +1,1 @@
+- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
