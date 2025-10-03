@@ -23,11 +23,16 @@ export function appDescription(a: App): string {
 export async function getPlatformFromFolder(dirPath: string): Promise<Platform> {
   const platforms = await getPlatformsFromFolder(dirPath);
 
+  if (platforms.length === 0) {
+    return Platform.NONE;
+  }
+
   // Its not clear which platform the app directory is
   // because we found indicators for multiple platforms.
   if (platforms.length > 1) {
     return Platform.MULTIPLE;
   }
+
   return toDataConnectPlatform(platforms[0]);
 }
 
@@ -43,8 +48,6 @@ export function isPathInside(parent: string, child: string): boolean {
 
 function toDataConnectPlatform(platform: AppUtilsPlatform): Platform {
   switch (platform) {
-    case AppUtilsPlatform.NONE:
-      return Platform.NONE;
     case AppUtilsPlatform.IOS:
       return Platform.IOS;
     case AppUtilsPlatform.ANDROID:

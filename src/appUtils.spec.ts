@@ -255,39 +255,39 @@ describe("appUtils", () => {
 
     it("should return WEB if package.json exists", async () => {
       fs.outputFileSync(`${testDir}/package.json`, "{}");
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.WEB]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.WEB]);
     });
 
     it("should return ANDROID if src/main exists", async () => {
       fs.mkdirpSync(`${testDir}/src/main`);
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.ANDROID]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.ANDROID]);
     });
 
     it("should return IOS if .xcodeproj exists", async () => {
       fs.mkdirpSync(`${testDir}/a.xcodeproj`);
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.IOS]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.IOS]);
     });
 
     it("should return FLUTTER if pubspec.yaml exists", async () => {
       fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.FLUTTER]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.FLUTTER]);
     });
 
     it("should return FLUTTER and WEB if both identifiers exist", async () => {
       fs.outputFileSync(`${testDir}/package.json`, "{}");
       fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.FLUTTER, Platform.WEB]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.FLUTTER, Platform.WEB]);
     });
 
     it("should return NONE if no identifiers exist", async () => {
       fs.mkdirpSync(testDir);
-      const platform = await getPlatformsFromFolder(testDir);
-      expect(platform).to.have.deep.members([Platform.NONE]);
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.be.empty;
     });
   });
 

@@ -7,7 +7,6 @@ import { PackageJSON } from "./frameworks/compose/discover/runtime/node";
  * Supported application platforms.
  */
 export enum Platform {
-  NONE = "NONE",
   ANDROID = "ANDROID",
   WEB = "WEB",
   IOS = "IOS",
@@ -50,33 +49,7 @@ export function appDescription(a: App): string {
  */
 export async function getPlatformsFromFolder(dirPath: string): Promise<Platform[]> {
   const apps = await detectApps(dirPath);
-  const hasWeb = apps.some((app) => app.platform === Platform.WEB);
-  const hasAndroid = apps.some((app) => app.platform === Platform.ANDROID);
-  const hasIOS = apps.some((app) => app.platform === Platform.IOS);
-  const hasDart = apps.some((app) => app.platform === Platform.FLUTTER);
-
-  if (!hasWeb && !hasAndroid && !hasIOS && !hasDart) {
-    return [Platform.NONE];
-  }
-
-  const platforms = [];
-  if (hasWeb) {
-    platforms.push(Platform.WEB);
-  }
-
-  if (hasAndroid) {
-    platforms.push(Platform.ANDROID);
-  }
-
-  if (hasIOS) {
-    platforms.push(Platform.IOS);
-  }
-
-  if (hasDart) {
-    platforms.push(Platform.FLUTTER);
-  }
-
-  return platforms;
+  return [...new Set(apps.map((app) => app.platform))];
 }
 
 /**
@@ -110,7 +83,7 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   return [...webApps, ...flutterApps, ...androidApps, ...iosApps];
 }
 
-async function processIosDir(dirPath: string, filePath: string) {
+async function processIosDir(dirPath: string, filePath: string): Promise<App[]> {
   // Search for apps in the parent directory
   const iosDir = path.dirname(filePath);
   const iosAppIds = await detectAppIdsForPlatform(dirPath, Platform.IOS);
@@ -133,7 +106,7 @@ async function processIosDir(dirPath: string, filePath: string) {
   return iosApps.flat();
 }
 
-async function processAndroidDir(dirPath: string, filePath: string) {
+async function processAndroidDir(dirPath: string, filePath: string): Promise<App[]> {
   // Search for apps in the parent directory, not in the src/main directory
   const androidDir = path.dirname(path.dirname(filePath));
   const androidAppIds = await detectAppIdsForPlatform(dirPath, Platform.ANDROID);
@@ -158,7 +131,7 @@ async function processAndroidDir(dirPath: string, filePath: string) {
   return androidApps.flat();
 }
 
-async function processFlutterDir(dirPath: string, filePath: string) {
+async function processFlutterDir(dirPath: string, filePath: string): Promise<App[]> {
   const flutterDir = path.dirname(filePath);
   const flutterAppIds = await detectAppIdsForPlatform(dirPath, Platform.FLUTTER);
 
@@ -193,7 +166,7 @@ function isPathInside(parent: string, child: string): boolean {
 
 async function packageJsonToWebApp(dirPath: string, packageJsonFile: string): Promise<App> {
   const fullPath = path.join(dirPath, packageJsonFile);
-  const packageJson = JSON.parse((await fs.readFile(fullPath)).toString());
+  const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
   return {
     platform: Platform.WEB,
     directory: path.dirname(packageJsonFile),
@@ -214,6 +187,8 @@ async function detectAppIdsForPlatform(
   let appIdFiles;
   let extractFunc: (fileContent: string) => AppIdentifier[];
   switch (platform) {
+    // Leaving web out of the mix for now because we have no strong conventions
+    // around where to put Firebase config. It could be anywhere in your codebase.
     case Platform.ANDROID:
       appIdFiles = await detectFiles(dirPath, "google-services*.json*");
       extractFunc = extractAppIdentifiersAndroid;
@@ -244,23 +219,25 @@ function getFrameworksFromPackageJson(packageJson: PackageJSON): Framework[] {
   const dependencies = Object.keys(packageJson.dependencies ?? {});
   const allDeps = Array.from(new Set([...devDependencies, ...dependencies]));
   return WEB_FRAMEWORKS.filter((framework) =>
-    WEB_FRAMEWORKS_SIGNALS[framework]!.find((dep) => allDeps.includes(dep)),
+    WEB_FRAMEWORKS_SIGNALS[framework].find((dep) => allDeps.includes(dep)),
   );
 }
 
 /**
  * Reads a firebase_options.dart file and extracts all appIds and bundleIds.
  * @param fileContent content of the dart file.
- * @returns a list of appIds and bundleIds.
+ * @return a list of appIds and bundleIds.
  */
 export function extractAppIdentifiersFlutter(fileContent: string): AppIdentifier[] {
   const optionsRegex = /FirebaseOptions\(([^)]*)\)/g;
+  const appIdRegex = /appId: '([^']*)'/;
+  const bundleIdRegex = /iosBundleId: '([^']*)'/;
   const matches = fileContent.matchAll(optionsRegex);
   const identifiers: AppIdentifier[] = [];
   for (const match of matches) {
     const optionsContent = match[1];
-    const appIdMatch = optionsContent.match(/appId: '([^']*)'/);
-    const bundleIdMatch = optionsContent.match(/iosBundleId: '([^']*)'/);
+    const appIdMatch = appIdRegex.exec(optionsContent);
+    const bundleIdMatch = bundleIdRegex.exec(optionsContent);
     if (appIdMatch?.[1]) {
       identifiers.push({
         appId: appIdMatch[1],
@@ -275,7 +252,7 @@ export function extractAppIdentifiersFlutter(fileContent: string): AppIdentifier
 /**
  * Reads a GoogleService-Info.plist file and extracts the GOOGLE_APP_ID and BUNDLE_ID.
  * @param fileContent content of the plist file.
- * @returns The GOOGLE_APP_ID and BUNDLE_ID or an empty array.
+ * @return The GOOGLE_APP_ID and BUNDLE_ID or an empty array.
  */
 export function extractAppIdentifierIos(fileContent: string): AppIdentifier[] {
   const appIdRegex = /<key>GOOGLE_APP_ID<\/key>\s*<string>([^<]*)<\/string>/;
@@ -296,7 +273,7 @@ export function extractAppIdentifierIos(fileContent: string): AppIdentifier[] {
 /**
  * Reads a google-services.json file and extracts all mobilesdk_app_id and package_name values.
  * @param fileContent content of the google-services.json file.
- * @returns a list of mobilesdk_app_id and package_name values.
+ * @return a list of mobilesdk_app_id and package_name values.
  */
 export function extractAppIdentifiersAndroid(fileContent: string): AppIdentifier[] {
   const identifiers: AppIdentifier[] = [];

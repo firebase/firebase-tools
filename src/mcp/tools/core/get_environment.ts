@@ -44,7 +44,7 @@ export const get_environment = tool(
     const activeProjectString = projectId
       ? `${projectId}${aliases.length ? ` (alias: ${aliases.join(",")})` : ""}`
       : "<NONE>";
-    const acceptedGeminiTosString = geminiTosAccepted ? "Accepted" : "Not Accepted";
+    const acceptedGeminiTosString = geminiTosAccepted ? "Accepted" : "<NOT ACCEPTED>";
     return toContent(`# Environment Information
 
 Project Directory: ${host.cachedProjectDir}

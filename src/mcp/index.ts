@@ -243,7 +243,6 @@ export class FirebaseMcpServer {
   }
 
   get availableTools(): ServerTool[] {
-    this.log("error", `active features for prompts: ${this.activeFeatures || "<none>"}`);
     return availableTools(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );
@@ -254,7 +253,6 @@ export class FirebaseMcpServer {
   }
 
   get availablePrompts(): ServerPrompt[] {
-    this.log("error", `active features for prompts: ${this.activeFeatures || "<none>"}`);
     return availablePrompts(
       this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
     );

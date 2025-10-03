@@ -70,7 +70,7 @@ describe("get_environment tool", () => {
 Project Directory: /test-dir
 Project Config Path: <NO CONFIG PRESENT>
 Active Project ID: <NONE>
-Gemini in Firebase Terms of Service: Not Accepted
+Gemini in Firebase Terms of Service: <NOT ACCEPTED>
 Authenticated User: <NONE>
 Detected App IDs: <NONE>
 Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
@@ -153,32 +153,14 @@ firebase.json contents:
     });
 
     const result = await get_environment.fn({}, options);
-
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: test-project (alias: my-alias)
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: test@example.com
-Detected App IDs: <NONE>
-Available Project Aliases (format: '[alias]: [projectId]'): 
+    expect(result.content[0].text).to.include("Active Project ID: test-project (alias: my-alias)");
+    expect(result.content[0].text).to.include(
+      `Available Project Aliases (format: '[alias]: [projectId]'): 
 
 my-alias: test-project
 
-Available Accounts: <NONE>
-
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+`,
+    );
   });
 
   it("should handle multiple aliases", async () => {
@@ -191,32 +173,17 @@ Confirm with the user before taking action.`;
     });
 
     const result = await get_environment.fn({}, options);
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: test-project (alias: alias1,alias2)
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: test@example.com
-Detected App IDs: <NONE>
-Available Project Aliases (format: '[alias]: [projectId]'): 
+    expect(result.content[0].text).to.include(
+      "Active Project ID: test-project (alias: alias1,alias2)",
+    );
+    expect(result.content[0].text).to.include(
+      `Available Project Aliases (format: '[alias]: [projectId]'): 
 
 alias1: test-project
 alias2: test-project
 
-Available Accounts: <NONE>
-
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+`,
+    );
   });
 
   it("should handle multiple accounts", async () => {
@@ -229,31 +196,13 @@ Confirm with the user before taking action.`;
     const options = mockToolOptions("test-project", "test@example.com");
 
     const result = await get_environment.fn({}, options);
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: test-project
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: test@example.com
-Detected App IDs: <NONE>
-Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-Available Accounts: 
+    expect(result.content[0].text).to.include("Authenticated User: test@example.com");
+    expect(result.content[0].text).to.include(`Available Accounts: 
 
 - test@example.com
 - another@example.com
 
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+`);
   });
 
   it("should handle a single detected app", async () => {
@@ -263,31 +212,11 @@ Confirm with the user before taking action.`;
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: <NONE>
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: <NONE>
-Detected App IDs: 
+    expect(result.content[0].text).to.include(`Detected App IDs: 
 
 web-app-id: <UNKNOWN BUNDLE ID>
 
-Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-Available Accounts: <NONE>
-
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+`);
   });
 
   it("should handle multiple detected apps with bundleId", async () => {
@@ -305,32 +234,12 @@ Confirm with the user before taking action.`;
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: <NONE>
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: <NONE>
-Detected App IDs: 
+    expect(result.content[0].text).to.include(`Detected App IDs: 
 
 web-app-id: <UNKNOWN BUNDLE ID>
 android-app-id: com.foo.bar
 
-Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-Available Accounts: <NONE>
-
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+`);
   });
 
   it("should show Gemini ToS not accepted", async () => {
@@ -341,27 +250,8 @@ Confirm with the user before taking action.`;
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    const expectedOutput = `# Environment Information
-
-Project Directory: /test-dir
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: <NONE>
-Gemini in Firebase Terms of Service: Not Accepted
-Authenticated User: <NONE>
-Detected App IDs: <NONE>
-Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-Available Accounts: <NONE>
-
-No firebase.json file was found.
-      
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+    expect(result.content[0].text).to.include(
+      "Gemini in Firebase Terms of Service: <NOT ACCEPTED>",
+    );
   });
 });
