@@ -65,11 +65,12 @@ export function markdownDocsOfPrompts(): string {
 | Prompt Name | Feature Group | Description |
 | ----------- | ------------- | ----------- |`;
   for (const prompt of allPrompts) {
-    let feature = prompt.mcp._meta?.feature || "";
+    const feature = prompt.mcp._meta?.feature || "";
     let description = prompt.mcp.description || "";
     if (prompt.mcp.arguments?.length) {
       const argsList = prompt.mcp.arguments.map(
-        (arg) => ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`
+        (arg) =>
+          ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`,
       );
       description += ` <br><br>Arguments:${argsList.join("")}`;
     }
