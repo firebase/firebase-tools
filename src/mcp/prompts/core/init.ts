@@ -5,7 +5,7 @@ import { prompt } from "../../prompt";
 export const init = prompt(
   {
     name: "init",
-    description: "Use this command to set up Firebase services, like backend services and gen AI features.",
+    description: "Use this command to set up Firebase services, like backend and AI features.",
     annotations: {
       title: "Initialize Firebase",
     },
