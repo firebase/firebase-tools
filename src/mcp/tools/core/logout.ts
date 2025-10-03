@@ -1,5 +1,4 @@
 import { z } from "zod";
-import * as clc from "colorette";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import {
@@ -60,7 +59,7 @@ export const logout = tool(
       if (token) {
         try {
           await authLogout(token);
-          logoutMessages.push(`Logged out from ${clc.bold(account.user.email)}`);
+          logoutMessages.push(`Logged out from ${account.user.email}`);
         } catch (e: unknown) {
           if (e instanceof Error) {
             logger.debug(e.message);
