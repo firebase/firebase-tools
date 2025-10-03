@@ -11,6 +11,7 @@ import * as utils from "../utils";
 import { FirebaseProjectMetadata, CloudProjectInfo, ProjectPage } from "../types/project";
 import { bestEffortEnsure } from "../ensureApiEnabled";
 import { Options } from "../options";
+import { Constants } from "../emulator/constants";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -45,6 +46,9 @@ export async function promptProjectCreation(
           return "Project ID must be at least 6 characters long";
         } else if (projectId.length > 30) {
           return "Project ID cannot be longer than 30 characters";
+        }
+        if (Constants.isDemoProject(projectId)) {
+          return "Project ID cannot starts with demo-";
         }
 
         try {
@@ -172,7 +176,7 @@ export async function getOrPromptProject(
   return selectProjectInteractively();
 }
 
-async function selectProjectInteractively(
+export async function selectProjectInteractively(
   pageSize: number = MAXIMUM_PROMPT_LIST,
 ): Promise<FirebaseProjectMetadata> {
   const { projects, nextPageToken } = await getFirebaseProjectPage(pageSize);
@@ -252,9 +256,16 @@ export async function promptAvailableProjectId(): Promise<string> {
 
   if (nextPageToken) {
     // Prompt for project ID if we can't list all projects in 1 page
-    return await prompt.input(
+    const projectId = await prompt.input(
       "Please input the ID of the Google Cloud Project you would like to add Firebase:",
     );
+    if (!projectId) {
+      throw new FirebaseError("Project ID cannot be empty");
+    }
+    if (Constants.isDemoProject(projectId)) {
+      throw new FirebaseError("Project ID cannot starts with demo-");
+    }
+    return projectId;
   } else {
     const choices = projects
       .filter((p: CloudProjectInfo) => !!p)
