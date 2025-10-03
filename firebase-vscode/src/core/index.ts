@@ -15,6 +15,7 @@ import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
 import { AnalyticsLogger } from "../analytics";
+import { EmulatorHub } from "../emulator/hub";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
@@ -66,10 +67,8 @@ export async function registerCore(
       );
       return;
     }
-    const initCommand = currentProjectId.value
-      ? `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}`
-      : `${settings.firebasePath} init dataconnect`;
-
+    const projectId = currentProjectId.value || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    const initCommand = `${settings.firebasePath} init dataconnect --project ${projectId}`;
     initSpy.call("firebase init", initCommand, { focus: true });
   });
 

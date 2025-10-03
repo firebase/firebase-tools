@@ -16,6 +16,7 @@ import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
 import { logBullet } from "../utils";
+import { EmulatorHub } from "../emulator/hub";
 
 const homeDir = os.homedir();
 
@@ -147,7 +148,6 @@ ${[...featureNames]
 export const command = new Command("init [feature]")
   .description("interactively configure the current directory as a Firebase project directory")
   .help(HELP)
-  .before(requireAuth)
   .action(initAction);
 
 /**
@@ -163,6 +163,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
         featureNames.join(", ") +
         ".",
     );
+  }
+  if (options.project !== EmulatorHub.MISSING_PROJECT_PLACEHOLDER) {
+    await requireAuth(options);
   }
 
   const cwd = options.cwd || process.cwd();

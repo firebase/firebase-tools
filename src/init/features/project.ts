@@ -15,6 +15,7 @@ import { logger } from "../../logger";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { Options } from "../../options";
+import { EmulatorHub } from "../../emulator/hub";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -100,6 +101,10 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
  */
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {
   setup.project = {};
+  if (options.projectId === EmulatorHub.MISSING_PROJECT_PLACEHOLDER) {
+    logger.info(`Skipping Firebase project given --project=${options.projectId}`);
+    return;
+  }
 
   logger.info();
   logger.info(`First, let's associate this project directory with a Firebase project.`);
