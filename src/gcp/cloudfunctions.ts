@@ -18,6 +18,7 @@ import {
   CODEBASE_LABEL,
   HASH_LABEL,
 } from "../functions/constants";
+import { with429Backoff } from "./retry429";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin(), apiVersion: API_VERSION });
@@ -209,10 +210,8 @@ export async function generateUploadUrl(projectId: string, location: string): Pr
   const endpoint = `/${parent}/functions:generateUploadUrl`;
 
   try {
-    const res = await client.post<unknown, { uploadUrl: string }>(
-      endpoint,
-      {},
-      { retryCodes: [503] },
+    const res = await with429Backoff("generateUploadUrl", location, () =>
+      client.post<unknown, { uploadUrl: string }>(endpoint, {}, { retryCodes: [503] }),
     );
     return res.body.uploadUrl;
   } catch (err: any) {
@@ -241,9 +240,8 @@ export async function createFunction(
   };
 
   try {
-    const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
-      endpoint,
-      cloudFunction,
+    const res = await with429Backoff("create", cloudFunction.name, () =>
+      client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(endpoint, cloudFunction),
     );
     return {
       name: res.body.name,
@@ -405,14 +403,12 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
-      endpoint,
-      cloudFunction,
-      {
+    const res = await with429Backoff("update", cloudFunction.name, () =>
+      client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(endpoint, cloudFunction, {
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
-      },
+      }),
     );
     return {
       done: false,
@@ -431,7 +427,7 @@ export async function updateFunction(
 export async function deleteFunction(name: string): Promise<Operation> {
   const endpoint = `/${name}`;
   try {
-    const res = await client.delete<Operation>(endpoint);
+    const res = await with429Backoff("delete", name, () => client.delete<Operation>(endpoint));
     return {
       done: false,
       name: res.body.name,
