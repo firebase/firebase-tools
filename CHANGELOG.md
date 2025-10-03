@@ -1,1 +1,2 @@
+- Marks Java 11 and below as deprecated. Support will be dropped in Firebase CLI v15. Please upgrade to Java version 21 or above to continue using the emulators.
 - Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
