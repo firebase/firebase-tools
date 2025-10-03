@@ -16,6 +16,7 @@ import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { Options } from "../../options";
 import { EmulatorHub } from "../../emulator/hub";
+import { requireAuth } from "../../requireAuth";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -105,6 +106,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     logger.info(`Skipping Firebase project given --project=${options.projectId}`);
     return;
   }
+  await requireAuth(options);
 
   logger.info();
   logger.info(`First, let's associate this project directory with a Firebase project.`);

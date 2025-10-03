@@ -8,7 +8,6 @@ import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
 import { checkbox, confirm } from "../prompt";
-import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
@@ -16,7 +15,6 @@ import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
 import { logBullet } from "../utils";
-import { EmulatorHub } from "../emulator/hub";
 
 const homeDir = os.homedir();
 
@@ -163,9 +161,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
         featureNames.join(", ") +
         ".",
     );
-  }
-  if (options.project !== EmulatorHub.MISSING_PROJECT_PLACEHOLDER) {
-    await requireAuth(options);
   }
 
   const cwd = options.cwd || process.cwd();
