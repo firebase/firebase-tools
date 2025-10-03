@@ -154,7 +154,6 @@ export const command = new Command("init [feature]")
  * @param options Command options
  */
 export async function initAction(feature: string, options: Options): Promise<void> {
-  console.log("options", options.project);
   if (feature && !featureNames.includes(feature)) {
     return utils.reject(
       clc.bold(feature) +
