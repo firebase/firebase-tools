@@ -298,7 +298,7 @@ export async function startAll(
   if (targets.some(requiresJava)) {
     if ((await commandUtils.checkJavaMajorVersion()) < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
       utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
-      throw new FirebaseError(JAVA_DEPRECATION_WARNING);
+      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
     }
   }
   if (options.logVerbosity) {

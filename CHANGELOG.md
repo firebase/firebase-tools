@@ -1,3 +1,4 @@
+- Marks Java 11 and below as deprecated. Support will be dropped in Firebase CLI v15. Please upgrade to Java version 21 or above to continue using the emulators.
 - Fixed an issue with deploying indexes to Firestore Enterprise edition databases where explicit `__name__` fields could be incorrectly handled.
 - The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
 - `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
