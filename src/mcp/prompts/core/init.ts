@@ -49,7 +49,7 @@ Follow the steps below taking note of any user instructions provided above.
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
    - If you run into issues logging the user in, suggest that they run \`npx firebase-tools login --reauth\` in a separate terminal
 2.1 Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user.
-  1. Backend Services: Backend services for the user such as setting up database, adding a user authenticated sign up and login page, deploying user's web app to a production URL.
+  1. Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
   2. Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
     - IMPORTANT: The Firebase AI Logic setup guide is for web, flutter, and android apps only. If the user requests firebase setup for unsupported platforms (iOS, Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
