@@ -1040,7 +1040,7 @@ export async function startAll(
     is_demo_project: String(isDemoProject),
   });
 
-  return { deprecationNotices: [] };
+  return { deprecationNotices };
 }
 
 function getListenConfig(
