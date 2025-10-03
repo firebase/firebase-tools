@@ -30,7 +30,7 @@ export const init_auth = resource(
 - Deploy the application to production once authentication is verified and working properly
 
 **Next Steps:**
-- **Security Rules**: If users use Firestore or Storage, update user-based security rules based on your application's specific requirements.
+- **Security Rules**: If an app uses *Cloud Firestore database* or *Cloud Storage for Firebase*, update user-based Security Rules structured according to the app's specific requirements.
 - **App Deployment**: Deploy the application to production once authentication is verified and working properly.
 `.trim(),
         },
