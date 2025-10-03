@@ -15,6 +15,7 @@ import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { requireAuth } from "../../requireAuth";
 import { Constants } from "../../emulator/constants";
+import { FirebaseError } from "../../error";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -116,6 +117,9 @@ async function usingProjectMetadata(
   config: any,
   pm: FirebaseProjectMetadata,
 ): Promise<void> {
+  if (!pm) {
+    throw new FirebaseError("null FirebaseProjectMetadata");
+  }
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", pm.projectId);
   setup.projectId = pm.projectId;

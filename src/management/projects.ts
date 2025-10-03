@@ -186,15 +186,20 @@ export async function selectProjectInteractively(
   if (nextPageToken) {
     // Prompt user for project ID if we can't list all projects in 1 page
     logger.debug(`Found more than ${projects.length} projects, selecting via prompt`);
-    return selectProjectByPrompting();
+    return await getFirebaseProject(await selectProjectByPrompting());
   }
   return selectProjectFromList(projects);
 }
 
-async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
+async function selectProjectByPrompting(): Promise<string> {
   const projectId = await prompt.input("Please input the project ID you would like to use:");
-
-  return await getFirebaseProject(projectId);
+  if (!projectId) {
+    throw new FirebaseError("Project ID cannot be empty");
+  }
+  if (Constants.isDemoProject(projectId)) {
+    throw new FirebaseError("Project ID cannot starts with demo-");
+  }
+  return projectId;
 }
 
 /**
@@ -255,17 +260,9 @@ export async function promptAvailableProjectId(): Promise<string> {
   }
 
   if (nextPageToken) {
-    // Prompt for project ID if we can't list all projects in 1 page
-    const projectId = await prompt.input(
-      "Please input the ID of the Google Cloud Project you would like to add Firebase:",
-    );
-    if (!projectId) {
-      throw new FirebaseError("Project ID cannot be empty");
-    }
-    if (Constants.isDemoProject(projectId)) {
-      throw new FirebaseError("Project ID cannot starts with demo-");
-    }
-    return projectId;
+    // Prompt user for project ID if we can't list all projects in 1 page
+    logger.debug(`Found more than ${projects.length} projects, selecting via prompt`);
+    return await selectProjectByPrompting();
   } else {
     const choices = projects
       .filter((p: CloudProjectInfo) => !!p)

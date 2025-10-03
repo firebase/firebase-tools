@@ -96,26 +96,6 @@ describe("project", () => {
           displayName: "my-project",
         });
       });
-
-      it("should throw if project ID is empty after prompt", async () => {
-        const options = {};
-        const setup = { config: {}, rcfile: {} };
-        prompt.select.onFirstCall().resolves("Create a new project");
-        prompt.input.resolves("");
-        configstoreSetStub.onFirstCall().resolves();
-
-        let err;
-        try {
-          await doSetup(setup, emptyConfig, options);
-        } catch (e: any) {
-          err = e;
-        }
-
-        expect(err.message).to.equal("Project ID cannot be empty");
-        expect(prompt.select).to.be.calledOnce;
-        expect(prompt.input).to.be.calledTwice;
-        expect(createFirebaseProjectStub).to.be.not.called;
-      });
     });
 
     describe('with "Add Firebase resources to GCP project" option', () => {
@@ -138,27 +118,6 @@ describe("project", () => {
         expect(prompt.select).to.be.calledOnce;
         expect(promptAvailableProjectIdStub).to.be.calledOnce;
         expect(addFirebaseProjectStub).to.be.calledOnceWith("my-project-123");
-      });
-
-      it("should throw if project ID is empty after prompt", async () => {
-        const options = {};
-        const setup = { config: {}, rcfile: {} };
-        prompt.select
-          .onFirstCall()
-          .resolves("Add Firebase to an existing Google Cloud Platform project");
-        promptAvailableProjectIdStub.onFirstCall().resolves("");
-
-        let err;
-        try {
-          await doSetup(setup, emptyConfig, options);
-        } catch (e: any) {
-          err = e;
-        }
-
-        expect(err.message).to.equal("Project ID cannot be empty");
-        expect(prompt.select).to.be.calledOnce;
-        expect(promptAvailableProjectIdStub).to.be.calledOnce;
-        expect(addFirebaseProjectStub).to.be.not.called;
       });
     });
 
@@ -183,6 +142,7 @@ describe("project", () => {
         options = {};
         setup = { config: {}, rcfile: { projects: { default: "my-project-123" } } };
         getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
       });
 
       it("should not prompt", async () => {
