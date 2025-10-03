@@ -54,3 +54,28 @@ export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
   }
   return allPrompts;
 }
+
+/**
+ * Generates a markdown table of all available prompts and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfPrompts(): string {
+  const allPrompts = availablePrompts();
+  let doc = `
+| Prompt Name | Feature Group | Description |
+| ----------- | ------------- | ----------- |`;
+  for (const prompt of allPrompts) {
+    const feature = prompt.mcp._meta?.feature || "";
+    let description = prompt.mcp.description || "";
+    if (prompt.mcp.arguments?.length) {
+      const argsList = prompt.mcp.arguments.map(
+        (arg) =>
+          ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`,
+      );
+      description += ` <br><br>Arguments:${argsList.join("")}`;
+    }
+    doc += `
+| ${prompt.mcp.name} | ${feature} | ${description} |`;
+  }
+  return doc;
+}

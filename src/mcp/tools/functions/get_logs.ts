@@ -4,6 +4,7 @@ import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getApiFilter } from "../../../functions/functionslog";
 import { listEntries } from "../../../gcp/cloudlogging";
+import { getErrMsg } from "../../../error";
 
 const SEVERITY_LEVELS = [
   "DEFAULT",
@@ -44,13 +45,14 @@ export const get_logs = tool(
   {
     name: "get_logs",
     description:
-      "Retrieves a page of Cloud Functions log entries using Google Cloud Logging advanced filters.",
+      "Use this to retrieve a page of Cloud Functions log entries using Google Cloud Logging advanced filters.",
     inputSchema: z.object({
       function_names: z
-        .union([z.string(), z.array(z.string()).min(1)])
+        .array(z.string())
+        .min(1)
         .optional()
         .describe(
-          "Optional list of deployed Cloud Function names to filter logs (string or array).",
+          "Optional list of deployed Cloud Function IDs to filter logs (e.g. ['fnA','fnB']).",
         ),
       page_size: z
         .number()
@@ -101,8 +103,8 @@ export const get_logs = tool(
     { function_names, page_size, order, page_token, min_severity, start_time, end_time, filter },
     { projectId },
   ) => {
-    const resolvedOrder = order;
-    const resolvedPageSize = page_size;
+    const resolvedOrder: "asc" | "desc" = order?.toLowerCase() === "asc" ? "asc" : "desc";
+    const resolvedPageSize = page_size ?? 50;
 
     const normalizedSelectors = normalizeFunctionSelectors(function_names);
     const filterParts: string[] = [getApiFilter(normalizedSelectors)];
@@ -176,9 +178,11 @@ export const get_logs = tool(
 
       return toContent(response);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to retrieve Cloud Logging entries.";
-      return mcpError(message);
+      const errMsg = getErrMsg(
+        (err as any)?.original || err,
+        "Failed to retrieve Cloud Logging entries.",
+      );
+      return mcpError(errMsg);
     }
   },
 );
