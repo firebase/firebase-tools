@@ -235,7 +235,7 @@ async function awaitTestResults(
   releaseTests: ReleaseTest[],
   requests: AppDistributionClient,
 ): Promise<void> {
-  const releaseTestNames = new Set(releaseTests.map((rt) => rt.name!));
+  const releaseTestNames = new Set(releaseTests.map((rt) => rt.name).filter((n): n is string => !!n));
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
     utils.logBullet(`${releaseTestNames.size} automated test results are pending...`);
     await delay(TEST_POLLING_INTERVAL_MILLIS);
