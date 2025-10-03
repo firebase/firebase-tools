@@ -49,6 +49,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   }
   const projectFromRcFile = setup.rcfile?.projects?.default;
   if (projectFromRcFile) {
+    await requireAuth(options);
     await usingProject(setup, config, projectFromRcFile as string, ".firebaserc");
     return;
   }
@@ -56,6 +57,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   if (projectEnvVar) {
     // If env var $FIREBASE_PROJECT is set, try to fetch that project.
     // This is used in some shell scripts e.g. under https://firebase.tools/.
+    await requireAuth(options);
     await usingProject(setup, config, projectEnvVar, "$FIREBASE_PROJECT");
     return;
   }
