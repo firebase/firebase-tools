@@ -105,7 +105,7 @@ describe("detectApps", () => {
     fs.outputFileSync(`${testDir}/web/package.json`, "{}");
     fs.mkdirpSync(`${testDir}/android/src/main`);
     const apps = await detectApps(testDir);
-    expect(apps).to.deep.equal([
+    expect(apps).to.have.deep.members([
       {
         platform: Platform.WEB,
         directory: `web`,
@@ -172,8 +172,6 @@ describe("detectApps", () => {
         frameworks: [],
       },
     ];
-    expect(apps.sort((a, b) => a.directory.localeCompare(b.directory))).to.deep.equal(
-      expected.sort((a, b) => a.directory.localeCompare(b.directory)),
-    );
+    expect(apps).to.have.deep.members(expected);
   });
 });
