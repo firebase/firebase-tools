@@ -34,6 +34,7 @@
         "deep-equal-in-any-order": "^2.0.6",
         "exegesis": "^4.2.0",
         "exegesis-express": "^4.0.0",
+        "exponential-backoff": "^3.1.2",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
         "form-data": "^4.0.1",
@@ -9889,6 +9890,12 @@
           "optional": true
         }
       }
+    },
+    "node_modules/exponential-backoff": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/exponential-backoff/-/exponential-backoff-3.1.2.tgz",
+      "integrity": "sha512-8QxYTVXUkuy7fIIoitQkPwGonB8F3Zj8eEO8Sqg9Zv/bkI7RJAzowee4gr81Hak/dUTpA2Z7VfQgoijjPNlUZA==",
+      "license": "Apache-2.0"
     },
     "node_modules/express": {
       "version": "4.21.2",
@@ -29028,6 +29035,11 @@
       "requires": {
         "exegesis": "^4.1.0"
       }
+    },
+    "exponential-backoff": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/exponential-backoff/-/exponential-backoff-3.1.2.tgz",
+      "integrity": "sha512-8QxYTVXUkuy7fIIoitQkPwGonB8F3Zj8eEO8Sqg9Zv/bkI7RJAzowee4gr81Hak/dUTpA2Z7VfQgoijjPNlUZA=="
     },
     "express": {
       "version": "4.21.2",

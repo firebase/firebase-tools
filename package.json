@@ -127,6 +127,7 @@
     "deep-equal-in-any-order": "^2.0.6",
     "exegesis": "^4.2.0",
     "exegesis-express": "^4.0.0",
+    "exponential-backoff": "^3.1.2",
     "express": "^4.16.4",
     "filesize": "^6.1.0",
     "form-data": "^4.0.1",
