@@ -8,3 +8,4 @@
 - Fixed an issue where `firebase deploy --only firestore` would fail with 403 errors on projects that never had a database created.
 - Added `remoteconfig:experiments:get`, `remoteconfig:experiments:list`, and `remoteconfig:experiments:delete` commands to manage Remote Config experiments.
 - Added `remoteconfig:rollouts:get`, `remoteconfig:rollouts:list`, and `remoteconfig:rollouts:delete` commands to manage Remote Config rollouts.
+- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
