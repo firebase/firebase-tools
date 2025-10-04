@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -45,6 +45,7 @@ const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yam
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
@@ -88,6 +89,7 @@ const templateServiceInfo: ServiceGQL = {
       ],
     },
   ],
+  seedDataGql: SEED_DATA_TEMPLATE,
 };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -114,11 +116,11 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
+        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
+        await ensureGIFApiTos(setup.projectId);
       }
     }
     if (hasBilling) {

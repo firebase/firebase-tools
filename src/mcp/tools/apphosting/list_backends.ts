@@ -15,7 +15,7 @@ export const list_backends = tool(
   {
     name: "list_backends",
     description:
-      "Retrieves a list of App Hosting backends in the current project. An empty list means that there are no backends. " +
+      "Use this to retrieve a list of App Hosting backends in the current project. An empty list means that there are no backends. " +
       "The `uri` is the public URL of the backend. " +
       "A working backend will have a `managed_resources` array that will contain a `run_service` entry. That `run_service.service` " +
       "is the resource name of the Cloud Run service serving the App Hosting backend. The last segment of that name is the service ID. " +

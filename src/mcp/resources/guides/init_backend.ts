@@ -19,15 +19,16 @@ export const init_backend = resource(
 1. Determine based on what you already know about the user's project or by asking them which of the following services is appropriate.
 2. Use the Firebase \`read_resources\` tool to load the guide to setup the product you choose.
 
-The user will likely need to setup Firestore, Authentication, and Hosting. Read the following guides in order. Do not run the app until you have completed all 3 guides.
+The user will likely need to setup Firestore, Authentication, and Hosting. Read the following guides in order:
  1. [Firestore](firebase://guides/init/firestore): read this to setup Firestore database
  2. [Authentication](firebase://guides/init/auth): read this to setup Firebase Authentication to support multi-user apps
- 3. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
+ 3. [Firestore Rules](firebase://guides/init/firestore_rules): read this to setup the \`firestore.rules\` file for securing your database
+ 4. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
 
 **firebase.json**
-The firebase.json file is used to deploy assets with the Firebase CLI. It contains configuration for firestore, hosting, and functions.
+The firebase.json file is used to deploy Firebase products with the firebase deploy command.
 
-Here is an example firebase.json file with all 3 services. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
+Here is an example firebase.json file with Firebase Hosting, Firestore, and Cloud Functions. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
 \`\`\`json
 {
   "hosting": {
