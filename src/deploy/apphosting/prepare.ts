@@ -148,9 +148,9 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
-  Object.values(context.backendConfigs).forEach(async (cfg) => {
+  for (const cfg of Object.values(context.backendConfigs)) {
     if (!cfg.localBuild) {
-      return;
+      continue;
     }
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
@@ -172,8 +172,7 @@ export default async function (context: Context, options: Options): Promise<void
     } catch (e) {
       throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
     }
-    return;
-  });
+  }
 }
 
 /**
