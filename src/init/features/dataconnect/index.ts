@@ -41,7 +41,7 @@ import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
 
 // Default GCP region for Data Connect
-const DEFAULT_GCP_REGION = "us-east4";
+export const FDC_DEFAULT_REGION = "us-east4";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -153,7 +153,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   // Populate the default values of required fields.
   info.serviceId = info.serviceId || defaultServiceId();
   info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
-  info.locationId = info.locationId || DEFAULT_GCP_REGION;
+  info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
   try {
@@ -648,7 +648,7 @@ async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void
     info.locationId = await select<string>({
       message: "What location would like to use?",
       choices,
-      default: DEFAULT_GCP_REGION,
+      default: FDC_DEFAULT_REGION,
     });
   }
 }
