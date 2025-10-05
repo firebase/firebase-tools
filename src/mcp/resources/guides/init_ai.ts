@@ -82,9 +82,9 @@ Take the following actions depending on the language and platform or framework t
     - Kotlin Only
       - implementation(platform("com.google.firebase:firebase-bom:34.3.0")) or a higher bom version if it is available
       - implementation("com.google.firebase:firebase-ai")
-    - CRITICAL: When initializing the Firebase AI model in Kotlin, you must* explicitly specify the Google AI backend by calling the googleAI() function. The correct syntax is GenerativeBackend.googleAI().
-      - Correct Example:* val model = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(...)
-      - Incorrect:* Do not use the invalid constant GenerativeBackend.GOOGLE_AI.
+    - CRITICAL: When initializing the Firebase AI model in Kotlin, you must explicitly specify the Google AI backend by calling the googleAI() function. The correct syntax is GenerativeBackend.googleAI().
+      - Correct Example: val model = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(...)
+      - Incorrect: Do not use the invalid constant GenerativeBackend.GOOGLE_AI.
     - The Kotlin SDK public API makes extensive use of suspend functions and coroutines. Make sure the code you generate is based on that paradigm and avoid using callbacks unless absolutely necessary in Kotlin
   - For Flutter apps, always include the following imports. do not forget or modify them
     - import 'package:firebase_core/firebase_core.dart';
