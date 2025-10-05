@@ -62,7 +62,7 @@ Take the following actions depending on the language and platform or framework t
 - Use the firebase_init tool to set up ailogic
 
 - For Android, the Google Services Gradle plugin is required to prevent the app from crashing. You must add it in two files:
-  - 1.  In your project-level /build.gradle.kts file, add the plugin to the plugins block: id("com.google.gms.google-services") version "4.4.2" apply false
+  - 1.  In your project-level \`/build.gradle.kts\` file, add the plugin to the plugins block: id("com.google.gms.google-services") version "4.4.2" apply false
   - 2.  In your **app-level** \`/app/build.gradle.kts\` file, apply the plugin: id("com.google.gms.google-services")
 
 ### 3\. Implement AI Features
