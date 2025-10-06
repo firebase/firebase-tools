@@ -19,7 +19,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures.unshift("core");
+    activeFeatures = ["core", ...activeFeatures];
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
