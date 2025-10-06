@@ -71,8 +71,9 @@ export function markdownDocsOfTools(): string {
     if (feature === "firebase") {
       feature = "core";
     }
+    const description = (tool.mcp?.description || "").replaceAll("\n", "<br>");
     doc += `
-| ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
+| ${tool.mcp.name} | ${feature} | ${description} |`;
   }
   return doc;
 }
