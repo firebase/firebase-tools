@@ -304,7 +304,7 @@ export class FirebaseMcpServer {
     // an install. The reason we can't just use `firebase` is some users may
     // have run the MCP server via npx, and don't have firebase installed
     // globally
-    return "npx firebase-tools@latest"
+    return "npx firebase-tools@latest";
   }
 
   async mcpListTools(): Promise<ListToolsResult> {
