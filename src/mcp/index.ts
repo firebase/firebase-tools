@@ -45,7 +45,7 @@ import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resolveResource, resources, resourceTemplates } from "./resources";
-import * as crossSpawn from 'cross-spawn';
+import * as crossSpawn from "cross-spawn";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -303,10 +303,7 @@ export class FirebaseMcpServer {
   private _getFirebaseCliCommand(): string {
     if (!this.cliCommand) {
       const testCommand = crossSpawn.sync("firebase --version");
-      if (testCommand.error) {
-        this.cliCommand = "npx firebase-tools@latest";
-      }
-      this.cliCommand = "firebase";
+      this.cliCommand = testCommand.error ? "npx firebase-tools@latest" : "firebase";
     }
     return this.cliCommand;
   }
