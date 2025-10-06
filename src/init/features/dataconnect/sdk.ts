@@ -5,7 +5,6 @@ import * as path from "path";
 const cwd = process.cwd();
 
 import { checkbox, select } from "../../../prompt";
-import { App, appDescription, detectApps } from "../../../dataconnect/appFinder";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { loadAll } from "../../../dataconnect/load";
@@ -13,10 +12,8 @@ import {
   ConnectorInfo,
   ConnectorYaml,
   DartSDK,
-  Framework,
   JavascriptSDK,
   KotlinSDK,
-  Platform,
 } from "../../../dataconnect/types";
 import { FirebaseError } from "../../../error";
 import { isArray } from "lodash";
@@ -31,6 +28,7 @@ import {
   logLabeledError,
   commandExistsSync,
 } from "../../../utils";
+import { detectApps, appDescription, Platform, App, Framework } from "../../../appUtils";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
@@ -99,8 +97,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
   setup.featureInfo.dataconnectSdk = info;
 }
 
-async function chooseApp(): Promise<App[]> {
-  let apps = await detectApps(cwd);
+export async function chooseApp(): Promise<App[]> {
+  let apps = dedupeAppsByPlatformAndDirectory(await detectApps(cwd));
   if (apps.length) {
     logLabeledSuccess(
       "dataconnect",
@@ -111,11 +109,12 @@ async function chooseApp(): Promise<App[]> {
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
-  const envPlatform = envOverride(FDC_SDK_PLATFORM_ENV, Platform.NONE) as Platform;
+  const envPlatform: Platform | undefined = envOverride(FDC_SDK_PLATFORM_ENV, "") as Platform;
   const envFrameworks: Framework[] = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
     .split(",")
+    .filter((f) => !!f)
     .map((f) => f as Framework);
-  if (envAppFolder && envPlatform !== Platform.NONE) {
+  if (envAppFolder && envPlatform) {
     // Resolve the relative path to the app directory
     const envAppRelDir = path.relative(cwd, path.resolve(cwd, envAppFolder));
     const matchedApps = apps.filter(
@@ -147,7 +146,7 @@ async function chooseApp(): Promise<App[]> {
       message: "Which apps do you want to set up Data Connect SDKs in?",
       choices,
     });
-    if (!pickedApps.length) {
+    if (!pickedApps || !pickedApps.length) {
       throw new FirebaseError("Command Aborted. Please choose at least one app.");
     }
     apps = pickedApps;
@@ -166,7 +165,7 @@ export async function actuate(setup: Setup, config: Config) {
   } finally {
     let flow = "no_app";
     if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
+      const platforms = sdkInfo.apps.map(appDescription).sort();
       flow = `${platforms.join("_")}_app`;
     }
     if (fdcInfo) {
@@ -191,7 +190,11 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       return;
     }
   }
-  const apps = info.apps;
+
+  // detectApps creates unique apps by appId and bundleId, but this method operates
+  // on platform, directory, and frameworks alone. Deduping here to retain the
+  // same behavior
+  const apps = dedupeAppsByPlatformAndDirectory(info.apps);
 
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
@@ -234,12 +237,12 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       ),
     );
   }
-  if (apps.some((a) => a.frameworks?.includes("react"))) {
+  if (apps.some((a) => a.frameworks?.includes(Framework.REACT))) {
     logBullet(
       "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
     );
   }
-  if (apps.some((a) => a.frameworks?.includes("angular"))) {
+  if (apps.some((a) => a.frameworks?.includes(Framework.ANGULAR))) {
     logBullet(
       "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
     );
@@ -378,9 +381,25 @@ export function addSdkGenerateToConnectorYaml(
       throw new FirebaseError(
         `Unsupported platform ${app.platform} for Data Connect SDK generation. Supported platforms are: ${Object.values(
           Platform,
-        )
-          .filter((p) => p !== Platform.NONE && p !== Platform.MULTIPLE)
-          .join(", ")}\n${JSON.stringify(app)}`,
+        ).join(", ")}\n${JSON.stringify(app)}`,
       );
   }
+}
+
+function dedupeAppsByPlatformAndDirectory(apps: App[]): App[] {
+  // detectApps creates unique apps by appId and bundleId, but this method operates
+  // on platform, directory, and frameworks alone. Deduping here to retain the
+  // same behavior
+  return [
+    ...new Set(
+      apps.map(
+        (app) =>
+          ({
+            platform: app.platform,
+            directory: app.directory,
+            frameworks: app.frameworks,
+          }) as App,
+      ),
+    ),
+  ];
 }
