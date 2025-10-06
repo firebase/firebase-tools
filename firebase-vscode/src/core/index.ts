@@ -14,7 +14,7 @@ import { upsertFile } from "../data-connect/file-utils";
 import { registerWebhooks } from "./webhook";
 import { createE2eMockable } from "../utils/test_hooks";
 import { runTerminalTask } from "../data-connect/terminal";
-import { AnalyticsLogger } from "../analytics";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 import { EmulatorHub } from "../../../src/emulator/hub";
 
 export async function registerCore(
@@ -67,6 +67,7 @@ export async function registerCore(
       );
       return;
     }
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT);
     const projectId = currentProjectId.value || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     const initCommand = `${settings.firebasePath} init dataconnect --project ${projectId}`;
     initSpy.call("firebase init", initCommand, { focus: true });
