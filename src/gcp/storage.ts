@@ -512,6 +512,7 @@ export async function listBuckets(projectId: string): Promise<BucketResponse[]> 
     do {
       const result = await localAPIClient.get<ListBucketsResponse>(
         `/storage/v1/b?project=${projectId}`,
+        { queryParams: pageToken ? { pageToken } : {} },
       );
       buckets = buckets.concat(result.body.items || []);
       pageToken = result.body.nextPageToken;
