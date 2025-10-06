@@ -294,7 +294,17 @@ export class FirebaseMcpServer {
       config: Config.load(options, true) || new Config({}, options),
       rc: loadRC(options),
       accountEmail,
+      firebaseCliComand: this._getFirebaseCliCommand(),
     };
+  }
+
+  private _getFirebaseCliCommand(): string {
+    // TODO(samedson) In the future, we'd like to detect how you ran the MCP
+    // server, and use that so that the CLI doesn't run commands that result in
+    // an install. The reason we can't just use `firebase` is some users may
+    // have run the MCP server via npx, and don't have firebase installed
+    // globally
+    return "npx firebase-tools@latest"
   }
 
   async mcpListTools(): Promise<ListToolsResult> {

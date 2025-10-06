@@ -28,4 +28,5 @@ export interface McpContext {
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
+  firebaseCliComand: string;
 }
