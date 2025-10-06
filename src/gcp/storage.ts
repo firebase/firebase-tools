@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import * as path from "path";
 import * as clc from "colorette";
+import { randomInt } from "crypto";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
@@ -403,7 +404,7 @@ export function randomString(length: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = length; i > 0; --i) {
-    result += chars[Math.floor(Math.random() * chars.length)];
+    result += chars[randomInt(chars.length)];
   }
   return result;
 }
