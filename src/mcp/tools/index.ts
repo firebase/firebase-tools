@@ -9,7 +9,7 @@ import { messagingTools } from "./messaging/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
-import { appdistributionTools } from "./appdistribution/index";
+import { appdistributionTools } from "./apptesting/index";
 import { realtimeDatabaseTools } from "./realtime_database/index";
 import { functionsTools } from "./functions/index";
 
