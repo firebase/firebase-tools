@@ -50,21 +50,21 @@
 | realtimedatabase_get_data             | realtimedatabase | Use this to retrieve data from the specified location in a Firebase Realtime Database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | realtimedatabase_set_data             | realtimedatabase | Use this to write data to the specified location in a Firebase Realtime Database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-| Prompt Name | Feature Group | Description |
-| ----------- | ------------- | ----------- |
-| firebase:deploy | core | Use this command to deploy resources to Firebase. <br><br>Arguments: <br>&lt;prompt&gt; (optional): any specific instructions you wish to provide about deploying |
-| firebase:init | core | Use this command to setup Firebase for the current workspace. |
-| firebase:consult | core | Use this command to consult the Firebase Assistant with access to detailed up-to-date documentation for the Firebase platform. <br><br>Arguments: <br>&lt;prompt&gt;: a question to pass to the Gemini in Firebase model |
-| crashlytics:connect | crashlytics | Access a Firebase application's Crashlytics data. |
+| Prompt Name         | Feature Group | Description                                                                                                                                                                                                              |
+| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| firebase:deploy     | core          | Use this command to deploy resources to Firebase. <br><br>Arguments: <br>&lt;prompt&gt; (optional): any specific instructions you wish to provide about deploying                                                        |
+| firebase:init       | core          | Use this command to set up Firebase services, like backend and AI features.                                                                                                                                              |
+| firebase:consult    | core          | Use this command to consult the Firebase Assistant with access to detailed up-to-date documentation for the Firebase platform. <br><br>Arguments: <br>&lt;prompt&gt;: a question to pass to the Gemini in Firebase model |
+| crashlytics:connect | crashlytics   | Access a Firebase application's Crashlytics data.                                                                                                                                                                        |
 
-| Resource Name | Description |
-| ------------- | ----------- |
-| backend_init_guide | Firebase Backend Init Guide: guides the coding agent through configuring Firebase backend services in the current project |
-| ai_init_guide | Firebase GenAI Init Guide: guides the coding agent through configuring GenAI capabilities in the current project utilizing Firebase |
-| data_connect_init_guide | Firebase Data Connect Init Guide: guides the coding agent through configuring Data Connect for PostgreSQL access in the current project |
-| firestore_init_guide | Firestore Init Guide: guides the coding agent through configuring Firestore in the current project |
-| firestore_rules_init_guide | Firestore Rules Init Guide: guides the coding agent through setting up Firestore security rules in the project |
-| rtdb_init_guide | Firebase Realtime Database Init Guide: guides the coding agent through configuring Realtime Database in the current project |
-| auth_init_guide | Firebase Authentication Init Guide: guides the coding agent through configuring Firebase Authentication in the current project |
-| hosting_init_guide | Firebase Hosting Deployment Guide: guides the coding agent through deploying to Firebase Hosting in the current project |
-| docs | Firebase Docs: loads plain text content from Firebase documentation, e.g. `https://firebase.google.com/docs/functions` becomes `firebase://docs/functions` |
+| Resource Name              | Description                                                                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| backend_init_guide         | Firebase Backend Init Guide: guides the coding agent through configuring Firebase backend services in the current project                                  |
+| ai_init_guide              | Firebase GenAI Init Guide: guides the coding agent through configuring GenAI capabilities in the current project utilizing Firebase                        |
+| data_connect_init_guide    | Firebase Data Connect Init Guide: guides the coding agent through configuring Data Connect for PostgreSQL access in the current project                    |
+| firestore_init_guide       | Firestore Init Guide: guides the coding agent through configuring Firestore in the current project                                                         |
+| firestore_rules_init_guide | Firestore Rules Init Guide: guides the coding agent through setting up Firestore security rules in the project                                             |
+| rtdb_init_guide            | Firebase Realtime Database Init Guide: guides the coding agent through configuring Realtime Database in the current project                                |
+| auth_init_guide            | Firebase Authentication Init Guide: guides the coding agent through configuring Firebase Authentication in the current project                             |
+| hosting_init_guide         | Firebase Hosting Deployment Guide: guides the coding agent through deploying to Firebase Hosting in the current project                                    |
+| docs                       | Firebase Docs: loads plain text content from Firebase documentation, e.g. `https://firebase.google.com/docs/functions` becomes `firebase://docs/functions` |
