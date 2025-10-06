@@ -14,6 +14,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   functions: [],
   remoteconfig: [],
   crashlytics: crashlyticsPrompts,
+  appdistribution: [],
   apphosting: [],
   database: [],
 };
