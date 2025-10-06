@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import * as path from "path";
 import * as clc from "colorette";
+import { randomInt } from "crypto";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
@@ -8,6 +9,7 @@ import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
+import { fieldMasks } from "./proto";
 
 /** Bucket Interface */
 interface BucketResponse {
@@ -115,9 +117,7 @@ interface BucketResponse {
       },
     ];
   };
-  labels: {
-    (key: any): string;
-  };
+  labels: Record<string, string>;
   storageClass: string;
   billing: {
     requesterPays: boolean;
@@ -128,11 +128,7 @@ interface BucketResponse {
 interface ListBucketsResponse {
   kind: string;
   nextPageToken: string;
-  items: [
-    {
-      name: string;
-    },
-  ];
+  items: BucketResponse[];
 }
 
 interface GetDefaultBucketResponse {
@@ -143,9 +139,19 @@ interface GetDefaultBucketResponse {
   };
 }
 
+export interface UpsertBucketRequest {
+  baseName: string;
+  location: string;
+  purposeLabel: string;
+  lifecycle: {
+    rule: LifecycleRule[];
+  };
+}
+
 export interface CreateBucketRequest {
   name: string;
   location: string;
+  labels?: Record<string, string>;
   lifecycle: {
     rule: LifecycleRule[];
   };
@@ -360,45 +366,137 @@ export async function createBucket(
 }
 
 /**
- * Creates a storage bucket on GCP if it does not already exist.
+ * Patches a storage bucket on GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/patch
+ * @param bucketName name of the storage bucket
+ * @param metadata the bucket resource metadata to patch
+ * @return a bucket resource object
+ */
+export async function patchBucket(
+  bucketName: string,
+  metadata: Partial<BucketResponse>,
+): Promise<BucketResponse> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    const mask = fieldMasks(
+      metadata,
+      /* doNotRecurseIn = */ "labels",
+      "acl",
+      "defaultObjectAcl",
+      "lifecycle",
+    );
+    const result = await localAPIClient.patch<Partial<BucketResponse>, BucketResponse>(
+      `/storage/v1/b/${bucketName}`,
+      metadata,
+      { queryParams: { updateMask: mask.join(",") } },
+    );
+    return result.body;
+  } catch (err: any) {
+    logger.debug(err);
+    throw new FirebaseError("Failed to patch the storage bucket", {
+      original: err,
+    });
+  }
+}
+
+export function randomString(length: number): string {
+  // NOTE: uppercase letters are not allowed in bucket names
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = length; i > 0; --i) {
+    result += chars[randomInt(chars.length)];
+  }
+  return result;
+}
+
+// Call methods through the exports object so that they can be stubbed in tests.
+const dynamicDispatch = exports as {
+  listBuckets: typeof listBuckets;
+  createBucket: typeof createBucket;
+  patchBucket: typeof patchBucket;
+  randomString: typeof randomString;
+};
+
+/**
+ * Creates a storage bucket on GCP for a given purpose if it does not already exist.
+ * NOTE: It is a security issue if the bucket already exists but is not owned by this project.
+ * This function therefore only returns an existing bucket if it exists AND is in the project.
+ * We check that the bucket is in the project by calling "listBuckets" (project scoped) rather than
+ * getBucket (global scoped). If the bucket already exists, we use a name-collision nonce to avoid
+ * a denial of service. To find this collision-avoiding in the future, we use a label as a breadcrumb.
+ * Thus our base case of the bucket already existing uses the label not the base name to decide which
+ * bucket to return.
  */
 export async function upsertBucket(opts: {
   product: string;
   createMessage: string;
   projectId: string;
-  req: CreateBucketRequest;
-}): Promise<void> {
-  try {
-    await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
-    return;
-  } catch (err) {
-    const errStatus = getErrStatus((err as FirebaseError).original);
-    // Unfortunately, requests for a non-existent bucket from the GCS API sometimes return 403 responses as well as 404s.
-    // We must attempt to create a new bucket on both 403s and 404s.
-    if (errStatus !== 403 && errStatus !== 404) {
-      throw err;
-    }
+  req: UpsertBucketRequest;
+}): Promise<string> {
+  // Use labels to find whether an existing bucket is managed by us. Use labels, not the base name to detect
+  // a bucket that was created with name conflict resolution.
+  // Not using try/catch here because ignoring a failure could lead to multiple sources of truth.
+  const existingBuckets = await dynamicDispatch.listBuckets(opts.projectId);
+  const managedBucket = existingBuckets.find((b) => opts.req.purposeLabel in (b.labels || {}));
+  if (managedBucket) {
+    return managedBucket.name;
+  }
+
+  // Note: Some customers have created buckets before this new strategy of adding labels already existed.
+  // If the bucket with the base name already exists _and is returned by listBuckets_, we know it is owned
+  // by this project and is safet to use. Add the label.
+  const existingUnmanaged = existingBuckets.find((b) => b.name === opts.req.baseName);
+  if (existingUnmanaged) {
+    logger.debug(
+      `Found existing bucket ${existingUnmanaged.name} without purpose label. Because it is known not to be squatted, we can use it.`,
+    );
+    const labels = { ...existingUnmanaged.labels, [opts.req.purposeLabel]: "true" };
+    await dynamicDispatch.patchBucket(existingUnmanaged.name, { labels });
+    return existingUnmanaged.name;
   }
 
   utils.logLabeledBullet(opts.product, opts.createMessage);
-  try {
-    await (exports as { createBucket: typeof createBucket }).createBucket(
-      opts.projectId,
-      opts.req,
-      true /* projectPrivate */,
-    );
-  } catch (err) {
-    if (getErrStatus((err as FirebaseError).original) === 403) {
-      utils.logLabeledWarning(
-        opts.product,
-        "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
-          "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
-          "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
-          "to grant you one of those roles.",
+  for (let retryCount = 0; retryCount < 5; retryCount++) {
+    const name =
+      retryCount === 0
+        ? opts.req.baseName
+        : `${opts.req.baseName}-${dynamicDispatch.randomString(6)}`;
+    try {
+      await dynamicDispatch.createBucket(
+        opts.projectId,
+        {
+          name,
+          location: opts.req.location,
+          lifecycle: opts.req.lifecycle,
+          labels: {
+            [opts.req.purposeLabel]: "true",
+          },
+        },
+        true /* projectPrivate */,
       );
+      return name;
+    } catch (err) {
+      if (getErrStatus((err as FirebaseError).original) === 409) {
+        utils.logLabeledBullet(
+          opts.product,
+          `Bucket ${name} already exists, creating a new bucket with a conflict-avoiding hash`,
+        );
+        continue;
+      }
+
+      if (getErrStatus((err as FirebaseError).original) === 403) {
+        utils.logLabeledWarning(
+          opts.product,
+          "Failed to create Cloud Storage bucket because user does not have sufficient permissions. " +
+            "See https://cloud.google.com/storage/docs/access-control/iam-roles for more details on " +
+            "IAM roles that are able to create a Cloud Storage bucket, and ask your project administrator " +
+            "to grant you one of those roles.",
+        );
+      }
+      throw err;
     }
-    throw err;
   }
+  throw new FirebaseError("Failed to create a unique Cloud Storage bucket name after 5 attempts.");
 }
 
 /**
@@ -407,13 +505,20 @@ export async function upsertBucket(opts: {
  * @param {string} bucketName name of the storage bucket
  * @return a bucket resource object
  */
-export async function listBuckets(projectId: string): Promise<Array<string>> {
+export async function listBuckets(projectId: string): Promise<BucketResponse[]> {
   try {
+    let buckets: BucketResponse[] = [];
     const localAPIClient = new Client({ urlPrefix: storageOrigin() });
-    const result = await localAPIClient.get<ListBucketsResponse>(
-      `/storage/v1/b?project=${projectId}`,
-    );
-    return result.body.items.map((bucket: { name: string }) => bucket.name);
+    let pageToken: string | undefined;
+    do {
+      const result = await localAPIClient.get<ListBucketsResponse>(
+        `/storage/v1/b?project=${projectId}`,
+        { queryParams: pageToken ? { pageToken } : {} },
+      );
+      buckets = buckets.concat(result.body.items || []);
+      pageToken = result.body.nextPageToken;
+    } while (pageToken);
+    return buckets;
   } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to read the storage buckets", {
