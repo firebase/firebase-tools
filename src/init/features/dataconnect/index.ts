@@ -646,7 +646,7 @@ async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
-      message: "What location would like to use?",
+      message: "What location would you like to use?",
       choices,
       default: FDC_DEFAULT_REGION,
     });
