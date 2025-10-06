@@ -67,7 +67,6 @@ export class FirebaseMcpServer {
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   startupRoot?: string;
   cachedProjectDir?: string;
-  cachedProjectId?: string;
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
@@ -105,11 +104,7 @@ export class FirebaseMcpServer {
     return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
-  constructor(options: {
-    activeFeatures?: ServerFeature[];
-    projectRoot?: string;
-    projectId?: string;
-  }) {
+  constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
@@ -153,7 +148,6 @@ export class FirebaseMcpServer {
       return {};
     });
 
-    this.cachedProjectId = options.projectId;
     this.detectProjectRoot();
     this.detectActiveFeatures();
   }
@@ -273,11 +267,7 @@ export class FirebaseMcpServer {
   }
 
   async resolveOptions(): Promise<Partial<Options>> {
-    const options: Partial<Options> = {
-      cwd: this.cachedProjectDir,
-      isMCP: true,
-      projectId: this.cachedProjectId,
-    };
+    const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
     await cmd.prepare(options);
     return options;
   }
