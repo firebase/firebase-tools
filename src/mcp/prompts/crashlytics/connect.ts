@@ -25,18 +25,18 @@ Active user: ${accountEmail || "<NONE>"}
 
   1. **Make sure the user is logged in. No Crashlytics tools will work if the user is not logged in.**
     a. Use the \`firebase_get_environment\` tool to verify that the user is logged in.
-    b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`npx firebase@latest login\`
+    b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`firebase login\` 
        before continuing. Ignore other fields that are set to <NONE>. We are just making sure the
-       user is logged in.
+       user is logged in. 
 
-  2. **Get the app ID for the Firebase application.**
-
-    Use the information below to help you find the developer's app ID. If you cannot find it after 2-3
-    attempts, just ask the user for the value they want to use, providing the description of what the
+  2. **Get the app ID for the Firebase application.** 
+     
+    Use the information below to help you find the developer's app ID. If you cannot find it after 2-3 
+    attempts, just ask the user for the value they want to use, providing the description of what the 
     value looks like.
-
-    * **Description:** The app ID we are looking for contains four colon (":") delimited parts: a version
-      number (typically "1"), a project number, a platform type ("android", "ios", or "web"),
+    
+    * **Description:** The app ID we are looking for contains four colon (":") delimited parts: a version 
+      number (typically "1"), a project number, a platform type ("android", "ios", or "web"), 
       and a sequence of hexadecimal characters. This can be found in the project settings in the Firebase Console
       or in the appropriate google services file for the application type.
     * For Android apps, you will typically find the app ID in a file called google-services.json under the
@@ -44,14 +44,14 @@ Active user: ${accountEmail || "<NONE>"}
     * For iOS apps, you will typically find the app ID in a property list file called GoogleService-Info.plist under the
       GOOGLE_APP_ID key. The plist file is most often located in the main project directory.
     * Sometimes developers will not check in the google services file because it is a shared or public
-      repository. If you can't find the file, the files may be included in the .gitignore. Check again for the file
+      repository. If you can't find the file, the files may be included in the .gitignore. Check again for the file 
       removing restrictions around looking for tracked files.
     * Developers may have multiple google services files that map to different releases. In cases like this,
       developers may create different directories to hold each like alpha/google-services.json or alpha/GoogleService-Info.plist.
-      In other cases, developers may change the suffix of the file to something like google-services-alpha.json or
+      In other cases, developers may change the suffix of the file to something like google-services-alpha.json or 
       GoogleService-Alpha.plist. Look for as many google services files as you can find.
     * Sometimes developers may include the codebase for both the Android app and the iOS app in the same repository.
-    * If there are multiple files or multiple app IDs in a single file, ask the user to choose one by providing
+    * If there are multiple files or multiple app IDs in a single file, ask the user to choose one by providing 
       a numbered list of all the package names.
     * Again, if you have trouble finding the app ID, just ask the user for it.
 
@@ -76,12 +76,12 @@ Follow these steps to fetch issues and prioritize them.
     1c. If the user asks about a particular time range, then set both the intervalStartTime and intervalEndTime.
   2. Use the 'crashlytics_get_top_versions' tool to fetch the top versions for this app.
   3. If the user instructions include statements about prioritization, use those instructions.
-  4. If the user instructions do not include statements about prioritization,
+  4. If the user instructions do not include statements about prioritization, 
   then prioritize the returned issues using the following criteria:
     4a. The app versions for the issue include the most recent version of the app.
     4b. The number of users experiencing the issue across variants
     4c. The volume of crashes
-  5. Return the top 5 issues, with a brief description each in a numerical list with the following format:
+  5. Return the top 5 issues, with a brief description each in a numerical list with the following format: 
     1. Issue <issue id>
         * <the issue title>
         * <the issue subtitle>
@@ -116,7 +116,7 @@ Follow these steps to diagnose and fix issues.
     <A description of the root cause leading to the issue>
       - **Fault**: <a determination of whether this code base is at fault or a dependent library is at fault>
       - **Complexity**: <one of "simple", "moderately simple", "moderately hard", "hard", "oof, I don't know where to start">
-
+    
     ## Fix
     <A description of the fix for this issue and a break down of the changes.>
       1. <Step 1>
@@ -130,7 +130,7 @@ Follow these steps to diagnose and fix issues.
     ## Other potential causes
     1. <Another possible root cause>
     2. <Another possible root cause>
-
+      
   9. Present the plan to the user and get approval before making the change.
   10. Only if they approve the plan, create a fix for the issue.
     10a. Be mindful of API contracts and do not add fields to resources without a clear way to populate those fields
