@@ -63,6 +63,8 @@ Follow the steps below taking note of any user instructions provided above.
      - Run the \`firebase_list_apps\` tool to list their apps, and find an app that matches their "Workspace platform"
      - If there is no app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
    - Do the following only for Flutter apps
+     - Execute \`firebase --version\`  to check if the Firebase CLI is installed
+       - If it isn't installed, run \`npm install -g firebase-tools\` to install it. If it is installed, skip to the next step. 
      - Install the Flutterfire CLI
      - Use the Flutterfire CLI tool to connect to the project
      - Use the Flutterfire CLI to register the appropriate applications based on the user's input

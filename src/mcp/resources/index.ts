@@ -56,3 +56,22 @@ export async function resolveResource(
   if (track) void trackGA4("mcp_read_resource", { resource_name: uri, not_found: "true" });
   return null;
 }
+
+/**
+ * Generates a markdown table of all available resources and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfResources(): string {
+  const allResources = [...resources, ...resourceTemplates];
+  const headings = `
+| Resource Name | Description |
+| ------------- | ----------- |`;
+  const resourceRows = allResources.map((res) => {
+    let desc = res.mcp.title ? `${res.mcp.title}: ` : "";
+    desc += res.mcp.description || "";
+    desc = desc.replaceAll("\n", "<br>");
+    return `
+| ${res.mcp.name} | ${desc} |`;
+  });
+  return headings + resourceRows.join("");
+}
