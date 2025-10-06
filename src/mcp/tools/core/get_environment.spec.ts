@@ -74,13 +74,12 @@ Gemini in Firebase Terms of Service: <NOT ACCEPTED>
 Authenticated User: <NONE>
 Detected App IDs: <NONE>
 Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-Available Accounts: <NONE>
 
 No firebase.json file was found.
       
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
+If this project does not use Firebase services that require a firebase.json file, no action is necessary.
 
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
+If this project uses Firebase services that require a firebase.json file, the user will most likely want to:
 
 a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
 b) Initialize a new Firebase project directory using the 'firebase_init' tool.

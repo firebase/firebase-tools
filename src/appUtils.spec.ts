@@ -1,4 +1,4 @@
-import * as fs from "fs-extra";
+import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import {
   extractAppIdentifiersFlutter,
@@ -240,7 +240,6 @@ function cleanUndefinedFields(apps: App[]): App[] {
     const leanApp = Object.fromEntries(
       Object.entries(app).filter((entry) => entry[1] !== undefined),
     ) as App;
-    console.log(`LEAN APP: ${JSON.stringify(leanApp)}`);
     return leanApp;
   });
 }
@@ -250,42 +249,47 @@ describe("appUtils", () => {
     const testDir = "test-dir";
 
     afterEach(() => {
-      fs.removeSync(testDir);
+      mockfs.restore();
     });
 
     it("should return WEB if package.json exists", async () => {
-      fs.outputFileSync(`${testDir}/package.json`, "{}");
+      mockfs({ [testDir]: { "package.json": "{}" } });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.have.deep.members([Platform.WEB]);
     });
 
     it("should return ANDROID if src/main exists", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
+      mockfs({
+        [testDir]: { src: { main: {} } },
+      });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.have.deep.members([Platform.ANDROID]);
     });
 
     it("should return IOS if .xcodeproj exists", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
+      mockfs({
+        [testDir]: { "a.xcodeproj": {} },
+      });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.have.deep.members([Platform.IOS]);
     });
 
     it("should return FLUTTER if pubspec.yaml exists", async () => {
-      fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
+      mockfs({
+        [testDir]: { "pubspec.yaml": "name: test" },
+      });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.have.deep.members([Platform.FLUTTER]);
     });
 
     it("should return FLUTTER and WEB if both identifiers exist", async () => {
-      fs.outputFileSync(`${testDir}/package.json`, "{}");
-      fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
+      mockfs({ [testDir]: { "package.json": "{}", "pubspec.yaml": "name: test" } });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.have.deep.members([Platform.FLUTTER, Platform.WEB]);
     });
 
-    it("should return NONE if no identifiers exist", async () => {
-      fs.mkdirpSync(testDir);
+    it("should return an empty array if no identifiers exist", async () => {
+      mockfs({ [testDir]: {} });
       const platforms = await getPlatformsFromFolder(testDir);
       expect(platforms).to.be.empty;
     });
@@ -295,11 +299,11 @@ describe("appUtils", () => {
     const testDir = "test-dir";
 
     afterEach(() => {
-      fs.removeSync(testDir);
+      mockfs.restore();
     });
 
     it("should detect a web app", async () => {
-      fs.outputFileSync(`${testDir}/package.json`, "{}");
+      mockfs({ [testDir]: { "package.json": "{}" } });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -311,7 +315,7 @@ describe("appUtils", () => {
     });
 
     it("should detect an android app", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
+      mockfs({ [testDir]: { src: { main: {} } } });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -322,8 +326,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an android app with Firebase", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
-      fs.outputFileSync(`${testDir}/google-services.json`, ANDROID_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          src: { main: {} },
+          "google-services.json": ANDROID_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -336,8 +344,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an android app with a suffix", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
-      fs.outputFileSync(`${testDir}/google-services.json.example`, ANDROID_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          src: { main: {} },
+          "google-services.json.example": ANDROID_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -350,8 +362,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an android app with extra words", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
-      fs.outputFileSync(`${testDir}/google-services-example.json`, ANDROID_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          src: { main: {} },
+          "google-services-example.json": ANDROID_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -364,11 +380,19 @@ describe("appUtils", () => {
     });
 
     it("should detect android app with multiple variants", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
-      fs.mkdirpSync(`${testDir}/src/debug`);
-      fs.mkdirpSync(`${testDir}/src/release`);
-      fs.outputFileSync(`${testDir}/src/debug/google-services.json`, ANDROID_CONFIG_2);
-      fs.outputFileSync(`${testDir}/src/release/google-services.json`, ANDROID_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          src: {
+            main: {},
+            release: {
+              "google-services.json": ANDROID_CONFIG_1,
+            },
+            debug: {
+              "google-services.json": ANDROID_CONFIG_2,
+            },
+          },
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -387,8 +411,12 @@ describe("appUtils", () => {
     });
 
     it("should detect android app with multiple app ids in the same file", async () => {
-      fs.mkdirpSync(`${testDir}/src/main`);
-      fs.outputFileSync(`${testDir}/google-services.json`, ANDROID_CONFIG_COMBINED);
+      mockfs({
+        [testDir]: {
+          src: { main: {} },
+          "google-services.json": ANDROID_CONFIG_COMBINED,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -407,7 +435,11 @@ describe("appUtils", () => {
     });
 
     it("should detect an ios app", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
+      mockfs({
+        [testDir]: {
+          "a.xcodeproj": {},
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -418,8 +450,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an ios app with Firebase", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
-      fs.outputFileSync(`${testDir}/GoogleService-Info.plist`, IOS_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          "a.xcodeproj": {},
+          "GoogleService-Info.plist": IOS_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -432,8 +468,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an ios app with different suffix", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
-      fs.outputFileSync(`${testDir}/GoogleService-Info.plist.example`, IOS_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          "a.xcodeproj": {},
+          "GoogleService-Info.plist.example": IOS_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -446,8 +486,12 @@ describe("appUtils", () => {
     });
 
     it("should detect an ios app replacing Info", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
-      fs.outputFileSync(`${testDir}/GoogleService-Prod.plist`, IOS_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          "a.xcodeproj": {},
+          "GoogleService-Prod.plist": IOS_CONFIG_1,
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -460,9 +504,19 @@ describe("appUtils", () => {
     });
 
     it("should detect an ios app with multiple plist files", async () => {
-      fs.mkdirpSync(`${testDir}/a.xcodeproj`);
-      fs.outputFileSync(`${testDir}/Configs/Dev/GoogleService-Info.plist`, IOS_CONFIG_1);
-      fs.outputFileSync(`${testDir}/Configs/Prod/GoogleService-Info.plist`, IOS_CONFIG_2);
+      mockfs({
+        [testDir]: {
+          "a.xcodeproj": {},
+          Configs: {
+            Dev: {
+              "GoogleService-Info.plist": IOS_CONFIG_1,
+            },
+            Prod: {
+              "GoogleService-Info.plist": IOS_CONFIG_2,
+            },
+          },
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -481,7 +535,9 @@ describe("appUtils", () => {
     });
 
     it("should detect a flutter app", async () => {
-      fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
+      mockfs({
+        [testDir]: { "pubspec.yaml": "name: test" },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -492,9 +548,12 @@ describe("appUtils", () => {
     });
 
     it("should detect a flutter app with Firebase", async () => {
-      fs.outputFileSync(`${testDir}/pubspec.yaml`, "name: test");
-      fs.mkdirpSync(`${testDir}/lib`);
-      fs.outputFileSync(`${testDir}/lib/firebase_options.dart`, FLUTTER_CONFIG);
+      mockfs({
+        [testDir]: {
+          "pubspec.yaml": "name: test",
+          lib: { "firebase_options.dart": FLUTTER_CONFIG },
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -516,10 +575,15 @@ describe("appUtils", () => {
       ]);
     });
     it("should detect multiple apps", async () => {
-      fs.mkdirpSync(`${testDir}/web`);
-      fs.outputFileSync(`${testDir}/web/package.json`, "{}");
-      fs.mkdirpSync(`${testDir}/android/src/main`);
-      fs.outputFileSync(`${testDir}/android/google-services.json`, ANDROID_CONFIG_1);
+      mockfs({
+        [testDir]: {
+          web: { "package.json": "{}" },
+          android: {
+            src: { main: {} },
+            "google-services.json": ANDROID_CONFIG_1,
+          },
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -536,15 +600,16 @@ describe("appUtils", () => {
       ]);
     });
 
-    it("should detect web frameworks", async () => {
-      fs.outputFileSync(
-        `${testDir}/package.json`,
-        JSON.stringify({
-          dependencies: {
-            react: "1.0.0",
-          },
-        }),
-      );
+    it("should detect the react framework", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              react: "1.0.0",
+            },
+          }),
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
@@ -555,29 +620,82 @@ describe("appUtils", () => {
       ]);
     });
 
-    it("should detect a nested web app", async () => {
-      fs.mkdirpSync(`${testDir}/frontend`);
-      fs.outputFileSync(`${testDir}/frontend/package.json`, "{}");
+    it("should detect the next framework", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              next: "1.0.0",
+            },
+          }),
+        },
+      });
       const apps = cleanUndefinedFields(await detectApps(testDir));
       expect(apps).to.have.deep.members([
         {
           platform: Platform.WEB,
-          directory: "frontend",
+          directory: ".",
+          frameworks: ["REACT"],
+        },
+      ]);
+    });
+
+    it("should detect the angular framework", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              "@angular/core": "1.0.0",
+            },
+          }),
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.WEB,
+          directory: ".",
+          frameworks: ["ANGULAR"],
+        },
+      ]);
+    });
+
+    it("should detect a nested web app", async () => {
+      mockfs({
+        [testDir]: {
+          web: {
+            frontend: { "package.json": "{}" },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.WEB,
+          directory: "web/frontend",
           frameworks: [],
         },
       ]);
     });
 
     it("should detect multiple top-level and nested apps", async () => {
-      fs.mkdirpSync(`${testDir}/android/src/main`);
-      fs.outputFileSync(`${testDir}/android/google-services.json`, ANDROID_CONFIG_1);
-      fs.mkdirpSync(`${testDir}/ios/a.xcodeproj`);
-      fs.outputFileSync(`${testDir}/ios/GoogleService-Info.plist`, IOS_CONFIG_1);
-      fs.mkdirpSync(`${testDir}/web/frontend`);
-      fs.outputFileSync(`${testDir}/web/frontend/package.json`, "{}");
+      mockfs({
+        [testDir]: {
+          web: {
+            "package.json": "{}",
+          },
+          android: {
+            src: { main: {} },
+            "google-services.json": ANDROID_CONFIG_1,
+          },
+          ios: {
+            "a.xcodeproj": {},
+            "GoogleService-Info.plist": IOS_CONFIG_1,
+          },
+        },
+      });
 
       const apps = cleanUndefinedFields(await detectApps(testDir));
-      console.log(`FOUND APPS: ${JSON.stringify(apps)}`);
       const expected = [
         {
           platform: Platform.ANDROID,
@@ -593,13 +711,11 @@ describe("appUtils", () => {
         },
         {
           platform: Platform.WEB,
-          directory: "web/frontend",
+          directory: "web",
           frameworks: [],
         },
       ];
-      expect(apps.sort((a, b) => a.directory.localeCompare(b.directory))).to.deep.equal(
-        expected.sort((a, b) => a.directory.localeCompare(b.directory)),
-      );
+      expect(apps).to.have.deep.members(expected);
     });
   });
 

@@ -53,8 +53,9 @@ Active Project ID: ${activeProjectString}
 Gemini in Firebase Terms of Service: ${acceptedGeminiTosString}
 Authenticated User: ${accountEmail || "<NONE>"}
 Detected App IDs: ${detectedAppsMap.size > 0 ? `\n\n${dump(Object.fromEntries(detectedAppsMap)).trim()}\n` : "<NONE>"}
-Available Project Aliases (format: '[alias]: [projectId]'): ${Object.entries(rc.projects).length > 0 ? `\n\n${dump(rc.projects).trim()}\n` : "<NONE>"}
-Available Accounts: ${hasOtherAccounts ? `\n\n${dump(allAccounts).trim()}` : "<NONE>"}
+Available Project Aliases (format: '[alias]: [projectId]'): ${Object.entries(rc.projects).length > 0 ? `\n\n${dump(rc.projects).trim()}\n` : "<NONE>"}${
+      hasOtherAccounts ? `\nAvailable Accounts: \n\n${dump(allAccounts).trim()}` : ""
+    }
 ${
   projectFileExists
     ? `\nfirebase.json contents:
@@ -64,9 +65,9 @@ ${config.readProjectFile("firebase.json")}
 \`\`\``
     : `\nNo firebase.json file was found.
       
-If this project does not use Firebase tools that require a firebase.json file, no action is necessary.
+If this project does not use Firebase services that require a firebase.json file, no action is necessary.
 
-If this project uses Firebase tools that require a firebase.json file, the user will most likely want to:
+If this project uses Firebase services that require a firebase.json file, the user will most likely want to:
 
 a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
 b) Initialize a new Firebase project directory using the 'firebase_init' tool.
