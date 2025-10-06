@@ -399,7 +399,8 @@ export async function patchBucket(
 }
 
 export function randomString(length: number): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  // NOTE: uppercase letters are not allowed in bucket names
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = length; i > 0; --i) {
     result += chars[Math.floor(Math.random() * chars.length)];
