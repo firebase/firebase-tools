@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import * as path from "path";
 import * as clc from "colorette";
+import { getProject } from "../management/projects";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
@@ -369,7 +370,11 @@ export async function upsertBucket(opts: {
   req: CreateBucketRequest;
 }): Promise<void> {
   try {
-    await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
+    const bucketResponse = await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
+    const projectMetadata = await getProject(opts.projectId);
+    if (!bucketResponse.projectNumber || bucketResponse.projectNumber !== projectMetadata.projectNumber) {
+      throw new FirebaseError("There is already an existing bucket that belongs to another project.");
+    }
     return;
   } catch (err) {
     const errStatus = getErrStatus((err as FirebaseError).original);
