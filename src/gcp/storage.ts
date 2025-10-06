@@ -370,10 +370,17 @@ export async function upsertBucket(opts: {
   req: CreateBucketRequest;
 }): Promise<void> {
   try {
-    const bucketResponse = await (exports as { getBucket: typeof getBucket }).getBucket(opts.req.name);
+    const bucketResponse = await (exports as { getBucket: typeof getBucket }).getBucket(
+      opts.req.name,
+    );
     const projectMetadata = await getProject(opts.projectId);
-    if (!bucketResponse.projectNumber || bucketResponse.projectNumber !== projectMetadata.projectNumber) {
-      throw new FirebaseError("There is already an existing bucket that belongs to another project.");
+    if (
+      !bucketResponse.projectNumber ||
+      bucketResponse.projectNumber !== projectMetadata.projectNumber
+    ) {
+      throw new FirebaseError(
+        "There is already an existing bucket that belongs to another project.",
+      );
     }
     return;
   } catch (err) {
