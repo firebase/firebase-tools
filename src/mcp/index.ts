@@ -45,6 +45,7 @@ import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resolveResource, resources, resourceTemplates } from "./resources";
+import * as crossSpawn from 'cross-spawn';
 
 const SERVER_VERSION = "0.3.0";
 
@@ -71,6 +72,7 @@ export class FirebaseMcpServer {
   detectedFeatures?: ServerFeature[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
+  private cliCommand?: string;
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
@@ -299,12 +301,14 @@ export class FirebaseMcpServer {
   }
 
   private _getFirebaseCliCommand(): string {
-    // TODO(samedson) In the future, we'd like to detect how you ran the MCP
-    // server, and use that so that the CLI doesn't run commands that result in
-    // an install. The reason we can't just use `firebase` is some users may
-    // have run the MCP server via npx, and don't have firebase installed
-    // globally
-    return "npx firebase-tools@latest";
+    if (!this.cliCommand) {
+      const testCommand = crossSpawn.sync("firebase --version");
+      if (testCommand.error) {
+        this.cliCommand = "npx firebase-tools@latest";
+      }
+      this.cliCommand = "firebase";
+    }
+    return this.cliCommand;
   }
 
   async mcpListTools(): Promise<ListToolsResult> {
