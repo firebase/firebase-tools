@@ -294,7 +294,7 @@ export class FirebaseMcpServer {
       config: Config.load(options, true) || new Config({}, options),
       rc: loadRC(options),
       accountEmail,
-      firebaseCliComand: this._getFirebaseCliCommand(),
+      firebaseCliCommand: this._getFirebaseCliCommand(),
     };
   }
 
