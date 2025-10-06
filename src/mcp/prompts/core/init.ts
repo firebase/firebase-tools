@@ -11,7 +11,7 @@ export const init = prompt(
     },
   },
   async (_, mcp) => {
-    const { config, projectId, accountEmail } = mcp;
+    const { config, projectId, accountEmail, firebaseCliCommand } = mcp;
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
@@ -47,7 +47,7 @@ ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })
 Follow the steps below taking note of any user instructions provided above.
 
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
-   - If you run into issues logging the user in, suggest that they run \`npx firebase-tools login --reauth\` in a separate terminal
+   - If you run into issues logging the user in, suggest that they run \`${firebaseCliCommand} login --reauth\` in a separate terminal
 2.1 Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user.
   1. Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
