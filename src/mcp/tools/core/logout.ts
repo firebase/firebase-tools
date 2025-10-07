@@ -13,7 +13,7 @@ import { logger } from "../../../logger";
 export const logout = tool(
   {
     name: "logout",
-    description: "Log the CLI out of Firebase",
+    description: "Use this to sign the user out of the Firebase CLI and Firebase MCP server.",
     inputSchema: z.object({
       email: z
         .string()

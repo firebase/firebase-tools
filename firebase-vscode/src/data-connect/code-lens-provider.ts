@@ -123,32 +123,30 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
       }
     }
 
-    if (projectId) {
-      const comments = findCommentsBlocks(documentText);
-      for (let i = 0; i < comments.length; i++) {
-        const c = comments[i];
-        const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
-        const queryDoc = documentNode.definitions.find((d) =>
-          d.kind === Kind.OPERATION_DEFINITION && 
-          // startToken.line is 1-indexed, endLine is 0-indexed
-          d.loc?.startToken.line === c.endLine + 2
-        );
-        const arg: GenerateOperationInput = {
-          projectId,
-          document: document,
-          description: c.text,
-          insertPosition: c.endIndex + 1,
-          existingQuery: queryDoc?.loc ? documentText.substring(c.endIndex + 1, queryDoc.loc.endToken.end) : '',
-        };
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
-            command: "firebase.dataConnect.generateOperation",
-            tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
-            arguments: [arg],
-          }),
-        );
-      }
+    const comments = findCommentsBlocks(documentText);
+    for (let i = 0; i < comments.length; i++) {
+      const c = comments[i];
+      const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
+      const queryDoc = documentNode.definitions.find((d) =>
+        d.kind === Kind.OPERATION_DEFINITION &&
+        // startToken.line is 1-indexed, endLine is 0-indexed
+        d.loc?.startToken.line === c.endLine + 2
+      );
+      const arg: GenerateOperationInput = {
+        projectId,
+        document: document,
+        description: c.text,
+        insertPosition: c.endIndex + 1,
+        existingQuery: queryDoc?.loc ? documentText.substring(c.endIndex + 1, queryDoc.loc.endToken.end) : '',
+      };
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
+          command: "firebase.dataConnect.generateOperation",
+          tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+          arguments: [arg],
+        }),
+      );
     }
     return codeLenses;
   }

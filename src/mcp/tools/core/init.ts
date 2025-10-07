@@ -12,12 +12,13 @@ import {
   validateAppExists,
 } from "../../../init/features/ailogic/utils";
 import { getFirebaseProject } from "../../../management/projects";
+import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database, Firebase AI Logic). All features are optional; provide only the products you wish to set up. " +
+      "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase Data Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -82,7 +83,7 @@ export const init = tool(
             location_id: z
               .string()
               .optional()
-              .default("us-central1")
+              .default(FDC_DEFAULT_REGION)
               .describe("The GCP region ID to set up the Firebase Data Connect service."),
             cloudsql_instance_id: z
               .string()
