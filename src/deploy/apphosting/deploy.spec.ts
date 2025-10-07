@@ -100,7 +100,7 @@ describe("apphosting", () => {
       const location = "us-central1";
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
-      upsertBucketStub.resolves();
+      upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
       createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
 
@@ -146,6 +146,7 @@ describe("apphosting", () => {
         projectId: "my-project",
         req: {
           baseName: "firebaseapphosting-sources-000000000000-us-central1",
+	  purposeLabel: `apphosting-source-${location}`,
           location: "us-central1",
           lifecycle: {
             rule: [
