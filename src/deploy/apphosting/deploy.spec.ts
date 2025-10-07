@@ -146,7 +146,7 @@ describe("apphosting", () => {
         projectId: "my-project",
         req: {
           baseName: "firebaseapphosting-sources-000000000000-us-central1",
-	  purposeLabel: `apphosting-source-${location}`,
+          purposeLabel: `apphosting-source-${location}`,
           location: "us-central1",
           lifecycle: {
             rule: [
