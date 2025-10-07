@@ -601,7 +601,9 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       } else {
         info.analyticsFlow += "_pick_new_csql";
         if (info.cloudSqlInstanceId === PAID && !(await isBillingEnabled(setup))) {
-          throw new FirebaseError(`The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`)
+          throw new FirebaseError(
+            `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`,
+          );
         }
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
