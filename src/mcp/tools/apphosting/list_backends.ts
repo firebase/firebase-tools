@@ -21,7 +21,7 @@ export const list_backends = tool(
       "is the resource name of the Cloud Run service serving the App Hosting backend. The last segment of that name is the service ID. " +
       "`domains` is the list of domains that are associated with the backend. They either have type `CUSTOM` or `DEFAULT`. " +
       "  Every backend should have a `DEFAULT` domain. " +
-      "  The actual domain that a user would use to conenct to the backend is the last parameter of the domain resource name. " +
+      "  The actual domain that a user would use to connect to the backend is the last parameter of the domain resource name. " +
       "  If a custom domain is correctly set up, it will have statuses ending in `ACTIVE`.",
     inputSchema: z.object({
       location: z
