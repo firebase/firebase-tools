@@ -53,6 +53,7 @@ describe("get_environment tool", () => {
       accountEmail: accountEmail ? accountEmail : null,
       rc,
       config,
+      firebaseCliCommand: "firebase",
     };
   };
 
