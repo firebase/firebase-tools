@@ -3,18 +3,21 @@ import * as sinon from "sinon";
 
 import * as storage from "./storage";
 import * as utils from "../utils";
+import * as projects from "../management/projects";
 import { FirebaseError } from "../error";
 
 describe("storage", () => {
   describe("upsertBucket", () => {
     let getBucketStub: sinon.SinonStub;
     let createBucketStub: sinon.SinonStub;
+    let getProjectStub: sinon.SinonStub;
     let logLabeledBulletStub: sinon.SinonStub;
     let logLabeledWarningStub: sinon.SinonStub;
 
     beforeEach(() => {
       getBucketStub = sinon.stub(storage, "getBucket");
       createBucketStub = sinon.stub(storage, "createBucket");
+      getProjectStub = sinon.stub(projects, "getProject");
       logLabeledBulletStub = sinon.stub(utils, "logLabeledBullet");
       logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
     });
@@ -24,7 +27,8 @@ describe("storage", () => {
     });
 
     it("should not call createBucket if the bucket already exists", async () => {
-      getBucketStub.resolves();
+      getBucketStub.resolves({projectNumber: 123456});
+      getProjectStub.resolves({projectNumber:123456});
 
       await storage.upsertBucket({
         product: "test",
@@ -34,6 +38,7 @@ describe("storage", () => {
       });
 
       expect(getBucketStub).to.be.calledOnceWith("test-bucket");
+      expect(getProjectStub).to.be.calledOnceWith("test-project");
       expect(createBucketStub).to.not.be.called;
       expect(logLabeledBulletStub).to.not.be.called;
     });
