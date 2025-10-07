@@ -106,7 +106,10 @@ export class DataConnectService {
     return {
       impersonate:
         userMock.kind === UserMockKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims), includeDebugDetails: true }
+          ? {
+              authClaims: JSON.parse(userMock.claims),
+              includeDebugDetails: true,
+            }
           : { unauthenticated: true, includeDebugDetails: true },
     };
   }
@@ -208,7 +211,6 @@ export class DataConnectService {
       operationName: params.operationName,
       variables: parseVariableString(params.variables),
       query: params.query,
-      name: `${servicePath}`,
       extensions: this._auth(),
     };
 
