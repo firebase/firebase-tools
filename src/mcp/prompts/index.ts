@@ -41,17 +41,17 @@ function namespacePrompts(
 /**
  * Return available prompts based on the list of registered features.
  */
-export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts: ServerPrompt[] = namespacePrompts(prompts["core"], "core");
+export function availablePrompts(activeFeatures?: ServerFeature[]): ServerPrompt[] {
+  const allPrompts: ServerPrompt[] = [];
 
-  if (!features) {
-    features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
+  if (!activeFeatures?.length) {
+    activeFeatures = Object.keys(prompts) as ServerFeature[];
   }
-
-  for (const feature of features) {
-    if (prompts[feature] && feature !== "core") {
-      allPrompts.push(...namespacePrompts(prompts[feature], feature));
-    }
+  if (!activeFeatures.includes("core")) {
+    activeFeatures = ["core", ...activeFeatures];
+  }
+  for (const feature of activeFeatures) {
+    allPrompts.push(...namespacePrompts(prompts[feature], feature));
   }
   return allPrompts;
 }

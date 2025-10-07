@@ -12,6 +12,7 @@ import {
   validateAppExists,
 } from "../../../init/features/ailogic/utils";
 import { getFirebaseProject } from "../../../management/projects";
+import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
   {
@@ -82,7 +83,7 @@ export const init = tool(
             location_id: z
               .string()
               .optional()
-              .default("us-central1")
+              .default(FDC_DEFAULT_REGION)
               .describe("The GCP region ID to set up the Firebase Data Connect service."),
             cloudsql_instance_id: z
               .string()
