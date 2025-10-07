@@ -11,7 +11,7 @@ export const init = prompt(
     },
   },
   async (_, mcp) => {
-    const { config, projectId, accountEmail } = mcp;
+    const { config, projectId, accountEmail, firebaseCliCommand } = mcp;
 
     const platform = await getPlatformFromFolder(config.projectDir);
 
@@ -43,18 +43,17 @@ ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })
 
 
 ## Steps
-
 Follow the steps below taking note of any user instructions provided above.
 
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
-   - If you run into issues logging the user in, suggest that they run \`npx firebase-tools login --reauth\` in a separate terminal
-2.1 Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user.
-  1. Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
+   - If you run into issues logging the user in, suggest that they run \`${firebaseCliCommand} login --reauth\` in a separate terminal
+2. Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user:
+  - Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
-  2. Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
+  - Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
     - IMPORTANT: The Firebase AI Logic setup guide is for web, flutter, and android apps only. If the user requests firebase setup for unsupported platforms (iOS, Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
 3. After the user chooses an init option, create a plan based on the remaining steps in this guide, share it with the user, and give them an opportunity to accept or adjust it.
-4. If there is no active Firebase project, ask the user if they would like to create a project, or use an existing one, and ask them for the project ID
+4. If there is no active Firebase project, ask the user if they want to create a new project or use an existing one. If using an existing project, ask for the project ID and explain how to find it: open the Firebase Console (http://console.firebase.google.com/), locate the project ID under the project name in the projects list, or open the project and go to Project Overview → Project Settings.
    - If they would like to create a project, use the firebase_create_project with the project ID
    - If they would like to use an existing project, use the firebase_update_environment tool with the active_project argument.
    - If you run into issues creating the firebase project, ask the user to go to the [Firebase Console](http://console.firebase.google.com/) and create a project. Wait for the user to report back before continuing.
@@ -63,6 +62,8 @@ Follow the steps below taking note of any user instructions provided above.
      - Run the \`firebase_list_apps\` tool to list their apps, and find an app that matches their "Workspace platform"
      - If there is no app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
    - Do the following only for Flutter apps
+     - Execute \`firebase --version\`  to check if the Firebase CLI is installed
+       - If it isn't installed, run \`npm install -g firebase-tools\` to install it. If it is installed, skip to the next step. 
      - Install the Flutterfire CLI
      - Use the Flutterfire CLI tool to connect to the project
      - Use the Flutterfire CLI to register the appropriate applications based on the user's input
