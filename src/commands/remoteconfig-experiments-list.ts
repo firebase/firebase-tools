@@ -31,7 +31,7 @@ export const command = new Command("remoteconfig:experiments:list")
     "firebaseabt.experiments.list",
     "firebaseanalytics.resources.googleAnalyticsReadAndAnalyze",
   ])
-  .action(async (options: RemoteConfigOptions ) => {
+  .action(async (options: RemoteConfigOptions) => {
     const projectNumber = await needProjectNumber(options);
     const listExperimentOptions: ListExperimentOptions = {
       pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
