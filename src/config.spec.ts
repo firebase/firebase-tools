@@ -7,6 +7,7 @@ import { Config } from "./config";
 import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
 import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
 import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
+import { FIREBASE_JSON_PATH as EMPTY_CONFIG_PATH } from "./test/fixtures/empty-config";
 
 describe("Config", () => {
   describe("#load", () => {
@@ -17,9 +18,16 @@ describe("Config", () => {
         configPath: path.relative(cwd, VALID_CONFIG_PATH),
       });
       expect(config).to.not.be.null;
-      if (config) {
-        expect(config.get("database.rules")).to.eq("config/security-rules.json");
-      }
+      expect(config?.get("database.rules")).to.eq("config/security-rules.json");
+    });
+    it("should fall back to {} when the file is empty", () => {
+      const cwd = __dirname;
+      const config = Config.load({
+        cwd,
+        configPath: path.relative(cwd, EMPTY_CONFIG_PATH),
+      });
+      expect(config).to.not.be.null;
+      expect(config?.data).to.deep.eq({});
     });
   });
 
