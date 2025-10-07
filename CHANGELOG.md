@@ -1,1 +1,2 @@
 - Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
+- Fixed an issue where `firebase init` would require log in even when no project is selected. (#9251)

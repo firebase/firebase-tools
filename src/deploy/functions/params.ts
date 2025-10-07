@@ -695,7 +695,7 @@ async function promptResourceString(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }
@@ -723,7 +723,7 @@ async function promptResourceStrings(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }

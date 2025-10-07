@@ -15,7 +15,7 @@ export const deploy = prompt(
       title: "Deploy to Firebase",
     },
   },
-  async ({ prompt }, { config, projectId, accountEmail }) => {
+  async ({ prompt }, { config, projectId, accountEmail, firebaseCliCommand }) => {
     return [
       {
         role: "user" as const,
@@ -41,7 +41,7 @@ ${prompt || "<the user didn't supply specific instructions>"}
 
 Follow the steps below taking note of any user instructions provided above.
 
-1. If there is no active user, prompt the user to run \`firebase login\` in an interactive terminal before continuing.
+1. If there is no active user, prompt the user to run \`${firebaseCliCommand} login\` in an interactive terminal before continuing.
 2. Analyze the source code in the current working directory to determine if this is a web app. If it isn't, end this process and tell the user "The /firebase:deploy command only works with web apps."
 3. Analyze the source code in the current working directory to determine if the app requires a server for Server-Side Rendering (SSR). This will determine whether or not to use Firebase App Hosting. Here are instructions to determine if the app needs a server:
   Objective: Analyze the provided codebase files to determine if the web application requires a backend for Server-Side Rendering (SSR). Your final output must be a clear "Yes" or "No" followed by a brief justification.
@@ -79,19 +79,19 @@ Follow the steps below taking note of any user instructions provided above.
       Example (No): "No, there are no dependencies or file structures that indicate the use of a server-side rendering framework."
 4. If there is no \`firebase.json\` file, manually create one based on whether the app requires SSR:
   4a. If the app requires SSR, configure Firebase App Hosting:
-     Create \`firebase.json\ with an "apphosting" configuration, setting backendId to the app's name in package.json: \`{"apphosting": {"backendId": "<backendId>"}}\ 
+     Create \`firebase.json\ with an "apphosting" configuration, setting backendId to the app's name in package.json: \`{"apphosting": {"backendId": "<backendId>"}}\
   4b. If the app does NOT require SSR, configure Firebase Hosting:
     Create \`firebase.json\ with a "hosting" configuration. Add a \`{"hosting": {"predeploy": "<build_script>"}}\` config to build before deploying.
 5. Check if there is an active Firebase project for this environment (the \`firebase_get_environment\` tool may be helpful). If there is, provide the active project ID to the user and ask them if they want to proceed using that project. If there is not an active project, give the user two options: Provide an existing project ID or create a new project. Only use the list_projects tool on user request. Wait for their response before proceeding.
   5a. If the user chooses to use an existing Firebase project, the \`firebase_list_projects\` tool may be helpful. Set the selected project as the active project (the \`firebase_update_environment\` tool may be helpful).
   5b. If the user chooses to create a new project, use the \`firebase_create_project	\` tool. Then set the new project as the active project (the \`firebase_update_environment\` tool may be helpful).
-6. If firebase.json contains an "apphosting" configuration, check if a backend exists matching the provided backendId (the \`apphosting_list_backends\` tool may be helpful). 
-   If it doesn't exist, create one by running the \`firebase apphosting:backends:create --backend <backendId> --primary-region us-central1 --root-dir .\` shell.
-7. Only after making sure Firebase has been initialized, run the \`firebase deploy\` shell command to perform the deploy. This may take a few minutes.
+6. If firebase.json contains an "apphosting" configuration, check if a backend exists matching the provided backendId (the \`apphosting_list_backends\` tool may be helpful).
+   If it doesn't exist, create one by running the \`${firebaseCliCommand} apphosting:backends:create --backend <backendId> --primary-region us-central1 --root-dir .\` shell.
+7. Only after making sure Firebase has been initialized, run the \`${firebaseCliCommand} deploy\` shell command to perform the deploy. This may take a few minutes.
   7a. If deploying to apphosting, tell the user the deployment will take a few minutes, and they can monitor deployment progress in the Firebase console: \`https://console.firebase.google.com/project/<projectId>/apphosting\`
 8. If the deploy has errors, attempt to fix them and ask the user clarifying questions as needed.
-9. If the deploy needs \`--force\` to run successfully, ALWAYS prompt the user before running \`firebase deploy --force\`.
-10. If only one specific feature is failing, use command \`firebase deploy --only <feature>\` as you debug.
+9. If the deploy needs \`--force\` to run successfully, ALWAYS prompt the user before running \`${firebaseCliCommand} deploy --force\`.
+10. If only one specific feature is failing, use command \`${firebaseCliCommand} deploy --only <feature>\` as you debug.
 11. If the deploy succeeds, your job is finished.
 `.trim(),
         },
