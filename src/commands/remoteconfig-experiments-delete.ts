@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
@@ -8,6 +7,8 @@ import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcExperiment from "../remoteconfig/deleteExperiment";
 import { getExperiment, parseExperiment } from "../remoteconfig/getExperiment";
 import { confirm } from "../prompt";
+import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
+
 
 export const command = new Command("remoteconfig:experiments:delete <experimentId>")
   .description("delete a Remote Config experiment.")
@@ -16,7 +17,7 @@ export const command = new Command("remoteconfig:experiments:delete <experimentI
     "firebaseabt.experiments.delete",
     "firebaseanalytics.resources.googleAnalyticsEdit",
   ])
-  .action(async (experimentId: string, options: Options) => {
+  .action(async (experimentId: string, options: RemoteConfigOptions) => {
     const projectNumber: string = await needProjectNumber(options);
     const experiment = await getExperiment(projectNumber, NAMESPACE_FIREBASE, experimentId);
     logger.info(parseExperiment(experiment));

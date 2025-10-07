@@ -8,6 +8,7 @@ import { NAMESPACE_FIREBASE } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/deleteRollout";
 import { getRollout, parseRolloutIntoTable } from "../remoteconfig/getRollout";
 import { confirm } from "../prompt";
+import { RemoteConfigOptions } from "../remoteconfig/options";
 
 export const command = new Command("remoteconfig:rollouts:delete <rolloutId>")
   .description("delete a Remote Config rollout.")
@@ -16,7 +17,7 @@ export const command = new Command("remoteconfig:rollouts:delete <rolloutId>")
     "cloud.configs.update",
     "firebaseanalytics.resources.googleAnalyticsEdit",
   ])
-  .action(async (rolloutId: string, options: Options) => {
+  .action(async (rolloutId: string, options: RemoteConfigOptions) => {
     const projectNumber: string = await needProjectNumber(options);
     const rollout = await getRollout(projectNumber, NAMESPACE_FIREBASE, rolloutId);
     logger.info(parseRolloutIntoTable(rollout));
