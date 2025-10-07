@@ -1,4 +1,4 @@
 - Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
 - Fixed an issue where `firebase init` would require log in even when no project is selected. (#9251)
-- - Added `remoteconfig:experiments:get`, `remoteconfig:experiments:list`, and `remoteconfig:experiments:delete` commands to manage Remote Config experiments.
+- Added `remoteconfig:experiments:get`, `remoteconfig:experiments:list`, and `remoteconfig:experiments:delete` commands to manage Remote Config experiments.
 - Added `remoteconfig:rollouts:get`, `remoteconfig:rollouts:list`, and `remoteconfig:rollouts:delete` commands to manage Remote Config rollouts.
