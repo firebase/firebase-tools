@@ -16,7 +16,11 @@ export {
   RequiredInfo as StorageInfo,
   actuate as storageActuate,
 } from "./storage";
-export { doSetup as emulators } from "./emulators";
+export {
+  askQuestions as emulatorsAskQuestions,
+  RequiredInfo as EmulatorsInfo,
+  actuate as emulatorsActuate,
+} from "./emulators";
 export { doSetup as extensions } from "./extensions";
 // always runs, sets up .firebaserc
 export { doSetup as project } from "./project";
