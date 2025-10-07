@@ -7,7 +7,6 @@ import { GetExperimentResult, NAMESPACE_FIREBASE } from "../remoteconfig/interfa
 import * as rcExperiment from "../remoteconfig/getExperiment";
 import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
 
-
 export const command = new Command("remoteconfig:experiments:get <experimentId>")
   .description("get a Remote Config experiment.")
   .before(requireAuth)

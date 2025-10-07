@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";

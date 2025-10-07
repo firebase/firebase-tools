@@ -12,7 +12,6 @@ import {
 import * as rcRollout from "../remoteconfig/listRollouts";
 import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
 
-
 export const command = new Command("remoteconfig:rollouts:list")
   .description("get a list of Remote Config rollouts.")
   .option(

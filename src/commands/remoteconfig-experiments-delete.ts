@@ -9,7 +9,6 @@ import { getExperiment, parseExperiment } from "../remoteconfig/getExperiment";
 import { confirm } from "../prompt";
 import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
 
-
 export const command = new Command("remoteconfig:experiments:delete <experimentId>")
   .description("delete a Remote Config experiment.")
   .before(requireAuth)
