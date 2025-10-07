@@ -18,30 +18,8 @@ const BASE_OPTS = {
   rc: new RC(),
 };
 
-function initializeContext(): Context {
-  return {
-    backendConfigs: {
-      foo: {
-        backendId: "foo",
-        rootDir: "/",
-        ignore: [],
-      },
-    },
-    backendLocations: { foo: "us-central1" },
-    backendStorageUris: {
-      foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
-    },
-  };
-}
-
 describe("apphosting", () => {
   let orchestrateRolloutStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    orchestrateRolloutStub = sinon
-      .stub(rollout, "orchestrateRollout")
-      .throws("Unexpected orchestrateRollout call");
-  });
 
   afterEach(() => {
     sinon.verifyAndRestore();
@@ -62,7 +40,25 @@ describe("apphosting", () => {
     };
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
-      const context = initializeContext();
+      const context: Context = {
+        backendConfigs: {
+          foo: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+          },
+        },
+        backendLocations: { foo: "us-central1" },
+        backendStorageUris: {
+          foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+        },
+        backendLocalBuilds: {},
+      };
+
+      orchestrateRolloutStub = sinon
+        .stub(rollout, "orchestrateRollout")
+        .throws("Unexpected orchestrateRollout call");
+
       orchestrateRolloutStub.onFirstCall().rejects();
       orchestrateRolloutStub.onSecondCall().resolves();
 

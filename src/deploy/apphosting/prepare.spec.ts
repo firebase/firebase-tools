@@ -9,6 +9,7 @@ import * as prompt from "../../prompt";
 import { RC } from "../../rc";
 import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
+import * as localbuilds from "../../apphosting/localbuilds";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -27,6 +28,7 @@ function initializeContext(): Context {
     backendConfigs: {},
     backendLocations: {},
     backendStorageUris: {},
+    backendLocalBuilds: {},
   };
 }
 
@@ -72,6 +74,58 @@ describe("apphosting", () => {
   });
 
   describe("prepare", () => {
+    it("correctly creates configs for localBuild backends", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const annotations = {
+        adapterPackageName: "@apphosting/angular-adapter",
+        adapterVersion: "14.1",
+        framework: "nextjs",
+      };
+      const buildConfig = {
+        runCommand: "npm run build:prod",
+        env: [],
+      };
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig,
+        annotations,
+      });
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(context.backendLocations["foo"]).to.equal("us-central1");
+      expect(context.backendConfigs["foo"]).to.deep.equal({
+        backendId: "foo",
+        rootDir: "/",
+        ignore: [],
+        localBuild: true,
+      });
+      expect(context.backendLocalBuilds["foo"]).to.deep.equal({
+        buildDir: "./next/standalone",
+        buildConfig,
+        annotations,
+      });
+    });
+
     it("links to existing backend if it already exists", async () => {
       const context = initializeContext();
       listBackendsStub.onFirstCall().resolves({
@@ -90,6 +144,7 @@ describe("apphosting", () => {
         rootDir: "/",
         ignore: [],
       });
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("creates a backend if it doesn't exist yet", async () => {
@@ -110,6 +165,7 @@ describe("apphosting", () => {
         rootDir: "/",
         ignore: [],
       });
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("skips backend deployment if alwaysDeployFromSource is false", async () => {
@@ -140,6 +196,7 @@ describe("apphosting", () => {
 
       expect(context.backendLocations["foo"]).to.be.undefined;
       expect(context.backendConfigs["foo"]).to.be.undefined;
+      expect(context.backendLocalBuilds["foo"]).to.be.undefined;
     });
 
     it("prompts user if codebase is already connected and alwaysDeployFromSource is undefined", async () => {
@@ -169,6 +226,7 @@ describe("apphosting", () => {
         ignore: [],
         alwaysDeployFromSource: true,
       });
+      expect(context.backendLocalBuilds["foo"]).to.undefined;
     });
   });
 

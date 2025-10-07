@@ -26,7 +26,13 @@ export default async function (context: Context, options: Options): Promise<void
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
   const bucketsPerLocation: Record<string, string> = {};
   await Promise.all(
-    Object.values(context.backendLocations).map(async (loc) => {
+    Object.entries(context.backendLocations).map(async ([backendId, loc]) => {
+      const cfg = context.backendConfigs[backendId];
+      if (!cfg) {
+        throw new FirebaseError(
+          `Failed to find config for backend ${backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+        );
+      }
       const baseName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
       const resolvedName = await gcs.upsertBucket({
         product: "apphosting",
@@ -54,10 +60,23 @@ export default async function (context: Context, options: Options): Promise<void
     }),
   );
 
+  // Zip and upload code to GCS bucket.
   await Promise.all(
     Object.values(context.backendConfigs).map(async (cfg) => {
-      const projectSourcePath = options.projectRoot ? options.projectRoot : process.cwd();
-      const zippedSourcePath = await createArchive(cfg, projectSourcePath);
+      const rootDir = options.projectRoot ?? process.cwd();
+      let builtAppDir;
+      if (cfg.localBuild) {
+        builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
+        if (!builtAppDir) {
+          throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+        }
+      }
+      const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
+      logLabeledBullet(
+        "apphosting",
+        `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+      );
+
       const backendLocation = context.backendLocations[cfg.backendId];
       if (!backendLocation) {
         throw new FirebaseError(
@@ -66,7 +85,7 @@ export default async function (context: Context, options: Options): Promise<void
       }
       logLabeledBullet(
         "apphosting",
-        `Uploading source code at ${projectSourcePath} for backend ${cfg.backendId}...`,
+        `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = bucketsPerLocation[backendLocation]!;
       const { bucket, object } = await gcs.uploadObject(
@@ -76,7 +95,7 @@ export default async function (context: Context, options: Options): Promise<void
         },
         bucketName,
       );
-      logLabeledBullet("apphosting", `Source code uploaded at gs://${bucket}/${object}`);
+      logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =
         `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
     }),
