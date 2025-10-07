@@ -12,7 +12,7 @@ export const SERVER_FEATURES = [
   "functions",
   "remoteconfig",
   "crashlytics",
-  "appdistribution",
+  "apptesting",
   "apphosting",
   "database",
 ] as const;

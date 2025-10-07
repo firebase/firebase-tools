@@ -74,7 +74,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   functions: functionsOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
-  appdistribution: appDistributionOrigin(),
+  apptesting: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
 };
