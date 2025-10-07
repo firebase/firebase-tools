@@ -75,25 +75,29 @@ describe("apphosting", () => {
 
     it("upserts regional GCS bucket", async () => {
       const context = initializeContext();
-      getProjectNumberStub.resolves("000000000000");
-      upsertBucketStub.resolves();
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
       createArchiveStub.resolves("path/to/foo-1234.zip");
       uploadObjectStub.resolves({
-        bucket: "firebaseapphosting-sources-12345678-us-central1",
+        bucket: bucketName,
         object: "foo-1234",
       });
-      createReadStreamStub.resolves();
+      createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
 
       expect(upsertBucketStub).to.be.calledWith({
         product: "apphosting",
-        createMessage:
-          "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
+        createMessage: `Creating Cloud Storage bucket in ${location} to store App Hosting source code uploads at ${bucketName}...`,
         projectId: "my-project",
         req: {
-          name: "firebaseapphosting-sources-000000000000-us-central1",
-          location: "us-central1",
+          baseName: bucketName,
+          purposeLabel: `apphosting-source-${location}`,
+          location: location,
           lifecycle: {
             rule: [
               {
@@ -108,20 +112,22 @@ describe("apphosting", () => {
 
     it("correctly creates and sets storage URIs", async () => {
       const context = initializeContext();
-      getProjectNumberStub.resolves("000000000000");
-      upsertBucketStub.resolves();
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
       createArchiveStub.resolves("path/to/foo-1234.zip");
       uploadObjectStub.resolves({
-        bucket: "firebaseapphosting-sources-12345678-us-central1",
+        bucket: bucketName,
         object: "foo-1234",
       });
-      createReadStreamStub.resolves();
+      createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris["foo"]).to.equal(
-        "gs://firebaseapphosting-sources-000000000000-us-central1/foo-1234.zip",
-      );
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
     });
   });
 });
