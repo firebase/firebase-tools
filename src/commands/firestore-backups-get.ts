@@ -15,11 +15,7 @@ export const command = new Command("firestore:backups:get <backup>")
     const backup: Backup = await getBackup(backupName);
     const printer = new PrettyPrint();
 
-    if (options.json) {
-      logger.info(JSON.stringify(backup, undefined, 2));
-    } else {
-      printer.prettyPrintBackup(backup);
-    }
+    printer.prettyPrintBackup(backup);
 
     return backup;
   });

@@ -23,17 +23,15 @@ export const command = new Command("firestore:backups:list")
     const listBackupsResponse: ListBackupsResponse = await listBackups(options.project, location);
     const backups: Backup[] = listBackupsResponse.backups || [];
 
-    if (options.json) {
-      logger.info(JSON.stringify(listBackupsResponse, undefined, 2));
-    } else {
-      printer.prettyPrintBackups(backups);
-      if (listBackupsResponse.unreachable && listBackupsResponse.unreachable.length > 0) {
-        logWarning(
-          "We were not able to reach the following locations: " +
-            listBackupsResponse.unreachable.join(", "),
-        );
-      }
+    printer.prettyPrintBackups(backups);
+    if (listBackupsResponse.unreachable && listBackupsResponse.unreachable.length > 0) {
+      logWarning(
+        "We were not able to reach the following locations: " +
+          listBackupsResponse.unreachable.join(", "),
+      );
     }
 
+    // TODO: Consider returning listBackupResponse instead for --json. This will
+    // be a breaking change but exposes .unreachable, not just .backups.
     return backups;
   });

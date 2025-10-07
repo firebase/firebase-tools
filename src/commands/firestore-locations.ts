@@ -18,11 +18,7 @@ export const command = new Command("firestore:locations")
 
     const locations: types.Location[] = await api.locations(options.project);
 
-    if (options.json) {
-      logger.info(JSON.stringify(locations, undefined, 2));
-    } else {
-      printer.prettyPrintLocations(locations);
-    }
+    printer.prettyPrintLocations(locations);
 
     return locations;
   });

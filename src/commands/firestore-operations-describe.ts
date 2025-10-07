@@ -21,12 +21,8 @@ export const command = new Command("firestore:operations:describe <operationName
     const api = new fsi.FirestoreApi();
     const operation = await api.describeOperation(options.project, databaseId, operationName);
 
-    if (options.json) {
-      logger.info(JSON.stringify(operation, undefined, 2));
-    } else {
-      const printer = new PrettyPrint();
-      printer.prettyPrintOperation(operation);
-    }
+    const printer = new PrettyPrint();
+    printer.prettyPrintOperation(operation);
 
     return operation;
   });

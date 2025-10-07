@@ -19,11 +19,7 @@ export const command = new Command("firestore:databases:get [database]")
     const databaseId = database || "(default)";
     const databaseResp: types.DatabaseResp = await api.getDatabase(options.project, databaseId);
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      printer.prettyPrintDatabase(databaseResp);
-    }
+    printer.prettyPrintDatabase(databaseResp);
 
     return databaseResp;
   });
