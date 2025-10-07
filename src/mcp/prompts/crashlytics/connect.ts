@@ -9,7 +9,7 @@ export const connect = prompt(
       title: "Access Crashlytics data",
     },
   },
-  async (unused, { accountEmail }) => {
+  async (unused, { accountEmail, firebaseCliCommand }) => {
     return [
       {
         role: "user" as const,
@@ -25,7 +25,7 @@ Active user: ${accountEmail || "<NONE>"}
 
   1. **Make sure the user is logged in. No Crashlytics tools will work if the user is not logged in.**
     a. Use the \`firebase_get_environment\` tool to verify that the user is logged in.
-    b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`firebase login\` 
+    b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`${firebaseCliCommand} login\` 
        before continuing. Ignore other fields that are set to <NONE>. We are just making sure the
        user is logged in. 
 

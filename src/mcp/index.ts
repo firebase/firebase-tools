@@ -45,6 +45,7 @@ import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resolveResource, resources, resourceTemplates } from "./resources";
+import * as crossSpawn from "cross-spawn";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -71,6 +72,7 @@ export class FirebaseMcpServer {
   detectedFeatures?: ServerFeature[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
+  private cliCommand?: string;
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
@@ -294,7 +296,16 @@ export class FirebaseMcpServer {
       config: Config.load(options, true) || new Config({}, options),
       rc: loadRC(options),
       accountEmail,
+      firebaseCliCommand: this._getFirebaseCliCommand(),
     };
+  }
+
+  private _getFirebaseCliCommand(): string {
+    if (!this.cliCommand) {
+      const testCommand = crossSpawn.sync("firebase --version");
+      this.cliCommand = testCommand.error ? "npx firebase-tools@latest" : "firebase";
+    }
+    return this.cliCommand;
   }
 
   async mcpListTools(): Promise<ListToolsResult> {
