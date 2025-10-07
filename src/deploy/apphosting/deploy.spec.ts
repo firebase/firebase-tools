@@ -145,7 +145,7 @@ describe("apphosting", () => {
           "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
         projectId: "my-project",
         req: {
-          name: "firebaseapphosting-sources-000000000000-us-central1",
+          baseName: "firebaseapphosting-sources-000000000000-us-central1",
           location: "us-central1",
           lifecycle: {
             rule: [
