@@ -24,6 +24,7 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   // Ensure that a bucket exists in each region that a backend is or will be deployed to
+  const bucketsPerLocation: Record<string, string> = {};
   await Promise.all(
     Object.entries(context.backendLocations).map(async ([backendId, loc]) => {
       const cfg = context.backendConfigs[backendId];
@@ -32,14 +33,14 @@ export default async function (context: Context, options: Options): Promise<void
           `Failed to find config for backend ${backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
         );
       }
-
-      const bucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${loc.toLowerCase()}`;
-      await gcs.upsertBucket({
+      const baseName = `firebaseapphosting-sources-${options.projectNumber}-${loc.toLowerCase()}`;
+      const resolvedName = await gcs.upsertBucket({
         product: "apphosting",
-        createMessage: `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${bucketName}...`,
+        createMessage: `Creating Cloud Storage bucket in ${loc} to store App Hosting source code uploads at ${baseName}...`,
         projectId,
         req: {
-          name: bucketName,
+          baseName,
+          purposeLabel: `apphosting-source-${loc.toLowerCase()}`,
           location: loc,
           lifecycle: {
             rule: [
@@ -55,6 +56,7 @@ export default async function (context: Context, options: Options): Promise<void
           },
         },
       });
+      bucketsPerLocation[loc] = resolvedName;
     }),
   );
 
@@ -85,8 +87,7 @@ export default async function (context: Context, options: Options): Promise<void
         "apphosting",
         `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
-      const bucketName = `firebaseapphosting-${cfg.localBuild ? "build" : "sources"}-${options.projectNumber}-${backendLocation.toLowerCase()}`;
-
+      const bucketName = bucketsPerLocation[backendLocation]!;
       const { bucket, object } = await gcs.uploadObject(
         {
           file: zippedSourcePath,
