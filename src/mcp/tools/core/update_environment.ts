@@ -10,7 +10,7 @@ export const update_environment = tool(
   {
     name: "update_environment",
     description:
-      "Updates Firebase environment config such as project directory, active project, active user account, accept terms of service, and more. Use `firebase_get_environment` to see the currently configured environment.",
+      "Use this to update environment config for the Firebase CLI and Firebase MCP server, such as project directory, active project, active user account, accept terms of service, and more. Use `firebase_get_environment` to see the currently configured environment.",
     inputSchema: z.object({
       project_dir: z
         .string()
@@ -33,7 +33,9 @@ export const update_environment = tool(
       accept_gemini_tos: z
         .boolean()
         .optional()
-        .describe("Accept the Gemini in Firebase terms of service."),
+        .describe(
+          "Accept the Gemini in Firebase terms of service. Always prompt the user for confirmation before accepting on their behalf.",
+        ),
     }),
     annotations: {
       title: "Update Firebase Environment",

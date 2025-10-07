@@ -64,9 +64,9 @@ function formatRulesetIssues(issues: Issue[], rulesSource: string): string {
   return formattedOutput.join("\n\n");
 }
 
-export const validate_rules = tool(
+export const validate_security_rules = tool(
   {
-    name: "validate_rules",
+    name: "validate_security_rules",
     description:
       "Use this to check Firebase Security Rules for Firestore, Storage, or Realtime Database for syntax and validation errors.",
     inputSchema: z.object({

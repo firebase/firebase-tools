@@ -5,6 +5,8 @@ import { FirebaseMcpServer } from "../mcp/index";
 import { parseArgs } from "util";
 import { SERVER_FEATURES, ServerFeature } from "../mcp/types";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
+import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
+import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { resolve } from "path";
 
 const STARTUP_MESSAGE = `
@@ -26,13 +28,27 @@ export async function mcp(): Promise<void> {
       only: { type: "string", default: "" },
       dir: { type: "string" },
       "generate-tool-list": { type: "boolean", default: false },
+      "generate-prompt-list": { type: "boolean", default: false },
+      "generate-resource-list": { type: "boolean", default: false },
     },
     allowPositionals: true,
   });
+
+  let earlyExit = false;
   if (values["generate-tool-list"]) {
     console.log(markdownDocsOfTools());
-    return;
+    earlyExit = true;
   }
+  if (values["generate-prompt-list"]) {
+    console.log(markdownDocsOfPrompts());
+    earlyExit = true;
+  }
+  if (values["generate-resource-list"]) {
+    console.log(markdownDocsOfResources());
+    earlyExit = true;
+  }
+  if (earlyExit) return;
+
   process.env.IS_FIREBASE_MCP = "true";
   useFileLogger();
   const activeFeatures = (values.only || "")

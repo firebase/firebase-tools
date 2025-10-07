@@ -21,7 +21,7 @@ function pruneThreads(sample: Event): Event {
 export const list_events = tool(
   {
     name: "list_events",
-    description: `Lists the most recent events matching the given filters.
+    description: `Use this to list the most recent events matching the given filters.
       Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging.`,
     inputSchema: z.object({

@@ -7,7 +7,7 @@ export const set_sms_region_policy = tool(
   {
     name: "set_sms_region_policy",
     description:
-      "Sets an SMS Region Policy for Firebase Auth to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
+      "Use this to set an SMS region policy for Firebase Authentication to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
     inputSchema: z.object({
       policy_type: z
         .enum(["ALLOW", "DENY"])

@@ -53,7 +53,7 @@ interface ExecutionInput {
 }
 
 export interface GenerateOperationInput {
-  projectId: string;
+  projectId?: string;
   document: vscode.TextDocument;
   description: string;
   insertPosition: number;
@@ -314,6 +314,10 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
+    if (!arg.projectId) {
+      vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
+      return;
+    }
     try {
       const schema = await dataConnectService.schema();
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 

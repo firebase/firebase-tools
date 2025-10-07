@@ -44,3 +44,8 @@ export {
   actuate as apptestingAcutate,
 } from "./apptesting";
 export { doSetup as aitools } from "./aitools";
+export {
+  askQuestions as aiLogicAskQuestions,
+  AiLogicInfo,
+  actuate as aiLogicActuate,
+} from "./ailogic";

@@ -1,8 +1,4 @@
-- CloudSQL instances created with `firebase dataconnect:connect` now default to Postgres 17.
-- Fixed an issue with deploying indexes to Firestore Enterprise edition databases where explicit `__name__` fields could be incorrectly handled.
-- The `experimental:mcp` command has been renamed to `mcp`. The old name is now an alias.
-- `firebase_update_environment` MCP tool supports accepting Gemini in Firebase Terms of Service.
-- Fixed a bug when `firebase init dataconnect` failed to create a React app when launched from VS Code extension (#9171).
-- Improved the clarity of the `firebase apptesting:execute` command when you have zero or multiple apps.
-- Added 'emulators' to `firebase_init` MCP tool.
-- `firebase dataconnect:sql:migrate` now supports Cloud SQL instances with only private IPs. The command must be run in the same VPC of the instance to work. (##9200)
+- Added 'emulators' to `firebase_init` MCP tool.(##9200)
+- Deprecated Java versions below 21. Support will be dropped in Firebase CLI v15. Please upgrade to Java version 21 or above to continue using the emulators.
+- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
+- Fixed an issue where `firebase init` would require log in even when no project is selected. (#9251)

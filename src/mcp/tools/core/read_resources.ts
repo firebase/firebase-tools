@@ -2,12 +2,13 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { resolveResource, resources } from "../../resources";
 import { toContent } from "../../util";
+import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
   {
     name: "read_resources",
     description:
-      "use this to read the contents of `firebase://` resources or list available resources",
+      "Use this to read the contents of `firebase://` resources or list available resources",
     annotations: {
       title: "Read Firebase Resources",
       destructiveHint: false,
@@ -24,6 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
+      void trackGA4("mcp_read_resource", { resource_name: "__list__" });
       return toContent(
         resources
           .map(
