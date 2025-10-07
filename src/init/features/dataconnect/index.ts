@@ -39,6 +39,7 @@ import {
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
+import { FirebaseError } from "../../../error";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
@@ -105,7 +106,6 @@ export async function askQuestions(setup: Setup): Promise<void> {
     shouldProvisionCSQL: false,
   };
   if (setup.projectId) {
-    const hasBilling = await isBillingEnabled(setup);
     await ensureApis(setup.projectId);
     await promptForExistingServices(setup, info);
     if (!info.serviceGql) {
@@ -123,9 +123,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         await ensureGIFApiTos(setup.projectId);
       }
     }
-    if (hasBilling) {
-      await promptForCloudSQL(setup, info);
-    }
+    await promptForCloudSQL(setup, info);
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -169,9 +167,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
   }
-  if (!setup.isBillingEnabled) {
-    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
-  }
   setup.instructions.push(
     `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
   );
@@ -191,6 +186,7 @@ async function actuateWithInfo(
   }
 
   await ensureApis(projectId, /* silent =*/ true);
+  // YO
   const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
   if (provisionCSQL) {
     // Kicks off Cloud SQL provisioning if the project has billing enabled.
@@ -571,6 +567,8 @@ async function chooseExistingService(existing: Service[]): Promise<Service | und
 }
 
 async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void> {
+  const FREE = "__free__";
+  const PAID = "__paid__";
   if (!setup.projectId) {
     return;
   }
@@ -588,20 +586,23 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
       if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
-        choices.push({ name: "Create a new free trial instance", value: "", location: "" });
+        choices.push({ name: "Create a new free trial instance", value: FREE, location: "" });
       } else {
-        choices.push({ name: "Create a new CloudSQL instance", value: "", location: "" });
+        choices.push({ name: "Create a new CloudSQL instance", value: PAID, location: "" });
       }
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
         choices,
       });
-      if (info.cloudSqlInstanceId !== "") {
+      if (![FREE, PAID].includes(info.cloudSqlInstanceId)) {
         info.analyticsFlow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
         info.analyticsFlow += "_pick_new_csql";
+        if (info.cloudSqlInstanceId === PAID && !(await isBillingEnabled(setup))) {
+          throw new FirebaseError(`The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`)
+        }
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
