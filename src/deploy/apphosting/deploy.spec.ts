@@ -103,7 +103,7 @@ describe("apphosting", () => {
       upsertBucketStub.resolves();
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
       createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
-      
+
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
         object: "foo-1234",
@@ -191,9 +191,7 @@ describe("apphosting", () => {
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris["foo"]).to.equal(
-        `gs://${bucketName}/foo-1234.zip`,
-      );
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
         `gs://${bucketName}/foo-local-build-1234.zip`,
       );
