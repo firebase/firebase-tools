@@ -19,7 +19,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures.unshift("core");
+    activeFeatures = ["core", ...activeFeatures];
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
@@ -69,8 +69,9 @@ export function markdownDocsOfTools(): string {
     if (feature === "firebase") {
       feature = "core";
     }
+    const description = (tool.mcp?.description || "").replaceAll("\n", "<br>");
     doc += `
-| ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
+| ${tool.mcp.name} | ${feature} | ${description} |`;
   }
   return doc;
 }
