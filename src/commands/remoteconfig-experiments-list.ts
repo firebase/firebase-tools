@@ -6,11 +6,11 @@ import {
   NAMESPACE_FIREBASE,
 } from "../remoteconfig/interfaces";
 import { Command } from "../command";
-import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { needProjectNumber } from "../projectUtils";
+import { RemoteConfigOptions } from "../remoteconfig/options";
 
 export const command = new Command("remoteconfig:experiments:list")
   .description("get a list of Remote Config experiments")
@@ -31,12 +31,12 @@ export const command = new Command("remoteconfig:experiments:list")
     "firebaseabt.experiments.list",
     "firebaseanalytics.resources.googleAnalyticsReadAndAnalyze",
   ])
-  .action(async (options: Options) => {
+  .action(async (options: RemoteConfigOptions ) => {
     const projectNumber = await needProjectNumber(options);
     const listExperimentOptions: ListExperimentOptions = {
-      pageSize: (options.pageSize as string) ?? DEFAULT_PAGE_SIZE,
-      pageToken: options.pageToken as string,
-      filter: options.filter as string,
+      pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
+      pageToken: options.pageToken,
+      filter: options.filter,
     };
     const { experiments, nextPageToken }: ListExperimentsResult =
       await rcExperiment.listExperiments(projectNumber, NAMESPACE_FIREBASE, listExperimentOptions);
