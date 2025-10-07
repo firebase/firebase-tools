@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
@@ -11,6 +10,8 @@ import {
   DEFAULT_PAGE_SIZE,
 } from "../remoteconfig/interfaces";
 import * as rcRollout from "../remoteconfig/listRollouts";
+import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
+
 
 export const command = new Command("remoteconfig:rollouts:list")
   .description("get a list of Remote Config rollouts.")
@@ -31,12 +32,12 @@ export const command = new Command("remoteconfig:rollouts:list")
     "cloud.configs.get",
     "firebaseanalytics.resources.googleAnalyticsReadAndAnalyze",
   ])
-  .action(async (options: Options) => {
+  .action(async (options: RemoteConfigOptions) => {
     const projectNumber = await needProjectNumber(options);
     const listRolloutOptions: ListRolloutOptions = {
-      pageSize: (options.pageSize as string) ?? DEFAULT_PAGE_SIZE,
-      pageToken: options.pageToken as string,
-      filter: options.filter as string,
+      pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
+      pageToken: options.pageToken,
+      filter: options.filter,
     };
     const { rollouts, nextPageToken }: ListRollouts = await rcRollout.listRollouts(
       projectNumber,
