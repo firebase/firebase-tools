@@ -1,6 +1,5 @@
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
-import { logger } from "../logger";
 import { Emulators } from "../emulator/types";
 import { errorMissingProject, warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";

@@ -7,7 +7,6 @@ import { getShortOperationName } from "./firestore-utils";
 import { confirm } from "../prompt";
 import * as clc from "colorette";
 import * as utils from "../utils";
-import { logger } from "../logger";
 
 export const command = new Command("firestore:operations:cancel <operationName>")
   .description("cancels a long-running Cloud Firestore admin operation")
