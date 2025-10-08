@@ -11,7 +11,7 @@ const TestDeviceSchema = z
     model: z.string(),
     version: z.string(),
     locale: z.string(),
-    orientation: z.string(),
+    orientation: z.enum(["portrait", "landscape"]),
   })
   .describe(
     `Device to run automated test on. Can run 'gcloud firebase test android|ios models list' to see available devices.`,
