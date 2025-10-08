@@ -126,12 +126,12 @@ export async function askQuestions(setup: Setup): Promise<void> {
         configstore.set("gemini", true);
         await ensureGIFApiTos(setup.projectId);
         info.appDescription = await input({
-          message: `Describe your app ideas:`,
+          message: `Describe your app idea:`,
           validate: async (s: string) => {
             if (s.length > 0) {
               return true;
             }
-            return "Please enter a description for your app ideas.";
+            return "Please enter a description for your app idea.";
           },
         });
       }
