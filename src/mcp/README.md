@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzQGxhdGVzdCIsIm1jcCJdfQ==)
 
-The Firebase Model Context Protocol (MCP) Server gives AI-powered development tools the ability to work with your Firebase projects and your app's codebase. The Firebase MCP server works with any tool that can act as an MCP client, including: [Firebase Studio](https://firebase.google.com/studio), [Gemini CLI](https://github.com/google-gemini/gemini-cli) , [Claude Code](https://www.claude.com/product/claude-code), [Cline](https://github.com/cline/cline), [Cursor](https://www.cursor.com/), VS Code Copilot, [Windsurf](https://codeium.com/windsurf), and more!
+The Firebase Model Context Protocol (MCP) Server gives AI-powered development tools the ability to work with your Firebase projects and your app's codebase. The Firebase MCP server works with any tool that can act as an MCP client, including: [Firebase Studio](https://firebase.google.com/studio), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://www.claude.com/product/claude-code), [Cline](https://github.com/cline/cline), [Cursor](https://www.cursor.com/), VS Code Copilot, [Windsurf](https://codeium.com/windsurf), and more!
 
 ## Features
 
