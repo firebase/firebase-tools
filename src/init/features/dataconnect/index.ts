@@ -118,9 +118,16 @@ export async function askQuestions(setup: Setup): Promise<void> {
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
+      const wantToGenerate = await confirm({
+        message: "Do you want to generate a schema with Gemini?",
+        default: true,
       });
+      if (wantToGenerate) {
+        info.appDescription = await input({
+          message: `Describe your app to automatically generate a schema with Gemini:`,
+          default: `an app for ${setup.projectId}`,
+        });
+      }
       if (info.appDescription) {
         configstore.set("gemini", true);
         await ensureGIFApiTos(setup.projectId);
