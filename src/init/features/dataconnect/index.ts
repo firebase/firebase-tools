@@ -654,7 +654,7 @@ async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
-      message: "What location should the new Cloud SQL instance be in?",
+      message: "What location would you like to use?",
       choices,
       default: FDC_DEFAULT_REGION,
     });
