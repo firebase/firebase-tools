@@ -189,10 +189,7 @@ async function actuateWithInfo(
   }
 
   await ensureApis(projectId, /* silent =*/ true);
-  // YO
-  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
-  if (provisionCSQL) {
-    // Kicks off Cloud SQL provisioning if the project has billing enabled.
+  if (info.shouldProvisionCSQL) {
     await setupCloudSql({
       projectId: projectId,
       location: info.locationId,
