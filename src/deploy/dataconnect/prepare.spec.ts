@@ -56,16 +56,6 @@ describe("dataconnect prepare", () => {
     });
   });
 
-  it("should throw an error if billing is not enabled", async () => {
-    checkBillingEnabledStub.resolves(false);
-    const context = {};
-    const options = { config: {} } as any;
-    await expect(prepare.default(context, options)).to.be.rejectedWith(
-      FirebaseError,
-      "To provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial",
-    );
-  });
-
   it("should build services", async () => {
     const serviceInfos = [{ sourceDirectory: "a" }, { sourceDirectory: "b" }];
     loadAllStub.resolves(serviceInfos as any);

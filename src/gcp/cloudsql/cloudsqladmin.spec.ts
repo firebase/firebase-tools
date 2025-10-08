@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 
 import * as sqladmin from "../../gcp/cloudsql/cloudsqladmin";
 import * as iam from "../../gcp/iam";
-import { cloudSQLAdminOrigin } from "../../api";
+import { cloudbillingOrigin, cloudSQLAdminOrigin } from "../../api";
 import { Options } from "../../options";
 import * as operationPoller from "../../operation-poller";
 import { Config } from "../../config";
@@ -78,27 +78,6 @@ describe("cloudsqladmin", () => {
       expect(result).to.deep.equal(instances);
       expect(nock.isDone()).to.be.true;
     });
-
-    it("should handle allowlist error", async () => {
-      nock(cloudSQLAdminOrigin())
-        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
-        .reply(400, {
-          error: {
-            message: "Not allowed to set system label: firebase-data-connect",
-          },
-        });
-
-      await expect(
-        sqladmin.createInstance({
-          projectId: PROJECT_ID,
-          location: "us-central",
-          instanceId: INSTANCE_ID,
-          enableGoogleMlIntegration: false,
-          freeTrial: false,
-        }),
-      ).to.be.rejectedWith("Cloud SQL free trial instances are not yet available in us-central");
-      expect(nock.isDone()).to.be.true;
-    });
   });
 
   describe("getInstance", () => {
@@ -151,10 +130,23 @@ describe("cloudsqladmin", () => {
   });
 
   describe("createInstance", () => {
-    it("should create an instance", async () => {
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      nock.cleanAll();
+    });
+    it("should create an paid instance when billing is enabled", async () => {
       nock(cloudSQLAdminOrigin())
         .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
         .reply(200, {});
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, {
+          billingEnabled: true
+        });
 
       await sqladmin.createInstance({
         projectId: PROJECT_ID,
@@ -164,6 +156,67 @@ describe("cloudsqladmin", () => {
         freeTrial: false,
       });
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should create a free instance.", async () => {
+      nock(cloudSQLAdminOrigin())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
+        .reply(200, {});
+
+      await sqladmin.createInstance({
+        projectId: PROJECT_ID,
+        location: "us-central",
+        instanceId: INSTANCE_ID,
+        enableGoogleMlIntegration: false,
+        freeTrial: true,
+      });
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error when trying to create a paid instance when billing is disabled", async () => {
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, {
+          billingEnabled: false
+        });
+
+      await expect(sqladmin.createInstance({
+        projectId: PROJECT_ID,
+        location: "us-central",
+        instanceId: INSTANCE_ID,
+        enableGoogleMlIntegration: false,
+        freeTrial: false,
+      })).to.be.rejectedWith("The Cloud SQL free trial instance has already been used for this project")
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+
+    it("should handle allowlist error", async () => {
+      nock(cloudSQLAdminOrigin())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
+        .reply(400, {
+          error: {
+            message: "Not allowed to set system label: firebase-data-connect",
+          },
+        });
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, {
+          billingEnabled: true
+        });
+
+      await expect(
+        sqladmin.createInstance({
+          projectId: PROJECT_ID,
+          location: "us-central",
+          instanceId: INSTANCE_ID,
+          enableGoogleMlIntegration: false,
+          freeTrial: false,
+        }),
+      ).to.be.rejectedWith("Cloud SQL free trial instances are not yet available in us-central");
       expect(nock.isDone()).to.be.true;
     });
   });
