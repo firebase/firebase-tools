@@ -107,7 +107,10 @@ describe("functions", () => {
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
-          predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          predeploy: [
+            'npm --prefix "$RESOURCE_DIR" run lint',
+            'npm --prefix "$RESOURCE_DIR" run build',
+          ],
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
