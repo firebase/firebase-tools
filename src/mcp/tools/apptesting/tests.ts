@@ -20,7 +20,7 @@ const TestDeviceSchema = z
 export const run_tests = tool(
   {
     name: "run_test",
-    description: 'Upload a binary and run automated tests.',
+    description: "Upload a binary and run automated tests.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
