@@ -142,12 +142,16 @@ async function zipDirectory(
     throw err;
   }
   // For security, filter out all symlinks
-  const realFiles = await Promise.all(
-    files.filter(async (f) => {
+  const realFiles: typeof files = [];
+  await Promise.all(
+    files.map(async (f) => {
       const stats = await fs.promises.lstat(f.name);
-      return !stats.isSymbolicLink();
+      if (!stats.isSymbolicLink()) {
+        realFiles.push(f);
+      }
     }),
   );
+
   for (const file of realFiles) {
     const name = path.relative(sourceDirectory, file.name);
     allFiles.push(name);
