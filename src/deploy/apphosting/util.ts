@@ -10,7 +10,11 @@ import * as fsAsync from "../../fsAsync";
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
  * Based heavily on functions upload logic in src/deploy/functions/prepareFunctionsUpload.ts.
  */
-export async function createArchive(config: AppHostingSingle, rootDir: string): Promise<string> {
+export async function createArchive(
+  config: AppHostingSingle,
+  rootDir: string,
+  targetSubDir?: string,
+): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -18,14 +22,15 @@ export async function createArchive(config: AppHostingSingle, rootDir: string): 
   });
   const archive = archiver("zip");
 
+  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(rootDir);
+  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
   ignore.push(...gitIgnorePatterns);
   try {
     const files = await fsAsync.readdirRecursive({
-      path: rootDir,
+      path: targetDir,
       ignore: ignore,
       isGitIgnore: true,
     });
