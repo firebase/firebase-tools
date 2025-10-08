@@ -1,6 +1,6 @@
 import { setGlobalOptions } from "firebase-functions";
 import * as logger from "firebase-functions/logger";
-import { onRequest } from "firebase-functions/v2/https";
+import { onRequest } from "firebase-functions/https";
 
 // Start writing functions:
 //   https://firebase.google.com/docs/functions

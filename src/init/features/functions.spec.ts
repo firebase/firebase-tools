@@ -196,7 +196,7 @@ describe("functions", () => {
               "firebase-debug.*.log",
               "*.local",
             ],
-            predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+            predeploy: [],
           },
         ]);
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
