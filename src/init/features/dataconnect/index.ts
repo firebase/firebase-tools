@@ -171,9 +171,14 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await sdk.actuate(setup, config);
   } finally {
     void trackGA4("dataconnect_init", {
-      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
       flow: info.analyticsFlow,
-      provision_cloud_sql: String(info.shouldProvisionCSQL),
+      project_status: setup.projectId
+        ? setup.isBillingEnabled
+          ? info.shouldProvisionCSQL
+            ? "blaze_provisioned_csql"
+            : "blaze"
+          : "spark"
+        : "missing",
     });
   }
 
