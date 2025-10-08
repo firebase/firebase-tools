@@ -244,7 +244,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      provisionCSQL,
+      info.shouldProvisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
