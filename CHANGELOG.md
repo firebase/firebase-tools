@@ -1,1 +1,1 @@
-- Fix a bug where CloudSQL instances creation fails. Default to Postgres 15 until backend support higher versions. (#9279)
+- Fix a bug where CloudSQL instances creation fails. Default to Postgres 15 until backend supports higher versions. (#9279)
