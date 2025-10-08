@@ -18,7 +18,6 @@ describe("dataconnect prepare", () => {
   let sandbox: sinon.SinonSandbox;
   let loadAllStub: sinon.SinonStub;
   let buildStub: sinon.SinonStub;
-  let checkBillingEnabledStub: sinon.SinonStub;
   let getResourceFiltersStub: sinon.SinonStub;
   let diffSchemaStub: sinon.SinonStub;
   let setupCloudSqlStub: sinon.SinonStub;
@@ -27,7 +26,6 @@ describe("dataconnect prepare", () => {
     sandbox = sinon.createSandbox();
     loadAllStub = sandbox.stub(load, "loadAll").resolves([]);
     buildStub = sandbox.stub(build, "build").resolves({} as any);
-    checkBillingEnabledStub = sandbox.stub(cloudbilling, "checkBillingEnabled").resolves(true);
     sandbox.stub(ensureApis, "ensureApis").resolves();
     sandbox.stub(requireTosAcceptance, "requireTosAcceptance").returns(() => Promise.resolve());
     getResourceFiltersStub = sandbox.stub(filters, "getResourceFilters").returns(undefined);

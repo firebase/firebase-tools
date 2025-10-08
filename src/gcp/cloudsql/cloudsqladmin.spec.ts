@@ -142,11 +142,9 @@ describe("cloudsqladmin", () => {
       nock(cloudSQLAdminOrigin())
         .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
         .reply(200, {});
-      nock(cloudbillingOrigin())
-        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
-        .reply(200, {
-          billingEnabled: true
-        });
+      nock(cloudbillingOrigin()).get(`/v1/projects/${PROJECT_ID}/billingInfo`).reply(200, {
+        billingEnabled: true,
+      });
 
       await sqladmin.createInstance({
         projectId: PROJECT_ID,
@@ -176,23 +174,24 @@ describe("cloudsqladmin", () => {
     });
 
     it("should error when trying to create a paid instance when billing is disabled", async () => {
-      nock(cloudbillingOrigin())
-        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
-        .reply(200, {
-          billingEnabled: false
-        });
+      nock(cloudbillingOrigin()).get(`/v1/projects/${PROJECT_ID}/billingInfo`).reply(200, {
+        billingEnabled: false,
+      });
 
-      await expect(sqladmin.createInstance({
-        projectId: PROJECT_ID,
-        location: "us-central",
-        instanceId: INSTANCE_ID,
-        enableGoogleMlIntegration: false,
-        freeTrial: false,
-      })).to.be.rejectedWith("The Cloud SQL free trial instance has already been used for this project")
+      await expect(
+        sqladmin.createInstance({
+          projectId: PROJECT_ID,
+          location: "us-central",
+          instanceId: INSTANCE_ID,
+          enableGoogleMlIntegration: false,
+          freeTrial: false,
+        }),
+      ).to.be.rejectedWith(
+        "The Cloud SQL free trial instance has already been used for this project",
+      );
 
       expect(nock.isDone()).to.be.true;
     });
-
 
     it("should handle allowlist error", async () => {
       nock(cloudSQLAdminOrigin())
@@ -202,11 +201,9 @@ describe("cloudsqladmin", () => {
             message: "Not allowed to set system label: firebase-data-connect",
           },
         });
-      nock(cloudbillingOrigin())
-        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
-        .reply(200, {
-          billingEnabled: true
-        });
+      nock(cloudbillingOrigin()).get(`/v1/projects/${PROJECT_ID}/billingInfo`).reply(200, {
+        billingEnabled: true,
+      });
 
       await expect(
         sqladmin.createInstance({
