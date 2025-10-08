@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
     "esModuleInterop": true,
-    "moduleResolution": "nodenext",
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",
     "sourceMap": true,
-    "strict": true,
-    "target": "es2017"
+    "skipLibCheck": true,
+    "strict": true
   },
-  "compileOnSave": true,
   "include": [
     "src"
   ]
