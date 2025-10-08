@@ -308,6 +308,7 @@ export type AppHostingSingle = {
   rootDir: string;
   ignore: string[];
   alwaysDeployFromSource?: boolean;
+  localBuild?: boolean;
 };
 
 export type AppHostingMultiple = AppHostingSingle[];
