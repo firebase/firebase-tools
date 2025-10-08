@@ -1,6 +1,6 @@
-# Firebase MCP Server 
+# Firebase MCP Server
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE) 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzQGxhdGVzdCIsIm1jcCJdfQ==)
 
 The Firebase Model Context Protocol (MCP) Server gives AI-powered development tools the ability to work with your Firebase projects and your app's codebase. The Firebase MCP server works with any tool that can act as an MCP client, including: [Firebase Studio](https://firebase.google.com/studio), [Gemini CLI](https://github.com/google-gemini/gemini-cli) , [Claude Code](https://www.claude.com/product/claude-code), [Cline](https://github.com/cline/cline), [Cursor](https://www.cursor.com/), VS Code Copilot, [Windsurf](https://codeium.com/windsurf), and more!
@@ -113,6 +113,7 @@ To configure Firebase Studio to use the Firebase MCP server, edit or create the 
   }
 }
 ```
+
 ## Usage
 
 Once configured, the MCP server will automatically provide Firebase capabilities to your AI assistant. You can:
@@ -130,12 +131,12 @@ For a complete list of available tools and resources, see the [Server Capabiliti
 
 For more information, visit the [official Firebase MCP server documentation](https://firebase.google.com/docs/ai-assistance/mcp-server).
 
-
 ## Server Capabilities
 
 The Firebase MCP server provides three types of capabilities: **Tools** (functions that perform actions), **Prompts** (reusable command templates), and **Resources** (documentation files for AI models).
 
 ### Tools
+
 | Tool Name                             | Feature Group    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | firebase_login                        | core             | Use this to sign the user into the Firebase CLI and Firebase MCP server. This requires a Google Account, and sign in is required to create and work with Firebase Projects.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
