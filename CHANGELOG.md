@@ -1,2 +1,1 @@
-- Fix a bug where CloudSQL instances creation fails. Default to Postgres 15 until backend supports newer versions. (#9279)
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
