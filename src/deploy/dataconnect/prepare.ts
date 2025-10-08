@@ -11,12 +11,10 @@ import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
 import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
-import { upgradeInstructions } from "../../dataconnect/freeTrial";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
@@ -25,9 +23,6 @@ import { upgradeInstructions } from "../../dataconnect/freeTrial";
  */
 export default async function (context: any, options: DeployOptions): Promise<void> {
   const projectId = needProjectId(options);
-  if (!(await checkBillingEnabled(projectId))) {
-    throw new FirebaseError(upgradeInstructions(projectId));
-  }
   await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   const filters = getResourceFilters(options);

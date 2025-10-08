@@ -8,6 +8,9 @@ import { Options } from "../../options";
 import { logger } from "../../logger";
 import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
+import { checkBillingEnabled } from "../cloudbilling";
+import { upgradeInstructions } from "../../dataconnect/freeTrial";
+
 const API_VERSION = "v1";
 
 const client = new Client({
@@ -69,6 +72,11 @@ export async function createInstance(args: {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
+  }
+  if (!args.freeTrial && !(await checkBillingEnabled(args.projectId))) {
+    throw new FirebaseError(
+      `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(args.projectId)}`,
+    );
   }
   try {
     await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
