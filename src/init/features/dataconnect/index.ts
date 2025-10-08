@@ -39,7 +39,6 @@ import {
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
-import { cwd } from "process";
 
 // Default GCP region for Data Connect
 export const FDC_DEFAULT_REGION = "us-east4";
@@ -127,11 +126,14 @@ export async function askQuestions(setup: Setup): Promise<void> {
         configstore.set("gemini", true);
         await ensureGIFApiTos(setup.projectId);
         info.appDescription = await input({
-          message: `Describe your app ideas [leave blank to be creative]:`,
+          message: `Describe your app ideas:`,
+          validate: async (s: string) => {
+            if (s.length > 0) {
+              return true;
+            }
+            return "Please enter a description for your app ideas.";
+          },
         });
-        if (!info.appDescription) {
-          info.appDescription = `You are an expert of Firebase Data Connect. Let's create a creative, fun and inspiring example app for project ${setup.projectId} in this folder ${cwd()}.`;
-        }
       }
     }
     if (hasBilling) {
