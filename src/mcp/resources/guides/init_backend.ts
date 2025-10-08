@@ -20,9 +20,8 @@ export const init_backend = resource(
 2. Use the Firebase \`read_resources\` tool to load the guide to setup the product you choose.
 
 The user will likely need to setup a database solution, Authentication, and Hosting. Read the following guides in order:
- 1. [A Firebase Database](firebase://guides/init/database): read this to choose and set up a database solution.
+ 1. [A Firebase database solution](firebase://guides/init/database): read this to choose and set up a database solution.
  2. [Authentication](firebase://guides/init/auth): read this to setup Firebase Authentication to support multi-user apps
- 3. [Firestore Rules](firebase://guides/init/firestore_rules): read this to setup the \`firestore.rules\` file for securing your database
  4. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
 
 **firebase.json**
