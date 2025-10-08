@@ -1,3 +1,1 @@
-- Deprecated Java versions below 21. Support will be dropped in Firebase CLI v15. Please upgrade to Java version 21 or above to continue using the emulators.
-- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
-- Fixed an issue where `firebase init` would require log in even when no project is selected. (#9251)
+- Fix a bug where CloudSQL instances creation fails. Default to Postgres 15 until backend supports higher versions. (#9279)

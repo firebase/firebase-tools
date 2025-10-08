@@ -74,7 +74,7 @@ export async function createInstance(args: {
     await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
       name: args.instanceId,
       region: args.location,
-      databaseVersion: "POSTGRES_17",
+      databaseVersion: "POSTGRES_15",
       settings: {
         tier: "db-f1-micro",
         edition: "ENTERPRISE",

@@ -99,9 +99,20 @@ export type BuildOutputOnlyFields =
 
 assertImplements<BuildOutputOnlyFields, RecursiveKeyOf<Build>>();
 
+export type Availability = "BUILD" | "RUNTIME";
+
+export interface Env {
+  variable: string;
+  secret?: string;
+  value?: string;
+  availability?: Availability[];
+}
+
 export interface BuildConfig {
   minInstances?: number;
   memory?: string;
+  env?: Env[];
+  runCommand?: string;
 }
 
 interface BuildSource {
@@ -129,6 +140,7 @@ interface ArchiveSource {
   // end oneof reference
   rootDirectory?: string;
   author?: SourceUserMetadata;
+  locallyBuiltSource?: boolean;
 }
 
 interface SourceUserMetadata {
