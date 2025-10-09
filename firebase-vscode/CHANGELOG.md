@@ -1,7 +1,10 @@
 ## NEXT
 
+## 1.9.0
+
 - [Added] Refine / Generate Operation Code Lens.
 - [Added] Support run "firebase init" without login and project.
+- Update internal `firebase-tools` dependency to 14.19.1
 
 ## 1.8.0
 
