@@ -100,7 +100,7 @@ async function tarDirectory(
       gzip: true,
       file: tempFile.name,
       cwd: sourceDirectory,
-      follow: true,
+      follow: false,
       noDirRecurse: true,
       portable: true,
     },
@@ -141,7 +141,14 @@ async function zipDirectory(
     }
     throw err;
   }
-  for (const file of files) {
+  // For security, filter out all symlinks
+  const realFiles = await Promise.all(
+    files.filter(async (f) => {
+      const stats = await fs.promises.lstat(f.name);
+      return !stats.isSymbolicLink();
+    }),
+  );
+  for (const file of realFiles) {
     const name = path.relative(sourceDirectory, file.name);
     allFiles.push(name);
     archive.file(file.name, {
