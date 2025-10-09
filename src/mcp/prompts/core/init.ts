@@ -30,7 +30,7 @@ Your goal is to help the user setup Firebase services in this workspace. Firebas
 
 Use this information to determine which Firebase services the user is already using (if any).
 
-Workspace platform: ${platforms.length !== 1 ? "<UNABLE TO DETECT>" : platforms[0]}
+Workspace platform(s): ${platforms.length > 0 ? platforms.join(", ") : "<UNABLE TO DETECT>"}
 Active user: ${accountEmail || "<NONE>"}
 Active project: ${projectId || "<NONE>"}
 
