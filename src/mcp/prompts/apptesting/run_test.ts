@@ -24,7 +24,7 @@ export const runTest = prompt(
         content: {
           type: "text",
           text: `
-You are going to help a developer run a tests for their mobile app 
+You are going to help a developer run a test for their mobile app 
 using the Firebase App Testing agent.
 
 Active user: ${accountEmail || "<NONE>"}
@@ -63,18 +63,18 @@ Here are a list of prerequisite steps that must be completed before running a te
     
 ## Test Case Generation
 
-  One you have completed the required steps, you need the help the user generate a "test case", which is the input to the
-  app testing agent. A test case consists of multiple steps where each step containts the following fields:
+  Once you have completed the required steps, you need the help the user generate a "test case", which is the input to the
+  app testing agent. A test case consists of multiple steps where each step contains the following fields:
 
 	* Goal (required): In one sentence or less, describe what you want the agent to do in this step.
 	* Hint (optional): Provide additional information to help Gemini understand and navigate your app.
 	* Success Criteria (optional): Your success criteria should be phrased as an observation, such as 'The screen shows a
     success message' or 'The checkout page is visible'.
 
-  The develoepr has optionally specified the following description for their test:
+  The developer has optionally specified the following description for their test:
   * ${testDescription}
 
-  Sometimees, test descriptions that developers provide tend to be too vague and lack the necessary details for the
+  Sometimes, test descriptions that developers provide tend to be too vague and lack the necessary details for the
   app testing agent to be able to reliably re-run the tests with consistent results. Test cases should follow these
   guidelines to ensure that they are structured in a way to make the agent more reliable.
 
@@ -94,7 +94,7 @@ Here are a list of prerequisite steps that must be completed before running a te
   First, analyze the code to get an understanding of how the app works. Get all the available screens in the app and the
   different actions for each screen. Understand what functionality is and isn't available to the app testing agent.
   Only include specific details in the test case if you are certain they will be available to the agent, otherwise the
-  agent will likely fail if it tries to follow specific guidance that doesnt work (e.g. click the 'Play' button but the
+  agent will likely fail if it tries to follow specific guidance that doesn't work (e.g. click the 'Play' button but the
   button isn't visible to the app testing agent). Do not include Android resource ids in the test case. Include
   explanations that prove that each step includes between 2-5 actions. Using that information as context and the guidelines
   above, convert the test description provided by the user to make it easier for the agent to follow so that the tests can
