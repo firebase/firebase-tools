@@ -6,6 +6,8 @@ import { init_auth } from "./guides/init_auth";
 import { init_backend } from "./guides/init_backend";
 import { init_firestore } from "./guides/init_firestore";
 import { init_firestore_rules } from "./guides/init_firestore_rules";
+import { init_data_connect } from "./guides/init_data_connect";
+import { init_database } from "./guides/init_database";
 import { init_hosting } from "./guides/init_hosting";
 import { ServerResource, ServerResourceTemplate } from "../resource";
 import { trackGA4 } from "../../track";
@@ -13,6 +15,8 @@ import { trackGA4 } from "../../track";
 export const resources = [
   init_backend,
   init_ai,
+  init_database,
+  init_data_connect,
   init_firestore,
   init_firestore_rules,
   init_auth,
