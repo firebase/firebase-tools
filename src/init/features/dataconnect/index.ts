@@ -119,7 +119,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       const wantToGenerate = await confirm({
-        message: "Do you want to generate schema and example queries with Gemini?",
+        message: "Do you want to generate schema and queries with Gemini?",
         default: false,
       });
       if (wantToGenerate) {
