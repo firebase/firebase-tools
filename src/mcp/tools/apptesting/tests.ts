@@ -5,14 +5,10 @@ import { distribute, Distribution } from "../../../appdistribution/distribution"
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { parseIntoStringArray, toAppName } from "../../../appdistribution/options-parser-util";
+import { TestDevice } from "../../../appdistribution/types";
 
 const TestDeviceSchema = z
-  .object({
-    model: z.string(),
-    version: z.string(),
-    locale: z.string(),
-    orientation: z.enum(["portrait", "landscape"]),
-  })
+  .custom<TestDevice>()
   .describe(
     `Device to run automated test on. Can run 'gcloud firebase test android|ios models list' to see available devices.`,
   );
