@@ -3,6 +3,7 @@ import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
+import { apptestingPrompts } from "./apptesting";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: corePrompts,
@@ -14,7 +15,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   functions: [],
   remoteconfig: [],
   crashlytics: crashlyticsPrompts,
-  apptesting: [],
+  apptesting: apptestingPrompts,
   apphosting: [],
   database: [],
 };
