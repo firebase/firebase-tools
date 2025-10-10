@@ -169,7 +169,9 @@ export function registerExecution(
         "Automatically starting emulator... Please retry `Run local` execution after it's started.",
         { modal: false },
       );
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+      );
       emulatorsController.startEmulators();
       return;
     }
@@ -183,7 +185,6 @@ export function registerExecution(
       analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const always = "Yes (always)";
       const yes = "Yes";
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
@@ -191,17 +192,28 @@ export function registerExecution(
         always,
       );
 
-      if (result !== always && result !== yes) {
-        return;
-      }
-
-      // If the user selects "always", we update User settings.
-      if (result === always) {
-        configs.update(
-          alwaysExecuteMutationsInProduction,
-          true,
-          ConfigurationTarget.Global,
-        );
+      switch (result) {
+        case yes:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED
+          );
+          break;
+        case always:
+          // If the user selects "always", we update User settings.
+          configs.update(
+            alwaysExecuteMutationsInProduction,
+            true,
+            ConfigurationTarget.Global,
+          );
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
+          );
+          break;
+        default:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
+          );
+          return;
       }
     }
 
@@ -323,6 +335,7 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
