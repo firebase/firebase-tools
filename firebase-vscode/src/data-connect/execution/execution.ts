@@ -164,7 +164,9 @@ export function registerExecution(
         "Automatically starting emulator... Please retry `Run local` execution after it's started.",
         { modal: false },
       );
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+      );
       emulatorsController.startEmulators();
       return;
     }
@@ -177,7 +179,9 @@ export function registerExecution(
     ) {
       const always = "Yes (always)";
       const yes = "Yes";
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING
+      );
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
@@ -187,7 +191,9 @@ export function registerExecution(
 
       switch (result) {
         case yes:
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED);
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED
+          );
           break;
         case always:
           // If the user selects "always", we update User settings.
@@ -196,9 +202,13 @@ export function registerExecution(
             true,
             ConfigurationTarget.Global,
           );
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS);
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
+          );
         default:
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED);
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
+          );
           return;
       }
     }
@@ -489,12 +499,25 @@ async function verifyMissingArgs(
   }
   return argsWithType
     .filter((arg) => arg.type?.includes("!"))
-    .filter((arg) => userArgs[arg.varName] === undefined);
+    .filter((arg) => !userArgs[arg.varName]);
 }
 
 function getDefaultArgs(args: TypedInput[]) {
   return args.reduce((acc: { [key: string]: any }, arg) => {
-    acc[arg.varName] = getDefaultScalarValue((arg.type || "").replaceAll("!", ""));
+    const defaultValue = getDefaultScalarValue(arg.type as string);
+
+    acc[arg.varName] = defaultValue;
     return acc;
   }, {});
+}
+
+// converts AST OperationDefinitionNode to a DocumentNode for schema validation
+function operationDefinitionToDocument(
+  operationDefinition: OperationDefinitionNode,
+): DocumentNode {
+  return {
+    kind: Kind.DOCUMENT,
+    definitions: [operationDefinition],
+    loc: operationDefinition.loc,
+  };
 }

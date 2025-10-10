@@ -284,16 +284,16 @@ function getDefaultScalarValueNode(type: string): ValueNode | undefined {
   }
 }
 
-export function getDefaultScalarValue(type: string): any {
+export function getDefaultScalarValue(type: string): string {
   switch (type) {
     case "Boolean":
-      return false;
+      return "false";
     case "Date":
       return new Date().toISOString().substring(0, 10);
     case "Float":
-      return 0.0;
+      return "0";
     case "Int":
-      return 0;
+      return "0";
     case "Int64":
       return "0";
     case "String":
@@ -303,8 +303,8 @@ export function getDefaultScalarValue(type: string): any {
     case "UUID":
       return "11111111222233334444555555555555";
     case "Vector":
-      return [1.1, 2.2, 3.3];
+      return "[]";
     default:
-      return undefined;
+      return "";
   }
 }

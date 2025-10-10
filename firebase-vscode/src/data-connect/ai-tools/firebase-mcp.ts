@@ -63,6 +63,7 @@ export function registerFirebaseMCP(
     );
 
     const geminiReady = await ensureGeminiExtension();
+
     if (!geminiReady) {
       return;
     }
