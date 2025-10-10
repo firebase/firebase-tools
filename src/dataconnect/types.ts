@@ -153,8 +153,6 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
-export type Framework = keyof SupportedFrameworks;
-
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
@@ -172,15 +170,6 @@ export interface KotlinSDK {
 export interface DartSDK {
   outputDir: string;
   package: string;
-}
-
-export enum Platform {
-  NONE = "NONE",
-  ANDROID = "ANDROID",
-  WEB = "WEB",
-  IOS = "IOS",
-  FLUTTER = "FLUTTER",
-  MULTIPLE = "MULTIPLE",
 }
 
 // Helper types && converters
