@@ -205,6 +205,7 @@ export function registerExecution(
           analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
           );
+          break;
         default:
           analyticsLogger.logger.logUsage(
             DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
