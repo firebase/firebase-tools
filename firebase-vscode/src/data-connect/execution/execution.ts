@@ -169,9 +169,7 @@ export function registerExecution(
         "Automatically starting emulator... Please retry `Run local` execution after it's started.",
         { modal: false },
       );
-      analyticsLogger.logger.logUsage(
-        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
-      );
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION);
       emulatorsController.startEmulators();
       return;
     }
@@ -185,6 +183,7 @@ export function registerExecution(
       analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const always = "Yes (always)";
       const yes = "Yes";
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
@@ -192,28 +191,17 @@ export function registerExecution(
         always,
       );
 
-      switch (result) {
-        case yes:
-          analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED
-          );
-          break;
-        case always:
-          // If the user selects "always", we update User settings.
-          configs.update(
-            alwaysExecuteMutationsInProduction,
-            true,
-            ConfigurationTarget.Global,
-          );
-          analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
-          );
-          break;
-        default:
-          analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
-          );
-          return;
+      if (result !== always && result !== yes) {
+        return;
+      }
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(
+          alwaysExecuteMutationsInProduction,
+          true,
+          ConfigurationTarget.Global,
+        );
       }
     }
 
@@ -252,16 +240,12 @@ export function registerExecution(
     
 
     // if execution args is empty, reset to {}
-    if (!executionArgsJSON.value) {
-      executionArgsJSON.value = "{}";
-    }
+    executionArgsJSON.value = executionArgsJSON.value || "{}";
 
     // Check for missing arguments
     const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
-
-    // prompt user to continue execution or modify arguments
+    // Open variables panel to edit missing variables.
     if (missingArgs.length > 0) {
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
       // open a modal with option to run anyway or edit args
       const editArgs = { title: "Edit variables" };
       const continueExecution = { title: "Continue Execution" };
@@ -339,7 +323,6 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
@@ -505,14 +488,12 @@ async function verifyMissingArgs(
   }
   return argsWithType
     .filter((arg) => arg.type?.includes("!"))
-    .filter((arg) => !userArgs[arg.varName]);
+    .filter((arg) => userArgs[arg.varName] === undefined);
 }
 
 function getDefaultArgs(args: TypedInput[]) {
   return args.reduce((acc: { [key: string]: any }, arg) => {
-    const defaultValue = getDefaultScalarValue(arg.type as string);
-
-    acc[arg.varName] = defaultValue;
+    acc[arg.varName] = getDefaultScalarValue((arg.type || "").replaceAll("!", ""));
     return acc;
   }, {});
 }
