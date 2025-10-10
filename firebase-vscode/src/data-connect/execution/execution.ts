@@ -182,9 +182,9 @@ export function registerExecution(
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const always = "Yes (always)";
       const yes = "Yes";
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
