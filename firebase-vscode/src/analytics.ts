@@ -27,8 +27,6 @@ export enum DATA_CONNECT_EVENT_NAME {
   RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS = "run_prod_mutation_warning_acked_always",
   MISSING_VARIABLES = "missing_variables",
   GENERATE_OPERATION = "generate_operation",
-  GIF_TOS_MODAL = "gif_tos_modal",
-  GIF_TOS_MODAL_CLICKED = "gif_tos_modal_clicked",
   ADD_DATA = "add_data",
   READ_DATA = "read_data",
   MOVE_TO_CONNECTOR = "move_to_connector",

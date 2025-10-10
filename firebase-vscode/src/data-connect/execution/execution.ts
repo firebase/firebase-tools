@@ -135,6 +135,11 @@ export function registerExecution(
         ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
         : DATA_CONNECT_EVENT_NAME.RUN_PROD,
     );
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${ast.operation}`
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${ast.operation}`,
+    );
     await vscode.window.activeTextEditor?.document.save();
 
     // hold last execution in memory, and send operation name to webview
@@ -175,6 +180,7 @@ export function registerExecution(
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const always = "Yes (always)";
       const yes = "Yes";
       analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
@@ -185,21 +191,17 @@ export function registerExecution(
         always,
       );
 
-      switch (result) {
-        case yes:
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED);
-          break;
-        case always:
-          // If the user selects "always", we update User settings.
-          configs.update(
-            alwaysExecuteMutationsInProduction,
-            true,
-            ConfigurationTarget.Global,
-          );
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS);
-        default:
-          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED);
-          return;
+      if (result !== always && result !== yes) {
+        return;
+      }
+
+      // If the user selects "always", we update User settings.
+      if (result === always) {
+        configs.update(
+          alwaysExecuteMutationsInProduction,
+          true,
+          ConfigurationTarget.Global,
+        );
       }
     }
 
@@ -244,16 +246,28 @@ export function registerExecution(
     const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
     // Open variables panel to edit missing variables.
     if (missingArgs.length > 0) {
-      const missingArgsJSON = getDefaultArgs(missingArgs);
-      // combine w/ existing args, and send to webview
-      const newArgsJsonString = JSON.stringify({
-        ...JSON.parse(executionArgsJSON.value),
-        ...missingArgsJSON,
-      }, null, 2);
-      broker.send("notifyDataConnectArgs", newArgsJsonString);
-      executionArgsJSON.value = newArgsJsonString;
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
-      return;
+      // open a modal with option to run anyway or edit args
+      const editArgs = { title: "Edit variables" };
+      const continueExecution = { title: "Continue Execution" };
+      const result = await vscode.window.showInformationMessage(
+        `Missing required variables. Would you like to modify them?`,
+        { modal: !process.env.VSCODE_TEST_MODE },
+        editArgs,
+        continueExecution,
+      );
+
+      if (result === editArgs) {
+        const missingArgsJSON = getDefaultArgs(missingArgs);
+
+        // combine w/ existing args, and send to webview
+        const newArgsJsonString = JSON.stringify({
+          ...JSON.parse(executionArgsJSON.value),
+          ...missingArgsJSON,
+        });
+
+        broker.send("notifyDataConnectArgs", newArgsJsonString);
+        return;
+      }
     }
 
     const item = createExecution({
@@ -309,9 +323,6 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
-    analyticsLogger.logger.logUsage(
-      DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
-    );
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
@@ -351,6 +362,7 @@ ${schema}
     );
     switch (result) {
       case enable:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED);
         configstore.set("gemini", true);
         await ensureGIFApiTos(projectId);
         return true;
@@ -361,6 +373,9 @@ ${schema}
             "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
           ),
         );
+      default:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED);
+        break;
     }
     return false;
   }
