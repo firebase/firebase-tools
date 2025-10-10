@@ -1,5 +1,4 @@
 import { logger } from "../logger";
-import { FirebaseError, getError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Issue, State, UpdateIssueRequest } from "./types";
 
@@ -11,24 +10,16 @@ import { Issue, State, UpdateIssueRequest } from "./types";
  */
 export async function getIssue(appId: string, issueId: string): Promise<Issue> {
   const requestProjectNumber = parseProjectNumber(appId);
-
   logger.debug(`[crashlytics] getIssue called with appId: ${appId}, issueId: ${issueId}`);
-  try {
-    const response = await CRASHLYTICS_API_CLIENT.request<void, Issue>({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to fetch issue for appId ${appId}, issueId ${issueId}`, {
-      original: getError(err),
-    });
-  }
+  const response = await CRASHLYTICS_API_CLIENT.request<void, Issue>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
+    timeout: TIMEOUT,
+  });
+  return response.body;
 }
 
 /**
@@ -40,25 +31,18 @@ export async function getIssue(appId: string, issueId: string): Promise<Issue> {
  */
 export async function updateIssue(appId: string, issueId: string, state: State): Promise<Issue> {
   const requestProjectNumber = parseProjectNumber(appId);
-  try {
-    logger.debug(
-      `[crashlytics] updateIssue called with appId: ${appId}, issueId: ${issueId}, state: ${state}`,
-    );
-    const response = await CRASHLYTICS_API_CLIENT.request<UpdateIssueRequest, Issue>({
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
-      queryParams: { updateMask: "state" },
-      body: { state },
-      timeout: TIMEOUT,
-    });
-
-    return response.body;
-  } catch (err: unknown) {
-    throw new FirebaseError(`Failed to update issue ${issueId} for app ${appId}`, {
-      original: getError(err),
-    });
-  }
+  logger.debug(
+    `[crashlytics] updateIssue called with appId: ${appId}, issueId: ${issueId}, state: ${state}`,
+  );
+  const response = await CRASHLYTICS_API_CLIENT.request<UpdateIssueRequest, Issue>({
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
+    queryParams: { updateMask: "state" },
+    body: { state },
+    timeout: TIMEOUT,
+  });
+  return response.body;
 }

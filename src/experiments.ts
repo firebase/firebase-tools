@@ -156,6 +156,13 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
+  ailogic: {
+    shortDescription: "Enable Firebase AI Logic feature for existing apps",
+    fullDescription:
+      "Enables the AI Logic initialization feature that provisions AI Logic for existing Firebase apps.",
+    public: true,
+    default: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

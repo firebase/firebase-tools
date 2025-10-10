@@ -140,7 +140,7 @@ export async function upsertSchema(
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 120000,
+    masterTimeout: 10000,
   });
 }
 

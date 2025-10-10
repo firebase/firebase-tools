@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -40,11 +40,15 @@ import {
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
 
+// Default GCP region for Data Connect
+export const FDC_DEFAULT_REGION = "us-east4";
+
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
@@ -88,6 +92,7 @@ const templateServiceInfo: ServiceGQL = {
       ],
     },
   ],
+  seedDataGql: SEED_DATA_TEMPLATE,
 };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
@@ -114,15 +119,17 @@ export async function askQuestions(setup: Setup): Promise<void> {
         );
       }
       info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
+        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
       });
       if (info.appDescription) {
         configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
+        await ensureGIFApiTos(setup.projectId);
       }
     }
     if (hasBilling) {
       await promptForCloudSQL(setup, info);
+    } else if (info.appDescription) {
+      await promptForLocation(setup, info);
     }
   }
   setup.featureInfo = setup.featureInfo || {};
@@ -146,7 +153,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   // Populate the default values of required fields.
   info.serviceId = info.serviceId || defaultServiceId();
   info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
-  info.locationId = info.locationId || `us-central1`;
+  info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
   try {
@@ -433,10 +440,10 @@ function subDataconnectYamlValues(replacementValues: {
 }): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
+    locationId: "__location__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorDirs: "__connectorDirs__",
-    locationId: "__location__",
   };
   let replaced = DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
@@ -612,12 +619,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   }
 
   if (info.locationId === "") {
-    const choices = await locationChoices(setup);
-    info.locationId = await select<string>({
-      message: "What location would like to use?",
-      choices,
-      default: "us-east4",
-    });
+    await promptForLocation(setup, info);
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?`,
       default: true,
@@ -638,6 +640,17 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     }
   }
   return;
+}
+
+async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void> {
+  if (info.locationId === "") {
+    const choices = await locationChoices(setup);
+    info.locationId = await select<string>({
+      message: "What location should the new Cloud SQL instance be in?",
+      choices,
+      default: FDC_DEFAULT_REGION,
+    });
+  }
 }
 
 async function locationChoices(setup: Setup) {

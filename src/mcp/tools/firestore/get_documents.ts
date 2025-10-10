@@ -9,7 +9,7 @@ export const get_documents = tool(
   {
     name: "get_documents",
     description:
-      "Retrieves one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
+      "Use this to retrieve one or more Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
       database: z
         .string()

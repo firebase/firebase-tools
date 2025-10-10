@@ -9,7 +9,8 @@ import { messagingTools } from "./messaging/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
-import { rtdbTools } from "./rtdb/index";
+import { realtimeDatabaseTools } from "./realtime_database/index";
+import { functionsTools } from "./functions/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
 export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
@@ -18,7 +19,7 @@ export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures.unshift("core");
+    activeFeatures = ["core", ...activeFeatures];
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
@@ -33,10 +34,11 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
   storage: addFeaturePrefix("storage", storageTools),
   messaging: addFeaturePrefix("messaging", messagingTools),
+  functions: addFeaturePrefix("functions", functionsTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
-  rtdb: addFeaturePrefix("rtdb", rtdbTools),
+  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
 };
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
@@ -67,8 +69,9 @@ export function markdownDocsOfTools(): string {
     if (feature === "firebase") {
       feature = "core";
     }
+    const description = (tool.mcp?.description || "").replaceAll("\n", "<br>");
     doc += `
-| ${tool.mcp.name} | ${feature} | ${tool.mcp?.description || ""} |`;
+| ${tool.mcp.name} | ${feature} | ${description} |`;
   }
   return doc;
 }

@@ -5,12 +5,20 @@ import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { requireGeminiToS } from "../../errors";
+import { FirebaseError } from "../../../error";
+import {
+  parseAppId,
+  validateProjectNumberMatch,
+  validateAppExists,
+} from "../../../init/features/ailogic/utils";
+import { getFirebaseProject } from "../../../management/projects";
+import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase Data Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -75,7 +83,7 @@ export const init = tool(
             location_id: z
               .string()
               .optional()
-              .default("us-central1")
+              .default(FDC_DEFAULT_REGION)
               .describe("The GCP region ID to set up the Firebase Data Connect service."),
             cloudsql_instance_id: z
               .string()
@@ -121,6 +129,16 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
           ),
+        ailogic: z
+          .object({
+            app_id: z
+              .string()
+              .describe(
+                "Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID). Must be an existing app in your Firebase project.",
+              ),
+          })
+          .optional()
+          .describe("Enable Firebase AI Logic feature for existing app"),
       }),
     }),
     annotations: {
@@ -176,6 +194,27 @@ export const init = tool(
       featureInfo.dataconnectSdk = {
         // Add FDC generated SDKs to all apps detected.
         apps: [],
+      };
+    }
+    if (features.ailogic) {
+      // AI Logic requires a project
+      if (!projectId) {
+        throw new FirebaseError(
+          "AI Logic feature requires a Firebase project. Please specify a project ID.",
+          { exit: 1 },
+        );
+      }
+
+      // Validate AI Logic app for MCP flow
+      const appInfo = parseAppId(features.ailogic.app_id);
+      const projectInfo = await getFirebaseProject(projectId);
+      validateProjectNumberMatch(appInfo, projectInfo);
+      const appData = await validateAppExists(appInfo, projectId);
+
+      featuresList.push("ailogic");
+      featureInfo.ailogic = {
+        appId: features.ailogic.app_id,
+        displayName: appData.displayName,
       };
     }
     const setup: Setup = {

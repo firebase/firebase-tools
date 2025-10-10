@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { resources } from "../../resources";
+import { resolveResource, resources } from "../../resources";
 import { toContent } from "../../util";
+import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
   {
     name: "read_resources",
     description:
-      "use this to read the contents of `firebase://` resources or list available resources",
+      "Use this to read the contents of `firebase://` resources or list available resources",
     annotations: {
       title: "Read Firebase Resources",
       destructiveHint: false,
@@ -24,6 +25,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
+      void trackGA4("mcp_read_resource", { resource_name: "__list__" });
       return toContent(
         resources
           .map(
@@ -36,14 +38,13 @@ export const read_resources = tool(
 
     const out: string[] = [];
     for (const uri of uris) {
-      const resource = resources.find((r) => r.mcp.uri === uri);
-      if (!resource) {
+      const resolved = await resolveResource(uri, ctx);
+      if (!resolved) {
         out.push(`<resource uri="${uri}" error>\nRESOURCE NOT FOUND\n</resource>`);
         continue;
       }
-      const result = await resource.fn(uri, ctx);
       out.push(
-        `<resource uri="${uri}" title="${resource?.mcp.title}">\n${result.contents.map((c) => c.text).join("")}\n</resource>`,
+        `<resource uri="${uri}" title="${resolved.mcp.title || resolved.mcp.name}">\n${resolved.result.contents.map((c) => c.text).join("")}\n</resource>`,
       );
     }
 

@@ -28,7 +28,7 @@ export const command = new Command("functions:log")
         opn(url);
         return;
       }
-      const entries = await cloudlogging.listEntries(
+      const { entries } = await cloudlogging.listEntries(
         projectId,
         apiFilter,
         options.lines || 35,

@@ -8,7 +8,6 @@ import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
 import { checkbox, confirm } from "../prompt";
-import { requireAuth } from "../requireAuth";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
@@ -49,13 +48,13 @@ let choices: {
   },
   {
     value: "apphosting",
-    name: "App Hosting: Enable web app deployments with App Hosting",
+    name: "App Hosting: Set up deployments for full-stack web apps (supports server-side rendering)",
     checked: false,
     hidden: false,
   },
   {
     value: "hosting",
-    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    name: "Hosting: Set up deployments for static web apps",
     checked: false,
   },
   {
@@ -117,6 +116,14 @@ if (isEnabled("apptesting")) {
   });
 }
 
+if (isEnabled("ailogic")) {
+  choices.push({
+    value: "ailogic",
+    name: "AI Logic: Set up Firebase AI Logic with app provisioning",
+    checked: false,
+  });
+}
+
 choices.push({
   value: "aitools",
   name: "AI Tools: Configure AI coding assistants to work with your Firebase project",
@@ -139,7 +146,6 @@ ${[...featureNames]
 export const command = new Command("init [feature]")
   .description("interactively configure the current directory as a Firebase project directory")
   .help(HELP)
-  .before(requireAuth)
   .action(initAction);
 
 /**

@@ -1,7 +1,7 @@
 import type { ServerTool } from "../../tool";
 import { create_note, list_notes, delete_note } from "./notes";
 import { get_issue, update_issue } from "./issues";
-import { list_events } from "./events";
+import { list_events, batch_get_events } from "./events";
 import {
   get_top_issues,
   get_top_variants,
@@ -16,6 +16,7 @@ export const crashlyticsTools: ServerTool[] = [
   delete_note,
   get_issue,
   list_events,
+  batch_get_events,
   list_notes,
   get_top_issues,
   get_top_variants,

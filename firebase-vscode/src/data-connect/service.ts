@@ -30,6 +30,7 @@ import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 /**
  * DataConnect Emulator service
@@ -40,6 +41,7 @@ export class DataConnectService {
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
     private context: ExtensionContext,
+    private analyticsLogger: AnalyticsLogger,
   ) {}
 
   async servicePath(path: string): Promise<string> {
@@ -56,6 +58,7 @@ export class DataConnectService {
   private async handleProdResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${response.status}`);
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
@@ -69,6 +72,7 @@ export class DataConnectService {
   private async handleEmulatorResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${response.status}`);
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
@@ -120,7 +124,7 @@ export class DataConnectService {
         operationName: "IntrospectionQuery",
         variables: "{}",
       });
-      console.log("introspection: ", introspectionResults);
+      console.log("introspection result: ", introspectionResults);
       // TODO: handle errors
       if ((introspectionResults as any).errors.length > 0) {
         return { data: undefined };
@@ -135,6 +139,23 @@ export class DataConnectService {
       // TODO: surface error that emulator is not connected
       pluginLogger.error("error: ", e);
       return { data: undefined };
+    }
+  }
+
+  // Fetch the local Data Connect Schema sources via the toolkit introspection service.
+  async schema(): Promise<string> {
+    try {
+      const res = await this.executeGraphQLRead({
+        query: `query { _service { schema } }`,
+        operationName: "",
+        variables: "{}",
+      });
+      console.log("introspection schema result: ", res);
+      return (res as any)?.data?._service?.schema || "";
+    } catch (e) {
+      // TODO: surface error that emulator is not connected
+      pluginLogger.error("error: ", e);
+      return "";
     }
   }
 
