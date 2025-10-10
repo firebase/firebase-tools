@@ -1,11 +1,9 @@
-import {
-  gemini,
-  gemini as geminiToolModule,
-} from "../../../../src/init/features/aitools/gemini";
+import { gemini as geminiToolModule } from "../../../../src/init/features/aitools/gemini";
 import * as vscode from "vscode";
 import { firebaseConfig } from "../config";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
+import { configstore } from "../../../../src/configstore";
 
 const GEMINI_EXTENSION_ID = "google.geminicodeassist";
 
@@ -49,6 +47,7 @@ async function ensureGeminiExtension(): Promise<boolean> {
 
 // Writes MCP config, then opens up Gemini with a new chat
 async function openGeminiChat() {
+  configstore.set("gemini", true);
   writeToGeminiConfig();
   await vscode.commands.executeCommand("cloudcode.gemini.chatView.focus");
   await vscode.commands.executeCommand("geminicodeassist.agent.chat.new");
@@ -64,7 +63,6 @@ export function registerFirebaseMCP(
     );
 
     const geminiReady = await ensureGeminiExtension();
-
     if (!geminiReady) {
       return;
     }
