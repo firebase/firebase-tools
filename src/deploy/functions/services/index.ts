@@ -8,6 +8,7 @@ import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
 import { ensureFirestoreTriggerRegion } from "./firestore";
+import { ensureScheduleTriggerRegion } from "./schedule";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -25,7 +26,8 @@ export type Name =
   | "database"
   | "remoteconfig"
   | "testlab"
-  | "firestore";
+  | "firestore"
+  | "schedule";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -34,7 +36,9 @@ export interface Service {
 
   // dispatch functions
   requiredProjectBindings?: (projectNumber: string) => Promise<Array<iam.Binding>>;
-  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
+  ensureTriggerRegion:
+    | ((ep: backend.Endpoint & backend.EventTriggered) => Promise<void>)
+    | ((ep: backend.Endpoint & backend.ScheduleTriggered) => Promise<void>);
   validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
   registerTrigger: (ep: backend.Endpoint) => Promise<void>;
   unregisterTrigger: (ep: backend.Endpoint) => Promise<void>;
@@ -130,6 +134,17 @@ const firestoreService: Service = {
   unregisterTrigger: noop,
 };
 
+/** A scheduled service object */
+const scheduleService: Service = {
+  name: "schedule",
+  api: "cloudscheduler.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureScheduleTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
@@ -170,6 +185,10 @@ export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
 
   if (backend.isBlockingTriggered(endpoint)) {
     return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || noOpService;
+  }
+
+  if (backend.isScheduleTriggered(endpoint)) {
+    return scheduleService;
   }
 
   return noOpService;
