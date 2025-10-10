@@ -238,21 +238,21 @@ export function registerExecution(
     
 
     // if execution args is empty, reset to {}
-    const variableJSON = executionArgsJSON.value || "{}";
+    executionArgsJSON.value = executionArgsJSON.value || "{}";
 
     // Check for missing arguments
-    const missingArgs = await verifyMissingArgs(ast, variableJSON);
-
-    // Prompt user to continue execution or modify arguments if variables argument is empty.
-    if (missingArgs.length > 0 && !executionArgsJSON.value) {
+    const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
+    // Open variables panel to edit missing variables.
+    if (missingArgs.length > 0) {
       const missingArgsJSON = getDefaultArgs(missingArgs);
       // combine w/ existing args, and send to webview
       const newArgsJsonString = JSON.stringify({
-        ...JSON.parse(variableJSON),
+        ...JSON.parse(executionArgsJSON.value),
         ...missingArgsJSON,
-      });
+      }, null, 2);
       broker.send("notifyDataConnectArgs", newArgsJsonString);
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES_EDIT);
+      executionArgsJSON.value = newArgsJsonString;
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
       return;
     }
 
@@ -473,25 +473,12 @@ async function verifyMissingArgs(
   }
   return argsWithType
     .filter((arg) => arg.type?.includes("!"))
-    .filter((arg) => !userArgs[arg.varName]);
+    .filter((arg) => userArgs[arg.varName] === undefined);
 }
 
 function getDefaultArgs(args: TypedInput[]) {
   return args.reduce((acc: { [key: string]: any }, arg) => {
-    const defaultValue = getDefaultScalarValue(arg.type as string);
-
-    acc[arg.varName] = defaultValue;
+    acc[arg.varName] = getDefaultScalarValue((arg.type || "").replaceAll("!", ""));
     return acc;
   }, {});
-}
-
-// converts AST OperationDefinitionNode to a DocumentNode for schema validation
-function operationDefinitionToDocument(
-  operationDefinition: OperationDefinitionNode,
-): DocumentNode {
-  return {
-    kind: Kind.DOCUMENT,
-    definitions: [operationDefinition],
-    loc: operationDefinition.loc,
-  };
 }
