@@ -23,8 +23,6 @@ import {
   print,
   buildClientSchema,
   validate,
-  DocumentNode,
-  Kind,
   TypeNode,
   parse,
 } from "graphql";
@@ -258,28 +256,14 @@ export function registerExecution(
     const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
     // Open variables panel to edit missing variables.
     if (missingArgs.length > 0) {
-      // open a modal with option to run anyway or edit args
-      const editArgs = { title: "Edit variables" };
-      const continueExecution = { title: "Continue Execution" };
-      const result = await vscode.window.showInformationMessage(
-        `Missing required variables. Would you like to modify them?`,
-        { modal: !process.env.VSCODE_TEST_MODE },
-        editArgs,
-        continueExecution,
-      );
-
-      if (result === editArgs) {
-        const missingArgsJSON = getDefaultArgs(missingArgs);
-
-        // combine w/ existing args, and send to webview
-        const newArgsJsonString = JSON.stringify({
-          ...JSON.parse(executionArgsJSON.value),
-          ...missingArgsJSON,
-        });
-
-        broker.send("notifyDataConnectArgs", newArgsJsonString);
-        return;
-      }
+      const missingArgsJSON = getDefaultArgs(missingArgs);
+      executionArgsJSON.value = JSON.stringify({
+        ...JSON.parse(executionArgsJSON.value),
+        ...missingArgsJSON,
+      }, null, 2);
+      broker.send("notifyDataConnectArgs", executionArgsJSON.value);
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
+      return;
     }
 
     const item = createExecution({
