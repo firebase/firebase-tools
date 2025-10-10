@@ -60,7 +60,7 @@ export async function getPlatform(appDir: string, config: Config) {
 
   if (targetPlatforms.length !== 1) {
     if (targetPlatforms.length === 0) {
-      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
+      logBullet(`Couldn't automatically detect your app in directory ${appDir}.`);
     } else {
       logSuccess(`Detected multiple app platforms in directory ${appDir}`);
       // Can only setup one platform at a time, just ask the user

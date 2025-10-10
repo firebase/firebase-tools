@@ -198,12 +198,23 @@ describe("chooseApp", () => {
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT], appId: "app2" },
       { platform: Platform.ANDROID, directory: "android" },
     ];
+    const uniqueApps: App[] = [
+      { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT] },
+      { platform: Platform.ANDROID, directory: "android" },
+    ];
     detectAppsStub.resolves(apps);
     promptStub.resolves([
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT] },
     ]);
 
     const selectedApps = await chooseApp();
+
+    expect(promptStub.callCount).to.equal(1);
+    const promptCall = promptStub.getCall(0);
+    const appsPassedToCheckbox = promptCall.args[0].choices.map(
+      (choice: prompt.Choice<App>) => choice.value,
+    );
+    expect(appsPassedToCheckbox).to.have.deep.members(uniqueApps);
 
     expect(selectedApps).to.deep.equal([
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT] },

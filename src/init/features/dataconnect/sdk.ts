@@ -109,7 +109,7 @@ export async function chooseApp(): Promise<App[]> {
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
-  const envPlatform: Platform | undefined = envOverride(FDC_SDK_PLATFORM_ENV, "") as Platform;
+  const envPlatform: Platform = envOverride(FDC_SDK_PLATFORM_ENV, "") as Platform;
   const envFrameworks: Framework[] = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
     .split(",")
     .filter((f) => !!f)
@@ -195,7 +195,6 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
   // on platform, directory, and frameworks alone. Deduping here to retain the
   // same behavior
   const apps = dedupeAppsByPlatformAndDirectory(info.apps);
-
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   for (const app of apps) {
@@ -390,16 +389,24 @@ function dedupeAppsByPlatformAndDirectory(apps: App[]): App[] {
   // detectApps creates unique apps by appId and bundleId, but this method operates
   // on platform, directory, and frameworks alone. Deduping here to retain the
   // same behavior
-  return [
-    ...new Set(
-      apps.map(
-        (app) =>
-          ({
-            platform: app.platform,
-            directory: app.directory,
-            frameworks: app.frameworks,
-          }) as App,
-      ),
-    ),
-  ];
+  const uniqueApps = new Map<string, App>();
+  for (const app of apps) {
+    // Sorting frameworks for consistent key generation
+    const frameworkKey = app.frameworks ? [...app.frameworks].sort().join(",") : "";
+    const key = `${app.platform}:${app.directory}:${frameworkKey}`;
+    if (!uniqueApps.has(key)) {
+      const minifiedApp: App = {
+        platform: app.platform,
+        directory: app.directory,
+      };
+
+      if (app.frameworks?.length) {
+        minifiedApp.frameworks = [...app.frameworks];
+      }
+
+      // Create a new object with only the desired properties to avoid carrying over others like appId
+      uniqueApps.set(key, minifiedApp);
+    }
+  }
+  return Array.from(uniqueApps.values());
 }
