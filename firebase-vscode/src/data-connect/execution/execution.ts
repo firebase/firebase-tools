@@ -130,6 +130,13 @@ export function registerExecution(
     { document, documentPath, position }: OperationLocation,
     instance: InstanceType,
   ) {
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD,
+    );
+    await vscode.window.activeTextEditor?.document.save();
+
     // hold last execution in memory, and send operation name to webview
     lastExecutionInputSignal.value = {
       ast,
@@ -157,9 +164,7 @@ export function registerExecution(
         "Automatically starting emulator... Please retry `Run local` execution after it's started.",
         { modal: false },
       );
-      analyticsLogger.logger.logUsage(
-        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
-      );
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION);
       emulatorsController.startEmulators();
       return;
     }
@@ -172,6 +177,7 @@ export function registerExecution(
     ) {
       const always = "Yes (always)";
       const yes = "Yes";
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
@@ -179,17 +185,21 @@ export function registerExecution(
         always,
       );
 
-      if (result !== always && result !== yes) {
-        return;
-      }
-
-      // If the user selects "always", we update User settings.
-      if (result === always) {
-        configs.update(
-          alwaysExecuteMutationsInProduction,
-          true,
-          ConfigurationTarget.Global,
-        );
+      switch (result) {
+        case yes:
+          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED);
+          break;
+        case always:
+          // If the user selects "always", we update User settings.
+          configs.update(
+            alwaysExecuteMutationsInProduction,
+            true,
+            ConfigurationTarget.Global,
+          );
+          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS);
+        default:
+          analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED);
+          return;
       }
     }
 
@@ -228,37 +238,22 @@ export function registerExecution(
     
 
     // if execution args is empty, reset to {}
-    if (!executionArgsJSON.value) {
-      executionArgsJSON.value = "{}";
-    }
+    const variableJSON = executionArgsJSON.value || "{}";
 
     // Check for missing arguments
-    const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
+    const missingArgs = await verifyMissingArgs(ast, variableJSON);
 
-    // prompt user to continue execution or modify arguments
-    if (missingArgs.length > 0) {
-      // open a modal with option to run anyway or edit args
-      const editArgs = { title: "Edit variables" };
-      const continueExecution = { title: "Continue Execution" };
-      const result = await vscode.window.showInformationMessage(
-        `Missing required variables. Would you like to modify them?`,
-        { modal: !process.env.VSCODE_TEST_MODE },
-        editArgs,
-        continueExecution,
-      );
-
-      if (result === editArgs) {
-        const missingArgsJSON = getDefaultArgs(missingArgs);
-
-        // combine w/ existing args, and send to webview
-        const newArgsJsonString = JSON.stringify({
-          ...JSON.parse(executionArgsJSON.value),
-          ...missingArgsJSON,
-        });
-
-        broker.send("notifyDataConnectArgs", newArgsJsonString);
-        return;
-      }
+    // Prompt user to continue execution or modify arguments if variables argument is empty.
+    if (missingArgs.length > 0 && !executionArgsJSON.value) {
+      const missingArgsJSON = getDefaultArgs(missingArgs);
+      // combine w/ existing args, and send to webview
+      const newArgsJsonString = JSON.stringify({
+        ...JSON.parse(variableJSON),
+        ...missingArgsJSON,
+      });
+      broker.send("notifyDataConnectArgs", newArgsJsonString);
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES_EDIT);
+      return;
     }
 
     const item = createExecution({
@@ -314,6 +309,9 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
+    analyticsLogger.logger.logUsage(
+      DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
+    );
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
@@ -339,6 +337,7 @@ ${schema}
   }
 
   async function showGiFToSModal(projectId: string): Promise<boolean> {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL);
     const tos = "Terms of Service";
     const enable = "Enable";
     const result = await vscode.window.showWarningMessage(
@@ -356,6 +355,7 @@ ${schema}
         await ensureGIFApiTos(projectId);
         return true;
       case tos:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED);
         vscode.env.openExternal(
           vscode.Uri.parse(
             "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
@@ -390,21 +390,12 @@ ${schema}
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
       async (ast, location, instanceType: InstanceType) => {
-        analyticsLogger.logger.logUsage(
-          instanceType === InstanceType.LOCAL
-            ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
-            : DATA_CONNECT_EVENT_NAME.RUN_PROD,
-        );
-        await vscode.window.activeTextEditor?.document.save();
         await executeOperation(ast, location, instanceType);
       },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.generateOperation",
       async (arg: GenerateOperationInput) => {
-        analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
-        );
         await generateOperation(arg);
       },
     ),
