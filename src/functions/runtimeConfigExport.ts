@@ -185,7 +185,7 @@ function escape(s: string): string {
  * Convert env var mapping to  dotenv compatible string.
  */
 export function toDotenvFormat(envs: EnvMap[], header = ""): string {
-  const lines = envs.map(({ newKey, value }) => `${newKey}="${escape(value)}"`);
+  const lines = envs.map(({ newKey, value }) => `${newKey}="${typeof value === 'undefined' ? '' : escape(value)}"`);
   const maxLineLen = Math.max(...lines.map((l) => l.length));
   return (
     `${header}\n` +
