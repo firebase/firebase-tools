@@ -9,7 +9,7 @@ import { messagingTools } from "./messaging/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
-import { realtimeDatabaseTools } from "./realtime_database/index";
+import { rtdbTools } from "./rtdb/index";
 import { functionsTools } from "./functions/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
@@ -38,7 +38,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
-  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
+  rtdb: addFeaturePrefix("rtdb", rtdbTools),
 };
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
