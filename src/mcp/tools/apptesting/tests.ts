@@ -1,26 +1,35 @@
 import { z } from "zod";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
-import { distribute, Distribution } from "../../../appdistribution/distribution";
+import { upload, Distribution } from "../../../appdistribution/distribution";
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
-import { parseIntoStringArray, toAppName } from "../../../appdistribution/options-parser-util";
+import { toAppName } from "../../../appdistribution/options-parser-util";
+import { AppDistributionClient } from "../../../appdistribution/client";
 
 const TestDeviceSchema = z
   .object({
     model: z.string(),
     version: z.string(),
     locale: z.string(),
-    orientation: z.enum(["portrait", "landscape"]),
+    orientation: z.string(),
   })
   .describe(
     `Device to run automated test on. Can run 'gcloud firebase test android|ios models list' to see available devices.`,
   );
 
+const AIStepSchema = z
+  .object({
+    goal: z.string().optional().describe("A goal to be accomplished during the test."),
+    assertion: z.string().optional().describe("An assertion to be checked during the test."),
+  })
+  .describe(
+    "Steps that are run during the execution of the test. Can either be a goal or an assertion but not both.",
+  );
 export const run_tests = tool(
   {
     name: "run_test",
-    description: "Upload a binary and run automated tests.",
+    description: `Run a remote test.`,
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
@@ -39,16 +48,14 @@ export const run_tests = tool(
         },
       ]),
       testCaseIds: z.string().describe(`A comma-separated list of test case IDs.`),
+      aiSteps: z.array(AIStepSchema),
     }),
   },
-  async ({ appId, releaseBinaryFile, testDevices, testCaseIds }) => {
+  async ({ appId, releaseBinaryFile, testDevices, aiSteps }) => {
+    const client = new AppDistributionClient();
+    const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
     return toContent(
-      await distribute(
-        toAppName(appId),
-        new Distribution(releaseBinaryFile),
-        parseIntoStringArray(testCaseIds),
-        testDevices,
-      ),
+      await client.createReleaseTest(releaeName, testDevices, [{ aiSteps: aiSteps }]),
     );
   },
 );

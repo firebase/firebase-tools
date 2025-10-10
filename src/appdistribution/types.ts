@@ -127,4 +127,14 @@ export interface ReleaseTest {
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
   testCase?: string;
+  aiInstructions: AIInstruction[];
+}
+
+export interface AIInstruction {
+  aiSteps: AIStep[];
+}
+
+export interface AIStep {
+  goal?: string;
+  assertion?: string;
 }
