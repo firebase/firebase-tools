@@ -135,6 +135,11 @@ export function registerExecution(
         ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
         : DATA_CONNECT_EVENT_NAME.RUN_PROD,
     );
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${ast.operation}`
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${ast.operation}`,
+    );
     await vscode.window.activeTextEditor?.document.save();
 
     // hold last execution in memory, and send operation name to webview
@@ -179,9 +184,7 @@ export function registerExecution(
     ) {
       const always = "Yes (always)";
       const yes = "Yes";
-      analyticsLogger.logger.logUsage(
-        DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING
-      );
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const result = await vscode.window.showWarningMessage(
         "You are about to perform a mutation in production environment. Are you sure?",
         { modal: !process.env.VSCODE_TEST_MODE },
@@ -336,9 +339,7 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
-    analyticsLogger.logger.logUsage(
-      DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
-    );
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
@@ -378,6 +379,7 @@ ${schema}
     );
     switch (result) {
       case enable:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED);
         configstore.set("gemini", true);
         await ensureGIFApiTos(projectId);
         return true;
@@ -388,6 +390,9 @@ ${schema}
             "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
           ),
         );
+      default:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED);
+        break;
     }
     return false;
   }
@@ -510,15 +515,4 @@ function getDefaultArgs(args: TypedInput[]) {
     acc[arg.varName] = defaultValue;
     return acc;
   }, {});
-}
-
-// converts AST OperationDefinitionNode to a DocumentNode for schema validation
-function operationDefinitionToDocument(
-  operationDefinition: OperationDefinitionNode,
-): DocumentNode {
-  return {
-    kind: Kind.DOCUMENT,
-    definitions: [operationDefinition],
-    loc: operationDefinition.loc,
-  };
 }
