@@ -4,12 +4,13 @@ import { FirebaseError } from "../error";
 import { select } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
-import { DeploymentMetadata, GraphqlError } from "./types";
+import { DeploymentMetadata, GraphqlError, DeployStats } from "./types";
 import { getProjectDefaultAccount } from "../auth";
 
 export async function build(
   options: Options,
   configDir: string,
+  deployStats: DeployStats,
   dryRun?: boolean,
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
@@ -19,7 +20,13 @@ export async function build(
   }
   const buildResult = await DataConnectEmulator.build(args);
   if (buildResult?.errors?.length) {
-    await handleBuildErrors(buildResult.errors, options.nonInteractive, options.force, dryRun);
+    await handleBuildErrors(
+      buildResult.errors,
+      options.nonInteractive,
+      options.force,
+      deployStats,
+      dryRun,
+    );
   }
   return buildResult?.metadata ?? {};
 }
@@ -28,6 +35,7 @@ export async function handleBuildErrors(
   errors: GraphqlError[],
   nonInteractive: boolean,
   force: boolean,
+  deployStats: DeployStats,
   dryRun?: boolean,
 ) {
   if (errors.filter((w) => !w.extensions?.warningLevel).length) {
@@ -62,6 +70,7 @@ export async function handleBuildErrors(
         prettifyTable(requiredAcks),
     );
     if (nonInteractive && !force) {
+      deployStats.abort_build_warning = "true";
       throw new FirebaseError(
         "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to deploy these changes.",
       );
@@ -72,9 +81,11 @@ export async function handleBuildErrors(
         default: "abort",
       });
       if (result === "abort") {
+        deployStats.abort_build_warning = "true";
         throw new FirebaseError(`Deployment aborted.`);
       }
     }
+    deployStats.ack_build_warning = "true";
   }
   if (interactiveAcks.length) {
     // This category contains WARNING and EXISTING_INSECURE issues.
@@ -90,8 +101,10 @@ export async function handleBuildErrors(
         default: "proceed",
       });
       if (result === "abort") {
+        deployStats.abort_build_warning = "true";
         throw new FirebaseError(`Deployment aborted.`);
       }
     }
+    deployStats.ack_build_warning = "true";
   }
 }
