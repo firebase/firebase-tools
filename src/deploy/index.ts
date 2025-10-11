@@ -154,6 +154,19 @@ export const deploy = async function (
   await chain(releases, context, options, payload);
   await chain(postdeploys, context, options, payload);
 
+  if (context.dataconnect?.deployStats) {
+    const analytics: AnalyticsParams = {
+      ...context.dataconnect.deployStats,
+    };
+    if (options.dryRun) {
+      analytics.dry_run = "true";
+    }
+    if (options.force) {
+      analytics.force = "true";
+    }
+    void trackGA4("dataconnect_deploy", analytics);
+  }
+
   const duration = Date.now() - startTime;
   const analyticsParams: AnalyticsParams = {
     interactive: options.nonInteractive ? "false" : "true",

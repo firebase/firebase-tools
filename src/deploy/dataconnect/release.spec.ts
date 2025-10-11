@@ -9,6 +9,7 @@ import * as prompts from "../../dataconnect/prompts";
 import { logger } from "../../logger";
 import * as poller from "../../operation-poller";
 import { dataconnectOrigin } from "../../api";
+import { initDeployStats } from "../../dataconnect/types";
 
 describe("dataconnect release", () => {
   let sandbox: sinon.SinonSandbox;
@@ -58,7 +59,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -96,7 +97,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -132,7 +133,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -171,7 +172,9 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }] } };
+    const context = {
+      dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }], deployStats: initDeployStats() },
+    };
     const options = {} as any;
 
     await release.default(context as any, options);

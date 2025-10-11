@@ -1,7 +1,7 @@
 import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
-import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
+import { Service, ServiceInfo, requiresVector, DeployStats } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
 import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
@@ -21,6 +21,7 @@ export default async function (
     dataconnect: {
       serviceInfos: ServiceInfo[];
       filters?: ResourceFilter[];
+      deployStats: DeployStats;
     };
   },
   options: Options,
@@ -43,10 +44,12 @@ export default async function (
     .filter((si) => {
       return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
     });
+  context.dataconnect.deployStats.num_service_created = servicesToCreate.length;
 
   const servicesToDelete = filters
     ? []
     : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
+  context.dataconnect.deployStats.num_service_deleted = servicesToDelete.length;
   await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);

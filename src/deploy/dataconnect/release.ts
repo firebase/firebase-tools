@@ -1,5 +1,5 @@
 import * as utils from "../../utils";
-import { Connector, ServiceInfo } from "../../dataconnect/types";
+import { Connector, ServiceInfo, DeployStats } from "../../dataconnect/types";
 import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
@@ -20,6 +20,7 @@ export default async function (
     dataconnect: {
       serviceInfos: ServiceInfo[];
       filters?: ResourceFilter[];
+      deployStats: DeployStats;
     };
   },
   options: Options,
@@ -42,6 +43,7 @@ export default async function (
       schema: s.schema,
       validationMode: s.dataConnectYaml?.schema?.datasource?.postgresql?.schemaValidation,
     }));
+  context.dataconnect.deployStats.num_schema_migrated = wantSchemas.length;
   const wantConnectors = serviceInfos.flatMap((si) =>
     si.connectorInfo
       .filter((c) => {
@@ -70,6 +72,7 @@ export default async function (
         return c; // will try again after schema deployment.
       }
       utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+      context.dataconnect.deployStats.num_connector_updated_before_schema++;
       return undefined;
     }),
   );
@@ -81,6 +84,7 @@ export default async function (
       schema: s.schema,
       validateOnly: false,
       schemaValidation: s.validationMode,
+      analytics: context.dataconnect.deployStats,
     });
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
   }
@@ -91,6 +95,7 @@ export default async function (
       if (c) {
         await upsertConnector(c);
         utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+        context.dataconnect.deployStats.num_connector_updated_after_schema++;
       }
     }),
   );
