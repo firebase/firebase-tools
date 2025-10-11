@@ -53,7 +53,6 @@ describe("functions", () => {
       except: "",
       filteredTargets: [],
       force: false,
-      json: false,
       nonInteractive: false,
       interactive: false,
       debug: false,

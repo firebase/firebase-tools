@@ -14,7 +14,6 @@ const options: Options = {
   config: new Config({}),
   filteredTargets: [],
   force: false,
-  json: false,
   nonInteractive: false,
   interactive: false,
   debug: false,

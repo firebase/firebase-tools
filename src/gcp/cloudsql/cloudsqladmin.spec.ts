@@ -26,7 +26,6 @@ const options: Options = {
   config: new Config({}, { projectDir: "", cwd: "" }),
   filteredTargets: [],
   force: false,
-  json: false,
   nonInteractive: false,
   interactive: false,
   debug: false,

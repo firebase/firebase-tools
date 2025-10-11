@@ -108,19 +108,15 @@ export const command = new Command("firestore:databases:create <database>")
 
     const databaseResp: types.DatabaseResp = await api.createDatabase(createDatabaseReq);
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully created ${printer.prettyDatabaseString(databaseResp)}`));
-      logger.info(
-        "Please be sure to configure Firebase rules in your Firebase config file for\n" +
-          "the new database. By default, created databases will have closed rules that\n" +
-          "block any incoming third-party traffic.",
-      );
-      logger.info(
-        `Your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, database)}`,
-      );
-    }
+    logger.info(clc.bold(`Successfully created ${printer.prettyDatabaseString(databaseResp)}`));
+    logger.info(
+      "Please be sure to configure Firebase rules in your Firebase config file for\n" +
+        "the new database. By default, created databases will have closed rules that\n" +
+        "block any incoming third-party traffic.",
+    );
+    logger.info(
+      `Your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, database)}`,
+    );
 
     return databaseResp;
   });

@@ -11,7 +11,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "",
   except: "",
   nonInteractive: false,
-  json: false,
   interactive: false,
   debug: false,
   force: false,

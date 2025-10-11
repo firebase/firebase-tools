@@ -21,7 +21,6 @@ const TEST_OPTIONS: Options = {
   filteredTargets: [""],
   nonInteractive: true,
   interactive: false,
-  json: false,
   debug: false,
   rc: new RC(),
   config: new Config("."),
