@@ -231,6 +231,7 @@ export function load(client: any): any {
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.dataconnect = {};
   client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+  client.dataconnect.execute = loadCommand("dataconnect-execute");
   client.dataconnect.services = {};
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};

@@ -209,7 +209,6 @@ export function toDatasource(
 
 /** Start Dataplane Client Types */
 export interface ExecuteGraphqlRequest {
-  name: string;
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };

@@ -73,7 +73,6 @@ You can find candidate service_id in \`dataconnect.yaml\`
       executeGraphQL = dataplane.executeGraphQLRead;
     }
     const response = await executeGraphQL(apiClient, serviceInfo.serviceName, {
-      name: "",
       query,
       variables: parseVariables(unparsedVariables),
       extensions: {
