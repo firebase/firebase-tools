@@ -16,6 +16,9 @@ export enum UserMockKind {
   UNAUTHENTICATED = "unauthenticated",
   AUTHENTICATED = "authenticated",
 }
+
+export const EXAMPLE_CLAIMS = `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`;
+
 export type UserMock =
   | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
   | {
@@ -89,7 +92,7 @@ export interface WebviewToExtensionParamsMap {
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
 
-  notifyAuthUserMockChange: UserMock;
+  defineAuthUserMock: UserMock;
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
@@ -187,6 +190,7 @@ export interface ExtensionToWebviewParamsMap {
 
   // data connect specific
   notifyDataConnectArgs: string;
+  notifyAuthUserMock: void;
 
   notifyDataConnectResults: DataConnectResults;
 

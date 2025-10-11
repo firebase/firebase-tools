@@ -12,29 +12,27 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import { broker, useBroker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
-import { UserMockKind } from "../../common/messaging/protocol";
+import { EXAMPLE_CLAIMS, UserMockKind } from "../../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
 
 export function DataConnectExecutionArgumentsApp() {
-  function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setText(e.target.value);
-    broker.send("definedDataConnectArgs", e.target.value);
-  }
-
   const lastOperation = useBroker("notifyLastOperation");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [textareaVariables, setText] = useState("{}");
 
-
-  const updateText = broker.on("notifyDataConnectArgs" , (newArgs: string) => {
+  function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setText(e.target.value);
+    broker.send("definedDataConnectArgs", e.target.value);
+  }
+  broker.on("notifyDataConnectArgs" , (newArgs: string) => {
     setText(newArgs);
     if (textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.setSelectionRange(0, 1);
     }
-  })
+  });
 
   const sendRerun = () => {
     broker.send("rerunExecution");
@@ -96,23 +94,25 @@ function AuthUserMockForm() {
   const [selectedKind, setSelectedMockKind] = useState<UserMockKind>(
     UserMockKind.ADMIN,
   );
-  const [claims, setClaims] = useState<string>(
-    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
-  );
+  const [claims, setClaims] = useState<string>(EXAMPLE_CLAIMS);
 
-  useEffect(() => {
-    broker.send(
-      "notifyAuthUserMockChange",
-      selectedKind === UserMockKind.AUTHENTICATED
+  function handleClaimsChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setClaims(value);
+    const userMock = selectedKind === UserMockKind.AUTHENTICATED
         ? {
             kind: selectedKind,
-            claims: claims,
+            claims: value,
           }
         : {
             kind: selectedKind,
-          },
-    );
-  }, [selectedKind, claims]);
+          };
+    broker.send("defineAuthUserMock", userMock);
+  };
+  broker.on("notifyAuthUserMock" , (_: void) => {
+    setSelectedMockKind(UserMockKind.AUTHENTICATED);
+    setClaims(EXAMPLE_CLAIMS);
+  });
 
   let expandedForm: JSX.Element | undefined;
   if (selectedKind === UserMockKind.AUTHENTICATED) {
@@ -124,7 +124,7 @@ function AuthUserMockForm() {
           resize={"vertical"}
           value={claims}
           rows={4}
-          onChange={(event) => setClaims((event.target as any).value)}
+          onChange={handleClaimsChange}
         />
       </>
     );

@@ -2,7 +2,7 @@ import vscode from "vscode";
 import { EnumValueNode, Kind, OperationDefinitionNode, TypeNode } from "graphql";
 import { globalSignal } from "../../utils/globals";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
-import { UserMock, UserMockKind } from "../../../common/messaging/protocol";
+import { EXAMPLE_CLAIMS, UserMock, UserMockKind } from "../../../common/messaging/protocol";
 import { Impersonation, ImpersonationAuthenticated } from "../../dataconnect/types";
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../../extension-broker";
@@ -19,7 +19,7 @@ export class ExecutionParamsService implements Disposable {
   constructor(readonly broker: ExtensionBrokerImpl, readonly analyticsLogger: AnalyticsLogger) {
     this.disposable.push({
       dispose: broker.on(
-        "notifyAuthUserMockChange",
+        "defineAuthUserMock",
         (userMock) => (authUserMock.value = userMock)
       ),
     });
@@ -67,32 +67,40 @@ export class ExecutionParamsService implements Disposable {
   }
 
   async paramsFixHint(ast: OperationDefinitionNode): Promise<void> {
-    await this.authUserFixHint(ast);
-    await this.variablesFixHint(ast);
+    const updatedUser = await this.authUserFixHint(ast);
+    const updatedVariable = await this.variablesFixHint(ast);
+    if (!updatedUser && !updatedVariable) {
+      return;
+    }
+    const what = updatedUser && updatedVariable
+      ? "variables and auth user"
+      : updatedUser ? "auth user" : "variables";
+    vscode.window.showInformationMessage(`Updated ${what} to match ${ast.operation} ${ast.name?.value}`);
   }
 
-  private async authUserFixHint(ast: OperationDefinitionNode): Promise<void> {
+  private async authUserFixHint(ast: OperationDefinitionNode): Promise<boolean> {
     const impersonate = this.executeGraphqlExtensions().impersonate;
     if ((impersonate as ImpersonationAuthenticated).authClaims) {
-      return;
+      return false; // auth claims is already set
     }
     const authDir = ast.directives?.find((d) => d.name.value === "auth");
     const authLevel = authDir?.arguments?.find((arg) => arg.name.value === "level")?.value;
-    if ((authLevel as EnumValueNode).value !== "PUBLIC") {
-      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_AUTH_CLAIMS);
-      executionArgsJSON.value = `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`;
-      // this.broker.send("notifyAuthUserMockChange", executionArgsJSON.value);
-      vscode.window.showInformationMessage(`Set a fake Firebase Auth user`);
+    if (!(authLevel as EnumValueNode)?.value?.includes("USER")) {
+      return false; // @auth(level) doesn't require authenticated user
     }
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_AUTH_USER);
+    executionArgsJSON.value = EXAMPLE_CLAIMS;
+    this.broker.send("notifyAuthUserMock");
+    return true;
   }
 
-  private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
+  private async variablesFixHint(ast: OperationDefinitionNode): Promise<boolean> {
     const userVars = this.executeGraphqlVariables();
-    let message = "";
+    let updated = false;
     for (const varName in userVars) {
       if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
         // Remove undefined variable.
-        message += `- Undefined \$${varName}\n`;
+        updated = true;
         delete userVars[varName];
       }
     }
@@ -101,17 +109,17 @@ export class ExecutionParamsService implements Disposable {
       if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
         // Set a default value for missing required variable.
         const varTyp = getType(variable.type.type) || "";
-        message += `- Missing required \$${varName}: ${varTyp}!\n`;
         userVars[varName] = getDefaultScalarValue(varTyp);
+        updated = true;
       }
     }
-    if (message === "") {
-      return;
+    if (!updated) {
+      return false;
     }
     this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
     executionArgsJSON.value = JSON.stringify(userVars, null, 2);
     this.broker.send("notifyDataConnectArgs", executionArgsJSON.value);
-    vscode.window.showInformationMessage(`Updated variables to match ${ast.operation} ${ast.name?.value}`);
+    return true;
   }
 }
 
