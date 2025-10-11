@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import { OperationDefinitionNode, TypeNode } from "graphql";
+import { Kind, OperationDefinitionNode, TypeNode } from "graphql";
 import { globalSignal } from "../../utils/globals";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { UserMock, UserMockKind } from "../../../common/messaging/protocol";
@@ -7,6 +7,7 @@ import { Impersonation } from "../../dataconnect/types";
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
+import { get } from "lodash";
 
 /** The unparsed JSON object mutation/query variables.
  *
@@ -71,81 +72,43 @@ export class ExecutionParamsService implements Disposable {
   }
 
   private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
-    const variablesJSON = executionArgsJSON.value;
-    const missingArgs = await verifyMissingArgs(ast, variablesJSON);
-    if (!missingArgs.length) {
+    const originalUserVars = this.executeGraphqlVariables();
+    const userVars: any = {};
+    let message = "";
+    for (const variable of ast.variableDefinitions || []) {
+      const varName = variable.variable.name.value;
+      userVars[varName] = originalUserVars[varName];
+      if (variable.type.kind === Kind.NON_NULL_TYPE) {
+        // Required variable.
+        if (userVars[varName] === undefined) {
+          message += `- missing required $${varName}\n`;
+          userVars[varName] = getDefaultScalarValue(getType(variable.type) || "");
+        }
+      }
+    }
+    if (userVars === originalUserVars) {
       return;
     }
-    const missingArgsJSON = getDefaultArgs(missingArgs);
-    executionArgsJSON.value = JSON.stringify({
-      ...JSON.parse(variablesJSON),
-      ...missingArgsJSON,
-    }, null, 2);
+    executionArgsJSON.value = JSON.stringify(userVars, null, 2,);
     this.broker.send("notifyDataConnectArgs", executionArgsJSON.value);
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
+    this.analyticsLogger.logger.logUsage(
+      DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES,
+    );
     vscode.window.showInformationMessage(`Missing required variables`);
   }
 }
 
-function getArgsWithTypeFromOperation(
-  ast: OperationDefinitionNode,
-): TypedInput[] {
-  if (!ast.variableDefinitions) {
-    return [];
+function getType(typeNode: TypeNode): string | null {
+  switch (typeNode.kind) {
+    case "NamedType":
+      return typeNode.name.value;
+    case "ListType":
+      const innerTypeName = getType(typeNode.type);
+      return `[${innerTypeName}]`;
+    case "NonNullType":
+      const nonNullTypeName = getType(typeNode.type);
+      return `${nonNullTypeName}!`;
+    default:
+      return null;
   }
-  return ast.variableDefinitions.map((variable) => {
-    const varName = variable.variable.name.value;
-
-    const typeNode = variable.type;
-
-    function getType(typeNode: TypeNode): string | null {
-      // Same as previous example
-      switch (typeNode.kind) {
-        case "NamedType":
-          return typeNode.name.value;
-        case "ListType":
-          const innerTypeName = getType(typeNode.type);
-          return `[${innerTypeName}]`;
-        case "NonNullType":
-          const nonNullTypeName = getType(typeNode.type);
-          return `${nonNullTypeName}!`;
-        default:
-          return null;
-      }
-    }
-
-    const type = getType(typeNode);
-
-    return { varName, type };
-  });
-}
-
-interface TypedInput {
-  varName: string;
-  type: string | null;
-}
-
-// checks if required arguments are present in payload
-async function verifyMissingArgs(ast: OperationDefinitionNode, jsonArgs: string): Promise<TypedInput[]> {
-  let userArgs: { [key: string]: any };
-  try {
-    userArgs = JSON.parse(jsonArgs);
-  } catch (e: any) {
-    throw new Error("Invalid JSON", e);
-  }
-
-  const argsWithType = getArgsWithTypeFromOperation(ast);
-  if (!argsWithType) {
-    return [];
-  }
-  return argsWithType
-    .filter((arg) => arg.type?.includes("!"))
-    .filter((arg) => userArgs[arg.varName] === undefined);
-}
-
-function getDefaultArgs(args: TypedInput[]) {
-  return args.reduce((acc: { [key: string]: any }, arg) => {
-    acc[arg.varName] = getDefaultScalarValue((arg.type || "").replaceAll("!", ""));
-    return acc;
-  }, {});
 }
