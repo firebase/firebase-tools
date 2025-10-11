@@ -36,12 +36,6 @@ export const executions = globalSignal<
 
 export const selectedExecutionId = globalSignal("");
 
-/** The unparsed JSON object mutation/query variables.
- *
- * The JSON may be invalid.
- */
-export const executionArgsJSON = globalSignal("{}");
-
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">
 ) {

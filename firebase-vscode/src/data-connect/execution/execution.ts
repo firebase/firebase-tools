@@ -10,7 +10,6 @@ import {
   ExecutionItem,
   ExecutionState,
   createExecution,
-  executionArgsJSON,
   selectExecutionId,
   selectedExecution,
   selectedExecutionId,
@@ -23,8 +22,6 @@ import {
   print,
   buildClientSchema,
   validate,
-  DocumentNode,
-  Kind,
   TypeNode,
   parse,
 } from "graphql";
@@ -40,11 +37,7 @@ import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
-
-interface TypedInput {
-  varName: string;
-  type: string | null;
-}
+import { executionArgsJSON, ExecutionParamsService } from "./execution-params";
 
 interface ExecutionInput {
   ast: OperationDefinitionNode;
@@ -249,42 +242,6 @@ export function registerExecution(
         return;
       }
     }
-    
-
-    // if execution args is empty, reset to {}
-    if (!executionArgsJSON.value) {
-      executionArgsJSON.value = "{}";
-    }
-
-    // Check for missing arguments
-    const missingArgs = await verifyMissingArgs(ast, executionArgsJSON.value);
-
-    // prompt user to continue execution or modify arguments
-    if (missingArgs.length > 0) {
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
-      // open a modal with option to run anyway or edit args
-      const editArgs = { title: "Edit variables" };
-      const continueExecution = { title: "Continue Execution" };
-      const result = await vscode.window.showInformationMessage(
-        `Missing required variables. Would you like to modify them?`,
-        { modal: !process.env.VSCODE_TEST_MODE },
-        editArgs,
-        continueExecution,
-      );
-
-      if (result === editArgs) {
-        const missingArgsJSON = getDefaultArgs(missingArgs);
-
-        // combine w/ existing args, and send to webview
-        const newArgsJsonString = JSON.stringify({
-          ...JSON.parse(executionArgsJSON.value),
-          ...missingArgsJSON,
-        });
-
-        broker.send("notifyDataConnectArgs", newArgsJsonString);
-        return;
-      }
-    }
 
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
@@ -296,13 +253,6 @@ export function registerExecution(
       position,
     });
 
-    function updateAndSelect(updates: Partial<ExecutionItem>) {
-      batch(() => {
-        updateExecution(item.executionId, { ...item, ...updates });
-        selectExecutionId(item.executionId);
-      });
-    }
-
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
@@ -312,29 +262,28 @@ export function registerExecution(
         // We send the compiled GQL from the whole connector to support fragments
         // In the case of adhoc operation, just send the sole document
         query: gqlText || document,
-        variables: executionArgsJSON.value,
         path: documentPath,
         instance,
       });
-
-      updateAndSelect({
-        state:
-          // Executing queries may return a response which contains errors
-          // without throwing.
-          // In that case, we mark the execution as errored.
-          (results.errors?.length ?? 0) > 0
-            ? ExecutionState.ERRORED
-            : ExecutionState.FINISHED,
-        results,
-      });
+      // Executing queries may return a response which contains errors
+      item.state = (results.errors?.length ?? 0) > 0
+        ? ExecutionState.ERRORED
+        : ExecutionState.FINISHED;
+      item.results = results;
     } catch (error) {
-      updateAndSelect({
-        state: ExecutionState.ERRORED,
-        results:
-          error instanceof Error
-            ? error
-            : new DataConnectError("Unknown error", error),
-      });
+      item.state = ExecutionState.ERRORED;
+      item.results = error instanceof Error
+        ? error
+        : new DataConnectError("Unknown error", error);
+    }
+
+    batch(() => {
+      updateExecution(item.executionId, item);
+      selectExecutionId(item.executionId);
+    });
+
+    if (item.state === ExecutionState.ERRORED) {
+      await dataConnectService.paramsService.paramsFixHint(ast);
     }
   }
 
@@ -397,16 +346,10 @@ ${schema}
     return false;
   }
 
-  const sub4 = broker.on(
-    "definedDataConnectArgs",
-    (value) => (executionArgsJSON.value = value),
-  );
-
   return Disposable.from(
     { dispose: sub1 },
     { dispose: sub2 },
     { dispose: sub3 },
-    { dispose: sub4 },
     { dispose: rerunExecutionBroker },
     registerWebview({
       name: "data-connect-execution-configuration",
@@ -451,68 +394,4 @@ function executionError(message: string, error?: string) {
     `Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`,
   );
   throw new Error(error);
-}
-
-function getArgsWithTypeFromOperation(
-  ast: OperationDefinitionNode,
-): TypedInput[] {
-  if (!ast.variableDefinitions) {
-    return [];
-  }
-  return ast.variableDefinitions.map((variable) => {
-    const varName = variable.variable.name.value;
-
-    const typeNode = variable.type;
-
-    function getType(typeNode: TypeNode): string | null {
-      // Same as previous example
-      switch (typeNode.kind) {
-        case "NamedType":
-          return typeNode.name.value;
-        case "ListType":
-          const innerTypeName = getType(typeNode.type);
-          return `[${innerTypeName}]`;
-        case "NonNullType":
-          const nonNullTypeName = getType(typeNode.type);
-          return `${nonNullTypeName}!`;
-        default:
-          return null;
-      }
-    }
-
-    const type = getType(typeNode);
-
-    return { varName, type };
-  });
-}
-
-// checks if required arguments are present in payload
-async function verifyMissingArgs(
-  ast: OperationDefinitionNode,
-  jsonArgs: string,
-): Promise<TypedInput[]> {
-  let userArgs: { [key: string]: any };
-  try {
-    userArgs = JSON.parse(jsonArgs);
-  } catch (e: any) {
-    executionError("Invalid JSON: ", e);
-    return [];
-  }
-
-  const argsWithType = getArgsWithTypeFromOperation(ast);
-  if (!argsWithType) {
-    return [];
-  }
-  return argsWithType
-    .filter((arg) => arg.type?.includes("!"))
-    .filter((arg) => !userArgs[arg.varName]);
-}
-
-function getDefaultArgs(args: TypedInput[]) {
-  return args.reduce((acc: { [key: string]: any }, arg) => {
-    const defaultValue = getDefaultScalarValue(arg.type as string);
-
-    acc[arg.varName] = defaultValue;
-    return acc;
-  }, {});
 }
