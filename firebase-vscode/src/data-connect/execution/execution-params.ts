@@ -1,13 +1,12 @@
 import vscode from "vscode";
-import { Kind, OperationDefinitionNode, TypeNode } from "graphql";
+import { EnumValueNode, Kind, OperationDefinitionNode, TypeNode } from "graphql";
 import { globalSignal } from "../../utils/globals";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { UserMock, UserMockKind } from "../../../common/messaging/protocol";
-import { Impersonation } from "../../dataconnect/types";
+import { Impersonation, ImpersonationAuthenticated } from "../../dataconnect/types";
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
-import { get } from "lodash";
 
 /** The unparsed JSON object mutation/query variables.
  *
@@ -68,33 +67,51 @@ export class ExecutionParamsService implements Disposable {
   }
 
   async paramsFixHint(ast: OperationDefinitionNode): Promise<void> {
+    await this.authUserFixHint(ast);
     await this.variablesFixHint(ast);
   }
 
-  private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
-    const originalUserVars = this.executeGraphqlVariables();
-    const userVars: any = {};
-    let message = "";
-    for (const variable of ast.variableDefinitions || []) {
-      const varName = variable.variable.name.value;
-      userVars[varName] = originalUserVars[varName];
-      if (variable.type.kind === Kind.NON_NULL_TYPE) {
-        // Required variable.
-        if (userVars[varName] === undefined) {
-          message += `- missing required $${varName}\n`;
-          userVars[varName] = getDefaultScalarValue(getType(variable.type) || "");
-        }
-      }
-    }
-    if (userVars === originalUserVars) {
+  private async authUserFixHint(ast: OperationDefinitionNode): Promise<void> {
+    const impersonate = this.executeGraphqlExtensions().impersonate;
+    if ((impersonate as ImpersonationAuthenticated).authClaims) {
       return;
     }
-    executionArgsJSON.value = JSON.stringify(userVars, null, 2,);
+    const authDir = ast.directives?.find((d) => d.name.value === "auth");
+    const authLevel = authDir?.arguments?.find((arg) => arg.name.value === "level")?.value;
+    if ((authLevel as EnumValueNode).value !== "PUBLIC") {
+      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_AUTH_CLAIMS);
+      executionArgsJSON.value = `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`;
+      // this.broker.send("notifyAuthUserMockChange", executionArgsJSON.value);
+      vscode.window.showInformationMessage(`Set a fake Firebase Auth user`);
+    }
+  }
+
+  private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
+    const userVars = this.executeGraphqlVariables();
+    let message = "";
+    for (const varName in userVars) {
+      if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
+        // Remove undefined variable.
+        message += `- Undefined \$${varName}\n`;
+        delete userVars[varName];
+      }
+    }
+    for (const variable of ast.variableDefinitions || []) {
+      const varName = variable.variable.name.value;
+      if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
+        // Set a default value for missing required variable.
+        const varTyp = getType(variable.type.type) || "";
+        message += `- Missing required \$${varName}: ${varTyp}!\n`;
+        userVars[varName] = getDefaultScalarValue(varTyp);
+      }
+    }
+    if (message === "") {
+      return;
+    }
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
+    executionArgsJSON.value = JSON.stringify(userVars, null, 2);
     this.broker.send("notifyDataConnectArgs", executionArgsJSON.value);
-    this.analyticsLogger.logger.logUsage(
-      DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES,
-    );
-    vscode.window.showInformationMessage(`Missing required variables`);
+    vscode.window.showInformationMessage(`Updated variables to match ${ast.operation} ${ast.name?.value}`);
   }
 }
 
