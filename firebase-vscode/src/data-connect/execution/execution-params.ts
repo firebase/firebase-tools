@@ -80,7 +80,7 @@ export class ExecutionParamsService implements Disposable {
 
   private async authUserFixHint(ast: OperationDefinitionNode): Promise<boolean> {
     const impersonate = this.executeGraphqlExtensions().impersonate;
-    if ((impersonate as ImpersonationAuthenticated).authClaims) {
+    if ((impersonate as ImpersonationAuthenticated)?.authClaims) {
       return false; // auth claims is already set
     }
     const authDir = ast.directives?.find((d) => d.name.value === "auth");
