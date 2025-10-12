@@ -6,7 +6,6 @@ import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../../common/graphql";
 import { AuthParamsKind, printAuthParams } from '../../common/messaging/protocol';
-import { Auth } from "firebase-admin/auth";
 
 // Prevent webpack from removing the `style` import above
 style;
@@ -36,7 +35,6 @@ export function DataConnectExecutionResultsApp() {
     if (errors && errors.length !== 0) {
       errorsDisplay = (
         <>
-          <Label>Error</Label>
           <GraphQLErrorView errors={errors} />
         </>
       );
@@ -51,7 +49,6 @@ export function DataConnectExecutionResultsApp() {
   if (response) {
     resultsDisplay = (
       <>
-        <Label>Results</Label>
         <code>
           <pre>{JSON.stringify(response, null, 2)}</pre>
         </code>
@@ -78,19 +75,30 @@ export function DataConnectExecutionResultsApp() {
       );
       break;
   }
+
+  let variablesDisplay: JSX.Element | undefined;
+  if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
+    variablesDisplay = (
+      <>
+        <Label>Variables</Label>
+        <code>
+          <pre>{dataConnectResults.variables}</pre>
+        </code>
+      </>
+    );
+  }
+
   return (
     <>
+      <h2>
+        {dataConnectResults.displayName}
+      </h2>
       {errorsDisplay}
       {resultsDisplay}
-
-      <Label>
-        {dataConnectResults.displayName}
-      </Label>
-      {authDisplay}
-      <Label>Variables</Label>
-      <code>
-        <pre>{dataConnectResults.variables}</pre>
-      </code>
+      <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
+        {authDisplay}
+        {variablesDisplay}
+      </div>
       <Label>Query</Label>
       <code>
         <pre>{dataConnectResults.query}</pre>
