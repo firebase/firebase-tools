@@ -151,10 +151,8 @@ export function registerFdc(
   );
 
   const fdcService = new FdcService(
-    paramsService,
     dataConnectToolkit,
     emulatorController,
-    context,
     analyticsLogger,
   );
 
@@ -221,6 +219,7 @@ export function registerFdc(
       context,
       broker,
       fdcService,
+      paramsService,
       analyticsLogger,
       emulatorController,
     ),

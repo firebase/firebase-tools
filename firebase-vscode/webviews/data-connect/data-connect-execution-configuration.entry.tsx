@@ -12,7 +12,7 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import { broker, useBroker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
-import { EXAMPLE_CLAIMS, UserMockKind } from "../../common/messaging/protocol";
+import { EXAMPLE_CLAIMS, AuthParamsKind } from "../../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
@@ -91,15 +91,15 @@ export function DataConnectExecutionArgumentsApp() {
 }
 
 function AuthUserMockForm() {
-  const [selectedKind, setSelectedMockKind] = useState<UserMockKind>(
-    UserMockKind.ADMIN,
+  const [selectedKind, setSelectedMockKind] = useState<AuthParamsKind>(
+    AuthParamsKind.ADMIN,
   );
   const [claims, setClaims] = useState<string>(EXAMPLE_CLAIMS);
 
   function handleClaimsChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const value = e.target.value;
     setClaims(value);
-    const userMock = selectedKind === UserMockKind.AUTHENTICATED
+    const userMock = selectedKind === AuthParamsKind.AUTHENTICATED
         ? {
             kind: selectedKind,
             claims: value,
@@ -110,12 +110,12 @@ function AuthUserMockForm() {
     broker.send("defineAuthUserMock", userMock);
   };
   broker.on("notifyAuthUserMock" , (_: void) => {
-    setSelectedMockKind(UserMockKind.AUTHENTICATED);
+    setSelectedMockKind(AuthParamsKind.AUTHENTICATED);
     setClaims(EXAMPLE_CLAIMS);
   });
 
   let expandedForm: JSX.Element | undefined;
-  if (selectedKind === UserMockKind.AUTHENTICATED) {
+  if (selectedKind === AuthParamsKind.AUTHENTICATED) {
     expandedForm = (
       <>
         <Spacer size="medium" />
@@ -137,11 +137,11 @@ function AuthUserMockForm() {
         value={selectedKind}
         onChange={(event) => setSelectedMockKind((event.target as any).value)}
       >
-        <VSCodeOption value={UserMockKind.ADMIN}>Admin</VSCodeOption>
-        <VSCodeOption value={UserMockKind.UNAUTHENTICATED}>
+        <VSCodeOption value={AuthParamsKind.ADMIN}>Admin</VSCodeOption>
+        <VSCodeOption value={AuthParamsKind.UNAUTHENTICATED}>
           Unauthenticated
         </VSCodeOption>
-        <VSCodeOption value={UserMockKind.AUTHENTICATED}>
+        <VSCodeOption value={AuthParamsKind.AUTHENTICATED}>
           Authenticated
         </VSCodeOption>
       </VSCodeDropdown>

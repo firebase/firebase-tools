@@ -35,10 +35,8 @@ import { ExecutionParamsService } from "./execution/execution-params";
  */
 export class DataConnectService {
   constructor(
-    readonly paramsService: ExecutionParamsService,
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
-    private context: ExtensionContext,
     private analyticsLogger: AnalyticsLogger,
   ) {}
 
@@ -182,24 +180,8 @@ export class DataConnectService {
     }
   }
 
-  async executeGraphQL(params: {
-    query: string;
-    operationName?: string;
-    path: string;
-    instance: InstanceType;
-  }) {
-    const servicePath = await this.servicePath(params.path);
-    if (!servicePath) {
-      throw new Error("No service found for path: " + params.path);
-    }
-    const body: ExecuteGraphqlRequest = {
-      operationName: params.operationName,
-      variables: this.paramsService.executeGraphqlVariables(),
-      query: params.query,
-      name: `${servicePath}`,
-      extensions: this.paramsService.executeGraphqlExtensions(),
-    };
-    if (params.instance === InstanceType.PRODUCTION) {
+  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest) {
+    if (instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
       pluginLogger.info(
         `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(body, undefined, 4)}`,

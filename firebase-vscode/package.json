@@ -163,15 +163,16 @@
           "when": "firebase-vscode.fdc.enabled"
         },
         {
-          "id": "data-connect-execution-history",
-          "name": "History",
-          "when": "firebase-vscode.fdc.enabled"
-        },
-        {
           "type": "webview",
           "id": "data-connect-execution-results",
           "name": "Results",
           "when": "firebase-vscode.fdc.enabled"
+        },
+        {
+          "id": "data-connect-execution-history",
+          "name": "History",
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed"
         }
       ]
     },

@@ -5,6 +5,8 @@ import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../../common/graphql";
+import { AuthParamsKind, printAuthParams } from '../../common/messaging/protocol';
+import { Auth } from "firebase-admin/auth";
 
 // Prevent webpack from removing the `style` import above
 style;
@@ -57,22 +59,40 @@ export function DataConnectExecutionResultsApp() {
     );
   }
 
+  let authDisplay: JSX.Element | undefined;
+  switch (dataConnectResults.auth.kind) {
+    case AuthParamsKind.ADMIN:
+      authDisplay = <Label>Auth: Admin</Label>;
+      break;
+    case AuthParamsKind.UNAUTHENTICATED:
+      authDisplay = <Label>Auth: Unauthenticated</Label>;
+      break;
+    case AuthParamsKind.AUTHENTICATED:
+      authDisplay = (
+        <>
+          <Label>Auth</Label>
+          <code>
+            <pre>{dataConnectResults.auth.claims}</pre>
+          </code>
+        </>
+      );
+      break;
+  }
   return (
     <>
       {errorsDisplay}
       {resultsDisplay}
-
-      <Label style={{ textTransform: "capitalize" }}>
+      <Label>
         {dataConnectResults.displayName}
       </Label>
       <code>
         <pre>{dataConnectResults.query}</pre>
       </code>
-
-      <Label>Arguments</Label>
+      <Label>Variables</Label>
       <code>
-        <pre>{dataConnectResults.args}</pre>
+        <pre>{dataConnectResults.variables}</pre>
       </code>
+      {authDisplay}
     </>
   );
 }

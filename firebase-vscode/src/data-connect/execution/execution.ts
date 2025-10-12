@@ -22,7 +22,6 @@ import {
   print,
   buildClientSchema,
   validate,
-  TypeNode,
   parse,
 } from "graphql";
 import { DataConnectService } from "../service";
@@ -30,14 +29,15 @@ import { DataConnectError, toSerializedError } from "../../../common/error";
 import { OperationLocation } from "../types";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
-import { getDefaultScalarValue } from "../ad-hoc-mutations";
 import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
-import { executionArgsJSON, ExecutionParamsService } from "./execution-params";
+import { executionAuthParams, executionArgsJSON, ExecutionParamsService } from "./execution-params";
+import { ExecuteGraphqlRequest } from "../../dataconnect/types";
+import { printAuthParams } from "../../../common/messaging/protocol";
 
 interface ExecutionInput {
   ast: OperationDefinitionNode;
@@ -59,6 +59,7 @@ export function registerExecution(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
   dataConnectService: DataConnectService,
+  paramsService: ExecutionParamsService,
   analyticsLogger: AnalyticsLogger,
   emulatorsController: EmulatorsController,
 ): Disposable {
@@ -81,13 +82,14 @@ export function registerExecution(
 
   function notifyDataConnectResults(item: ExecutionItem) {
     broker.send("notifyDataConnectResults", {
-      args: item.args ?? "{}",
+      displayName: `${item.operation.operation} ${item.operation.name?.value ?? ""}`,
       query: print(item.operation),
       results:
         item.results instanceof Error
           ? toSerializedError(item.results)
           : item.results,
-      displayName: item.operation.operation,
+      variables: item.variables || "",
+      auth: item.auth,
     });
   }
 
@@ -243,12 +245,26 @@ export function registerExecution(
       }
     }
 
+    const servicePath = await dataConnectService.servicePath(documentPath);
+    if (!servicePath) {
+      throw new Error("No service found for document path: " + documentPath);
+    }
+    const req: ExecuteGraphqlRequest = {
+      name: servicePath,
+      operationName: ast.name?.value,
+      variables: paramsService.executeGraphqlVariables(),
+      query: gqlText || document,
+      extensions: paramsService.executeGraphqlExtensions(),
+    };
+
     const item = createExecution({
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       operation: ast,
-      args: executionArgsJSON.value,
+      variables: executionArgsJSON.value,
+      auth: executionAuthParams.value,
+      results: new Error("missing results"),
       documentPath,
       position,
     });
@@ -256,15 +272,7 @@ export function registerExecution(
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-
-      const results = await dataConnectService.executeGraphQL({
-        operationName: ast.name?.value,
-        // We send the compiled GQL from the whole connector to support fragments
-        // In the case of adhoc operation, just send the sole document
-        query: gqlText || document,
-        path: documentPath,
-        instance,
-      });
+      const results = await dataConnectService.executeGraphQL(servicePath, instance, req);
       // Executing queries may return a response which contains errors
       item.state = (results.errors?.length ?? 0) > 0
         ? ExecutionState.ERRORED
@@ -283,7 +291,7 @@ export function registerExecution(
     });
 
     if (item.state === ExecutionState.ERRORED) {
-      await dataConnectService.paramsService.paramsFixHint(ast);
+      await paramsService.paramsFixHint(ast);
     }
   }
 

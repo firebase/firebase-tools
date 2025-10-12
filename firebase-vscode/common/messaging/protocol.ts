@@ -11,7 +11,7 @@ import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
 
-export enum UserMockKind {
+export enum AuthParamsKind {
   ADMIN = "admin",
   UNAUTHENTICATED = "unauthenticated",
   AUTHENTICATED = "authenticated",
@@ -19,12 +19,23 @@ export enum UserMockKind {
 
 export const EXAMPLE_CLAIMS = `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`;
 
-export type UserMock =
-  | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
+export type AuthParams =
+  | { kind: AuthParamsKind.ADMIN | AuthParamsKind.UNAUTHENTICATED }
   | {
-      kind: UserMockKind.AUTHENTICATED;
+      kind: AuthParamsKind.AUTHENTICATED;
       claims: string;
     };
+
+export function printAuthParams(auth: AuthParams): string {
+  switch (auth.kind) {
+    case AuthParamsKind.ADMIN:
+      return "Admin";
+    case AuthParamsKind.UNAUTHENTICATED:
+      return "Unauthenticated";
+    case AuthParamsKind.AUTHENTICATED:
+      return `Authenticated as ${auth.claims}`;
+  }
+}
 
 export interface WebviewToExtensionParamsMap {
   /**
@@ -92,7 +103,7 @@ export interface WebviewToExtensionParamsMap {
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
 
-  defineAuthUserMock: UserMock;
+  defineAuthUserMock: AuthParams;
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
@@ -133,10 +144,11 @@ export interface WebviewToExtensionParamsMap {
 }
 
 export interface DataConnectResults {
-  query: string;
   displayName: string;
-  results?: ExecutionResult | SerializedError;
-  args?: string;
+  query: string;
+  results: ExecutionResult | SerializedError;
+  variables: string;
+  auth: AuthParams;
 }
 
 export type ValueOrError<T> =
