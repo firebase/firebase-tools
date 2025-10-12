@@ -56,14 +56,19 @@ export function DataConnectExecutionResultsApp() {
     );
   }
 
-  let variablesDisplay: JSX.Element = (
-    <div>
-      <Label>Variables</Label>
-      <code>
-        <pre>{dataConnectResults.variables}</pre>
-      </code>
-    </div>
-  );
+  let variablesDisplay: JSX.Element | undefined;
+  if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
+    variablesDisplay = (
+      <div>
+        <Label>Variables</Label>
+        <code>
+          <pre>{dataConnectResults.variables}</pre>
+        </code>
+      </div>
+    );
+  } else {
+    variablesDisplay = <Label>No Variables</Label>;
+  }
 
   let authDisplay: JSX.Element | undefined;
   switch (dataConnectResults.auth.kind) {
