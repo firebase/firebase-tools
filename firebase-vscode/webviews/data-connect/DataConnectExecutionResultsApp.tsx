@@ -56,6 +56,15 @@ export function DataConnectExecutionResultsApp() {
     );
   }
 
+  let variablesDisplay: JSX.Element = (
+    <div>
+      <Label>Variables</Label>
+      <code>
+        <pre>{dataConnectResults.variables}</pre>
+      </code>
+    </div>
+  );
+
   let authDisplay: JSX.Element | undefined;
   switch (dataConnectResults.auth.kind) {
     case AuthParamsKind.ADMIN:
@@ -66,26 +75,14 @@ export function DataConnectExecutionResultsApp() {
       break;
     case AuthParamsKind.AUTHENTICATED:
       authDisplay = (
-        <>
+        <div>
           <Label>Auth</Label>
           <code>
             <pre>{dataConnectResults.auth.claims}</pre>
           </code>
-        </>
+        </div>
       );
       break;
-  }
-
-  let variablesDisplay: JSX.Element | undefined;
-  if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
-    variablesDisplay = (
-      <>
-        <Label>Variables</Label>
-        <code>
-          <pre>{dataConnectResults.variables}</pre>
-        </code>
-      </>
-    );
   }
 
   return (
@@ -93,14 +90,15 @@ export function DataConnectExecutionResultsApp() {
       <h2>
         {dataConnectResults.displayName}
       </h2>
+      <br />
       {errorsDisplay}
       {resultsDisplay}
       <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
-        {authDisplay}
         {variablesDisplay}
+        {authDisplay}
       </div>
-      <Label>Query</Label>
       <code>
+        <label>Query</label>
         <pre>{dataConnectResults.query}</pre>
       </code>
     </>
