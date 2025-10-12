@@ -37,7 +37,6 @@ import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
 import { executionAuthParams, executionArgsJSON, ExecutionParamsService } from "./execution-params";
 import { ExecuteGraphqlRequest } from "../../dataconnect/types";
-import { printAuthParams } from "../../../common/messaging/protocol";
 
 interface ExecutionInput {
   ast: OperationDefinitionNode;
@@ -147,7 +146,7 @@ export function registerExecution(
 
     // focus on execution panel immediately
     vscode.commands.executeCommand(
-      "data-connect-execution-configuration.focus",
+      "data-connect-execution-parameters.focus",
     );
 
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
@@ -360,7 +359,7 @@ ${schema}
     { dispose: sub3 },
     { dispose: rerunExecutionBroker },
     registerWebview({
-      name: "data-connect-execution-configuration",
+      name: "data-connect-execution-parameters",
       context,
       broker,
     }),

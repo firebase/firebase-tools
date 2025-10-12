@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import style from "./data-connect-execution-configuration.entry.scss";
+import style from "./data-connect-execution-parameters.entry.scss";
 import {
   VSCodeButton,
   VSCodeDropdown,

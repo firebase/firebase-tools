@@ -158,8 +158,8 @@
       "firebase-data-connect-execution-view": [
         {
           "type": "webview",
-          "id": "data-connect-execution-configuration",
-          "name": "Configuration",
+          "id": "data-connect-execution-parameters",
+          "name": "Parameters",
           "when": "firebase-vscode.fdc.enabled"
         },
         {
