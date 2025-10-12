@@ -60,7 +60,7 @@ export function DataConnectExecutionResultsApp() {
   if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
     variablesDisplay = (
       <div>
-        <Label>Variables</Label>
+        <Label>With variables</Label>
         <code>
           <pre>{dataConnectResults.variables}</pre>
         </code>
