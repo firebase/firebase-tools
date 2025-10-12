@@ -82,17 +82,19 @@ export function DataConnectExecutionResultsApp() {
     <>
       {errorsDisplay}
       {resultsDisplay}
+
       <Label>
         {dataConnectResults.displayName}
       </Label>
-      <code>
-        <pre>{dataConnectResults.query}</pre>
-      </code>
+      {authDisplay}
       <Label>Variables</Label>
       <code>
         <pre>{dataConnectResults.variables}</pre>
       </code>
-      {authDisplay}
+      <Label>Query</Label>
+      <code>
+        <pre>{dataConnectResults.query}</pre>
+      </code>
     </>
   );
 }
