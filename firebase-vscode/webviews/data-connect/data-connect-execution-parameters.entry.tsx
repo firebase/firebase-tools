@@ -78,11 +78,14 @@ export function DataConnectExecutionArgumentsApp() {
         ></textarea>
         <Spacer size="small"></Spacer>
         {fixes.length > 0 && (
-          <ul>
-            {fixes.map((fix, index) => (
-              <li key={index}>{fix}</li>
-            ))}
-          </ul>
+          <>
+            Applied Fixes:
+            <ul>
+              {fixes.map((fix, index) => (
+                <li key={index}>{fix}</li>
+              ))}
+            </ul>
+          </>
         )}
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>

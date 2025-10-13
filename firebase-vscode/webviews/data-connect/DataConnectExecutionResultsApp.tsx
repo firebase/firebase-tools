@@ -50,6 +50,7 @@ export function DataConnectExecutionResultsApp() {
   if (response) {
     resultsDisplay = (
       <code>
+        <label>Result Data</label>
         <pre>{JSON.stringify(response, null, 2)}</pre>
       </code>
     );
@@ -100,7 +101,7 @@ export function DataConnectExecutionResultsApp() {
   return (
     <>
       <h2>
-        <VSCodeButton onClick={() => broker.send("rerunExecution")}>
+        <VSCodeButton onClick={() => broker.send("rerunExecution")} appearance="secondary" style={{ transform: "scale(0.8)" }}>
           <i className="codicon codicon-debug-start"></i>Rerun
         </VSCodeButton>{" "}
         {dataConnectResults.displayName}
