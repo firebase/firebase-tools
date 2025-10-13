@@ -20,7 +20,7 @@ export const init_database = resource(
 
 ## Available Services
 
-- [Data Connect - PostgreSQL](firebase://guides/init/data-connect): read this if the user needs robust relational querying capabilities or expressly indicates interest in a SQL database
+- [Data Connect - PostgreSQL](firebase://guides/init/data_connect): read this if the user needs robust relational querying capabilities or expressly indicates interest in a SQL database
 - [Firestore](firebase://guides/init/firestore): read this if the user needs offline data or a mix of querying and realtime capabilities
 - [Realtime Database](firebase://guides/init/rtdb): read this if the user is building a "multiplayer" app or game such as a collaborative whiteboard
 `.trim(),

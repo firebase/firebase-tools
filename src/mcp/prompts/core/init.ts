@@ -74,16 +74,11 @@ Follow the steps below taking note of any user instructions provided above.
 7. Set up the web Firebase SDK. Skip straight to #8 for Flutter and Android apps
   - Fetch the configuration for the specified app using the \`firebase_get_sdk_config\` tool.
   - Write the Firebase SDK config to a file
-  - Check what the latest version of the SDK is by running the command 'npm view firebase version'
-  -  If the user app has a package.json, install via npm
-    - Run 'npm i firebase'
+  -  If the user's app does not have a package.json, create a directory named public, and add a package.json to that directory
+    - Run 'npm i firebase' from the public directory
     - Import it into the app code:
     '''
     import { initializeApp } from 'firebase/app';
-    '''
-  - If the user app does not have a package.json, import via CDN:
-    '''
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js'
     '''
 8. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
 - Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 2 of this guide
