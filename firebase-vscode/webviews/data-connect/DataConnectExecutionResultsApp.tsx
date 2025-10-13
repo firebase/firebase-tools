@@ -79,7 +79,7 @@ export function DataConnectExecutionResultsApp() {
     case AuthParamsKind.UNAUTHENTICATED:
       authDisplay = (
         <>
-          <Label>Unauthenticated</Label>;
+          <Label>Unauthenticated</Label>
           <br />
         </>
       );
@@ -99,10 +99,12 @@ export function DataConnectExecutionResultsApp() {
 
   return (
     <>
-      <VSCodeButton onClick={() => broker.send("rerunExecution")}>
-        <i className="codicon codicon-debug-start"></i>Rerun
-      </VSCodeButton>
-      <h2>{dataConnectResults.displayName}</h2>
+      <h2>
+        <VSCodeButton onClick={() => broker.send("rerunExecution")}>
+          <i className="codicon codicon-debug-start"></i>Rerun
+        </VSCodeButton>{" "}
+        {dataConnectResults.displayName}
+      </h2>
       <br />
       {errorsDisplay}
       {resultsDisplay}
