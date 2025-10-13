@@ -66,10 +66,6 @@ export class ExecutionParamsService implements Disposable {
   }
 
   async applyDetectedFixes(ast: OperationDefinitionNode): Promise<void> {
-    await this.variablesFixHint(ast);
-  }
-
-  private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
     const userVars = this.executeGraphqlVariables();
     const fixes = [];
     {
