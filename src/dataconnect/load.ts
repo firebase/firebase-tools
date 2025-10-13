@@ -15,61 +15,64 @@ import {
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
 
-// pickService reads firebase.json and returns all services with a given serviceId.
+export async function pickOneService(projectId: string, config: Config, service?: string, location?: string): Promise<ServiceInfo> {
+  const services = await pickServices(projectId, config, service, location);
+  if (services.length > 1) {
+    const serviceIds = services.map(
+      (i) => `${i.dataConnectYaml.location}:${i.dataConnectYaml.serviceId}`,
+    );
+    throw new FirebaseError(
+      `Multiple services matched. Please specify a service and location. Matched services: ${serviceIds.join(
+        ", ",
+      )}`,
+    );
+  }
+  return services[0];
+}
+
+// pickService reads firebase.json and returns a service with a given serviceId and location.
 // If serviceID is not provided and there is a single service, return that.
-export async function pickService(
+export async function pickServices(
   projectId: string,
   config: Config,
   serviceId?: string,
   location?: string,
-): Promise<ServiceInfo> {
-  const serviceInfos = await loadAll(projectId, config, location);
+): Promise<ServiceInfo[]> {
+  const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
+    let message = "No Data Connect services found in firebase.json.";
+    if (location) {
+      message = `No Data Connect services for location ${location} found in firebase.json.`;
+    }
     throw new FirebaseError(
-      "No Data Connect services found in firebase.json." +
+      message +
         `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
-  } else if (serviceInfos.length === 1) {
-    if (serviceId && serviceId !== serviceInfos[0].dataConnectYaml.serviceId) {
-      throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${serviceInfos[0].dataConnectYaml.serviceId}.` +
-          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
-      );
-    }
-    return serviceInfos[0];
-  } else {
-    if (!serviceId) {
-      throw new FirebaseError(
-        "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
-      );
-    }
-    // TODO: handle cases where there are services with the same ID in 2 locations.
-    const maybe = serviceInfos.find((i) => i.dataConnectYaml.serviceId === serviceId);
-    if (!maybe) {
-      const serviceIds = serviceInfos.map((i) => i.dataConnectYaml.serviceId);
-      throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${serviceIds.join(", ")}.` +
-          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
-      );
-    }
-    return maybe;
   }
+
+  const matchingServices = serviceInfos.filter(
+    (i) =>
+      (!serviceId || i.dataConnectYaml.serviceId === serviceId) &&
+      (!location || i.dataConnectYaml.location === location),
+  );
+  if (matchingServices.length === 0) {
+    const serviceIds = serviceInfos.map(
+      (i) => `${i.dataConnectYaml.location}:${i.dataConnectYaml.serviceId}`,
+    );
+    throw new FirebaseError(
+      `No service matched service in firebase.json. Available services: ${serviceIds.join(", ")}` +
+        `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
+    );
+  }
+  return matchingServices;
 }
 
 /**
  * Loads all Data Connect service configurations from the firebase.json file.
  */
-export async function loadAll(
-  projectId: string,
-  config: Config,
-  location?: string,
-): Promise<ServiceInfo[]> {
+export async function loadAll(projectId: string, config: Config): Promise<ServiceInfo[]> {
   const serviceCfgs = readFirebaseJson(config);
-  let serviceInfos = await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
-  if (location) {
-    serviceInfos = serviceInfos.filter((si) => si.dataConnectYaml.location === location);
-  }
-  return serviceInfos;
+  return await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
 }
 
 /**

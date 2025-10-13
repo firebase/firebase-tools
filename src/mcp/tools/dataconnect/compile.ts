@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { pickService } from "../../../dataconnect/load";
 import { compileErrors } from "../../util/dataconnect/compile";
+import { pickOneService, pickServices } from "../../../dataconnect/load";
 
 export const compile = tool(
   {
@@ -13,11 +13,15 @@ export const compile = tool(
         .enum(["all", "schema", "operations"])
         .describe("filter errors to a specific type only. defaults to `all` if omitted.")
         .optional(),
-      service_id: z
+      service_id: z.string().optional()
+        .describe(
+          `Data Connect Service ID to dis-ambulate if there are multiple Data Connect services.`,
+        ),
+      location_id: z
         .string()
         .optional()
         .describe(
-          "The Firebase Data Connect service ID to look for. If omitted, builds all services defined in `firebase.json`.",
+          `Data Connect Service location ID to dis-ambulate among multiple Data Connect services.`,
         ),
     }),
     annotations: {
@@ -29,9 +33,11 @@ export const compile = tool(
       requiresAuth: false,
     },
   },
-  async ({ service_id, error_filter }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId, config, service_id || undefined);
-    const errors = await compileErrors(serviceInfo.sourceDirectory, error_filter);
+  async ({ service_id, location_id, error_filter }, { projectId, config }) => {
+    const serviceInfos = await pickServices(projectId, config, service_id || undefined, location_id || undefined);
+    const errors = await Promise.all(serviceInfos.map(async (serviceInfo) => {
+      return await compileErrors(serviceInfo.sourceDirectory, error_filter);
+    }));
     if (errors)
       return {
         content: [

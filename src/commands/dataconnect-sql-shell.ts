@@ -7,7 +7,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/load";
+import { pickOneService  } from "../dataconnect/load";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
@@ -91,13 +91,8 @@ export const command = new Command("dataconnect:sql:shell")
   .before(requireAuth)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    if (!options.service) {
-      throw new FirebaseError("Missing required flag --service");
-    }
-    const serviceId = options.service as string;
-    const location = options.location as string;
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId, location);
+    const serviceInfo = await pickOneService(projectId, options.config, options.service, options.location);
     const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
@@ -141,5 +136,5 @@ export const command = new Command("dataconnect:sql:shell")
     await pool.end();
     connector.close();
 
-    return { projectId, serviceId };
+    return { projectId };
   });

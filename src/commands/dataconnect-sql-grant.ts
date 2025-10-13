@@ -3,7 +3,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/load";
+import { pickOneService } from "../dataconnect/load";
 import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
@@ -14,21 +14,16 @@ const allowedRoles = Object.keys(fdcSqlRoleMap);
 
 export const command = new Command("dataconnect:sql:grant")
   .description("grants the SQL role <role> to the provided user or service account <email>")
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
   .option(
     "-E, --email <email>",
     "The email of the user or service account we would like to grant the role to.",
   )
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)
   .action(async (options: Options) => {
-    if (!options.service) {
-      throw new FirebaseError("Missing required flag --service");
-    }
-    const serviceId = options.service as string;
-    const location = options.location as string;
     const role = options.role as string;
     const email = options.email as string;
     if (!role) {
@@ -56,8 +51,8 @@ export const command = new Command("dataconnect:sql:grant")
 
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId, location);
+    const serviceInfo = await pickOneService(projectId, options.config, options.service, options.location);
 
     await grantRoleToUserInSchema(options, serviceInfo.schema);
-    return { projectId, serviceId };
+    return { projectId };
   });

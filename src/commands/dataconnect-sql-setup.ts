@@ -1,7 +1,6 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/load";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
@@ -10,6 +9,7 @@ import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissi
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
+import { pickOneService } from "../dataconnect/load";
 
 export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
@@ -24,13 +24,13 @@ export const command = new Command("dataconnect:sql:setup")
   .before(requireAuth)
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
-    if (!options.service) {
-      throw new FirebaseError("Missing required flag --service");
-    }
-    const serviceId = options.service as string;
-    const location = options.location as string;
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId, location);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
     if (!instanceId) {
