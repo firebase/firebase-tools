@@ -23,7 +23,9 @@ import { responseToError } from "../responseToError";
 let stdinUsedFor: string | undefined = undefined;
 
 export const command = new Command("dataconnect:execute [file] [operationName]")
-  .description("execute a Data Connect query or mutation")
+  .description(
+    "execute a Data Connect query or mutation. If FIREBASE_DATACONNECT_EMULATOR_HOST is set (such as during 'firebase emulator:exec', executes against the emulator instead.",
+  )
   .option(
     "--service <serviceId>",
     "The service ID to execute against (optional if there's only one service)",
@@ -53,30 +55,14 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
       let serviceName: string | undefined = undefined;
       const serviceId = options.service as string | undefined;
       const locationId = options.location as string | undefined;
-      async function getServiceInfo(): Promise<ServiceInfo> {
-        return pickService(projectId, options.config, serviceId || undefined).catch((e) => {
-          if (!(e instanceof FirebaseError)) {
-            return Promise.reject(e);
-          }
-          if (!serviceId) {
-            e = new FirebaseError(
-              e.message +
-                `\nHint: Try specifying the ${clc.yellow("--service <serviceId>")} option.`,
-              { ...e, original: e },
-            );
-          }
-          return Promise.reject(e);
-        });
-      }
 
-      if (!file) {
-        if (!process.stdin.isTTY) {
-          file = "-";
-        } else {
+      if (!file && !operationName) {
+        if (process.stdin.isTTY) {
           throw new FirebaseError(
             "At least one of the [file] [operationName] arguments is required.",
           );
         }
+        file = "-";
       }
       let query: string;
       if (file === "-") {
@@ -88,59 +74,24 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
         }
         query = await text(process.stdin);
       } else {
-        let stat = statSync(file, { throwIfNoEntry: false });
+        const stat = statSync(file, { throwIfNoEntry: false });
         if (stat?.isFile()) {
           const opDisplay = operationName ? clc.bold(operationName) : "operation";
           process.stderr.write(`${clc.cyan(`Executing ${opDisplay} in ${clc.bold(file)}`)}${EOL}`);
           query = await readFile(file, "utf-8");
+        } else if (stat?.isDirectory()) {
+          query = await readQueryFromDir(file);
         } else {
-          if (operationName === undefined /* but not an empty string */) {
-            // Command invoked with one single positional argument.
-            if (isGraphqlName(file)) {
-              operationName = file;
-              file = "";
-            }
+          if (operationName === undefined /* but not an empty string */ && isGraphqlName(file)) {
+            // Command invoked with one single arg that looks like an operationName.
+            operationName = file;
+            file = "";
           }
-          if (!file) {
-            const serviceInfo = await getServiceInfo();
-            serviceName = serviceInfo.serviceName;
-            switch (serviceInfo.connectorInfo.length) {
-              case 1: {
-                const connector = serviceInfo.connectorInfo[0];
-                file = relative(process.cwd(), connector.directory);
-                stat = statSync(file, { throwIfNoEntry: false });
-                break;
-              }
-              case 0:
-                throw new FirebaseError(
-                  `No connector found.\n` +
-                    "Hint: To execute an operation in a GraphQL file, run:\n" +
-                    `    firebase dataconnect:execute ${clc.yellow("./path/to/file.gql OPERATION_NAME")}`,
-                );
-              default: {
-                const example = relative(process.cwd(), serviceInfo.connectorInfo[0].directory);
-                throw new FirebaseError(
-                  `A file or directory must be explicitly specified when there are multiple connectors.\n` +
-                    "Hint: To execute an operation within a connector, try e.g.:\n" +
-                    `    firebase dataconnect:execute ${clc.yellow(`${example} OPERATION_NAME`)}`,
-                );
-              }
-            }
-          }
-
-          if (stat?.isDirectory()) {
-            const opDisplay = operationName ? clc.bold(operationName) : "operation";
-            process.stderr.write(
-              `${clc.cyan(`Executing ${opDisplay} in ${clc.bold(file)}`)}${EOL}`,
-            );
-            const files = await readGQLFiles(file);
-            query = squashGraphQL({ files });
-            if (!query) {
-              throw new FirebaseError(`${file} contains no GQL files or only empty ones`);
-            }
-          } else {
+          if (file) {
             throw new FirebaseError(`${file}: no such file or directory`);
           }
+          file = await pickConnectorDir();
+          query = await readQueryFromDir(file);
         }
       }
 
@@ -243,6 +194,58 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
         );
       }
       return response.body;
+
+      async function readQueryFromDir(dir: string): Promise<string> {
+        const opDisplay = operationName ? clc.bold(operationName) : "operation";
+        process.stderr.write(`${clc.cyan(`Executing ${opDisplay} in ${clc.bold(dir)}`)}${EOL}`);
+        const files = await readGQLFiles(dir);
+        const query = squashGraphQL({ files });
+        if (!query) {
+          throw new FirebaseError(`${dir} contains no GQL files or only empty ones`);
+        }
+        return query;
+      }
+
+      async function getServiceInfo(): Promise<ServiceInfo> {
+        return pickService(projectId, options.config, serviceId || undefined).catch((e) => {
+          if (!(e instanceof FirebaseError)) {
+            return Promise.reject(e);
+          }
+          if (!serviceId) {
+            e = new FirebaseError(
+              e.message +
+                `\nHint: Try specifying the ${clc.yellow("--service <serviceId>")} option.`,
+              { ...e, original: e },
+            );
+          }
+          return Promise.reject(e);
+        });
+      }
+
+      async function pickConnectorDir(): Promise<string> {
+        const serviceInfo = await getServiceInfo();
+        serviceName = serviceInfo.serviceName;
+        switch (serviceInfo.connectorInfo.length) {
+          case 1: {
+            const connector = serviceInfo.connectorInfo[0];
+            return relative(process.cwd(), connector.directory);
+          }
+          case 0:
+            throw new FirebaseError(
+              `No connector found.\n` +
+                "Hint: To execute an operation in a GraphQL file, run:\n" +
+                `    firebase dataconnect:execute ${clc.yellow("./path/to/file.gql OPERATION_NAME")}`,
+            );
+          default: {
+            const example = relative(process.cwd(), serviceInfo.connectorInfo[0].directory);
+            throw new FirebaseError(
+              `A file or directory must be explicitly specified when there are multiple connectors.\n` +
+                "Hint: To execute an operation within a connector, try e.g.:\n" +
+                `    firebase dataconnect:execute ${clc.yellow(`${example} OPERATION_NAME`)}`,
+            );
+          }
+        }
+      }
     },
   );
 
