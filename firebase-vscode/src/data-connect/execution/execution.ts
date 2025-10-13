@@ -272,7 +272,7 @@ export function registerExecution(
     });
 
     if (item.state === ExecutionState.ERRORED) {
-      await paramsService.applyFixes(ast);
+      await paramsService.applyDetectedFixes(ast);
     }
   }
 
