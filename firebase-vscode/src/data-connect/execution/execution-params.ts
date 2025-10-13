@@ -65,7 +65,7 @@ export class ExecutionParamsService implements Disposable {
     };
   }
 
-  async paramsFixHint(ast: OperationDefinitionNode): Promise<void> {
+  async applyFixes(ast: OperationDefinitionNode): Promise<void> {
     await this.variablesFixHint(ast);
   }
 
