@@ -247,14 +247,15 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
   );
 
 function parseJsonObject(json: string, subject: string): Record<string, any> {
+  let obj: unknown;
   try {
-    const obj = JSON.parse(json || "{}") as unknown;
-    if (typeof obj !== "object" || obj == null)
-      throw new Error(`Provided ${subject} is not an object`);
-    return obj;
+    obj = JSON.parse(json || "{}") as unknown;
   } catch (e) {
     throw new FirebaseError(`expected ${subject} to be valid JSON string, got: ${json}`);
   }
+  if (typeof obj !== "object" || obj == null)
+    throw new FirebaseError(`Provided ${subject} is not an object`);
+  return obj;
 }
 
 async function literalOrFile(arg: any, subject: string): Promise<string> {
