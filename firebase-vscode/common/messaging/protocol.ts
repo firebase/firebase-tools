@@ -17,7 +17,10 @@ export enum AuthParamsKind {
   AUTHENTICATED = "authenticated",
 }
 
-export const EXAMPLE_CLAIMS = `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`;
+export const EXAMPLE_CLAIMS = `{
+  "email_verified": true,
+  "sub": "exampleUserId"
+}`;
 
 export type AuthParams =
   | { kind: AuthParamsKind.ADMIN | AuthParamsKind.UNAUTHENTICATED }

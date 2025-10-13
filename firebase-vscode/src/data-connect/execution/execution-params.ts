@@ -7,8 +7,8 @@ import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
 
-/** The unparsed JSON object mutation/query variables.
- *
+/** 
+ * Contains the unparsed JSON object mutation/query variables.
  * The JSON may be invalid.
  */
 export const executionArgsJSON = globalSignal("{}");
@@ -47,27 +47,34 @@ export class ExecutionParamsService implements Disposable {
       return JSON.parse(variables);
     } catch (e: any) {
       throw new Error(
-        "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
+        "Unable to parse variables as JSON. Please check for syntax errors in the variables pane.\n" + e.message,
       );
     }
   }
 
   executeGraphqlExtensions(): { impersonate?: Impersonation } {
     const auth = executionAuthParams.value;
-    if (!auth || auth.kind === AuthParamsKind.ADMIN) {
-      return {};
-    }
-    try {
-      return {
-        impersonate:
-          auth.kind === AuthParamsKind.AUTHENTICATED
-            ? { authClaims: JSON.parse(auth.claims), includeDebugDetails: true }
-            : { unauthenticated: true, includeDebugDetails: true },
-      };
-    } catch (e: any) {
-      throw new Error(
-        "Unable to parse auth claims as JSON. Please check for syntax errors in the authentication panel.",
-      );
+    switch (auth.kind) {
+      case AuthParamsKind.ADMIN:
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_AUTH_ADMIN);
+        return {};
+      case AuthParamsKind.UNAUTHENTICATED:
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_AUTH_UNAUTHENTICATED);
+        return { impersonate: { unauthenticated: true, includeDebugDetails: true } };
+      case AuthParamsKind.AUTHENTICATED:
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_AUTH_AUTHENTICATED);
+        try {
+          return {
+            impersonate:
+              { authClaims: JSON.parse(auth.claims), includeDebugDetails: true }
+          };
+        } catch (e: any) {
+          throw new Error(
+            "Unable to parse auth claims as JSON. Please check for syntax errors in the authentication panel.\n" + e.message,
+          );
+        }
+      default:
+        throw new Error(`Unknown auth params kind: ${auth.kind}`);
     }
   }
 
@@ -83,6 +90,7 @@ export class ExecutionParamsService implements Disposable {
         }
       }
       if (undefinedVars.length > 0) {
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_MISSING_VARIABLES);
         fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$" + v).join(", ")}.`);
       }
     }
@@ -96,13 +104,13 @@ export class ExecutionParamsService implements Disposable {
         }
       }
       if (missingRequiredVars.length > 0) {
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_MISSING_VARIABLES);
         fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$" + v).join(", ")}.`);
       }
     }
     if (fixes.length === 0) {
       return;
     }
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
     executionArgsJSON.value = JSON.stringify(userVars, null, 2);
     this.broker.send("notifyVariables", { variables: executionArgsJSON.value, fixes });
     return;
