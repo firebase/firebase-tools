@@ -26,17 +26,6 @@ export type AuthParams =
       claims: string;
     };
 
-export function printAuthParams(auth: AuthParams): string {
-  switch (auth.kind) {
-    case AuthParamsKind.ADMIN:
-      return "Admin";
-    case AuthParamsKind.UNAUTHENTICATED:
-      return "Unauthenticated";
-    case AuthParamsKind.AUTHENTICATED:
-      return `Authenticated as ${auth.claims}`;
-  }
-}
-
 export interface WebviewToExtensionParamsMap {
   /**
    * Ask extension for initial data

@@ -1,9 +1,8 @@
-import vscode from "vscode";
-import { print, EnumValueNode, Kind, OperationDefinitionNode, TypeNode } from "graphql";
+import { print, Kind, OperationDefinitionNode } from "graphql";
 import { globalSignal } from "../../utils/globals";
 import { getDefaultScalarValue } from "../ad-hoc-mutations";
-import { EXAMPLE_CLAIMS, AuthParams, AuthParamsKind } from "../../../common/messaging/protocol";
-import { Impersonation, ImpersonationAuthenticated } from "../../dataconnect/types";
+import { AuthParams, AuthParamsKind } from "../../../common/messaging/protocol";
+import { Impersonation } from "../../dataconnect/types";
 import { Disposable } from "vscode";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
