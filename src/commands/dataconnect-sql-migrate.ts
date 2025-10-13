@@ -9,8 +9,10 @@ import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
 
-export const command = new Command("dataconnect:sql:migrate [serviceId]")
+export const command = new Command("dataconnect:sql:migrate")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--location <location>", "the location of the Data Connect service", "us-central1")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
@@ -19,10 +21,15 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
   ])
   .before(requireAuth)
   .withForce("execute any required database changes without prompting")
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
+    if (!options.service) {
+      throw new FirebaseError("Missing required flag --service");
+    }
+    const serviceId = options.service as string;
+    const location = options.location as string;
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const serviceInfo = await pickService(projectId, options.config, serviceId, location);
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
     if (!instanceId) {

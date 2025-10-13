@@ -81,16 +81,23 @@ async function mainShellLoop(conn: pg.PoolClient) {
   }
 }
 
-export const command = new Command("dataconnect:sql:shell [serviceId]")
+export const command = new Command("dataconnect:sql:shell")
   .description(
     "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
   )
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--location <location>", "the location of the Data Connect service", "us-central1")
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
+    if (!options.service) {
+      throw new FirebaseError("Missing required flag --service");
+    }
+    const serviceId = options.service as string;
+    const location = options.location as string;
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const serviceInfo = await pickService(projectId, options.config, serviceId, location);
     const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);

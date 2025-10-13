@@ -21,8 +21,9 @@ export async function pickService(
   projectId: string,
   config: Config,
   serviceId?: string,
+  location?: string,
 ): Promise<ServiceInfo> {
-  const serviceInfos = await loadAll(projectId, config);
+  const serviceInfos = await loadAll(projectId, config, location);
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json." +
@@ -58,9 +59,17 @@ export async function pickService(
 /**
  * Loads all Data Connect service configurations from the firebase.json file.
  */
-export async function loadAll(projectId: string, config: Config): Promise<ServiceInfo[]> {
+export async function loadAll(
+  projectId: string,
+  config: Config,
+  location?: string,
+): Promise<ServiceInfo[]> {
   const serviceCfgs = readFirebaseJson(config);
-  return await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
+  let serviceInfos = await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
+  if (location) {
+    serviceInfos = serviceInfos.filter((si) => si.dataConnectYaml.location === location);
+  }
+  return serviceInfos;
 }
 
 /**
