@@ -57,12 +57,18 @@ export class ExecutionParamsService implements Disposable {
     if (!auth || auth.kind === AuthParamsKind.ADMIN) {
       return {};
     }
-    return {
-      impersonate:
-        auth.kind === AuthParamsKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(auth.claims), includeDebugDetails: true }
-          : { unauthenticated: true, includeDebugDetails: true },
-    };
+    try {
+      return {
+        impersonate:
+          auth.kind === AuthParamsKind.AUTHENTICATED
+            ? { authClaims: JSON.parse(auth.claims), includeDebugDetails: true }
+            : { unauthenticated: true, includeDebugDetails: true },
+      };
+    } catch (e: any) {
+      throw new Error(
+        "Unable to parse auth claims as JSON. Please check for syntax errors in the authentication panel.",
+      );
+    }
   }
 
   async applyDetectedFixes(ast: OperationDefinitionNode): Promise<void> {

@@ -125,10 +125,17 @@ function AuthParamForm() {
       setClaims(auth.claims);
     }
   }
-  broker.on("notifyAuthParams", setAuthParams);
-  broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
-    setAuthParams(results.auth);
-  });
+
+  useEffect(() => {
+    const dispose1 = broker.on("notifyAuthParams", setAuthParams);
+    const dispose2 = broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+      setAuthParams(results.auth);
+    });
+    return () => {
+      dispose1();
+      dispose2();
+    };
+  }, []);
 
   let expandedForm: JSX.Element | undefined;
   if (selectedKind === AuthParamsKind.AUTHENTICATED) {
