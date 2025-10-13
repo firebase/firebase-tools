@@ -142,7 +142,7 @@ function AuthParamForm() {
     expandedForm = (
       <>
         <Spacer size="medium" />
-        <span>Claim and values</span>
+        <span>Claim JWT</span>
         <VSCodeTextArea
           resize={"vertical"}
           value={claims}
