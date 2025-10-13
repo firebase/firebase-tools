@@ -313,6 +313,7 @@ export class Command {
     }
 
     if (getInheritedOption(options, "json")) {
+      options.interactive = false;
       options.nonInteractive = true;
     } else if (!options.isMCP) {
       useConsoleLoggers();
