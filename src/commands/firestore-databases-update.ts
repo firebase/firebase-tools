@@ -71,11 +71,7 @@ export const command = new Command("firestore:databases:update <database>")
       pointInTimeRecoveryEnablement,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
-    }
+    logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
 
     return databaseResp;
   });
