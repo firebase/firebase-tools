@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { compileErrors } from "../../util/dataconnect/compile";
-import { pickOneService, pickServices } from "../../../dataconnect/load";
+import { pickServices } from "../../../dataconnect/load";
 
 export const compile = tool(
   {
@@ -13,7 +13,9 @@ export const compile = tool(
         .enum(["all", "schema", "operations"])
         .describe("filter errors to a specific type only. defaults to `all` if omitted.")
         .optional(),
-      service_id: z.string().optional()
+      service_id: z
+        .string()
+        .optional()
         .describe(
           `Data Connect Service ID to dis-ambulate if there are multiple Data Connect services.`,
         ),
@@ -34,16 +36,25 @@ export const compile = tool(
     },
   },
   async ({ service_id, location_id, error_filter }, { projectId, config }) => {
-    const serviceInfos = await pickServices(projectId, config, service_id || undefined, location_id || undefined);
-    const errors = await Promise.all(serviceInfos.map(async (serviceInfo) => {
-      return await compileErrors(serviceInfo.sourceDirectory, error_filter);
-    }));
-    if (errors)
+    const serviceInfos = await pickServices(
+      projectId,
+      config,
+      service_id || undefined,
+      location_id || undefined,
+    );
+    const errors = (
+      await Promise.all(
+        serviceInfos.map(async (serviceInfo) => {
+          return await compileErrors(serviceInfo.sourceDirectory, error_filter);
+        }),
+      )
+    ).flat();
+    if (errors.length > 0)
       return {
         content: [
           {
             type: "text",
-            text: `The following errors were encountered while compiling Data Connect from directory \`${serviceInfo.sourceDirectory}\`:\n\n${errors}`,
+            text: `The following errors were encountered while compiling Data Connect:\n\n${errors.join("\n")}`,
           },
         ],
         isError: true,

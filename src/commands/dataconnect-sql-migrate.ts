@@ -24,7 +24,12 @@ export const command = new Command("dataconnect:sql:migrate")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickOneService(projectId, options.config, options.service, options.location);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service as string | undefined,
+      options.location as string | undefined,
+    );
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
     if (!instanceId) {

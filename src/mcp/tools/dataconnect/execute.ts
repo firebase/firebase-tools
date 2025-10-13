@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { tool } from "../../tool";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
-import { pickOneService, pickServices } from "../../../dataconnect/load";
+import { pickOneService } from "../../../dataconnect/load";
 import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
 import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
@@ -17,7 +17,9 @@ export const execute = tool(
 You can use the \`dataconnect_generate_operation\` tool to generate a query.
 Example Data Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
 `),
-      service_id: z.string().optional()
+      service_id: z
+        .string()
+        .optional()
         .describe(
           `Data Connect Service ID to dis-ambulate if there are multiple Data Connect services.`,
         ),

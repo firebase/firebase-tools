@@ -16,7 +16,9 @@ export const generate_operation = tool(
         .describe(
           "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users request",
         ),
-      service_id: z.string().optional()
+      service_id: z
+        .string()
+        .optional()
         .describe(
           `Data Connect Service ID to dis-ambulate if there are multiple Data Connect services.`,
         ),

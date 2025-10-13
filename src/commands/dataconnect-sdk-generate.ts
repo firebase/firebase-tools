@@ -25,7 +25,12 @@ export const command = new Command("dataconnect:sdk:generate")
   )
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
-    const serviceInfos = await pickServices(projectId, options.config, options.service, options.location);
+    const serviceInfos = await pickServices(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
     const serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
       serviceInfo.connectorInfo.some((c) => {
         return (

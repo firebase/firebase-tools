@@ -15,7 +15,12 @@ import {
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
 
-export async function pickOneService(projectId: string, config: Config, service?: string, location?: string): Promise<ServiceInfo> {
+export async function pickOneService(
+  projectId: string,
+  config: Config,
+  service?: string,
+  location?: string,
+): Promise<ServiceInfo> {
   const services = await pickServices(projectId, config, service, location);
   if (services.length > 1) {
     const serviceIds = services.map(

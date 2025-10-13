@@ -28,8 +28,8 @@ export const command = new Command("dataconnect:sql:setup")
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service,
-      options.location,
+      options.service as string | undefined,
+      options.location as string | undefined,
     );
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
