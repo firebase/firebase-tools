@@ -73,20 +73,28 @@ export class ExecutionParamsService implements Disposable {
   private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
     const userVars = this.executeGraphqlVariables();
     const fixes = [];
-    for (const varName in userVars) {
-      if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
-        // Remove undefined variable.
-        fixes.push(`Removed undefined $${varName}.`);
-        delete userVars[varName];
+    {
+      const undefinedVars = [];
+      for (const varName in userVars) {
+        if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
+          // Remove undefined variable.
+          undefinedVars.push(varName);
+          delete userVars[varName];
+        }
       }
+      fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$"+v).join(", ")}.`);
     }
-    for (const variable of ast.variableDefinitions || []) {
-      const varName = variable.variable.name.value;
-      if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
-        // Set a default value for missing required variable.
-        userVars[varName] = getDefaultScalarValue(print(variable.type.type));
-        fixes.push(`Added missing required $${varName} with a default value.`);
+    {
+      const missingRequiredVars = [];
+      for (const variable of ast.variableDefinitions || []) {
+        const varName = variable.variable.name.value;
+        if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
+          // Set a default value for missing required variable.
+          userVars[varName] = getDefaultScalarValue(print(variable.type.type));
+          missingRequiredVars.push(varName);
+        }
       }
+      fixes.push(`Added required variables: ${missingRequiredVars.map((v) => "$"+v).join(", ")}.`);
     }
     if (fixes.length === 0) {
       return;
