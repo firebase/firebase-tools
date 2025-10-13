@@ -17,8 +17,8 @@ export enum Platform {
  * Supported web frameworks.
  */
 export enum Framework {
-  REACT = "REACT",
-  ANGULAR = "ANGULAR",
+  REACT = "react",
+  ANGULAR = "angular",
 }
 
 interface AppIdentifier {
@@ -176,8 +176,8 @@ async function packageJsonToWebApp(dirPath: string, packageJsonFile: string): Pr
 
 const WEB_FRAMEWORKS: Framework[] = Object.values(Framework);
 const WEB_FRAMEWORKS_SIGNALS: { [key in Framework]: string[] } = {
-  REACT: ["react", "next"],
-  ANGULAR: ["@angular/core"],
+  react: ["react", "next"],
+  angular: ["@angular/core"],
 };
 
 async function detectAppIdsForPlatform(

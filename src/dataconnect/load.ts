@@ -162,7 +162,7 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
   return unvalidated as ConnectorYaml;
 }
 
-async function readGQLFiles(sourceDir: string): Promise<File[]> {
+export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   if (!fs.existsSync(sourceDir)) {
     return [];
   }

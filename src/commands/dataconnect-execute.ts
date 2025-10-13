@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { Options } from "../options";
 import { getProjectId, needProjectId } from "../projectUtils";
-import { pickService, squashGraphQL } from "../dataconnect/load";
+import { pickService, readGQLFiles, squashGraphQL } from "../dataconnect/load";
 import { requireAuth } from "../requireAuth";
 import { Constants } from "../emulator/constants";
 import { Client } from "../apiv2";
@@ -11,13 +11,7 @@ import { dataconnectDataplaneClient } from "../dataconnect/dataplaneClient";
 import { isGraphqlName } from "../dataconnect/names";
 import { FirebaseError } from "../error";
 import { statSync } from "node:fs";
-import {
-  ConnectorInfo,
-  Impersonation,
-  isGraphQLResponse,
-  isGraphQLResponseError,
-  ServiceInfo,
-} from "../dataconnect/types";
+import { isGraphQLResponse, isGraphQLResponseError, ServiceInfo } from "../dataconnect/types";
 import { EmulatorHub } from "../emulator/hub";
 import { readFile } from "node:fs/promises";
 import { EOL } from "node:os";
@@ -28,7 +22,7 @@ import { responseToError } from "../responseToError";
 
 let stdinUsedFor: string | undefined = undefined;
 
-export const command = new Command("dataconnect:execute [fileOrConnector] [operationName]")
+export const command = new Command("dataconnect:execute [file] [operationName]")
   .description("execute a Data Connect query or mutation")
   .option(
     "--service <serviceId>",
@@ -39,12 +33,8 @@ export const command = new Command("dataconnect:execute [fileOrConnector] [opera
     "The location ID to execute against (optional if there's only one service). Ignored by the emulator.",
   )
   .option(
-    "-v, --vars <vars>",
+    "--vars, --variables <vars>",
     "Supply variables to the operation execution, which must be a JSON object whose keys are variable names. If vars begin with the character @, the rest is interpreted as a file name to read from, or - to read from stdin.",
-  )
-  .option(
-    "-i, --impersonate <claims>",
-    'Execute with an impersonated auth context, which may be either the literal string unauthenticated or a JSON object containing Firebase Auth claims, e.g. {"sub": "myUserId"}. If claims begin with the character @, the rest is interpreted as a file name to read from, or - to read from stdin.',
   )
   .option(
     "--no-debug-details",
@@ -52,27 +42,17 @@ export const command = new Command("dataconnect:execute [fileOrConnector] [opera
   )
   .action(
     // eslint-disable-next-line @typescript-eslint/no-inferrable-types
-    async (fileOrConnector: string = "", operationName: string | undefined, options: Options) => {
+    async (file: string = "", operationName: string | undefined, options: Options) => {
       const emulatorHost = process.env[Constants.FIREBASE_DATACONNECT_EMULATOR_HOST];
       let projectId: string;
-      let serviceName: string | undefined = undefined;
-      const serviceId = options.service as string | undefined;
-      const locationId = options.location as string | undefined;
       if (emulatorHost) {
         projectId = getProjectId(options) || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
       } else {
         projectId = needProjectId(options);
       }
-
-      if (!fileOrConnector) {
-        if (!process.stdin.isTTY) {
-          fileOrConnector = "-";
-        } else {
-          throw new FirebaseError(
-            "At least one of the [fileOrConnector] [operationName] arguments is required.",
-          );
-        }
-      }
+      let serviceName: string | undefined = undefined;
+      const serviceId = options.service as string | undefined;
+      const locationId = options.location as string | undefined;
       async function getServiceInfo(): Promise<ServiceInfo> {
         return pickService(projectId, options.config, serviceId || undefined).catch((e) => {
           if (!(e instanceof FirebaseError)) {
@@ -88,76 +68,79 @@ export const command = new Command("dataconnect:execute [fileOrConnector] [opera
           return Promise.reject(e);
         });
       }
-      let connector: ConnectorInfo | undefined = undefined;
-      if (fileOrConnector !== "-") {
-        const stat = statSync(fileOrConnector, { throwIfNoEntry: false });
-        if (!stat?.isFile()) {
-          if (operationName === undefined /* but not an empty string */) {
-            // Command invoked with one single positional argument.
-            if (isGraphqlName(fileOrConnector)) {
-              operationName = fileOrConnector;
-              fileOrConnector = "";
-            }
-          }
-          const serviceInfo = await getServiceInfo();
-          serviceName = serviceInfo.serviceName;
-          if (fileOrConnector) {
-            connector = serviceInfo.connectorInfo.find(
-              (c) => c.connector.name === `${serviceName}/connectors/${fileOrConnector}`,
-            );
-          } else if (serviceInfo.connectorInfo.length === 1) {
-            connector = serviceInfo.connectorInfo[0];
-          }
-          if (!connector) {
-            // The first arg is neither a connector or a file, try to throw a good error message.
-            if (stat?.isDirectory()) {
-              throw new FirebaseError(
-                `${fileOrConnector}: is a directory.\nHint: This command can only execute a single GraphQL file or a named operation.\n` +
-                  "Hint: To execute a named operation within a local connector, run:\n" +
-                  `    firebase dataconnect:execute ${clc.yellow("CONNECTOR_ID OPERATION_NAME")}`,
-              );
-            } else if (operationName) {
-              if (!fileOrConnector) {
-                throw new FirebaseError(
-                  `Found more than one connector. The connector ID must be specified as the first argument.\n` +
-                    "Hint: To execute a named operation within a local connector, run:\n" +
-                    `    firebase dataconnect:execute ${clc.yellow("CONNECTOR_ID OPERATION_NAME")}`,
-                );
-              } else {
-                throw new FirebaseError(
-                  `${fileOrConnector}: no such file, directory, or connectorId`,
-                );
-              }
-            } else {
-              throw new FirebaseError(`${fileOrConnector}: no such file or directory`);
-            }
-          }
+
+      if (!file) {
+        if (!process.stdin.isTTY) {
+          file = "-";
+        } else {
+          throw new FirebaseError(
+            "At least one of the [file] [operationName] arguments is required.",
+          );
         }
       }
-
-      const opDisplay = operationName ? clc.bold(operationName) : "operation";
       let query: string;
-      if (connector) {
-        const dir = relative(process.cwd(), connector.directory);
-        process.stderr.write(`${clc.cyan(`Executing ${opDisplay} in ${clc.bold(dir)}`)}${EOL}`);
-        query = squashGraphQL(connector.connector.source);
-        if (!query) {
-          throw new FirebaseError(`${dir} contains no GQL files or only empty ones`);
-        }
-      } else {
-        if (fileOrConnector === "-") {
-          stdinUsedFor = "operation source code";
-          if (process.stdin.isTTY) {
-            process.stderr.write(
-              `${clc.cyan("Reading GraphQL operation from stdin. EOF (CTRL+D) to finish and execute.")}${EOL}`,
-            );
-          }
-          query = await text(process.stdin);
-        } else {
+      if (file === "-") {
+        stdinUsedFor = "operation source code";
+        if (process.stdin.isTTY) {
           process.stderr.write(
-            `${clc.cyan(`Executing ${opDisplay} in ${clc.bold(fileOrConnector)}`)}${EOL}`,
+            `${clc.cyan("Reading GraphQL operation from stdin. EOF (CTRL+D) to finish and execute.")}${EOL}`,
           );
-          query = await readFile(fileOrConnector, "utf-8");
+        }
+        query = await text(process.stdin);
+      } else {
+        let stat = statSync(file, { throwIfNoEntry: false });
+        if (stat?.isFile()) {
+          const opDisplay = operationName ? clc.bold(operationName) : "operation";
+          process.stderr.write(`${clc.cyan(`Executing ${opDisplay} in ${clc.bold(file)}`)}${EOL}`);
+          query = await readFile(file, "utf-8");
+        } else {
+          if (operationName === undefined /* but not an empty string */) {
+            // Command invoked with one single positional argument.
+            if (isGraphqlName(file)) {
+              operationName = file;
+              file = "";
+            }
+          }
+          if (!file) {
+            const serviceInfo = await getServiceInfo();
+            serviceName = serviceInfo.serviceName;
+            switch (serviceInfo.connectorInfo.length) {
+              case 1: {
+                const connector = serviceInfo.connectorInfo[0];
+                file = relative(process.cwd(), connector.directory);
+                stat = statSync(file, { throwIfNoEntry: false });
+                break;
+              }
+              case 0:
+                throw new FirebaseError(
+                  `No connector found.\n` +
+                    "Hint: To execute an operation in a GraphQL file, run:\n" +
+                    `    firebase dataconnect:execute ${clc.yellow("./path/to/file.gql OPERATION_NAME")}`,
+                );
+              default: {
+                const example = relative(process.cwd(), serviceInfo.connectorInfo[0].directory);
+                throw new FirebaseError(
+                  `A file or directory must be explicitly specified when there are multiple connectors.\n` +
+                    "Hint: To execute an operation within a connector, try e.g.:\n" +
+                    `    firebase dataconnect:execute ${clc.yellow(`${example} OPERATION_NAME`)}`,
+                );
+              }
+            }
+          }
+
+          if (stat?.isDirectory()) {
+            const opDisplay = operationName ? clc.bold(operationName) : "operation";
+            process.stderr.write(
+              `${clc.cyan(`Executing ${opDisplay} in ${clc.bold(file)}`)}${EOL}`,
+            );
+            const files = await readGQLFiles(file);
+            query = squashGraphQL({ files });
+            if (!query) {
+              throw new FirebaseError(`${file} contains no GQL files or only empty ones`);
+            }
+          } else {
+            throw new FirebaseError(`${file}: no such file or directory`);
+          }
         }
       }
 
@@ -185,22 +168,10 @@ export const command = new Command("dataconnect:execute [fileOrConnector] [opera
         options.vars = "@-";
       }
       const unparsedVars = await literalOrFile(options.vars, "--vars");
-      const unparsedClaims = await literalOrFile(options.impersonate, "--impersonate");
-      let impersonate: Impersonation | undefined = undefined;
-      if (unparsedClaims === "unauthenticated") {
-        impersonate = { unauthenticated: true, includeDebugDetails: !options.noDebugDetails };
-      } else if (unparsedClaims) {
-        impersonate = {
-          authClaims: parseJsonObject(unparsedClaims),
-          includeDebugDetails: !options.noDebugDetails,
-        };
-      }
-
       const response = await executeGraphQL(apiClient, serviceName, {
         query,
         operationName,
-        variables: parseJsonObject(unparsedVars),
-        extensions: { impersonate },
+        variables: parseJsonObject(unparsedVars, "--vars"),
       });
 
       // If the status code isn't OK or the top-level `error` field is set, this
@@ -275,13 +246,14 @@ export const command = new Command("dataconnect:execute [fileOrConnector] [opera
     },
   );
 
-function parseJsonObject(json?: string): Record<string, any> {
+function parseJsonObject(json: string, subject: string): Record<string, any> {
   try {
     const obj = JSON.parse(json || "{}") as unknown;
-    if (typeof obj !== "object" || obj == null) throw new Error("not an object");
+    if (typeof obj !== "object" || obj == null)
+      throw new Error(`Provided ${subject} is not an object`);
     return obj;
   } catch (e) {
-    throw new Error("Provided string `" + json + "` is not valid JSON.");
+    throw new FirebaseError(`expected ${subject} to be valid JSON string, got: ${json}`);
   }
 }
 
