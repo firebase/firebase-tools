@@ -615,7 +615,27 @@ describe("appUtils", () => {
         {
           platform: Platform.WEB,
           directory: ".",
-          frameworks: ["REACT"],
+          frameworks: ["react"],
+        },
+      ]);
+    });
+
+    it("should detect angular web framework", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              "@angular/core": "1.0.0",
+            },
+          }),
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.WEB,
+          directory: ".",
+          frameworks: ["angular"],
         },
       ]);
     });
@@ -635,7 +655,7 @@ describe("appUtils", () => {
         {
           platform: Platform.WEB,
           directory: ".",
-          frameworks: ["REACT"],
+          frameworks: ["react"],
         },
       ]);
     });
@@ -655,7 +675,7 @@ describe("appUtils", () => {
         {
           platform: Platform.WEB,
           directory: ".",
-          frameworks: ["ANGULAR"],
+          frameworks: ["angular"],
         },
       ]);
     });

@@ -5,7 +5,7 @@ import { errorMissingProject, warnEmulatorNotSupported } from "../emulator/comma
 import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
 
-export const command = new Command("firestore:operations:list")
+export const command = new Command("firestore:operations:list [fileOrOperationName...]")
   .description("list pending Cloud Firestore admin operations and their status")
   .option(
     "--database <databaseName>",
