@@ -56,12 +56,18 @@ export function DataConnectExecutionResultsApp() {
   }
 
   let variablesDisplay: JSX.Element | undefined;
-  if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
+  if (
+    dataConnectResults.variables !== "" &&
+    dataConnectResults.variables !== "{}"
+  ) {
     variablesDisplay = (
-      <code>
-        <label>Variables</label>
-        <pre>{dataConnectResults.variables}</pre>
-      </code>
+      <>
+        <code>
+          <label>Variables</label>
+          <pre>{dataConnectResults.variables}</pre>
+        </code>
+        <br />
+      </>
     );
   }
 
@@ -71,14 +77,22 @@ export function DataConnectExecutionResultsApp() {
       // Default is admin.
       break;
     case AuthParamsKind.UNAUTHENTICATED:
-      authDisplay = <Label>Unauthenticated</Label>;
+      authDisplay = (
+        <>
+          <Label>Unauthenticated</Label>;
+          <br />
+        </>
+      );
       break;
     case AuthParamsKind.AUTHENTICATED:
       authDisplay = (
-        <code>
-          <label>Auth Claims</label>
-          <pre>{dataConnectResults.auth.claims}</pre>
-        </code>
+        <>
+          <code>
+            <label>Auth Claims</label>
+            <pre>{dataConnectResults.auth.claims}</pre>
+          </code>
+          <br />
+        </>
       );
       break;
   }
@@ -86,16 +100,15 @@ export function DataConnectExecutionResultsApp() {
   return (
     <>
       <VSCodeButton onClick={() => broker.send("rerunExecution")}>
-        <i className="codicon codicon-debug-start"></i> Rerun {dataConnectResults.displayName}
+        <i className="codicon codicon-debug-start"></i>Rerun
       </VSCodeButton>
+      <h2>{dataConnectResults.displayName}</h2>
       <br />
       {errorsDisplay}
       {resultsDisplay}
       <br />
       {authDisplay}
-      <br />
       {variablesDisplay}
-      <br />
       <code>
         <label>Query</label>
         <pre>{dataConnectResults.query}</pre>

@@ -81,7 +81,9 @@ export class ExecutionParamsService implements Disposable {
           undefinedVars.push(varName);
         }
       }
-      fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$"+v).join(", ")}.`);
+      if (undefinedVars.length > 0) {
+        fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$" + v).join(", ")}.`);
+      }
     }
     {
       const missingRequiredVars = [];
@@ -92,7 +94,9 @@ export class ExecutionParamsService implements Disposable {
           missingRequiredVars.push(varName);
         }
       }
-      fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$"+v).join(", ")}.`);
+      if (missingRequiredVars.length > 0) {
+        fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$" + v).join(", ")}.`);
+      }
     }
     if (fixes.length === 0) {
       return;
