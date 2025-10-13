@@ -9,6 +9,8 @@ import { logger } from "../logger";
 import { getProjectDefaultAccount } from "../auth";
 import { logLabeledSuccess } from "../utils";
 import { ServiceInfo } from "../dataconnect/types";
+import { getResourceFilters } from "../dataconnect/filters";
+import { FirebaseError } from "../error";
 
 type GenerateOptions = Options & { watch?: boolean };
 
@@ -18,10 +20,29 @@ export const command = new Command("dataconnect:sdk:generate")
     "--watch",
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
   )
+  .option(
+    "--only <serviceIds>",
+    "a comma-separated list of service IDs to generate SDKs for. Supported formats: dataconnect:serviceId, dataconnect:locationId:serviceId",
+  )
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
 
-    const serviceInfos = await loadAll(projectId, options.config);
+    let serviceInfos = await loadAll(projectId, options.config);
+
+    const filters = getResourceFilters(options);
+    if (filters) {
+      const serviceIds = new Set<string>();
+      for (const f of filters) {
+        if (f.schemaOnly) {
+          throw new FirebaseError(
+            `--only filter for dataconnect:sdk:generate must be a service ID (e.g. --only dataconnect:my-service)`,
+          );
+        }
+        serviceIds.add(f.connectorId ? `${f.serviceId}:${f.connectorId}` : f.serviceId);
+      }
+      serviceInfos = serviceInfos.filter((si) => serviceIds.has(si.dataConnectYaml.serviceId));
+    }
+
     const serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
       serviceInfo.connectorInfo.some((c) => {
         return (

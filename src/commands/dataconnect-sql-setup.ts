@@ -10,9 +10,14 @@ import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissi
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
+import { getResourceFilters } from "../dataconnect/filters";
 
-export const command = new Command("dataconnect:sql:setup [serviceId]")
+export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
+  .option(
+    "--only <serviceId>",
+    "the service ID to setup. Supported formats: dataconnect:serviceId, dataconnect:locationId:serviceId",
+  )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
@@ -20,8 +25,22 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
     "cloudsql.instances.connect",
   ])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
+    const filters = getResourceFilters(options);
+    let serviceId: string | undefined;
+    if (filters) {
+      if (filters.length > 1) {
+        throw new FirebaseError("Cannot specify more than one service to setup.", { exit: 1 });
+      }
+      const f = filters[0];
+      if (f.schemaOnly) {
+        throw new FirebaseError(
+          `--only filter for dataconnect:sql:setup must be a service ID (e.g. --only dataconnect:my-service)`,
+        );
+      }
+      serviceId = f.connectorId ? `${f.serviceId}:${f.connectorId}` : f.serviceId;
+    }
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
     const instanceId =

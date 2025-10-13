@@ -17,6 +17,7 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
 import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive";
+import { getResourceFilters } from "../dataconnect/filters";
 
 // Not a comprehensive list, used for keyword coloring.
 const sqlKeywords = [
@@ -81,14 +82,34 @@ async function mainShellLoop(conn: pg.PoolClient) {
   }
 }
 
-export const command = new Command("dataconnect:sql:shell [serviceId]")
+export const command = new Command("dataconnect:sql:shell")
   .description(
     "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
   )
+  .option(
+    "--only <serviceId>",
+    "the service ID to connect to. Supported formats: dataconnect:serviceId, dataconnect:locationId:serviceId",
+  )
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: Options) => {
     const projectId = needProjectId(options);
+    const filters = getResourceFilters(options);
+    let serviceId: string | undefined;
+    if (filters) {
+      if (filters.length > 1) {
+        throw new FirebaseError("Cannot specify more than one service to connect to.", {
+          exit: 1,
+        });
+      }
+      const f = filters[0];
+      if (f.schemaOnly) {
+        throw new FirebaseError(
+          `--only filter for dataconnect:sql:shell must be a service ID (e.g. --only dataconnect:my-service)`,
+        );
+      }
+      serviceId = f.connectorId ? `${f.serviceId}:${f.connectorId}` : f.serviceId;
+    }
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
     const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);

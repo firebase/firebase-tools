@@ -9,11 +9,16 @@ import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { fdcSqlRoleMap } from "../gcp/cloudsql/permissionsSetup";
 import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
+import { getResourceFilters } from "../dataconnect/filters";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
-export const command = new Command("dataconnect:sql:grant [serviceId]")
+export const command = new Command("dataconnect:sql:grant")
   .description("grants the SQL role <role> to the provided user or service account <email>")
+  .option(
+    "--only <serviceId>",
+    "the service ID to grant permissions to. Supported formats: dataconnect:serviceId, dataconnect:locationId:serviceId",
+  )
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
   .option(
     "-E, --email <email>",
@@ -21,7 +26,7 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
   )
   .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: Options) => {
     const role = options.role as string;
     const email = options.email as string;
     if (!role) {
@@ -48,9 +53,23 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
     }
 
     const projectId = needProjectId(options);
+    const filters = getResourceFilters(options);
+    let serviceId: string | undefined;
+    if (filters) {
+      if (filters.length > 1) {
+        throw new FirebaseError("Cannot specify more than one service to grant.", { exit: 1 });
+      }
+      const f = filters[0];
+      if (f.schemaOnly) {
+        throw new FirebaseError(
+          `--only filter for dataconnect:sql:grant must be a service ID (e.g. --only dataconnect:my-service)`,
+        );
+      }
+      serviceId = f.connectorId ? `${f.serviceId}:${f.connectorId}` : f.serviceId;
+    }
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
     await grantRoleToUserInSchema(options, serviceInfo.schema);
-    return { projectId, serviceId };
+    return { projectId, serviceId: serviceInfo.dataConnectYaml.serviceId };
   });
