@@ -2,6 +2,7 @@ import * as path from "path";
 import * as fs from "fs-extra";
 import * as clc from "colorette";
 import { glob } from "glob";
+
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import {
