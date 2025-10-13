@@ -1,6 +1,5 @@
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
-import { logger } from "../logger";
 import { Emulators } from "../emulator/types";
 import { errorMissingProject, warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
@@ -22,12 +21,8 @@ export const command = new Command("firestore:operations:list")
     const api = new fsi.FirestoreApi();
     const { operations } = await api.listOperations(options.project, databaseId, limit);
 
-    if (options.json) {
-      logger.info(JSON.stringify(operations, undefined, 2));
-    } else {
-      const printer = new PrettyPrint();
-      printer.prettyPrintOperations(operations);
-    }
+    const printer = new PrettyPrint();
+    printer.prettyPrintOperations(operations);
 
     return operations;
   });
