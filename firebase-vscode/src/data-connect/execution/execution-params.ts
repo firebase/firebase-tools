@@ -77,9 +77,8 @@ export class ExecutionParamsService implements Disposable {
       const undefinedVars = [];
       for (const varName in userVars) {
         if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
-          // Remove undefined variable.
-          undefinedVars.push(varName);
           delete userVars[varName];
+          undefinedVars.push(varName);
         }
       }
       fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$"+v).join(", ")}.`);
@@ -89,12 +88,11 @@ export class ExecutionParamsService implements Disposable {
       for (const variable of ast.variableDefinitions || []) {
         const varName = variable.variable.name.value;
         if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
-          // Set a default value for missing required variable.
           userVars[varName] = getDefaultScalarValue(print(variable.type.type));
           missingRequiredVars.push(varName);
         }
       }
-      fixes.push(`Added required variables: ${missingRequiredVars.map((v) => "$"+v).join(", ")}.`);
+      fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$"+v).join(", ")}.`);
     }
     if (fixes.length === 0) {
       return;

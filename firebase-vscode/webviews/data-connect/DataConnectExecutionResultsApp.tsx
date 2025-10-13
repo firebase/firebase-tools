@@ -85,14 +85,9 @@ export function DataConnectExecutionResultsApp() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div style={{ transform: "scale(0.7)" }}>
-          <VSCodeButton onClick={() => broker.send("rerunExecution")}>
-            <i className="codicon codicon-debug-start"></i> Rerun
-          </VSCodeButton>
-        </div>
-        <h2>{dataConnectResults.displayName}</h2>
-      </div>
+      <VSCodeButton onClick={() => broker.send("rerunExecution")}>
+        <i className="codicon codicon-debug-start"></i> Rerun {dataConnectResults.displayName}
+      </VSCodeButton>
       <br />
       {errorsDisplay}
       {resultsDisplay}
