@@ -90,7 +90,7 @@ export class ExecutionParamsService implements Disposable {
         }
       }
       if (undefinedVars.length > 0) {
-        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_MISSING_VARIABLES);
+        this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_UNDEFINED_VARIABLES);
         fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$" + v).join(", ")}.`);
       }
     }
