@@ -43,7 +43,7 @@ ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })
 
 
 ## Steps
-Follow the steps below taking note of any user instructions provided above.
+Follow the steps below taking note of any user instructions provided above. As you go, add all steps to a FIREBASE_INIT_TODO.md file, or use a TODO tool, and check steps off as you complete them.
 
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
    - If you run into issues logging the user in, suggest that they run \`${firebaseCliCommand} login --reauth\` in a separate terminal
@@ -63,7 +63,7 @@ Follow the steps below taking note of any user instructions provided above.
      - If there is no app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
    - Do the following only for Flutter apps
      - Execute \`firebase --version\`  to check if the Firebase CLI is installed
-       - If it isn't installed, run \`npm install -g firebase-tools\` to install it. If it is installed, skip to the next step. 
+       - If it isn't installed, run \`npm install -g firebase-tools\` to install it. If it is installed, skip to the next step.
      - Install the Flutterfire CLI
      - Use the Flutterfire CLI tool to connect to the project
      - Use the Flutterfire CLI to register the appropriate applications based on the user's input
