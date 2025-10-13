@@ -3,6 +3,7 @@ import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
 import { globalSignal } from "../../utils/globals";
 import { AuthParams } from "../../messaging/protocol";
+import { ExecutionInput } from "./execution";
 
 export enum ExecutionState {
   INIT,
@@ -17,12 +18,10 @@ export interface ExecutionItem {
   label: string;
   timestamp: number;
   state: ExecutionState;
-  operation: OperationDefinitionNode;
+  input: ExecutionInput;
   variables: string;
   auth: AuthParams;
   results: ExecutionResult | Error;
-  documentPath: string;
-  position: vscode.Position;
 }
 
 let executionId = 0;
@@ -68,9 +67,9 @@ export async function selectExecutionId(executionId: string) {
   selectedExecutionId.value = executionId;
 
   // take user to operation location in editor
-  const { documentPath, position } = selectedExecution.value;
-  await vscode.window.showTextDocument(vscode.Uri.file(documentPath), {
-    selection: new vscode.Range(position, position),
+  const { input } = selectedExecution.value;
+  await vscode.window.showTextDocument(vscode.Uri.file(input.documentPath), {
+    selection: new vscode.Range(input.position, input.position),
   });
 }
 

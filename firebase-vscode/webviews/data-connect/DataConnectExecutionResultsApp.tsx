@@ -1,11 +1,12 @@
 import React from "react";
-import { useBroker } from "../globals/html-broker";
+import { broker, useBroker } from "../globals/html-broker";
 import { Label } from "../components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
 import { isExecutionResult } from "../../common/graphql";
-import { AuthParamsKind, printAuthParams } from '../../common/messaging/protocol';
+import { AuthParamsKind } from '../../common/messaging/protocol';
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 // Prevent webpack from removing the `style` import above
 style;
@@ -58,12 +59,12 @@ export function DataConnectExecutionResultsApp() {
   if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
     variablesDisplay = (
       <code>
-        <label>With variables</label>
+        <label>Variables</label>
         <pre>{dataConnectResults.variables}</pre>
       </code>
     );
   } else {
-    variablesDisplay = <Label>Without variables</Label>;
+    variablesDisplay = <Label>No variables</Label>;
   }
 
   let authDisplay: JSX.Element | undefined;
@@ -88,14 +89,22 @@ export function DataConnectExecutionResultsApp() {
     <>
       <h2>
         {dataConnectResults.displayName}
+        <VSCodeButton onClick={() => broker.send("rerunExecution")}>
+          <i className="codicon codicon-debug-start"></i>
+        </VSCodeButton>
       </h2>
       <br />
       {errorsDisplay}
       {resultsDisplay}
-      <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
+      {/* <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
         <div style={{ flex: 1, overflow: "auto" }}>{variablesDisplay}</div>
         <div style={{ flex: 1, overflow: "auto" }}>{authDisplay}</div>
-      </div>
+      </div> */}
+      <br />
+      {authDisplay}
+      <br />
+      {variablesDisplay}
+      <br />
       <code>
         <label>Query</label>
         <pre>{dataConnectResults.query}</pre>

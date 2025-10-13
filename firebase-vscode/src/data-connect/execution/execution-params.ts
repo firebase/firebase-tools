@@ -72,11 +72,11 @@ export class ExecutionParamsService implements Disposable {
 
   private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
     const userVars = this.executeGraphqlVariables();
-    let description = "";
+    const fixes = [];
     for (const varName in userVars) {
       if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
         // Remove undefined variable.
-        description += `- Removed undefined $${varName}.\n`;
+        fixes.push(`Removed undefined $${varName}.`);
         delete userVars[varName];
       }
     }
@@ -85,15 +85,15 @@ export class ExecutionParamsService implements Disposable {
       if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
         // Set a default value for missing required variable.
         userVars[varName] = getDefaultScalarValue(print(variable.type.type));
-        description += `- Added missing required $${varName} with a default value.\n`;
+        fixes.push(`Added missing required $${varName} with a default value.`);
       }
     }
-    if (description === "") {
+    if (fixes.length === 0) {
       return;
     }
     this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
     executionArgsJSON.value = JSON.stringify(userVars, null, 2);
-    this.broker.send("notifyVariables", { variables: executionArgsJSON.value, description });
+    this.broker.send("notifyVariables", { variables: executionArgsJSON.value, fixes });
     return;
   }
 }

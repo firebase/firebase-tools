@@ -15,7 +15,7 @@ import {
   selectedExecutionId,
   updateExecution,
 } from "./execution-store";
-import { batch, effect, Signal } from "@preact/signals-core";
+import { batch, effect } from "@preact/signals-core";
 import {
   OperationDefinitionNode,
   OperationTypeNode,
@@ -26,7 +26,6 @@ import {
 } from "graphql";
 import { DataConnectService } from "../service";
 import { DataConnectError, toSerializedError } from "../../../common/error";
-import { OperationLocation } from "../types";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
@@ -38,9 +37,11 @@ import { configstore } from "../../../../src/configstore";
 import { executionAuthParams, executionArgsJSON, ExecutionParamsService } from "./execution-params";
 import { ExecuteGraphqlRequest } from "../../dataconnect/types";
 
-interface ExecutionInput {
-  ast: OperationDefinitionNode;
-  location: OperationLocation;
+export interface ExecutionInput {
+  operationAst: OperationDefinitionNode;
+  document: string;
+  documentPath: string;
+  position: vscode.Position;
   instance: InstanceType;
 }
 
@@ -51,8 +52,6 @@ export interface GenerateOperationInput {
   insertPosition: number;
   existingQuery: string;
 }
-
-export const lastExecutionInputSignal = new Signal<ExecutionInput | null>(null);
 
 export function registerExecution(
   context: ExtensionContext,
@@ -81,8 +80,8 @@ export function registerExecution(
 
   function notifyDataConnectResults(item: ExecutionItem) {
     broker.send("notifyDataConnectResults", {
-      displayName: `${item.operation.operation} ${item.operation.name?.value ?? ""}`,
-      query: print(item.operation),
+      displayName: `${item.input.operationAst.name?.value ?? ""}`,
+      query: print(item.input.operationAst),
       results:
         item.results instanceof Error
           ? toSerializedError(item.results)
@@ -109,21 +108,14 @@ export function registerExecution(
 
   // re run called from execution panel;
   const rerunExecutionBroker = broker.on("rerunExecution", () => {
-    if (!lastExecutionInputSignal.value) {
-      return;
+    const item = selectedExecution.value;
+    if (item) {
+      executeOperation(item.input);
     }
-    executeOperation(
-      lastExecutionInputSignal.value.ast,
-      lastExecutionInputSignal.value.location,
-      lastExecutionInputSignal.value.instance,
-    );
   });
 
-  async function executeOperation(
-    ast: OperationDefinitionNode,
-    { document, documentPath, position }: OperationLocation,
-    instance: InstanceType,
-  ) {
+  async function executeOperation(arg: ExecutionInput) {
+    const { operationAst: ast, document, documentPath, instance } = arg;
     analyticsLogger.logger.logUsage(
       instance === InstanceType.LOCAL
         ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
@@ -135,14 +127,6 @@ export function registerExecution(
         : DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${ast.operation}`,
     );
     await vscode.window.activeTextEditor?.document.save();
-
-    // hold last execution in memory, and send operation name to webview
-    lastExecutionInputSignal.value = {
-      ast,
-      location: { document, documentPath, position },
-      instance,
-    };
-    broker.send("notifyLastOperation", ast.name?.value ?? "anonymous");
 
     // focus on execution panel immediately
     vscode.commands.executeCommand(
@@ -260,12 +244,10 @@ export function registerExecution(
       label: ast.name?.value ?? "anonymous",
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
-      operation: ast,
+      input: arg,
       variables: executionArgsJSON.value,
       auth: executionAuthParams.value,
       results: new Error("missing results"),
-      documentPath,
-      position,
     });
 
     try {
@@ -371,8 +353,8 @@ ${schema}
     executionHistoryTreeView,
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
-      async (ast, location, instanceType: InstanceType) => {
-        await executeOperation(ast, location, instanceType);
+      async (arg: ExecutionInput) => {
+        await executeOperation(arg);
       },
     ),
     vscode.commands.registerCommand(

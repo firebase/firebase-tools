@@ -10,7 +10,7 @@ import {
   VSCodePanelView,
   VSCodeTextArea,
 } from "@vscode/webview-ui-toolkit/react";
-import { broker, useBroker } from "../globals/html-broker";
+import { broker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
 import { EXAMPLE_CLAIMS, AuthParamsKind, AuthParams, DataConnectResults } from "../../common/messaging/protocol";
 
@@ -18,29 +18,25 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
 
 export function DataConnectExecutionArgumentsApp() {
-  const lastOperation = useBroker("notifyLastOperation");
   const [variables, setVariables] = useState("{}");
-  const [fixDescription, setFixDescription] = useState("");
+  const [fixes, setFixes] = useState<string[]>([]);
 
   useEffect(() => {
     broker.send("defineVariables", variables);
   }, [variables]);
 
-  broker.on("notifyVariables", (v: {variables: string, description: string}) => {
+  broker.on("notifyVariables", (v: {variables: string, fixes: string[]}) => {
     setVariables(v.variables);
-    setFixDescription(v.description);
+    setFixes(v.fixes);
   });
   broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
     setVariables(results.variables);
-    setFixDescription("");
+    setFixes([]);
   });
 
   const handleVariableChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setVariables(e.target.value);
-    setFixDescription("");
-  };
-  const sendRerun = () => {
-    broker.send("rerunExecution");
+    setFixes([]);
   };
 
   // Due to webview-ui-toolkit adding shadow-roots, css alone is not
@@ -81,11 +77,12 @@ export function DataConnectExecutionArgumentsApp() {
           className={style.variableInput}
         ></textarea>
         <Spacer size="small"></Spacer>
-        {lastOperation && (
-          <VSCodeButton onClick={sendRerun}>
-            {fixDescription}
-            Rerun last execution: {lastOperation}
-          </VSCodeButton>
+        {fixes.length > 0 && (
+          <ul>
+            {fixes.map((fix, index) => (
+              <li key={index}>{fix}</li>
+            ))}
+          </ul>
         )}
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>

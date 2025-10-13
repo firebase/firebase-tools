@@ -201,11 +201,9 @@ export interface ExtensionToWebviewParamsMap {
   notifyPreviewChannelResponse: { id: string };
 
   /** Update execution parameters and results panels */
-  notifyVariables: { variables: string, description: string };
+  notifyVariables: { variables: string, fixes: string[] };
   notifyAuthParams: AuthParams;
   notifyDataConnectResults: DataConnectResults;
-
-  notifyLastOperation: string;
 
   notifyIsLoadingUser: boolean;
 
