@@ -11,6 +11,8 @@ import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconne
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
 import { pickOneService } from "../dataconnect/load";
 
+type SetupOptions = Options & { service?: string; location?: string };
+
 export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
@@ -22,14 +24,14 @@ export const command = new Command("dataconnect:sql:setup")
     "cloudsql.instances.connect",
   ])
   .before(requireAuth)
-  .action(async (options: Options) => {
+  .action(async (options: SetupOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service as string | undefined,
-      options.location as string | undefined,
+      options.service,
+      options.location,
     );
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;

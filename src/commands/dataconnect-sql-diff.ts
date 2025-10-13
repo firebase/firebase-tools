@@ -7,6 +7,8 @@ import { pickOneService } from "../dataconnect/load";
 import { diffSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 
+type DiffOptions = Options & { service?: string; location?: string };
+
 export const command = new Command("dataconnect:sql:diff")
   .description(
     "display the differences between the local Data Connect schema and your CloudSQL database's schema",
@@ -19,14 +21,14 @@ export const command = new Command("dataconnect:sql:diff")
     "firebasedataconnect.schemas.update",
   ])
   .before(requireAuth)
-  .action(async (options: Options) => {
+  .action(async (options: DiffOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service as string | undefined,
-      options.location as string | undefined,
+      options.service,
+      options.location,
     );
 
     const diffs = await diffSchema(

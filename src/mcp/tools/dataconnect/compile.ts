@@ -17,13 +17,13 @@ export const compile = tool(
         .string()
         .optional()
         .describe(
-          `Data Connect Service ID to dis-ambulate if there are multiple Data Connect services.`,
+          `Data Connect Service ID to disambiguate if there are multiple Data Connect services.`,
         ),
       location_id: z
         .string()
         .optional()
         .describe(
-          `Data Connect Service location ID to dis-ambulate among multiple Data Connect services.`,
+          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
         ),
     }),
     annotations: {

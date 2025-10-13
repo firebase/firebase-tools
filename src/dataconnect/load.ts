@@ -15,6 +15,7 @@ import {
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
 
+/** Picks exactly one Data Connect service based on flags. */
 export async function pickOneService(
   projectId: string,
   config: Config,
@@ -35,8 +36,7 @@ export async function pickOneService(
   return services[0];
 }
 
-// pickService reads firebase.json and returns a service with a given serviceId and location.
-// If serviceID is not provided and there is a single service, return that.
+/** Picks Data Connect services based on flags. */
 export async function pickServices(
   projectId: string,
   config: Config,
@@ -45,12 +45,8 @@ export async function pickServices(
 ): Promise<ServiceInfo[]> {
   const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
-    let message = "No Data Connect services found in firebase.json.";
-    if (location) {
-      message = `No Data Connect services for location ${location} found in firebase.json.`;
-    }
     throw new FirebaseError(
-      message +
+      "No Data Connect services found in firebase.json." +
         `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
   }
@@ -65,8 +61,7 @@ export async function pickServices(
       (i) => `${i.dataConnectYaml.location}:${i.dataConnectYaml.serviceId}`,
     );
     throw new FirebaseError(
-      `No service matched service in firebase.json. Available services: ${serviceIds.join(", ")}` +
-        `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
+      `No service matched service in firebase.json. Available services: ${serviceIds.join(", ")}`,
     );
   }
   return matchingServices;

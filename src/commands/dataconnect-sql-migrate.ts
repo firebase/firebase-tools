@@ -9,6 +9,8 @@ import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
 
+type MigrateOptions = Options & { service?: string; location?: string };
+
 export const command = new Command("dataconnect:sql:migrate")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
@@ -21,14 +23,14 @@ export const command = new Command("dataconnect:sql:migrate")
   ])
   .before(requireAuth)
   .withForce("execute any required database changes without prompting")
-  .action(async (options: Options) => {
+  .action(async (options: MigrateOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service as string | undefined,
-      options.location as string | undefined,
+      options.service,
+      options.location,
     );
     const instanceId =
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;

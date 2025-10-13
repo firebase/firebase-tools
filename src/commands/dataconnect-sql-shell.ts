@@ -81,6 +81,8 @@ async function mainShellLoop(conn: pg.PoolClient) {
   }
 }
 
+type ShellOptions = Options & { service?: string; location?: string };
+
 export const command = new Command("dataconnect:sql:shell")
   .description(
     "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
@@ -89,14 +91,14 @@ export const command = new Command("dataconnect:sql:shell")
   .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
-  .action(async (options: Options) => {
+  .action(async (options: ShellOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service as string | undefined,
-      options.location as string | undefined,
+      options.service,
+      options.location,
     );
     const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
     const { user: username } = await getIAMUser(options);

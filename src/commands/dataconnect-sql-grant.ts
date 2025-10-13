@@ -12,6 +12,13 @@ import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
+type GrantOptions = Options & {
+  role?: string;
+  email?: string;
+  service?: string;
+  location?: string;
+};
+
 export const command = new Command("dataconnect:sql:grant")
   .description("grants the SQL role <role> to the provided user or service account <email>")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
@@ -23,30 +30,20 @@ export const command = new Command("dataconnect:sql:grant")
   .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)
-  .action(async (options: Options) => {
-    const role = options.role as string;
-    const email = options.email as string;
-    if (!role) {
+  .action(async (options: GrantOptions) => {
+    if (!options.role) {
       throw new FirebaseError(
         "-R, --role <role> is required. Run the command with -h for more info.",
       );
     }
-    if (!email) {
+    if (!options.email) {
       throw new FirebaseError(
         "-E, --email <email> is required. Run the command with -h for more info.",
       );
     }
 
-    if (!allowedRoles.includes(role.toLowerCase())) {
+    if (!allowedRoles.includes(options.role.toLowerCase())) {
       throw new FirebaseError(`Role should be one of ${allowedRoles.join(" | ")}.`);
-    }
-
-    // Make sure current user can perform this action.
-    const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
-    if (!userIsCSQLAdmin) {
-      throw new FirebaseError(
-        `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${role} to ${email}`,
-      );
     }
 
     const projectId = needProjectId(options);
@@ -57,6 +54,14 @@ export const command = new Command("dataconnect:sql:grant")
       options.service as string | undefined,
       options.location as string | undefined,
     );
+
+    // Make sure current user can perform this action.
+    const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+    if (!userIsCSQLAdmin) {
+      throw new FirebaseError(
+        `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${options.role} to ${options.email}`,
+      );
+    }
 
     await grantRoleToUserInSchema(options, serviceInfo.schema);
     return { projectId };
