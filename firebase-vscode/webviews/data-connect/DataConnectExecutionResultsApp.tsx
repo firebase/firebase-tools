@@ -48,26 +48,22 @@ export function DataConnectExecutionResultsApp() {
   let resultsDisplay: JSX.Element | undefined;
   if (response) {
     resultsDisplay = (
-      <>
-        <code>
-          <pre>{JSON.stringify(response, null, 2)}</pre>
-        </code>
-      </>
+      <code>
+        <pre>{JSON.stringify(response, null, 2)}</pre>
+      </code>
     );
   }
 
   let variablesDisplay: JSX.Element | undefined;
   if (dataConnectResults.variables !== "" && dataConnectResults.variables !== "{}") {
     variablesDisplay = (
-      <div>
-        <Label>With variables</Label>
-        <code>
-          <pre>{dataConnectResults.variables}</pre>
-        </code>
-      </div>
+      <code>
+        <label>With variables</label>
+        <pre>{dataConnectResults.variables}</pre>
+      </code>
     );
   } else {
-    variablesDisplay = <Label>No Variables</Label>;
+    variablesDisplay = <Label>Without variables</Label>;
   }
 
   let authDisplay: JSX.Element | undefined;
@@ -80,12 +76,10 @@ export function DataConnectExecutionResultsApp() {
       break;
     case AuthParamsKind.AUTHENTICATED:
       authDisplay = (
-        <div>
-          <Label>Auth</Label>
-          <code>
-            <pre>{dataConnectResults.auth.claims}</pre>
-          </code>
-        </div>
+        <code>
+          <label>Auth</label>
+          <pre>{dataConnectResults.auth.claims}</pre>
+        </code>
       );
       break;
   }
@@ -99,8 +93,8 @@ export function DataConnectExecutionResultsApp() {
       {errorsDisplay}
       {resultsDisplay}
       <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
-        {variablesDisplay}
-        {authDisplay}
+        <div style={{ flex: 1, overflow: "auto" }}>{variablesDisplay}</div>
+        <div style={{ flex: 1, overflow: "auto" }}>{authDisplay}</div>
       </div>
       <code>
         <label>Query</label>

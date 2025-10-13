@@ -19,13 +19,13 @@ export class ExecutionParamsService implements Disposable {
   constructor(readonly broker: ExtensionBrokerImpl, readonly analyticsLogger: AnalyticsLogger) {
     this.disposable.push({
       dispose: broker.on(
-        "defineAuthUserMock",
+        "defineAuthParams",
         (userMock) => (executionAuthParams.value = userMock)
       ),
     });
     this.disposable.push({
       dispose: broker.on(
-        "definedDataConnectArgs",
+        "defineVariables",
         (value) => (executionArgsJSON.value = value),
       )
     });
@@ -67,33 +67,16 @@ export class ExecutionParamsService implements Disposable {
   }
 
   async paramsFixHint(ast: OperationDefinitionNode): Promise<void> {
-    await this.authUserFixHint(ast);
     await this.variablesFixHint(ast);
-  }
-
-  private async authUserFixHint(ast: OperationDefinitionNode): Promise<void> {
-    const impersonate = this.executeGraphqlExtensions().impersonate;
-    if ((impersonate as ImpersonationAuthenticated)?.authClaims) {
-      return; // auth claims is already set
-    }
-    const authDir = ast.directives?.find((d) => d.name.value === "auth");
-    const authLevel = authDir?.arguments?.find((arg) => arg.name.value === "level")?.value;
-    if (!(authLevel as EnumValueNode)?.value?.includes("USER")) {
-      return ; // @auth(level) doesn't require authenticated user
-    }
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_AUTH_USER);
-    executionArgsJSON.value = EXAMPLE_CLAIMS;
-    this.broker.send("notifyAuthUserMock");
-    return;
   }
 
   private async variablesFixHint(ast: OperationDefinitionNode): Promise<void> {
     const userVars = this.executeGraphqlVariables();
-    let updated = false;
+    let description = "";
     for (const varName in userVars) {
       if (!ast.variableDefinitions?.find((v) => v.variable.name.value === varName)) {
         // Remove undefined variable.
-        updated = true;
+        description += `- Removed undefined $${varName}.\n`;
         delete userVars[varName];
       }
     }
@@ -102,15 +85,15 @@ export class ExecutionParamsService implements Disposable {
       if (variable.type.kind === Kind.NON_NULL_TYPE && userVars[varName] === undefined) {
         // Set a default value for missing required variable.
         userVars[varName] = getDefaultScalarValue(print(variable.type.type));
-        updated = true;
+        description += `- Added missing required $${varName} with a default value.\n`;
       }
     }
-    if (!updated) {
+    if (description === "") {
       return;
     }
     this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
     executionArgsJSON.value = JSON.stringify(userVars, null, 2);
-    this.broker.send("notifyDataConnectArgs", executionArgsJSON.value);
+    this.broker.send("notifyVariables", { variables: executionArgsJSON.value, description });
     return;
   }
 }

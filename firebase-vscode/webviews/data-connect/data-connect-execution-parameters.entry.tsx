@@ -12,28 +12,33 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import { broker, useBroker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
-import { EXAMPLE_CLAIMS, AuthParamsKind } from "../../common/messaging/protocol";
+import { EXAMPLE_CLAIMS, AuthParamsKind, AuthParams, DataConnectResults } from "../../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
 
 export function DataConnectExecutionArgumentsApp() {
   const lastOperation = useBroker("notifyLastOperation");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [textareaVariables, setText] = useState("{}");
+  const [variables, setVariables] = useState("{}");
+  const [fixDescription, setFixDescription] = useState("");
 
-  function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setText(e.target.value);
-    broker.send("definedDataConnectArgs", e.target.value);
-  }
-  broker.on("notifyDataConnectArgs" , (newArgs: string) => {
-    setText(newArgs);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(0, 1);
-    }
+  useEffect(() => {
+    broker.send("defineVariables", variables);
+  }, [variables]);
+
+  broker.on("notifyVariables", (v: {variables: string, description: string}) => {
+    setVariables(v.variables);
+    setFixDescription(v.description);
+  });
+  broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+    setVariables(results.variables);
+    setFixDescription("");
   });
 
+  const handleVariableChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setVariables(e.target.value);
+    setFixDescription("");
+  };
   const sendRerun = () => {
     broker.send("rerunExecution");
   };
@@ -71,47 +76,52 @@ export function DataConnectExecutionArgumentsApp() {
       <VSCodePanelTab>AUTHENTICATION</VSCodePanelTab>
       <VSCodePanelView className={style.variable}>
         <textarea
-          ref={textareaRef}
-          value={textareaVariables}
+          value={variables}
           onChange={handleVariableChange}
           className={style.variableInput}
         ></textarea>
         <Spacer size="small"></Spacer>
         {lastOperation && (
           <VSCodeButton onClick={sendRerun}>
+            {fixDescription}
             Rerun last execution: {lastOperation}
           </VSCodeButton>
         )}
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>
-        <AuthUserMockForm />
+        <AuthParamForm />
       </VSCodePanelView>
     </VSCodePanels>
   );
 }
 
-function AuthUserMockForm() {
+function AuthParamForm() {
   const [selectedKind, setSelectedMockKind] = useState<AuthParamsKind>(
     AuthParamsKind.ADMIN,
   );
   const [claims, setClaims] = useState<string>(EXAMPLE_CLAIMS);
 
-  function handleClaimsChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const value = e.target.value;
-    setClaims(value);
-    const userMock = selectedKind === AuthParamsKind.AUTHENTICATED
+  useEffect(() => {
+    const auth = selectedKind === AuthParamsKind.AUTHENTICATED
         ? {
             kind: selectedKind,
-            claims: value,
+            claims: claims,
           }
         : {
             kind: selectedKind,
           };
-    broker.send("defineAuthUserMock", userMock);
-  };
-  broker.on("notifyAuthUserMock" , (_: void) => {
-    setSelectedMockKind(AuthParamsKind.AUTHENTICATED);
-    setClaims(EXAMPLE_CLAIMS);
+    broker.send("defineAuthParams", auth);
+  }, [selectedKind, claims]);
+
+  function setAuthParams(auth: AuthParams) {
+    setSelectedMockKind(auth.kind);
+    if (auth.kind === AuthParamsKind.AUTHENTICATED) {
+      setClaims(auth.claims);
+    }
+  }
+  broker.on("notifyAuthParams", setAuthParams);
+  broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+    setAuthParams(results.auth);
   });
 
   let expandedForm: JSX.Element | undefined;
@@ -124,7 +134,7 @@ function AuthUserMockForm() {
           resize={"vertical"}
           value={claims}
           rows={4}
-          onChange={handleClaimsChange}
+          onChange={(event) => setClaims((event.target as any).value)}
         />
       </>
     );

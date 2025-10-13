@@ -98,12 +98,12 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  definedDataConnectArgs: string;
+  /** Execution parameters */
+  defineVariables: string;
+  defineAuthParams: AuthParams;
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
-
-  defineAuthUserMock: AuthParams;
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
@@ -200,10 +200,9 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
-  // data connect specific
-  notifyDataConnectArgs: string;
-  notifyAuthUserMock: void;
-
+  /** Update execution parameters and results panels */
+  notifyVariables: { variables: string, description: string };
+  notifyAuthParams: AuthParams;
   notifyDataConnectResults: DataConnectResults;
 
   notifyLastOperation: string;
