@@ -80,7 +80,7 @@ export function registerExecution(
 
   function notifyDataConnectResults(item: ExecutionItem) {
     broker.send("notifyDataConnectResults", {
-      displayName: `${item.input.operationAst.name?.value ?? ""}`,
+      displayName: `${item.input.operationAst.operation} ${item.input.operationAst.name?.value ?? ""}`,
       query: print(item.input.operationAst),
       results:
         item.results instanceof Error

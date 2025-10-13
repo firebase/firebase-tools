@@ -63,22 +63,20 @@ export function DataConnectExecutionResultsApp() {
         <pre>{dataConnectResults.variables}</pre>
       </code>
     );
-  } else {
-    variablesDisplay = <Label>No variables</Label>;
   }
 
   let authDisplay: JSX.Element | undefined;
   switch (dataConnectResults.auth.kind) {
     case AuthParamsKind.ADMIN:
-      authDisplay = <Label>Auth: Admin</Label>;
+      // Default is admin.
       break;
     case AuthParamsKind.UNAUTHENTICATED:
-      authDisplay = <Label>Auth: Unauthenticated</Label>;
+      authDisplay = <Label>Unauthenticated</Label>;
       break;
     case AuthParamsKind.AUTHENTICATED:
       authDisplay = (
         <code>
-          <label>Auth</label>
+          <label>Auth Claims</label>
           <pre>{dataConnectResults.auth.claims}</pre>
         </code>
       );
@@ -87,19 +85,17 @@ export function DataConnectExecutionResultsApp() {
 
   return (
     <>
-      <h2>
-        {dataConnectResults.displayName}
-        <VSCodeButton onClick={() => broker.send("rerunExecution")}>
-          <i className="codicon codicon-debug-start"></i>
-        </VSCodeButton>
-      </h2>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div style={{ transform: "scale(0.7)" }}>
+          <VSCodeButton onClick={() => broker.send("rerunExecution")}>
+            <i className="codicon codicon-debug-start"></i> Rerun
+          </VSCodeButton>
+        </div>
+        <h2>{dataConnectResults.displayName}</h2>
+      </div>
       <br />
       {errorsDisplay}
       {resultsDisplay}
-      {/* <div style={{ display: "flex", flexDirection: "row", gap: "20px" }}>
-        <div style={{ flex: 1, overflow: "auto" }}>{variablesDisplay}</div>
-        <div style={{ flex: 1, overflow: "auto" }}>{authDisplay}</div>
-      </div> */}
       <br />
       {authDisplay}
       <br />
@@ -121,11 +117,7 @@ function InternalErrorView({ error }: { error: SerializedError }) {
     <>
       <Label>Error</Label>
       <p>
-        {
-          // Stacktraces usually already include the message, so we only
-          // display the message if there is no stacktrace.
-          error.stack ? <StackView stack={error.stack} /> : error.message
-        }
+        {error.message}
         {error.cause && (
           <>
             <br />
