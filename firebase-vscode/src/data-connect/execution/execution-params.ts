@@ -19,7 +19,7 @@ export class ExecutionParamsService implements Disposable {
     this.disposable.push({
       dispose: broker.on(
         "defineAuthParams",
-        (userMock) => (executionAuthParams.value = userMock)
+        (auth) => (executionAuthParams.value = auth)
       ),
     });
     this.disposable.push({
@@ -53,14 +53,14 @@ export class ExecutionParamsService implements Disposable {
   }
 
   executeGraphqlExtensions(): { impersonate?: Impersonation } {
-    const userMock = executionAuthParams.value;
-    if (!userMock || userMock.kind === AuthParamsKind.ADMIN) {
+    const auth = executionAuthParams.value;
+    if (!auth || auth.kind === AuthParamsKind.ADMIN) {
       return {};
     }
     return {
       impersonate:
-        userMock.kind === AuthParamsKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims), includeDebugDetails: true }
+        auth.kind === AuthParamsKind.AUTHENTICATED
+          ? { authClaims: JSON.parse(auth.claims), includeDebugDetails: true }
           : { unauthenticated: true, includeDebugDetails: true },
     };
   }
