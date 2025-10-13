@@ -25,14 +25,20 @@ export function DataConnectExecutionArgumentsApp() {
     broker.send("defineVariables", variables);
   }, [variables]);
 
-  broker.on("notifyVariables", (v: {variables: string, fixes: string[]}) => {
-    setVariables(v.variables);
-    setFixes(v.fixes);
-  });
-  broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
-    setVariables(results.variables);
-    setFixes([]);
-  });
+  useEffect(() => {
+    const dispose1 = broker.on("notifyVariables", (v: {variables: string, fixes: string[]}) => {
+      setVariables(v.variables);
+      setFixes(v.fixes);
+    });
+    const dispose2 = broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+      setVariables(results.variables);
+      setFixes([]);
+    });
+    return () => {
+      dispose1();
+      dispose2();
+    };
+  }, []);
 
   const handleVariableChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setVariables(e.target.value);
