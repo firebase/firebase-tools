@@ -6,13 +6,14 @@ import { requirePermissions } from "../requirePermissions";
 import { pickService } from "../dataconnect/load";
 import { diffSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
+import { FirebaseError } from "../error";
 
 export const command = new Command("dataconnect:sql:diff")
   .description(
     "display the differences between a local Data Connect schema and your CloudSQL database's current schema",
   )
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service", "us-central1")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

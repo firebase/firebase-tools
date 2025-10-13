@@ -14,7 +14,7 @@ import { setupIAMUsers } from "../gcp/cloudsql/connect";
 export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service", "us-central1")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

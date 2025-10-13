@@ -18,7 +18,7 @@ export const command = new Command("dataconnect:sdk:generate")
     "--service <serviceId>",
     "the serviceId of the Data Connect service. If not provided, generates SDKs for all services.",
   )
-  .option("--location <location>", "the location of the Data Connect service", "us-central1")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .option(
     "--watch",
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",

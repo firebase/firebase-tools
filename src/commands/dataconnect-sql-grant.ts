@@ -15,7 +15,7 @@ const allowedRoles = Object.keys(fdcSqlRoleMap);
 export const command = new Command("dataconnect:sql:grant")
   .description("grants the SQL role <role> to the provided user or service account <email>")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service", "us-central1")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
   .option(
     "-E, --email <email>",
