@@ -47,7 +47,7 @@ export class ExecutionParamsService implements Disposable {
       return JSON.parse(variables);
     } catch (e: any) {
       throw new Error(
-        "Unable to parse variables as JSON. Please check for syntax errors in the variables pane.\n" + e.message,
+        "Unable to parse variables as JSON. Check the variables pane.\n" + e.message,
       );
     }
   }
@@ -70,7 +70,7 @@ export class ExecutionParamsService implements Disposable {
           };
         } catch (e: any) {
           throw new Error(
-            "Unable to parse auth claims as JSON. Please check for syntax errors in the authentication panel.\n" + e.message,
+            "Unable to parse auth claims as JSON. Check the authentication panel.\n" + e.message,
           );
         }
       default:
