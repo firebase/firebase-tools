@@ -74,7 +74,7 @@ export class ExecutionParamsService implements Disposable {
           );
         }
       default:
-        throw new Error(`Unknown auth params kind: ${auth.kind}`);
+        throw new Error(`Unknown auth params kind: ${auth}`);
     }
   }
 
