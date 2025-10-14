@@ -1,7 +1,7 @@
 import { DeployOptions } from "..";
 import { ResourceFilter } from "../../dataconnect/filters";
-import { ServiceInfo, WarningLevel } from "../../dataconnect/types";
-import { AnalyticsParams, trackGA4 } from "../../track";
+import { ServiceInfo } from "../../dataconnect/types";
+import { AnalyticsParams } from "../../track";
 
 export interface Context {
   dataconnect?: {
@@ -16,7 +16,8 @@ export interface DeployStats {
 
   // prepare.ts
   missingBilling?: boolean;
-  numBuildErrors: Map<WarningLevel | "ERROR", number>;
+  numBuildErrors: number;
+  numBuildWarnings: Map<string, number>;
 
   // deploy.ts
   numServiceCreated: number;
@@ -33,13 +34,10 @@ export interface DeployStats {
   numInvalidConnectors: number;
 }
 
-/**
- *
- */
-export function initDeployStats(options?: DeployOptions): DeployStats {
+export function initDeployStats(): DeployStats {
   return {
-    options: options,
-    numBuildErrors: new Map<WarningLevel | "ERROR", number>(),
+    numBuildErrors: 0,
+    numBuildWarnings: new Map<string, number>(),
     numServiceCreated: 0,
     numServiceDeleted: 0,
     numSchemaMigrated: 0,
@@ -51,11 +49,12 @@ export function initDeployStats(options?: DeployOptions): DeployStats {
   };
 }
 
-export async function trackDeployStats(stats: DeployStats): Promise<void> {
-  const params: AnalyticsParams = {
-    force: (!!stats.options?.force).toString(),
-    dry_run: (!!stats.options?.dryRun).toString(),
-    interactive: (!stats.options?.nonInteractive).toString(),
+export function deployStatsParams(stats: DeployStats): AnalyticsParams {
+  const buildWarnings: AnalyticsParams = {};
+  for (const [type, num] of stats.numBuildWarnings.entries()) {
+    buildWarnings[`num_build_warnings_${type}`] = num;
+  }
+  return {
     missing_billing: (!!stats.missingBilling).toString(),
     num_service_created: stats.numServiceCreated,
     num_service_deleted: stats.numServiceDeleted,
@@ -65,7 +64,7 @@ export async function trackDeployStats(stats: DeployStats): Promise<void> {
     num_schema_skipped_due_to_pending_create: stats.numSchemaSkippedDueToPendingCreate,
     num_schema_with_incompatible_schema: stats.numSqlSchemaDiffs,
     num_schema_with_invalid_connector: stats.numInvalidConnectors,
-    num_build_errors: JSON.stringify(Object.fromEntries(stats.numBuildErrors)),
+    num_build_errors: stats.numBuildErrors,
+    ...buildWarnings,
   };
-  await trackGA4("dataconnect_deploy", params);
 }

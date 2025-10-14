@@ -19,13 +19,18 @@ import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import { prepareFrameworks } from "../frameworks";
+import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
-import { DeployStats, trackDeployStats } from "./dataconnect/context";
+import {
+  Context as DataConnectContext,
+  DeployStats,
+  deployStatsParams,
+} from "./dataconnect/context";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -90,7 +95,7 @@ export const deploy = async function (
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
-  const context: any = Object.assign({ projectId }, customContext);
+  const context: HostingContext & DataConnectContext = Object.assign({ projectId }, customContext);
   const predeploys: Chain = [];
   const prepares: Chain = [];
   const deploys: Chain = [];
@@ -148,33 +153,41 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
+  let result = "predeploys_error";
   try {
     await chain(predeploys, context, options, payload);
+    result = "prepares_error";
     await chain(prepares, context, options, payload);
+    result = "deploys_error";
     await chain(deploys, context, options, payload);
+    result = "releases_error";
     await chain(releases, context, options, payload);
+    result = "postdeploys_error";
     await chain(postdeploys, context, options, payload);
+    result = "success";
   } finally {
+    const baseParams: AnalyticsParams = {
+      interactive: options.nonInteractive ? "false" : "true",
+      dryRun: options.dryRun ? "true" : "false",
+      result: result,
+    };
+    const duration = Date.now() - startTime;
+    const params = Object.assign({}, baseParams);
+    Object.keys(TARGETS).reduce((accum, t) => {
+      accum[t] = "false";
+      return accum;
+    }, params);
+    for (const t of targetNames) {
+      params[t] = "true";
+    }
+    await trackGA4("product_deploy", params, duration);
+
     const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
     if (stats) {
-      await trackDeployStats(stats);
+      const fdcParams = deployStatsParams(stats);
+      await trackGA4("dataconnect_deploy", { ...fdcParams, ...baseParams }, duration);
     }
   }
-
-  const duration = Date.now() - startTime;
-  const analyticsParams: AnalyticsParams = {
-    interactive: options.nonInteractive ? "false" : "true",
-    dryRun: options.dryRun ? "true" : "false",
-  };
-
-  Object.keys(TARGETS).reduce((accum, t) => {
-    accum[t] = "false";
-    return accum;
-  }, analyticsParams);
-  for (const t of targetNames) {
-    analyticsParams[t] = "true";
-  }
-  await trackGA4("product_deploy", analyticsParams, duration);
 
   const successMessage = options.dryRun ? "Dry run complete!" : "Deploy complete!";
   logger.info();

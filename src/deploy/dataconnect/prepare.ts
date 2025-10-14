@@ -26,7 +26,7 @@ import { Context, initDeployStats } from "./context";
  */
 export default async function (context: Context, options: DeployOptions): Promise<void> {
   const projectId = needProjectId(options);
-  const deployStats = initDeployStats(options);
+  const deployStats = initDeployStats();
   if (!(await checkBillingEnabled(projectId))) {
     deployStats.missingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
