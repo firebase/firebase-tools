@@ -1,2 +1,2 @@
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
-- Update dataconnect:* commands to use flags for --service & --location (#9312)
+- Update dataconnect:\* commands to use flags for --service & --location (#9312)
