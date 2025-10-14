@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { getIssue, updateIssue } from "../../../crashlytics/issues";
 import { State } from "../../../crashlytics/types";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
@@ -19,6 +20,9 @@ export const get_issue = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId }) => {
@@ -46,6 +50,9 @@ export const update_issue = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId, state }) => {

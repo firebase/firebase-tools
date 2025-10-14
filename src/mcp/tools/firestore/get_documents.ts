@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { getDocuments } from "../../../gcp/firestore";
 import { firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
@@ -29,6 +30,9 @@ export const get_documents = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("firestore", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ paths, database, use_emulator }, { projectId, host }) => {

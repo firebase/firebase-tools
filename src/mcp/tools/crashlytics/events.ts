@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { batchGetEvents, listEvents } from "../../../crashlytics/events";
 import {
   BatchGetEventsResponse,
@@ -36,6 +37,9 @@ export const list_events = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -68,6 +72,9 @@ export const batch_get_events = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, names }) => {

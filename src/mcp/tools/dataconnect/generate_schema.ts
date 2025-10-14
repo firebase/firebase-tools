@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, toContent } from "../../util";
 import { generateSchema } from "../../../gemini/fdcExperience";
 
 export const generate_schema = tool(
@@ -19,6 +20,9 @@ export const generate_schema = tool(
       requiresProject: true,
       requiresAuth: true,
       requiresGemini: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("dataconnect", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ prompt }, { projectId }) => {

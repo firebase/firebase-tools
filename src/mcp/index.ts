@@ -238,14 +238,18 @@ export class FirebaseMcpServer {
     return `http://${host}:${emulatorInfo.port}`;
   }
 
-  get availableTools(): ServerTool[] {
-    return availableTools(
-      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
-    );
+  async getAvailableTools(): Promise<ServerTool[]> {
+    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
+    // We need a project ID and user for the context, but it's ok if they're empty.
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
+    return availableTools(ctx, features);
   }
 
-  getTool(name: string): ServerTool | null {
-    return this.availableTools.find((t) => t.mcp.name === name) || null;
+  async getTool(name: string): Promise<ServerTool | null> {
+    const tools = await this.getAvailableTools();
+    return tools.find((t) => t.mcp.name === name) || null;
   }
 
   get availablePrompts(): ServerPrompt[] {
@@ -314,8 +318,9 @@ export class FirebaseMcpServer {
     await this.trackGA4("mcp_list_tools");
     const skipAutoAuthForStudio = isFirebaseStudio();
     this.log("debug", `skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
+    const availableTools = await this.getAvailableTools();
     return {
-      tools: this.availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => t.mcp),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
@@ -330,7 +335,7 @@ export class FirebaseMcpServer {
     await this.detectProjectRoot();
     const toolName = request.params.name;
     const toolArgs = request.params.arguments;
-    const tool = this.getTool(toolName);
+    const tool = await this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.

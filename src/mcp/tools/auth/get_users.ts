@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, toContent } from "../../util";
 import { findUser, listUsers, UserInfo } from "../../../gcp/auth";
 
 export const get_users = tool(
@@ -28,6 +29,9 @@ export const get_users = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("auth", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ uids, emails, phone_numbers, limit }, { projectId }) => {

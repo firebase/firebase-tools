@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, toContent } from "../../util";
 import { listCollectionIds } from "../../../gcp/firestore";
 import { Emulators } from "../../../emulator/types";
 
@@ -24,6 +25,9 @@ export const list_collections = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("firestore", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ database, use_emulator }, { projectId, host }) => {

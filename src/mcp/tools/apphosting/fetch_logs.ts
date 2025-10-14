@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, toContent } from "../../util";
 import { Backend, getBackend, getTraffic, listBuilds, Traffic } from "../../../gcp/apphosting";
 import { last } from "../../../utils";
 import { FirebaseError } from "../../../error";
@@ -33,6 +34,9 @@ export const fetch_logs = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("apphosting", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ buildLogs, backendId, location } = {}, { projectId }) => {
