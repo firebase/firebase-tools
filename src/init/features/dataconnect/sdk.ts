@@ -184,10 +184,10 @@ export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number 
     {} as Record<string, number>,
   );
   return {
-    num_web_apps: platformCounts["web"] || 0,
-    num_android_apps: platformCounts["android"] || 0,
-    num_ios_apps: platformCounts["ios"] || 0,
-    num_flutter_apps: platformCounts["flutter"] || 0,
+    num_web_apps: platformCounts[Platform.WEB.toLowerCase()] || 0,
+    num_android_apps: platformCounts[Platform.ANDROID.toLowerCase()] || 0,
+    num_ios_apps: platformCounts[Platform.IOS.toLowerCase()] || 0,
+    num_flutter_apps: platformCounts[Platform.FLUTTER.toLowerCase()] || 0,
   };
 }
 
