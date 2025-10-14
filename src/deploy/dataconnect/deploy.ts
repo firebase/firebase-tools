@@ -96,6 +96,7 @@ export default async function (
             instanceId,
             databaseId,
             requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+            source: "deploy",
           });
         }
       }),

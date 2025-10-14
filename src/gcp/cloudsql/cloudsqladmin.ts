@@ -59,12 +59,15 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
   return `https://console.cloud.google.com/sql/instances/${instanceId}/overview?project=${projectId}`;
 }
 
+export type DataConnectLabel = "ft" | "nt";
+export const DEFAULT_DATABASE_VERSION = "POSTGRES_15";
+
 export async function createInstance(args: {
   projectId: string;
   location: string;
   instanceId: string;
   enableGoogleMlIntegration: boolean;
-  freeTrial: boolean;
+  freeTrialLabel: DataConnectLabel;
 }): Promise<void> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
@@ -74,7 +77,7 @@ export async function createInstance(args: {
     await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
       name: args.instanceId,
       region: args.location,
-      databaseVersion: "POSTGRES_15",
+      databaseVersion: DEFAULT_DATABASE_VERSION,
       settings: {
         tier: "db-f1-micro",
         edition: "ENTERPRISE",
@@ -84,7 +87,7 @@ export async function createInstance(args: {
         enableGoogleMlIntegration: args.enableGoogleMlIntegration,
         databaseFlags,
         storageAutoResize: false,
-        userLabels: { "firebase-data-connect": args.freeTrial ? "ft" : "nt" },
+        userLabels: { "firebase-data-connect": args.freeTrialLabel },
         insightsConfig: {
           queryInsightsEnabled: true,
           queryPlansPerMinute: 5, // Match the default settings
