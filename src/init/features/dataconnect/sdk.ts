@@ -171,7 +171,7 @@ export async function actuate(setup: Setup, config: Config) {
     if (fdcInfo) {
       fdcInfo.analyticsFlow += `_${flow}`;
     } else {
-      await trackGA4("dataconnect_init", {
+      void trackGA4("dataconnect_init", {
         project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
         flow: `cli_sdk_${flow}`,
       });
