@@ -180,7 +180,7 @@ export const deploy = async function (
     for (const t of targetNames) {
       params[t] = "true";
     }
-    await trackGA4("product_deploy", params, duration);
+    void trackGA4("product_deploy", params, duration);
 
     const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
     if (stats) {
