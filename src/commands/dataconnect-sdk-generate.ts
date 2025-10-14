@@ -4,24 +4,33 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
-import { loadAll } from "../dataconnect/load";
+import { pickServices } from "../dataconnect/load";
 import { logger } from "../logger";
 import { getProjectDefaultAccount } from "../auth";
 import { logLabeledSuccess } from "../utils";
 import { ServiceInfo } from "../dataconnect/types";
 
-type GenerateOptions = Options & { watch?: boolean };
+type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
 export const command = new Command("dataconnect:sdk:generate")
-  .description("generate typed SDKs for your Data Connect connectors")
+  .description("generate typed SDKs to use Data Connect in your apps")
+  .option(
+    "--service <serviceId>",
+    "the serviceId of the Data Connect service. If not provided, generates SDKs for all services.",
+  )
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .option(
     "--watch",
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
   )
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
-
-    const serviceInfos = await loadAll(projectId, options.config);
+    const serviceInfos = await pickServices(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
     const serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
       serviceInfo.connectorInfo.some((c) => {
         return (

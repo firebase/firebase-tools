@@ -3,29 +3,38 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/load";
+import { pickOneService } from "../dataconnect/load";
 import { diffSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 
-export const command = new Command("dataconnect:sql:diff [serviceId]")
+type DiffOptions = Options & { service?: string; location?: string };
+
+export const command = new Command("dataconnect:sql:diff")
   .description(
-    "display the differences between a local Data Connect schema and your CloudSQL database's current schema",
+    "display the differences between the local Data Connect schema and your CloudSQL database's schema",
   )
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
   ])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: DiffOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
 
     const diffs = await diffSchema(
       options,
       serviceInfo.schema,
       serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
     );
-    return { projectId, serviceId, diffs };
+    return { projectId, diffs };
   });

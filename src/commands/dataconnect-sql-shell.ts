@@ -7,7 +7,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/load";
+import { pickOneService } from "../dataconnect/load";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
@@ -81,16 +81,25 @@ async function mainShellLoop(conn: pg.PoolClient) {
   }
 }
 
-export const command = new Command("dataconnect:sql:shell [serviceId]")
+type ShellOptions = Options & { service?: string; location?: string };
+
+export const command = new Command("dataconnect:sql:shell")
   .description(
     "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
   )
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--location <location>", "the location of the Data Connect service to disambiguate")
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: ShellOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
     const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
@@ -134,5 +143,5 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     await pool.end();
     connector.close();
 
-    return { projectId, serviceId };
+    return { projectId };
   });
