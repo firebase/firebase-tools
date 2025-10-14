@@ -9,7 +9,7 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as prompt from "../../prompt";
 import * as poller from "../../operation-poller";
 import { dataconnectOrigin } from "../../api";
-import { initDeployStats } from "../../dataconnect/types";
+import { initDeployStats } from "./context";
 
 describe("dataconnect deploy", () => {
   let sandbox: sinon.SinonSandbox;

@@ -25,10 +25,10 @@ import { Context, initDeployStats } from "./context";
  * @param options The CLI options object.
  */
 export default async function (context: Context, options: DeployOptions): Promise<void> {
-  const deployStats = initDeployStats(options.force, options.dryRun);
   const projectId = needProjectId(options);
+  const deployStats = initDeployStats(options);
   if (!(await checkBillingEnabled(projectId))) {
-    deployStats.abortMissingBilling = true;
+    deployStats.abortDueToMissingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
   }
   await ensureApis(projectId);

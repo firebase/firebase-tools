@@ -9,7 +9,7 @@ import * as prompts from "../../dataconnect/prompts";
 import { logger } from "../../logger";
 import * as poller from "../../operation-poller";
 import { dataconnectOrigin } from "../../api";
-import { initDeployStats } from "../../dataconnect/types";
+import { initDeployStats } from "./context";
 
 describe("dataconnect release", () => {
   let sandbox: sinon.SinonSandbox;

@@ -19,13 +19,13 @@ import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import { prepareFrameworks } from "../frameworks";
-import { Context } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
+import { DeployStats, trackDeployStats } from "./dataconnect/context";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -90,7 +90,7 @@ export const deploy = async function (
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
-  const context: Context = Object.assign({ projectId }, customContext);
+  const context: any = Object.assign({ projectId }, customContext);
   const predeploys: Chain = [];
   const prepares: Chain = [];
   const deploys: Chain = [];
@@ -148,28 +148,23 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
-  await chain(predeploys, context, options, payload);
-  await chain(prepares, context, options, payload);
-  await chain(deploys, context, options, payload);
-  await chain(releases, context, options, payload);
-  await chain(postdeploys, context, options, payload);
-
-  if (context.dataconnect?.deployStats) {
-    const analytics: AnalyticsParams = {
-      ...context.dataconnect.deployStats,
-    };
-    if (options.dryRun) {
-      analytics.dry_run = "true";
+  try {
+    await chain(predeploys, context, options, payload);
+    await chain(prepares, context, options, payload);
+    await chain(deploys, context, options, payload);
+    await chain(releases, context, options, payload);
+    await chain(postdeploys, context, options, payload);
+  } finally {
+    const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
+    if (stats) {
+      await trackDeployStats(stats);
     }
-    if (options.force) {
-      analytics.force = "true";
-    }
-    void trackGA4("dataconnect_deploy", analytics);
   }
 
   const duration = Date.now() - startTime;
   const analyticsParams: AnalyticsParams = {
     interactive: options.nonInteractive ? "false" : "true",
+    dryRun: options.dryRun ? "true" : "false",
   };
 
   Object.keys(TARGETS).reduce((accum, t) => {

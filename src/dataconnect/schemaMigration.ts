@@ -1,4 +1,3 @@
-
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
@@ -21,7 +20,8 @@ import {
 import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { select, confirm } from "../prompt";
 import { logger } from "../logger";
-import { Schema, DeployStats } from "./types";
+import { Schema } from "./types";
+import { DeployStats } from "../deploy/dataconnect/context";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
@@ -151,9 +151,9 @@ export async function migrateSchema(args: {
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
-  analytics?: DeployStats;
+  stats?: DeployStats;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly, schemaValidation, analytics } = args;
+  const { options, schema, validateOnly, schemaValidation, stats } = args;
 
   // If the schema validation mode is unset, we prompt COMPATIBLE SQL diffs and then STRICT diffs.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
@@ -172,8 +172,8 @@ export async function migrateSchema(args: {
   // Check if Cloud SQL instance is still being created.
   const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
   if (existingInstance.state === "PENDING_CREATE") {
-    if (analytics) {
-      analytics.skip_pending_create = "true";
+    if (stats) {
+      stats.numSchemaSkippedDueToPendingCreate++;
     }
     const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
     if (!postgresql) {
@@ -216,6 +216,14 @@ export async function migrateSchema(args: {
       }
       throw err;
     }
+    if (stats) {
+      if (incompatible) {
+        stats.numSqlSchemaDiffs += incompatible.diffs.length;
+      }
+      if (invalidConnectors.length) {
+        stats.numInvalidConnectors += invalidConnectors.length;
+      }
+    }
 
     const migrationMode = await promptForSchemaMigration(
       options,
@@ -224,7 +232,6 @@ export async function migrateSchema(args: {
       incompatible,
       validateOnly,
       validationMode,
-      analytics,
     );
 
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
@@ -232,7 +239,6 @@ export async function migrateSchema(args: {
       serviceName,
       invalidConnectors,
       validateOnly,
-      analytics,
     );
 
     if (incompatible) {
@@ -242,14 +248,10 @@ export async function migrateSchema(args: {
         instanceId,
         incompatibleSchemaError: incompatible,
         choice: migrationMode,
-        analytics,
       });
     }
 
     if (shouldDeleteInvalidConnectors) {
-      if (analytics) {
-        analytics.delete_invalid_connector = "true";
-      }
       await deleteInvalidConnectors(invalidConnectors);
     }
     if (!validateOnly) {
@@ -270,10 +272,12 @@ export async function migrateSchema(args: {
       }
       // Parse and handle failed precondition errors, then retry.
       const incompatible = errors.getIncompatibleSchemaError(err);
-      const invalidConnectors = errors.getInvalidConnectors(err);
-      if (!incompatible && !invalidConnectors.length) {
+      if (!incompatible) {
         // If we got a different type of error, throw it
         throw err;
+      }
+      if (stats && incompatible) {
+        stats.numSqlSchemaDiffs += incompatible.diffs.length;
       }
 
       const migrationMode = await promptForSchemaMigration(
@@ -283,7 +287,6 @@ export async function migrateSchema(args: {
         incompatible,
         validateOnly,
         "STRICT_AFTER_COMPATIBLE",
-        analytics,
       );
 
       if (incompatible) {
@@ -293,7 +296,6 @@ export async function migrateSchema(args: {
           instanceId,
           incompatibleSchemaError: incompatible,
           choice: migrationMode,
-          analytics,
         });
         diffs = diffs.concat(maybeDiffs);
       }
@@ -394,9 +396,8 @@ async function handleIncompatibleSchemaError(args: {
   instanceId: string;
   databaseId: string;
   choice: "all" | "safe" | "none";
-  analytics?: DeployStats;
 }): Promise<Diff[]> {
-  const { incompatibleSchemaError, options, instanceId, databaseId, choice, analytics } = args;
+  const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
   const commandsToExecute = incompatibleSchemaError.diffs.filter((d) => {
     switch (choice) {
       case "all":
@@ -407,9 +408,6 @@ async function handleIncompatibleSchemaError(args: {
         return false;
     }
   });
-  if (analytics) {
-    analytics.completed_schema_migration = "true";
-  }
   if (commandsToExecute.length) {
     const commandsToExecuteBySuperUser = commandsToExecute.filter(requireSuperUser);
     const commandsToExecuteByOwner = commandsToExecute.filter((sql) => !requireSuperUser(sql));
@@ -483,12 +481,8 @@ async function promptForSchemaMigration(
   err: IncompatibleSqlSchemaError | undefined,
   validateOnly: boolean,
   validationMode: SchemaValidation | "STRICT_AFTER_COMPATIBLE",
-  analytics?: DeployStats,
 ): Promise<"none" | "safe" | "all"> {
   if (!err) {
-    if (analytics) {
-      analytics.completed_schema_migration = "true";
-    }
     return "none";
   }
   const defaultChoice = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
@@ -519,9 +513,6 @@ async function promptForSchemaMigration(
       default: defaultChoice,
     });
     if (ans === "abort") {
-      if (analytics) {
-        analytics.abort_schema_migration = "true";
-      }
       throw new FirebaseError("Command aborted.");
     }
     return ans;
@@ -550,7 +541,6 @@ async function promptForInvalidConnectorError(
   serviceName: string,
   invalidConnectors: string[],
   validateOnly: boolean,
-  analytics?: DeployStats,
 ): Promise<boolean> {
   if (!invalidConnectors.length) {
     return false;
@@ -575,9 +565,6 @@ async function promptForInvalidConnectorError(
     return true;
   }
   const cmd = suggestedCommand(serviceName, invalidConnectors);
-  if (analytics) {
-    analytics.abort_invalid_connector = "true";
-  }
   throw new FirebaseError(
     `Command aborted. Try deploying those connectors first with ${clc.bold(cmd)}`,
   );
