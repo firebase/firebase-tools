@@ -101,6 +101,7 @@ export default async function (context: Context, options: Options): Promise<void
             instanceId,
             databaseId,
             requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+            source: "deploy",
           });
         }
       }),

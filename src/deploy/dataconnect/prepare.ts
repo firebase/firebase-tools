@@ -90,6 +90,7 @@ export default async function (context: Context, options: DeployOptions): Promis
               databaseId,
               requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
               dryRun: true,
+              source: "deploy",
             });
           }
         }),
