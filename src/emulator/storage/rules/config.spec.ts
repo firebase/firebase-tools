@@ -127,7 +127,6 @@ function getOptions(config: any): Options {
     only: "",
     except: "",
     nonInteractive: false,
-    json: false,
     interactive: false,
     debug: false,
     force: false,
