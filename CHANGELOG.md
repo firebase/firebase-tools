@@ -1,1 +1,2 @@
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
+- Add a command `firebase dataconnect:execute` to run queries and mutations (#9274).
