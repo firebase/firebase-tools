@@ -130,6 +130,18 @@ export function registerExecution(
     { document, documentPath, position }: OperationLocation,
     instance: InstanceType,
   ) {
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD,
+    );
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${ast.operation}`
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${ast.operation}`,
+    );
+    await vscode.window.activeTextEditor?.document.save();
+
     // hold last execution in memory, and send operation name to webview
     lastExecutionInputSignal.value = {
       ast,
@@ -170,6 +182,7 @@ export function registerExecution(
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
       const always = "Yes (always)";
       const yes = "Yes";
       const result = await vscode.window.showWarningMessage(
@@ -179,17 +192,28 @@ export function registerExecution(
         always,
       );
 
-      if (result !== always && result !== yes) {
-        return;
-      }
-
-      // If the user selects "always", we update User settings.
-      if (result === always) {
-        configs.update(
-          alwaysExecuteMutationsInProduction,
-          true,
-          ConfigurationTarget.Global,
-        );
+      switch (result) {
+        case yes:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED
+          );
+          break;
+        case always:
+          // If the user selects "always", we update User settings.
+          configs.update(
+            alwaysExecuteMutationsInProduction,
+            true,
+            ConfigurationTarget.Global,
+          );
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
+          );
+          break;
+        default:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
+          );
+          return;
       }
     }
 
@@ -237,6 +261,7 @@ export function registerExecution(
 
     // prompt user to continue execution or modify arguments
     if (missingArgs.length > 0) {
+      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.MISSING_VARIABLES);
       // open a modal with option to run anyway or edit args
       const editArgs = { title: "Edit variables" };
       const continueExecution = { title: "Continue Execution" };
@@ -314,6 +339,7 @@ export function registerExecution(
   }
 
   async function generateOperation(arg: GenerateOperationInput) {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
     if (!arg.projectId) {
       vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
       return;
@@ -339,6 +365,7 @@ ${schema}
   }
 
   async function showGiFToSModal(projectId: string): Promise<boolean> {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL);
     const tos = "Terms of Service";
     const enable = "Enable";
     const result = await vscode.window.showWarningMessage(
@@ -352,15 +379,20 @@ ${schema}
     );
     switch (result) {
       case enable:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED);
         configstore.set("gemini", true);
         await ensureGIFApiTos(projectId);
         return true;
       case tos:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED);
         vscode.env.openExternal(
           vscode.Uri.parse(
             "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
           ),
         );
+      default:
+        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED);
+        break;
     }
     return false;
   }
@@ -390,21 +422,12 @@ ${schema}
     vscode.commands.registerCommand(
       "firebase.dataConnect.executeOperation",
       async (ast, location, instanceType: InstanceType) => {
-        analyticsLogger.logger.logUsage(
-          instanceType === InstanceType.LOCAL
-            ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
-            : DATA_CONNECT_EVENT_NAME.RUN_PROD,
-        );
-        await vscode.window.activeTextEditor?.document.save();
         await executeOperation(ast, location, instanceType);
       },
     ),
     vscode.commands.registerCommand(
       "firebase.dataConnect.generateOperation",
       async (arg: GenerateOperationInput) => {
-        analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION,
-        );
         await generateOperation(arg);
       },
     ),
@@ -492,15 +515,4 @@ function getDefaultArgs(args: TypedInput[]) {
     acc[arg.varName] = defaultValue;
     return acc;
   }, {});
-}
-
-// converts AST OperationDefinitionNode to a DocumentNode for schema validation
-function operationDefinitionToDocument(
-  operationDefinition: OperationDefinitionNode,
-): DocumentNode {
-  return {
-    kind: Kind.DOCUMENT,
-    definitions: [operationDefinition],
-    loc: operationDefinition.loc,
-  };
 }
