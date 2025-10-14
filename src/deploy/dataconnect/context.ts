@@ -27,8 +27,8 @@ export interface DeployStats {
 
   // migrateSchema.ts
   numSchemaSkippedDueToPendingCreate: number;
-  numSqlSchemaDiffs: number;
-  numInvalidConnectors: number;
+  numSchemaSqlDiffs: number;
+  numSchemaInvalidConnectors: number;
 }
 
 export function initDeployStats(): DeployStats {
@@ -41,8 +41,8 @@ export function initDeployStats(): DeployStats {
     numConnectorUpdatedBeforeSchema: 0,
     numConnectorUpdatedAfterSchema: 0,
     numSchemaSkippedDueToPendingCreate: 0,
-    numSqlSchemaDiffs: 0,
-    numInvalidConnectors: 0,
+    numSchemaSqlDiffs: 0,
+    numSchemaInvalidConnectors: 0,
   };
 }
 
@@ -59,8 +59,8 @@ export function deployStatsParams(stats: DeployStats): AnalyticsParams {
     num_connector_updated_before_schema: stats.numConnectorUpdatedBeforeSchema,
     num_connector_updated_after_schema: stats.numConnectorUpdatedAfterSchema,
     num_schema_skipped_due_to_pending_create: stats.numSchemaSkippedDueToPendingCreate,
-    num_schema_with_incompatible_schema: stats.numSqlSchemaDiffs,
-    num_schema_with_invalid_connector: stats.numInvalidConnectors,
+    num_schema_sql_diffs: stats.numSchemaSqlDiffs,
+    num_schema_invalid_connectors: stats.numSchemaInvalidConnectors,
     num_build_errors: stats.numBuildErrors,
     ...buildWarnings,
   };

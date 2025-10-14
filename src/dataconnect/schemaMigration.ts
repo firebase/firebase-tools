@@ -218,10 +218,10 @@ export async function migrateSchema(args: {
     }
     if (stats) {
       if (incompatible) {
-        stats.numSqlSchemaDiffs += incompatible.diffs.length;
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
       }
       if (invalidConnectors.length) {
-        stats.numInvalidConnectors += invalidConnectors.length;
+        stats.numSchemaInvalidConnectors += invalidConnectors.length;
       }
     }
 
@@ -277,7 +277,7 @@ export async function migrateSchema(args: {
         throw err;
       }
       if (stats && incompatible) {
-        stats.numSqlSchemaDiffs += incompatible.diffs.length;
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
       }
 
       const migrationMode = await promptForSchemaMigration(
