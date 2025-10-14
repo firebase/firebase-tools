@@ -89,7 +89,6 @@ export async function checkFeatureActive(
   projectId?: string,
   options?: any,
 ): Promise<boolean> {
-
   // TODO(visum) Replace this short term hack with a public API to verify integration
   // before showing tools.
   // If the feature is a part of skip check, feature is active always!
