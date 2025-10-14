@@ -88,6 +88,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
               databaseId,
               requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
               dryRun: true,
+              source: "deploy",
             });
           }
         }),
