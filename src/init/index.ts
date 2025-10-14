@@ -27,6 +27,7 @@ export interface Setup {
   projectId?: string;
   projectLocation?: string;
   isBillingEnabled?: boolean;
+  isMcp?: boolean;
 
   hosting?: Record<string, any>;
 }
@@ -149,6 +150,7 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
 
 /** Actuate the feature init flow from firebase_init MCP tool. */
 export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
+  setup.isMcp = true;
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
     const start = process.uptime();

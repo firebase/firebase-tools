@@ -220,6 +220,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
+      source: setup.isMcp ? "mcp_init" : "init",
     });
   }
 
