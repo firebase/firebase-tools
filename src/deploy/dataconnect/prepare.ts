@@ -14,22 +14,21 @@ import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
-import { requiresVector, initDeployStats } from "../../dataconnect/types";
+import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
 import { upgradeInstructions } from "../../dataconnect/freeTrial";
+import { Context, initDeployStats } from "./context";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: DeployOptions): Promise<void> {
-  context.dataconnect = {
-    deployStats: initDeployStats(),
-  };
+export default async function (context: Context, options: DeployOptions): Promise<void> {
+  const deployStats = initDeployStats(options.force, options.dryRun);
   const projectId = needProjectId(options);
   if (!(await checkBillingEnabled(projectId))) {
-    context.dataconnect.deployStats.abort_missing_billing = "true";
+    deployStats.abortMissingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
   }
   await ensureApis(projectId);
@@ -37,17 +36,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const filters = getResourceFilters(options);
   const serviceInfos = await loadAll(projectId, options.config);
   for (const si of serviceInfos) {
-    try {
-      si.deploymentMetadata = await build(
-        options,
-        si.sourceDirectory,
-        context.dataconnect.deployStats,
-        options.dryRun,
-      );
-    } catch (e: any) {
-      context.dataconnect.deployStats.abort_build_error = "true";
-      throw e;
-    }
+    si.deploymentMetadata = await build(options, si.sourceDirectory, deployStats);
   }
   const unmatchedFilters = filters?.filter((f) => {
     // filter out all filters that match no service
@@ -71,6 +60,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   context.dataconnect = {
     serviceInfos,
     filters,
+    deployStats,
   };
   utils.logLabeledBullet("dataconnect", `Successfully compiled schema and connectors`);
   if (options.dryRun) {

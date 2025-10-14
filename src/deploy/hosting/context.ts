@@ -1,7 +1,5 @@
 import { HostingResolved } from "../../hosting/config";
 import { Context as FunctionsContext } from "../functions/args";
-import { DeployStats, ServiceInfo } from "../../dataconnect/types";
-import { ResourceFilter } from "../../dataconnect/filters";
 
 export interface HostingDeploy {
   // Note: a HostingMultiple[number] is a stronger guarantee than a HostingSingle
@@ -13,11 +11,6 @@ export interface HostingDeploy {
 export interface Context extends FunctionsContext {
   hosting?: {
     deploys: HostingDeploy[];
-  };
-  dataconnect?: {
-    serviceInfos: ServiceInfo[];
-    filters?: ResourceFilter[];
-    deployStats: DeployStats;
   };
 
   // Set as a global in hosting-channel-deploy.ts

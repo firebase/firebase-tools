@@ -8,6 +8,7 @@ import { migrateSchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
 import { parseServiceName } from "../../dataconnect/names";
 import { logger } from "../../logger";
+import { Context } from "./context";
 
 /**
  * Release deploys schemas and connectors.
@@ -16,13 +17,7 @@ import { logger } from "../../logger";
  * @param options The CLI options object.
  */
 export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-      deployStats: DeployStats;
-    };
-  },
+  context: Context,
   options: Options,
 ): Promise<void> {
   const project = needProjectId(options);

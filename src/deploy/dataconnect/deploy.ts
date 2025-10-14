@@ -9,6 +9,7 @@ import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import { confirm } from "../../prompt";
+import { Context } from "mocha";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -16,16 +17,7 @@ import { confirm } from "../../prompt";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-      deployStats: DeployStats;
-    };
-  },
-  options: Options,
-): Promise<void> {
+export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
   const services = await client.listAllServices(projectId);

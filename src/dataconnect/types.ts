@@ -244,37 +244,3 @@ interface ImpersonationUnauthenticated {
 export type Impersonation = ImpersonationAuthenticated | ImpersonationUnauthenticated;
 
 /** End Dataplane Client Types */
-
-export interface DeployStats {
-  // prepare.ts
-  abort_missing_billing?: string;
-  abort_build_error?: string;
-  abort_build_warning?: string;
-  ack_build_warning?: string;
-
-  // deploy.ts
-  num_service_created: number;
-  num_service_deleted: number;
-
-  // release.ts
-  num_schema_migrated: number;
-  num_connector_updated_before_schema: number;
-  num_connector_updated_after_schema: number;
-
-  // migrateSchema.ts
-  skip_pending_create?: string;
-  abort_schema_migration?: string;
-  completed_schema_migration?: string;
-  abort_invalid_connector?: string;
-  delete_invalid_connector?: string;
-}
-
-export function initDeployStats(): DeployStats {
-  return {
-    num_service_created: 0,
-    num_service_deleted: 0,
-    num_schema_migrated: 0,
-    num_connector_updated_before_schema: 0,
-    num_connector_updated_after_schema: 0,
-  };
-}
