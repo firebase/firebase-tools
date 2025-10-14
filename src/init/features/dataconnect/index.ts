@@ -171,14 +171,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await sdk.actuate(setup, config);
   } finally {
     const sdkInfo = setup.featureInfo?.dataconnectSdk;
-    const platformCounts = (sdkInfo?.apps ?? []).reduce(
-      (acc, a) => {
-        const platform = a.platform.toLowerCase();
-        acc[platform] = (acc[platform] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
     void trackGA4("dataconnect_init", {
       flow: info.analyticsFlow,
       project_status: setup.projectId
@@ -188,10 +180,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
             : "blaze"
           : "spark"
         : "missing",
-      num_web_apps: platformCounts["web"] || 0,
-      num_android_apps: platformCounts["android"] || 0,
-      num_ios_apps: platformCounts["ios"] || 0,
-      num_flutter_apps: platformCounts["flutter"] || 0,
+      ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
     });
   }
 
