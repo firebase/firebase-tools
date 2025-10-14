@@ -11,6 +11,12 @@ import * as utils from "../utils";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
+type SetupStats = {
+  action: "get" | "update" | "create";
+  freeTrialLabel?: cloudSqlAdminClient.DataConnectLabel;
+  databaseVersion?: string;
+};
+
 /** Sets up a Cloud SQL instance, database and its permissions. */
 export async function setupCloudSql(args: {
   projectId: string;
@@ -21,46 +27,60 @@ export async function setupCloudSql(args: {
   source: "init" | "mcp_init" | "deploy";
   dryRun?: boolean;
 }): Promise<void> {
-  const startTime = Date.now();
-  await upsertInstance({ ...args, startTime });
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
+
+  const startTime = Date.now();
+  const stats: SetupStats = { action: "get" };
+  let success = false;
+  try {
+    await upsertInstance(stats, { ...args });
+    success = true;
+  } finally {
+    if (!dryRun) {
+      await trackGA4(
+        "dataconnect_cloud_sql",
+        {
+          source: args.source,
+          action: success ? stats.action : `${stats.action}_error`,
+          location: args.location,
+          enable_google_ml_integration: args.requireGoogleMlIntegration.toString(),
+          database_version: stats.databaseVersion?.toLowerCase() || "unknown",
+          free_trial_label: stats.freeTrialLabel || "unknown",
+        },
+        Date.now() - startTime,
+      );
+    }
+  }
+
   if (requireGoogleMlIntegration && !dryRun) {
     await grantRolesToCloudSqlServiceAccount(projectId, instanceId, [GOOGLE_ML_INTEGRATION_ROLE]);
   }
 }
 
-async function upsertInstance(args: {
-  projectId: string;
-  location: string;
-  instanceId: string;
-  databaseId: string;
-  requireGoogleMlIntegration: boolean;
-  source: "init" | "mcp_init" | "deploy";
-  dryRun?: boolean;
-  startTime: number;
-}): Promise<void> {
-  const { projectId, instanceId, requireGoogleMlIntegration, dryRun, source, location, startTime } =
-    args;
+async function upsertInstance(
+  stats: SetupStats,
+  args: {
+    projectId: string;
+    location: string;
+    instanceId: string;
+    databaseId: string;
+    requireGoogleMlIntegration: boolean;
+    dryRun?: boolean;
+  },
+): Promise<void> {
+  const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
   try {
     const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
     utils.logLabeledBullet(
       "dataconnect",
       `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
     );
-    const duration = Date.now() - startTime;
-    void trackGA4(
-      "dataconnect_cloud_sql",
-      {
-        source: source,
-        action: "get",
-        location: location,
-        enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-        result: "success",
-        free_trial: "false", // existing instance can't be a new free trial one
-        database_version: "postgres_17",
-      },
-      duration,
-    );
+    const label = existingInstance.settings?.userLabels?.["firebase-data-connect"];
+    if (label === "ft" || label === "nt") {
+      stats.freeTrialLabel = label;
+    }
+    stats.databaseVersion = existingInstance.databaseVersion;
+
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
       if (dryRun) {
@@ -76,69 +96,28 @@ async function upsertInstance(args: {
           `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
             why,
         );
-        try {
-          await promiseWithSpinner(
-            () =>
-              cloudSqlAdminClient.updateInstanceForDataConnect(
-                existingInstance,
-                requireGoogleMlIntegration,
-              ),
-            "Updating your Cloud SQL instance...",
-          );
-          const duration = Date.now() - startTime;
-          void trackGA4(
-            "dataconnect_cloud_sql",
-            {
-              source: source,
-              action: "updated",
-              location: location,
-              enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-              result: "success",
-              free_trial: "false",
-              database_version: "postgres_17",
-            },
-            duration,
-          );
-        } catch (err) {
-          const duration = Date.now() - startTime;
-          void trackGA4(
-            "dataconnect_cloud_sql",
-            {
-              source: source,
-              action: "updated_failed",
-              location: location,
-              enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-              result: "error",
-              free_trial: "false",
-              database_version: "postgres_17",
-            },
-            duration,
-          );
-          throw err;
-        }
+        stats.action = "update";
+        await promiseWithSpinner(
+          () =>
+            cloudSqlAdminClient.updateInstanceForDataConnect(
+              existingInstance,
+              requireGoogleMlIntegration,
+            ),
+          "Updating your Cloud SQL instance...",
+        );
       }
     }
     await upsertDatabase({ ...args });
   } catch (err: any) {
     if (err.status !== 404) {
-      const duration = Date.now() - startTime;
-      void trackGA4(
-        "dataconnect_cloud_sql",
-        {
-          source: source,
-          action: "get",
-          location: location,
-          enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-          result: "error",
-          free_trial: "false",
-          database_version: "postgres_17",
-        },
-        duration,
-      );
       throw err;
     }
     // Cloud SQL instance is not found, start its creation.
-    await createInstance({ ...args });
+    stats.action = "create";
+    const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
+    stats.freeTrialLabel = freeTrialUsed ? "nt" : "ft";
+    stats.databaseVersion = cloudSqlAdminClient.DEFAULT_DATABASE_VERSION;
+    await createInstance({ ...args, freeTrialLabel: stats.freeTrialLabel });
   }
 }
 
@@ -147,62 +126,28 @@ async function createInstance(args: {
   location: string;
   instanceId: string;
   requireGoogleMlIntegration: boolean;
-  source: "init" | "mcp_init" | "deploy";
+  freeTrialLabel: cloudSqlAdminClient.DataConnectLabel;
   dryRun?: boolean;
-  startTime: number;
 }): Promise<void> {
-  const { projectId, location, instanceId, requireGoogleMlIntegration, dryRun, source, startTime } =
+  const { projectId, location, instanceId, requireGoogleMlIntegration, dryRun, freeTrialLabel } =
     args;
-  const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
   if (dryRun) {
     utils.logLabeledBullet(
       "dataconnect",
       `Cloud SQL Instance ${clc.bold(instanceId)} not found. It will be created on your next deploy.`,
     );
   } else {
-    try {
-      await cloudSqlAdminClient.createInstance({
-        projectId,
-        location,
-        instanceId,
-        enableGoogleMlIntegration: requireGoogleMlIntegration,
-        freeTrial: !freeTrialUsed,
-      });
-      const duration = Date.now() - startTime;
-      void trackGA4(
-        "dataconnect_cloud_sql",
-        {
-          source: source,
-          action: "created",
-          location: location,
-          enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-          result: "success",
-          free_trial: (!freeTrialUsed).toString(),
-          database_version: "postgres_17",
-        },
-        duration,
-      );
-      utils.logLabeledBullet(
-        "dataconnect",
-        cloudSQLBeingCreated(projectId, instanceId, !freeTrialUsed),
-      );
-    } catch (err) {
-      const duration = Date.now() - startTime;
-      void trackGA4(
-        "dataconnect_cloud_sql",
-        {
-          source: source,
-          action: "created_failed",
-          location: location,
-          enable_google_ml_integration: requireGoogleMlIntegration.toString(),
-          result: "error",
-          free_trial: (!freeTrialUsed).toString(),
-          database_version: "postgres_17",
-        },
-        duration,
-      );
-      throw err;
-    }
+    await cloudSqlAdminClient.createInstance({
+      projectId,
+      location,
+      instanceId,
+      enableGoogleMlIntegration: requireGoogleMlIntegration,
+      freeTrialLabel,
+    });
+    utils.logLabeledBullet(
+      "dataconnect",
+      cloudSQLBeingCreated(projectId, instanceId, freeTrialLabel === "ft"),
+    );
   }
 }
 
@@ -266,8 +211,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
-      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
-    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
+      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.\n    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
     if (
       settings.ipConfiguration?.privateNetwork &&
