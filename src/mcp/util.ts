@@ -93,7 +93,7 @@ export async function checkFeatureActive(
   // TODO(visum) Replace this short term hack with a public API to verify integration
   // before showing tools.
   // If the feature is a part of skip check, feature is active always!
-  if (featureSkipServerCheck.includes(feature)) return true;
+  if (featureSkipServerCheck.has(feature)) return true;
   // if the feature is configured in firebase.json, it's active
   if (feature in (options?.config?.data || {})) return true;
   // if the feature's api is active in the project, it's active
