@@ -168,7 +168,7 @@ export const deploy = async function (
   } finally {
     const baseParams: AnalyticsParams = {
       interactive: options.nonInteractive ? "false" : "true",
-      dryRun: options.dryRun ? "true" : "false",
+      dry_run: options.dryRun ? "true" : "false",
       result: result,
     };
     const duration = Date.now() - startTime;
