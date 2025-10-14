@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, toContent } from "../../util";
 import { getDownloadUrl } from "../../../gcp/storage";
 import { Emulators } from "../../../emulator/types";
 
@@ -28,6 +29,9 @@ export const get_object_download_url = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("storage", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ bucket, object_path, use_emulator }, { projectId, host }) => {

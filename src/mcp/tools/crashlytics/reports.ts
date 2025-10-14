@@ -1,5 +1,6 @@
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import {
   CrashlyticsReport,
   getReport,
@@ -57,6 +58,9 @@ export const get_top_issues = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   getReportContent(
     CrashlyticsReport.TopIssues,
@@ -81,6 +85,9 @@ export const get_top_variants = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   getReportContent(
     CrashlyticsReport.TopVariants,
@@ -103,6 +110,9 @@ export const get_top_versions = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   getReportContent(
@@ -128,6 +138,9 @@ export const get_top_apple_devices = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   getReportContent(
     CrashlyticsReport.TopAppleDevices,
@@ -152,6 +165,9 @@ export const get_top_android_devices = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   getReportContent(
     CrashlyticsReport.TopAndroidDevices,
@@ -174,6 +190,9 @@ export const get_top_operating_systems = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   getReportContent(

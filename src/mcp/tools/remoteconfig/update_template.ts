@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { publishTemplate } from "../../../remoteconfig/publish";
 import { rollbackTemplate } from "../../../remoteconfig/rollback";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
@@ -36,6 +37,9 @@ export const update_template = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("remoteconfig", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ template, version_number, force }, { projectId }) => {

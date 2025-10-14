@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { sendFcmMessage } from "../../../messaging/sendMessage";
 
 export const send_message = tool(
@@ -34,6 +35,9 @@ export const send_message = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("messaging", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ registration_token, topic, title, body }, { projectId }) => {

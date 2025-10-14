@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import * as url from "node:url";
 import { stringToStream } from "../../../utils";
 import { Client } from "../../../apiv2";
@@ -31,6 +32,9 @@ export const set_data = tool(
     _meta: {
       requiresAuth: false,
       requiresProject: false,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("database", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ path: setPath, databaseUrl, data }, { projectId, host }) => {

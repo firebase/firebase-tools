@@ -40,16 +40,20 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
     };
   };
   fn: (input: z.infer<InputSchema>, ctx: McpContext) => Promise<CallToolResult>;
+  isAvailable?: (ctx: McpContext) => Promise<boolean>;
 }
 
 export function tool<InputSchema extends ZodTypeAny>(
   options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema"> & {
     inputSchema: InputSchema;
+    isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
   fn: ServerTool<InputSchema>["fn"],
 ): ServerTool {
+  const { isAvailable, ...mcpOptions } = options;
   return {
-    mcp: { ...options, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: { ...mcpOptions, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
     fn,
+    isAvailable,
   };
 }

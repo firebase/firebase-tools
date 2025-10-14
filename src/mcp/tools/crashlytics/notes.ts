@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { createNote, listNotes, deleteNote } from "../../../crashlytics/notes";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
 
@@ -19,6 +20,9 @@ export const create_note = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId, note }) => {
@@ -46,6 +50,9 @@ export const list_notes = tool(
     _meta: {
       requiresAuth: true,
     },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
+    },
   },
   async ({ appId, issueId, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -71,6 +78,9 @@ export const delete_note = tool(
     },
     _meta: {
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId, noteId }) => {

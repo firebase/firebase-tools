@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { McpContext } from "../../types";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 
 export const update_user = tool(
@@ -35,6 +36,9 @@ export const update_user = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
+    },
+    isAvailable: async (ctx: McpContext) => {
+      return await checkFeatureActive("auth", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ uid, disabled, claim }, { projectId }) => {
