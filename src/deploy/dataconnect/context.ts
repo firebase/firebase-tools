@@ -1,4 +1,3 @@
-import { DeployOptions } from "..";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { ServiceInfo } from "../../dataconnect/types";
 import { AnalyticsParams } from "../../track";
@@ -12,8 +11,6 @@ export interface Context {
 }
 
 export interface DeployStats {
-  options?: DeployOptions;
-
   // prepare.ts
   missingBilling?: boolean;
   numBuildErrors: number;
