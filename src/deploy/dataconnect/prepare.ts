@@ -26,15 +26,18 @@ import { Context, initDeployStats } from "./context";
  */
 export default async function (context: Context, options: DeployOptions): Promise<void> {
   const projectId = needProjectId(options);
-  const deployStats = initDeployStats();
+  await ensureApis(projectId);
+  context.dataconnect = {
+    serviceInfos: await loadAll(projectId, options.config),
+    filters: getResourceFilters(options),
+    deployStats: initDeployStats(),
+  };
+  const { serviceInfos, filters, deployStats } = context.dataconnect;
   if (!(await checkBillingEnabled(projectId))) {
     deployStats.missingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
   }
-  await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
-  const filters = getResourceFilters(options);
-  const serviceInfos = await loadAll(projectId, options.config);
   for (const si of serviceInfos) {
     si.deploymentMetadata = await build(options, si.sourceDirectory, deployStats);
   }
@@ -57,11 +60,6 @@ export default async function (context: Context, options: DeployOptions): Promis
     );
     // TODO: Did you mean?
   }
-  context.dataconnect = {
-    serviceInfos,
-    filters,
-    deployStats,
-  };
   utils.logLabeledBullet("dataconnect", `Successfully compiled schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
