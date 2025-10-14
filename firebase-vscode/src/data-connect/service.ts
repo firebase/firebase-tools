@@ -97,7 +97,6 @@ export class DataConnectService {
       variables: JSON.parse(variables),
     });
   }
-
   // This introspection is used to generate a basic graphql schema
   // It will not include our predefined operations, which requires a DataConnect specific introspection query
   async introspect(): Promise<{ data?: IntrospectionQuery }> {
@@ -180,8 +179,31 @@ export class DataConnectService {
     }
   }
 
-  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest) {
-    if (instance === InstanceType.PRODUCTION) {
+  async executeGraphQL(params: {
+    query: string;
+    operationName?: string;
+    variables: string;
+    path: string;
+    instance: InstanceType;
+  }) {
+    const servicePath = await this.servicePath(params.path);
+    if (!servicePath) {
+      throw new Error("No service found for path: " + params.path);
+    }
+    const prodBody: ExecuteGraphqlRequest = {
+      operationName: params.operationName,
+      variables: parseVariableString(params.variables),
+      query: params.query,
+      name: `${servicePath}`,
+      extensions: this._auth(),
+    };
+
+    const body = this._serializeBody({
+      ...params,
+      name: `${servicePath}`,
+      extensions: this._auth(),
+    });
+    if (params.instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
       pluginLogger.info(
         `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(body, undefined, 4)}`,
