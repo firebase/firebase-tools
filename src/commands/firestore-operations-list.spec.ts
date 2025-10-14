@@ -49,10 +49,8 @@ describe("firestore:operations:list", () => {
     ];
     firestoreApiStub.listOperations.resolves({ operations });
 
-    await command.runner()(options);
-
-    expect(loggerInfoStub).to.be.calledOnceWith(JSON.stringify(operations, undefined, 2));
-    expect(prettyPrintStub).to.not.be.called;
+    const jsonResult = await command.runner()(options);
+    expect(jsonResult).to.eql(operations);
   });
 
   it("should pretty-print operations when --json is not specified", async () => {

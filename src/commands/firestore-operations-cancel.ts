@@ -7,7 +7,6 @@ import { getShortOperationName } from "./firestore-utils";
 import { confirm } from "../prompt";
 import * as clc from "colorette";
 import * as utils from "../utils";
-import { logger } from "../logger";
 
 export const command = new Command("firestore:operations:cancel <operationName>")
   .description("cancels a long-running Cloud Firestore admin operation")
@@ -34,14 +33,10 @@ export const command = new Command("firestore:operations:cancel <operationName>"
     const api = new fsi.FirestoreApi();
     const status = await api.cancelOperation(options.project, databaseId, operationName);
 
-    if (options.json) {
-      logger.info(JSON.stringify(status, undefined, 2));
+    if (status.success) {
+      utils.logSuccess("Operation cancelled successfully.");
     } else {
-      if (status.success) {
-        utils.logSuccess("Operation cancelled successfully.");
-      } else {
-        utils.logWarning("Canceling the operation failed.");
-      }
+      utils.logWarning("Canceling the operation failed.");
     }
 
     return status;
