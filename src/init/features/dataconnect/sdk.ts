@@ -176,20 +176,30 @@ export async function actuate(setup: Setup, config: Config) {
 }
 
 export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number } {
-  const platformCounts = (info.apps ?? []).reduce(
-    (acc, a) => {
-      const platform = a.platform.toLowerCase();
-      acc[platform] = (acc[platform] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-  return {
-    num_web_apps: platformCounts[Platform.WEB.toLowerCase()] || 0,
-    num_android_apps: platformCounts[Platform.ANDROID.toLowerCase()] || 0,
-    num_ios_apps: platformCounts[Platform.IOS.toLowerCase()] || 0,
-    num_flutter_apps: platformCounts[Platform.FLUTTER.toLowerCase()] || 0,
+  const counts = {
+    num_web_apps: 0,
+    num_android_apps: 0,
+    num_ios_apps: 0,
+    num_flutter_apps: 0,
   };
+
+  for (const app of info.apps ?? []) {
+    switch (app.platform) {
+      case Platform.WEB:
+        counts.num_web_apps++;
+        break;
+      case Platform.ANDROID:
+        counts.num_android_apps++;
+        break;
+      case Platform.IOS:
+        counts.num_ios_apps++;
+        break;
+      case Platform.FLUTTER:
+        counts.num_flutter_apps++;
+        break;
+    }
+  }
+  return counts;
 }
 
 async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredInfo) {
