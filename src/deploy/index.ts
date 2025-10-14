@@ -185,7 +185,7 @@ export const deploy = async function (
     const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
     if (stats) {
       const fdcParams = deployStatsParams(stats);
-      await trackGA4("dataconnect_deploy", { ...fdcParams, ...baseParams }, duration);
+      void trackGA4("dataconnect_deploy", { ...fdcParams, ...baseParams }, duration);
     }
   }
 
