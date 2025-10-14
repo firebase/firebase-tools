@@ -13,8 +13,8 @@ const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
 type SetupStats = {
   action: "get" | "update" | "create";
-  freeTrialLabel?: cloudSqlAdminClient.DataConnectLabel;
   databaseVersion?: string;
+  dataconnectLabel?: cloudSqlAdminClient.DataConnectLabel;
 };
 
 /** Sets up a Cloud SQL instance, database and its permissions. */
@@ -45,7 +45,7 @@ export async function setupCloudSql(args: {
           location: args.location,
           enable_google_ml_integration: args.requireGoogleMlIntegration.toString(),
           database_version: stats.databaseVersion?.toLowerCase() || "unknown",
-          free_trial_label: stats.freeTrialLabel || "unknown",
+          free_trial_label: stats.dataconnectLabel || "unknown",
         },
         Date.now() - startTime,
       );
@@ -75,11 +75,10 @@ async function upsertInstance(
       "dataconnect",
       `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
     );
-    const label = existingInstance.settings?.userLabels?.["firebase-data-connect"];
-    if (label === "ft" || label === "nt") {
-      stats.freeTrialLabel = label;
-    }
     stats.databaseVersion = existingInstance.databaseVersion;
+    stats.dataconnectLabel = existingInstance.settings?.userLabels?.["firebase-data-connect"] as
+      | cloudSqlAdminClient.DataConnectLabel
+      | undefined;
 
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
@@ -114,10 +113,10 @@ async function upsertInstance(
     }
     // Cloud SQL instance is not found, start its creation.
     stats.action = "create";
-    const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
-    stats.freeTrialLabel = freeTrialUsed ? "nt" : "ft";
     stats.databaseVersion = cloudSqlAdminClient.DEFAULT_DATABASE_VERSION;
-    await createInstance({ ...args, freeTrialLabel: stats.freeTrialLabel });
+    const freeTrialUsed = await checkFreeTrialInstanceUsed(projectId);
+    stats.dataconnectLabel = freeTrialUsed ? "nt" : "ft";
+    await createInstance({ ...args, freeTrialLabel: stats.dataconnectLabel });
   }
 }
 
@@ -211,7 +210,8 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
   if (!settings.ipConfiguration?.ipv4Enabled) {
     utils.logLabeledWarning(
       "dataconnect",
-      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.\n    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
+      `Cloud SQL instance ${clc.bold(instance.name)} does not have a public IP.
+    ${clc.bold("firebase dataconnect:sql:migrate")} will only work within its VPC (e.g. GCE, GKE).`,
     );
     if (
       settings.ipConfiguration?.privateNetwork &&

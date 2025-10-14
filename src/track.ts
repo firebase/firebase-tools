@@ -139,6 +139,7 @@ export async function trackGA4(
   params: AnalyticsParams,
   duration: number = 1, // Default to 1ms duration so that events show up in realtime view.
 ): Promise<void> {
+  console.log("stats", eventName, params);
   const session = cliSession();
   if (!session) {
     return;

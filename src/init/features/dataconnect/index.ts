@@ -170,7 +170,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
-    void trackGA4("dataconnect_init", {
+    await trackGA4("dataconnect_init", {
       flow: info.analyticsFlow,
       project_status: setup.projectId
         ? setup.isBillingEnabled

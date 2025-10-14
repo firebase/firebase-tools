@@ -165,13 +165,13 @@ export async function actuate(setup: Setup, config: Config) {
   } finally {
     let flow = "no_app";
     if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map(appDescription).sort();
+      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
       flow = `${platforms.join("_")}_app`;
     }
     if (fdcInfo) {
       fdcInfo.analyticsFlow += `_${flow}`;
     } else {
-      void trackGA4("dataconnect_init", {
+      await trackGA4("dataconnect_init", {
         project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
         flow: `cli_sdk_${flow}`,
       });
