@@ -162,7 +162,8 @@ export async function actuate(setup: Setup, config: Config) {
   try {
     await actuateWithInfo(setup, config, sdkInfo);
   } finally {
-    // If `firebase init dataconnect:sdk` is run alone, emit GA state.
+    // If `firebase init dataconnect:sdk` is run alone, emit GA stats.
+    // Otherwise, `firebase init dataconnect` will emit those stats.
     const fdcInfo = setup.featureInfo?.dataconnect;
     if (!fdcInfo) {
       void trackGA4("dataconnect_init", {
