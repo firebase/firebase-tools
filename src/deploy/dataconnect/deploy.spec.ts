@@ -9,6 +9,7 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as prompt from "../../prompt";
 import * as poller from "../../operation-poller";
 import { dataconnectOrigin } from "../../api";
+import { initDeployStats } from "./context";
 
 describe("dataconnect deploy", () => {
   let sandbox: sinon.SinonSandbox;
@@ -47,7 +48,7 @@ describe("dataconnect deploy", () => {
         dataConnectYaml: { serviceId: "s1" },
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await deploy.default(context as any, options);
@@ -66,7 +67,7 @@ describe("dataconnect deploy", () => {
 
     confirmStub.resolves(true);
     const serviceInfos: any[] = [];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await deploy.default(context as any, options);
@@ -83,7 +84,7 @@ describe("dataconnect deploy", () => {
 
     confirmStub.resolves(false);
     const serviceInfos: any[] = [];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await deploy.default(context as any, options);
@@ -116,7 +117,7 @@ describe("dataconnect deploy", () => {
         dataConnectYaml: { serviceId: "s1" },
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await deploy.default(context as any, options);
@@ -131,7 +132,9 @@ describe("dataconnect deploy", () => {
       .reply(200, { services: existingServices });
 
     const serviceInfos: any[] = [];
-    const context = { dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }] } };
+    const context = {
+      dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }], deployStats: initDeployStats() },
+    };
     const options = {} as any;
 
     await deploy.default(context as any, options);
