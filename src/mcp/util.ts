@@ -78,7 +78,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
 };
 
 // List of features for which we want to skip the integration check
-const featureSkipServerCheck = ["crashlytics"];
+const featureSkipServerCheck = new Set<ServerFeature>(["crashlytics"]);
 
 /**
  * Detects whether an MCP feature is active in the current project root. Relies first on
