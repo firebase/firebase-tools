@@ -15,7 +15,7 @@ export interface DeployStats {
   options?: DeployOptions;
 
   // prepare.ts
-  abortDueToMissingBilling?: boolean;
+  missingBilling?: boolean;
   numBuildErrors: Map<WarningLevel | "ERROR", number>;
 
   // deploy.ts
@@ -54,17 +54,17 @@ export function initDeployStats(options?: DeployOptions): DeployStats {
 export async function trackDeployStats(stats: DeployStats): Promise<void> {
   const params: AnalyticsParams = {
     force: (!!stats.options?.force).toString(),
-    dryRun: (!!stats.options?.dryRun).toString(),
+    dry_run: (!!stats.options?.dryRun).toString(),
     interactive: (!stats.options?.nonInteractive).toString(),
-    abortDueToMissingBilling: (!!stats.abortDueToMissingBilling).toString(),
-    numServiceCreated: stats.numServiceCreated,
-    numServiceDeleted: stats.numServiceDeleted,
-    numSchemaMigrated: stats.numSchemaMigrated,
-    numConnectorUpdatedBeforeSchema: stats.numConnectorUpdatedBeforeSchema,
-    numConnectorUpdatedAfterSchema: stats.numConnectorUpdatedAfterSchema,
-    numSchemaSkippedDueToPendingCreate: stats.numSchemaSkippedDueToPendingCreate,
-    numSchemaWithIncompatibleSchema: stats.numSqlSchemaDiffs,
-    numSchemaWithInvalidConnector: stats.numInvalidConnectors,
+    missing_billing: (!!stats.missingBilling).toString(),
+    num_service_created: stats.numServiceCreated,
+    num_service_deleted: stats.numServiceDeleted,
+    num_schema_migrated: stats.numSchemaMigrated,
+    num_connector_updated_before_schema: stats.numConnectorUpdatedBeforeSchema,
+    num_connector_updated_after_schema: stats.numConnectorUpdatedAfterSchema,
+    num_schema_skipped_due_to_pending_create: stats.numSchemaSkippedDueToPendingCreate,
+    num_schema_with_incompatible_schema: stats.numSqlSchemaDiffs,
+    num_schema_with_invalid_connector: stats.numInvalidConnectors,
     num_build_errors: JSON.stringify(Object.fromEntries(stats.numBuildErrors)),
   };
   console.log("stats", params);

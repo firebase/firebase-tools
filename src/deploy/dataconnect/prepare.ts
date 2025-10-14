@@ -28,7 +28,7 @@ export default async function (context: Context, options: DeployOptions): Promis
   const projectId = needProjectId(options);
   const deployStats = initDeployStats(options);
   if (!(await checkBillingEnabled(projectId))) {
-    deployStats.abortDueToMissingBilling = true;
+    deployStats.missingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
   }
   await ensureApis(projectId);
