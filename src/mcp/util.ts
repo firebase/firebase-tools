@@ -77,6 +77,9 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   database: realtimeOrigin(),
 };
 
+// List of features for which we want to skip the integration check
+const featureSkipServerCheck = ["crashlytics"];
+
 /**
  * Detects whether an MCP feature is active in the current project root. Relies first on
  * `firebase.json` configuration, but falls back to API checks.
@@ -86,6 +89,11 @@ export async function checkFeatureActive(
   projectId?: string,
   options?: any,
 ): Promise<boolean> {
+
+  // TODO(visum) Replace this short term hack with a public API to verify integration
+  // before showing tools.
+  // If the feature is a part of skip check, feature is active always!
+  if (featureSkipServerCheck.includes(feature)) return true;
   // if the feature is configured in firebase.json, it's active
   if (feature in (options?.config?.data || {})) return true;
   // if the feature's api is active in the project, it's active
