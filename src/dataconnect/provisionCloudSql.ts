@@ -45,7 +45,7 @@ export async function setupCloudSql(args: {
           location: args.location,
           enable_google_ml_integration: args.requireGoogleMlIntegration.toString(),
           database_version: stats.databaseVersion?.toLowerCase() || "unknown",
-          free_trial_label: stats.dataconnectLabel || "unknown",
+          dataconnect_label: stats.dataconnectLabel || "unknown",
         },
         Date.now() - startTime,
       );
