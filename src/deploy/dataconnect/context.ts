@@ -67,6 +67,5 @@ export async function trackDeployStats(stats: DeployStats): Promise<void> {
     num_schema_with_invalid_connector: stats.numInvalidConnectors,
     num_build_errors: JSON.stringify(Object.fromEntries(stats.numBuildErrors)),
   };
-  console.log("stats", params);
   await trackGA4("dataconnect_deploy", params);
 }
