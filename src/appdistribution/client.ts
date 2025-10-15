@@ -298,7 +298,7 @@ export class AppDistributionClient {
       });
       return response.body;
     } catch (err: unknown) {
-      throw new FirebaseError(`Failed to create release test ${err}`);
+      throw new FirebaseError(`Failed to create release test ${getErrMsg(err)}`);
     }
   }
 
