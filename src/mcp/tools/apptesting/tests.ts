@@ -26,15 +26,9 @@ export const run_tests = tool(
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
       testDevices: z.array(TestDeviceSchema).default([
         {
-          model: "tokay",
-          version: "36",
-          locale: "en",
-          orientation: "portrait",
-        },
-        {
-          model: "e1q",
-          version: "34",
-          locale: "en",
+          model: "MediumPhone.arm",
+          version: "30",
+          locale: "en_US",
           orientation: "portrait",
         },
       ]),
