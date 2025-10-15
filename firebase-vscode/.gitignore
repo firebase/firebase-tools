@@ -7,3 +7,5 @@ resources/dist
 logs
 !*.tgz
 prebuilt-extensions
+data-connect-test-*/
+src/test/suite/src/
