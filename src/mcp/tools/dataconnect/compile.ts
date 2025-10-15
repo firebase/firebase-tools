@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive } from "../../util";
 import { pickService } from "../../../dataconnect/load";
 import { compileErrors } from "../../util/dataconnect/compile";
 
 export const compile = tool(
+  "dataconnect",
   {
     name: "build",
     description:
@@ -29,9 +28,6 @@ export const compile = tool(
     _meta: {
       requiresProject: false,
       requiresAuth: false,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("dataconnect", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ service_id, error_filter }, { projectId, config }) => {

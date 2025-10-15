@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, toContent } from "../../util";
+import { toContent } from "../../util";
 import {
   Backend,
   Domain,
@@ -13,6 +12,7 @@ import {
 } from "../../../gcp/apphosting";
 
 export const list_backends = tool(
+  "apphosting",
   {
     name: "list_backends",
     description:
@@ -40,9 +40,6 @@ export const list_backends = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("apphosting", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ location } = {}, { projectId }) => {

@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
 import { toContent } from "../../util";
 import { getFirebaseProjectPage } from "../../../management/projects";
 
 const PROJECT_LIST_PAGE_SIZE = 20;
 
 export const list_projects = tool(
+  "core",
   {
     name: "list_projects",
     description:
@@ -26,9 +26,6 @@ export const list_projects = tool(
     },
     _meta: {
       requiresAuth: true,
-    },
-    isAvailable: async (_ctx: McpContext) => {
-      return true;
     },
   },
   async ({ page_size, page_token }) => {

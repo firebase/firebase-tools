@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 
 export const update_user = tool(
+  "auth",
   {
     name: "update_user",
     description: "Use this to disable, enable, or set a custom claim on a specific user's account.",
@@ -36,9 +36,6 @@ export const update_user = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("auth", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ uid, disabled, claim }, { projectId }) => {

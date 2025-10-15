@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, toContent } from "../../util";
+import { toContent } from "../../util";
 import { setAllowSmsRegionPolicy, setDenySmsRegionPolicy } from "../../../gcp/auth";
 
 export const set_sms_region_policy = tool(
+  "auth",
   {
     name: "set_sms_region_policy",
     description:
@@ -27,9 +27,6 @@ export const set_sms_region_policy = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("auth", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ policy_type, country_codes }, { projectId }) => {

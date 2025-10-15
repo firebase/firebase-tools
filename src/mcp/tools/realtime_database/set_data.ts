@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 import * as url from "node:url";
 import { stringToStream } from "../../../utils";
 import { Client } from "../../../apiv2";
@@ -9,6 +8,7 @@ import { getErrMsg } from "../../../error";
 import path from "node:path";
 
 export const set_data = tool(
+  "database",
   {
     name: "set_data",
     description:
@@ -32,9 +32,6 @@ export const set_data = tool(
     _meta: {
       requiresAuth: false,
       requiresProject: false,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("database", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ path: setPath, databaseUrl, data }, { projectId, host }) => {

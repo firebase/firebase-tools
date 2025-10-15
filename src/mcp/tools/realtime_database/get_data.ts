@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 import * as url from "node:url";
 import { Client } from "../../../apiv2";
 import { text } from "node:stream/consumers";
 import path from "node:path";
 
 export const get_data = tool(
+  "database",
   {
     name: "get_data",
     description:
@@ -33,9 +33,6 @@ export const get_data = tool(
       // grab their data is perfectly valid.
       requiresAuth: false,
       requiresProject: false,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("database", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ path: getPath, databaseUrl }, { projectId, host }) => {

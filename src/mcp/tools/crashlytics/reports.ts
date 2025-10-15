@@ -1,6 +1,5 @@
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 import {
   CrashlyticsReport,
   getReport,
@@ -45,6 +44,7 @@ function getReportContent(
 // to consolidate all of these into a single `get_report` tool.
 
 export const get_top_issues = tool(
+  "crashlytics",
   {
     name: "get_top_issues",
     description: `Use this to count events and distinct impacted users, grouped by *issue*.
@@ -58,9 +58,6 @@ export const get_top_issues = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   getReportContent(
     CrashlyticsReport.TopIssues,
@@ -72,6 +69,7 @@ export const get_top_issues = tool(
 );
 
 export const get_top_variants = tool(
+  "crashlytics",
   {
     name: "get_top_variants",
     description: `Counts events and distinct impacted users, grouped by issue *variant*.
@@ -85,9 +83,6 @@ export const get_top_variants = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   getReportContent(
     CrashlyticsReport.TopVariants,
@@ -98,6 +93,7 @@ export const get_top_variants = tool(
 );
 
 export const get_top_versions = tool(
+  "crashlytics",
   {
     name: "get_top_versions",
     description: `Counts events and distinct impacted users, grouped by *version*.
@@ -111,9 +107,6 @@ export const get_top_versions = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   getReportContent(
     CrashlyticsReport.TopVersions,
@@ -124,6 +117,7 @@ export const get_top_versions = tool(
 );
 
 export const get_top_apple_devices = tool(
+  "crashlytics",
   {
     name: "get_top_apple_devices",
     description: `Counts events and distinct impacted users, grouped by apple *device*.
@@ -138,9 +132,6 @@ export const get_top_apple_devices = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   getReportContent(
     CrashlyticsReport.TopAppleDevices,
@@ -151,6 +142,7 @@ export const get_top_apple_devices = tool(
 );
 
 export const get_top_android_devices = tool(
+  "crashlytics",
   {
     name: "get_top_android_devices",
     description: `Counts events and distinct impacted users, grouped by android *device*.
@@ -165,9 +157,6 @@ export const get_top_android_devices = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   getReportContent(
     CrashlyticsReport.TopAndroidDevices,
@@ -178,6 +167,7 @@ export const get_top_android_devices = tool(
 );
 
 export const get_top_operating_systems = tool(
+  "crashlytics",
   {
     name: "get_top_operating_systems",
     description: `Counts events and distinct impacted users, grouped by *operating system*.
@@ -190,9 +180,6 @@ export const get_top_operating_systems = tool(
     },
     _meta: {
       requiresAuth: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   getReportContent(

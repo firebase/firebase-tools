@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { getIssue, updateIssue } from "../../../crashlytics/issues";
 import { State } from "../../../crashlytics/types";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
+import { mcpError, toContent } from "../../util";
 
 export const get_issue = tool(
+  "crashlytics",
   {
     name: "get_issue",
     description: `Gets data for a Crashlytics issue, which can be used as a starting point for debugging.`,
@@ -21,9 +21,6 @@ export const get_issue = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   async ({ appId, issueId }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -34,6 +31,7 @@ export const get_issue = tool(
 );
 
 export const update_issue = tool(
+  "crashlytics",
   {
     name: "update_issue",
     description: "Use this to update the state of Crashlytics issue.",
@@ -50,9 +48,6 @@ export const update_issue = tool(
     },
     _meta: {
       requiresAuth: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId, state }) => {

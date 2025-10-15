@@ -1,7 +1,6 @@
 import { z } from "zod";
 import * as path from "path";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
 import { toContent } from "../../util";
 import * as client from "../../../dataconnect/client";
 import { loadAll } from "../../../dataconnect/load";
@@ -21,6 +20,7 @@ interface DeployServiceInfo {
 }
 
 export const list_services = tool(
+  "dataconnect",
   {
     name: "list_services",
     description: "Use this to list existing local and backend Firebase Data Connect services",
@@ -32,9 +32,6 @@ export const list_services = tool(
     _meta: {
       requiresProject: false,
       requiresAuth: false,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return !!ctx.config?.get("dataconnect");
     },
   },
   async (_, { projectId, config }) => {

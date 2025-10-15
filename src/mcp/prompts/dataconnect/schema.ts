@@ -19,6 +19,7 @@ function renderErrors(errors?: string) {
 }
 
 export const schema = prompt(
+  "core",
   {
     name: "schema",
     description: "Generate or update your Firebase Data Connect schema.",

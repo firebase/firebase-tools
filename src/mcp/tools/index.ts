@@ -35,7 +35,7 @@ function getAllTools(activeFeatures?: ServerFeature[]): ServerTool[] {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures = ["core", ...activeFeatures];
+    activeFeatures.unshift("core");
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, toContent } from "../../util";
+import { toContent } from "../../util";
 import { generateOperation } from "../../../gemini/fdcExperience";
 import { pickService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
+  "dataconnect",
   {
     name: "generate_operation",
     description:
@@ -32,9 +32,6 @@ export const generate_operation = tool(
       requiresProject: true,
       requiresAuth: true,
       requiresGemini: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("dataconnect", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ prompt, service_id }, { projectId, config }) => {
