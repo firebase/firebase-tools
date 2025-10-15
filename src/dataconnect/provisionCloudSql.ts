@@ -76,9 +76,10 @@ async function upsertInstance(
       `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
     );
     stats.databaseVersion = existingInstance.databaseVersion;
-    stats.dataconnectLabel = existingInstance.settings?.userLabels?.["firebase-data-connect"] as
-      | cloudSqlAdminClient.DataConnectLabel
-      | undefined;
+    stats.dataconnectLabel =
+      (existingInstance.settings?.userLabels?.[
+        "firebase-data-connect"
+      ] as cloudSqlAdminClient.DataConnectLabel) || "absent";
 
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
