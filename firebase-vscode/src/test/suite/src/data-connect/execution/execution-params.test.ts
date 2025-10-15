@@ -6,9 +6,7 @@ import {
 } from "../../../../../data-connect/execution/execution-params";
 import { firebaseSuite, firebaseTest } from "../../../../utils/test_hooks";
 import { OperationDefinitionNode, parse } from "graphql";
-import { ExtensionBrokerImpl } from "../../../../../extension-broker";
-import { AnalyticsLogger } from "../../../../../analytics";
-import { SinonSpy, spy } from "sinon";
+import { spy } from "sinon";
 
 firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
   firebaseTest("should remove undefined variables", async () => {
