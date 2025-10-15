@@ -170,12 +170,12 @@ export async function actuate(setup: Setup, config: Config) {
       void trackGA4(
         "dataconnect_init",
         {
+          flow: "cli_sdk",
           project_status: setup.projectId
             ? setup.isBillingEnabled
               ? "blaze"
               : "spark"
             : "missing",
-          flow: "cli_sdk",
           ...initAppCounters(sdkInfo),
         },
         Date.now() - startTime,
