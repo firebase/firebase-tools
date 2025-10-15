@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
-import { upload, Distribution } from "../../../appdistribution/distribution";
+import { upload, Distribution, awaitTestResults } from "../../../appdistribution/distribution";
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
@@ -20,12 +20,19 @@ const TestDeviceSchema = z
 
 const AIStepSchema = z
   .object({
-    goal: z.string().optional().describe("A goal to be accomplished during the test."),
-    assertion: z.string().optional().describe("An assertion to be checked during the test."),
+    goal: z.string().describe("A goal to be accomplished during the test."),
+    hint: z
+      .string()
+      .optional()
+      .describe("Hint text containing suggestions to help the agent accomplish the goal."),
+    successCriteria: z
+      .string()
+      .optional()
+      .describe(
+        "A description of criteria the agent should use to determine if the goal has been successfully completed.",
+      ),
   })
-  .describe(
-    "Steps that are run during the execution of the test. Can either be a goal or an assertion but not both.",
-  );
+  .describe("Steps that are run during the execution of the test.");
 export const run_tests = tool(
   {
     name: "run_test",
@@ -47,15 +54,13 @@ export const run_tests = tool(
           orientation: "portrait",
         },
       ]),
-      testCaseIds: z.string().describe(`A comma-separated list of test case IDs.`),
-      aiSteps: z.array(AIStepSchema),
+      steps: z.array(AIStepSchema).describe("Steps that are run during the execution of the test."),
     }),
   },
-  async ({ appId, releaseBinaryFile, testDevices, aiSteps }) => {
+  async ({ appId, releaseBinaryFile, testDevices, steps }) => {
     const client = new AppDistributionClient();
     const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(
-      await client.createReleaseTest(releaeName, testDevices, [{ aiSteps: aiSteps }]),
-    );
+    const releaseTest = await client.createReleaseTest(releaeName, testDevices, { steps: steps });
+    return toContent(await awaitTestResults([releaseTest], client));
   },
 );

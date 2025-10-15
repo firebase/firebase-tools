@@ -281,7 +281,7 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
-    aiInstructions: AIInstruction[],
+    aiInstruction?: AIInstruction,
     loginCredential?: LoginCredential,
     testCaseName?: string,
   ): Promise<ReleaseTest> {
@@ -293,12 +293,12 @@ export class AppDistributionClient {
           deviceExecutions: devices.map(mapDeviceToExecution),
           loginCredential: loginCredential,
           testCase: testCaseName,
-          aiInstructions: aiInstructions,
+          aiInstructions: aiInstruction,
         },
       });
       return response.body;
     } catch (err: unknown) {
-      throw new FirebaseError(`Failed to create release test ${getErrMsg(err)}`);
+      throw new FirebaseError(`Failed to create release test ${err}`);
     }
   }
 

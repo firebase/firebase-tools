@@ -455,7 +455,7 @@ describe("distribution", () => {
         .post(`/v1alpha/${releaseName}/tests`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(
-        appDistributionClient.createReleaseTest(releaseName, mockDevices, []),
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.rejectedWith(FirebaseError, "Failed to create release test");
       expect(nock.isDone()).to.be.true;
     });
@@ -465,7 +465,7 @@ describe("distribution", () => {
         .post(`/v1alpha/${releaseName}/tests`)
         .reply(200, mockReleaseTest);
       await expect(
-        appDistributionClient.createReleaseTest(releaseName, mockDevices, []),
+        appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
       expect(nock.isDone()).to.be.true;
     });

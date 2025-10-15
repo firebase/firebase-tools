@@ -210,7 +210,7 @@ async function distribute(
     if (!testCases.length) {
       // fallback to basic automated test
       releaseTestPromises.push(
-        requests.createReleaseTest(releaseName, testDevices, [], loginCredential),
+        requests.createReleaseTest(releaseName, testDevices, undefined, loginCredential),
       );
     } else {
       for (const testCaseId of testCases) {
@@ -218,7 +218,7 @@ async function distribute(
           requests.createReleaseTest(
             releaseName,
             testDevices,
-            [],
+            undefined,
             loginCredential,
             `${appName}/testCases/${testCaseId}`,
           ),
