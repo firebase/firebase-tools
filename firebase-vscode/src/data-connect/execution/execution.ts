@@ -233,7 +233,6 @@ export function registerExecution(
       throw new Error("No service found for document path: " + documentPath);
     }
     const req: ExecuteGraphqlRequest = {
-      name: servicePath,
       operationName: ast.name?.value,
       variables: paramsService.executeGraphqlVariables(),
       query: gqlText || document,
