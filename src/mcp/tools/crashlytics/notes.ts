@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { createNote, listNotes, deleteNote } from "../../../crashlytics/notes";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
+import { mcpError, toContent } from "../../util";
 
 export const create_note = tool(
+  "crashlytics",
   {
     name: "create_note",
     description: "Add a note to an issue from crashlytics.",
@@ -21,9 +21,6 @@ export const create_note = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   async ({ appId, issueId, note }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -35,6 +32,7 @@ export const create_note = tool(
 );
 
 export const list_notes = tool(
+  "crashlytics",
   {
     name: "list_notes",
     description: "Use this to list all notes for an issue in Crashlytics.",
@@ -50,9 +48,6 @@ export const list_notes = tool(
     _meta: {
       requiresAuth: true,
     },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
-    },
   },
   async ({ appId, issueId, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -63,6 +58,7 @@ export const list_notes = tool(
 );
 
 export const delete_note = tool(
+  "crashlytics",
   {
     name: "delete_note",
     description: "Delete a note from a Crashlytics issue.",
@@ -78,9 +74,6 @@ export const delete_note = tool(
     },
     _meta: {
       requiresAuth: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("crashlytics", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ appId, issueId, noteId }) => {

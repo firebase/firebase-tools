@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive } from "../../util";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
 import { pickService } from "../../../dataconnect/load";
 import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
@@ -10,6 +8,7 @@ import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
 
 export const execute = tool(
+  "dataconnect",
   {
     name: "execute",
     description:
@@ -51,9 +50,6 @@ You can find candidate service_id in \`dataconnect.yaml\`
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("dataconnect", ctx.projectId, { config: ctx.config });
     },
   },
   async (

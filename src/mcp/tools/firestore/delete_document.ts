@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { McpContext } from "../../types";
-import { checkFeatureActive, mcpError, toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 import { getDocuments } from "../../../gcp/firestore";
 import { FirestoreDelete } from "../../../firestore/delete";
 import { Emulators } from "../../../emulator/types";
 
 export const delete_document = tool(
+  "firestore",
   {
     name: "delete_document",
     description:
@@ -30,9 +30,6 @@ export const delete_document = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
-    },
-    isAvailable: async (ctx: McpContext) => {
-      return await checkFeatureActive("firestore", ctx.projectId, { config: ctx.config });
     },
   },
   async ({ path, database, use_emulator }, { projectId, host }) => {

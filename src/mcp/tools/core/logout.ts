@@ -11,6 +11,7 @@ import {
 import { logger } from "../../../logger";
 
 export const logout = tool(
+  "core",
   {
     name: "logout",
     description: "Use this to sign the user out of the Firebase CLI and Firebase MCP server.",
