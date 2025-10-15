@@ -98,7 +98,8 @@ Here are a list of prerequisite steps that must be completed before running a te
   button isn't visible to the app testing agent). Do not include Android resource ids in the test case. Include
   explanations that prove that each step includes between 2-5 actions. Using that information as context and the guidelines
   above, convert the test description provided by the user to make it easier for the agent to follow so that the tests can
-  be re-run reliably. Generate an explanation on why you generated the new test case the way you did, and then generate the
+  be re-run reliably. If there is no test description, generate a test case that you think will be useful given the functionality 
+  of the app. Generate an explanation on why you generated the new test case the way you did, and then generate the
   new test case, which again is an array of steps where each step contains a goal, hint, and success criteria. Show this
   to the user and have them confirm before moving forward. 
 
