@@ -6,7 +6,7 @@ import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
 import { needProjectId } from "../projectUtils";
 import { loadAll } from "../dataconnect/load";
 import { getProjectDefaultAccount } from "../auth";
-import { logBullet, logLabeledSuccess } from "../utils";
+import { logBullet, logLabeledSuccess, logWarning } from "../utils";
 import { ServiceInfo } from "../dataconnect/types";
 import { Config } from "../config";
 import { Setup } from "../init";
@@ -29,7 +29,7 @@ export const command = new Command("dataconnect:sdk:generate")
     let justRanInit = false;
     let config = options.config;
     if (!config || !config.has("dataconnect")) {
-      logBullet("No dataconnect project directory found.");
+      logWarning("No dataconnect project directory found.");
       logBullet(
         `Running ${clc.bold("firebase init dataconnect")} to setup a dataconnect project directory.`,
       );
@@ -56,7 +56,7 @@ export const command = new Command("dataconnect:sdk:generate")
           "No generated SDKs were configured during init. Please run `firebase init dataconnect:sdk` to configure a generated SDK.",
         );
       }
-      logBullet("No generated SDKs have been configured.");
+      logWarning("No generated SDKs have been configured.");
       logBullet(
         `Running ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
       );

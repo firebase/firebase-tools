@@ -1,3 +1,4 @@
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
 - Add a command `firebase dataconnect:execute` to run queries and mutations (#9274).
 - Updated to v2.15.0 of the Data Connect emulator, which changes Dart SDKs to have generated objects use Object.hashAll()
+- `firebase dataconnect:sdk:generate` will run `init dataconnect:sdk` automatically if no SDKs are configured (#9325).
