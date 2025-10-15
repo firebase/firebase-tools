@@ -91,7 +91,7 @@ export class ExecutionParamsService implements Disposable {
       }
       if (undefinedVars.length > 0) {
         this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_UNDEFINED_VARIABLES);
-        fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$" + v).join(", ")}.`);
+        fixes.push(`Removed undefined variables: ${undefinedVars.map((v) => "$" + v).join(", ")}`);
       }
     }
     {
@@ -105,7 +105,7 @@ export class ExecutionParamsService implements Disposable {
       }
       if (missingRequiredVars.length > 0) {
         this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_MISSING_VARIABLES);
-        fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$" + v).join(", ")}.`);
+        fixes.push(`Included required variables: ${missingRequiredVars.map((v) => "$" + v).join(", ")}`);
       }
     }
     if (fixes.length === 0) {
