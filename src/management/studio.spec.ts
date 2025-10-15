@@ -36,7 +36,6 @@ describe("Studio Management", () => {
       filteredTargets: [],
       force: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: emptyConfig,
       rc: new RC(),
