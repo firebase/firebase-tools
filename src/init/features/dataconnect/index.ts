@@ -118,12 +118,22 @@ export async function askQuestions(setup: Setup): Promise<void> {
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
+      const wantToGenerate = await confirm({
+        message: "Do you want to generate schema and queries with Gemini?",
+        default: false,
       });
-      if (info.appDescription) {
+      if (wantToGenerate) {
         configstore.set("gemini", true);
         await ensureGIFApiTos(setup.projectId);
+        info.appDescription = await input({
+          message: `Describe your app idea:`,
+          validate: async (s: string) => {
+            if (s.length > 0) {
+              return true;
+            }
+            return "Please enter a description for your app idea.";
+          },
+        });
       }
     }
     if (hasBilling) {
@@ -161,9 +171,14 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await sdk.actuate(setup, config);
   } finally {
     void trackGA4("dataconnect_init", {
-      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
       flow: info.analyticsFlow,
-      provision_cloud_sql: String(info.shouldProvisionCSQL),
+      project_status: setup.projectId
+        ? setup.isBillingEnabled
+          ? info.shouldProvisionCSQL
+            ? "blaze_provisioned_csql"
+            : "blaze"
+          : "spark"
+        : "missing",
     });
   }
 
@@ -205,6 +220,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
+      source: info.analyticsFlow.startsWith("mcp") ? "mcp_init" : "init",
     });
   }
 
@@ -646,7 +662,7 @@ async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
-      message: "What location should the new Cloud SQL instance be in?",
+      message: "What location would you like to use?",
       choices,
       default: FDC_DEFAULT_REGION,
     });

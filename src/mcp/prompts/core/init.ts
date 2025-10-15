@@ -1,5 +1,4 @@
-import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
-import { Platform } from "../../../dataconnect/types";
+import { getPlatformsFromFolder } from "../../../appUtils";
 import { prompt } from "../../prompt";
 
 export const init = prompt(
@@ -13,7 +12,7 @@ export const init = prompt(
   async (_, mcp) => {
     const { config, projectId, accountEmail, firebaseCliCommand } = mcp;
 
-    const platform = await getPlatformFromFolder(config.projectDir);
+    const platforms = await getPlatformsFromFolder(config.projectDir);
 
     return [
       {
@@ -31,7 +30,7 @@ Your goal is to help the user setup Firebase services in this workspace. Firebas
 
 Use this information to determine which Firebase services the user is already using (if any).
 
-Workspace platform: ${[Platform.NONE, Platform.MULTIPLE].includes(platform) ? "<UNABLE TO DETECT>" : platform}
+Workspace platform(s): ${platforms.length > 0 ? platforms.join(", ") : "<UNABLE TO DETECT>"}
 Active user: ${accountEmail || "<NONE>"}
 Active project: ${projectId || "<NONE>"}
 

@@ -2,6 +2,7 @@ import * as path from "path";
 import * as fs from "fs-extra";
 import * as clc from "colorette";
 import { glob } from "glob";
+
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import {
@@ -11,6 +12,7 @@ import {
   DataConnectYaml,
   File,
   ServiceInfo,
+  Source,
 } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
@@ -161,7 +163,7 @@ function validateConnectorYaml(unvalidated: any): ConnectorYaml {
   return unvalidated as ConnectorYaml;
 }
 
-async function readGQLFiles(sourceDir: string): Promise<File[]> {
+export async function readGQLFiles(sourceDir: string): Promise<File[]> {
   if (!fs.existsSync(sourceDir)) {
     return [];
   }
@@ -179,4 +181,27 @@ function toFile(sourceDir: string, fullPath: string): File {
     path: relPath,
     content,
   };
+}
+
+/**
+ * Combine the contents in all GQL files into a string.
+ * @return combined file contents, possible deliminated by boundary comments.
+ */
+export function squashGraphQL(source: Source): string {
+  if (!source.files || !source.files.length) {
+    return "";
+  }
+  if (source.files.length === 1) {
+    return source.files[0].content;
+  }
+  let query = "";
+  for (const f of source.files) {
+    if (!f.content || !/\S/.test(f.content)) {
+      continue; // Empty or space-only file.
+    }
+    query += `### Begin file ${f.path}\n`;
+    query += f.content;
+    query += `### End file ${f.path}\n`;
+  }
+  return query;
 }

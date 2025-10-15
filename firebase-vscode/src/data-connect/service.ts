@@ -30,6 +30,7 @@ import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
 
 /**
  * DataConnect Emulator service
@@ -40,6 +41,7 @@ export class DataConnectService {
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
     private context: ExtensionContext,
+    private analyticsLogger: AnalyticsLogger,
   ) {}
 
   async servicePath(path: string): Promise<string> {
@@ -56,6 +58,7 @@ export class DataConnectService {
   private async handleProdResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${response.status}`);
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
@@ -69,6 +72,7 @@ export class DataConnectService {
   private async handleEmulatorResponse(
     response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
   ): Promise<ExecutionResult> {
+    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${response.status}`);
     if (!(response.status >= 200 && response.status < 300)) {
       const errorResponse = response as ClientResponse<GraphqlResponseError>;
       throw new DataConnectError(
@@ -106,7 +110,10 @@ export class DataConnectService {
     return {
       impersonate:
         userMock.kind === UserMockKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims), includeDebugDetails: true }
+          ? {
+              authClaims: JSON.parse(userMock.claims),
+              includeDebugDetails: true,
+            }
           : { unauthenticated: true, includeDebugDetails: true },
     };
   }
@@ -208,7 +215,6 @@ export class DataConnectService {
       operationName: params.operationName,
       variables: parseVariableString(params.variables),
       query: params.query,
-      name: `${servicePath}`,
       extensions: this._auth(),
     };
 

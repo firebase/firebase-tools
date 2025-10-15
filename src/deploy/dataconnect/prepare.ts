@@ -17,23 +17,29 @@ import { FirebaseError } from "../../error";
 import { requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
 import { upgradeInstructions } from "../../dataconnect/freeTrial";
+import { Context, initDeployStats } from "./context";
 
 /**
  * Prepares for a Firebase DataConnect deployment by loading schemas and connectors from file.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: DeployOptions): Promise<void> {
+export default async function (context: Context, options: DeployOptions): Promise<void> {
   const projectId = needProjectId(options);
+  await ensureApis(projectId);
+  context.dataconnect = {
+    serviceInfos: await loadAll(projectId, options.config),
+    filters: getResourceFilters(options),
+    deployStats: initDeployStats(),
+  };
+  const { serviceInfos, filters, deployStats } = context.dataconnect;
   if (!(await checkBillingEnabled(projectId))) {
+    deployStats.missingBilling = true;
     throw new FirebaseError(upgradeInstructions(projectId));
   }
-  await ensureApis(projectId);
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
-  const filters = getResourceFilters(options);
-  const serviceInfos = await loadAll(projectId, options.config);
   for (const si of serviceInfos) {
-    si.deploymentMetadata = await build(options, si.sourceDirectory, options.dryRun);
+    si.deploymentMetadata = await build(options, si.sourceDirectory, deployStats);
   }
   const unmatchedFilters = filters?.filter((f) => {
     // filter out all filters that match no service
@@ -54,10 +60,6 @@ export default async function (context: any, options: DeployOptions): Promise<vo
     );
     // TODO: Did you mean?
   }
-  context.dataconnect = {
-    serviceInfos,
-    filters,
-  };
   utils.logLabeledBullet("dataconnect", `Successfully compiled schema and connectors`);
   if (options.dryRun) {
     for (const si of serviceInfos) {
@@ -88,6 +90,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
               databaseId,
               requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
               dryRun: true,
+              source: "deploy",
             });
           }
         }),
