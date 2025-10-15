@@ -9,6 +9,10 @@ import { logger } from "../logger";
 import { getProjectDefaultAccount } from "../auth";
 import { logLabeledSuccess } from "../utils";
 import { ServiceInfo } from "../dataconnect/types";
+import { Config } from "../config";
+import { Setup } from "../init";
+import * as dataconnect from "../init/features/dataconnect";
+import * as sdk from "../init/features/dataconnect/sdk";
 
 type GenerateOptions = Options & { watch?: boolean };
 
@@ -21,8 +25,31 @@ export const command = new Command("dataconnect:sdk:generate")
   .action(async (options: GenerateOptions) => {
     const projectId = needProjectId(options);
 
-    const serviceInfos = await loadAll(projectId, options.config);
-    const serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
+    let config = options.config;
+    if (!config.has("dataconnect")) {
+      const setup: Setup = {
+        config: config.src,
+        rcfile: options.rc.data,
+        instructions: [],
+      };
+      const newConfig = new Config(
+        {},
+        {
+          projectDir: config.projectDir,
+          cwd: options.cwd,
+        },
+      );
+      await dataconnect.askQuestions(setup);
+      await dataconnect.actuate(setup, newConfig, options);
+      // Config might have been updated, so we need to reload it.
+      config = new Config(newConfig.src, {
+        projectDir: config.projectDir,
+        cwd: options.cwd,
+      });
+    }
+
+    let serviceInfos = await loadAll(projectId, config);
+    let serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
       serviceInfo.connectorInfo.some((c) => {
         return (
           c.connectorYaml.generate?.javascriptSdk ||
@@ -33,12 +60,28 @@ export const command = new Command("dataconnect:sdk:generate")
       }),
     );
     if (!serviceInfosWithSDKs.length) {
-      logger.warn("No generated SDKs have been declared in connector.yaml files.");
-      logger.warn(`Run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`);
-      logger.warn(
-        `See https://firebase.google.com/docs/data-connect/web-sdk for more details of how to configure generated SDKs.`,
+      logger.info("No generated SDKs have been declared in connector.yaml files.");
+      logger.info(
+        `Running ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
       );
-      return;
+      const setup: Setup = {
+        config: config.src,
+        rcfile: options.rc.data,
+        instructions: [],
+      };
+      await sdk.askQuestions(setup);
+      await sdk.actuate(setup, config);
+      serviceInfos = await loadAll(projectId, config);
+      serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
+        serviceInfo.connectorInfo.some((c) => {
+          return (
+            c.connectorYaml.generate?.javascriptSdk ||
+            c.connectorYaml.generate?.kotlinSdk ||
+            c.connectorYaml.generate?.swiftSdk ||
+            c.connectorYaml.generate?.dartSdk
+          );
+        }),
+      );
     }
     async function generateSDK(serviceInfo: ServiceInfo): Promise<void> {
       return DataConnectEmulator.generate({
