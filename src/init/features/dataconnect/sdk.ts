@@ -159,6 +159,7 @@ export async function actuate(setup: Setup, config: Config) {
   if (!sdkInfo) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, sdkInfo);
   } finally {
@@ -166,11 +167,19 @@ export async function actuate(setup: Setup, config: Config) {
     // Otherwise, `firebase init dataconnect` will emit those stats.
     const fdcInfo = setup.featureInfo?.dataconnect;
     if (!fdcInfo) {
-      void trackGA4("dataconnect_init", {
-        project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-        flow: "cli_sdk",
-        ...initAppCounters(sdkInfo),
-      });
+      void trackGA4(
+        "dataconnect_init",
+        {
+          project_status: setup.projectId
+            ? setup.isBillingEnabled
+              ? "blaze"
+              : "spark"
+            : "missing",
+          flow: "cli_sdk",
+          ...initAppCounters(sdkInfo),
+        },
+        Date.now() - startTime,
+      );
     }
   }
 }

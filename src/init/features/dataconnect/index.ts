@@ -166,22 +166,27 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
     const sdkInfo = setup.featureInfo?.dataconnectSdk;
-    void trackGA4("dataconnect_init", {
-      flow: info.analyticsFlow,
-      project_status: setup.projectId
-        ? setup.isBillingEnabled
-          ? info.shouldProvisionCSQL
-            ? "blaze_provisioned_csql"
-            : "blaze"
-          : "spark"
-        : "missing",
-      ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
-    });
+    void trackGA4(
+      "dataconnect_init",
+      {
+        flow: info.analyticsFlow,
+        project_status: setup.projectId
+          ? setup.isBillingEnabled
+            ? info.shouldProvisionCSQL
+              ? "blaze_provisioned_csql"
+              : "blaze"
+            : "spark"
+          : "missing",
+        ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
+      },
+      Date.now() - startTime,
+    );
   }
 
   if (info.appDescription) {
