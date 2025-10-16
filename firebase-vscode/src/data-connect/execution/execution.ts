@@ -34,7 +34,7 @@ import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
-import { executionAuthParams, executionArgsJSON, ExecutionParamsService } from "./execution-params";
+import { executionAuthParams, executionVarsJSON, ExecutionParamsService } from "./execution-params";
 import { ExecuteGraphqlRequest } from "../../dataconnect/types";
 
 export interface ExecutionInput {
@@ -244,7 +244,7 @@ export function registerExecution(
       timestamp: Date.now(),
       state: ExecutionState.RUNNING,
       input: arg,
-      variables: executionArgsJSON.value,
+      variables: executionVarsJSON.value,
       auth: executionAuthParams.value,
       results: new Error("missing results"),
     });

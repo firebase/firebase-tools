@@ -11,7 +11,7 @@ import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../../analytics";
  * Contains the unparsed JSON object mutation/query variables.
  * The JSON may be invalid.
  */
-export const executionArgsJSON = globalSignal("{}");
+export const executionVarsJSON = globalSignal("{}");
 export const executionAuthParams = globalSignal<AuthParams>({kind: AuthParamsKind.ADMIN});
 
 export class ExecutionParamsService implements Disposable {
@@ -25,7 +25,7 @@ export class ExecutionParamsService implements Disposable {
     this.disposable.push({
       dispose: broker.on(
         "defineVariables",
-        (value) => (executionArgsJSON.value = value),
+        (value) => (executionVarsJSON.value = value),
       )
     });
   }
@@ -39,7 +39,7 @@ export class ExecutionParamsService implements Disposable {
   }
 
   executeGraphqlVariables(): Record<string, any> {
-    const variables = executionArgsJSON.value;
+    const variables = executionVarsJSON.value;
     if (!variables) {
       return {};
     }
@@ -111,8 +111,8 @@ export class ExecutionParamsService implements Disposable {
     if (fixes.length === 0) {
       return;
     }
-    executionArgsJSON.value = JSON.stringify(userVars, null, 2);
-    this.broker.send("notifyVariables", { variables: executionArgsJSON.value, fixes });
+    executionVarsJSON.value = JSON.stringify(userVars, null, 2);
+    this.broker.send("notifyVariables", { variables: executionVarsJSON.value, fixes });
     return;
   }
 }

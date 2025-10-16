@@ -2,7 +2,7 @@
 import * as assert from "assert";
 import {
   ExecutionParamsService,
-  executionArgsJSON,
+  executionVarsJSON,
 } from "../../../../../data-connect/execution/execution-params";
 import { firebaseSuite, firebaseTest } from "../../../../utils/test_hooks";
 import { OperationDefinitionNode, parse } from "graphql";
@@ -21,7 +21,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     } as any;
     const sendSpy = spy(broker, "send");
 
-    executionArgsJSON.value = JSON.stringify({
+    executionVarsJSON.value = JSON.stringify({
       name: "test",
       unused: "value",
     });
@@ -38,7 +38,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     await service.applyDetectedFixes(ast);
 
     const expectedJSON = JSON.stringify({ name: "test" }, null, 2);
-    assert.equal(executionArgsJSON.value, expectedJSON);
+    assert.equal(executionVarsJSON.value, expectedJSON);
     assert.ok(sendSpy.calledOnce);
     assert.deepEqual(sendSpy.getCall(0).args, [
       "notifyVariables",
@@ -61,7 +61,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     } as any;
     const sendSpy = spy(broker, "send");
 
-    executionArgsJSON.value = JSON.stringify({});
+    executionVarsJSON.value = JSON.stringify({});
 
     const ast = parse(`
       query MyQuery($name: String!) {
@@ -75,7 +75,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     await service.applyDetectedFixes(ast);
 
     const expectedJSON = JSON.stringify({ name: "" }, null, 2);
-    assert.equal(executionArgsJSON.value, expectedJSON);
+    assert.equal(executionVarsJSON.value, expectedJSON);
     assert.ok(sendSpy.calledOnce);
     assert.deepEqual(sendSpy.getCall(0).args, [
       "notifyVariables",
@@ -99,7 +99,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     const sendSpy = spy(broker, "send");
 
     const originalJSON = JSON.stringify({ name: "test" });
-    executionArgsJSON.value = originalJSON;
+    executionVarsJSON.value = originalJSON;
 
     const ast = parse(`
       query MyQuery($name: String) {
@@ -112,7 +112,7 @@ firebaseSuite("ExecutionParamsService.applyDetectedFixes", () => {
     const service = new ExecutionParamsService(broker, analyticsLogger);
     await service.applyDetectedFixes(ast);
 
-    assert.equal(executionArgsJSON.value, originalJSON);
+    assert.equal(executionVarsJSON.value, originalJSON);
     assert.ok(sendSpy.notCalled);
   });
 });
