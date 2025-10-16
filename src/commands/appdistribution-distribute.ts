@@ -107,7 +107,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       passwordResourceName: options.testPasswordResource,
     });
 
-    await distribute(
+    await distribute({
       appName,
       distribution,
       testCases,
@@ -115,25 +115,35 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       releaseNotes,
       testers,
       groups,
-      options.testNonBlocking,
+      testNonBlocking: options.testNonBlocking,
       loginCredential,
-    );
+    });
   });
 
 /**
  * Execute an app distribution action
  */
-async function distribute(
-  appName: string,
-  distribution: Distribution,
-  testCases: string[],
-  testDevices: TestDevice[],
-  releaseNotes?: string,
-  testers?: string[],
-  groups?: string[],
-  testNonBlocking?: boolean,
-  loginCredential?: LoginCredential,
-) {
+export async function distribute({
+  appName,
+  distribution,
+  testCases = undefined,
+  testDevices = undefined,
+  releaseNotes = undefined,
+  testers = undefined,
+  groups = undefined,
+  testNonBlocking = undefined,
+  loginCredential = undefined,
+}: {
+  appName: string;
+  distribution: Distribution;
+  testCases?: string[];
+  testDevices?: TestDevice[];
+  releaseNotes?: string;
+  testers?: string[];
+  groups?: string[];
+  testNonBlocking?: boolean;
+  loginCredential?: LoginCredential;
+}) {
   const requests = new AppDistributionClient();
   let aabInfo: AabInfo | undefined;
   if (distribution.distributionFileType() === DistributionFileType.AAB) {
@@ -204,26 +214,25 @@ async function distribute(
   await requests.distribute(releaseName, testers, groups);
 
   // Run automated tests
-  if (testDevices.length) {
+  if (testDevices && testDevices.length) {
     utils.logBullet("starting automated test (note: this feature is in beta)");
     const releaseTestPromises: Promise<ReleaseTest>[] = [];
-    if (!testCases.length) {
-      // fallback to basic automated test
-      releaseTestPromises.push(
-        requests.createReleaseTest(releaseName, testDevices, undefined, loginCredential),
-      );
-    } else {
+    if (testCases && !testCases.length) {
       for (const testCaseId of testCases) {
         releaseTestPromises.push(
-          requests.createReleaseTest(
+          requests.createReleaseTest({
             releaseName,
-            testDevices,
-            undefined,
+            devices: testDevices,
             loginCredential,
-            `${appName}/testCases/${testCaseId}`,
-          ),
+            testCaseName: `${appName}/testCases/${testCaseId}`,
+          }),
         );
       }
+    } else {
+      // fallback to basic automated test
+      releaseTestPromises.push(
+        requests.createReleaseTest({ releaseName, devices: testDevices, loginCredential }),
+      );
     }
     const releaseTests = await Promise.all(releaseTestPromises);
     utils.logSuccess(`${releaseTests.length} release test(s) started successfully`);

@@ -108,7 +108,8 @@ Here are a list of prerequisite steps that must be completed before running a te
   Use the apptesting_run_test tool to run an automated test with the following as input:
     * The generated test case that as been confirmed by the user
     * An APK. If there is no APK present, build the app to produce one. Make sure to build the variant of the app
-      with the same bundle ID as the Firebase app.
+      with the same bundle ID as the Firebase app. When searching for the APK, it may be located in a directory that
+      is being ignored by git, so you you may need to search directories that are listed in the .gitignore file.
 `.trim(),
         },
       },
