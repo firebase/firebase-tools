@@ -6,8 +6,10 @@ import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { confirm } from "../prompt";
-import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
+import { confirm, password } from "../prompt";
+import { logBullet, logSuccess, logWarning } from "../utils";
+import * as tty from "tty";
+import * as fs from "fs";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
@@ -54,21 +56,40 @@ export const command = new Command("functions:secrets:set <KEY>")
       }
     }
 
-    const secretValue = await readSecretValue(
-      `Enter a value for ${key}`,
-      dataFile,
-    );
+    // Read secret value from file, stdin, or interactive prompt
+    let secretValue: string;
+    if (dataFile) {
+      // Read from file or stdin
+      const inputSource = dataFile === "-" ? 0 : dataFile;
+      try {
+        secretValue = fs.readFileSync(inputSource, "utf-8");
+      } catch (e: any) {
+        if (e.code === "ENOENT") {
+          throw new FirebaseError(`File not found: ${inputSource}`, { original: e });
+        }
+        throw e;
+      }
+    } else if (!tty.isatty(0)) {
+      // Read from stdin (piped input)
+      secretValue = fs.readFileSync(0, "utf-8");
+    } else {
+      // Interactive prompt: use password for all secrets (hidden input)
+      const promptSuffix = format === "json" ? " (JSON format)" : "";
+      secretValue = await password({
+        message: `Enter a value for ${key}${promptSuffix}:`,
+      });
+    }
 
     if (format === "json") {
       try {
         JSON.parse(secretValue);
       } catch (e: any) {
         throw new FirebaseError(
-          `Provided value for ${key} is not valid JSON.\n\n` +
+          `Provided value for ${key} is not valid JSON: ${e.message}\n\n` +
             `For complex JSON values, use:\n` +
-            `  firebase functions:secrets:set ${key} --format=json --data-file <file.json>\n` +
+            `  firebase functions:secrets:set ${key} --data-file <file.json>\n` +
             `Or pipe from stdin:\n` +
-            `  cat config.json | firebase functions:secrets:set ${key} --format=json`,
+            `  cat <file.json> | firebase functions:secrets:set ${key} --format=json`,
         );
       }
     }
