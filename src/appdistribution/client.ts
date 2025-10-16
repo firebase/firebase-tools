@@ -9,6 +9,7 @@ import { appDistributionOrigin } from "../api";
 
 import {
   AabInfo,
+  AIInstruction,
   BatchRemoveTestersResponse,
   Group,
   ListGroupsResponse,
@@ -280,6 +281,7 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
+    aiInstruction?: AIInstruction,
     loginCredential?: LoginCredential,
     testCaseName?: string,
   ): Promise<ReleaseTest> {
@@ -291,6 +293,7 @@ export class AppDistributionClient {
           deviceExecutions: devices.map(mapDeviceToExecution),
           loginCredential,
           testCase: testCaseName,
+          aiInstructions: aiInstruction,
         },
       });
       return response.body;
