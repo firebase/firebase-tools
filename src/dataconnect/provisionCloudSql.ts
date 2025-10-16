@@ -24,7 +24,7 @@ export async function setupCloudSql(args: {
   instanceId: string;
   databaseId: string;
   requireGoogleMlIntegration: boolean;
-  source: "init" | "mcp_init" | "deploy";
+  source: "mcp_init" | "init" | "init_sdk" | "deploy";
   dryRun?: boolean;
 }): Promise<void> {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
@@ -37,7 +37,7 @@ export async function setupCloudSql(args: {
     success = true;
   } finally {
     if (!dryRun) {
-      await trackGA4(
+      void trackGA4(
         "dataconnect_cloud_sql",
         {
           source: args.source,
