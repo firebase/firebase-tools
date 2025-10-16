@@ -491,25 +491,23 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
       secretParam.label || secretParam.name
     }:`;
 
+    // Use password (hidden input) for all secrets, including JSON
+    secretValue = await password({
+      message: promptMessage,
+    });
+
     if (secretParam.format === "json") {
-      secretValue = await input({
-        message: promptMessage,
-      });
       try {
         JSON.parse(secretValue);
       } catch (e: any) {
         throw new FirebaseError(
-          `Provided value for ${secretParam.name} is not valid JSON.\n\n` +
+          `Provided value for ${secretParam.name} is not valid JSON: ${e.message}\n\n` +
             `For complex JSON values, use:\n` +
-            `  firebase functions:secrets:set ${secretParam.name} --format=json --data-file <file.json>\n` +
+            `  firebase functions:secrets:set ${secretParam.name} --data-file <file.json>\n` +
             `Or pipe from stdin:\n` +
-            `  cat config.json | firebase functions:secrets:set ${secretParam.name} --format=json`,
+            `  cat <file.json> | firebase functions:secrets:set ${secretParam.name} --format=json`,
         );
       }
-    } else {
-      secretValue = await password({
-        message: promptMessage,
-      });
     }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
