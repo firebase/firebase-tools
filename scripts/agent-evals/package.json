@@ -2,10 +2,10 @@
   "name": "agent-evals",
   "version": "1.0.0",
   "description": "",
-  "main": "tests.js",
+  "main": "main.js",
   "type": "module",
   "scripts": {
-    "test": "tsx ./tests.ts"
+    "test": "tsx ./main.ts"
   },
   "keywords": [],
   "author": "",

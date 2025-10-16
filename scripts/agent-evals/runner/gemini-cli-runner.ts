@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { InteractiveCLI, RunInteractiveOptions, poll } from "./interactive-cli.js";
+import { InteractiveCLI, poll } from "./interactive-cli.js";
 import { AgentTestRunner } from "./agent-test-runner.js";
 
 const READY_PROMPT = "Type your message";
@@ -31,6 +31,12 @@ export class GeminiCliRunner implements AgentTestRunner {
         target: "local",
         otlpEndpoint: "",
         outfile: this.telemetryPath,
+      },
+      mcpServers: {
+        firebase: {
+          command: path.resolve(runDir, '../../../../../lib/bin/firebase.js'),
+          args: ["experimental:mcp"],
+        },
       },
     };
     const geminiDir = path.join(runDir, ".gemini");
@@ -77,6 +83,8 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     if (!found) {
       throw new Error(`Did not find expected telemetry event: "${eventName}" in the telemetry log`);
+    } else {
+      console.log(`  [FOUND] expectTelemetryEvent: ${eventName}`);
     }
   }
 }

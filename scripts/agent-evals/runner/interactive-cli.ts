@@ -35,7 +35,6 @@ export class InteractiveCLI {
     args: string[],
     private readonly options: RunInteractiveOptions,
   ) {
-    console.log(`Running command: ${command} ${args.join(" ")} in ${options.cwd}`);
     this.ptyProcess = pty.spawn(command, args, {
       name: "xterm-color",
       cols: 80,
@@ -143,6 +142,8 @@ export class InteractiveCLI {
 
     if (!found) {
       throw new Error(`Did not find expected text: "${text}" in the latest output`);
+    } else {
+      console.log(`  [FOUND] expectText: ${text}`);
     }
   }
 
