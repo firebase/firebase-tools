@@ -15,15 +15,19 @@ export const init_data_connect = resource(
           uri,
           type: "text",
           text: `
-Create a file called \`data-connect.ts\`:
+First, ask the user what they would like to name their service.
+Then, ask the user to provide a description of the app they are trying to build.
 
-\`\`\`ts
-import { initializeApp } from "firebase/app";
-import { getDataConnect } from "firebase/data-connect";
+Call the 'firebase_init' tools with the features.dataconnect argument set to:
 
-const app = initializeApp({...});
-const db = getDataConnect(app);
-\`\`\`
+{
+  description: The description the user provided above,
+  service_id: The service ID the user provided
+  instance_id: <serviceId>-fdc
+  location_id: us-east4
+  provision_cloudsql: true
+}
+
 `.trim(),
         },
       ],
