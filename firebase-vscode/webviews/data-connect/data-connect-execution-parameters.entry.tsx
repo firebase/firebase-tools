@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import style from "./data-connect-execution-configuration.entry.scss";
+import style from "./data-connect-execution-parameters.entry.scss";
 import {
   VSCodeButton,
   VSCodeDropdown,
@@ -10,34 +10,39 @@ import {
   VSCodePanelView,
   VSCodeTextArea,
 } from "@vscode/webview-ui-toolkit/react";
-import { broker, useBroker } from "../globals/html-broker";
+import { broker } from "../globals/html-broker";
 import { Spacer } from "../components/ui/Spacer";
-import { UserMockKind } from "../../common/messaging/protocol";
+import { EXAMPLE_CLAIMS, AuthParamsKind, AuthParams, DataConnectResults } from "../../common/messaging/protocol";
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<DataConnectExecutionArgumentsApp />);
 
 export function DataConnectExecutionArgumentsApp() {
-  function handleVariableChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setText(e.target.value);
-    broker.send("definedDataConnectArgs", e.target.value);
-  }
+  const [variables, setVariables] = useState("{}");
+  const [fixes, setFixes] = useState<string[]>([]);
 
-  const lastOperation = useBroker("notifyLastOperation");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [textareaVariables, setText] = useState("{}");
+  useEffect(() => {
+    broker.send("defineVariables", variables);
+  }, [variables]);
 
+  useEffect(() => {
+    const dispose1 = broker.on("notifyVariables", (v: {variables: string, fixes: string[]}) => {
+      setVariables(v.variables);
+      setFixes(v.fixes);
+    });
+    const dispose2 = broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+      setVariables(results.variables);
+      setFixes([]);
+    });
+    return () => {
+      dispose1();
+      dispose2();
+    };
+  }, []);
 
-  const updateText = broker.on("notifyDataConnectArgs" , (newArgs: string) => {
-    setText(newArgs);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(0, 1);
-    }
-  })
-
-  const sendRerun = () => {
-    broker.send("rerunExecution");
+  const handleVariableChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setVariables(e.target.value);
+    setFixes([]);
   };
 
   // Due to webview-ui-toolkit adding shadow-roots, css alone is not
@@ -73,53 +78,71 @@ export function DataConnectExecutionArgumentsApp() {
       <VSCodePanelTab>AUTHENTICATION</VSCodePanelTab>
       <VSCodePanelView className={style.variable}>
         <textarea
-          ref={textareaRef}
-          value={textareaVariables}
+          value={variables}
           onChange={handleVariableChange}
           className={style.variableInput}
         ></textarea>
         <Spacer size="small"></Spacer>
-        {lastOperation && (
-          <VSCodeButton onClick={sendRerun}>
-            Rerun last execution: {lastOperation}
-          </VSCodeButton>
+        {fixes.length > 0 && (
+          <>
+            Applied Fixes:
+            <ul>
+              {fixes.map((fix, index) => (
+                <li key={index}>{fix}</li>
+              ))}
+            </ul>
+          </>
         )}
       </VSCodePanelView>
       <VSCodePanelView className={style.authentication}>
-        <AuthUserMockForm />
+        <AuthParamForm />
       </VSCodePanelView>
     </VSCodePanels>
   );
 }
 
-function AuthUserMockForm() {
-  const [selectedKind, setSelectedMockKind] = useState<UserMockKind>(
-    UserMockKind.ADMIN,
+function AuthParamForm() {
+  const [selectedKind, setSelectedMockKind] = useState<AuthParamsKind>(
+    AuthParamsKind.ADMIN,
   );
-  const [claims, setClaims] = useState<string>(
-    `{\n  "email_verified": true,\n  "sub": "exampleUserId"\n}`,
-  );
+  const [claims, setClaims] = useState<string>(EXAMPLE_CLAIMS);
 
   useEffect(() => {
-    broker.send(
-      "notifyAuthUserMockChange",
-      selectedKind === UserMockKind.AUTHENTICATED
+    const auth = selectedKind === AuthParamsKind.AUTHENTICATED
         ? {
             kind: selectedKind,
             claims: claims,
           }
         : {
             kind: selectedKind,
-          },
-    );
+          };
+    broker.send("defineAuthParams", auth);
   }, [selectedKind, claims]);
 
+  function setAuthParams(auth: AuthParams) {
+    setSelectedMockKind(auth.kind);
+    if (auth.kind === AuthParamsKind.AUTHENTICATED) {
+      setClaims(auth.claims);
+    }
+  }
+
+  useEffect(() => {
+    const dispose1 = broker.on("notifyAuthParams", setAuthParams);
+    const dispose2 = broker.on("notifyDataConnectResults", (results: DataConnectResults) => {
+      setAuthParams(results.auth);
+    });
+    return () => {
+      dispose1();
+      dispose2();
+    };
+  }, []);
+
   let expandedForm: JSX.Element | undefined;
-  if (selectedKind === UserMockKind.AUTHENTICATED) {
+  if (selectedKind === AuthParamsKind.AUTHENTICATED) {
     expandedForm = (
       <>
         <Spacer size="medium" />
-        <span>Claim and values</span>
+        <span>Claim JWT</span>
         <VSCodeTextArea
           resize={"vertical"}
           value={claims}
@@ -137,11 +160,11 @@ function AuthUserMockForm() {
         value={selectedKind}
         onChange={(event) => setSelectedMockKind((event.target as any).value)}
       >
-        <VSCodeOption value={UserMockKind.ADMIN}>Admin</VSCodeOption>
-        <VSCodeOption value={UserMockKind.UNAUTHENTICATED}>
+        <VSCodeOption value={AuthParamsKind.ADMIN}>Admin</VSCodeOption>
+        <VSCodeOption value={AuthParamsKind.UNAUTHENTICATED}>
           Unauthenticated
         </VSCodeOption>
-        <VSCodeOption value={UserMockKind.AUTHENTICATED}>
+        <VSCodeOption value={AuthParamsKind.AUTHENTICATED}>
           Authenticated
         </VSCodeOption>
       </VSCodeDropdown>
