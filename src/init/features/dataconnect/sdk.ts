@@ -165,7 +165,7 @@ export async function actuate(setup: Setup, config: Config) {
   } finally {
     let flow = "no_app";
     if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map(appDescription).sort();
+      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
       flow = `${platforms.join("_")}_app`;
     }
     if (fdcInfo) {
