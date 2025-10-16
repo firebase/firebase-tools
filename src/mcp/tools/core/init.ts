@@ -183,7 +183,8 @@ export const init = tool(
       }
       featuresList.push("dataconnect");
       featureInfo.dataconnect = {
-        analyticsFlow: "mcp",
+        source: "mcp_init",
+        flow: "",
         appDescription: features.dataconnect.app_description || "",
         serviceId: features.dataconnect.service_id || "",
         locationId: features.dataconnect.location_id || "",
