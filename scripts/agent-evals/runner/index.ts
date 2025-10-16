@@ -23,7 +23,7 @@ export async function runTest(testCase: AgentTestCase): Promise<boolean> {
   try {
     await run.waitForReadyPrompt();
     await testCase.test(run);
-    console.error(`[PASS] ${testCase.name}`);
+    console.log(`[PASS] ${testCase.name}`);
   } catch (e) {
     console.error(`[FAIL] ${testCase.name}`, e);
     success = false;
