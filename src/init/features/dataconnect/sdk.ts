@@ -155,28 +155,60 @@ export async function chooseApp(): Promise<App[]> {
 }
 
 export async function actuate(setup: Setup, config: Config) {
-  const fdcInfo = setup.featureInfo?.dataconnect;
   const sdkInfo = setup.featureInfo?.dataconnectSdk;
   if (!sdkInfo) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, sdkInfo);
   } finally {
-    let flow = "no_app";
-    if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
-      flow = `${platforms.join("_")}_app`;
-    }
-    if (fdcInfo) {
-      fdcInfo.analyticsFlow += `_${flow}`;
-    } else {
-      void trackGA4("dataconnect_init", {
-        project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-        flow: `cli_sdk_${flow}`,
-      });
+    // If `firebase init dataconnect:sdk` is run alone, emit GA stats.
+    // Otherwise, `firebase init dataconnect` will emit those stats.
+    const fdcInfo = setup.featureInfo?.dataconnect;
+    if (!fdcInfo) {
+      void trackGA4(
+        "dataconnect_init",
+        {
+          flow: "cli_sdk",
+          project_status: setup.projectId
+            ? setup.isBillingEnabled
+              ? "blaze"
+              : "spark"
+            : "missing",
+          ...initAppCounters(sdkInfo),
+        },
+        Date.now() - startTime,
+      );
     }
   }
+}
+
+export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number } {
+  const counts = {
+    num_web_apps: 0,
+    num_android_apps: 0,
+    num_ios_apps: 0,
+    num_flutter_apps: 0,
+  };
+
+  for (const app of info.apps ?? []) {
+    switch (app.platform) {
+      case Platform.WEB:
+        counts.num_web_apps++;
+        break;
+      case Platform.ANDROID:
+        counts.num_android_apps++;
+        break;
+      case Platform.IOS:
+        counts.num_ios_apps++;
+        break;
+      case Platform.FLUTTER:
+        counts.num_flutter_apps++;
+        break;
+    }
+  }
+  return counts;
 }
 
 async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredInfo) {
