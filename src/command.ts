@@ -224,12 +224,15 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4("command_execution", {
-            command_name: this.name,
-            result: "success",
+          const trackSuccess = trackGA4(
+            "command_execution",
+            {
+              command_name: this.name,
+              result: "success",
+              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+            },
             duration,
-            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-          });
+          );
           if (!isEmulator) {
             await withTimeout(5000, trackSuccess);
           } else {
@@ -313,6 +316,7 @@ export class Command {
     }
 
     if (getInheritedOption(options, "json")) {
+      options.interactive = false;
       options.nonInteractive = true;
     } else if (!options.isMCP) {
       useConsoleLoggers();

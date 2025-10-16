@@ -3,11 +3,11 @@ import { Connector, ServiceInfo } from "../../dataconnect/types";
 import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
 import { parseServiceName } from "../../dataconnect/names";
 import { logger } from "../../logger";
+import { Context } from "./context";
 
 /**
  * Release deploys schemas and connectors.
@@ -15,18 +15,14 @@ import { logger } from "../../logger";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-    };
-  },
-  options: Options,
-): Promise<void> {
+export default async function (context: Context, options: Options): Promise<void> {
+  const dataconnect = context.dataconnect;
+  if (!dataconnect) {
+    throw new Error("dataconnect.prepare must be run before dataconnect.release");
+  }
   const project = needProjectId(options);
-  const serviceInfos = context.dataconnect.serviceInfos;
-  const filters = context.dataconnect.filters;
+  const serviceInfos = dataconnect.serviceInfos;
+  const filters = dataconnect.filters;
 
   // First, figure out the schemas and connectors to deploy.
   const wantSchemas = serviceInfos
@@ -70,6 +66,7 @@ export default async function (
         return c; // will try again after schema deployment.
       }
       utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+      dataconnect.deployStats.numConnectorUpdatedBeforeSchema++;
       return undefined;
     }),
   );
@@ -81,8 +78,10 @@ export default async function (
       schema: s.schema,
       validateOnly: false,
       schemaValidation: s.validationMode,
+      stats: dataconnect.deployStats,
     });
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
   }
 
   // Lastly, deploy the remaining connectors that relies on the latest schema.
@@ -91,6 +90,7 @@ export default async function (
       if (c) {
         await upsertConnector(c);
         utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+        dataconnect.deployStats.numConnectorUpdatedAfterSchema++;
       }
     }),
   );

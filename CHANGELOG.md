@@ -1,1 +1,2 @@
 - Add JSON format support for Cloud Functions secrets with `--format json` flag and auto-detection from file extensions (#1745)
+- `firebase dataconnect:sdk:generate` will run `init dataconnect:sdk` automatically if no SDKs are configured (#9325).

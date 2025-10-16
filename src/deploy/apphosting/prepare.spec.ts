@@ -21,7 +21,6 @@ const BASE_OPTS = {
   debug: false,
   filteredTargets: [],
   rc: new RC(),
-  json: false,
 };
 
 function initializeContext(): Context {

@@ -26,7 +26,6 @@ const options: Options = {
   config: new Config({}, { projectDir: "", cwd: "" }),
   filteredTargets: [],
   force: false,
-  json: false,
   nonInteractive: false,
   interactive: false,
   debug: false,
@@ -94,7 +93,7 @@ describe("cloudsqladmin", () => {
           location: "us-central",
           instanceId: INSTANCE_ID,
           enableGoogleMlIntegration: false,
-          freeTrial: false,
+          freeTrialLabel: "nt",
         }),
       ).to.be.rejectedWith("Cloud SQL free trial instances are not yet available in us-central");
       expect(nock.isDone()).to.be.true;
@@ -161,7 +160,7 @@ describe("cloudsqladmin", () => {
         location: "us-central",
         instanceId: INSTANCE_ID,
         enableGoogleMlIntegration: false,
-        freeTrial: false,
+        freeTrialLabel: "nt",
       });
 
       expect(nock.isDone()).to.be.true;
