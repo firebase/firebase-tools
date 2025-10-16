@@ -4,7 +4,7 @@ import { RC } from "./rc";
 // Options come from command-line options and stored config values
 // TODO: actually define all of this stuff in command.ts and import it from there.
 export interface BaseOptions {
-  cwd: string;
+  cwd?: string;
   configPath: string;
   only: string;
   except: string;
@@ -20,7 +20,6 @@ export interface BaseOptions {
   projectRoot?: string;
   account?: string;
   nonInteractive: boolean;
-  interactive: boolean;
   debug: boolean;
 
   rc: RC;
@@ -41,8 +40,15 @@ export interface BaseOptions {
    *      return objectToBePrintedWhenTheJsonFlagIsPassed;
    *    });
    * ```
+   * @deprecated
    */
   json?: undefined;
+
+  /**
+   * Do not use -- never set in commands. Use `!options.nonInteractive` instead.
+   * @deprecated
+   */
+  interactive?: undefined;
 }
 
 export interface Options extends BaseOptions {

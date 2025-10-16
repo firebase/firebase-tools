@@ -43,7 +43,6 @@ describe("genkit", () => {
       filteredTargets: [],
       force: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: new Config("{}", {}),
       rc: new RC(),

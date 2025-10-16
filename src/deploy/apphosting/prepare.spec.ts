@@ -17,7 +17,6 @@ const BASE_OPTS = {
   except: "",
   force: false,
   nonInteractive: false,
-  interactive: false,
   debug: false,
   filteredTargets: [],
   rc: new RC(),

@@ -15,7 +15,6 @@ const options: Options = {
   filteredTargets: [],
   force: false,
   nonInteractive: false,
-  interactive: false,
   debug: false,
   rc: new RC(),
 };

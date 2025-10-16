@@ -35,7 +35,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "functions",
   except: "",
   nonInteractive: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: ["functions"],
