@@ -169,7 +169,8 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
-export interface TextInput<T> { // eslint-disable-line
+export interface TextInput<T> {
+  // eslint-disable-line
   text: {
     example?: string;
 
@@ -224,6 +225,9 @@ interface SecretParam {
   // A long description of the parameter's purpose and allowed values. If omitted, UX will not
   // provide a description of the parameter
   description?: string;
+
+  // The format of the secret, e.g. "json"
+  format?: string;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -390,6 +394,23 @@ export async function resolveParams(
   }
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
+
+  // Check for missing secrets in non-interactive mode
+  if (nonInteractive && needSecret.length > 0) {
+    const secretNames = needSecret.map((p) => p.name).join(", ");
+    const commands = needSecret
+      .map(
+        (p) =>
+          `\tfirebase functions:secrets:set ${p.name}${(p as SecretParam).format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+      )
+      .join("\n");
+    throw new FirebaseError(
+      `In non-interactive mode but have no value for the following secrets: ${secretNames}\n\n` +
+        "Set these secrets before deploying:\n" +
+        commands,
+    );
+  }
+
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
@@ -398,7 +419,7 @@ export async function resolveParams(
   }
 
   if (nonInteractive && needPrompt.length > 0) {
-    const envNames = outstanding.map((p) => p.name).join(", ");
+    const envNames = needPrompt.map((p) => p.name).join(", ");
     throw new FirebaseError(
       `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
@@ -460,17 +481,39 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
  * to read its environment variables. They are instead provided through GCF's own
  * Secret Manager integration.
  */
-async function handleSecret(secretParam: SecretParam, projectId: string) {
+async function handleSecret(secretParam: SecretParam, projectId: string): Promise<void> {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
-    const secretValue = await password({
-      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
-        secretParam.name
-      }. Enter a value for ${secretParam.label || secretParam.name}:`,
-    });
+    let secretValue: string;
+    const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
+      secretParam.name
+    }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
+      secretParam.label || secretParam.name
+    }:`;
+
+    if (secretParam.format === "json") {
+      secretValue = await input({
+        message: promptMessage,
+      });
+      try {
+        JSON.parse(secretValue);
+      } catch (e: any) {
+        throw new FirebaseError(
+          `Provided value for ${secretParam.name} is not valid JSON.\n\n` +
+            `For complex JSON values, use:\n` +
+            `  firebase functions:secrets:set ${secretParam.name} --format=json --data-file <file.json>\n` +
+            `Or pipe from stdin:\n` +
+            `  cat config.json | firebase functions:secrets:set ${secretParam.name} --format=json`,
+        );
+      }
+    } else {
+      secretValue = await password({
+        message: promptMessage,
+      });
+    }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
-    return secretValue;
+    return;
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${

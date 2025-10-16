@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../logger";
+import { FirebaseError } from "../error";
 import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
@@ -36,15 +37,41 @@ export const command = new Command("functions:secrets:set <KEY>")
     "--data-file <dataFile>",
     'file path from which to read secret data. Set to "-" to read the secret data from stdin',
   )
+  .option("--format <format>", "format of the secret value. 'string' (default) or 'json'")
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
+
+    // Determine format using priority order: explicit flag > file extension > default to string
+    let format = options.format as string | undefined;
+    const dataFile = options.dataFile as string | undefined;
+    if (!format && dataFile && dataFile !== "-") {
+      // Auto-detect from file extension
+      if (dataFile.endsWith(".json")) {
+        format = "json";
+      }
+    }
+
     const secretValue = await readSecretValue(
       `Enter a value for ${key}`,
-      options.dataFile as string | undefined,
+      dataFile,
     );
+
+    if (format === "json") {
+      try {
+        JSON.parse(secretValue);
+      } catch (e: any) {
+        throw new FirebaseError(
+          `Provided value for ${key} is not valid JSON.\n\n` +
+            `For complex JSON values, use:\n` +
+            `  firebase functions:secrets:set ${key} --format=json --data-file <file.json>\n` +
+            `Or pipe from stdin:\n` +
+            `  cat config.json | firebase functions:secrets:set ${key} --format=json`,
+        );
+      }
+    }
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 
