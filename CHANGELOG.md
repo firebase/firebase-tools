@@ -1,0 +1,1 @@
+- Add JSON format support for Cloud Functions secrets with `--format json` flag and auto-detection from file extensions (#1745)
