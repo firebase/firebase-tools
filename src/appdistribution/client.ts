@@ -291,7 +291,7 @@ export class AppDistributionClient {
         path: `${releaseName}/tests`,
         body: {
           deviceExecutions: devices.map(mapDeviceToExecution),
-          loginCredential: loginCredential,
+          loginCredential,
           testCase: testCaseName,
           aiInstructions: aiInstruction,
         },

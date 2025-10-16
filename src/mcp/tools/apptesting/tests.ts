@@ -32,7 +32,7 @@ const AIStepSchema = z
         "A description of criteria the agent should use to determine if the goal has been successfully completed.",
       ),
   })
-  .describe("Steps that are run during the execution of the test.");
+  .describe("Step within a test case; run during the execution of the test.");
 export const run_tests = tool(
   {
     name: "run_test",
@@ -54,13 +54,17 @@ export const run_tests = tool(
           orientation: "portrait",
         },
       ]),
-      steps: z.array(AIStepSchema).describe("Steps that are run during the execution of the test."),
+      testCase: z
+        .array(AIStepSchema)
+        .describe("Test case containing the steps that are run during its execution."),
     }),
   },
-  async ({ appId, releaseBinaryFile, testDevices, steps }) => {
+  async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
     const client = new AppDistributionClient();
-    const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    const releaseTest = await client.createReleaseTest(releaseName, testDevices, { steps: steps });
+    const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
+    const releaseTest = await client.createReleaseTest(releaeName, testDevices, {
+      steps: testCase,
+    });
     return toContent(await awaitTestResults([releaseTest], client));
   },
 );
