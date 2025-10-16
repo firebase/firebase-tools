@@ -1,0 +1,1 @@
+- `firebase dataconnect:sdk:generate` will run `init dataconnect:sdk` automatically if no SDKs are configured (#9325).
