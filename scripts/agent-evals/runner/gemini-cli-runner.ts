@@ -8,7 +8,7 @@ const READY_PROMPT = "Type your message";
 
 export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
-  private readonly telemetryPath;
+  private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
 
   constructor(private readonly testName: string) {
