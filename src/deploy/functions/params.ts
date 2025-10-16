@@ -169,8 +169,7 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
-export interface TextInput<T> {
-  // eslint-disable-line
+export interface TextInput<T> { // eslint-disable-line
   text: {
     example?: string;
 
@@ -484,18 +483,15 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 async function handleSecret(secretParam: SecretParam, projectId: string): Promise<void> {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
-    let secretValue: string;
     const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
       secretParam.name
     }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
       secretParam.label || secretParam.name
     }:`;
 
-    // Use password (hidden input) for all secrets, including JSON
-    secretValue = await password({
+    const secretValue = await password({
       message: promptMessage,
     });
-
     if (secretParam.format === "json") {
       try {
         JSON.parse(secretValue);
