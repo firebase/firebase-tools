@@ -50,14 +50,14 @@ Follow the steps below taking note of any user instructions provided above.
   - Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
   - Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
-    - IMPORTANT: The Firebase AI Logic setup guide is for web, flutter, and android apps only. If the user requests firebase setup for unsupported platforms (iOS, Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
+    - IMPORTANT: The Firebase AI Logic setup guide is for web, Flutter, Android, and iOS apps only. If the user requests firebase setup for unsupported platforms (Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
 3. After the user chooses an init option, create a plan based on the remaining steps in this guide, share it with the user, and give them an opportunity to accept or adjust it.
 4. If there is no active Firebase project, ask the user if they want to create a new project or use an existing one. If using an existing project, ask for the project ID and explain how to find it: open the Firebase Console (http://console.firebase.google.com/), locate the project ID under the project name in the projects list, or open the project and go to Project Overview → Project Settings.
    - If they would like to create a project, use the firebase_create_project with the project ID
    - If they would like to use an existing project, use the firebase_update_environment tool with the active_project argument.
    - If you run into issues creating the firebase project, ask the user to go to the [Firebase Console](http://console.firebase.google.com/) and create a project. Wait for the user to report back before continuing.
 5. Ensure there is an active Firebase App for their platform
-   - Do the following only for Web and Android apps
+   - Do the following only for Web, Android, and iOS apps
      - Run the \`firebase_list_apps\` tool to list their apps, and find an app that matches their "Workspace platform"
      - If there is no app that matches that criteria, use the \`firebase_create_app\` tool to create the app with the appropriate platform
    - Do the following only for Flutter apps
@@ -66,11 +66,11 @@ Follow the steps below taking note of any user instructions provided above.
      - Install the Flutterfire CLI
      - Use the Flutterfire CLI tool to connect to the project
      - Use the Flutterfire CLI to register the appropriate applications based on the user's input
-       - Let the developer know that you currently only support configuring web, ios, and android targets together in a bundle. Each of those targets will have appropriate apps registered in the project using the flutterfire CLI
+       - Let the developer know that you currently only support configuring web, iOS, and Android targets together in a bundle. Each of those targets will have appropriate apps registered in the project using the flutterfire CLI
        - Execute flutterfire config using the following pattern: flutterfire config --yes --project=<aliasOrProjectId> --platforms=<platforms>
 6. Now that we have a working environment, print out 1) Active user 2) Firebase Project and 3) Firebase App & platform they are using for this process.
    - Ask the user to confirm this is correct before continuing
-7. Set up the web Firebase SDK. Skip straight to #8 for Flutter and Android apps
+7. Set up the web Firebase SDK. Skip straight to #8 for Flutter, Android, and iOS apps
   - Fetch the configuration for the specified app using the \`firebase_get_sdk_config\` tool.
   - Write the Firebase SDK config to a file
   - Check what the latest version of the SDK is by running the command 'npm view firebase version'
