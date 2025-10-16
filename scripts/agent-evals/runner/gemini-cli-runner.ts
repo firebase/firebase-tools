@@ -58,7 +58,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     return this.cli.type(text);
   }
 
-  async expectText(text: string): Promise<void> {
+  async expectText(text: string | RegExp): Promise<void> {
     return this.cli.expectText(text);
   }
 
