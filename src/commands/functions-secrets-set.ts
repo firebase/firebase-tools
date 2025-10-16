@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { ensureValidKey, ensureSecret } from "../functions/secrets";
+import { ensureValidKey, ensureSecret, validateJsonSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
@@ -81,17 +81,7 @@ export const command = new Command("functions:secrets:set <KEY>")
     }
 
     if (format === "json") {
-      try {
-        JSON.parse(secretValue);
-      } catch (e: any) {
-        throw new FirebaseError(
-          `Provided value for ${key} is not valid JSON: ${e.message}\n\n` +
-            `For complex JSON values, use:\n` +
-            `  firebase functions:secrets:set ${key} --data-file <file.json>\n` +
-            `Or pipe from stdin:\n` +
-            `  cat <file.json> | firebase functions:secrets:set ${key} --format=json`,
-        );
-      }
+      validateJsonSecret(key, secretValue);
     }
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);

@@ -1,6 +1,7 @@
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { checkbox, input, password, select } from "../../prompt";
+import { validateJsonSecret } from "../../functions/secrets";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
@@ -493,17 +494,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
       message: promptMessage,
     });
     if (secretParam.format === "json") {
-      try {
-        JSON.parse(secretValue);
-      } catch (e: any) {
-        throw new FirebaseError(
-          `Provided value for ${secretParam.name} is not valid JSON: ${e.message}\n\n` +
-            `For complex JSON values, use:\n` +
-            `  firebase functions:secrets:set ${secretParam.name} --data-file <file.json>\n` +
-            `Or pipe from stdin:\n` +
-            `  cat <file.json> | firebase functions:secrets:set ${secretParam.name} --format=json`,
-        );
-      }
+      validateJsonSecret(secretParam.name, secretValue);
     }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
