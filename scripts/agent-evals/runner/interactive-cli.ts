@@ -1,6 +1,5 @@
 import * as pty from "node-pty";
 import { IPty } from "node-pty";
-import { expect } from "vitest";
 import stripAnsi from "strip-ansi";
 
 export async function poll(predicate: () => boolean, timeout: number): Promise<boolean> {
@@ -112,7 +111,7 @@ export class InteractiveCLI {
     let counter = 0;
     const repetitionsUntilComplete = 3;
     const stoppedChanging = await poll(() => {
-      if (lastOutput == this.turnOutput) {
+      if (lastOutput === this.turnOutput) {
         counter += 1;
         return counter > repetitionsUntilComplete;
       }

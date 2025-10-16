@@ -13,8 +13,12 @@ export async function clearUserMcpServers() {
   // These can fail if there's nothing installed, so ignore that
   try {
     await execPromise("gemini extensions uninstall firebase");
-  } catch (e: any) {}
+  } catch (_: any) {
+    /* Intentionally empty block */
+  }
   try {
     await execPromise("gemini mcp remove firebase");
-  } catch (e: any) {}
+  } catch (_: any) {
+    /* Intentionally empty block */
+  }
 }

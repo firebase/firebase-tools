@@ -34,7 +34,7 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
       mcpServers: {
         firebase: {
-          command: path.resolve(runDir, '../../../../../lib/bin/firebase.js'),
+          command: path.resolve(runDir, "../../../../../lib/bin/firebase.js"),
           args: ["experimental:mcp"],
         },
       },
