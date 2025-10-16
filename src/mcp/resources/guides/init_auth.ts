@@ -32,6 +32,7 @@ export const init_auth = resource(
 **Next Steps:**
 - **Security Rules**: If an app uses *Cloud Firestore database*, *Cloud Storage for Firebase*, or *Firebase Realtime Database*, then please update user-based Security Rules that are structured according to the app's specific requirements.
 - **App Deployment**: Deploy the app to production after Security Rules are verified to be working properly.
+- Refer back to the FIREBASE_INIT_TODO.md or TODO tool for next steps
 `.trim(),
         },
       ],
