@@ -269,7 +269,7 @@ export class PostgresServer {
  */
 export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
   const rs = Readable.toWeb(socket) as unknown as ReadableStream;
-  const ws = Writable.toWeb(socket);
+  const ws = Writable.toWeb(socket) as WritableStream<Uint8Array>;
   const opts = options
     ? {
         ...options,
