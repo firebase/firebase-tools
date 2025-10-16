@@ -29,6 +29,11 @@ export const command = new Command("dataconnect:sdk:generate")
     let justRanInit = false;
     let config = options.config;
     if (!config || !config.has("dataconnect")) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          "No dataconnect project directory found. Please run `firebase init dataconnect` to set it up first.",
+        );
+      }
       logWarning("No dataconnect project directory found.");
       logBullet(
         `Running ${clc.bold("firebase init dataconnect")} to setup a dataconnect project directory.`,
@@ -51,9 +56,9 @@ export const command = new Command("dataconnect:sdk:generate")
 
     let serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
     if (!serviceInfosWithSDKs.length) {
-      if (justRanInit) {
+      if (justRanInit || options.nonInteractive) {
         throw new FirebaseError(
-          "No generated SDKs were configured during init. Please run `firebase init dataconnect:sdk` to configure a generated SDK.",
+          "No generated SDKs are configured during init. Please run `firebase init dataconnect:sdk` to configure a generated SDK.",
         );
       }
       logWarning("No generated SDKs have been configured.");
