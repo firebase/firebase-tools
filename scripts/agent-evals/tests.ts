@@ -8,7 +8,9 @@ export const tests: AgentTestCase[] = [
       await run.expectText("Backend Services");
       await run.expectText("AI Logic");
 
-      await run.type("Build a single page backend app with html and pure javascript. It should say Hello World, but let you login and edit the hello world text for your user");
+      await run.type(
+        "Build a single page backend app with html and pure javascript. It should say Hello World, but let you login and edit the hello world text for your user",
+      );
 
       await run.type("Yes that looks good. Use Firebase Project gcli-ext-sam-01");
     },

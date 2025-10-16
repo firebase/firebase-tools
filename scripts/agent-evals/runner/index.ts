@@ -29,6 +29,7 @@ export async function runTest(testCase: AgentTestCase): Promise<boolean> {
     success = false;
   } finally {
     await run.exit();
-    return success;
   }
+
+  return success;
 }
