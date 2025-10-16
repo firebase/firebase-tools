@@ -105,7 +105,7 @@ export async function chooseApp(): Promise<App[]> {
       `Detected existing apps ${apps.map((a) => appDescription(a)).join(", ")}`,
     );
   } else {
-    logLabeledWarning("dataconnect", "Cannot detect any existing apps in the current directory.");
+    logLabeledWarning("dataconnect", "Cannot detect an existing app in the current directory.");
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
