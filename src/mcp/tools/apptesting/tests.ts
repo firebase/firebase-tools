@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
-import { upload, Distribution, awaitTestResults } from "../../../appdistribution/distribution";
+import { upload, Distribution } from "../../../appdistribution/distribution";
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
@@ -33,6 +33,7 @@ const AIStepSchema = z
       ),
   })
   .describe("Step within a test case; run during the execution of the test.");
+
 export const run_tests = tool(
   {
     name: "run_test",
@@ -58,13 +59,32 @@ export const run_tests = tool(
         .array(AIStepSchema)
         .describe("Test case containing the steps that are run during its execution."),
     }),
+    annotations: {
+      title: "Run a Remote Test",
+      readOnlyHint: false,
+    },
   },
   async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
     const client = new AppDistributionClient();
     const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    const releaseTest = await client.createReleaseTest(releaeName, testDevices, {
-      steps: testCase,
-    });
-    return toContent(await awaitTestResults([releaseTest], client));
+    return toContent(await client.createReleaseTest(releaeName, testDevices, { steps: testCase }));
+  },
+);
+
+export const check_test = tool(
+  {
+    name: "check_test",
+    description: "Check the status of a remote test.",
+    inputSchema: z.object({
+      name: z.string().describe("The name of the release test returned by the run_test tool."),
+    }),
+    annotations: {
+      title: "Check Remote Test",
+      readOnlyHint: true,
+    },
+  },
+  async ({ name }) => {
+    const client = new AppDistributionClient();
+    return toContent(await client.getReleaseTest(name));
   },
 );
