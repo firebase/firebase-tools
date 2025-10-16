@@ -70,7 +70,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: `React${npxMissingWarning}`, value: "react" },
         { name: `Next.JS${npxMissingWarning}`, value: "next" },
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
-        { name: "no", value: "no" },
+        { name: "skip", value: "skip" },
       ],
     });
     try {
@@ -84,7 +84,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         case "flutter":
           await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
           break;
-        case "no":
+        case "skip":
           break;
       }
     } catch (err: unknown) {
@@ -105,7 +105,7 @@ export async function chooseApp(): Promise<App[]> {
       `Detected existing apps ${apps.map((a) => appDescription(a)).join(", ")}`,
     );
   } else {
-    logLabeledWarning("dataconnect", "No app exists in the current directory.");
+    logLabeledWarning("dataconnect", "Cannot detect any existing apps in the current directory.");
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
