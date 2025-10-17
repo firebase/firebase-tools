@@ -278,13 +278,19 @@ export class AppDistributionClient {
     utils.logSuccess(`Testers removed from group successfully`);
   }
 
-  async createReleaseTest(
-    releaseName: string,
-    devices: TestDevice[],
-    aiInstruction?: AIInstruction,
-    loginCredential?: LoginCredential,
-    testCaseName?: string,
-  ): Promise<ReleaseTest> {
+  async createReleaseTest({
+    releaseName,
+    devices,
+    aiInstruction = undefined,
+    loginCredential = undefined,
+    testCaseName = undefined,
+  }: {
+    releaseName: string;
+    devices: TestDevice[];
+    aiInstruction?: AIInstruction;
+    loginCredential?: LoginCredential;
+    testCaseName?: string;
+  }): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
         method: "POST",

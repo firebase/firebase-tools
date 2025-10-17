@@ -4,7 +4,7 @@ import { upload, Distribution } from "../../../appdistribution/distribution";
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
-import { toAppName } from "../../../appdistribution/options-parser-util";
+import { getLoginCredential, toAppName } from "../../../appdistribution/options-parser-util";
 import { AppDistributionClient } from "../../../appdistribution/client";
 
 const TestDeviceSchema = z
@@ -34,6 +34,15 @@ const AIStepSchema = z
   })
   .describe("Step within a test case; run during the execution of the test.");
 
+const DEFAULT_DEVICES = [
+  {
+    model: "MediumPhone.arm",
+    version: "30",
+    locale: "en_US",
+    orientation: "portrait",
+  },
+];
+
 export const run_tests = tool(
   {
     name: "run_test",
@@ -41,27 +50,77 @@ export const run_tests = tool(
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
-      testDevices: z.array(TestDeviceSchema).default([
-        {
-          model: "MediumPhone.arm",
-          version: "30",
-          locale: "en_US",
-          orientation: "portrait",
-        },
-      ]),
+      testDevices: z.array(TestDeviceSchema).default(DEFAULT_DEVICES),
       testCase: z
         .array(AIStepSchema)
         .describe("Test case containing the steps that are run during its execution."),
+      testUsername: z
+        .string()
+        .describe(
+          "The username for automatic login to be used during automated tests. If your test requires login, you must set this value.",
+        )
+        .optional(),
+      testUsernameResource: z
+        .string()
+        .describe(
+          "Resource name for the username field for automatic login to be used during automated tests.",
+        )
+        .optional(),
+      testPassword: z
+        .string()
+        .describe(
+          "The password for automatic login to be used during automated tests. If your test requires login, you MUST set this value or `testPasswordFile`.",
+        )
+        .optional(),
+      testPasswordFile: z
+        .string()
+        .describe(
+          "The path to a plain text file containing a password for automatic login to be used during automated tests. If your test requires login, you MUST set this value or `testPassword`.",
+        )
+        .optional(),
+      testPasswordResource: z
+        .string()
+        .describe(
+          "The resource name for the password field for automatic login to be used during automated tests.",
+        )
+        .optional(),
     }),
     annotations: {
       title: "Run a Remote Test",
       readOnlyHint: false,
     },
   },
-  async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
+  async ({
+    appId,
+    releaseBinaryFile,
+    testDevices,
+    testCase,
+    testUsername,
+    testPassword,
+    testPasswordFile,
+    testUsernameResource,
+    testPasswordResource,
+  }) => {
     const client = new AppDistributionClient();
-    const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaeName, testDevices, { steps: testCase }));
+    const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
+    // Even though we set a default with zod, testDevices can still be undefined 🤔
+    const devices = testDevices || DEFAULT_DEVICES;
+    const loginCredential = getLoginCredential({
+      username: testUsername,
+      password: testPassword,
+      passwordFile: testPasswordFile,
+      usernameResourceName: testUsernameResource,
+      passwordResourceName: testPasswordResource,
+    });
+    const aiInstruction = { steps: testCase };
+    return toContent(
+      await client.createReleaseTest({
+        releaseName,
+        devices,
+        aiInstruction,
+        loginCredential,
+      }),
+    );
   },
 );
 
