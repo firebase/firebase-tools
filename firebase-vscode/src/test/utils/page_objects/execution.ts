@@ -11,7 +11,7 @@ export class ExecutionPanel {
   async open(): Promise<void> {
     await browser.keys("F1");
     await this.workbench.executeCommand(
-      "data-connect-execution-configuration.focus",
+      "data-connect-execution-parameters.focus",
     );
   }
 

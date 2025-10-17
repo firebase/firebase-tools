@@ -1,5 +1,9 @@
 ## NEXT
 
+- [Fixed] Populate correct default values of missing required variables.
+- [Added] Display the execution variables and auth params used.
+- [Added] Allow rerun any executions in the history.
+
 ## 1.9.0
 
 - [Added] Refine / Generate Operation Code Lens.
