@@ -1,1 +1,2 @@
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
+- [BREAKING] Removed support for '.bolt' rules files.
