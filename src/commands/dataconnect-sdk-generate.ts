@@ -48,6 +48,7 @@ export const command = new Command("dataconnect:sdk:generate")
         instructions: [],
       };
       await dataconnectInit.askQuestions(setup);
+      setup.featureInfo!.dataconnect!.source = "gen_sdk_init";
       await dataconnectInit.actuate(setup, config, options);
       await postInitSaves(setup, config);
       justRanInit = true;
@@ -71,6 +72,7 @@ export const command = new Command("dataconnect:sdk:generate")
         instructions: [],
       };
       await dataconnectSdkInit.askQuestions(setup);
+      setup.featureInfo!.dataconnect!.source = "gen_sdk_init_sdk";
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
       serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);

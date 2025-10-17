@@ -50,9 +50,17 @@ const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
+export type Source =
+  | "mcp_init"
+  | "init"
+  | "init_sdk"
+  | "gen_sdk_init"
+  | "gen_sdk_init_sdk"
+  | "deploy";
+
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  source: "mcp_init" | "init" | "init_sdk";
+  source: Source;
   flow: string;
   appDescription: string;
   serviceId: string;
