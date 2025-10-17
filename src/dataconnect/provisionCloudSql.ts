@@ -8,6 +8,7 @@ import { checkFreeTrialInstanceUsed, freeTrialTermsLink } from "./freeTrial";
 import { promiseWithSpinner } from "../utils";
 import { trackGA4 } from "../track";
 import * as utils from "../utils";
+import { Source } from "../init/features/dataconnect";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -24,7 +25,7 @@ export async function setupCloudSql(args: {
   instanceId: string;
   databaseId: string;
   requireGoogleMlIntegration: boolean;
-  source: "mcp_init" | "init" | "init_sdk" | "deploy";
+  source: Source;
   dryRun?: boolean;
 }): Promise<void> {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;

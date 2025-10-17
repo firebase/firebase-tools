@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { Options } from "../options";
 import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import { loadAll } from "../dataconnect/load";
 import { getProjectDefaultAccount } from "../auth";
 import { logBullet, logLabeledSuccess, logWarning } from "../utils";
@@ -14,6 +14,7 @@ import * as dataconnectInit from "../init/features/dataconnect";
 import * as dataconnectSdkInit from "../init/features/dataconnect/sdk";
 import { FirebaseError } from "../error";
 import { postInitSaves } from "./init";
+import { EmulatorHub } from "../emulator/hub";
 
 type GenerateOptions = Options & { watch?: boolean };
 
@@ -24,7 +25,7 @@ export const command = new Command("dataconnect:sdk:generate")
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
   )
   .action(async (options: GenerateOptions) => {
-    const projectId = needProjectId(options);
+    const projectId = getProjectId(options);
 
     let justRanInit = false;
     let config = options.config;
@@ -44,7 +45,11 @@ export const command = new Command("dataconnect:sdk:generate")
       }
       const setup: Setup = {
         config: config.src,
+        projectId: projectId,
         rcfile: options.rc.data,
+        featureInfo: {
+          dataconnectSource: "gen_sdk_init",
+        },
         instructions: [],
       };
       await dataconnectInit.askQuestions(setup);
@@ -67,7 +72,11 @@ export const command = new Command("dataconnect:sdk:generate")
       );
       const setup: Setup = {
         config: config.src,
+        projectId: projectId,
         rcfile: options.rc.data,
+        featureInfo: {
+          dataconnectSource: "gen_sdk_init_sdk",
+        },
         instructions: [],
       };
       await dataconnectSdkInit.askQuestions(setup);
@@ -79,8 +88,11 @@ export const command = new Command("dataconnect:sdk:generate")
     await generateSDKsInAll(options, serviceInfosWithSDKs, justRanInit);
   });
 
-async function loadAllWithSDKs(projectId: string, config: Config): Promise<ServiceInfo[]> {
-  const serviceInfos = await loadAll(projectId, config);
+async function loadAllWithSDKs(
+  projectId: string | undefined,
+  config: Config,
+): Promise<ServiceInfo[]> {
+  const serviceInfos = await loadAll(projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER, config);
   return serviceInfos.filter((serviceInfo) =>
     serviceInfo.connectorInfo.some((c) => {
       return (

@@ -34,6 +34,7 @@ import { getGlobalDefaultAccount } from "../../../auth";
 import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
 import { dirExistsSync, listFiles } from "../../../fsutils";
+import { isBillingEnabled } from "../../../gcp/cloudbilling";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -170,9 +171,9 @@ export async function actuate(setup: Setup, config: Config) {
       void trackGA4(
         "dataconnect_init",
         {
-          flow: "cli_sdk",
+          source: setup.featureInfo?.dataconnectSource || "cli_sdk",
           project_status: setup.projectId
-            ? setup.isBillingEnabled
+            ? (await isBillingEnabled(setup))
               ? "blaze"
               : "spark"
             : "missing",
