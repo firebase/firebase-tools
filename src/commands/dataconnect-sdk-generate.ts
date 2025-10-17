@@ -72,7 +72,7 @@ export const command = new Command("dataconnect:sdk:generate")
         instructions: [],
       };
       await dataconnectSdkInit.askQuestions(setup);
-      setup.featureInfo!.dataconnect!.source = "gen_sdk_init_sdk";
+      setup.featureInfo!.dataconnectSdk!.source = "gen_sdk_init_sdk";
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
       serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
