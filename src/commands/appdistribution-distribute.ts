@@ -217,7 +217,7 @@ export async function distribute({
   if (testDevices && testDevices.length) {
     utils.logBullet("starting automated test (note: this feature is in beta)");
     const releaseTestPromises: Promise<ReleaseTest>[] = [];
-    if (testCases && !testCases.length) {
+    if (testCases && testCases.length) {
       for (const testCaseId of testCases) {
         releaseTestPromises.push(
           requests.createReleaseTest({
