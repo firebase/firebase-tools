@@ -903,6 +903,39 @@ export class FirestoreApi {
   }
 
   /**
+   * Clone one Firestore Database to another.
+   * @param project the source project ID
+   * @param pitrSnapshot Source database PITR snapshot specification
+   * @param databaseId ID of the target database
+   * @param encryptionConfig the encryption configuration of the new database
+   */
+  async cloneDatabase(
+    project: string,
+    pitrSnapshot: types.PITRSnapshot,
+    databaseId: string,
+    encryptionConfig?: types.EncryptionConfig,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases:clone`;
+    const payload: types.CloneDatabaseReq = {
+      databaseId,
+      pitrSnapshot,
+      encryptionConfig,
+    };
+    const options = { queryParams: { databaseId: databaseId } };
+    const res = await this.apiClient.post<types.CloneDatabaseReq, types.Operation>(
+      url,
+      payload,
+      options,
+    );
+    const lro = res.body;
+    if (!lro) {
+      throw new FirebaseError("Not found");
+    }
+
+    return lro;
+  }
+
+  /**
    * List the long-running Firestore operations.
    * @param project the Firebase project id.
    * @param databaseId the id of the Firestore Database.
