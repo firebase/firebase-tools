@@ -56,8 +56,7 @@ export type Source =
   | "init_sdk"
   | "gen_sdk_init"
   | "gen_sdk_init_sdk"
-  | "deploy"
-  | "test";
+  | "deploy";
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
