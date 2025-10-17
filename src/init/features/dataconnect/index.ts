@@ -56,11 +56,11 @@ export type Source =
   | "init_sdk"
   | "gen_sdk_init"
   | "gen_sdk_init_sdk"
-  | "deploy";
+  | "deploy"
+  | "test";
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  source: Source;
   flow: string;
   appDescription: string;
   serviceId: string;
@@ -108,7 +108,6 @@ const templateServiceInfo: ServiceGQL = {
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
-    source: "init",
     flow: "",
     appDescription: "",
     serviceId: "",
@@ -185,10 +184,10 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     void trackGA4(
       "dataconnect_init",
       {
-        source: info.source,
+        source: setup.featureInfo?.dataconnectSource || "init",
         flow: info.flow.substring(1), // Trim the leading `_`
         project_status: setup.projectId
-          ? setup.isBillingEnabled
+          ? (await isBillingEnabled(setup))
             ? info.shouldProvisionCSQL
               ? "blaze_provisioned_csql"
               : "blaze"
@@ -207,7 +206,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
   }
-  if (!setup.isBillingEnabled) {
+  if (!(await isBillingEnabled(setup))) {
     setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
   }
   setup.instructions.push(
@@ -238,7 +237,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
-      source: info.source,
+      source: setup.featureInfo?.dataconnectSource || "init",
     });
   }
 

@@ -44,11 +44,14 @@ export const command = new Command("dataconnect:sdk:generate")
       }
       const setup: Setup = {
         config: config.src,
+        projectId: projectId,
         rcfile: options.rc.data,
+        featureInfo: {
+          dataconnectSource: "gen_sdk_init",
+        },
         instructions: [],
       };
       await dataconnectInit.askQuestions(setup);
-      setup.featureInfo!.dataconnect!.source = "gen_sdk_init";
       await dataconnectInit.actuate(setup, config, options);
       await postInitSaves(setup, config);
       justRanInit = true;
@@ -68,11 +71,14 @@ export const command = new Command("dataconnect:sdk:generate")
       );
       const setup: Setup = {
         config: config.src,
+        projectId: projectId,
         rcfile: options.rc.data,
+        featureInfo: {
+          dataconnectSource: "gen_sdk_init_sdk",
+        },
         instructions: [],
       };
       await dataconnectSdkInit.askQuestions(setup);
-      setup.featureInfo!.dataconnectSdk!.source = "gen_sdk_init_sdk";
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
       serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
