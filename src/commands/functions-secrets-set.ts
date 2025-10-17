@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as tty from "tty";
 
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -8,7 +9,6 @@ import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { confirm } from "../prompt";
 import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
-import * as tty from "tty";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
