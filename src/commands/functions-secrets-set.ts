@@ -6,10 +6,9 @@ import { ensureValidKey, ensureSecret, validateJsonSecret } from "../functions/s
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { confirm, password } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { confirm } from "../prompt";
+import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import * as tty from "tty";
-import * as fs from "fs";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
@@ -56,29 +55,16 @@ export const command = new Command("functions:secrets:set <KEY>")
       }
     }
 
-    // Read secret value from file, stdin, or interactive prompt
-    let secretValue: string;
-    if (dataFile) {
-      // Read from file or stdin
-      const inputSource = dataFile === "-" ? 0 : dataFile;
-      try {
-        secretValue = fs.readFileSync(inputSource, "utf-8");
-      } catch (e: any) {
-        if (e.code === "ENOENT") {
-          throw new FirebaseError(`File not found: ${inputSource}`, { original: e });
-        }
-        throw e;
-      }
-    } else if (!tty.isatty(0)) {
-      // Read from stdin (piped input)
-      secretValue = fs.readFileSync(0, "utf-8");
-    } else {
-      // Interactive prompt: use password for all secrets (hidden input)
-      const promptSuffix = format === "json" ? " (JSON format)" : "";
-      secretValue = await password({
-        message: `Enter a value for ${key}${promptSuffix}:`,
-      });
+    // Only error if there's no input source (no file and no piped stdin)
+    if (!dataFile && tty.isatty(0) && options.nonInteractive) {
+      throw new FirebaseError(
+        `Cannot prompt for secret value in non-interactive mode.\n` +
+          `Use --data-file to provide the secret value from a file.`,
+      );
     }
+
+    const promptSuffix = format === "json" ? " (JSON format)" : "";
+    const secretValue = await readSecretValue(`Enter a value for ${key}${promptSuffix}:`, dataFile);
 
     if (format === "json") {
       validateJsonSecret(key, secretValue);
