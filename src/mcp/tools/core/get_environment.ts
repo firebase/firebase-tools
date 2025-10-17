@@ -8,6 +8,7 @@ import { configstore } from "../../../configstore";
 import { detectApps } from "../../../appUtils";
 
 export const get_environment = tool(
+  "core",
   {
     name: "get_environment",
     description:

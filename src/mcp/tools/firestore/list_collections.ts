@@ -5,6 +5,7 @@ import { listCollectionIds } from "../../../gcp/firestore";
 import { Emulators } from "../../../emulator/types";
 
 export const list_collections = tool(
+  "firestore",
   {
     name: "list_collections",
     description:

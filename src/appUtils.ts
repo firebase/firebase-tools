@@ -296,7 +296,13 @@ export function extractAppIdentifiersAndroid(fileContent: string): AppIdentifier
   return identifiers;
 }
 
-async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
+/**
+ *
+ * @param dirPath
+ * @param filePattern
+ * @returns
+ */
+export async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
   const options = {
     cwd: dirPath,
     ignore: [

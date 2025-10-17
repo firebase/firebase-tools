@@ -1,8 +1,9 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { McpContext } from "./types";
+import { McpContext, ServerFeature } from "./types";
 import { cleanSchema } from "./util";
+import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
   mcp: {
@@ -40,16 +41,25 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
     };
   };
   fn: (input: z.infer<InputSchema>, ctx: McpContext) => Promise<CallToolResult>;
+  isAvailable: (ctx: McpContext) => Promise<boolean>;
 }
 
 export function tool<InputSchema extends ZodTypeAny>(
+  feature: ServerFeature,
   options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema"> & {
     inputSchema: InputSchema;
+    isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
   fn: ServerTool<InputSchema>["fn"],
 ): ServerTool {
+  const { isAvailable, ...mcpOptions } = options;
+
+  // default to the feature level availability check, but allow override
+  const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
+
   return {
-    mcp: { ...options, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: { ...mcpOptions, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
     fn,
+    isAvailable: isAvailableFunc,
   };
 }

@@ -2,6 +2,7 @@ import { getPlatformsFromFolder } from "../../../appUtils";
 import { prompt } from "../../prompt";
 
 export const init = prompt(
+  "core",
   {
     name: "init",
     description: "Use this command to set up Firebase services, like backend and AI features.",

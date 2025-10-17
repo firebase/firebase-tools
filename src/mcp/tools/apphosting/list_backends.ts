@@ -12,6 +12,7 @@ import {
 } from "../../../gcp/apphosting";
 
 export const list_backends = tool(
+  "apphosting",
   {
     name: "list_backends",
     description:

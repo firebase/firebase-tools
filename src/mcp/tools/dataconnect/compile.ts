@@ -4,6 +4,7 @@ import { pickService } from "../../../dataconnect/load";
 import { compileErrors } from "../../util/dataconnect/compile";
 
 export const compile = tool(
+  "dataconnect",
   {
     name: "build",
     description:

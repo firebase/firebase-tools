@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
 import { getIssue, updateIssue } from "../../../crashlytics/issues";
 import { State } from "../../../crashlytics/types";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
+import { mcpError, toContent } from "../../util";
 
 export const get_issue = tool(
+  "crashlytics",
   {
     name: "get_issue",
     description: `Gets data for a Crashlytics issue, which can be used as a starting point for debugging.`,
@@ -30,6 +31,7 @@ export const get_issue = tool(
 );
 
 export const update_issue = tool(
+  "crashlytics",
   {
     name: "update_issue",
     description: "Use this to update the state of Crashlytics issue.",
