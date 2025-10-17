@@ -57,11 +57,11 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-  dangerouslyAllowFunctionsConfig: {
-    shortDescription: "Allows the use of deprecated functions.config() API",
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
-      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
-      "This experiment allows continued use of the API during the migration period.",
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
     default: true,
     public: true,
   },

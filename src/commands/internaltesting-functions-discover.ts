@@ -24,7 +24,7 @@ export const command = new Command("internaltesting:functions:discover")
     }
 
     let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-    const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
+    const allowFunctionsConfig = experiments.isEnabled("legacyRuntimeConfigCommands");
 
     if (allowFunctionsConfig) {
       try {
