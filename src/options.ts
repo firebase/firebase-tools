@@ -19,7 +19,6 @@ export interface BaseOptions {
   projectNumber?: string;
   projectRoot?: string;
   account?: string;
-  json: boolean;
   nonInteractive: boolean;
   interactive: boolean;
   debug: boolean;
@@ -30,6 +29,20 @@ export interface BaseOptions {
   import?: string;
 
   isMCP?: boolean;
+
+  /**
+   * Do not use this field when handling --json. It is never set in commands.
+   *
+   * Instead, return an object to be JSONified from the command action callback:
+   *
+   * ```typescript
+   *    .action(async (options: Options) => {
+   *      logger.info('Normal output'); // Automatically suppressed with --json.
+   *      return objectToBePrintedWhenTheJsonFlagIsPassed;
+   *    });
+   * ```
+   */
+  json?: undefined;
 }
 
 export interface Options extends BaseOptions {

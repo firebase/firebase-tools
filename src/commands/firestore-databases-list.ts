@@ -1,7 +1,6 @@
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
-import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
@@ -18,11 +17,7 @@ export const command = new Command("firestore:databases:list")
 
     const databases: types.DatabaseResp[] = await api.listDatabases(options.project);
 
-    if (options.json) {
-      logger.info(JSON.stringify(databases, undefined, 2));
-    } else {
-      printer.prettyPrintDatabases(databases);
-    }
+    printer.prettyPrintDatabases(databases);
 
     return databases;
   });
