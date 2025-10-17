@@ -80,7 +80,11 @@ const featuresList: Feature[] = [
     actuate: features.dataconnectSdkActuate,
   },
   { name: "functions", doSetup: features.functions },
-  { name: "hosting", doSetup: features.hosting },
+  {
+    name: "hosting",
+    askQuestions: features.hostingAskQuestions,
+    actuate: features.hostingActuate,
+  },
   {
     name: "storage",
     askQuestions: features.storageAskQuestions,
