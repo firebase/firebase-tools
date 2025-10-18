@@ -5,7 +5,7 @@
  *
  * We can't import some of them because they are marked "internal".
  */
-import { Resource } from "firebase-functions";
+import { Resource } from "firebase-functions/lib/v1";
 import * as express from "express";
 
 /**
