@@ -19,6 +19,7 @@ import {
 import { RequireKeys } from "../metaprogramming";
 import { captureRuntimeValidationError } from "./cloudfunctions";
 import { mebibytes } from "./k8s";
+import { with429Backoff } from "./retry429";
 
 export const API_VERSION = "v2";
 
@@ -273,8 +274,10 @@ export async function generateUploadUrl(
   location: string,
 ): Promise<GenerateUploadUrlResponse> {
   try {
-    const res = await client.post<never, GenerateUploadUrlResponse>(
-      `projects/${projectId}/locations/${location}/functions:generateUploadUrl`,
+    const res = await with429Backoff("generateUploadUrl", `${projectId}/${location}`, () =>
+      client.post<never, GenerateUploadUrlResponse>(
+        `projects/${projectId}/locations/${location}/functions:generateUploadUrl`,
+      ),
     );
     return res.body;
   } catch (err: any) {
@@ -308,10 +311,10 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   };
 
   try {
-    const res = await client.post<typeof cloudFunction, Operation>(
-      components.join("/"),
-      cloudFunction,
-      { queryParams: { functionId } },
+    const res = await with429Backoff("create", cloudFunction.name, () =>
+      client.post<typeof cloudFunction, Operation>(components.join("/"), cloudFunction, {
+        queryParams: { functionId },
+      }),
     );
     return res.body;
   } catch (err: any) {
@@ -399,13 +402,11 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
   );
 
   try {
-    const queryParams = {
-      updateMask: fieldMasks.join(","),
-    };
-    const res = await client.patch<typeof cloudFunction, Operation>(
-      cloudFunction.name,
-      cloudFunction,
-      { queryParams },
+    const queryParams = { updateMask: fieldMasks.join(",") };
+    const res = await with429Backoff("update", cloudFunction.name, () =>
+      client.patch<typeof cloudFunction, Operation>(cloudFunction.name, cloudFunction, {
+        queryParams,
+      }),
     );
     return res.body;
   } catch (err: any) {
@@ -419,7 +420,9 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
  */
 export async function deleteFunction(cloudFunction: string): Promise<Operation> {
   try {
-    const res = await client.delete<Operation>(cloudFunction);
+    const res = await with429Backoff("delete", cloudFunction, () =>
+      client.delete<Operation>(cloudFunction),
+    );
     return res.body;
   } catch (err: any) {
     throw functionsOpLogReject({ name: cloudFunction } as InputCloudFunction, "update", err);
