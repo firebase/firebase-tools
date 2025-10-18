@@ -39,7 +39,7 @@ export const ALL_EXPERIMENTS = experiments({
       "of deploys. This has been made an experiment due to backend bugs that are " +
       "temporarily causing failures in some regions with this optimization enabled",
     public: true,
-    default: true,
+    default: false,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
