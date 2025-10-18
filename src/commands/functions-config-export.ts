@@ -12,6 +12,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logBullet, logWarning } from "../utils";
 import { zip } from "../functional";
 import * as configExport from "../functions/runtimeConfigExport";
+import * as functionsConfig from "../functionsConfig";
 import { requireConfig } from "../requireConfig";
 
 import type { Options } from "../options";
@@ -88,6 +89,7 @@ function fromEntries<V>(itr: Iterable<[string, V]>): Record<string, V> {
 
 export const command = new Command("functions:config:export")
   .description("export environment config as environment variables in dotenv format")
+  .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.get",

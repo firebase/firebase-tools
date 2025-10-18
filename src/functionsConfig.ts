@@ -8,10 +8,55 @@ import { FirebaseError } from "./error";
 import { needProjectId } from "./projectUtils";
 import * as runtimeconfig from "./gcp/runtimeconfig";
 import * as args from "./deploy/functions/args";
+import * as experiments from "./experiments";
+import { logWarningToStderr } from "./utils";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 
 const apiClient = new Client({ urlPrefix: firebaseApiOrigin() });
+
+const LEGACY_RUNTIME_CONFIG_EXPERIMENT = "legacyRuntimeConfigCommands";
+
+const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE = `DEPRECATION NOTICE: Action required before March 2026
+
+The functions.config() API and the Cloud Runtime Config service are deprecated. Deploys that rely on functions.config() will fail once Runtime Config shuts down in March 2026.
+
+The legacy functions:config:* CLI commands are deprecated and will be removed before March 2026.
+
+Migrate configuration to the Firebase Functions params APIs:
+
+  import { defineString, defineSecret } from "firebase-functions/params";
+
+  export const apiBaseUrl = defineString("API_BASE_URL");
+  export const serviceApiKey = defineSecret("SERVICE_API_KEY");
+
+To convert existing runtime config values, try the interactive migration command:
+
+  firebase functions:config:export
+
+Learn more: https://firebase.google.com/docs/functions/config-env#migrate-to-dotenv`;
+
+const LEGACY_GUIDANCE_MESSAGE = `${FUNCTIONS_CONFIG_DEPRECATION_MESSAGE}
+
+To run this legacy command temporarily, run the following command and try again:
+
+  firebase experiments:enable ${LEGACY_RUNTIME_CONFIG_EXPERIMENT}
+`;
+
+export function getFunctionsConfigDeprecationMessage(): string {
+  return FUNCTIONS_CONFIG_DEPRECATION_MESSAGE;
+}
+
+export function logFunctionsConfigDeprecationWarning(): void {
+  logWarningToStderr(FUNCTIONS_CONFIG_DEPRECATION_MESSAGE);
+}
+
+export function ensureLegacyRuntimeConfigCommandsEnabled(): void {
+  if (experiments.isEnabled(LEGACY_RUNTIME_CONFIG_EXPERIMENT)) {
+    return;
+  }
+  throw new FirebaseError(LEGACY_GUIDANCE_MESSAGE, { exit: 1 });
+}
 
 interface Id {
   config: string;
