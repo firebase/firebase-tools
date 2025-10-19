@@ -25,16 +25,22 @@ The legacy functions:config:* CLI commands are deprecated and will be removed be
 
 Migrate configuration to the Firebase Functions params APIs:
 
-  import { defineString, defineSecret } from "firebase-functions/params";
+  import { defineJsonSecret } from "firebase-functions/params";
 
-  export const apiBaseUrl = defineString("API_BASE_URL");
-  export const serviceApiKey = defineSecret("SERVICE_API_KEY");
+  const config = defineJsonSecret("RUNTIME_CONFIG");
+
+  exports.myFunction = functions
+    .runWith({ secrets: [config] })
+    .https.onRequest((req, res) => {
+      const apiKey = config.value().service.key;
+      // ...
+    });
 
 To convert existing runtime config values, try the interactive migration command:
 
   firebase functions:config:export
 
-Learn more: https://firebase.google.com/docs/functions/config-env#migrate-to-dotenv`;
+Learn more: https://firebase.google.com/docs/functions/config-env#migrate-config`;
 
 const LEGACY_GUIDANCE_MESSAGE = `${FUNCTIONS_CONFIG_DEPRECATION_MESSAGE}
 
