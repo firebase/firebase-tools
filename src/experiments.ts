@@ -55,7 +55,7 @@ export const ALL_EXPERIMENTS = experiments({
       `Registry. The ${bold("functions:deletegcfartifacts")} command ` +
       "will delete all Docker images created by Google Cloud Functions irrespective " +
       "of how that image was created.",
-    public: true,
+    public: false,
   },
   legacyRuntimeConfigCommands: {
     shortDescription: "Expose legacy functions.config() CLI commands",
