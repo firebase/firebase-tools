@@ -8,6 +8,7 @@ import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
 
 export const execute = tool(
+  "dataconnect",
   {
     name: "execute",
     description:

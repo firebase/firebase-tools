@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { AppPlatform, listFirebaseApps } from "../../../management/apps";
 
 export const list_apps = tool(
+  "core",
   {
     name: "list_apps",
     description:

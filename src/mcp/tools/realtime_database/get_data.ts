@@ -7,6 +7,7 @@ import { text } from "node:stream/consumers";
 import path from "node:path";
 
 export const get_data = tool(
+  "database",
   {
     name: "get_data",
     description:
