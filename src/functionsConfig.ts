@@ -23,24 +23,14 @@ The functions.config() API and the Cloud Runtime Config service are deprecated. 
 
 The legacy functions:config:* CLI commands are deprecated and will be removed before March 2026.
 
-Migrate configuration to the Firebase Functions params APIs:
+Learn how to migrate from functions.config() to the params package:
 
-  import { defineJsonSecret } from "firebase-functions/params";
+https://firebase.google.com/docs/functions/config-env#migrate-config
 
-  const config = defineJsonSecret("RUNTIME_CONFIG");
-
-  exports.myFunction = functions
-    .runWith({ secrets: [config] })
-    .https.onRequest((req, res) => {
-      const apiKey = config.value().service.key;
-      // ...
-    });
-
-To convert existing runtime config values, try the interactive migration command:
+To convert existing functions.config() values to params, try the interactive migration command:
 
   firebase functions:config:export
-
-Learn more: https://firebase.google.com/docs/functions/config-env#migrate-config`;
+`;
 
 const LEGACY_GUIDANCE_MESSAGE = `${FUNCTIONS_CONFIG_DEPRECATION_MESSAGE}
 
