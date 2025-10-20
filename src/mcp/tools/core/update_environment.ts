@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { configstore } from "../../../configstore";
 
 export const update_environment = tool(
+  "core",
   {
     name: "update_environment",
     description:
