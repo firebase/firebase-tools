@@ -70,11 +70,8 @@ describe("functions", () => {
       it("creates a new javascript codebase with the correct configuration", async () => {
         const setup = { config: { functions: [] }, rcfile: {} };
         prompt.select.onFirstCall().resolves("javascript");
-
-        // say "yes" to enabling eslint for the js project
-        prompt.confirm.onFirstCall().resolves(true);
         // do not install dependencies
-        prompt.confirm.onSecondCall().resolves(false);
+        prompt.confirm.onFirstCall().resolves(false);
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
@@ -84,11 +81,11 @@ describe("functions", () => {
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
-          predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+          predeploy: [],
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
-          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
+          `${TEST_SOURCE_DEFAULT}/biome.json`,
           `${TEST_SOURCE_DEFAULT}/index.js`,
           `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
@@ -97,10 +94,8 @@ describe("functions", () => {
       it("creates a new typescript codebase with the correct configuration", async () => {
         const setup = { config: { functions: [] }, rcfile: {} };
         prompt.select.onFirstCall().resolves("typescript");
-        // Lint
-        prompt.confirm.onFirstCall().resolves(true);
         // do not install dependencies
-        prompt.confirm.onSecondCall().resolves(false);
+        prompt.confirm.onFirstCall().resolves(false);
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
@@ -117,8 +112,7 @@ describe("functions", () => {
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
-          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
-          `${TEST_SOURCE_DEFAULT}/tsconfig.dev.json`,
+          `${TEST_SOURCE_DEFAULT}/biome.json`,
           `${TEST_SOURCE_DEFAULT}/tsconfig.json`,
           `${TEST_SOURCE_DEFAULT}/src/index.ts`,
           `${TEST_SOURCE_DEFAULT}/.gitignore`,
@@ -136,9 +130,8 @@ describe("functions", () => {
 
         // Initialize as JavaScript
         prompt.select.onSecondCall().resolves("javascript");
-        // Lint but do not install dependencies
-        prompt.confirm.onFirstCall().resolves(true);
-        prompt.confirm.onSecondCall().resolves(false);
+        // do not install dependencies
+        prompt.confirm.onFirstCall().resolves(false);
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
@@ -167,12 +160,12 @@ describe("functions", () => {
               "firebase-debug.*.log",
               "*.local",
             ],
-            predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+            predeploy: [],
           },
         ]);
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `testsource2/package.json`,
-          `testsource2/.eslintrc.js`,
+          `testsource2/biome.json`,
           `testsource2/index.js`,
           `testsource2/.gitignore`,
         ]);
@@ -183,9 +176,8 @@ describe("functions", () => {
         prompt.select.onFirstCall().resolves("reinit");
         prompt.select.onSecondCall().resolves("javascript");
 
-        // Lint but do not install dependencies
-        prompt.confirm.onFirstCall().resolves(true);
-        prompt.confirm.onSecondCall().resolves(false);
+        // do not install dependencies
+        prompt.confirm.onFirstCall().resolves(false);
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
@@ -202,12 +194,12 @@ describe("functions", () => {
               "firebase-debug.*.log",
               "*.local",
             ],
-            predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+            predeploy: [],
           },
         ]);
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
-          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
+          `${TEST_SOURCE_DEFAULT}/biome.json`,
           `${TEST_SOURCE_DEFAULT}/index.js`,
           `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
