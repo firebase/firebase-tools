@@ -52,12 +52,12 @@ export const command = new Command("functions:config:export")
     let configJson: Record<string, unknown>;
     try {
       configJson = await functionsConfig.materializeAll(projectId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError(
         `Failed to fetch runtime config for project ${projectId}. ` +
           "Ensure you have the required permissions:\n\t" +
           RUNTIME_CONFIG_PERMISSIONS.join("\n\t"),
-        { original: err },
+        { original: err as Error },
       );
     }
 
