@@ -298,16 +298,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async prepare(options: any): Promise<void> {
+  public async prepare(options: Options): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
-    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
+    if (
+      !process.stdin.isTTY ||
+      getInheritedOption(options, "nonInteractive") ||
+      getInheritedOption(options, "json") // --json implies --non-interactive.
+    ) {
       options.nonInteractive = true;
     }
+
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
-      options.interactive = true;
       options.nonInteractive = false;
     }
 
@@ -315,10 +319,7 @@ export class Command {
       options.debug = true;
     }
 
-    if (getInheritedOption(options, "json")) {
-      options.interactive = false;
-      options.nonInteractive = true;
-    } else if (!options.isMCP) {
+    if (!getInheritedOption(options, "json") && !options.isMCP) {
       useConsoleLoggers();
     }
 
@@ -347,8 +348,8 @@ export class Command {
 
     await this.applyRC(options);
     if (options.project) {
-      await this.resolveProjectIdentifiers(options);
-      validateProjectId(options.projectId);
+      await this.resolveProjectIdentifiers(options); // Sets options.projectId.
+      validateProjectId(options.projectId!);
     }
   }
 

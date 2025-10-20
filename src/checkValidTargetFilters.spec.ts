@@ -13,7 +13,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "",
   except: "",
   nonInteractive: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: [],
