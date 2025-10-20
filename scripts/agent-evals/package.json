@@ -12,8 +12,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/mocha": "^9.0.0",
-    "@types/node": "^24.9.0",
-    "rxjs": "^7.8.2"
+    "@types/node": "^24.9.0"
   },
   "dependencies": {
     "mocha": "^11.7.1",

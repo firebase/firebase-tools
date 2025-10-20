@@ -2,11 +2,11 @@ import { startAgentTest } from "../runner/index.js";
 import { AgentTestRunner } from "../runner/index.js";
 import "../helpers/hooks.js";
 
-describe("/firebase:init", function() {
+describe("/firebase:init", function (this: Mocha.Suite) {
   this.retries(2);
 
-  it("backend app", async function() {
-    let run: AgentTestRunner = await startAgentTest(this);
+  it("backend app", async function (this: Mocha.Context) {
+    const run: AgentTestRunner = await startAgentTest(this);
 
     await run.type("/firebase:init");
     await run.expectText("Backend Services");

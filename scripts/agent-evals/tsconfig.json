@@ -13,8 +13,7 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "typeRoots": [
-      "node_modules/@types",
-      "src/types/**/*.d.ts"
+      "node_modules/@types"
     ]
   },
   "include": ["src/**/*"],
