@@ -13,7 +13,6 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
-import { logFunctionsConfigDeprecationWarning } from "../../functions/deprecationWarnings";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -104,7 +103,7 @@ async function packageSource(
       // Only warn about deprecated runtime config if there are user-defined values
       // (i.e., keys other than the default 'firebase' key)
       if (Object.keys(runtimeConfig).some((k) => k !== "firebase")) {
-        logFunctionsConfigDeprecationWarning();
+        functionsConfig.logFunctionsConfigDeprecationWarning();
       }
     }
     await pipeAsync(archive, fileStream);
