@@ -12,6 +12,7 @@ export type ServerWithLoginState = FirebaseMcpServer & {
   authorize?: (authCode: string) => Promise<UserCredentials>;
 };
 export const login = tool(
+  "core",
   {
     name: "login",
     description:

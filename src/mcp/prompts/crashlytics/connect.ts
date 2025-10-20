@@ -1,6 +1,7 @@
 import { prompt } from "../../prompt";
 
 export const connect = prompt(
+  "crashlytics",
   {
     name: "connect",
     omitPrefix: false,

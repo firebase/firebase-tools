@@ -68,7 +68,7 @@ export async function updateFirebaseRCProject(values: {
   };
 }) {
   let didChange = false;
-  const newRCPath = path.join(currentOptions.value.cwd, ".firebaserc");
+  const newRCPath = path.join(currentOptions.value.cwd!, ".firebaserc");
   const isNewRC = !firebaseRC.value?.tryReadValue;
 
   const rc = firebaseRC.value?.tryReadValue ?? new RC(newRCPath, {});
