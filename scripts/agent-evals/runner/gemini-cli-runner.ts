@@ -34,7 +34,9 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
       mcpServers: {
         firebase: {
-          command: path.resolve(runDir, "../../../../../lib/bin/firebase.js"),
+          // TODO: Add a mode where developers can run against their npm run watch command
+          // command: path.resolve(runDir, "../../../../../lib/bin/firebase.js"),
+          command: "firebase",
           args: ["experimental:mcp"],
         },
       },

@@ -6,7 +6,12 @@ import { fileURLToPath } from "url";
 const execPromise = promisify(exec);
 
 export async function buildFirebaseCli() {
-  const firebaseCliRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const firebaseCliRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "..",
+  );
   console.log(`Building Firebase CLI at ${firebaseCliRoot}`);
   await execPromise("./scripts/clean-install.sh", { cwd: firebaseCliRoot });
 }
