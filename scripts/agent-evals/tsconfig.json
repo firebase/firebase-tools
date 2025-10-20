@@ -1,10 +1,21 @@
 {
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "outDir": "lib",
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
     "target": "es2017",
-    "esModuleInterop": true,
-    "strict": true
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types/**/*.d.ts"
+    ]
   },
-  "include": ["**/*.ts"]
+  "include": ["src/**/*"],
 }
