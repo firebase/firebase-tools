@@ -296,9 +296,15 @@ export class Config {
     this.writeProjectFile(path, content);
   }
 
-  public static load(options: any, allowMissing?: false): Config;
-  public static load(options: any, allowMissing: true): Config | null;
-  public static load(options: any, allowMissing?: boolean): Config | null {
+  public static load(options: { cwd?: string; configPath?: string }, allowMissing?: false): Config;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing: true,
+  ): Config | null;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing?: boolean,
+  ): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {

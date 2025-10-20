@@ -50,9 +50,17 @@ const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
+export type Source =
+  | "mcp_init"
+  | "init"
+  | "init_sdk"
+  | "gen_sdk_init"
+  | "gen_sdk_init_sdk"
+  | "deploy";
+
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  analyticsFlow: string;
+  flow: string;
   appDescription: string;
   serviceId: string;
   locationId: string;
@@ -99,7 +107,7 @@ const templateServiceInfo: ServiceGQL = {
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
-    analyticsFlow: "cli",
+    flow: "",
     appDescription: "",
     serviceId: "",
     locationId: "",
@@ -166,20 +174,28 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
-    void trackGA4("dataconnect_init", {
-      flow: info.analyticsFlow,
-      project_status: setup.projectId
-        ? setup.isBillingEnabled
-          ? info.shouldProvisionCSQL
-            ? "blaze_provisioned_csql"
-            : "blaze"
-          : "spark"
-        : "missing",
-    });
+    const sdkInfo = setup.featureInfo?.dataconnectSdk;
+    void trackGA4(
+      "dataconnect_init",
+      {
+        source: setup.featureInfo?.dataconnectSource || "init",
+        flow: info.flow.substring(1), // Trim the leading `_`
+        project_status: setup.projectId
+          ? (await isBillingEnabled(setup))
+            ? info.shouldProvisionCSQL
+              ? "blaze_provisioned_csql"
+              : "blaze"
+            : "spark"
+          : "missing",
+        ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
+      },
+      Date.now() - startTime,
+    );
   }
 
   if (info.appDescription) {
@@ -189,7 +205,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
   }
-  if (!setup.isBillingEnabled) {
+  if (!(await isBillingEnabled(setup))) {
     setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
   }
   setup.instructions.push(
@@ -206,7 +222,7 @@ async function actuateWithInfo(
   const projectId = setup.projectId;
   if (!projectId) {
     // If no project is present, just save the template files.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
 
@@ -220,7 +236,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
-      source: info.analyticsFlow.startsWith("mcp") ? "mcp_init" : "init",
+      source: setup.featureInfo?.dataconnectSource || "init",
     });
   }
 
@@ -233,11 +249,11 @@ async function actuateWithInfo(
     }
     if (info.serviceGql) {
       // Save the downloaded service from the backend.
-      info.analyticsFlow += "_save_downloaded";
+      info.flow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
@@ -259,7 +275,7 @@ async function actuateWithInfo(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
-    info.analyticsFlow += "_save_gemini_service_already_exists";
+    info.flow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -301,7 +317,7 @@ async function actuateWithInfo(
         ],
       },
     ];
-    info.analyticsFlow += "_save_gemini";
+    info.flow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -312,7 +328,7 @@ async function actuateWithInfo(
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
-    info.analyticsFlow += "_save_gemini_operation_error";
+    info.flow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -492,11 +508,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
-    info.analyticsFlow += "_pick_new_service";
+    info.flow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
-  info.analyticsFlow += "_pick_existing_service";
+  info.flow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
@@ -618,11 +634,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         choices,
       });
       if (info.cloudSqlInstanceId !== "") {
-        info.analyticsFlow += "_pick_existing_csql";
+        info.flow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
-        info.analyticsFlow += "_pick_new_csql";
+        info.flow += "_pick_new_csql";
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(

@@ -115,14 +115,14 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
           serviceName = (await getServiceInfo()).serviceName;
         }
       }
-      if (!options.vars && !process.stdin.isTTY && !stdinUsedFor) {
-        options.vars = "@-";
+      if (!options.variables && !process.stdin.isTTY && !stdinUsedFor) {
+        options.variables = "@-";
       }
-      const unparsedVars = await literalOrFile(options.vars, "--vars");
+      const unparsedVars = await literalOrFile(options.variables, "--variables");
       const response = await executeGraphQL(apiClient, serviceName, {
         query,
         operationName,
-        variables: parseJsonObject(unparsedVars, "--vars"),
+        variables: parseJsonObject(unparsedVars, "--variables"),
       });
 
       // If the status code isn't OK or the top-level `error` field is set, this
