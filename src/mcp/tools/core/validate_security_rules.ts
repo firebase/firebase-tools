@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
+import { checkFeatureActive, mcpError, toContent } from "../../util";
 import { testRuleset } from "../../../gcp/rules";
 import { resolve } from "path";
 import { Client } from "../../../apiv2";
 import { updateRulesWithClient } from "../../../rtdb";
 import { getErrMsg } from "../../../error";
 import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
+import { McpContext } from "../../types";
 
 interface SourcePosition {
   fileName?: string;
@@ -65,6 +66,7 @@ function formatRulesetIssues(issues: Issue[], rulesSource: string): string {
 }
 
 export const validate_security_rules = tool(
+  "core",
   {
     name: "validate_security_rules",
     description:
@@ -89,6 +91,20 @@ export const validate_security_rules = tool(
     _meta: {
       requiresProject: true,
       requiresAuth: true,
+    },
+    isAvailable: async (ctx: McpContext): Promise<boolean> => {
+      const [rtdbActive, storageActive, firestoreActive] = await Promise.all([
+        checkFeatureActive("database", ctx.projectId, {
+          config: ctx.config,
+        }),
+        checkFeatureActive("storage", ctx.projectId, {
+          config: ctx.config,
+        }),
+        checkFeatureActive("firestore", ctx.projectId, {
+          config: ctx.config,
+        }),
+      ]);
+      return rtdbActive || storageActive || firestoreActive;
     },
   },
   async ({ type, source, source_file }, { projectId, config, host }) => {

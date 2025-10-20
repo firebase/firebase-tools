@@ -296,7 +296,13 @@ export function extractAppIdentifiersAndroid(fileContent: string): AppIdentifier
   return identifiers;
 }
 
-async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
+/**
+ * Detects files matching a pattern within a directory, ignoring common dependency and build folders.
+ * @param dirPath The directory to search in.
+ * @param filePattern The glob pattern for the files to detect (e.g., "*.json").
+ * @return A promise that resolves to an array of file paths relative to `dirPath`.
+ */
+export async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
   const options = {
     cwd: dirPath,
     ignore: [

@@ -1,5 +1,5 @@
 import { ServerTool } from "../tool";
-import { ServerFeature } from "../types";
+import { McpContext, ServerFeature } from "../types";
 import { authTools } from "./auth/index";
 import { dataconnectTools } from "./dataconnect/index";
 import { firestoreTools } from "./firestore/index";
@@ -13,13 +13,29 @@ import { realtimeDatabaseTools } from "./realtime_database/index";
 import { functionsTools } from "./functions/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
-export function availableTools(activeFeatures?: ServerFeature[]): ServerTool[] {
+export async function availableTools(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+): Promise<ServerTool[]> {
+  const allTools = getAllTools(activeFeatures);
+  const availabilities = await Promise.all(
+    allTools.map((t) => {
+      if (t.isAvailable) {
+        return t.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allTools.filter((_, i) => availabilities[i]);
+}
+
+function getAllTools(activeFeatures?: ServerFeature[]): ServerTool[] {
   const toolDefs: ServerTool[] = [];
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures = ["core", ...activeFeatures];
+    activeFeatures.unshift("core");
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
@@ -60,7 +76,7 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
  * This is used for generating documentation.
  */
 export function markdownDocsOfTools(): string {
-  const allTools = availableTools([]);
+  const allTools = getAllTools([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
