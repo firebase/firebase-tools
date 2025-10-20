@@ -79,14 +79,15 @@ export const command = new Command("functions:config:export")
     }
 
     const defaultSecretName = "RUNTIME_CONFIG";
-    const secretName =
-      (options.secret as string) ||
-      (await input({
+    let secretName = options.secret as string;
+    if (!secretName) {
+      secretName = await input({
         message: "What would you like to name the new secret for your configuration?",
         default: defaultSecretName,
         nonInteractive: options.nonInteractive,
         force: options.force,
-      }));
+      });
+    }
 
     const key = await ensureValidKey(secretName, options);
     await ensureSecret(projectId, key, options);
