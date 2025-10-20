@@ -354,4 +354,46 @@ describe("projectConfig", () => {
       expect(projectConfig.resolveConfigDir(cfg)).to.be.undefined;
     });
   });
+
+  describe("shouldUseRuntimeConfig", () => {
+    it("returns true for local codebase without disallowLegacyRuntimeConfig (default)", () => {
+      const config = projectConfig.validate([{ source: "functions" }])[0];
+      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.true;
+    });
+
+    it("returns true for local codebase with disallowLegacyRuntimeConfig=false", () => {
+      const config = projectConfig.validate([
+        { source: "functions", disallowLegacyRuntimeConfig: false },
+      ])[0];
+      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.true;
+    });
+
+    it("returns false for local codebase with disallowLegacyRuntimeConfig=true", () => {
+      const config = projectConfig.validate([
+        { source: "functions", disallowLegacyRuntimeConfig: true },
+      ])[0];
+      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
+    });
+
+    it("returns false for remote source", () => {
+      const config = projectConfig.validate([
+        {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+        },
+      ])[0];
+      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
+    });
+
+    it("returns false for remote source even with disallowLegacyRuntimeConfig=false", () => {
+      const config = projectConfig.validate([
+        {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+          disallowLegacyRuntimeConfig: false,
+        },
+      ])[0];
+      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
+    });
+  });
 });

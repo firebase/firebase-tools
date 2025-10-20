@@ -239,3 +239,15 @@ export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLoc
 export function resolveConfigDir(c: ValidatedSingle): string | undefined {
   return c.configDir || c.source;
 }
+
+/**
+ * Determines if a codebase should use runtime config.
+ * Only local sources that haven't opted out via disallowLegacyRuntimeConfig use runtime config.
+ * Remote sources never use runtime config.
+ *
+ * @param cfg The codebase configuration to check
+ * @returns true if this codebase should use runtime config, false otherwise
+ */
+export function shouldUseRuntimeConfig(cfg: ValidatedSingle): boolean {
+  return isLocalConfig(cfg) && cfg.disallowLegacyRuntimeConfig !== true;
+}

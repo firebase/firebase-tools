@@ -11,7 +11,6 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
-import * as experiments from "../../experiments";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -30,7 +29,7 @@ import {
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -43,6 +42,7 @@ import {
   normalizeAndValidate,
   ValidatedConfig,
   requireLocal,
+  shouldUseRuntimeConfig,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -94,16 +94,34 @@ export async function prepare(
 
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
 
-  // Load runtime config if experiment allows it and API is enabled
-  if (allowFunctionsConfig && checkAPIsEnabled[1]) {
+  // Filter config to only the codebases being deployed
+  const targetedCodebaseConfigs = context.config!.filter((cfg) =>
+    codebases.includes(cfg.codebase),
+  );
+
+  // Load runtime config if API is enabled and at least one targeted codebase uses it
+  if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
   // Track whether legacy runtime config is present (i.e., any keys other than the default 'firebase').
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
+
+  // Warn if runtime config exists but some codebases are ignoring it
+  if (context.hasRuntimeConfig) {
+    for (const codebase of codebases) {
+      const cfg = configForCodebase(context.config!, codebase);
+      if (!shouldUseRuntimeConfig(cfg)) {
+        logLabeledWarning(
+          "functions",
+          `Codebase ${clc.bold(codebase)} has disallowLegacyRuntimeConfig set to true. ` +
+            `Legacy runtime config values will not be available to this codebase.`,
+        );
+      }
+    }
+  }
 
   const wantBuilds = await loadCodebases(
     context.config,
@@ -228,7 +246,9 @@ export async function prepare(
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, runtimeConfig);
+      // Only pass runtime config for codebases that use it
+      const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
+      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload);
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }
@@ -486,7 +506,13 @@ export async function loadCodebases(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
-    const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
+
+    // Determine runtime config for this codebase
+    const codebaseRuntimeConfig = shouldUseRuntimeConfig(codebaseConfig)
+      ? runtimeConfig
+      : { firebase: firebaseConfig };
+
+    const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup

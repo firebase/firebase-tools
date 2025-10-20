@@ -183,6 +183,10 @@ type FunctionConfigBase = {
   // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
   // cannot start or end with a dash; maximum length 30 characters.
   prefix?: string;
+  // Optional: When true, prevents the Firebase CLI from fetching and including legacy
+  // Runtime Config values for this codebase during deployment. This has no effect on
+  // remote sources, which never use runtime config. Defaults to false for backward compatibility.
+  disallowLegacyRuntimeConfig?: boolean;
 } & Deployable;
 
 export type LocalFunctionConfig = FunctionConfigBase & {
