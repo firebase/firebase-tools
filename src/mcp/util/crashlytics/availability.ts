@@ -22,17 +22,17 @@ async function isCrashlyticsInstalled(projectDir: string): Promise<boolean> {
     return false;
   }
 
-  let usesCrashlytics = false;
-  if (platforms.includes(Platform.FLUTTER)) {
-    usesCrashlytics = usesCrashlytics || (await flutterAppUsesCrashlytics(projectDir));
+  if (platforms.includes(Platform.FLUTTER) && (await flutterAppUsesCrashlytics(projectDir))) {
+    return true;
   }
-  if (platforms.includes(Platform.ANDROID)) {
-    usesCrashlytics = usesCrashlytics || (await androidAppUsesCrashlytics(projectDir));
+  if (platforms.includes(Platform.ANDROID) && (await androidAppUsesCrashlytics(projectDir))) {
+    return true;
   }
-  if (platforms.includes(Platform.IOS)) {
-    usesCrashlytics = usesCrashlytics || (await iosAppUsesCrashlytics(projectDir));
+  if (platforms.includes(Platform.IOS) && (await iosAppUsesCrashlytics(projectDir))) {
+    return true;
   }
-  return usesCrashlytics;
+
+  return false;
 }
 
 async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {

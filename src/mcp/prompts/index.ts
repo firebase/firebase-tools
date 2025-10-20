@@ -65,8 +65,8 @@ function getAllPrompts(activeFeatures?: ServerFeature[]): ServerPrompt[] {
   if (!activeFeatures.includes("core")) {
     activeFeatures.unshift("core");
   }
-  for (const key of activeFeatures) {
-    promptDefs.push(...prompts[key]);
+  for (const feature of activeFeatures) {
+    promptDefs.push(...prompts[feature]);
   }
   return promptDefs;
 }

@@ -93,15 +93,17 @@ export const validate_security_rules = tool(
       requiresAuth: true,
     },
     isAvailable: async (ctx: McpContext): Promise<boolean> => {
-      const rtdbActive = await checkFeatureActive("database", ctx.projectId, {
-        config: ctx.config,
-      });
-      const storageActive = await checkFeatureActive("storage", ctx.projectId, {
-        config: ctx.config,
-      });
-      const firestoreActive = await checkFeatureActive("firestore", ctx.projectId, {
-        config: ctx.config,
-      });
+      const [rtdbActive, storageActive, firestoreActive] = await Promise.all([
+        checkFeatureActive("database", ctx.projectId, {
+          config: ctx.config,
+        }),
+        checkFeatureActive("storage", ctx.projectId, {
+          config: ctx.config,
+        }),
+        checkFeatureActive("firestore", ctx.projectId, {
+          config: ctx.config,
+        }),
+      ]);
       return rtdbActive || storageActive || firestoreActive;
     },
   },
