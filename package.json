@@ -243,7 +243,6 @@
     "firebase": "^9.16.0",
     "firebase-admin": "^11.5.0",
     "firebase-functions": "^4.3.1",
-    "globals": "^16.4.0",
     "google-discovery-to-swagger": "^2.1.0",
     "googleapis": "^105.0.0",
     "mocha": "^11.7.1",
