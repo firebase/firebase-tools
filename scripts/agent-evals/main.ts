@@ -6,7 +6,9 @@ async function main() {
 
   let success = true;
   for (const testCase of tests) {
-    success = success && (await runTest(testCase));
+    if (!(await runTest(testCase))) {
+      success = false;
+    }
   }
   if (success) {
     console.log("\nAll tests passed!");
