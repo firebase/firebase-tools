@@ -5,10 +5,15 @@ export function addCleanup(fn: () => Promise<void>) {
 }
 
 export async function runCleanup() {
+
+
   if (cleanupFunctions.length > 0) {
     console.log(`Running global cleanup for ${cleanupFunctions.length} items...`);
-    for (const cleanupFunc of cleanupFunctions) {
-      await cleanupFunc();
+    const results = await Promise.allSettled(cleanupFunctions.map(fn => fn()));
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.error("Error during cleanup:", result.reason);
+      }
     }
     cleanupFunctions = [];
   }
