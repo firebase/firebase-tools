@@ -268,7 +268,7 @@ export class FirebaseMcpServer {
 
   async resolveOptions(): Promise<Partial<Options>> {
     const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
-    await cmd.prepare(options);
+    await cmd.prepare(options as Options);
     return options;
   }
 
