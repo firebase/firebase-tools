@@ -32,6 +32,9 @@ export interface FirestoreOptions extends Options {
   // CMEK
   encryptionType?: EncryptionType;
   kmsKeyName?: string;
+
+  // Clone
+  snapshotTime?: string;
 }
 
 export enum EncryptionType {
