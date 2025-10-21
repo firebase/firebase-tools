@@ -29,7 +29,7 @@ import {
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -95,10 +95,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  // Filter config to only the codebases being deployed
-  const targetedCodebaseConfigs = context.config!.filter((cfg) =>
-    codebases.includes(cfg.codebase),
-  );
+  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -108,19 +105,6 @@ export async function prepare(
   // Track whether legacy runtime config is present (i.e., any keys other than the default 'firebase').
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
-
-  // Warn if runtime config exists but some codebases are ignoring it
-  if (context.hasRuntimeConfig) {
-    for (const cfg of targetedCodebaseConfigs) {
-      if (!shouldUseRuntimeConfig(cfg)) {
-        logLabeledWarning(
-          "functions",
-          `Codebase ${clc.bold(cfg.codebase)} has disallowLegacyRuntimeConfig set to true. ` +
-            `Legacy runtime config values will not be available to this codebase.`,
-        );
-      }
-    }
-  }
 
   const wantBuilds = await loadCodebases(
     context.config,
@@ -245,7 +229,6 @@ export async function prepare(
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      // Only pass runtime config for codebases that use it
       const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
       const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload);
       source.functionsSourceV1 = packagedSource?.pathToSource;
@@ -506,7 +489,6 @@ export async function loadCodebases(
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
 
-    // Determine runtime config for this codebase
     const codebaseRuntimeConfig = shouldUseRuntimeConfig(codebaseConfig)
       ? runtimeConfig
       : { firebase: firebaseConfig };

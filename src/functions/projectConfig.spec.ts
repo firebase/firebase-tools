@@ -358,7 +358,8 @@ describe("projectConfig", () => {
   describe("shouldUseRuntimeConfig", () => {
     const testCases = [
       {
-        description: "returns true for local codebase without disallowLegacyRuntimeConfig (default)",
+        description:
+          "returns true for local codebase without disallowLegacyRuntimeConfig (default)",
         config: { source: "functions" },
         expected: true,
       },

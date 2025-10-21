@@ -242,6 +242,7 @@ export function resolveConfigDir(c: ValidatedSingle): string | undefined {
 
 /**
  * Determines if a codebase should use runtime config.
+ *
  * Only local sources that haven't opted out via disallowLegacyRuntimeConfig use runtime config.
  * Remote sources never use runtime config.
  *
