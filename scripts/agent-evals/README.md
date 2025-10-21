@@ -6,7 +6,7 @@ This codebase evaluates the Firebase MCP server running in various coding agents
 
 Agent Evals use [mocha](https://www.npmjs.com/package/mocha) to run tests, similar to how the Firebase CLI unit tests are implemented. The test commands will automatically instrument the Firebase MCP Server.
 
-NOTE: Running evals will remove any existing Firebase MCP Servers and the Firebase Gemini CLI Extension from your user account so that they don't interfere with the test.
+WARNING: Running evals will remove any existing Firebase MCP Servers and the Firebase Gemini CLI Extension from your user account so that they don't interfere with the test.
 
 For running tests during development, run:
 
