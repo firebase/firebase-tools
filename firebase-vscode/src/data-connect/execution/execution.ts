@@ -34,7 +34,11 @@ import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
-import { executionAuthParams, executionVarsJSON, ExecutionParamsService } from "./execution-params";
+import {
+  executionAuthParams,
+  executionVarsJSON,
+  ExecutionParamsService,
+} from "./execution-params";
 import { ExecuteGraphqlRequest } from "../../dataconnect/types";
 
 export interface ExecutionInput {
@@ -129,9 +133,7 @@ export function registerExecution(
     await vscode.window.activeTextEditor?.document.save();
 
     // focus on execution panel immediately
-    vscode.commands.executeCommand(
-      "data-connect-execution-parameters.focus",
-    );
+    vscode.commands.executeCommand("data-connect-execution-parameters.focus");
 
     const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
 
@@ -160,7 +162,9 @@ export function registerExecution(
       !configs.get(alwaysExecuteMutationsInProduction) &&
       ast.operation === OperationTypeNode.MUTATION
     ) {
-      analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING);
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING,
+      );
       const always = "Yes (always)";
       const yes = "Yes";
       const result = await vscode.window.showWarningMessage(
@@ -173,7 +177,7 @@ export function registerExecution(
       switch (result) {
         case yes:
           analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED,
           );
           break;
         case always:
@@ -184,49 +188,26 @@ export function registerExecution(
             ConfigurationTarget.Global,
           );
           analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS,
           );
           break;
         default:
           analyticsLogger.logger.logUsage(
-            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED,
           );
           return;
       }
     }
 
-    // build schema
+    // build schema to check for compilation errors
     const introspect = await dataConnectService.introspect();
     if (!introspect.data) {
       executionError("Please check your compilation errors");
       return undefined;
     }
-    const schema = buildClientSchema(introspect.data);
 
     // get all gql files from connector and validate
     const gqlText = await getConnectorGQLText(documentPath);
-
-    // Adhoc mutation
-    if (!gqlText) {
-      pluginLogger.info("Executing adhoc operation. Skipping validation.");
-    } else {
-      try {
-        const connectorDocumentNode = parse(gqlText);
-
-        const validationErrors = validate(schema, connectorDocumentNode);
-
-        if (validationErrors.length > 0) {
-          executionError(
-            `Schema validation errors:`,
-            JSON.stringify(validationErrors),
-          );
-          return;
-        }
-      } catch (error) {
-        executionError("Schema validation error", error as string);
-        return;
-      }
-    }
 
     const servicePath = await dataConnectService.servicePath(documentPath);
     if (!servicePath) {
@@ -252,17 +233,23 @@ export function registerExecution(
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-      const results = await dataConnectService.executeGraphQL(servicePath, instance, req);
+      const results = await dataConnectService.executeGraphQL(
+        servicePath,
+        instance,
+        req,
+      );
       // Executing queries may return a response which contains errors
-      item.state = (results.errors?.length ?? 0) > 0
-        ? ExecutionState.ERRORED
-        : ExecutionState.FINISHED;
+      item.state =
+        (results.errors?.length ?? 0) > 0
+          ? ExecutionState.ERRORED
+          : ExecutionState.FINISHED;
       item.results = results;
     } catch (error) {
       item.state = ExecutionState.ERRORED;
-      item.results = error instanceof Error
-        ? error
-        : new DataConnectError("Unknown error", error);
+      item.results =
+        error instanceof Error
+          ? error
+          : new DataConnectError("Unknown error", error);
     }
 
     batch(() => {
@@ -278,24 +265,41 @@ export function registerExecution(
   async function generateOperation(arg: GenerateOperationInput) {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
     if (!arg.projectId) {
-      vscode.window.showErrorMessage(`Connect a Firebase project to use Gemini in Firebase features.`);
+      vscode.window.showErrorMessage(
+        `Connect a Firebase project to use Gemini in Firebase features.`,
+      );
       return;
     }
     try {
       const schema = await dataConnectService.schema();
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
-${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ''}
-${schema ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
+${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}
+${
+  schema
+    ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
 ${schema}
-\`\`\`` : ""}`;
-      const serviceName = await dataConnectService.servicePath(arg.document.fileName);
+\`\`\``
+    : ""
+}`;
+      const serviceName = await dataConnectService.servicePath(
+        arg.document.fileName,
+      );
       if (!(await ensureGIFApiTos(arg.projectId))) {
         if (!(await showGiFToSModal(arg.projectId))) {
           return; // ToS isn't accepted.
         }
       }
-      const res = await gif.generateOperation(prompt, serviceName, arg.projectId);
-      await insertQueryAt(arg.document.uri, arg.insertPosition, arg.existingQuery, res);
+      const res = await gif.generateOperation(
+        prompt,
+        serviceName,
+        arg.projectId,
+      );
+      await insertQueryAt(
+        arg.document.uri,
+        arg.insertPosition,
+        arg.existingQuery,
+        res,
+      );
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
@@ -316,19 +320,25 @@ ${schema}
     );
     switch (result) {
       case enable:
-        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED);
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED,
+        );
         configstore.set("gemini", true);
         await ensureGIFApiTos(projectId);
         return true;
       case tos:
-        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED);
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED,
+        );
         vscode.env.openExternal(
           vscode.Uri.parse(
             "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
           ),
         );
       default:
-        analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED);
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED,
+        );
         break;
     }
     return false;
