@@ -13,6 +13,7 @@ export { doSetup as functions } from "./functions";
 export {
   askQuestions as hostingAskQuestions,
   actuate as hostingActuate,
+  RequiredInfo as HostingInfo,
 } from "./hosting";
 export {
   askQuestions as storageAskQuestions,

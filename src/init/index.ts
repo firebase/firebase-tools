@@ -39,6 +39,7 @@ export interface SetupInfo {
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
   ailogic?: features.AiLogicInfo;
+  hosting?: features.HostingInfo;
 }
 
 interface Feature {
