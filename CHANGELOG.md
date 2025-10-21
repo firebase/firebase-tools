@@ -2,3 +2,4 @@
 - Add JSON format support for Cloud Functions secrets with `--format json` flag and auto-detection from file extensions (#1745)
 - `firebase dataconnect:sdk:generate` will run `init dataconnect:sdk` automatically if no SDKs are configured (#9325).
 - Tighten --only filter resolution for functions deployment to prefer codebase names (#9353)
+- Add `disallowLegacyRuntimeConfig` option to `firebase.json` to optionally skip fetching legacy Runtime Config during function deploys (#9354)
