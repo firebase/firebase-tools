@@ -6,8 +6,13 @@ import { fileURLToPath } from "url";
 const execPromise = promisify(exec);
 
 export async function buildFirebaseCli() {
+  if (process.env.SKIP_REBUILD) {
+    console.log("Skipping Firebase CLI build because process.env.SKIP_REBUILD");
+    return;
+  }
   const firebaseCliRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
+    "..",
     "..",
     "..",
     "..",
