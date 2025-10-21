@@ -111,12 +111,11 @@ export async function prepare(
 
   // Warn if runtime config exists but some codebases are ignoring it
   if (context.hasRuntimeConfig) {
-    for (const codebase of codebases) {
-      const cfg = configForCodebase(context.config!, codebase);
+    for (const cfg of targetedCodebaseConfigs) {
       if (!shouldUseRuntimeConfig(cfg)) {
         logLabeledWarning(
           "functions",
-          `Codebase ${clc.bold(codebase)} has disallowLegacyRuntimeConfig set to true. ` +
+          `Codebase ${clc.bold(cfg.codebase)} has disallowLegacyRuntimeConfig set to true. ` +
             `Legacy runtime config values will not be available to this codebase.`,
         );
       }

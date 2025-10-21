@@ -356,44 +356,46 @@ describe("projectConfig", () => {
   });
 
   describe("shouldUseRuntimeConfig", () => {
-    it("returns true for local codebase without disallowLegacyRuntimeConfig (default)", () => {
-      const config = projectConfig.validate([{ source: "functions" }])[0];
-      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.true;
-    });
-
-    it("returns true for local codebase with disallowLegacyRuntimeConfig=false", () => {
-      const config = projectConfig.validate([
-        { source: "functions", disallowLegacyRuntimeConfig: false },
-      ])[0];
-      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.true;
-    });
-
-    it("returns false for local codebase with disallowLegacyRuntimeConfig=true", () => {
-      const config = projectConfig.validate([
-        { source: "functions", disallowLegacyRuntimeConfig: true },
-      ])[0];
-      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
-    });
-
-    it("returns false for remote source", () => {
-      const config = projectConfig.validate([
-        {
+    const testCases = [
+      {
+        description: "returns true for local codebase without disallowLegacyRuntimeConfig (default)",
+        config: { source: "functions" },
+        expected: true,
+      },
+      {
+        description: "returns true for local codebase with disallowLegacyRuntimeConfig=false",
+        config: { source: "functions", disallowLegacyRuntimeConfig: false },
+        expected: true,
+      },
+      {
+        description: "returns false for local codebase with disallowLegacyRuntimeConfig=true",
+        config: { source: "functions", disallowLegacyRuntimeConfig: true },
+        expected: false,
+      },
+      {
+        description: "returns false for remote source",
+        config: {
           remoteSource: { repository: "repo", ref: "main" },
           runtime: "nodejs20",
         },
-      ])[0];
-      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
-    });
-
-    it("returns false for remote source even with disallowLegacyRuntimeConfig=false", () => {
-      const config = projectConfig.validate([
-        {
+        expected: false,
+      },
+      {
+        description: "returns false for remote source even with disallowLegacyRuntimeConfig=false",
+        config: {
           remoteSource: { repository: "repo", ref: "main" },
           runtime: "nodejs20",
           disallowLegacyRuntimeConfig: false,
         },
-      ])[0];
-      expect(projectConfig.shouldUseRuntimeConfig(config)).to.be.false;
-    });
+        expected: false,
+      },
+    ];
+
+    for (const tc of testCases) {
+      it(tc.description, () => {
+        const config = projectConfig.validate([tc.config as any])[0];
+        expect(projectConfig.shouldUseRuntimeConfig(config)).to.equal(tc.expected);
+      });
+    }
   });
 });
