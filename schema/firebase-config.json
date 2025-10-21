@@ -982,9 +982,6 @@
                 "configDir": {
                     "type": "string"
                 },
-                "disallowLegacyRuntimeConfig": {
-                    "type": "boolean"
-                },
                 "ignore": {
                     "items": {
                         "type": "string"
