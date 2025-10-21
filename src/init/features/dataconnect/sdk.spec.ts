@@ -108,6 +108,17 @@ describe("addSdkGenerateToConnectorYaml", () => {
       },
     ]);
   });
+  it("should add swiftSdk for admin node platform", () => {
+    app.platform = Platform.ADMIN_NODE;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
+      {
+        outputDir: "../app/src/dataconnect-admin-generated",
+        package: "@dataconnect/admin-generated",
+        packageJsonDir: "../app",
+      },
+    ]);
+  });
 });
 
 describe("chooseApp", () => {
@@ -192,6 +203,7 @@ describe("chooseApp", () => {
     expect(promptStub.called).to.be.false;
   });
 
+  // TODO: Add a test for admin node.
   it("should deduplicate apps with the same platform and directory", async () => {
     const apps: App[] = [
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT], appId: "app1" },

@@ -99,7 +99,8 @@ async function loadAllWithSDKs(
         c.connectorYaml.generate?.javascriptSdk ||
         c.connectorYaml.generate?.kotlinSdk ||
         c.connectorYaml.generate?.swiftSdk ||
-        c.connectorYaml.generate?.dartSdk
+        c.connectorYaml.generate?.dartSdk ||
+        c.connectorYaml.generate?.adminNodeSdk
       );
     }),
   );

@@ -9,6 +9,7 @@ import { Config } from "../../../config";
 import { Setup } from "../..";
 import { loadAll } from "../../../dataconnect/load";
 import {
+  AdminNodeSDK,
   ConnectorInfo,
   ConnectorYaml,
   DartSDK,
@@ -191,10 +192,14 @@ export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number 
     num_android_apps: 0,
     num_ios_apps: 0,
     num_flutter_apps: 0,
+    num_admin_node_apps: 0,
   };
 
   for (const app of info.apps ?? []) {
     switch (app.platform) {
+      case Platform.ADMIN_NODE:
+        counts.num_admin_node_apps++;
+        break;
       case Platform.WEB:
         counts.num_web_apps++;
         break;
@@ -348,6 +353,24 @@ export function addSdkGenerateToConnectorYaml(
   const generate = connectorYaml.generate;
 
   switch (app.platform) {
+    case Platform.ADMIN_NODE: {
+      const adminNodeSdk: AdminNodeSDK = {
+        outputDir: path.relative(
+          connectorDir,
+          path.join(appDir, `src/dataconnect-admin-generated`),
+        ),
+        package: `@dataconnect/admin-generated`,
+        packageJsonDir: path.relative(connectorDir, appDir),
+      };
+      if (!isArray(generate?.adminNodeSdk)) {
+        generate.adminNodeSdk = generate.adminNodeSdk ? [generate.adminNodeSdk] : [];
+      }
+      if (!generate.adminNodeSdk.some((s) => s.outputDir === adminNodeSdk.outputDir)) {
+        generate.adminNodeSdk.push(adminNodeSdk);
+      }
+      break;
+    }
+
     case Platform.WEB: {
       const javascriptSdk: JavascriptSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `src/dataconnect-generated`)),
