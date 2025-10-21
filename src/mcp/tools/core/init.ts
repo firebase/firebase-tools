@@ -15,6 +15,7 @@ import { getFirebaseProject } from "../../../management/projects";
 import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
+  "core",
   {
     name: "init",
     description:
@@ -182,8 +183,8 @@ export const init = tool(
         if (err) return err;
       }
       featuresList.push("dataconnect");
+      featureInfo.dataconnectSource = "mcp_init";
       featureInfo.dataconnect = {
-        source: "mcp_init",
         flow: "",
         appDescription: features.dataconnect.app_description || "",
         serviceId: features.dataconnect.service_id || "",

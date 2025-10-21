@@ -68,7 +68,7 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions);
-  context.filters = getEndpointFilters(options); // Parse --only filters for functions.
+  context.filters = getEndpointFilters(options, context.config); // Parse --only filters for functions.
 
   const codebases = targetCodebases(context.config, context.filters);
   if (codebases.length === 0) {

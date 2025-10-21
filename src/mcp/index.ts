@@ -238,24 +238,32 @@ export class FirebaseMcpServer {
     return `http://${host}:${emulatorInfo.port}`;
   }
 
-  get availableTools(): ServerTool[] {
-    return availableTools(
-      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
-    );
+  async getAvailableTools(): Promise<ServerTool[]> {
+    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
+    // We need a project ID and user for the context, but it's ok if they're empty.
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
+    return availableTools(ctx, features);
   }
 
-  getTool(name: string): ServerTool | null {
-    return this.availableTools.find((t) => t.mcp.name === name) || null;
+  async getTool(name: string): Promise<ServerTool | null> {
+    const tools = await this.getAvailableTools();
+    return tools.find((t) => t.mcp.name === name) || null;
   }
 
-  get availablePrompts(): ServerPrompt[] {
-    return availablePrompts(
-      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
-    );
+  async getAvailablePrompts(): Promise<ServerPrompt[]> {
+    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
+    // We need a project ID and user for the context, but it's ok if they're empty.
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
+    return availablePrompts(ctx, features);
   }
 
-  getPrompt(name: string): ServerPrompt | null {
-    return this.availablePrompts.find((p) => p.mcp.name === name) || null;
+  async getPrompt(name: string): Promise<ServerPrompt | null> {
+    const prompts = await this.getAvailablePrompts();
+    return prompts.find((p) => p.mcp.name === name) || null;
   }
 
   setProjectRoot(newRoot: string | null): void {
@@ -268,7 +276,7 @@ export class FirebaseMcpServer {
 
   async resolveOptions(): Promise<Partial<Options>> {
     const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
-    await cmd.prepare(options);
+    await cmd.prepare(options as Options);
     return options;
   }
 
@@ -314,8 +322,9 @@ export class FirebaseMcpServer {
     await this.trackGA4("mcp_list_tools");
     const skipAutoAuthForStudio = isFirebaseStudio();
     this.log("debug", `skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
+    const availableTools = await this.getAvailableTools();
     return {
-      tools: this.availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => t.mcp),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
@@ -330,7 +339,7 @@ export class FirebaseMcpServer {
     await this.detectProjectRoot();
     const toolName = request.params.name;
     const toolArgs = request.params.arguments;
-    const tool = this.getTool(toolName);
+    const tool = await this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
@@ -383,7 +392,7 @@ export class FirebaseMcpServer {
     await this.trackGA4("mcp_list_prompts");
     const skipAutoAuthForStudio = isFirebaseStudio();
     return {
-      prompts: this.availablePrompts.map((p) => ({
+      prompts: (await this.getAvailablePrompts()).map((p) => ({
         name: p.mcp.name,
         description: p.mcp.description,
         annotations: p.mcp.annotations,
@@ -403,7 +412,7 @@ export class FirebaseMcpServer {
     await this.detectProjectRoot();
     const promptName = req.params.name;
     const promptArgs = req.params.arguments || {};
-    const prompt = this.getPrompt(promptName);
+    const prompt = await this.getPrompt(promptName);
     if (!prompt) {
       throw new Error(`Prompt '${promptName}' could not be found.`);
     }

@@ -36,6 +36,7 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
+  dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
   ailogic?: features.AiLogicInfo;

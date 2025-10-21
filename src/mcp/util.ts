@@ -77,6 +77,20 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   database: realtimeOrigin(),
 };
 
+const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
+  core: undefined,
+  firestore: undefined,
+  storage: undefined,
+  dataconnect: undefined,
+  auth: undefined,
+  messaging: undefined,
+  functions: undefined,
+  remoteconfig: undefined,
+  crashlytics: undefined,
+  apphosting: undefined,
+  database: undefined,
+};
+
 /**
  * Detects whether an MCP feature is active in the current project root. Relies first on
  * `firebase.json` configuration, but falls back to API checks.
@@ -88,18 +102,26 @@ export async function checkFeatureActive(
 ): Promise<boolean> {
   // if the feature is configured in firebase.json, it's active
   if (feature in (options?.config?.data || {})) return true;
-  // if the feature's api is active in the project, it's active
-  try {
-    if (projectId)
-      return await timeoutFallback(
+
+  if (DETECTED_API_FEATURES[feature] !== undefined) return DETECTED_API_FEATURES[feature]!;
+
+  if (projectId) {
+    // if the feature's api is active in the project, it's active
+    try {
+      const isActive = await timeoutFallback(
         check(projectId, SERVER_FEATURE_APIS[feature], "", true),
         true,
         3000,
       );
-  } catch (e) {
-    // if we don't have network or something, better to default to on
-    return true;
+      DETECTED_API_FEATURES[feature] = isActive;
+      return isActive;
+    } catch (e) {
+      // If the API check fails (e.g. network error), it's safer to assume the feature is active.
+      DETECTED_API_FEATURES[feature] = true;
+      return true;
+    }
   }
+  DETECTED_API_FEATURES[feature] = false;
   return false;
 }
 
