@@ -63,11 +63,9 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   const pubSpecYamlFiles = await detectFiles(dirPath, "pubspec.yaml");
   const srcMainFolders = await detectFiles(dirPath, "src/main/");
   const xCodeProjects = await detectFiles(dirPath, "*.xcodeproj/");
-  const adminAndWebApps = [];
-  for (const packageJson of packageJsonFiles) {
-    const apps = await packageJsonToAdminOrWebApp(dirPath, packageJson);
-    adminAndWebApps.push(...apps);
-  }
+  const adminAndWebApps = (
+    await Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p)))
+  ).flat();
 
   const flutterAppPromises = await Promise.all(
     pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f)),
