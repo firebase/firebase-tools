@@ -150,7 +150,7 @@ export class FirebaseMcpServer {
       return {};
     });
 
-    this.detectProjectSetup();
+    void this.detectProjectSetup();
   }
 
   /** Wait until initialization has finished. */
@@ -514,7 +514,7 @@ export class FirebaseMcpServer {
       while (this._pendingMessages.length) {
         const message = this._pendingMessages.shift();
         if (!message) continue;
-        this.log(message.level, message.data);
+        this.server.sendLoggingMessage({ level: message.level, data: message.data });
       }
 
       void this.server.sendLoggingMessage({ level, data });
