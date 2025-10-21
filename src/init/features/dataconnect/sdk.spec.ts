@@ -108,7 +108,8 @@ describe("addSdkGenerateToConnectorYaml", () => {
       },
     ]);
   });
-  it("should add swiftSdk for admin node platform", () => {
+
+  it("should add adminSdk for admin node platform", () => {
     app.platform = Platform.ADMIN_NODE;
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
