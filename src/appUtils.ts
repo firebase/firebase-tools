@@ -190,13 +190,7 @@ async function packageJsonToAdminOrWebApp(
       directory: path.dirname(packageJsonFile),
     });
   }
-  if (allDeps.includes("firebase")) {
-    detectedApps.push({
-      platform: Platform.WEB,
-      directory: path.dirname(packageJsonFile),
-    });
-  }
-  if (detectedApps.length === 0) {
+  if (allDeps.includes("firebase") || detectApps.length === 0) {
     detectedApps.push({
       platform: Platform.WEB,
       directory: path.dirname(packageJsonFile),
