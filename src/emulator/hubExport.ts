@@ -13,6 +13,7 @@ import { DatabaseEmulator } from "./databaseEmulator";
 import { DataConnectEmulator } from "./dataconnectEmulator";
 import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
+import { dataConnectLocalConnString } from "../api";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -340,5 +341,11 @@ function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<v
 }
 
 function shouldExport(e: Emulators): boolean {
+  if (e === Emulators.DATACONNECT && !!dataConnectLocalConnString()) {
+    logger.info(
+      "Skipping export for Data Connect because FIREBASE_DATACONNECT_POSTGRESQL_STRING is set.",
+    );
+    return false;
+  }
   return IMPORT_EXPORT_EMULATORS.includes(e) && EmulatorRegistry.isRunning(e);
 }
