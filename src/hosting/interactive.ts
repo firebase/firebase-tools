@@ -42,7 +42,7 @@ export async function pickHostingSiteName(
         default: suggestion,
       });
     }
-    const attempt = await trySiteID(projectNumber, id);
+    const attempt = await trySiteID(projectNumber, id, options.nonInteractive);
     nameConfirmed = attempt.available;
     suggestion = attempt.suggestion;
     if (!nameConfirmed) id = ""; // Clear so the prompt comes back.
