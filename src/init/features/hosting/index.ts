@@ -183,8 +183,9 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 
   if (hostingInfo.webFramework) {
     if (!hostingInfo.useDiscoveredFramework) {
-      if (hostingInfo.source && existsSync(hostingInfo.source))
+      if (hostingInfo.source && existsSync(hostingInfo.source)) {
         rmSync(hostingInfo.source, { recursive: true });
+      }
       await WebFrameworks[hostingInfo.webFramework].init!(setup, config);
     }
     setup.config.hosting = {
