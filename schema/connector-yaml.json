@@ -118,7 +118,7 @@
               }
             }
           ],
-          "description": "Configuration for a generated Javascript SDK"
+          "description": "Configuration for a generated Admin Node SDK"
         },
         "dartSdk": {
           "oneOf": [
