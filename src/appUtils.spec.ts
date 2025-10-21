@@ -244,7 +244,7 @@ function cleanUndefinedFields(apps: App[]): App[] {
   });
 }
 
-describe.only("appUtils", () => {
+describe("appUtils", () => {
   describe("getPlatformsFromFolder", () => {
     const testDir = "test-dir";
 
