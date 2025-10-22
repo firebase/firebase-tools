@@ -78,4 +78,3 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
   });
 });
 ```
-
