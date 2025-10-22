@@ -10,6 +10,7 @@ import {
 } from "./tool-matcher.js";
 import fs from "fs";
 import { throwFailure } from "./logging.js";
+import { expectFile } from "./expect-files.js";
 
 const READY_PROMPT = "Type your message";
 
@@ -42,7 +43,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   constructor(
     private readonly testName: string,
     testDir: string,
-    runDir: string,
+    private readonly runDir: string,
   ) {
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(testDir, "telemetry.log");
@@ -90,6 +91,10 @@ export class GeminiCliRunner implements AgentTestRunner {
 
   async exit(): Promise<void> {
     await this.cli.kill();
+  }
+
+  expectFs(filePath: string): Chai.Assertion {
+    return expectFile(path.join(this.runDir, filePath));
   }
 
   /**

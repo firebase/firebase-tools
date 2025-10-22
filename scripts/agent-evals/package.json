@@ -11,8 +11,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/chai": "^4.3.0",
+    "@types/chai-fs": "^2.0.5",
     "@types/mocha": "^9.0.0",
-    "@types/node": "^24.9.0"
+    "@types/node": "^24.9.0",
+    "chai-fs": "^2.0.0"
   },
   "dependencies": {
     "mocha": "^11.7.1",

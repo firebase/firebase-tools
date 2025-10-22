@@ -1,4 +1,5 @@
 import { ToolDef } from "./tool-matcher.js";
+import {Assertion} from "chai";
 
 export interface AgentTestRunner {
   /**
@@ -19,4 +20,10 @@ export interface AgentTestRunner {
    * an event is not found
    */
   expectToolCalls(tools: ToolDef[]): Promise<void>;
+
+  /**
+   * Returns an assertion object for the path inside the run directory that can
+   * be asserted on via chai-fs's API: https://www.chaijs.com/plugins/chai-fs/
+   */
+  expectFs(filePath: string): Chai.Assertion;
 }

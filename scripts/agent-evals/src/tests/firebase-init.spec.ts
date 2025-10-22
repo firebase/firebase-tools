@@ -3,13 +3,14 @@ import { AgentTestRunner } from "../runner/index.js";
 import "../helpers/hooks.js";
 
 describe("/firebase:init", function (this: Mocha.Suite) {
-  this.retries(2);
+  // this.retries(2);
 
   it("backend app", async function (this: Mocha.Context) {
     const run: AgentTestRunner = await startAgentTest(this, {
       templateName: "next-app-hello-world",
     });
 
+    run.expectFs(".gemini/settings.json").to.be.a.file().and.contents.contains(["experimental"]);
     await run.type("/firebase:init");
     await run.expectText("Backend Services");
     await run.expectText("AI Logic");
