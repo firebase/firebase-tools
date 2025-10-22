@@ -35,6 +35,7 @@ import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
 import { dirExistsSync, listFiles } from "../../../fsutils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
+import { Source } from ".";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -168,10 +169,11 @@ export async function actuate(setup: Setup, config: Config) {
     // Otherwise, `firebase init dataconnect` will emit those stats.
     const fdcInfo = setup.featureInfo?.dataconnect;
     if (!fdcInfo) {
+      const source: Source = setup.featureInfo?.dataconnectSource || "init_sdk";
       void trackGA4(
         "dataconnect_init",
         {
-          source: setup.featureInfo?.dataconnectSource || "cli_sdk",
+          source,
           project_status: setup.projectId
             ? (await isBillingEnabled(setup))
               ? "blaze"
@@ -370,7 +372,7 @@ export function addSdkGenerateToConnectorYaml(
     case Platform.FLUTTER: {
       const dartSdk: DartSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       };
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
