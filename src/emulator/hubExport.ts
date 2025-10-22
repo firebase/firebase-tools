@@ -341,7 +341,7 @@ function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<v
 }
 
 function shouldExport(e: Emulators): boolean {
-  if (e === Emulators.DATACONNECT && !!dataConnectLocalConnString()) {
+  if (e === Emulators.DATACONNECT && dataConnectLocalConnString()) {
     logger.info(
       "Skipping export for Data Connect because FIREBASE_DATACONNECT_POSTGRESQL_STRING is set.",
     );
