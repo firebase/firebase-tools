@@ -4,3 +4,4 @@
 - Tighten --only filter resolution for functions deployment to prefer codebase names (#9353)
 - Fixed an issue where the Data Connect emulator would attempt to export data when `FIREBASE_DATACONNECT_POSTGRESQL_STRING` is set (#9330)
 - Added `functions.disallowLegacyRuntimeConfig` option to `firebase.json` to optionally skip fetching legacy Runtime Config during function deploys (#9354)
+- Updated to v2.15.1 of the Data Connect emulator.
