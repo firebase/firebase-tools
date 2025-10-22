@@ -4,3 +4,4 @@
 - Tighten --only filter resolution for functions deployment to prefer codebase names (#9353)
 - Fixed an issue where the Data Connect emulator would attempt to export data when `FIREBASE_DATACONNECT_POSTGRESQL_STRING` is set (#9330)
 - Added `functions.disallowLegacyRuntimeConfig` option to `firebase.json` to optionally skip fetching legacy Runtime Config during function deploys (#9354)
+- Update Data Connect Dart SDK's default import path to `import 'dataconnect_generated/generated.dart';` (#9365)
