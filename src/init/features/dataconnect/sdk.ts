@@ -370,7 +370,7 @@ export function addSdkGenerateToConnectorYaml(
     case Platform.FLUTTER: {
       const dartSdk: DartSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       };
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
