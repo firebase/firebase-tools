@@ -28,6 +28,9 @@ Call the 'firebase_init' tools with the features.dataconnect argument set to:
   provision_cloudsql: true
 }
 
+Next, check if there is a file named dataconnect/seed_data.gql. If there is, ask the user if they would like to seed their database with some generated test data.
+If they say yes, use the dataconnect_execute tool to run the operation in that file.
+
 `.trim(),
         },
       ],

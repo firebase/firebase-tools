@@ -22,10 +22,6 @@ export const init = prompt(
           text: `
 Your goal is to help the user setup Firebase services in this workspace. Firebase is a large platform with many potential uses, so you will:
 
-1. Detect which Firebase services are already in use in the workspace, if any
-2. Determine which new Firebase services will help the user build their app
-3. Provision and configure the services requested by the user
-
 ## Workspace Info
 
 Use this information to determine which Firebase services the user is already using (if any).
@@ -41,9 +37,7 @@ ${config.readProjectFile("firebase.json", { fallback: "<FILE DOES NOT EXIST>" })
 \`\`\`
 
 
-## Steps
-Follow the steps below taking note of any user instructions provided above. As you go, add all steps to a FIREBASE_INIT_TODO.md file, or use a TODO tool, and check steps off as you complete them.
-
+## Steps.
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
    - If you run into issues logging the user in, suggest that they run \`${firebaseCliCommand} login --reauth\` in a separate terminal
 2. Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user:
