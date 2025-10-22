@@ -5,7 +5,7 @@ import { FirebaseMcpServer } from "../../../mcp";
 import { toContent, mcpError } from "../../util";
 import { User, UserCredentials } from "../../../types/auth";
 const LoginInputSchema = z.object({
-  authCode: z.string().optional().describe("The authorization code from the login flow"),
+  authCode: z.string().optional().describe("The authorization code from the login flow. If omitted, will instead direct the user to log in to get an auth code."),
 });
 
 export type ServerWithLoginState = FirebaseMcpServer & {
@@ -50,7 +50,7 @@ export const login = tool(
         uri: prototyper.uri,
         sessionId: prototyper.sessionId,
       };
-      const humanReadable = `Please visit this URL to login: ${result.uri}\nYour session ID is: ${result.sessionId}\nInstruct the use to copy the authorization code from that link, and paste it into chat.\nThen, run this tool again with that as the authCode argument to complete the login.`;
+      const humanReadable = `Please visit this URL to login:\n(${result.uri})\nYour session ID is: ${result.sessionId}\nInstruct the use to copy the authorization code from that link, and paste it into chat.\nThen, run this tool again with that as the authCode argument to complete the login.`;
       return toContent(humanReadable);
     }
   },

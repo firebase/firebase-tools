@@ -17,17 +17,21 @@ export const init_hosting = resource(
           text: `
 ### Configure Firebase Hosting
 
+- If one does not already exist, create a public directory for the site. This is where the files for the site go. 
+  If user project has a build step, this should be the output directory for that step.
+- Add a 'hosting' block to firebase.json. The following is an example, but you should change the specific values to match the users directory structure.
+\`\`\`
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+\`\`\`
 **Security Warning:**
 - Files included in the public folder of a hosting site are publicly accessible. Do not include sensitive API keys for services other than Firebase in these files.
-
-**When to Deploy:**
-- Introduce Firebase Hosting when developers are ready to deploy their application to production. 
-- Alternative: Developers can deploy later using the \`/firebase:deploy\` command.
-
-**Deployment Process:**
-- Request developer's permission before implementing Firebase Hosting
-- Request developer's permission before deploying Firebase Hosting app to production. 
-- Configure Firebase Hosting and deploy the application to production
 `.trim(),
         },
       ],

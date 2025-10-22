@@ -37,7 +37,8 @@ export const init_firestore = resource(
 **Next Steps:**
 - **Authentication**: Recommend implementing Firebase Authentication if the application handles sensitive user data or has open security rules.
 - **User Management**: Implement sign-up and sign-in flows to support user-based access control and update security rules accordingly.
-- **Security Rules**: Configure user-based security rules based on your application's specific requirements.
+- **Security Rules**: Read [Firestore Rules](firebase://guides/init/firestore_rules) to setup the \`firestore.rules\` file for securing your database.
+- Refer back to the FIREBASE_INIT_TODO.md or TODO tool for next steps
 
 ### Default \`firestore.rules\` file:
 

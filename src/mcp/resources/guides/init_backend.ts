@@ -16,41 +16,16 @@ export const init_backend = resource(
           type: "text",
           text: `
 
-1. Determine based on what you already know about the user's project or by asking them which of the following services is appropriate.
-2. Use the Firebase \`read_resources\` tool to load the guide to setup the product you choose.
+Determine based on what you already know about the user's project or by asking them which of the following services is appropriate.
+Then, use the Firebase \`read_resources\` tool to load the guide to setup the products you choose.
 
-The user will likely need to setup Firestore, Authentication, and Hosting. Read the following guides in order:
- 1. [Firestore](firebase://guides/init/firestore): read this to setup Firestore database
- 2. [Authentication](firebase://guides/init/auth): read this to setup Firebase Authentication to support multi-user apps
- 3. [Firestore Rules](firebase://guides/init/firestore_rules): read this to setup the \`firestore.rules\` file for securing your database
- 4. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
+The user will likely need to setup a database solution, Authentication, and Hosting. Read the following guides in order.
 
-**firebase.json**
-The firebase.json file is used to deploy Firebase products with the firebase deploy command.
+1. [Hosting](firebase://guides/init/hosting): read this if the user would like to use Firebase Hosting for their web app.
+2. [A Firebase database solution](firebase://guides/init/database): read this to choose and set up a database solution.
+3. [Authentication](firebase://guides/init/auth): read this to setup Firebase Authentication to support multi-user apps
 
-Here is an example firebase.json file with Firebase Hosting, Firestore, and Cloud Functions. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
-\`\`\`json
-{
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  },
-  "firestore": {
-      "rules": "firestore.rules",
-      "indexes": "firestore.indexes.json"
-  },
-  "functions": {
-    "predeploy": [
-      "npm --prefix "$RESOURCE_DIR" run lint",
-      "npm --prefix "$RESOURCE_DIR" run build"
-    ]
-  }
-}
-\`\`\`
+Once you've set up these services, ask the user if they would like to deploy their site. If they say yes, run the command 'firebase deploy --force' to do so.
 `.trim(),
         },
       ],
