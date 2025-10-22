@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import { execSync } from "node:child_process";
 
 export interface Template {
   // Name of the directory that the template resides in (eg. templates/<name>)
@@ -42,5 +43,14 @@ export async function buildTemplates(): Promise<void> {
 }
 
 export async function buildNodeTemplate(template: Template): Promise<void> {
+  const templateDir = path.resolve(path.join("templates", template.name));
+  if (fs.existsSync(path.join(templateDir, "node_modules"))) {
+    return;
+  }
 
+  console.log(`Running \`npm install\` in template ${template.name}`);
+  execSync("npm install", {
+    cwd: templateDir,
+    stdio: "inherit",
+  });
 }
