@@ -1,6 +1,5 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
 import { InteractiveCLI, poll } from "./interactive-cli.js";
 import { AgentTestRunner } from "./agent-test-runner.js";
 
@@ -11,15 +10,11 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
 
-  constructor(private readonly testName: string) {
-    // Create a unique, isolated directory for the test run
-    const sanitizedName = testName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    const testDir = path.resolve(
-      path.join("output", `${sanitizedName}-${randomBytes(8).toString("hex")}`),
-    );
-    const runDir = path.join(testDir, "repo");
-    mkdirSync(runDir, { recursive: true });
-
+  constructor(
+    private readonly testName: string,
+    testDir: string,
+    runDir: string,
+  ) {
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(testDir, "telemetry.log");
     const settings = {
