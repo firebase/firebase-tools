@@ -52,5 +52,6 @@ export async function buildNodeTemplate(template: Template): Promise<void> {
   execSync("npm install", {
     cwd: templateDir,
     stdio: "inherit",
+    timeout: 30000,
   });
 }

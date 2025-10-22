@@ -10,7 +10,11 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
 
-  constructor(private readonly testName: string, testDir: string, runDir: string) {
+  constructor(
+    private readonly testName: string,
+    testDir: string,
+    runDir: string,
+  ) {
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(testDir, "telemetry.log");
     const settings = {

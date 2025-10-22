@@ -7,7 +7,7 @@ describe("/firebase:init", function (this: Mocha.Suite) {
 
   it("backend app", async function (this: Mocha.Context) {
     const run: AgentTestRunner = await startAgentTest(this, {
-      templateName: "next-app-hello-world"
+      templateName: "next-app-hello-world",
     });
 
     await run.type("/firebase:init");

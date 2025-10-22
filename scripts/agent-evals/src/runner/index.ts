@@ -9,7 +9,7 @@ import { TemplateName, copyTemplate, buildTemplates } from "../template/index.js
 
 export * from "./agent-test-runner.js";
 
-const dateName = new Date().toISOString();
+const dateName = new Date().toISOString().replace("T", "_").replace(/:/g, "-").replace(".", "-");
 
 export async function setupEnvironment(): Promise<void> {
   await buildFirebaseCli();
@@ -18,8 +18,9 @@ export async function setupEnvironment(): Promise<void> {
 }
 
 export interface AgentTestOptions {
-  // Name of the template directory to copy into this test run
-  templateName: TemplateName;
+  // Name of the template directory to copy into this test run. Leave this empty
+  // to run the test in an empty directory
+  templateName?: TemplateName;
 }
 
 export async function startAgentTest(
