@@ -16,7 +16,8 @@ $ npm link
 $ npm run build:watch
 
 # In a separate terminal, run the test suite.
-# Running test:dev will skip rebuilding the Firebase CLI
+# Running test:dev will skip rebuilding the Firebase CLI (because your watch
+# command is doing that for you)
 $ cd scripts/agent-evals
 $ npm run test:dev
 ```
