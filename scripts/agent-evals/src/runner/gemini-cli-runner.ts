@@ -1,7 +1,13 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { InteractiveCLI, poll } from "./interactive-cli.js";
 import { AgentTestRunner } from "./agent-test-runner.js";
+import {
+  ParsedToolLog,
+  getToolName,
+  toolArgumentsMatch,
+  getToolArgumentsDebug,
+} from "./tool-matcher.js";
 import fs from "fs";
 import { throwFailure } from "./logging.js";
 
@@ -90,38 +96,53 @@ export class GeminiCliRunner implements AgentTestRunner {
    * Reads the agent's telemetry file and looks for the given event. Throws if
    * the event is not found
    */
-  async expectToolCalls(toolNames: string[]): Promise<void> {
+  async expectToolCalls(tools: string[]): Promise<void> {
     await this.waitForTelemetryReady();
 
     // We still need to poll because telemetry can take time to write each turn
-    let message = ""
-    let success = await poll(() => {
+    let messages: string[] = [];
+    const success = await poll(() => {
+      messages = [];
+      let allSucceeded = true;
       // Start at this.turnToolIndex so we only read the tools used this turn
       const toolLogs = this.readToolLogs().slice(this.turnToolIndex);
-      const foundToolNames = toolLogs.map((log) => log.toolRequest.name);
-      for (const toolName of toolNames) {
-        const found = toolLogs.some((log) => log.toolRequest.name === toolName);
-        if (!found) {
-          message = `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`;
-          return false;
+      const foundToolNames = toolLogs.map((log) => log.name);
+      for (const toolDef of tools) {
+        const toolName = getToolName(toolDef);
+        const matchingTool = toolLogs.find((log) => log.name === toolName);
+        if (!matchingTool) {
+          messages.push(
+            `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`,
+          );
+          allSucceeded = false;
+        } else {
+          const foundMatchingArguments = toolLogs.some(
+            (log) => log.name === toolName && toolArgumentsMatch(toolDef, log),
+          );
+          if (!foundMatchingArguments) {
+            messages.push(
+              `Tool arguments matcher "${getToolArgumentsDebug(toolDef)}" for "${toolName}" did not match any tool results in the telemetry log. All tools are: [${JSON.stringify(toolLogs)}]`,
+            );
+            allSucceeded = false;
+          }
         }
       }
-      return true;
+      return allSucceeded;
     }, this.telemetryTimeout);
 
     if (!success) {
-      throwFailure(message);
+      throwFailure(messages.join("\n"));
     }
   }
 
-  async waitForTelemetryReady() {
-    // Note: This implementation is borrowed from the Gemini CLI's test-helper
+  // Implementation for this is borrowed from the Gemini CLI's test-helper
+  private async waitForTelemetryReady() {
     // Wait for telemetry file to exist and have content
     await poll(() => {
       if (!fs.existsSync(this.telemetryPath)) return false;
       try {
         const content = readFileSync(this.telemetryPath, "utf-8");
-        // Check if file has meaningful content (at least one complete JSON object)
+        // Check if file has at lease one event in it
         return content.includes('"event.name"');
       } catch {
         return false;
@@ -129,28 +150,19 @@ export class GeminiCliRunner implements AgentTestRunner {
     }, this.telemetryTimeout);
   }
 
-  readToolLogs() {
+  // Implementation for this is borrowed from the Gemini CLI's test-helper
+  private readToolLogs(): ParsedToolLog[] {
     const parsedLogs = this.readAndParseTelemetryLog();
-    const logs: {
-      toolRequest: {
-        name: string;
-        args: string;
-        success: boolean;
-        duration_ms: number;
-      };
-    }[] = [];
+    const logs: ParsedToolLog[] = [];
 
     for (const logData of parsedLogs) {
       // Look for tool call logs
-      if (logData.attributes && logData.attributes["event.name"] === "gemini_cli.tool_call") {
-        const toolName = logData.attributes.function_name!;
+      if (logData.attributes?.function_name && logData.attributes["event.name"] === "gemini_cli.tool_call") {
         logs.push({
-          toolRequest: {
-            name: toolName,
-            args: logData.attributes.function_args ?? "{}",
-            success: logData.attributes.success ?? false,
-            duration_ms: logData.attributes.duration_ms ?? 0,
-          },
+          name: logData.attributes.function_name,
+          args: logData.attributes.function_args ?? "{}",
+          success: logData.attributes.success ?? false,
+          duration_ms: logData.attributes.duration_ms ?? 0,
         });
       }
     }
@@ -158,6 +170,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     return logs;
   }
 
+  // Implementation for this is borrowed from the Gemini CLI's test-helper
   private readAndParseTelemetryLog(): ParsedTelemetryLog[] {
     const logFilePath = this.telemetryPath;
     if (!logFilePath || !fs.existsSync(logFilePath)) {

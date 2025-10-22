@@ -14,6 +14,6 @@ export function throwFailure(message: string) {
   // Log this separately because mocha doesn't print errors from failures
   // that happen before the final repetition. The failure can be helpful to get
   // early signal that the test is going to fail all reptitions
-  colorLog(COLORS.BRIGHT + COLORS.RED, message)
+  colorLog(COLORS.BRIGHT + COLORS.RED, message);
   throw new Error(message);
 }

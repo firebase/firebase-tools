@@ -3,7 +3,7 @@ import { AgentTestRunner } from "../runner/index.js";
 import "../helpers/hooks.js";
 
 describe("/firebase:init", function (this: Mocha.Suite) {
-  // this.retries(2);
+  this.retries(2);
 
   it("backend app", async function (this: Mocha.Context) {
     const run: AgentTestRunner = await startAgentTest(this, {
@@ -21,23 +21,11 @@ describe("/firebase:init", function (this: Mocha.Suite) {
     await run.type("Yes that looks good. Use Firebase Project gcli-ext-sam-01");
     await run.expectToolCalls([
       "firebase_update_environment",
-      "read_resources",
-    ]);
-  });
-
-  it.only("testing testing sam", async function (this: Mocha.Context) {
-    const run: AgentTestRunner = await startAgentTest(this);
-
-    await run.type("Call firebase_update_environment with gcli-ext-sam-01");
-    await run.expectToolCalls([
-      "firebase_update_environment",
-    ]);
-
-    await run.type(
-      "Call firebase_list_apps I wanna see them",
-    );
-    await run.expectToolCalls([
-      "firebase_update_environment",
+      {
+        name: "firebase_read_resources",
+        argumentContains: "firebase://guides/init/backend",
+        successIs: true,
+      },
     ]);
   });
 });

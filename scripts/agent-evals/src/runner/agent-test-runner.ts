@@ -1,3 +1,5 @@
+import { ToolDef } from "./tool-matcher.js";
+
 export interface AgentTestRunner {
   /**
    * Simulates typing a string and waits for the turn to complete. It types one
@@ -16,5 +18,5 @@ export interface AgentTestRunner {
    * Reads the agent's telemetry and looks for the given tool calls. Throws if
    * an event is not found
    */
-  expectToolCalls(toolNames: string[]): Promise<void>;
+  expectToolCalls(tools: ToolDef[]): Promise<void>;
 }
