@@ -10,7 +10,11 @@ export async function setupEnvironment(): Promise<void> {
   await clearUserMcpServers();
 }
 
-export async function startAgentTest(mocha: Mocha.Context): Promise<AgentTestRunner> {
+export interface AgentTestOptions {
+  templateName: string;
+}
+
+export async function startAgentTest(mocha: Mocha.Context, options?: AgentTestOptions): Promise<AgentTestRunner> {
   if (!mocha.test) {
     throw new Error("startAgentTest must be called inside of an `it` block of a Mocha test.");
   }
