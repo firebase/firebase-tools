@@ -52,9 +52,28 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
     // Simulate typing in the terminal. This will await until the "turn" is over
     // so any assertions on what happened will happen on the current "turn"
     await run.type("/firebase:init");
-
     // Assert that the agent outputted "Backend Services"
     await run.expectText("Backend Services");
+
+    await run.type("Use Firebase Project `project-id-1000`");
+    // Assert that a tool was called with the given arguments, and that it was
+    // successful
+    await run.expectToolCalls([
+      "firebase_update_environment",
+      argumentContains: "project-id-1000",
+      isSuccess: true,
+    ]);
+
+    // Important: Expectations apply to the last "turn". Each time you type, it
+    // creates a new turn. This ensures you are only asserting against the most
+    // recent actions of the agent
+    await run.type("Hello world");
+    // This will fail, because "Hello World" doesn't trigger a tool call
+    await run.expectToolCalls([
+      "firebase_update_environment",
+      argumentContains: "project-id-1000",
+      isSuccess: true,
+    ]);
   });
 });
 ```
