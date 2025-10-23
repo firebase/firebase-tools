@@ -1,18 +1,19 @@
 import * as mockfs from "mock-fs";
-import sinon from "sinon";
-import * as ensureApiEnabled from "../../../ensureApiEnabled";
-import { FirebaseMcpServer } from "../..";
+import * as sinon from "sinon";
+import { FirebaseMcpServer } from "../../index";
 import { RC } from "../../../rc";
 import { Config } from "../../../config";
 import { McpContext } from "../../types";
 import { isAppTestingAvailable } from "./availability";
 import { expect } from "chai";
+import * as ensureApiEnabled from "../../../ensureApiEnabled";
 
 describe("isAppTestingAvailable", () => {
-  const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+  let sandbox: sinon.SinonSandbox;
   let checkStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     checkStub = sandbox.stub(ensureApiEnabled, "check");
   });
 
