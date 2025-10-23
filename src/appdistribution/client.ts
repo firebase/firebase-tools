@@ -12,10 +12,14 @@ import {
   BatchRemoveTestersResponse,
   Group,
   ListGroupsResponse,
+  ListTestCasesResponse,
   ListTestersResponse,
   LoginCredential,
   mapDeviceToExecution,
   ReleaseTest,
+  TestCase,
+  BatchUpdateTestCasesRequest,
+  BatchUpdateTestCasesResponse,
   TestDevice,
   Tester,
   UploadReleaseResponse,
@@ -294,5 +298,59 @@ export class AppDistributionClient {
   async getReleaseTest(releaseTestName: string): Promise<ReleaseTest> {
     const response = await this.appDistroV1AlphaClient.get<ReleaseTest>(releaseTestName);
     return response.body;
+  }
+
+  async listTestCases(appName: string): Promise<TestCase[]> {
+    const testCases: TestCase[] = [];
+    const client = this.appDistroV1AlphaClient;
+
+    let pageToken: string | undefined;
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      try {
+        const apiResponse = await client.get<ListTestCasesResponse>(`${appName}/testCases`, {
+          queryParams,
+        });
+        testCases.push(...(apiResponse.body.testCases ?? []));
+        pageToken = apiResponse.body.nextPageToken;
+      } catch (err) {
+        throw new FirebaseError(`Client failed to list test cases ${err}`);
+      }
+    } while (pageToken);
+    return testCases;
+  }
+
+  async createTestCase(appName: string, testCase: TestCase): Promise<TestCase> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<TestCase, TestCase>({
+        method: "POST",
+        path: `${appName}/testCases`,
+        body: testCase,
+      });
+      return response.body;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create test case ${getErrMsg(err)}`);
+    }
+  }
+
+  async batchUpsertTestCases(appName: string, testCases: TestCase[]): Promise<TestCase[]> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<
+        BatchUpdateTestCasesRequest,
+        BatchUpdateTestCasesResponse
+      >({
+        method: "POST",
+        path: `${appName}/testCases:batchUpdate`,
+        body: {
+          requests: testCases.map((tc) => ({
+            testCase: tc,
+            allowMissing: true,
+          })),
+        },
+      });
+      return response.body.testCases;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to upsert test cases ${getErrMsg(err)}`);
+    }
   }
 }

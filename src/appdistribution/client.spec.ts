@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 import * as tmp from "tmp";
 
 import { AppDistributionClient } from "./client";
-import { BatchRemoveTestersResponse, Group, TestDevice } from "./types";
+import { BatchRemoveTestersResponse, Group, TestCase, TestDevice } from "./types";
 import { appDistributionOrigin } from "../api";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
@@ -498,6 +498,93 @@ describe("distribution", () => {
       await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
         mockReleaseTest,
       );
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("listTestCases", () => {
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .get(`/v1alpha/${appName}/testCases`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.listTestCases(appName)).to.be.rejectedWith(
+        FirebaseError,
+        "Client failed to list test cases",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with array of test cases when request succeeds", async () => {
+      const testCases: TestCase[] = [
+        {
+          name: `$appName/testCases/tc_1`,
+          displayName: "Test Case 1",
+          aiInstructions: {
+            steps: [
+              {
+                goal: "Win at all costs",
+              },
+            ],
+          },
+        },
+        {
+          name: `$appName/testCases/tc_2`,
+          displayName: "Test Case 2",
+          aiInstructions: { steps: [] },
+        },
+      ];
+
+      nock(appDistributionOrigin()).get(`/v1alpha/${appName}/testCases`).reply(200, {
+        testCases: testCases,
+      });
+      await expect(appDistributionClient.listTestCases(appName)).to.eventually.deep.eq(testCases);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createTestCase", () => {
+    const mockTestCase = { displayName: "Case", aiInstructions: { steps: [] } };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.createTestCase(appName, mockTestCase)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create test case",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with TestCase when request succeeds", async () => {
+      nock(appDistributionOrigin()).post(`/v1alpha/${appName}/testCases`).reply(200, mockTestCase);
+      await expect(
+        appDistributionClient.createTestCase(appName, mockTestCase),
+      ).to.be.eventually.deep.eq(mockTestCase);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("batchUpsertTestCases", () => {
+    const mockTestCase = { displayName: "Case", aiInstructions: { steps: [] } };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases:batchUpdate`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.batchUpsertTestCases(appName, [mockTestCase]),
+      ).to.be.rejectedWith(FirebaseError, "Failed to upsert test cases");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with TestCase when request succeeds", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases:batchUpdate`)
+        .reply(200, { testCases: [mockTestCase] });
+      await expect(
+        appDistributionClient.batchUpsertTestCases(appName, [mockTestCase]),
+      ).to.be.eventually.deep.eq([mockTestCase]);
       expect(nock.isDone()).to.be.true;
     });
   });

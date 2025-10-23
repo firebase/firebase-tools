@@ -1,0 +1,94 @@
+import { TestCase } from "./types";
+import * as jsYaml from "js-yaml";
+import { FirebaseError } from "../error";
+
+declare interface YamlStep {
+  goal?: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+const ALLOWED_YAML_STEP_KEYS = new Set(["goal", "hint", "successCriteria"]);
+
+declare interface YamlTestCase {
+  displayName?: string;
+  id?: string;
+  prerequisiteTestCaseId?: string;
+  steps?: YamlStep[];
+}
+
+const ALLOWED_YAML_TEST_CASE_KEYS = new Set([
+  "displayName",
+  "id",
+  "prerequisiteTestCaseId",
+  "steps",
+]);
+
+function extractIdFromResourceName(name: string): string {
+  return name.split("/").pop() ?? "";
+}
+
+function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
+  return testCases.map((testCase) => ({
+    displayName: testCase.displayName ?? "",
+    id: extractIdFromResourceName(testCase.name!),
+    ...(testCase.prerequisiteTestCase && {
+      prerequisiteTestCaseId: extractIdFromResourceName(testCase.prerequisiteTestCase),
+    }),
+    steps: testCase.aiInstructions.steps.map((step) => ({
+      goal: step.goal,
+      ...(step.hint && { hint: step.hint }),
+      ...(step.successCriteria && { successCriteria: step.successCriteria }),
+    })),
+  }));
+}
+
+export function toYaml(testCases: TestCase[]): string {
+  return jsYaml.safeDump(toYamlTestCases(testCases));
+}
+
+function castExists<T>(it: T | null | undefined, thing: string): T {
+  if (it == null) {
+    throw new FirebaseError(`"${thing}" is required`);
+  }
+  return it!;
+}
+
+function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
+  for (const key of Object.keys(o)) {
+    if (!allowedKeys.has(key)) {
+      throw new FirebaseError(`unexpected property "${key}"`);
+    }
+  }
+}
+
+function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): TestCase[] {
+  return yamlTestCases.map((yamlTestCase) => {
+    checkAllowedKeys(ALLOWED_YAML_TEST_CASE_KEYS, yamlTestCase);
+    return {
+      displayName: castExists(yamlTestCase.displayName, "displayName"),
+      aiInstructions: {
+        steps: castExists(yamlTestCase.steps, "steps").map((yamlStep) => {
+          checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
+          return {
+            goal: castExists(yamlStep.goal, "goal"),
+            ...(yamlStep.hint && { hint: yamlStep.hint }),
+            ...(yamlStep.successCriteria && {
+              successCriteria: yamlStep.successCriteria,
+            }),
+          };
+        }),
+      },
+      ...(yamlTestCase.id && {
+        name: `${appName}/testCases/${yamlTestCase.id}`,
+      }),
+      ...(yamlTestCase.prerequisiteTestCaseId && {
+        prerequisiteTestCase: `${appName}/testCases/${yamlTestCase.prerequisiteTestCaseId}`,
+      }),
+    };
+  });
+}
+
+export function fromYaml(appName: string, yaml: string): TestCase[] {
+  return fromYamlTestCases(appName, jsYaml.safeLoad(yaml) as YamlTestCase[]);
+}
