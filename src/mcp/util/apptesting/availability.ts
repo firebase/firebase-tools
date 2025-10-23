@@ -12,9 +12,9 @@ export async function isAppTestingAvailable(ctx: McpContext): Promise<boolean> {
   const projectDir = ctx.config.projectDir;
   const platforms = await getPlatformsFromFolder(projectDir);
 
-  // If this is not a mobile app, then App Testing won't be enabled
-  const supportedPlatforms = new Set([Platform.FLUTTER, Platform.ANDROID, Platform.IOS]);
-  if (!supportedPlatforms.intersection(new Set(platforms)).size) {
+  const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS];
+
+  if (!platforms.some((p) => supportedPlatforms.includes(p))) {
     host.log("debug", `Found no supported App Testing platforms.`);
     return false;
   }
