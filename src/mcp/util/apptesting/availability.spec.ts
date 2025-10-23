@@ -1,10 +1,5 @@
-// import { expect } from "chai";
 import * as mockfs from "mock-fs";
 import sinon from "sinon";
-// import { McpContext } from "../../types";
-// import { Config } from "../../../config";
-// import { FirebaseMcpServer } from "../..";
-// import { RC } from "../../../rc";
 import * as ensureApiEnabled from "../../../ensureApiEnabled";
 import { FirebaseMcpServer } from "../..";
 import { RC } from "../../../rc";
@@ -12,9 +7,8 @@ import { Config } from "../../../config";
 import { McpContext } from "../../types";
 import { isAppTestingAvailable } from "./availability";
 import { expect } from "chai";
-// import { isAppTestingAvailable } from "./availability";
 
-describe.only("isAppTestingAvailable", () => {
+describe("isAppTestingAvailable", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let checkStub: sinon.SinonStub;
 
