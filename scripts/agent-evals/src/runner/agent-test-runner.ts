@@ -1,5 +1,4 @@
 import { ToolDef } from "./tool-matcher.js";
-import {Assertion} from "chai";
 
 export interface AgentTestRunner {
   /**
