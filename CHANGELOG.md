@@ -1,1 +1,2 @@
-- Added 'hosting' to the 'firebase_init' MCP tool.
+- Added 'hosting' to the 'firebase_init' MCP tool (#9375)
+- Revert logic to abort function deploys in non-interactive mode when secrets are missing. (#9378)
