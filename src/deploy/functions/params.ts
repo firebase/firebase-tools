@@ -397,18 +397,33 @@ export async function resolveParams(
 
   // Check for missing secrets in non-interactive mode
   if (nonInteractive && needSecret.length > 0) {
-    const secretNames = needSecret.map((p) => p.name).join(", ");
-    const commands = needSecret
-      .map(
-        (p) =>
-          `\tfirebase functions:secrets:set ${p.name}${(p as SecretParam).format === "json" ? " --format=json --data-file <file.json>" : ""}`,
-      )
-      .join("\n");
-    throw new FirebaseError(
-      `In non-interactive mode but have no value for the following secrets: ${secretNames}\n\n` +
-        "Set these secrets before deploying:\n" +
-        commands,
-    );
+    // Check all secrets in parallel for better performance
+    const metadataChecks = needSecret.map((param) => {
+      const secretParam = param as SecretParam;
+      return secretManager.getSecretMetadata(firebaseConfig.projectId, secretParam.name, "latest");
+    });
+    const metadataResults = await Promise.all(metadataChecks);
+
+    // Filter for secrets that don't exist
+    const missingSecrets: SecretParam[] = needSecret.filter((param, index) => {
+      return !metadataResults[index].secret;
+    }) as SecretParam[];
+
+    // Only throw an error if there are truly missing secrets
+    if (missingSecrets.length > 0) {
+      const secretNames = missingSecrets.map((p) => p.name).join(", ");
+      const commands = missingSecrets
+        .map(
+          (p) =>
+            `\tfirebase functions:secrets:set ${p.name}${p.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+        )
+        .join("\n");
+      throw new FirebaseError(
+        `In non-interactive mode but have no value for the following secrets: ${secretNames}\n\n` +
+          "Set these secrets before deploying:\n" +
+          commands,
+      );
+    }
   }
 
   // The functions emulator will handle secrets
