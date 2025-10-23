@@ -145,13 +145,17 @@ export const init = tool(
             site: z
               .string()
               .optional()
-              .describe("The ID of the hosting site to configure."),
-            public: z
+              .describe(
+                "The ID of the hosting site to configure. If omitted and there is a default hosting site, that will be used.",
+              ),
+            publicDirectory: z
               .string()
               .optional()
               .default("public")
-              .describe("The directory to use as the public root."),
-            spa: z
+              .describe(
+                "The directory containing public files that will be served. If using a build tool, this likely should be the output directory of that tool.",
+              ),
+            singlePageApp: z
               .boolean()
               .optional()
               .default(false)
@@ -244,8 +248,8 @@ export const init = tool(
       featuresList.push("hosting");
       featureInfo.hosting = {
         newSiteId: features.hosting.site,
-        public: features.hosting.public,
-        spa: features.hosting.spa,
+        public: features.hosting.publicDirectory,
+        spa: features.hosting.singlePageApp,
       };
     }
     const setup: Setup = {

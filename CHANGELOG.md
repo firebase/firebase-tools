@@ -1,0 +1,1 @@
+- Added 'hosting' to the 'firebase_init' MCP tool.
