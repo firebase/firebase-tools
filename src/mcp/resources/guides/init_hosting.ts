@@ -10,7 +10,6 @@ export const init_hosting = resource(
       "guides the coding agent through deploying to Firebase Hosting in the current project",
   },
   async (uri, ctx) => {
-
     const defaultHostingSite = await getDefaultHostingSite(ctx);
     return {
       contents: [
