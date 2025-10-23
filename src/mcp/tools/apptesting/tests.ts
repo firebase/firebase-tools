@@ -35,6 +35,7 @@ const AIStepSchema = z
   .describe("Step within a test case; run during the execution of the test.");
 
 export const run_tests = tool(
+  "apptesting",
   {
     name: "run_test",
     description: `Run a remote test.`,
@@ -66,6 +67,7 @@ export const run_tests = tool(
 );
 
 export const check_test = tool(
+  "apptesting",
   {
     name: "check_test",
     description: "Check the status of a remote test.",

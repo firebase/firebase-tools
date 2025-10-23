@@ -1,6 +1,7 @@
 import { prompt } from "../../prompt";
 
 export const runTest = prompt(
+  "apptesting",
   {
     name: "run_test",
     description: "Run a test with the Firebase App Testing agent",

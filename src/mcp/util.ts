@@ -89,6 +89,7 @@ const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
   functions: undefined,
   remoteconfig: undefined,
   crashlytics: undefined,
+  apptesting: undefined,
   apphosting: undefined,
   database: undefined,
 };
