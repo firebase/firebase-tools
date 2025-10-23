@@ -19,5 +19,13 @@ describe("/firebase:init", function (this: Mocha.Suite) {
     );
 
     await run.type("Yes that looks good. Use Firebase Project gcli-ext-sam-01");
+    await run.expectToolCalls([
+      "firebase_update_environment",
+      {
+        name: "firebase_read_resources",
+        argumentContains: "firebase://guides/init/backend",
+        successIs: true,
+      },
+    ]);
   });
 });
