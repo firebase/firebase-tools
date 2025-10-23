@@ -157,7 +157,10 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     for (const logData of parsedLogs) {
       // Look for tool call logs
-      if (logData.attributes?.function_name && logData.attributes["event.name"] === "gemini_cli.tool_call") {
+      if (
+        logData.attributes?.function_name &&
+        logData.attributes["event.name"] === "gemini_cli.tool_call"
+      ) {
         logs.push({
           name: logData.attributes.function_name,
           args: logData.attributes.function_args ?? "{}",
