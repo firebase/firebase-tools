@@ -10,6 +10,7 @@ import {
 } from "./tool-matcher.js";
 import fs from "fs";
 import { throwFailure } from "./logging.js";
+import { getAgentEvalsRoot } from "./paths.js";
 
 const READY_PROMPT = "Type your message";
 
@@ -46,6 +47,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   ) {
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(testDir, "telemetry.log");
+    const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "lib/mock/index.js"));
     const settings = {
       general: {
         disableAutoUpdate: true,
@@ -58,8 +60,8 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
       mcpServers: {
         firebase: {
-          command: "firebase",
-          args: ["experimental:mcp"],
+          command: "node",
+          args: ["--import", mockPath, "$(which firebase)", "experimental:mcp"],
         },
       },
     };
