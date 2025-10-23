@@ -3,6 +3,8 @@ import * as sinon from "sinon";
 
 import * as prompt from "../../prompt";
 import * as params from "./params";
+import * as secretManager from "../../gcp/secretManager";
+import { FirebaseError } from "../../error";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -297,5 +299,98 @@ describe("resolveParams", () => {
     ];
     input.resolves("22");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+  });
+
+  describe("non-interactive mode with secrets", () => {
+    let getSecretMetadataStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata");
+    });
+
+    afterEach(() => {
+      getSecretMetadataStub.restore();
+    });
+
+    it("should succeed when secrets already exist in Secret Manager", async () => {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "MY_SECRET",
+          type: "secret",
+        },
+      ];
+      getSecretMetadataStub.resolves({
+        secret: { name: "MY_SECRET" },
+        secretVersion: { name: "MY_SECRET/versions/1", state: "ENABLED" },
+      });
+
+      await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, { nonInteractive: true }))
+        .to.eventually.be.fulfilled;
+    });
+
+    it("should throw error when secrets don't exist in non-interactive mode", async () => {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "MISSING_SECRET",
+          type: "secret",
+        },
+      ];
+      getSecretMetadataStub.resolves({});
+
+      await expect(
+        params.resolveParams(paramsToResolve, fakeConfig, {}, { nonInteractive: true }),
+      ).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /In non-interactive mode but have no value for the following secrets: MISSING_SECRET/,
+      );
+    });
+
+    it("should only report missing secrets, not existing ones in non-interactive mode", async () => {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "EXISTING_SECRET",
+          type: "secret",
+        },
+        {
+          name: "MISSING_SECRET",
+          type: "secret",
+        },
+      ];
+      getSecretMetadataStub.callsFake((projectId: string, secretName: string) => {
+        if (secretName === "EXISTING_SECRET") {
+          return Promise.resolve({
+            secret: { name: "EXISTING_SECRET" },
+            secretVersion: { name: "EXISTING_SECRET/versions/1", state: "ENABLED" },
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      try {
+        await params.resolveParams(paramsToResolve, fakeConfig, {}, { nonInteractive: true });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.message).to.include("MISSING_SECRET");
+        expect(err.message).to.not.include("EXISTING_SECRET");
+      }
+    });
+
+    it("should include format flag in error for JSON secrets", async () => {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "JSON_SECRET",
+          type: "secret",
+          format: "json",
+        },
+      ];
+      getSecretMetadataStub.resolves({});
+
+      try {
+        await params.resolveParams(paramsToResolve, fakeConfig, {}, { nonInteractive: true });
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err.message).to.include("--format=json --data-file <file.json>");
+      }
+    });
   });
 });

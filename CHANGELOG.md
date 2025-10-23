@@ -1,0 +1,1 @@
+- Fixed non-interactive deployment failure when secrets are already configured in Secret Manager
