@@ -142,12 +142,6 @@ export async function actuate(setup: Setup): Promise<void> {
       "Place this config file in the appropriate location for your platform.",
     );
   } catch (error) {
-    if (error instanceof FirebaseError) {
-      throw new FirebaseError(`AI Logic setup failed: ${error.message}`, {
-        original: error.original || error,
-        exit: error.exit,
-      });
-    }
     throw new FirebaseError(
       `AI Logic setup failed: ${error instanceof Error ? error.message : String(error)}`,
       { original: error instanceof Error ? error : new Error(String(error)), exit: 2 },
