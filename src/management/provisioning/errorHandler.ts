@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError, getError } from "../../error";
 import { logger } from "../../logger";
 
 /**
@@ -76,7 +76,7 @@ export function logProvisioningError(err: unknown): void {
           logger.error(`  Reason: ${detail.reason}`);
           logger.error(`  Domain: ${detail.domain}`);
           if (detail.metadata) {
-            logger.error(`  Additional Info: ${JSON.stringify(detail.metadata, null, 2)}`);
+            logger.error(`  Additional Info: ${JSON.stringify(detail.metadata)}`);
           }
         } else if (isHelpLinks(detail)) {
           logger.error("");
@@ -101,9 +101,9 @@ export function enhanceProvisioningError(err: unknown, contextMessage: string): 
   logProvisioningError(err);
 
   // Create and return a user-friendly error
-  const errorMessage = err instanceof Error ? err.message : String(err);
-  return new FirebaseError(`${contextMessage}: ${errorMessage}`, {
+  const originalError = getError(err);
+  return new FirebaseError(`${contextMessage}: ${originalError.message}`, {
     exit: 2,
-    original: err instanceof Error ? err : new Error(String(err)),
+    original: originalError,
   });
 }
