@@ -11,11 +11,11 @@ export const list_functions = tool(
   {
     name: "list_functions",
     description: "List all deployed functions in your Firebase project.",
-    inputSchema: z.object({}), //this tool does not have input
+    inputSchema: z.object({}), // this tool does not have input
     annotations: {
       title: "List Deployed Functions",
-      readOnlyHint: false, //this tool does not modify data
-      openWorldHint: true, //this tool connects to internet/open world system
+      readOnlyHint: false, // this tool does not modify data
+      openWorldHint: true, // this tool connects to internet/open world system
     },
     _meta: {
       requiresAuth: true,
@@ -28,12 +28,12 @@ export const list_functions = tool(
     } as args.Context;
 
     try {
-      //fetches info about all currently deployed functions for the project
+      // fetches info about all currently deployed functions for the project
       const existing = await backend.existingBackend(context);
-      //extracts all the function endpoints and sorts them
+      // extracts all the function endpoints and sorts them
       const endpointsList = backend.allEndpoints(existing).sort(backend.compareFunctions);
 
-      //below format differs from Firebase CLI command output to be more suitable format for agents
+      // below format differs from Firebase CLI command output to be more suitable format for agents
       const formattedList = endpointsList.map((endpoint) => ({
         function: endpoint.id,
         version: endpoint.platform === "gcfv2" ? "v2" : "v1",
@@ -51,10 +51,7 @@ export const list_functions = tool(
 
       return toContent(formattedList);
     } catch (err) {
-      const errMsg = getErrMsg(
-        (err as any)?.original || err,
-        "Failed to list functions.",
-      );
+      const errMsg = getErrMsg((err as any)?.original || err, "Failed to list functions.");
       return mcpError(errMsg);
     }
   },
