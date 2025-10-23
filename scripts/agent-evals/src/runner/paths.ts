@@ -1,12 +1,17 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import path from "path";
+import { fileURLToPath } from "url";
+
+export function getAgentEvalsRoot(): string {
+  let thisFilePath = path.dirname(fileURLToPath(import.meta.url));
+  return path.resolve(path.join(thisFilePath, "..", ".."));
+}
 
 export function getFirebaseCliRoot(): string {
   return path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    "..", // runner
-    "..", // src
-    "..", // agent-evals
-    "..", // scripts
+    "..",
+    "..",
+    "..",
+    "..",
   );
 }
