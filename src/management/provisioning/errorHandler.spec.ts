@@ -1,60 +1,11 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
-import { logger } from "../../logger";
-import { logProvisioningError, enhanceProvisioningError } from "./errorHandler";
+import { enhanceProvisioningError } from "./errorHandler";
 
 describe("errorHandler", () => {
-  let sandbox: sinon.SinonSandbox;
-  let loggerErrorStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    loggerErrorStub = sandbox.stub(logger, "error");
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
-  describe("logProvisioningError", () => {
-    it("should not log anything for non-Error types", () => {
-      logProvisioningError("simple string error");
-      logProvisioningError(null);
-      logProvisioningError(undefined);
-      logProvisioningError(123);
-
-      expect(loggerErrorStub.called).to.be.false;
-    });
-
-    it("should not log anything for regular Error without context", () => {
-      const regularError = new Error("Regular error message");
-
-      logProvisioningError(regularError);
-
-      expect(loggerErrorStub.called).to.be.false;
-    });
-
-    it("should not log anything for FirebaseError without error details", () => {
-      const fbError = new FirebaseError("Firebase error without details", {
-        context: {
-          body: {
-            error: {
-              code: 400,
-              message: "Bad Request",
-              status: "INVALID_ARGUMENT",
-            },
-          },
-        },
-      });
-
-      logProvisioningError(fbError);
-
-      expect(loggerErrorStub.called).to.be.false;
-    });
-
-    it("should log ErrorInfo details when present", () => {
-      const fbError = new FirebaseError("TOS required", {
+  describe("enhanceProvisioningError", () => {
+    it("should include ErrorInfo details in error message", () => {
+      const originalError = new FirebaseError("Permission denied", {
         context: {
           body: {
             error: {
@@ -74,21 +25,21 @@ describe("errorHandler", () => {
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Failed to provision Firebase app");
 
-      expect(loggerErrorStub.callCount).to.be.greaterThan(0);
-      expect(loggerErrorStub.calledWith("")).to.be.true;
-      expect(loggerErrorStub.calledWith("Error details:")).to.be.true;
-      expect(
-        loggerErrorStub.calledWith(
-          "  Reason: TOS_REQUIRED: The following ToS's must be accepted: [generative-language-api].",
-        ),
-      ).to.be.true;
-      expect(loggerErrorStub.calledWith("  Domain: firebase.googleapis.com")).to.be.true;
+      expect(result).to.be.instanceOf(FirebaseError);
+      expect(result.message).to.include("Failed to provision Firebase app: Permission denied");
+      expect(result.message).to.include("Error details:");
+      expect(result.message).to.include(
+        "Reason: TOS_REQUIRED: The following ToS's must be accepted: [generative-language-api].",
+      );
+      expect(result.message).to.include("Domain: firebase.googleapis.com");
+      expect(result.exit).to.equal(2);
+      expect(result.original).to.equal(originalError);
     });
 
-    it("should log HelpLinks when present", () => {
-      const fbError = new FirebaseError("TOS required", {
+    it("should include HelpLinks in error message", () => {
+      const originalError = new FirebaseError("Permission denied", {
         context: {
           body: {
             error: {
@@ -111,20 +62,17 @@ describe("errorHandler", () => {
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Failed to provision Firebase app");
 
-      expect(loggerErrorStub.calledWith("For help resolving this issue:")).to.be.true;
-      expect(loggerErrorStub.calledWith("  - Link to accept Generative Language terms of service"))
-        .to.be.true;
-      expect(
-        loggerErrorStub.calledWith(
-          "    https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com?authuser=0&forceCheckTos=true",
-        ),
-      ).to.be.true;
+      expect(result.message).to.include("For help resolving this issue:");
+      expect(result.message).to.include("Link to accept Generative Language terms of service");
+      expect(result.message).to.include(
+        "https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com?authuser=0&forceCheckTos=true",
+      );
     });
 
-    it("should log multiple ErrorInfo and HelpLinks together", () => {
-      const fbError = new FirebaseError("TOS required", {
+    it("should include both ErrorInfo and HelpLinks in error message", () => {
+      const originalError = new FirebaseError("Permission denied", {
         context: {
           body: {
             error: {
@@ -153,24 +101,22 @@ describe("errorHandler", () => {
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Failed to provision Firebase app");
 
-      // Verify ErrorInfo is logged
-      expect(
-        loggerErrorStub.calledWith(
-          "  Reason: TOS_REQUIRED: The following ToS's must be accepted: [generative-language-api].",
-        ),
-      ).to.be.true;
-      expect(loggerErrorStub.calledWith("  Domain: firebase.googleapis.com")).to.be.true;
+      // Verify ErrorInfo is included
+      expect(result.message).to.include("Error details:");
+      expect(result.message).to.include(
+        "Reason: TOS_REQUIRED: The following ToS's must be accepted: [generative-language-api].",
+      );
+      expect(result.message).to.include("Domain: firebase.googleapis.com");
 
-      // Verify HelpLinks are logged
-      expect(loggerErrorStub.calledWith("For help resolving this issue:")).to.be.true;
-      expect(loggerErrorStub.calledWith("  - Link to accept Generative Language terms of service"))
-        .to.be.true;
+      // Verify HelpLinks are included
+      expect(result.message).to.include("For help resolving this issue:");
+      expect(result.message).to.include("Link to accept Generative Language terms of service");
     });
 
-    it("should log ErrorInfo with metadata when present", () => {
-      const fbError = new FirebaseError("Error with metadata", {
+    it("should include ErrorInfo with metadata in error message", () => {
+      const originalError = new FirebaseError("Invalid request", {
         context: {
           body: {
             error: {
@@ -193,21 +139,16 @@ describe("errorHandler", () => {
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Operation failed");
 
-      expect(loggerErrorStub.calledWith("  Reason: INVALID_FIELD")).to.be.true;
-      expect(loggerErrorStub.calledWith("  Domain: firebase.googleapis.com")).to.be.true;
-      expect(
-        loggerErrorStub.calledWith(
-          sinon.match(
-            (value: string) => value.includes("Additional Info") && value.includes("field"),
-          ),
-        ),
-      ).to.be.true;
+      expect(result.message).to.include("Reason: INVALID_FIELD");
+      expect(result.message).to.include("Domain: firebase.googleapis.com");
+      expect(result.message).to.include("Additional Info:");
+      expect(result.message).to.include("field");
     });
 
-    it("should handle multiple help links", () => {
-      const fbError = new FirebaseError("Multiple help links", {
+    it("should include multiple help links in error message", () => {
+      const originalError = new FirebaseError("Multiple help links", {
         context: {
           body: {
             error: {
@@ -234,74 +175,32 @@ describe("errorHandler", () => {
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Operation failed");
 
-      expect(loggerErrorStub.calledWith("  - First help link")).to.be.true;
-      expect(loggerErrorStub.calledWith("    https://example.com/help1")).to.be.true;
-      expect(loggerErrorStub.calledWith("  - Second help link")).to.be.true;
-      expect(loggerErrorStub.calledWith("    https://example.com/help2")).to.be.true;
+      expect(result.message).to.include("First help link");
+      expect(result.message).to.include("https://example.com/help1");
+      expect(result.message).to.include("Second help link");
+      expect(result.message).to.include("https://example.com/help2");
     });
 
-    it("should ignore unknown detail types", () => {
-      const fbError = new FirebaseError("Unknown detail type", {
+    it("should handle errors without details gracefully", () => {
+      const originalError = new FirebaseError("Firebase error without details", {
         context: {
           body: {
             error: {
-              code: 500,
-              message: "Internal error",
-              status: "INTERNAL",
-              details: [
-                {
-                  "@type": "type.googleapis.com/google.rpc.UnknownType",
-                  someField: "someValue",
-                },
-              ],
+              code: 400,
+              message: "Bad Request",
+              status: "INVALID_ARGUMENT",
             },
           },
         },
       });
 
-      logProvisioningError(fbError);
+      const result = enhanceProvisioningError(originalError, "Operation failed");
 
-      // Should still log the header
-      expect(loggerErrorStub.calledWith("Error details:")).to.be.true;
-      // But should not log any specific details for unknown types
-      expect(loggerErrorStub.calledWith(sinon.match(/Reason/))).to.be.false;
-      expect(loggerErrorStub.calledWith(sinon.match(/For help/))).to.be.false;
-    });
-  });
-
-  describe("enhanceProvisioningError", () => {
-    it("should log details and return FirebaseError with context message", () => {
-      const originalError = new FirebaseError("Original error", {
-        context: {
-          body: {
-            error: {
-              code: 403,
-              message: "Permission denied",
-              status: "PERMISSION_DENIED",
-              details: [
-                {
-                  "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-                  reason: "TOS_REQUIRED",
-                  domain: "firebase.googleapis.com",
-                },
-              ],
-            },
-          },
-        },
-      });
-
-      const result = enhanceProvisioningError(originalError, "Failed to provision Firebase app");
-
-      // Verify logging occurred
-      expect(loggerErrorStub.called).to.be.true;
-
-      // Verify returned error
       expect(result).to.be.instanceOf(FirebaseError);
-      expect(result.message).to.equal("Failed to provision Firebase app: Original error");
+      expect(result.message).to.equal("Operation failed: Firebase error without details");
       expect(result.exit).to.equal(2);
-      expect(result.original).to.equal(originalError);
     });
 
     it("should handle non-Error types gracefully", () => {
@@ -321,6 +220,32 @@ describe("errorHandler", () => {
       expect(result).to.be.instanceOf(FirebaseError);
       expect(result.message).to.equal("Context message: Regular error");
       expect(result.original).to.equal(regularError);
+    });
+
+    it("should ignore unknown detail types", () => {
+      const originalError = new FirebaseError("Unknown detail type", {
+        context: {
+          body: {
+            error: {
+              code: 500,
+              message: "Internal error",
+              status: "INTERNAL",
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.UnknownType",
+                  someField: "someValue",
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const result = enhanceProvisioningError(originalError, "Operation failed");
+
+      expect(result.message).to.equal("Operation failed: Unknown detail type");
+      expect(result.message).to.not.include("Error details:");
+      expect(result.message).to.not.include("For help");
     });
   });
 });

@@ -1,5 +1,4 @@
 import { FirebaseError, getError } from "../../error";
-import { logger } from "../../logger";
 
 /**
  * Google RPC ErrorInfo structure
@@ -54,12 +53,12 @@ function isHelpLinks(detail: ErrorDetail): detail is HelpLinks {
 }
 
 /**
- * Logs detailed error information from a provisioning API error response.
- * Extracts and displays error details and help links.
+ * Extracts detailed error information from a provisioning API error response.
+ * Returns a formatted string with error details and help links.
  */
-export function logProvisioningError(err: unknown): void {
+function extractErrorDetails(err: unknown): string {
   if (!(err instanceof Error)) {
-    return;
+    return "";
   }
 
   // Check if this is a FirebaseError with context containing provisioning error
@@ -68,41 +67,45 @@ export function logProvisioningError(err: unknown): void {
     const errorBody = context.body?.error;
 
     if (errorBody?.details && Array.isArray(errorBody.details)) {
-      logger.error("");
-      logger.error("Error details:");
+      const parts: string[] = [];
 
       for (const detail of errorBody.details) {
         if (isErrorInfo(detail)) {
-          logger.error(`  Reason: ${detail.reason}`);
-          logger.error(`  Domain: ${detail.domain}`);
+          parts.push(`Error details:`);
+          parts.push(`  Reason: ${detail.reason}`);
+          parts.push(`  Domain: ${detail.domain}`);
           if (detail.metadata) {
-            logger.error(`  Additional Info: ${JSON.stringify(detail.metadata)}`);
+            parts.push(`  Additional Info: ${JSON.stringify(detail.metadata)}`);
           }
         } else if (isHelpLinks(detail)) {
-          logger.error("");
-          logger.error("For help resolving this issue:");
+          parts.push(`\nFor help resolving this issue:`);
           for (const link of detail.links) {
-            logger.error(`  - ${link.description}`);
-            logger.error(`    ${link.url}`);
+            parts.push(`  - ${link.description}`);
+            parts.push(`    ${link.url}`);
           }
         }
       }
-      logger.error("");
+
+      return parts.length > 0 ? `\n\n${parts.join("\n")}` : "";
     }
   }
+
+  return "";
 }
 
 /**
- * Enhances an error with detailed logging from provisioning API responses.
- * This function logs detailed error information and returns a user-friendly FirebaseError.
+ * Enhances an error with detailed information from provisioning API responses.
+ * This function extracts error details and includes them in the error message.
  */
 export function enhanceProvisioningError(err: unknown, contextMessage: string): FirebaseError {
-  // Log detailed error information first
-  logProvisioningError(err);
-
-  // Create and return a user-friendly error
   const originalError = getError(err);
-  return new FirebaseError(`${contextMessage}: ${originalError.message}`, {
+  const errorDetails = extractErrorDetails(err);
+
+  const fullMessage = errorDetails
+    ? `${contextMessage}: ${originalError.message}${errorDetails}`
+    : `${contextMessage}: ${originalError.message}`;
+
+  return new FirebaseError(fullMessage, {
     exit: 2,
     original: originalError,
   });
