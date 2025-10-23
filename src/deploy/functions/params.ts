@@ -397,19 +397,17 @@ export async function resolveParams(
 
   // Check for missing secrets in non-interactive mode
   if (nonInteractive && needSecret.length > 0) {
-    // First check which secrets actually don't exist in Secret Manager
-    const missingSecrets: SecretParam[] = [];
-    for (const param of needSecret) {
+    // Check all secrets in parallel for better performance
+    const metadataChecks = needSecret.map((param) => {
       const secretParam = param as SecretParam;
-      const metadata = await secretManager.getSecretMetadata(
-        firebaseConfig.projectId,
-        secretParam.name,
-        "latest",
-      );
-      if (!metadata.secret) {
-        missingSecrets.push(secretParam);
-      }
-    }
+      return secretManager.getSecretMetadata(firebaseConfig.projectId, secretParam.name, "latest");
+    });
+    const metadataResults = await Promise.all(metadataChecks);
+
+    // Filter for secrets that don't exist
+    const missingSecrets: SecretParam[] = needSecret.filter((param, index) => {
+      return !metadataResults[index].secret;
+    }) as SecretParam[];
 
     // Only throw an error if there are truly missing secrets
     if (missingSecrets.length > 0) {
