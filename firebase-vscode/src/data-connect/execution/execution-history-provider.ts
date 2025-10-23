@@ -18,7 +18,7 @@ export class ExecutionTreeItem extends vscode.TreeItem {
     this.item = item;
 
     // Renders arguments in a single line
-    const prettyArgs = this.item.args?.replaceAll(/[\n \t]+/g, " ");
+    const prettyArgs = this.item.variables?.replaceAll(/[\n \t]+/g, " ");
     this.description = `${timeFormatter.format(
       item.timestamp
     )} | Arguments: ${prettyArgs}`;

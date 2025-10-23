@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -158,13 +158,8 @@
       "firebase-data-connect-execution-view": [
         {
           "type": "webview",
-          "id": "data-connect-execution-configuration",
-          "name": "Configuration",
-          "when": "firebase-vscode.fdc.enabled"
-        },
-        {
-          "id": "data-connect-execution-history",
-          "name": "History",
+          "id": "data-connect-execution-parameters",
+          "name": "Parameters",
           "when": "firebase-vscode.fdc.enabled"
         },
         {
@@ -172,6 +167,12 @@
           "id": "data-connect-execution-results",
           "name": "Results",
           "when": "firebase-vscode.fdc.enabled"
+        },
+        {
+          "id": "data-connect-execution-history",
+          "name": "History",
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed"
         }
       ]
     },

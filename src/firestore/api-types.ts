@@ -219,6 +219,12 @@ export interface RestoreDatabaseReq {
   encryptionConfig?: EncryptionConfig;
 }
 
+export interface CloneDatabaseReq {
+  databaseId: string;
+  pitrSnapshot: PITRSnapshot;
+  encryptionConfig?: EncryptionConfig;
+}
+
 export enum RecurrenceType {
   DAILY = "DAILY",
   WEEKLY = "WEEKLY",
@@ -239,3 +245,8 @@ export type EncryptionConfig =
   | UseCustomerManagedEncryption
   | UseSourceEncryption
   | UseGoogleDefaultEncryption;
+
+export interface PITRSnapshot {
+  database: string;
+  snapshotTime: string;
+}

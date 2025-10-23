@@ -11,7 +11,6 @@ import {
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
-import { AuthService } from "../auth/service";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
@@ -33,6 +32,7 @@ import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
 import { registerFirebaseMCP } from "./ai-tools/firebase-mcp";
+import { ExecutionParamsService } from "./execution/execution-params";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -132,7 +132,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
 export function registerFdc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  authService: AuthService,
+  paramsService: ExecutionParamsService,
   emulatorController: EmulatorsController,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
@@ -151,10 +151,8 @@ export function registerFdc(
   );
 
   const fdcService = new FdcService(
-    authService,
     dataConnectToolkit,
     emulatorController,
-    context,
     analyticsLogger,
   );
 
@@ -221,6 +219,7 @@ export function registerFdc(
       context,
       broker,
       fdcService,
+      paramsService,
       analyticsLogger,
       emulatorController,
     ),

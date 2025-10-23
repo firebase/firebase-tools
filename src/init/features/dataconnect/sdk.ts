@@ -34,6 +34,8 @@ import { getGlobalDefaultAccount } from "../../../auth";
 import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
 import { dirExistsSync, listFiles } from "../../../fsutils";
+import { isBillingEnabled } from "../../../gcp/cloudbilling";
+import { Source } from ".";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -70,7 +72,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: `React${npxMissingWarning}`, value: "react" },
         { name: `Next.JS${npxMissingWarning}`, value: "next" },
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
-        { name: "no", value: "no" },
+        { name: "skip", value: "skip" },
       ],
     });
     try {
@@ -84,7 +86,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
         case "flutter":
           await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
           break;
-        case "no":
+        case "skip":
           break;
       }
     } catch (err: unknown) {
@@ -105,7 +107,7 @@ export async function chooseApp(): Promise<App[]> {
       `Detected existing apps ${apps.map((a) => appDescription(a)).join(", ")}`,
     );
   } else {
-    logLabeledWarning("dataconnect", "No app exists in the current directory.");
+    logLabeledWarning("dataconnect", "Cannot detect an existing app in the current directory.");
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
@@ -155,28 +157,61 @@ export async function chooseApp(): Promise<App[]> {
 }
 
 export async function actuate(setup: Setup, config: Config) {
-  const fdcInfo = setup.featureInfo?.dataconnect;
   const sdkInfo = setup.featureInfo?.dataconnectSdk;
   if (!sdkInfo) {
     throw new Error("Data Connect SDK feature RequiredInfo is not provided");
   }
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, sdkInfo);
   } finally {
-    let flow = "no_app";
-    if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
-      flow = `${platforms.join("_")}_app`;
-    }
-    if (fdcInfo) {
-      fdcInfo.analyticsFlow += `_${flow}`;
-    } else {
-      void trackGA4("dataconnect_init", {
-        project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-        flow: `cli_sdk_${flow}`,
-      });
+    // If `firebase init dataconnect:sdk` is run alone, emit GA stats.
+    // Otherwise, `firebase init dataconnect` will emit those stats.
+    const fdcInfo = setup.featureInfo?.dataconnect;
+    if (!fdcInfo) {
+      const source: Source = setup.featureInfo?.dataconnectSource || "init_sdk";
+      void trackGA4(
+        "dataconnect_init",
+        {
+          source,
+          project_status: setup.projectId
+            ? (await isBillingEnabled(setup))
+              ? "blaze"
+              : "spark"
+            : "missing",
+          ...initAppCounters(sdkInfo),
+        },
+        Date.now() - startTime,
+      );
     }
   }
+}
+
+export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number } {
+  const counts = {
+    num_web_apps: 0,
+    num_android_apps: 0,
+    num_ios_apps: 0,
+    num_flutter_apps: 0,
+  };
+
+  for (const app of info.apps ?? []) {
+    switch (app.platform) {
+      case Platform.WEB:
+        counts.num_web_apps++;
+        break;
+      case Platform.ANDROID:
+        counts.num_android_apps++;
+        break;
+      case Platform.IOS:
+        counts.num_ios_apps++;
+        break;
+      case Platform.FLUTTER:
+        counts.num_flutter_apps++;
+        break;
+    }
+  }
+  return counts;
 }
 
 async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredInfo) {
@@ -337,7 +372,7 @@ export function addSdkGenerateToConnectorYaml(
     case Platform.FLUTTER: {
       const dartSdk: DartSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       };
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];

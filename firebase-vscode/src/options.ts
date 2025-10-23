@@ -27,7 +27,6 @@ const defaultOptions: Readonly<VsCodeOptions> = {
   projectRoot: "",
   account: "",
   nonInteractive: true,
-  interactive: false,
   debug: false,
   rc: new RC(),
   exportOnExit: false,

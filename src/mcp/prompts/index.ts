@@ -1,4 +1,4 @@
-import { ServerFeature } from "../types";
+import { McpContext, ServerFeature } from "../types";
 import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
@@ -6,16 +6,16 @@ import { crashlyticsPrompts } from "./crashlytics";
 import { apptestingPrompts } from "./apptesting";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
-  core: corePrompts,
+  core: namespacePrompts(corePrompts, "core"),
   firestore: [],
   storage: [],
-  dataconnect: dataconnectPrompts,
+  dataconnect: namespacePrompts(dataconnectPrompts, "dataconnect"),
   auth: [],
   messaging: [],
   functions: [],
   remoteconfig: [],
-  crashlytics: crashlyticsPrompts,
-  apptesting: apptestingPrompts,
+  crashlytics: namespacePrompts(crashlyticsPrompts, "crashlytics"),
+  apptesting: namespacePrompts(apptestingPrompts, "apptesting"),
   apphosting: [],
   database: [],
 };
@@ -42,19 +42,35 @@ function namespacePrompts(
 /**
  * Return available prompts based on the list of registered features.
  */
-export function availablePrompts(activeFeatures?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts: ServerPrompt[] = [];
+export async function availablePrompts(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+): Promise<ServerPrompt[]> {
+  const allPrompts = getAllPrompts(activeFeatures);
 
+  const availabilities = await Promise.all(
+    allPrompts.map((p) => {
+      if (p.isAvailable) {
+        return p.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allPrompts.filter((_, i) => availabilities[i]);
+}
+
+function getAllPrompts(activeFeatures?: ServerFeature[]): ServerPrompt[] {
+  const promptDefs: ServerPrompt[] = [];
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(prompts) as ServerFeature[];
   }
   if (!activeFeatures.includes("core")) {
-    activeFeatures = ["core", ...activeFeatures];
+    activeFeatures.unshift("core");
   }
   for (const feature of activeFeatures) {
-    allPrompts.push(...namespacePrompts(prompts[feature], feature));
+    promptDefs.push(...prompts[feature]);
   }
-  return allPrompts;
+  return promptDefs;
 }
 
 /**
@@ -62,7 +78,7 @@ export function availablePrompts(activeFeatures?: ServerFeature[]): ServerPrompt
  * This is used for generating documentation.
  */
 export function markdownDocsOfPrompts(): string {
-  const allPrompts = availablePrompts();
+  const allPrompts = getAllPrompts();
   let doc = `
 | Prompt Name | Feature Group | Description |
 | ----------- | ------------- | ----------- |`;

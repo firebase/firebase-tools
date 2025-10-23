@@ -25,6 +25,7 @@ export { initGitHub as hostingGithub } from "./hosting/github";
 export {
   askQuestions as dataconnectAskQuestions,
   RequiredInfo as DataconnectInfo,
+  Source as DataconnectSource,
   actuate as dataconnectActuate,
 } from "./dataconnect";
 export {

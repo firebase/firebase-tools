@@ -8,6 +8,7 @@ const CREATE_APP_OUTUT_SUFFIX =
   "\n\nTo fetch the SDK configuration for this app, use the firebase_get_sdk_config tool.";
 
 export const create_app = tool(
+  "core",
   {
     name: "create_app",
     description:
