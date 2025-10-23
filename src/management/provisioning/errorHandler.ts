@@ -96,10 +96,7 @@ export function logProvisioningError(err: unknown): void {
  * Enhances an error with detailed logging from provisioning API responses.
  * This function logs detailed error information and returns a user-friendly FirebaseError.
  */
-export function enhanceProvisioningError(
-  err: unknown,
-  contextMessage: string,
-): FirebaseError {
+export function enhanceProvisioningError(err: unknown, contextMessage: string): FirebaseError {
   // Log detailed error information first
   logProvisioningError(err);
 
