@@ -19,7 +19,7 @@ export const init_hosting = resource(
           text: `
 ### Configure Firebase Hosting
 Default hosting site for ${ctx.projectId}: ${defaultHostingSite || "Does not exist"}
-If there is not default hosting site configure, ask the user what the site ID should be, and suggest ${ctx.projectId} as a good choice.
+If there is not a default hosting site configured, ask the user what the site ID should be, and suggest ${ctx.projectId} as a good choice.
 Next, use the 'firebase_init' tool to set up hosting. Below is an example of what the arguments to do so look like;
 however, you should change the values to match the user's choices and project structure:
 {
