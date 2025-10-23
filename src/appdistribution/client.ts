@@ -16,6 +16,11 @@ import {
   LoginCredential,
   mapDeviceToExecution,
   ReleaseTest,
+  TestCase,
+  CreateTestCaseRequest,
+  BatchUpdateTestCasesRequest,
+  BatchUpdateTestCasesResponse,
+  UpdateTestCaseRequest,
   TestDevice,
   UploadReleaseResponse,
 } from "./types";
@@ -302,5 +307,35 @@ export class AppDistributionClient {
   async getReleaseTest(releaseTestName: string): Promise<ReleaseTest> {
     const response = await this.appDistroV1AlphaClient.get<ReleaseTest>(releaseTestName);
     return response.body;
+  }
+
+  async createTestCase(appName: string, testCase: TestCase): Promise<TestCase> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<TestCase, TestCase>({
+        method: "POST",
+        path: `${appName}/testCases`,
+        body: testCase,
+      });
+      return response.body;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create test case ${getErrMsg(err)}`);
+    }
+  }
+
+  async batchUpsertTestCases(appName: string, testCases: TestCase[]): Promise<TestCase[]> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<BatchUpdateTestCasesRequest, BatchUpdateTestCasesResponse>({
+        method: "POST",
+        path: `${appName}/testCases:batchUpdate`,
+        body: {
+          requests: testCases.map((tc) => ({
+            testCase: tc,
+            allowMissing: true
+          }))},
+      });
+      return response.body.testCases;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to upsert test cases ${getErrMsg(err)}`);
+    }
   }
 }

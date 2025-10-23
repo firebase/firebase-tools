@@ -128,3 +128,37 @@ export interface ReleaseTest {
   loginCredential?: LoginCredential;
   testCase?: string;
 }
+
+export interface AiStep {
+  goal: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+export interface AiInstructions {
+  steps: AiStep[];
+}
+
+export interface TestCase {
+  name?: string;
+  displayName: string;
+  prerequisiteTestCase?: string;
+  aiInstructions: AiInstructions;
+}
+
+export interface CreateTestCaseRequest {
+  testCase: TestCase;
+}
+
+export interface UpdateTestCaseRequest {
+  testCase: TestCase;
+  allowMissing?: boolean;
+}
+
+export interface BatchUpdateTestCasesRequest {
+  requests: UpdateTestCaseRequest[];
+}
+
+export interface BatchUpdateTestCasesResponse {
+  testCases: TestCase[];
+}
