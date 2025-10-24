@@ -79,7 +79,7 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
 });
 ```
 
-## Adding Mocks for MCP Tool
+## Adding Mocks for MCP Tools
 
 Mocks applied to MCP tools will completely replace their impelementation with a static output string.
 
