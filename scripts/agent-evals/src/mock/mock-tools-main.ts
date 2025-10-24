@@ -81,4 +81,4 @@ function logToFile(message: string) {
     console.error(`[AGENT-EVALS-MOCK-ERROR] Failed to write log to ${LOG_FILE_PATH}:`, err);
     console.error(`[AGENT-EVALS-MOCK-ERROR] Original message: ${message}`);
   }
-};
+}
