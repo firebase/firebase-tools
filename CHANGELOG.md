@@ -1,0 +1,1 @@
+- Added `functions.list_functions` as a MCP tool (#9369)
