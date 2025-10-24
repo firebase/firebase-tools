@@ -395,26 +395,10 @@ export async function resolveParams(
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
 
-  // Check for missing secrets in non-interactive mode
-  if (nonInteractive && needSecret.length > 0) {
-    const secretNames = needSecret.map((p) => p.name).join(", ");
-    const commands = needSecret
-      .map(
-        (p) =>
-          `\tfirebase functions:secrets:set ${p.name}${(p as SecretParam).format === "json" ? " --format=json --data-file <file.json>" : ""}`,
-      )
-      .join("\n");
-    throw new FirebaseError(
-      `In non-interactive mode but have no value for the following secrets: ${secretNames}\n\n` +
-        "Set these secrets before deploying:\n" +
-        commands,
-    );
-  }
-
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      await handleSecret(param as SecretParam, firebaseConfig.projectId);
+      await handleSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
     }
   }
 
@@ -481,9 +465,20 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
  * to read its environment variables. They are instead provided through GCF's own
  * Secret Manager integration.
  */
-async function handleSecret(secretParam: SecretParam, projectId: string): Promise<void> {
+async function handleSecret(
+  secretParam: SecretParam,
+  projectId: string,
+  nonInteractive?: boolean,
+): Promise<void> {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
+    if (nonInteractive) {
+      throw new FirebaseError(
+        `In non-interactive mode but have no value for the secret: ${secretParam.name}\n\n` +
+          "Set this secret before deploying:\n" +
+          `\tfirebase functions:secrets:set ${secretParam.name}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+      );
+    }
     const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
       secretParam.name
     }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
