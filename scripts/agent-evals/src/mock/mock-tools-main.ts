@@ -16,7 +16,7 @@ const MCP_TOOLS_INDEX_PATH = "lib/mcp/tools/index.js";
 const LOG_FILE_PATH = path.join(os.homedir(), "Desktop", "agent_evals_mock_logs.txt");
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
-const ENABLE_FILE_LOGGING = true;
+const ENABLE_FILE_LOGGING = false;
 
 const mocks = getToolMocks();
 
@@ -42,28 +42,26 @@ Module.prototype.require = function (id: string) {
       logToFile(`Intercepting access to 'availableTools'`);
 
       const originalAvailableTools = Reflect.get(target, prop, receiver);
-      return (ctx: any, features?: string[]): Promise<any[]> => {
-        const realToolsPromise: Promise<any[]> = originalAvailableTools(ctx, features);
-        return realToolsPromise.then((realTools) => {
-          if (!Array.isArray(realTools)) {
-            logToFile(`Error: Real tools is not an array: ${JSON.stringify(realTools)}`);
-            return realTools;
+      return async (ctx: any, features?: string[]): Promise<any[]> => {
+        const realTools = await originalAvailableTools(ctx, features);
+        if (!Array.isArray(realTools)) {
+          logToFile(`Error: Real tools is not an array: ${JSON.stringify(realTools)}`);
+          return realTools;
+        }
+
+        const finalTools = realTools.map((tool) => {
+          const toolName = tool.mcp.name;
+          if (!mocks[toolName]) {
+            return tool;
           }
-
-          const finalTools = realTools.map((tool) => {
-            const toolName = tool.mcp.name;
-            if (!mocks[toolName]) {
-              return tool;
-            }
-            logToFile(`Applying mock for tool: ${toolName}`);
-            return {
-              ...tool,
-              fn: async () => mocks[toolName],
-            };
-          });
-
-          return finalTools;
+          logToFile(`Applying mock for tool: ${toolName}`);
+          return {
+            ...tool,
+            fn: async () => mocks[toolName],
+          };
         });
+
+        return finalTools;
       };
     },
   });
