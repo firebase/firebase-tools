@@ -1,7 +1,5 @@
 import { exec } from "child_process";
-import path from "path";
 import { promisify } from "util";
-import { fileURLToPath } from "url";
 import { getFirebaseCliRoot } from "./paths.js";
 
 const execPromise = promisify(exec);
@@ -11,7 +9,7 @@ export async function buildFirebaseCli() {
     console.log("Skipping Firebase CLI build because process.env.SKIP_REBUILD");
     return;
   }
-  const firebaseCliRoot = getFirebaseCliRoot()
+  const firebaseCliRoot = getFirebaseCliRoot();
   console.log(`Building Firebase CLI at ${firebaseCliRoot}`);
   await execPromise("./scripts/clean-install.sh", { cwd: firebaseCliRoot });
 }

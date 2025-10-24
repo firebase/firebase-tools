@@ -2,16 +2,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 export function getAgentEvalsRoot(): string {
-  let thisFilePath = path.dirname(fileURLToPath(import.meta.url));
+  const thisFilePath = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(path.join(thisFilePath, "..", ".."));
 }
 
 export function getFirebaseCliRoot(): string {
-  return path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "..",
-    "..",
-  );
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 }

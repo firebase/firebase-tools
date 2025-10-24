@@ -6,7 +6,7 @@ import { GeminiCliRunner } from "./gemini-cli-runner.js";
 import { buildFirebaseCli, clearUserMcpServers } from "./setup.js";
 import { addCleanup } from "../helpers/cleanup.js";
 import { TemplateName, copyTemplate, buildTemplates } from "../template/index.js";
-import {ToolMockName} from '../mock/tool-mocks.js';
+import { ToolMockName } from "../mock/tool-mocks.js";
 
 export * from "./agent-test-runner.js";
 
@@ -41,7 +41,7 @@ export async function startAgentTest(
     copyTemplate(options.templateName, runDir);
   }
 
-  const run = new GeminiCliRunner(testName, testDir, runDir);
+  const run = new GeminiCliRunner(testName, testDir, runDir, options?.toolMocks || []);
   await run.waitForReadyPrompt();
 
   addCleanup(async () => {

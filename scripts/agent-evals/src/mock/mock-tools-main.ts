@@ -22,14 +22,16 @@ const mocks = getToolMocks();
 
 const originalRequire = Module.prototype.require;
 Module.prototype.require = function (id: string) {
-  const requiredModule = originalRequire.apply(this, arguments as any);
+  const requiredModule = originalRequire.apply(this, [id]);
   const absolutePath = Module.createRequire(this.filename).resolve(id);
   const pathRelativeToCliRoot = path.relative(getFirebaseCliRoot(), absolutePath);
   if (!pathRelativeToCliRoot.endsWith(MCP_TOOLS_INDEX_PATH)) {
     return requiredModule;
   }
 
-  logToFile(`Creating proxy implementation for file: ${pathRelativeToCliRoot} with tool mocks: ${JSON.stringify(Object.keys(mocks))}`);
+  logToFile(
+    `Creating proxy implementation for file: ${pathRelativeToCliRoot} with tool mocks: ${JSON.stringify(Object.keys(mocks))}`,
+  );
 
   return new Proxy(requiredModule, {
     get(target, prop, receiver) {

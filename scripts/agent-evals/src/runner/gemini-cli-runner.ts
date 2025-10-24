@@ -12,6 +12,7 @@ import fs from "fs";
 import { throwFailure } from "./logging.js";
 import { getAgentEvalsRoot } from "./paths.js";
 import { execSync } from "node:child_process";
+import { ToolMockName } from "../mock/tool-mocks.js";
 
 const READY_PROMPT = "Type your message";
 
@@ -45,6 +46,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     private readonly testName: string,
     testDir: string,
     runDir: string,
+    toolMocks: ToolMockName[],
   ) {
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(testDir, "telemetry.log");
@@ -64,6 +66,9 @@ export class GeminiCliRunner implements AgentTestRunner {
         firebase: {
           command: "node",
           args: ["--import", mockPath, firebasePath, "experimental:mcp"],
+          env: {
+            TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+          },
         },
       },
     };
