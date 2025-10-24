@@ -69,7 +69,7 @@ Module.prototype.require = function (id: string) {
   });
 };
 
-const logToFile = (message: string) => {
+function logToFile(message: string) {
   if (!ENABLE_FILE_LOGGING) {
     return;
   }
