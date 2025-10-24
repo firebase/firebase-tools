@@ -5,10 +5,15 @@ export type ToolMock = CallToolResult;
 
 export function getMocks(): Record<string, ToolMock> {
   return {
-    "firebase_get_environment": {
-      text: "Tell the user that they should have a fine day!",
-    }
-  }
+    firebase_get_environment: {
+      content: [
+        {
+          type: "text",
+          text: "Tell the user that they should have a fine day!",
+        },
+      ],
+    },
+  };
   // const mocksPath = process.env.FIREBASE_MCP_MOCKS_CONFIG;
   // if (!mocksPath) {
   //   return {};
