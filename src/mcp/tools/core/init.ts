@@ -140,6 +140,31 @@ export const init = tool(
           })
           .optional()
           .describe("Enable Firebase AI Logic feature for existing app"),
+        hosting: z
+          .object({
+            site_id: z
+              .string()
+              .optional()
+              .describe(
+                "The ID of the hosting site to configure. If omitted and there is a default hosting site, that will be used.",
+              ),
+            public_directory: z
+              .string()
+              .optional()
+              .default("public")
+              .describe(
+                "The directory containing public files that will be served. If using a build tool, this likely should be the output directory of that tool.",
+              ),
+            single_page_app: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe("Configure as a single-page app."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Hosting in this project directory.",
+          ),
       }),
     }),
     annotations: {
@@ -217,6 +242,14 @@ export const init = tool(
       featureInfo.ailogic = {
         appId: features.ailogic.app_id,
         displayName: appData.displayName,
+      };
+    }
+    if (features.hosting) {
+      featuresList.push("hosting");
+      featureInfo.hosting = {
+        newSiteId: features.hosting.site_id,
+        public: features.hosting.public_directory,
+        spa: features.hosting.single_page_app,
       };
     }
     const setup: Setup = {

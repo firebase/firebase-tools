@@ -1,6 +1,7 @@
 import * as pty from "node-pty";
 import { IPty } from "node-pty";
 import stripAnsi from "strip-ansi";
+import { throwFailure } from "./logging.js";
 
 export async function poll(predicate: () => boolean, timeout: number): Promise<boolean> {
   const startTime = Date.now();
@@ -96,7 +97,7 @@ export class InteractiveCLI {
     }, this.timeout);
 
     if (!found) {
-      throw new Error(`Did not find expected text: "${text}" in output within ${this.timeout}ms`);
+      throwFailure(`Did not find expected text: "${text}" in output within ${this.timeout}ms`);
     }
   }
 
@@ -121,7 +122,7 @@ export class InteractiveCLI {
     }, timeout);
 
     if (!stoppedChanging) {
-      throw new Error(`CLI did not stop changing output within ${timeout}ms`);
+      throwFailure(`CLI did not stop changing output within ${timeout}ms`);
     }
   }
 
@@ -140,7 +141,7 @@ export class InteractiveCLI {
     }
 
     if (!found) {
-      throw new Error(`Did not find expected text: "${text}" in the latest output`);
+      throwFailure(`Did not find expected text: "${text}" in the latest output`);
     } else {
       console.log(`  [FOUND] expectText: ${text}`);
     }
