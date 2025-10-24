@@ -14,8 +14,8 @@ export const list_functions = tool(
     inputSchema: z.object({}), // this tool does not have input
     annotations: {
       title: "List Deployed Functions",
-      readOnlyHint: true, // this tool does not modify data
-      openWorldHint: true, // this tool connects to internet/open world system
+      readOnlyHint: true,
+      openWorldHint: true,
     },
     _meta: {
       requiresAuth: true,
