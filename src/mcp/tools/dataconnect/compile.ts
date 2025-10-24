@@ -6,6 +6,7 @@ import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getProjectDefaultAccount } from "../../../auth";
 
 export const compile = tool(
+  "dataconnect",
   {
     name: "build",
     description:

@@ -4,6 +4,7 @@ import { requireGeminiToS } from "../../errors";
 import { prompt } from "../../prompt";
 
 export const consult = prompt(
+  "core",
   {
     name: "consult",
     description:

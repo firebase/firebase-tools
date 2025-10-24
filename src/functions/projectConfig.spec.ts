@@ -354,4 +354,49 @@ describe("projectConfig", () => {
       expect(projectConfig.resolveConfigDir(cfg)).to.be.undefined;
     });
   });
+
+  describe("shouldUseRuntimeConfig", () => {
+    const testCases = [
+      {
+        description:
+          "returns true for local codebase without disallowLegacyRuntimeConfig (default)",
+        config: { source: "functions" },
+        expected: true,
+      },
+      {
+        description: "returns true for local codebase with disallowLegacyRuntimeConfig=false",
+        config: { source: "functions", disallowLegacyRuntimeConfig: false },
+        expected: true,
+      },
+      {
+        description: "returns false for local codebase with disallowLegacyRuntimeConfig=true",
+        config: { source: "functions", disallowLegacyRuntimeConfig: true },
+        expected: false,
+      },
+      {
+        description: "returns false for remote source",
+        config: {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+        },
+        expected: false,
+      },
+      {
+        description: "returns false for remote source even with disallowLegacyRuntimeConfig=false",
+        config: {
+          remoteSource: { repository: "repo", ref: "main" },
+          runtime: "nodejs20",
+          disallowLegacyRuntimeConfig: false,
+        },
+        expected: false,
+      },
+    ];
+
+    for (const tc of testCases) {
+      it(tc.description, () => {
+        const config = projectConfig.validate([tc.config as any])[0];
+        expect(projectConfig.shouldUseRuntimeConfig(config)).to.equal(tc.expected);
+      });
+    }
+  });
 });

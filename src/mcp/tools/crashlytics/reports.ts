@@ -44,6 +44,7 @@ function getReportContent(
 // to consolidate all of these into a single `get_report` tool.
 
 export const get_top_issues = tool(
+  "crashlytics",
   {
     name: "get_top_issues",
     description: `Use this to count events and distinct impacted users, grouped by *issue*.
@@ -68,6 +69,7 @@ export const get_top_issues = tool(
 );
 
 export const get_top_variants = tool(
+  "crashlytics",
   {
     name: "get_top_variants",
     description: `Counts events and distinct impacted users, grouped by issue *variant*.
@@ -91,6 +93,7 @@ export const get_top_variants = tool(
 );
 
 export const get_top_versions = tool(
+  "crashlytics",
   {
     name: "get_top_versions",
     description: `Counts events and distinct impacted users, grouped by *version*.
@@ -114,6 +117,7 @@ export const get_top_versions = tool(
 );
 
 export const get_top_apple_devices = tool(
+  "crashlytics",
   {
     name: "get_top_apple_devices",
     description: `Counts events and distinct impacted users, grouped by apple *device*.
@@ -138,6 +142,7 @@ export const get_top_apple_devices = tool(
 );
 
 export const get_top_android_devices = tool(
+  "crashlytics",
   {
     name: "get_top_android_devices",
     description: `Counts events and distinct impacted users, grouped by android *device*.
@@ -162,6 +167,7 @@ export const get_top_android_devices = tool(
 );
 
 export const get_top_operating_systems = tool(
+  "crashlytics",
   {
     name: "get_top_operating_systems",
     description: `Counts events and distinct impacted users, grouped by *operating system*.

@@ -1,5 +1,6 @@
 import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
-import { McpContext } from "./types";
+import { McpContext, ServerFeature } from "./types";
+import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
 export interface ServerPrompt {
   mcp: {
@@ -16,11 +17,21 @@ export interface ServerPrompt {
     };
   };
   fn: (args: Record<string, string>, ctx: McpContext) => Promise<PromptMessage[]>;
+  isAvailable: (ctx: McpContext) => Promise<boolean>;
 }
 
-export function prompt(options: ServerPrompt["mcp"], fn: ServerPrompt["fn"]): ServerPrompt {
+export function prompt(
+  feature: ServerFeature,
+  options: ServerPrompt["mcp"],
+  fn: ServerPrompt["fn"],
+  isAvailable?: (ctx: McpContext) => Promise<boolean>,
+): ServerPrompt {
+  // default to the feature level availability check, but allow override
+  const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
+
   return {
     mcp: options,
     fn,
+    isAvailable: isAvailableFunc,
   };
 }

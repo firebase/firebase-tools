@@ -180,10 +180,11 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     await sdk.actuate(setup, config);
   } finally {
     const sdkInfo = setup.featureInfo?.dataconnectSdk;
+    const source: Source = setup.featureInfo?.dataconnectSource || "init";
     void trackGA4(
       "dataconnect_init",
       {
-        source: setup.featureInfo?.dataconnectSource || "init",
+        source,
         flow: info.flow.substring(1), // Trim the leading `_`
         project_status: setup.projectId
           ? (await isBillingEnabled(setup))

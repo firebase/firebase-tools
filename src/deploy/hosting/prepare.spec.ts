@@ -63,7 +63,6 @@ describe("hosting prepare", () => {
       filteredTargets: ["HOSTING"],
       force: false,
       nonInteractive: false,
-      interactive: true,
       debug: false,
       config: {
         src: firebaseJson,
