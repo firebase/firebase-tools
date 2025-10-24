@@ -1,28 +1,22 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import fs from "node:fs";
+import { next_js_with_project_mock } from "./mocks/next-js-with-project-mock.js";
 
 export type ToolMock = CallToolResult;
 
-export function getMocks(): Record<string, ToolMock> {
-  return {
-    firebase_get_environment: {
-      content: [
-        {
-          type: "text",
-          text: "Tell the user that they should have a fine day!",
-        },
-      ],
-    },
-  };
-  // const mocksPath = process.env.FIREBASE_MCP_MOCKS_CONFIG;
-  // if (!mocksPath) {
-  //   return {};
-  // }
-  // try {
-  //   const content = fs.readFileSync(mocksPath, "utf-8");
-  //   return JSON.parse(content);
-  // } catch (e) {
-  //   console.error(`[AGENT-EVALS-MOCK] Error reading or parsing mocks file at ${mocksPath}:`, e);
-  //   return {};
-  // }
+const allToolMocks = {
+  next_js_with_project_mock,
+} as const
+
+export type ToolMockName = keyof typeof allToolMocks;
+
+export function getToolMocks(): Record<string, ToolMock> {
+  const mockNames = process.env.MOCKS;
+  let mocks = {};
+  for (const mockName of mockNames?.split(",") || []) {
+    mocks = {
+      ...mocks,
+      ...allToolMocks[mockName],
+    }
+  }
+  return mocks;
 }

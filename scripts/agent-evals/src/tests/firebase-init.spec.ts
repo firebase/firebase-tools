@@ -32,6 +32,7 @@ describe("/firebase:init", function (this: Mocha.Suite) {
   it.only("WIP firebase_get_environment", async function (this: Mocha.Context) {
     const run: AgentTestRunner = await startAgentTest(this, {
       templateName: "next-app-hello-world",
+      toolMocks: ["next_js_with_project_mock"],
     });
 
     await run.type("Run the firebase_get_environment function");
