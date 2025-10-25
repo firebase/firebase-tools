@@ -5,6 +5,7 @@ import { logger } from "../../logger";
 import { pollOperation } from "../../operation-poller";
 import { AppPlatform } from "../apps";
 import * as types from "./types";
+import { enhanceProvisioningError } from "./errorHandler";
 
 const apiClient = new Client({
   urlPrefix: firebaseApiOrigin(),
@@ -133,10 +134,6 @@ export async function provisionFirebaseApp(
     logger.debug("[provision] Firebase app provisioning completed successfully");
     return result;
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    throw new FirebaseError(`Failed to provision Firebase app: ${errorMessage}`, {
-      exit: 2,
-      original: err instanceof Error ? err : new Error(String(err)),
-    });
+    throw enhanceProvisioningError(err, "Failed to provision Firebase app");
   }
 }
