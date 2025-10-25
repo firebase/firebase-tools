@@ -116,13 +116,11 @@ if (isEnabled("apptesting")) {
   });
 }
 
-if (isEnabled("ailogic")) {
-  choices.push({
-    value: "ailogic",
-    name: "AI Logic: Set up Firebase AI Logic with app provisioning",
-    checked: false,
-  });
-}
+choices.push({
+  value: "ailogic",
+  name: "AI Logic: Set up Firebase AI Logic with app provisioning",
+  checked: false,
+});
 
 choices.push({
   value: "aitools",
