@@ -13,6 +13,7 @@ import { addVersion, listSecretVersions, toSecretVersionResourceName } from "../
 import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { ensureApi } from "../gcp/secretManager";
+import { getFunctionsSDKVersion } from "../deploy/functions/runtimes/node/versioning";
 
 import type { Options } from "../options";
 
