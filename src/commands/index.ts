@@ -25,11 +25,11 @@ export function load(client: any): any {
   client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
-  client.appdistribution.group = {};
-  client.appdistribution.group.list = loadCommand("appdistribution-groups-list");
-  client.appdistribution.group.create = loadCommand("appdistribution-groups-create");
-  client.appdistribution.group.delete = loadCommand("appdistribution-groups-delete");
-  client.appdistribution.groups = client.appdistribution.group;
+  client.appdistribution.groups = {};
+  client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
+  client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
+  client.appdistribution.groups.delete = loadCommand("appdistribution-groups-delete");
+  client.appdistribution.group = client.appdistribution.groups;
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
