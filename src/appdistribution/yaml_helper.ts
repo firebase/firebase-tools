@@ -63,7 +63,6 @@ function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
 }
 
 function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): TestCase[] {
-
   return yamlTestCases.map((yamlTestCase) => {
     checkAllowedKeys(ALLOWED_YAML_TEST_CASE_KEYS, yamlTestCase);
     return {
@@ -91,11 +90,11 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
 }
 
 export function fromYaml(appName: string, yaml: string): TestCase[] {
-  let parsedYaml: unknown
+  let parsedYaml: unknown;
   try {
-    parsedYaml = jsYaml.safeLoad(yaml)
+    parsedYaml = jsYaml.safeLoad(yaml);
   } catch (err: unknown) {
-    throw new FirebaseError(`Failed to parse YAML: ${getErrMsg(err)}`)
+    throw new FirebaseError(`Failed to parse YAML: ${getErrMsg(err)}`);
   }
   if (!Array.isArray(parsedYaml)) {
     throw new FirebaseError("YAML file must contain a list of test cases.");

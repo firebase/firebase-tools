@@ -283,7 +283,7 @@ export class AppDistributionClient {
         method: "POST",
         path: `${releaseName}/tests`,
         body: {
-          deviceExecutions: devices.map((device) => ({device})),
+          deviceExecutions: devices.map((device) => ({ device })),
           loginCredential,
           testCase: testCaseName,
         },
