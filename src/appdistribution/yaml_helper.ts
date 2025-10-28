@@ -1,5 +1,5 @@
 import * as jsYaml from "js-yaml";
-import { FirebaseError } from "../error";
+import { getErrMsg, FirebaseError } from "../error";
 import { TestCase } from "./types";
 
 declare interface YamlStep {
@@ -63,9 +63,7 @@ function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
 }
 
 function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): TestCase[] {
-  if (!Array.isArray(yamlTestCases)) {
-    throw new FirebaseError("YAML file must contain a list of test cases.");
-  }
+
   return yamlTestCases.map((yamlTestCase) => {
     checkAllowedKeys(ALLOWED_YAML_TEST_CASE_KEYS, yamlTestCase);
     return {
@@ -93,5 +91,14 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
 }
 
 export function fromYaml(appName: string, yaml: string): TestCase[] {
-  return fromYamlTestCases(appName, jsYaml.safeLoad(yaml) as YamlTestCase[]);
+  let parsedYaml: unknown
+  try {
+    parsedYaml = jsYaml.safeLoad(yaml)
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to parse YAML: ${getErrMsg(err)}`)
+  }
+  if (!Array.isArray(parsedYaml)) {
+    throw new FirebaseError("YAML file must contain a list of test cases.");
+  }
+  return fromYamlTestCases(appName, parsedYaml as YamlTestCase[]);
 }
