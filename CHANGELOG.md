@@ -1,1 +1,3 @@
 - Added `functions.list_functions` as a MCP tool (#9369)
+- Added AI Logic to `firebase init` CLI command and `firebase_init` MCP tool. (#9185)
+- Improved error messages for Firebase AI Logic provisioning during 'firebase init' (#9377)
