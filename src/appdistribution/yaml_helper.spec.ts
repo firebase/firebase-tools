@@ -5,21 +5,27 @@ import { expect } from "chai";
 
 const APP_NAME = "projects/12345/apps/1:12345:android:beef";
 
-const TEST_CASE: TestCase = {
-  displayName: "test-display-name",
-  name: "projects/12345/apps/1:12345:android:beef/testCases/test-case-id",
-  prerequisiteTestCase:
-    "projects/12345/apps/1:12345:android:beef/testCases/prerequisite-test-case-id",
-  aiInstructions: {
-    steps: [
-      {
-        goal: "test-goal",
-        hint: "test-hint",
-        successCriteria: "test-success-criteria",
-      },
-    ],
+const TEST_CASES: TestCase[] = [
+  {
+    displayName: "test-display-name",
+    name: "projects/12345/apps/1:12345:android:beef/testCases/test-case-id",
+    prerequisiteTestCase:
+      "projects/12345/apps/1:12345:android:beef/testCases/prerequisite-test-case-id",
+    aiInstructions: {
+      steps: [
+        {
+          goal: "test-goal",
+          hint: "test-hint",
+          successCriteria: "test-success-criteria",
+        },
+      ],
+    },
   },
-};
+  {
+    displayName: "minimal-case",
+    aiInstructions: { steps: [{ goal: "test-goal" }] },
+  },
+];
 
 const YAML_STRING = `- displayName: test-display-name
   id: test-case-id
@@ -114,6 +120,16 @@ describe("YamlHelper", () => {
   });
 
   it("throws error if YAML is invalid", () => {
-    expect(() => fromYaml(APP_NAME, "this is not YAML")).to.throw();
+    expect(() =>
+      fromYaml(
+        APP_NAME,
+        `-
+this is not valid YAML`,
+      ),
+    ).to.throw(/at line 2/);
+  });
+
+  it("throws error if YAML doesn't conatin a top-level array", () => {
+    expect(() => fromYaml(APP_NAME, "not a list")).to.throw(/must contain a list of test cases/);
   });
 });
