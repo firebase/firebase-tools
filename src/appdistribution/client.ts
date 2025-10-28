@@ -148,7 +148,7 @@ export class AppDistributionClient {
         apiResponse = await client.get<ListTestersResponse>(`${projectName}/testers`, {
           queryParams,
         });
-      } catch (err) {
+      } catch (err: unknown) {
         throw new FirebaseError(`Client request failed to list testers ${err}`);
       }
 
@@ -210,7 +210,7 @@ export class AppDistributionClient {
         });
         groups.push(...(apiResponse.body.groups ?? []));
         pageToken = apiResponse.body.nextPageToken;
-      } catch (err) {
+      } catch (err: unknown) {
         throw new FirebaseError(`Client failed to list groups ${err}`);
       }
     } while (pageToken);
@@ -313,7 +313,7 @@ export class AppDistributionClient {
         });
         testCases.push(...(apiResponse.body.testCases ?? []));
         pageToken = apiResponse.body.nextPageToken;
-      } catch (err) {
+      } catch (err: unknown) {
         throw new FirebaseError(`Client failed to list test cases ${err}`);
       }
     } while (pageToken);
