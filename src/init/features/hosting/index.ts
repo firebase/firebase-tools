@@ -157,6 +157,11 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       "Configure as a single-page app (rewrite all urls to /index.html)?",
     );
   }
+
+  // GitHub Action set up is still structured as doSetup
+  if (await confirm("Set up automatic builds and deploys with GitHub?")) {
+    return initGitHub(setup);
+  }
 }
 
 // TODO: come up with a better way to type this
@@ -216,10 +221,5 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
       !!options.force,
     );
-  }
-
-  // GitHub Action set up is still structured as doSetup
-  if (await confirm("Set up automatic builds and deploys with GitHub?")) {
-    return initGitHub(setup);
   }
 }
