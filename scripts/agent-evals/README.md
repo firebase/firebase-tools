@@ -107,7 +107,7 @@ export const templates = [
 
 3. Ensure you have a `.gitignore` for the template. For example, a Node.js template should ignore `node_modules`
 
-4. Set the `TemplatePlatform` for your template. To ensure the template is setup before each test run, we'll want to add an build command for the template. If you add a new `TemplatePlatform`, update the `buildTemplates()` function for it. For example, Node.js templates will run `npm install` before they are copied into the test directory.
+4. Set the `TemplatePlatform` for your template. To ensure the template is setup before each test run, we'll want to add a build command for the template. If you add a new `TemplatePlatform`, update the `buildTemplates()` function for it. For example, Node.js templates will run `npm install` before they are copied into the test directory.
 
 ## Adding Mocks for MCP Tools
 
