@@ -3,7 +3,6 @@ import * as path from "path";
 import * as express from "express";
 import * as clc from "colorette";
 import * as http from "http";
-import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
 import * as semver from "semver";
 import { URL } from "url";
@@ -1730,7 +1729,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     return EmulatorRegistry.getInfo(emulator);
   }
-
 
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;

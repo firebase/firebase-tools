@@ -1,6 +1,4 @@
-import * as fs from "fs";
-
-import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
+import { CloudFunction, DeploymentOptions } from "firebase-functions";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
@@ -10,11 +8,7 @@ import * as _ from "lodash";
 
 import { EmulatorLog } from "./types";
 import { Constants } from "./constants";
-import {
-  findModuleRoot,
-  FunctionsRuntimeBundle,
-  SignatureType,
-} from "./functionsEmulatorShared";
+import { findModuleRoot, FunctionsRuntimeBundle, SignatureType } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 import { EventUtils } from "./events/types";
 
@@ -431,11 +425,9 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
   };
 }
 
-
 function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
 }
-
 
 /**
  * This stub is the most important and one of the only non-optional stubs.This feature redirects

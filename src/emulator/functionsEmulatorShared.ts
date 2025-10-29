@@ -106,7 +106,6 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
 
-
 export class EmulatedTrigger {
   /*
   Here we create a trigger from a single definition (data about what resources does this trigger on, etc) and
