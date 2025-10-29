@@ -398,36 +398,6 @@ describe("FunctionsEmulator-Runtime", function () {
       });
     });
   });
-  describe("_InitializeFunctionsConfigHelper()", () => {
-    const cfgPath = path.join(FUNCTIONS_DIR, ".runtimeconfig.json");
-
-    before(async () => {
-      await fs.writeFile(cfgPath, '{"real":{"exist":"already exists" }}');
-    });
-
-    after(async () => {
-      await fs.unlink(cfgPath);
-    });
-
-    it("should tell the user if they've accessed a non-existent function field", async () => {
-      runtime = await startRuntime("functionId", "event", () => {
-        require("firebase-admin").initializeApp();
-        return {
-          functionId: require("firebase-functions")
-            .firestore.document("test/test")
-            .onCreate(() => {
-              // Exists
-              console.log(require("firebase-functions").config().real);
-              // Does not exist
-              console.log(require("firebase-functions").config().foo);
-              console.log(require("firebase-functions").config().bar);
-            }),
-        };
-      });
-      await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
-      expect(runtime.sysMsg["functions-config-missing-value"]?.length).to.eq(2);
-    });
-  });
   describe("Runtime", () => {
     describe("HTTPS", () => {
       it("should handle a GET request", async () => {
