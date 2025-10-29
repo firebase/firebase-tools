@@ -89,7 +89,7 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
 
 ## Adding Templates
 
-Templates let you run your tests inside of a folder with existing project files in it. Eg. you could add a template with an iOS app in it.
+Templates let you run your tests inside of a folder with existing project files in it. e.g. you could add a template with an iOS app in it.
 
 1. Add the new template in a new folder `scripts/agent-evals/templates/<template-name>`
 
