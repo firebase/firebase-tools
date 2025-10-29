@@ -28,7 +28,6 @@ import {
   FunctionsRuntimeFeatures,
   getFunctionService,
   getSignatureType,
-  HttpConstants,
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
@@ -1732,40 +1731,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     return EmulatorRegistry.getInfo(emulator);
   }
 
-  private tokenFromAuthHeader(authHeader: string) {
-    const match = /^Bearer (.*)$/.exec(authHeader);
-    if (!match) {
-      return;
-    }
-
-    let idToken = match[1];
-    logger.debug(`ID Token: ${idToken}`);
-
-    // The @firebase/testing library sometimes produces JWTs with invalid padding, so we
-    // remove that via regex. This is the spec that says trailing = should be removed:
-    // https://tools.ietf.org/html/rfc7515#section-2
-    if (idToken && idToken.includes("=")) {
-      idToken = idToken.replace(/[=]+?\./g, ".");
-      logger.debug(`ID Token contained invalid padding, new value: ${idToken}`);
-    }
-
-    try {
-      const decoded = jwt.decode(idToken, { complete: true }) as any;
-      if (!decoded || typeof decoded !== "object") {
-        logger.debug(`Failed to decode ID Token: ${decoded}`);
-        return;
-      }
-
-      // In firebase-functions we manually copy 'sub' to 'uid'
-      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
-      const claims = decoded.payload as jwt.JwtPayload;
-      claims.uid = claims.sub;
-
-      return claims;
-    } catch (e: any) {
-      return;
-    }
-  }
 
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
@@ -1804,27 +1769,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
-    // For callable functions we want to accept tokens without actually calling verifyIdToken
-    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
-    const authHeader = req.header("Authorization");
-    if (authHeader && isCallable && trigger.platform !== "gcfv2") {
-      const token = this.tokenFromAuthHeader(authHeader);
-      if (token) {
-        const contextAuth = {
-          uid: token.uid,
-          token: token,
-        };
-
-        // Stash the "Authorization" header in a temporary place, we will replace it
-        // when invoking the callable handler
-        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
-        delete req.headers["authorization"];
-
-        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
-          JSON.stringify(contextAuth),
-        );
-      }
-    }
     // For analytics, track the invoked service
     void trackEmulator(EVENT_INVOKE_GA4, {
       function_service: getFunctionService(trigger),
