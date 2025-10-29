@@ -709,48 +709,6 @@ function warnAboutStorageProd(): void {
   ).log();
 }
 
-async function initializeFunctionsConfigHelper(): Promise<void> {
-  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
-  const localFunctionsModule = require(functionsResolution.resolution);
-
-  logDebug("Checked functions.config()", {
-    config: localFunctionsModule.config(),
-  });
-
-  const originalConfig = localFunctionsModule.config();
-  const proxiedConfig = new Proxied(originalConfig)
-    .any((parentConfig, parentKey) => {
-      const isInternal = parentKey.startsWith("Symbol(") || parentKey.startsWith("inspect");
-      if (!parentConfig[parentKey] && !isInternal) {
-        new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
-          key: parentKey,
-        }).log();
-      }
-
-      return parentConfig[parentKey];
-    })
-    .finalize();
-
-  const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
-  const proxiedFunctionsModule = functionsModuleProxy
-    .when("config", () => () => {
-      return proxiedConfig;
-    })
-    .finalize();
-
-  // Stub the functions module in the require cache
-  const v = require.cache[functionsResolution.resolution];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
-  require.cache[functionsResolution.resolution] = Object.assign(v!, {
-    exports: proxiedFunctionsModule,
-    path: path.dirname(functionsResolution.resolution),
-  });
-
-  logDebug("firebase-functions has been stubbed.", {
-    functionsResolution,
-  });
-}
-
 /*
  Retains a reference to the raw body buffer to allow access to the raw body for things like request
  signature validation. This is used as the "verify" function in body-parser options.
@@ -899,7 +857,6 @@ async function initializeRuntime(): Promise<void> {
 
   initializeRuntimeConfig();
   initializeNetworkFiltering();
-  await initializeFunctionsConfigHelper();
   await initializeFirebaseFunctionsStubs();
   await initializeFirebaseAdminStubs();
 }
