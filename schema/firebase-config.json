@@ -1090,7 +1090,6 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
         "apphosting": {
