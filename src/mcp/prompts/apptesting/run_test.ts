@@ -106,10 +106,17 @@ Here are a list of prerequisite steps that must be completed before running a te
 
 ## Run Test
 
-  Use the apptesting_run_test tool to run an automated test with the following as input:
+  Use the \`apptesting_run_test\` tool to run an automated test with the following as input:
     * The generated test case that as been confirmed by the user
     * An APK. If there is no APK present, build the app to produce one. Make sure to build the variant of the app
       with the same bundle ID as the Firebase app.
+    * Once the test has started, provide the developer a link to see the results of the test in the Firebase Console.
+      You should already know the value of \`appId\' and \`projectId\` from earlier (if you only know \`projectNumber\',
+      use the \`firebase_get_project\` tool to get \`projectId\`). The \`apptesting_run_test\` tool returns a response
+      with field \`name\` in the form projects/{projectNumber}/apps/{appId}/releases/{releaseId}/tests/{releaseTestId}.
+      Extract the values for \'releaseId\' and \`releaseTestId\` and use provide a link to the results in the Firebase
+      Console in the format:
+      \`https://console.firebase.google.com/u/0/project/{projectId}/apptesting/app/{appId}/releases/{releaseId}/tests/{releaseTestId}\`.
 `.trim(),
         },
       },
