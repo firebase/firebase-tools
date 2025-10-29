@@ -320,9 +320,6 @@ export type AppHostingMultiple = AppHostingSingle[];
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
 export type FirebaseConfig = {
-  /**
-   * @TJS-format uri
-   */
   $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
