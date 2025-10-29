@@ -50,9 +50,11 @@ export const run_tests = tool(
           orientation: "portrait",
         },
       ]),
-      testCase: z
-        .array(AIStepSchema)
-        .describe("Test case containing the steps that are run during its execution."),
+      testCase: z.object({
+        steps: z
+          .array(AIStepSchema)
+          .describe("Test case containing the steps that are run during its execution."),
+      }),
     }),
     annotations: {
       title: "Run a Remote Test",
@@ -62,7 +64,7 @@ export const run_tests = tool(
   async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
     const client = new AppDistributionClient();
     const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaeName, testDevices, { steps: testCase }));
+    return toContent(await client.createReleaseTest(releaeName, testDevices, testCase));
   },
 );
 
