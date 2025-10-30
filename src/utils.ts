@@ -566,7 +566,12 @@ export function datetimeString(d: Date): string {
  * Indicates whether the end-user is running the CLI from a cloud-based environment.
  */
 export function isCloudEnvironment() {
-  return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
+  return (
+    !!process.env.CODESPACES ||
+    !!process.env.GOOGLE_CLOUD_WORKSTATIONS ||
+    !!process.env.CLOUD_SHELL ||
+    !!process.env.GOOGLE_CLOUD_SHELL
+  );
 }
 
 /**
