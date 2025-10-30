@@ -3131,17 +3131,16 @@ async function fetchBlockingFunction(
   let status: number;
   let text: string;
   try {
+    const signal = controller.signal as any;
+    signal.reason = "";
+    signal.throwIfAborted = () => {
+      throw new FirebaseError("Aborted");
+    };
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
-      signal: {
-        ...controller.signal,
-        reason: "",
-        throwIfAborted: () => {
-          throw new FirebaseError("Aborted");
-        },
-      },
+      signal,
     });
     ok = res.ok;
     status = res.status;
