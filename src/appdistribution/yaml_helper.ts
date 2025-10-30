@@ -30,8 +30,8 @@ function extractIdFromResourceName(name: string): string {
 
 function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
   return testCases.map((testCase) => ({
-    displayName: testCase.displayName ?? "",
-    id: extractIdFromResourceName(testCase.name!),
+    displayName: testCase.displayName,
+    id: extractIdFromResourceName(testCase.name!), // resource name is retured by server
     ...(testCase.prerequisiteTestCase && {
       prerequisiteTestCaseId: extractIdFromResourceName(testCase.prerequisiteTestCase),
     }),

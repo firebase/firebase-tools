@@ -157,7 +157,7 @@ this is not valid YAML`,
     ).to.throw(/at line 2/);
   });
 
-  it("throws error if YAML doesn't conatin a top-level array", () => {
+  it("throws error if YAML doesn't contain a top-level array", () => {
     expect(() => fromYaml(APP_NAME, "not a list")).to.throw(/must contain a list of test cases/);
   });
 });

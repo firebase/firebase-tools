@@ -517,7 +517,7 @@ describe("distribution", () => {
     it("should resolve with array of test cases when request succeeds", async () => {
       const testCases: TestCase[] = [
         {
-          name: `$appName/testCases/tc_1`,
+          name: `${appName}/testCases/tc_1`,
           displayName: "Test Case 1",
           aiInstructions: {
             steps: [
@@ -528,7 +528,7 @@ describe("distribution", () => {
           },
         },
         {
-          name: `$appName/testCases/tc_2`,
+          name: `${appName}/testCases/tc_2`,
           displayName: "Test Case 2",
           aiInstructions: { steps: [] },
         },

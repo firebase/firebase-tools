@@ -115,7 +115,7 @@ export class AppDistributionClient {
     try {
       await this.appDistroV1Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
-      let errorMessage = err.message;
+      let errorMessage = getErrMsg(err);
       const errorStatus = err?.context?.body?.error?.status;
       if (errorStatus === "FAILED_PRECONDITION") {
         errorMessage = "invalid testers";
@@ -148,7 +148,7 @@ export class AppDistributionClient {
           queryParams,
         });
       } catch (err: unknown) {
-        throw new FirebaseError(`Client request failed to list testers ${err}`);
+        throw new FirebaseError(`Client request failed to list testers ${getErrMsg(err)}`);
       }
 
       for (const t of apiResponse.body.testers ?? []) {
@@ -210,7 +210,7 @@ export class AppDistributionClient {
         groups.push(...(apiResponse.body.groups ?? []));
         pageToken = apiResponse.body.nextPageToken;
       } catch (err: unknown) {
-        throw new FirebaseError(`Client failed to list groups ${err}`);
+        throw new FirebaseError(`Client failed to list groups ${getErrMsg(err)}`);
       }
     } while (pageToken);
     return groups;
@@ -313,7 +313,7 @@ export class AppDistributionClient {
         testCases.push(...(apiResponse.body.testCases ?? []));
         pageToken = apiResponse.body.nextPageToken;
       } catch (err: unknown) {
-        throw new FirebaseError(`Client failed to list test cases ${err}`);
+        throw new FirebaseError(`Client failed to list test cases ${getErrMsg(err)}`);
       }
     } while (pageToken);
     return testCases;
