@@ -909,6 +909,78 @@ describe("Normalize __name__ field for database indexes", () => {
     expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
   });
 
+  it("No-op if exists __name__ field as the last field with default sort order, with array contains", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(2);
+    expect(result.fields[0].fieldPath).to.equal("arr");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("No-op if exists __name__ field as the last field with default sort order, with vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[2].fieldPath).to.equal("vector");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("No-op if exists __name__ field as the last field with default sort order, with array contains and vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(4);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[3].fieldPath).to.equal("vector");
+    expect(result.fields[2].order).to.equal(API.Order.ASCENDING);
+  });
+
   it("No-op if exists __name__ field as the last field with non-default sort order", () => {
     const mockSpecIndex = {
       collectionGroup: "collection",
@@ -927,6 +999,78 @@ describe("Normalize __name__ field for database indexes", () => {
     expect(result.fields[1].order).to.equal(API.Order.DESCENDING);
   });
 
+  it("No-op if exists __name__ field as the last field with default sort order, with array contains", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        { fieldPath: "__name__", order: API.Order.ASCENDING },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(2);
+    expect(result.fields[0].fieldPath).to.equal("arr");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("No-op if exists __name__ field as the last field with default sort order, with vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "__name__", order: API.Order.DESCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[2].fieldPath).to.equal("vector");
+    expect(result.fields[1].order).to.equal(API.Order.DESCENDING);
+  });
+
+  it("No-op if exists __name__ field as the last field with default sort order, with array contains and vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        { fieldPath: "__name__", order: API.Order.DESCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(4);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[3].fieldPath).to.equal("vector");
+    expect(result.fields[2].order).to.equal(API.Order.DESCENDING);
+  });
+
   it("should attach __name__ suffix with the default order if not exists, ascending", () => {
     const mockSpecIndex = {
       collectionGroup: "collection",
@@ -940,6 +1084,102 @@ describe("Normalize __name__ field for database indexes", () => {
     expect(result.fields[0].fieldPath).to.equal("foo");
     expect(result.fields[1].fieldPath).to.equal("__name__");
     expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, ascending, with array contains", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[2].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, ascending, with vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[2].fieldPath).to.equal("vector");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, with array contains and vector field, default to ascending", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("arr");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[2].fieldPath).to.equal("vector");
+    expect(result.fields[1].order).to.equal(API.Order.ASCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, with index field with ascending order, array contains and vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(4);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[3].fieldPath).to.equal("vector");
+    expect(result.fields[2].order).to.equal(API.Order.ASCENDING);
   });
 
   it("should attach __name__ suffix with the default order if not exists, descending", () => {
@@ -958,6 +1198,77 @@ describe("Normalize __name__ field for database indexes", () => {
     expect(result.fields[0].fieldPath).to.equal("foo");
     expect(result.fields[1].fieldPath).to.equal("bar");
     expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[2].order).to.equal(API.Order.DESCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, descending, with array contains", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.DESCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[2].order).to.equal(API.Order.DESCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, ascending, with vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.DESCENDING },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(3);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("__name__");
+    expect(result.fields[2].fieldPath).to.equal("vector");
+    expect(result.fields[1].order).to.equal(API.Order.DESCENDING);
+  });
+
+  it("should attach __name__ suffix with the default order if not exists, with index field with descending order, array contains and vector field", () => {
+    const mockSpecIndex = {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: API.Order.DESCENDING },
+        { fieldPath: "arr", arrayConfig: API.ArrayConfig.CONTAINS },
+        {
+          fieldPath: "vector",
+          vectorConfig: {
+            dimension: 100,
+            flat: {},
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    const result = FirestoreApi.processIndex(mockSpecIndex);
+
+    expect(result.fields).to.have.length(4);
+    expect(result.fields[0].fieldPath).to.equal("foo");
+    expect(result.fields[1].fieldPath).to.equal("arr");
+    expect(result.fields[2].fieldPath).to.equal("__name__");
+    expect(result.fields[3].fieldPath).to.equal("vector");
     expect(result.fields[2].order).to.equal(API.Order.DESCENDING);
   });
 });

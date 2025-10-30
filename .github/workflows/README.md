@@ -15,3 +15,4 @@ The following secrets must be defined on the project:
 | ----------------------------- | ------------------------------------------------------------------------------ |
 | `FBTOOLS_TARGET_PROJECT`      | The project ID that should be used for integration tests                       |
 | `service_account_json_base64` | A base64-encoded service account JSON file with access to the selected project |
+| `GEMINI_API_KEY`              | The Gemini API Key used for Agent Evals                                        |
