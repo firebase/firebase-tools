@@ -141,23 +141,24 @@ export async function awaitTestResults(
         }
       }
       for (const execution of releaseTest.deviceExecutions) {
+        const device = deviceToString(execution.device);
         switch (execution.state) {
           case "PASSED":
           case "IN_PROGRESS":
             continue;
           case "FAILED":
             throw new FirebaseError(
-              `Automated test failed for ${deviceToString(execution.device)}: ${execution.failedReason}`,
+              `Automated test failed for ${device}: ${execution.failedReason}`,
               { exit: 1 },
             );
           case "INCONCLUSIVE":
             throw new FirebaseError(
-              `Automated test inconclusive for ${deviceToString(execution.device)}: ${execution.inconclusiveReason}`,
+              `Automated test inconclusive for ${device}: ${execution.inconclusiveReason}`,
               { exit: 1 },
             );
           default:
             throw new FirebaseError(
-              `Unsupported automated test state for ${deviceToString(execution.device)}: ${execution.state}`,
+              `Unsupported automated test state for ${device}: ${execution.state}`,
               { exit: 1 },
             );
         }

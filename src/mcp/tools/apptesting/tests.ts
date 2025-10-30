@@ -63,8 +63,8 @@ export const run_tests = tool(
   },
   async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
     const client = new AppDistributionClient();
-    const releaeName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaeName, testDevices, testCase));
+    const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
+    return toContent(await client.createReleaseTest(releaseName, testDevices, testCase));
   },
 );
 
