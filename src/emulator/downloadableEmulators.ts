@@ -40,6 +40,7 @@ const EMULATOR_UPDATE_DETAILS: {
   };
   dataconnect: {
     darwin: EmulatorUpdateDetails;
+    darwin_arm64: EmulatorUpdateDetails;
     win32: EmulatorUpdateDetails;
     linux: EmulatorUpdateDetails;
   };
@@ -50,7 +51,9 @@ const emulatorUiDetails = experiments.isEnabled("emulatoruisnapshot")
   : EMULATOR_UPDATE_DETAILS.ui.main;
 const dataconnectDetails =
   process.platform === "darwin"
-    ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin
+    ? process.arch === "arm64"
+      ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin_arm64
+      : EMULATOR_UPDATE_DETAILS.dataconnect.darwin
     : process.platform === "win32"
       ? EMULATOR_UPDATE_DETAILS.dataconnect.win32
       : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
