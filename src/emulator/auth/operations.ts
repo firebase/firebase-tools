@@ -38,6 +38,7 @@ import {
   BlockingFunctionEvents,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
+import { FirebaseError } from "../../error";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -3134,7 +3135,13 @@ async function fetchBlockingFunction(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
-      signal: controller.signal,
+      signal: {
+        ...controller.signal,
+        reason: "",
+        throwIfAborted: () => {
+          throw new FirebaseError("Aborted");
+        },
+      },
     });
     ok = res.ok;
     status = res.status;

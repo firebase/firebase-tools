@@ -365,7 +365,13 @@ export class Client {
     }
 
     if (options.signal) {
-      fetchOptions.signal = options.signal;
+      fetchOptions.signal = {
+        ...options.signal,
+        reason: "",
+        throwIfAborted: () => {
+          throw new FirebaseError("Aborted");
+        },
+      };
     }
 
     let reqTimeout: NodeJS.Timeout | undefined;
@@ -374,7 +380,13 @@ export class Client {
       reqTimeout = setTimeout(() => {
         controller.abort();
       }, options.timeout);
-      fetchOptions.signal = controller.signal;
+      fetchOptions.signal = {
+        ...controller.signal,
+        reason: "",
+        throwIfAborted: () => {
+          throw new FirebaseError("Aborted");
+        },
+      };
     }
 
     if (typeof options.body === "string" || isStream(options.body)) {
