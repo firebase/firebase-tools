@@ -89,7 +89,7 @@ These commands let you deploy and interact with your Firebase services.
 
 | Command                              | Description                                                                              |
 | ------------------------------------ | ---------------------------------------------------------------------------------------- |
-| **appdistribution:distribute**       | Upload a release binary and optionally distribute it to testers and run automated tests. |                
+| **appdistribution:distribute**       | Upload a release binary and optionally distribute it to testers and run automated tests. |
 | **appdistribution:testers:list**     | List testers in project.                                                                 |
 | **appdistribution:testers:add**      | Add testers to project (and group, if specified via flag).                               |
 | **appdistribution:testers:remove**   | Remove testers from a project (or group, if specified via flag).                         |
