@@ -1,5 +1,14 @@
 - Fix the `__name__` normalization of vector indexes for Firestore standard
   edition databases.
+- Fixed an issue where the emulator would fail to start when using `firebase-functions` v7+ (#9401).
 - Added `functions.list_functions` as a MCP tool (#9369)
 - Added AI Logic to `firebase init` CLI command and `firebase_init` MCP tool. (#9185)
 - Improved error messages for Firebase AI Logic provisioning during 'firebase init' (#9377)
+- Added `appdistribution:testcases:export` and `appdistribution:testcases:import` (#9397)
+- Updated to v2.16.0 of the Data Connect emulator, which includes internal improvements.
+- Data Connect now allows executing a valid query / operation even if the other operations are invalid. (This toleration provides convenience on a best-effort basis. Some errors like invalid syntax can still cause the whole request to be rejected.)
+- Fixed enum list deserialization in Data Connect generated Dart SDKs.
+- Added GraphQL `__typename` support in Data Connect.
+- Support enum values in Data Connect CEL expressions.
+- Support `_id`, a global ID field in Data Connect.
+- Updated to v0.8.17 of the Pub/Sub emulator, which includes vulnerability fixes.
