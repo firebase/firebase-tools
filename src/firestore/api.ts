@@ -30,18 +30,43 @@ export class FirestoreApi {
    */
   public static processIndex(index: Spec.Index): Spec.Index {
     // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
-    // this matches the direction of the last non-name field in the index.
-    const fields = index.fields;
+    // this matches the direction of the last non-name non-vector field in the index.
+    let fields = index.fields;
+    const suffixOrder: types.Order = FirestoreApi.lastIndexFieldOrder(fields);
+    const nameSuffix = { fieldPath: "__name__", order: suffixOrder } as types.IndexField;
+
     const lastField = index.fields?.[index.fields.length - 1];
+    if (lastField.vectorConfig) {
+      // lastField is vector field, refer to the second from last field
+      const vectorField = lastField;
+      fields = fields.slice(0, -1);
+
+      if (fields.length === 0 || fields?.[fields.length - 1].fieldPath !== "__name__") {
+        fields.push(nameSuffix);
+      }
+      fields.push(vectorField);
+      return {
+        ...index,
+        fields,
+      };
+    }
     if (lastField?.fieldPath !== "__name__") {
-      const defaultDirection = index.fields?.[index.fields.length - 1]?.order;
-      const nameSuffix = { fieldPath: "__name__", order: defaultDirection } as types.IndexField;
       fields.push(nameSuffix);
     }
     return {
       ...index,
       fields,
     };
+  }
+
+  public static lastIndexFieldOrder(fields: types.IndexField[]): types.Order {
+    let lastIndexFieldOrder: types.Order = types.Order.ASCENDING;
+    for (const field of fields) {
+      if (field.order) {
+        lastIndexFieldOrder = field.order;
+      }
+    }
+    return lastIndexFieldOrder;
   }
 
   /**
