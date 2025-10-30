@@ -204,7 +204,6 @@ describe("chooseApp", () => {
     expect(promptStub.called).to.be.false;
   });
 
-  // TODO: Add a test for admin node.
   it("should deduplicate apps with the same platform and directory", async () => {
     const apps: App[] = [
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT], appId: "app1" },
