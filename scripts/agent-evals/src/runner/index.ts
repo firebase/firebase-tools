@@ -6,6 +6,7 @@ import { GeminiCliRunner } from "./gemini-cli-runner.js";
 import { buildFirebaseCli, clearUserMcpServers } from "./setup.js";
 import { addCleanup } from "../helpers/cleanup.js";
 import { TemplateName, copyTemplate, buildTemplates } from "../template/index.js";
+import { ToolMockName } from "../mock/tool-mocks.js";
 
 export * from "./agent-test-runner.js";
 
@@ -21,6 +22,9 @@ export interface AgentTestOptions {
   // Name of the template directory to copy into this test run. Leave this empty
   // to run the test in an empty directory
   templateName?: TemplateName;
+  // List of MCP Tool mocks to apply, in order. Later mocks overwrite earlier
+  // mocks.
+  toolMocks?: ToolMockName[];
 }
 
 export async function startAgentTest(
@@ -37,7 +41,7 @@ export async function startAgentTest(
     copyTemplate(options.templateName, runDir);
   }
 
-  const run = new GeminiCliRunner(testName, testDir, runDir);
+  const run = new GeminiCliRunner(testName, testDir, runDir, options?.toolMocks || []);
   await run.waitForReadyPrompt();
 
   addCleanup(async () => {

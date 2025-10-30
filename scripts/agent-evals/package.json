@@ -4,7 +4,8 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "test": "tsc && mocha 'lib/**/*.spec.js' --reporter spec",
+    "build": "tsc",
+    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
     "test:dev": "SKIP_REBUILD=true npm run test"
   },
   "keywords": [],

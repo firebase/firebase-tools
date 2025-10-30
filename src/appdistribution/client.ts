@@ -18,6 +18,7 @@ import {
   mapDeviceToExecution,
   ReleaseTest,
   TestDevice,
+  Tester,
   UploadReleaseResponse,
 } from "./types";
 
@@ -127,17 +128,12 @@ export class AppDistributionClient {
     utils.logSuccess("distributed to testers/groups successfully");
   }
 
-  async listTesters(projectName: string, groupName?: string): Promise<ListTestersResponse> {
-    const listTestersResponse: ListTestersResponse = {
-      testers: [],
-    };
-
+  async listTesters(projectName: string, groupName?: string): Promise<Tester[]> {
+    const testers: Tester[] = [];
     const client = this.appDistroV1Client;
-
-    let pageToken: string | undefined;
-
     const filter = groupName ? `groups=${projectName}/groups/${groupName}` : null;
 
+    let pageToken: string | undefined;
     do {
       const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
       if (filter != null) {
@@ -154,7 +150,7 @@ export class AppDistributionClient {
       }
 
       for (const t of apiResponse.body.testers ?? []) {
-        listTestersResponse.testers.push({
+        testers.push({
           name: t.name,
           displayName: t.displayName,
           groups: t.groups,
@@ -164,7 +160,7 @@ export class AppDistributionClient {
 
       pageToken = apiResponse.body.nextPageToken;
     } while (pageToken);
-    return listTestersResponse;
+    return testers;
   }
 
   async addTesters(projectName: string, emails: string[]): Promise<void> {
@@ -198,28 +194,24 @@ export class AppDistributionClient {
     return apiResponse.body;
   }
 
-  async listGroups(projectName: string): Promise<ListGroupsResponse> {
-    const listGroupsResponse: ListGroupsResponse = {
-      groups: [],
-    };
-
+  async listGroups(projectName: string): Promise<Group[]> {
+    const groups: Group[] = [];
     const client = this.appDistroV1Client;
 
     let pageToken: string | undefined;
-
     do {
       const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
       try {
         const apiResponse = await client.get<ListGroupsResponse>(`${projectName}/groups`, {
           queryParams,
         });
-        listGroupsResponse.groups.push(...(apiResponse.body.groups ?? []));
+        groups.push(...(apiResponse.body.groups ?? []));
         pageToken = apiResponse.body.nextPageToken;
       } catch (err) {
         throw new FirebaseError(`Client failed to list groups ${err}`);
       }
     } while (pageToken);
-    return listGroupsResponse;
+    return groups;
   }
 
   async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {

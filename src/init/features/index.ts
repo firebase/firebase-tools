@@ -10,7 +10,11 @@ export {
   actuate as firestoreActuate,
 } from "./firestore";
 export { doSetup as functions } from "./functions";
-export { doSetup as hosting } from "./hosting";
+export {
+  askQuestions as hostingAskQuestions,
+  actuate as hostingActuate,
+  RequiredInfo as HostingInfo,
+} from "./hosting";
 export {
   askQuestions as storageAskQuestions,
   RequiredInfo as StorageInfo,

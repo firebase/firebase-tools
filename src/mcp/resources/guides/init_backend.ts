@@ -8,7 +8,7 @@ export const init_backend = resource(
     description:
       "guides the coding agent through configuring Firebase backend services in the current project",
   },
-  async (uri) => {
+  async (uri, ctx) => {
     return {
       contents: [
         {
@@ -25,31 +25,8 @@ The user will likely need to setup Firestore, Authentication, and Hosting. Read 
  3. [Firestore Rules](firebase://guides/init/firestore_rules): read this to setup the \`firestore.rules\` file for securing your database
  4. [Hosting](firebase://guides/init/hosting): read this if the user would like to deploy to Firebase Hosting
 
-**firebase.json**
-The firebase.json file is used to deploy Firebase products with the firebase deploy command.
-
-Here is an example firebase.json file with Firebase Hosting, Firestore, and Cloud Functions. Note that you do not need entries for services that the user isn't using. Do not remove sections from the user's firebase.json unless the user gives explicit permission. For more information, refer to [firebase.json file documentation](https://firebase.google.com/docs/cli/#the_firebasejson_file)
-\`\`\`json
-{
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  },
-  "firestore": {
-      "rules": "firestore.rules",
-      "indexes": "firestore.indexes.json"
-  },
-  "functions": {
-    "predeploy": [
-      "npm --prefix "$RESOURCE_DIR" run lint",
-      "npm --prefix "$RESOURCE_DIR" run build"
-    ]
-  }
-}
+Once you are done setting up, ask the user if they would like to deploy.
+If they say yes, run the command '${ctx.firebaseCliCommand} deploy --non-interactive' to do so.
 \`\`\`
 `.trim(),
         },

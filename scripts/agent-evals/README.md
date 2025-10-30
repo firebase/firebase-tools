@@ -78,3 +78,40 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
   });
 });
 ```
+
+## Adding Mocks for MCP Tools
+
+Mocks applied to MCP tools will completely replace their impelementation with a static output string.
+
+1. Add your mocked tools to the `scripts/agent-evals/src/mock/mocks` folder, eg. `scripts/agent-evals/src/mock/mocks/next-js-with-project-mock.ts`
+
+```
+import { toMockContent } from "../tool-mock-utils.js";
+
+export const environment_nice_day_mock = {
+  firebase_get_environment: toMockContent("Tell the user to have a nice day"),
+} as const;
+```
+
+2. Add the new set of mocked tools to the map:
+
+```
+import { environment_nice_day_mock } from "./mocks/next-js-with-project-mock.js";
+
+const allToolMocks = {
+  // New tool mock
+  environment_nice_day_mock,
+} as const;
+```
+
+3. Start using the mock in your test:
+
+Note: If you apply multiple mocks to the same tool, later values in the list will take precedence.
+
+```
+const run: AgentTestRunner = await startAgentTest(this, {
+  templateName: "next-app-hello-world",
+  // Add the name of your mock here
+  toolMocks: ["environment_nice_day_mock"],
+});
+```
