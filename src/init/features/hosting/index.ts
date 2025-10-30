@@ -68,10 +68,11 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     }
   }
 
+  let discoveredFramework = experiments.isEnabled("webframeworks")
+    ? await discover(config.projectDir, false)
+    : undefined;
+
   if (experiments.isEnabled("webframeworks")) {
-    let discoveredFramework = experiments.isEnabled("webframeworks")
-      ? await discover(config.projectDir, false)
-      : undefined;
     // First, if we're in a framework directory, ask to use that.
     if (
       discoveredFramework &&
@@ -90,54 +91,53 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
         `Do you want to use a web framework? (${clc.bold("experimental")})`,
       );
     }
-    // If they say yes, ask for source directory if its not already known
-    if (setup.featureInfo.hosting.useWebFrameworks) {
-      setup.featureInfo.hosting.source ??= await input({
-        message: "What folder would you like to use for your web application's root directory?",
-        default: "hosting",
+  }
+
+  // If they say yes, ask for source directory if its not already known
+  if (setup.featureInfo.hosting.useWebFrameworks) {
+    setup.featureInfo.hosting.source ??= await input({
+      message: "What folder would you like to use for your web application's root directory?",
+      default: "hosting",
+    });
+
+    discoveredFramework = await discover(join(config.projectDir, setup.featureInfo.hosting.source));
+
+    if (discoveredFramework) {
+      const name = WebFrameworks[discoveredFramework.framework].name;
+      setup.featureInfo.hosting.useDiscoveredFramework ??= await confirm({
+        message: `Detected an existing ${name} codebase in ${setup.featureInfo.hosting.source}, should we use this?`,
+        default: true,
       });
-
-      discoveredFramework = await discover(
-        join(config.projectDir, setup.featureInfo.hosting.source),
-      );
-
-      if (discoveredFramework) {
-        const name = WebFrameworks[discoveredFramework.framework].name;
-        setup.featureInfo.hosting.useDiscoveredFramework ??= await confirm({
-          message: `Detected an existing ${name} codebase in ${setup.featureInfo.hosting.source}, should we use this?`,
-          default: true,
-        });
-        if (setup.featureInfo.hosting.useDiscoveredFramework)
-          setup.featureInfo.hosting.webFramework = discoveredFramework.framework;
-      }
-
-      // If it is not known already, ask what framework to use.
-      const choices: { name: string; value: string }[] = [];
-      for (const value in WebFrameworks) {
-        if (WebFrameworks[value]) {
-          const { name, init } = WebFrameworks[value];
-          if (init) choices.push({ name, value });
-        }
-      }
-
-      const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework,
-      )?.value;
-
-      setup.featureInfo.hosting.webFramework ??= await select({
-        message: "Please choose the framework:",
-        default: defaultChoice,
-        choices,
-      });
-
-      setup.featureInfo.hosting.region =
-        setup.featureInfo.hosting.region ||
-        (await select({
-          message: "In which region would you like to host server-side content, if applicable?",
-          default: DEFAULT_REGION,
-          choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
-        }));
+      if (setup.featureInfo.hosting.useDiscoveredFramework)
+        setup.featureInfo.hosting.webFramework = discoveredFramework.framework;
     }
+
+    // If it is not known already, ask what framework to use.
+    const choices: { name: string; value: string }[] = [];
+    for (const value in WebFrameworks) {
+      if (WebFrameworks[value]) {
+        const { name, init } = WebFrameworks[value];
+        if (init) choices.push({ name, value });
+      }
+    }
+
+    const defaultChoice = choices.find(
+      ({ value }) => value === discoveredFramework?.framework,
+    )?.value;
+
+    setup.featureInfo.hosting.webFramework ??= await select({
+      message: "Please choose the framework:",
+      default: defaultChoice,
+      choices,
+    });
+
+    setup.featureInfo.hosting.region =
+      setup.featureInfo.hosting.region ||
+      (await select({
+        message: "In which region would you like to host server-side content, if applicable?",
+        default: DEFAULT_REGION,
+        choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
+      }));
   } else {
     logger.info();
     logger.info(
@@ -157,6 +157,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       "Configure as a single-page app (rewrite all urls to /index.html)?",
     );
   }
+
   // GitHub Action set up is still structured as doSetup
   if (await confirm("Set up automatic builds and deploys with GitHub?")) {
     return initGitHub(setup);
