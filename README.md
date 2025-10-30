@@ -87,9 +87,17 @@ These commands let you deploy and interact with your Firebase services.
 
 ### App Distribution Commands
 
-| Command                        | Description            |
-| ------------------------------ | ---------------------- |
-| **appdistribution:distribute** | Upload a distribution. |
+| Command                              | Description                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **appdistribution:distribute**       | Upload a release binary and optionally distribute it to testers and run automated tests. |                
+| **appdistribution:testers:list**     | List testers in project.                                                                 |
+| **appdistribution:testers:add**      | Add testers to project (and group, if specified via flag).                               |
+| **appdistribution:testers:remove**   | Remove testers from a project (or group, if specified via flag).                         |
+| **appdistribution:groups:list**      | List groups (of testers).                                                                |
+| **appdistribution:groups:create**    | Create a group (of testers).                                                             |
+| **appdistribution:groups:delete**    | Delete a group (of testers).                                                             |
+| **appdistribution:testcases:export** | Export test cases as a YAML file.                                                        |
+| **appdistribution:testcases:import** | Import test cases from YAML file.                                                        |
 
 ### Auth Commands
 
