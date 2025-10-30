@@ -52,6 +52,7 @@ describe("dataconnect prepare", () => {
       dataconnect: {
         serviceInfos: [],
         filters: undefined,
+        deployStats: (context as any).dataconnect.deployStats,
       },
     });
   });
@@ -77,6 +78,7 @@ describe("dataconnect prepare", () => {
       dataconnect: {
         serviceInfos: serviceInfos,
         filters: undefined,
+        deployStats: (context as any).dataconnect.deployStats,
       },
     });
   });

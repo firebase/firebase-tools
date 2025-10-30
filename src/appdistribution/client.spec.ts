@@ -100,7 +100,7 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve with ListTestersResponse when request succeeds - no filter", async () => {
+    it("should resolve with array of testers when request succeeds - no filter", async () => {
       const testerListing = [
         {
           name: "tester_1",
@@ -119,22 +119,20 @@ describe("distribution", () => {
       nock(appDistributionOrigin()).get(`/v1/${projectName}/testers`).reply(200, {
         testers: testerListing,
       });
-      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq({
-        testers: [
-          {
-            name: "tester_1",
-            displayName: "Tester 1",
-            groups: [],
-            lastActivityTime: new Date("2024-08-27T02:37:19.539865Z"),
-          },
-          {
-            name: "tester_2",
-            displayName: "Tester 2",
-            groups: [`${projectName}/groups/beta-team`, `${projectName}/groups/alpha-team`],
-            lastActivityTime: new Date("2024-08-26T02:37:19Z"),
-          },
-        ],
-      });
+      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq([
+        {
+          name: "tester_1",
+          displayName: "Tester 1",
+          groups: [],
+          lastActivityTime: new Date("2024-08-27T02:37:19.539865Z"),
+        },
+        {
+          name: "tester_2",
+          displayName: "Tester 2",
+          groups: [`${projectName}/groups/beta-team`, `${projectName}/groups/alpha-team`],
+          lastActivityTime: new Date("2024-08-26T02:37:19Z"),
+        },
+      ]);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -157,25 +155,21 @@ describe("distribution", () => {
         });
       await expect(
         appDistributionClient.listTesters(projectName, "beta-team"),
-      ).to.eventually.deep.eq({
-        testers: [
-          {
-            name: "tester_2",
-            displayName: "Tester 2",
-            groups: [`${projectName}/groups/beta-team`],
-            lastActivityTime: new Date("2024-08-26T02:37:19Z"),
-          },
-        ],
-      });
+      ).to.eventually.deep.eq([
+        {
+          name: "tester_2",
+          displayName: "Tester 2",
+          groups: [`${projectName}/groups/beta-team`],
+          lastActivityTime: new Date("2024-08-26T02:37:19Z"),
+        },
+      ]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("should gracefully handle no testers", async () => {
       nock(appDistributionOrigin()).get(`/v1/${projectName}/testers`).reply(200, {});
 
-      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq({
-        testers: [],
-      });
+      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq([]);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -403,8 +397,8 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve with ListGroupsResponse when request succeeds", async () => {
-      const groupListing: Group[] = [
+    it("should resolve with array of groups when request succeeds", async () => {
+      const groups: Group[] = [
         {
           name: "group_1",
           displayName: "Group 1",
@@ -419,11 +413,9 @@ describe("distribution", () => {
       ];
 
       nock(appDistributionOrigin()).get(`/v1/${projectName}/groups`).reply(200, {
-        groups: groupListing,
+        groups: groups,
       });
-      await expect(appDistributionClient.listGroups(projectName)).to.eventually.deep.eq({
-        groups: groupListing,
-      });
+      await expect(appDistributionClient.listGroups(projectName)).to.eventually.deep.eq(groups);
       expect(nock.isDone()).to.be.true;
     });
   });

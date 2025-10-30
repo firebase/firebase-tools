@@ -102,7 +102,6 @@ export function registerTerminalTasks(
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
-    vscode.window.showInformationMessage("Starting emulators... Please see terminal.");
     runTerminalTask(
       "firebase emulators",
       cmd,

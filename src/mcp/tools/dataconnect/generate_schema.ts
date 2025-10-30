@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { generateSchema } from "../../../gemini/fdcExperience";
 
 export const generate_schema = tool(
+  "dataconnect",
   {
     name: "generate_schema",
     description:

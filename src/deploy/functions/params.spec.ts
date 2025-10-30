@@ -3,6 +3,8 @@ import * as sinon from "sinon";
 
 import * as prompt from "../../prompt";
 import * as params from "./params";
+import * as secretManager from "../../gcp/secretManager";
+import { FirebaseError } from "../../error";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -297,5 +299,31 @@ describe("resolveParams", () => {
     ];
     input.resolves("22");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+  });
+
+  it("does not throw in non-interactive mode if secret exists in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} },
+      secretVersion: { versionId: "1", state: "ENABLED", secret: {} as any },
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.fulfilled;
+
+    getSecretMetadataStub.restore();
+  });
+
+  it("throws in non-interactive mode if secret is missing in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.rejectedWith(
+      FirebaseError,
+      /In non-interactive mode but have no value for the secret/,
+    );
+
+    getSecretMetadataStub.restore();
   });
 });

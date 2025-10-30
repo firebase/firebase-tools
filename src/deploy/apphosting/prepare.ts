@@ -11,7 +11,9 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -26,6 +28,7 @@ export default async function (context: Context, options: Options): Promise<void
   context.backendConfigs = {};
   context.backendLocations = {};
   context.backendStorageUris = {};
+  context.backendLocalBuilds = {};
 
   const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");
@@ -144,7 +147,32 @@ export default async function (context: Context, options: Options): Promise<void
       `Skipping deployment of backend(s) ${skippedBackends.map((cfg) => cfg.backendId).join(", ")}.`,
     );
   }
-  return;
+
+  for (const cfg of Object.values(context.backendConfigs)) {
+    if (!cfg.localBuild) {
+      continue;
+    }
+    logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
+    try {
+      const { outputFiles, annotations, buildConfig } = await localBuild(
+        options.projectRoot || "./",
+        "nextjs",
+      );
+      if (outputFiles.length !== 1) {
+        throw new FirebaseError(
+          `Local build for backend ${cfg.backendId} failed: No output files found.`,
+        );
+      }
+      context.backendLocalBuilds[cfg.backendId] = {
+        // TODO(9114): This only works for nextjs.
+        buildDir: outputFiles[0],
+        buildConfig,
+        annotations,
+      };
+    } catch (e) {
+      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
+    }
+  }
 }
 
 /**

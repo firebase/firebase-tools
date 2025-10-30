@@ -1,2 +1,3 @@
-- Fix Functions MCP log tool to normalize sort order and surface Cloud Logging error details (#9247)
-- Fixed an issue where `firebase init` would require log in even when no project is selected. (#9251)
+- Added `functions.list_functions` as a MCP tool (#9369)
+- Added AI Logic to `firebase init` CLI command and `firebase_init` MCP tool. (#9185)
+- Improved error messages for Firebase AI Logic provisioning during 'firebase init' (#9377)

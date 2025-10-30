@@ -6,6 +6,7 @@ import { convertInputToValue, firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
 
 export const query_collection = tool(
+  "firestore",
   {
     name: "query_collection",
     description:

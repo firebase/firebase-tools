@@ -5,6 +5,7 @@ import { toContent } from "../../util";
 import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
+  "core",
   {
     name: "read_resources",
     description:

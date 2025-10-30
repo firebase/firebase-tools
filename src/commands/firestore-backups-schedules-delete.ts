@@ -36,11 +36,7 @@ export const command = new Command("firestore:backups:schedules:delete <backupSc
       });
     }
 
-    if (options.json) {
-      logger.info(JSON.stringify(backupSchedule, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupScheduleName)}`));
-    }
+    logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupScheduleName)}`));
 
     return backupSchedule;
   });

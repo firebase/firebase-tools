@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
 import { batchGetEvents, listEvents } from "../../../crashlytics/events";
 import {
   BatchGetEventsResponse,
@@ -9,6 +8,7 @@ import {
   ListEventsResponse,
 } from "../../../crashlytics/types";
 import { ApplicationIdSchema, EventFilterSchema } from "../../../crashlytics/filters";
+import { mcpError, toContent } from "../../util";
 
 function pruneThreads(sample: Event): Event {
   if (sample.issue?.errorType === ErrorType.FATAL || sample.issue?.errorType === ErrorType.ANR) {
@@ -19,6 +19,7 @@ function pruneThreads(sample: Event): Event {
 }
 
 export const list_events = tool(
+  "crashlytics",
   {
     name: "list_events",
     description: `Use this to list the most recent events matching the given filters.
@@ -49,6 +50,7 @@ export const list_events = tool(
 );
 
 export const batch_get_events = tool(
+  "crashlytics",
   {
     name: "batch_get_events",
     description: `Gets specific events by resource name.

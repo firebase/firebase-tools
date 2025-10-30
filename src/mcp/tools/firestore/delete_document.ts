@@ -6,6 +6,7 @@ import { FirestoreDelete } from "../../../firestore/delete";
 import { Emulators } from "../../../emulator/types";
 
 export const delete_document = tool(
+  "firestore",
   {
     name: "delete_document",
     description:

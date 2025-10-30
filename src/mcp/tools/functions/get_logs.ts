@@ -42,6 +42,7 @@ function validateTimestamp(label: string, value: string): string | null {
 }
 
 export const get_logs = tool(
+  "functions",
   {
     name: "get_logs",
     description:
