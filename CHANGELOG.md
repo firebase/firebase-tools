@@ -9,3 +9,4 @@
 - Added GraphQL `__typename` support in Data Connect.
 - Support enum values in Data Connect CEL expressions.
 - Support `_id`, a global ID field in Data Connect.
+- Updated to v0.8.17 of the Pub/Sub emulator, which includes vulnerability fixes.
