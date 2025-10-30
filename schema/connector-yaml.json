@@ -16,7 +16,7 @@
         },
         "packageJSONDir": {
           "type": "string",
-          "description": "The directory containining the package.json to install the generated package in."
+          "description": "The directory containing the package.json to install the generated package in."
         }
       }
     },
