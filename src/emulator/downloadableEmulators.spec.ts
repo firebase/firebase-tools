@@ -15,31 +15,16 @@ function checkDownloadPath(name: DownloadableEmulator): void {
 }
 
 describe("downloadDetails", () => {
-  const tempEnvVars: Record<DownloadableEmulator, string> = {
-    firestore: "",
-    database: "",
-    pubsub: "",
-  };
+  let sandbox: sinon.SinonSandbox;
   let chmodStub: sinon.SinonStub;
-  const originalProcessPlatform = process.platform;
-  const originalProcessArch = process.arch;
   beforeEach(() => {
     chmodStub = sinon.stub(fs, "chmodSync").returns();
-    tempEnvVars["firestore"] = process.env["FIRESTORE_EMULATOR_BINARY_PATH"] ?? "";
-    tempEnvVars["database"] = process.env["DATABASE_EMULATOR_BINARY_PATH"] ?? "";
-    tempEnvVars["pubsub"] = process.env["PUBSUB_EMULATOR_BINARY_PATH"] ?? "";
-    delete process.env["FIRESTORE_EMULATOR_BINARY_PATH"];
-    delete process.env["DATABASE_EMULATOR_BINARY_PATH"];
-    delete process.env["PUBSUB_EMULATOR_BINARY_PATH"];
+    sandbox = sinon.createSandbox();
   });
 
   afterEach(() => {
     chmodStub.restore();
-    process.env["FIRESTORE_EMULATOR_BINARY_PATH"] = tempEnvVars["firestore"];
-    process.env["DATABASE_EMULATOR_BINARY_PATH"] = tempEnvVars["database"];
-    process.env["PUBSUB_EMULATOR_BINARY_PATH"] = tempEnvVars["pubsub"];
-    Object.defineProperty(process, "platform", { value: originalProcessPlatform });
-    Object.defineProperty(process, "arch", { value: originalProcessArch });
+    sandbox.restore();
   });
   it("should match the basename of remoteUrl", () => {
     checkDownloadPath(Emulators.FIRESTORE);
@@ -48,9 +33,13 @@ describe("downloadDetails", () => {
   });
 
   it("should apply environment varable overrides", () => {
-    process.env["FIRESTORE_EMULATOR_BINARY_PATH"] = "my/fake/firestore";
-    process.env["DATABASE_EMULATOR_BINARY_PATH"] = "my/fake/database";
-    process.env["PUBSUB_EMULATOR_BINARY_PATH"] = "my/fake/pubsub";
+    sandbox.stub(process, "env").value({
+      ...process.env,
+      FIRESTORE_EMULATOR_BINARY_PATH: "my/fake/firestore",
+      DATABASE_EMULATOR_BINARY_PATH: "my/fake/database",
+      PUBSUB_EMULATOR_BINARY_PATH: "my/fake/pubsub",
+      DATACONNECT_EMULATOR_BINARY_PATH: "my/fake/dataconnect",
+    });
 
     expect(downloadableEmulators.getDownloadDetails(Emulators.FIRESTORE).binaryPath).to.equal(
       "my/fake/firestore",
@@ -61,32 +50,34 @@ describe("downloadDetails", () => {
     expect(downloadableEmulators.getDownloadDetails(Emulators.PUBSUB).binaryPath).to.equal(
       "my/fake/pubsub",
     );
-    expect(chmodStub.callCount).to.equal(3);
+    expect(downloadableEmulators.getDownloadDetails(Emulators.DATACONNECT).binaryPath).to.equal(
+      "my/fake/dataconnect",
+    );
+    expect(chmodStub.callCount).to.equal(4);
   });
 
   it("should select the right binary for the host environment", () => {
     let downloadDetails;
-    Object.defineProperty(process, "platform", { value: "linux" });
+    sandbox.stub(process, "platform").value("linux");
     downloadDetails = downloadableEmulators.generateDownloadDetails();
     expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.linux.remoteUrl,
     );
 
-    Object.defineProperty(process, "platform", { value: "win32" });
+    sandbox.stub(process, "platform").value("win32");
     downloadDetails = downloadableEmulators.generateDownloadDetails();
     expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.win32.remoteUrl,
     );
 
-    Object.defineProperty(process, "platform", { value: "darwin" });
-
-    Object.defineProperty(process, "arch", { value: "x64" });
+    sandbox.stub(process, "platform").value("darwin");
+    sandbox.stub(process, "arch").value("x64");
     downloadDetails = downloadableEmulators.generateDownloadDetails();
     expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.darwin.remoteUrl,
     );
 
-    Object.defineProperty(process, "arch", { value: "arm64" });
+    sandbox.stub(process, "arch").value("arm64");
     downloadDetails = downloadableEmulators.generateDownloadDetails();
     expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.darwin_arm64.remoteUrl,
