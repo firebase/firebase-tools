@@ -5,6 +5,7 @@ import * as fs from "fs-extra";
 
 import * as downloadableEmulators from "./downloadableEmulators";
 import { Emulators } from "./types";
+import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
@@ -20,6 +21,7 @@ describe("downloadDetails", () => {
     pubsub: "",
   };
   let chmodStub: sinon.SinonStub;
+  let originalProcessArch = process.arch;
   beforeEach(() => {
     chmodStub = sinon.stub(fs, "chmodSync").returns();
     tempEnvVars["firestore"] = process.env["FIRESTORE_EMULATOR_BINARY_PATH"] ?? "";
@@ -28,6 +30,7 @@ describe("downloadDetails", () => {
     delete process.env["FIRESTORE_EMULATOR_BINARY_PATH"];
     delete process.env["DATABASE_EMULATOR_BINARY_PATH"];
     delete process.env["PUBSUB_EMULATOR_BINARY_PATH"];
+    originalProcessArch = process.arch;
   });
 
   afterEach(() => {
@@ -35,6 +38,7 @@ describe("downloadDetails", () => {
     process.env["FIRESTORE_EMULATOR_BINARY_PATH"] = tempEnvVars["firestore"];
     process.env["DATABASE_EMULATOR_BINARY_PATH"] = tempEnvVars["database"];
     process.env["PUBSUB_EMULATOR_BINARY_PATH"] = tempEnvVars["pubsub"];
+    Object.defineProperty(process, "arch", { value: originalProcessArch });
   });
   it("should match the basename of remoteUrl", () => {
     checkDownloadPath(Emulators.FIRESTORE);
@@ -57,5 +61,34 @@ describe("downloadDetails", () => {
       "my/fake/pubsub",
     );
     expect(chmodStub.callCount).to.equal(3);
+  });
+
+  it("should select the right binary for the host environment", () => {
+    let downloadDetails;
+    Object.defineProperty(process, "platform", { value: "linux" });
+    downloadDetails = downloadableEmulators.generateDownloadDetails();
+    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+      emulatorUpdateDetails.dataconnect.linux.remoteUrl,
+    );
+
+    Object.defineProperty(process, "platform", { value: "win32" });
+    downloadDetails = downloadableEmulators.generateDownloadDetails();
+    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+      emulatorUpdateDetails.dataconnect.win32.remoteUrl,
+    );
+
+    Object.defineProperty(process, "platform", { value: "darwin" });
+
+    Object.defineProperty(process, "arch", { value: "x64" });
+    downloadDetails = downloadableEmulators.generateDownloadDetails();
+    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+      emulatorUpdateDetails.dataconnect.darwin.remoteUrl,
+    );
+
+    Object.defineProperty(process, "arch", { value: "arm64" });
+    downloadDetails = downloadableEmulators.generateDownloadDetails();
+    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+      emulatorUpdateDetails.dataconnect.darwin_arm64.remoteUrl,
+    );
   });
 });
