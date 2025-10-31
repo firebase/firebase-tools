@@ -34,6 +34,15 @@ const AIStepSchema = z
   })
   .describe("Step within a test case; run during the execution of the test.");
 
+const defaultDevices = [
+  {
+    model: "MediumPhone.arm",
+    version: "30",
+    locale: "en_US",
+    orientation: "portrait",
+  },
+];
+
 export const run_tests = tool(
   "apptesting",
   {
@@ -42,14 +51,7 @@ export const run_tests = tool(
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
-      testDevices: z.array(TestDeviceSchema).default([
-        {
-          model: "MediumPhone.arm",
-          version: "30",
-          locale: "en_US",
-          orientation: "portrait",
-        },
-      ]),
+      testDevices: z.array(TestDeviceSchema).default(defaultDevices),
       testCase: z.object({
         steps: z
           .array(AIStepSchema)
@@ -62,9 +64,11 @@ export const run_tests = tool(
     },
   },
   async ({ appId, releaseBinaryFile, testDevices, testCase }) => {
+    // For some reason, testDevices can still be
+    const devices = testDevices || defaultDevices;
     const client = new AppDistributionClient();
     const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaseName, testDevices, testCase));
+    return toContent(await client.createReleaseTest(releaseName, devices, testCase));
   },
 );
 
