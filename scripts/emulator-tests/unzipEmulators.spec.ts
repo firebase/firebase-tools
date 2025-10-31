@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 import { unzip } from "../../src/unzip";
-import { DownloadDetails } from "../../src/emulator/downloadableEmulators";
+import { generateDownloadDetails } from "../../src/emulator/downloadableEmulators";
 import { Client } from "../../src/apiv2";
 import { tmpdir } from "os";
 
@@ -18,9 +18,10 @@ describe("unzipEmulators", () => {
   });
 
   it("should unzip a ui emulator zip file", async () => {
+    const downloadDetails = generateDownloadDetails();
     const [uiVersion, uiRemoteUrl] = [
-      DownloadDetails.ui.version,
-      DownloadDetails.ui.opts.remoteUrl,
+      downloadDetails.ui.version,
+      downloadDetails.ui.opts.remoteUrl,
     ];
 
     const uiZipPath = path.join(tempDir, `ui-v${uiVersion}.zip`);
@@ -44,9 +45,10 @@ describe("unzipEmulators", () => {
   }).timeout(10000);
 
   it("should unzip a pubsub emulator zip file", async () => {
+    const downloadDetails = generateDownloadDetails();
     const [pubsubVersion, pubsubRemoteUrl] = [
-      DownloadDetails.pubsub.version,
-      DownloadDetails.pubsub.opts.remoteUrl,
+      downloadDetails.pubsub.version,
+      downloadDetails.pubsub.opts.remoteUrl,
     ];
 
     const pubsubZipPath = path.join(tempDir, `pubsub-emulator-v${pubsubVersion}.zip`);
@@ -97,7 +99,7 @@ async function downloadFile(url: string, targetPath: string): Promise<string> {
       }: ${await res.response.text()}`,
       {
         cause: new Error(
-          `Object DownloadDetails from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`,
+          `Object returned by generateDownloadDetails() from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`,
         ),
       },
     );
