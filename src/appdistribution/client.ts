@@ -9,6 +9,7 @@ import { appDistributionOrigin } from "../api";
 
 import {
   AabInfo,
+  AIInstruction,
   BatchRemoveTestersResponse,
   BatchUpdateTestCasesRequest,
   BatchUpdateTestCasesResponse,
@@ -70,7 +71,7 @@ export class AppDistributionClient {
     });
   }
 
-  async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
+  async updateReleaseNotes(releaseName: string, releaseNotes?: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
@@ -275,6 +276,7 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
+    aiInstruction?: AIInstruction,
     loginCredential?: LoginCredential,
     testCaseName?: string,
   ): Promise<ReleaseTest> {
@@ -286,6 +288,7 @@ export class AppDistributionClient {
           deviceExecutions: devices.map((device) => ({ device })),
           loginCredential,
           testCase: testCaseName,
+          aiInstructions: aiInstruction,
         },
       });
       return response.body;
