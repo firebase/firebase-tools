@@ -200,6 +200,34 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
+export async function listServices(projectId: string): Promise<Service[]> {
+  let allServices: Service[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams["pageToken"] = pageToken;
+    }
+
+    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/-/services`,
+      { queryParams },
+    );
+
+    if (res.status !== 200) {
+      throw new FirebaseError(`Failed to list services: ${res.status} ${res.body}`);
+    }
+
+    if (res.body.services) {
+      allServices = allServices.concat(res.body.services);
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return allServices;
+}
+
 // TODO: Replace with real version:
 function functionNameToServiceName(id: string): string {
   return id.toLowerCase().replace(/_/g, "-");
@@ -487,9 +515,14 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
-
-    // TODO: trigger types.
-    httpsTrigger: {},
+    ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+      ? { httpsTrigger: {} }
+      : {
+          eventTrigger: {
+            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            retry: false,
+          },
+        }),
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);

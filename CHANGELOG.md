@@ -1,1 +1,2 @@
+- Upgraded functions::list command to use cloud run api (#9425)
 - Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394).
