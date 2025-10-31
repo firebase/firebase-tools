@@ -21,7 +21,8 @@ describe("downloadDetails", () => {
     pubsub: "",
   };
   let chmodStub: sinon.SinonStub;
-  let originalProcessArch = process.arch;
+  const originalProcessPlatform = process.platform;
+  const originalProcessArch = process.arch;
   beforeEach(() => {
     chmodStub = sinon.stub(fs, "chmodSync").returns();
     tempEnvVars["firestore"] = process.env["FIRESTORE_EMULATOR_BINARY_PATH"] ?? "";
@@ -30,7 +31,6 @@ describe("downloadDetails", () => {
     delete process.env["FIRESTORE_EMULATOR_BINARY_PATH"];
     delete process.env["DATABASE_EMULATOR_BINARY_PATH"];
     delete process.env["PUBSUB_EMULATOR_BINARY_PATH"];
-    originalProcessArch = process.arch;
   });
 
   afterEach(() => {
@@ -38,6 +38,7 @@ describe("downloadDetails", () => {
     process.env["FIRESTORE_EMULATOR_BINARY_PATH"] = tempEnvVars["firestore"];
     process.env["DATABASE_EMULATOR_BINARY_PATH"] = tempEnvVars["database"];
     process.env["PUBSUB_EMULATOR_BINARY_PATH"] = tempEnvVars["pubsub"];
+    Object.defineProperty(process, "platform", { value: originalProcessPlatform });
     Object.defineProperty(process, "arch", { value: originalProcessArch });
   });
   it("should match the basename of remoteUrl", () => {
