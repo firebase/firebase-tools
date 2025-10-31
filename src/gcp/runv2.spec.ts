@@ -382,7 +382,7 @@ describe("runv2", () => {
       const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containers![0].env = [
         { name: "FOO", value: "bar" },
-        { 
+        {
           name: "MY_SECRET",
           valueSource: {
             secretKeyRef: {
@@ -470,10 +470,7 @@ describe("runv2", () => {
     });
 
     it("should return a list of services", async () => {
-      const mockServices = [
-        { name: "service1" },
-        { name: "service2" },
-      ];
+      const mockServices = [{ name: "service1" }, { name: "service2" }];
       getStub.resolves({ status: 200, body: { services: mockServices } });
 
       const services = await runv2.listServices(PROJECT_ID);
@@ -491,9 +488,7 @@ describe("runv2", () => {
       getStub
         .onFirstCall()
         .resolves({ status: 200, body: { services: mockServices1, nextPageToken: "nextPage" } });
-      getStub
-        .onSecondCall()
-        .resolves({ status: 200, body: { services: mockServices2 } });
+      getStub.onSecondCall().resolves({ status: 200, body: { services: mockServices2 } });
 
       const services = await runv2.listServices(PROJECT_ID);
 

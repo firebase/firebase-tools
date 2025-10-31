@@ -514,11 +514,15 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       env.find((e) => e.name === FUNCTION_TARGET_ENV)?.value ||
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
-  
       id,
     ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
       ? { httpsTrigger: {} }
-      : { eventTrigger: { eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown", retry: false } }),
+      : {
+          eventTrigger: {
+            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            retry: false,
+          },
+        }),
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
