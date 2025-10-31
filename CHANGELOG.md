@@ -1,1 +1,1 @@
-- Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394). 
+- Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394).
