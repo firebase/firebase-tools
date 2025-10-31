@@ -1,31 +1,50 @@
 import { Command } from "../command";
-import * as args from "../deploy/functions/args";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
 import { logger } from "../logger";
 import * as Table from "cli-table3";
+import { listServices, endpointFromService } from "../gcp/runv2";
 
 export const command = new Command("functions:list")
   .description("list all deployed functions in your Firebase project")
-  .before(requirePermissions, ["cloudfunctions.functions.list"])
+  .before(requirePermissions, ["run.services.list"])
   .action(async (options: Options) => {
-    const context = {
-      projectId: needProjectId(options),
-    } as args.Context;
-    const existing = await backend.existingBackend(context);
-    const endpointsList = backend.allEndpoints(existing).sort(backend.compareFunctions);
+    const projectId = needProjectId(options);
+
+    let services: any[] = [];
+    try {
+      logger.info(`Listing functions in project ${projectId}...`);
+      services = await listServices(projectId);
+    } catch (err: any) {
+      logger.debug(`Failed to list services:`, err);
+      logger.error(
+        `Failed to list functions. Ensure you have the Cloud Run Admin API enabled and the necessary permissions.`,
+      );
+      return [];
+    }
+
+    if (services.length === 0) {
+      logger.info(`No functions found in project ${projectId}.`);
+      return [];
+    }
+
+    const endpointsList = services
+      .map((service) => endpointFromService(service))
+      .sort(backend.compareFunctions);
+
     const table = new Table({
-      head: ["Function", "Version", "Trigger", "Location", "Memory", "Runtime"],
+      head: ["Function", "Platform", "Trigger", "Location", "Memory", "Runtime"],
       style: { head: ["yellow"] },
     });
+
     for (const endpoint of endpointsList) {
       const trigger = backend.endpointTriggerType(endpoint);
       const availableMemoryMb = endpoint.availableMemoryMb || "---";
       const entry = [
         endpoint.id,
-        endpoint.platform === "gcfv2" ? "v2" : "v1",
+        endpoint.platform,
         trigger,
         endpoint.region,
         availableMemoryMb,
