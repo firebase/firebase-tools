@@ -57,6 +57,15 @@ Module.prototype.require = function (id: string) {
           logToFile(`Applying mock for tool: ${toolName}`);
           return {
             ...tool,
+            mcp: {
+              ...tool.mcp,
+              _meta: {
+                optionalProjectDir: false,
+                requiresProject: false,
+                requiresAuth: false,
+                requiresGemini: false,
+              },
+            },
             fn: async () => mocks[toolName],
           };
         });
