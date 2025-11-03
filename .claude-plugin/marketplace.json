@@ -5,13 +5,13 @@
     "email": "firebase-support@google.com"
   },
   "metadata": {
-    "description": "Official Firebase CLI and MCP Server for managing Firebase projects",
+    "description": "Official Firebase Claude Plugin for managing Firebase projects",
     "version": "1.0.0"
   },
   "plugins": [
     {
-      "name": "firebase-mcp-server",
-      "description": "Firebase Model Context Protocol (MCP) Server for interacting with Firebase services including Firestore, Realtime Database, Cloud Functions, Hosting, and more",
+      "name": "firebase",
+      "description": "Firebase Model Context Protocol (MCP) Server for interacting with Firebase services including Firestore, Authentication, Cloud Functions, Hosting, and more",
       "version": "14.23.0",
       "author": {
         "name": "Firebase",
