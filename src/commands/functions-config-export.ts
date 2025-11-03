@@ -31,6 +31,8 @@ const SECRET_MANAGER_PERMISSIONS = [
   "secretmanager.versions.add",
 ];
 
+const DEFAULT_SECRET_NAME = "FUNCTIONS_CONFIG_EXPORT";
+
 function maskConfigValues(obj: any): any {
   if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
     const masked: Record<string, any> = {};
@@ -43,8 +45,8 @@ function maskConfigValues(obj: any): any {
 }
 
 export const command = new Command("functions:config:export")
-  .description("export functions.config() values as JSON and store it as a single secret in Cloud Secret Manager")
-  .option("--secret <name>", "name of the secret to create (default: RUNTIME_CONFIG)")
+  .description("export environment config as a JSON secret to store in Cloud Secret Manager")
+  .option("--secret <name>", `name of the secret to create (default: ${DEFAULT_SECRET_NAME})`)
   .withForce("use default secret name without prompting")
   .before(requireAuth)
   .before(ensureApi)
@@ -89,15 +91,14 @@ export const command = new Command("functions:config:export")
       console.log("");
     }
 
-    const defaultSecretName = "FUNCTIONS_CONFIG_EXPORT";
     let secretName = options.secret as string;
     if (!secretName) {
       if (options.force) {
-        secretName = defaultSecretName;
+        secretName = DEFAULT_SECRET_NAME;
       } else {
         secretName = await input({
           message: "What would you like to name the new secret for your configuration?",
-          default: defaultSecretName,
+          default: DEFAULT_SECRET_NAME,
           nonInteractive: options.nonInteractive,
         });
       }
@@ -189,7 +190,7 @@ export const command = new Command("functions:config:export")
       logBullet(
         clc.bold("Note: ") +
           "defineJsonSecret requires firebase-functions v6.6.0 or later. " +
-          "Update your package.json if needed.",
+          `Update to a newer version with ${clc.bold("npm i firebase-functions @latest")}${!sdkVersion ? " if needed" : ""}.`,
       );
     }
     logBullet("Then deploy your functions:\n  " + clc.bold("firebase deploy --only functions"));
