@@ -13,7 +13,7 @@ export const command = new Command("functions:list")
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
 
-    let services: any[] = [];
+    let services: Service[] = [];
     try {
       logger.info(`Listing functions in project ${projectId}...`);
       services = await listServices(projectId);
