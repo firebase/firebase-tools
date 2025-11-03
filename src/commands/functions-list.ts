@@ -5,7 +5,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
 import { logger } from "../logger";
 import * as Table from "cli-table3";
-import { listServices, endpointFromService } from "../gcp/runv2";
+import { listServices, endpointFromService, Service } from "../gcp/runv2";
 
 export const command = new Command("functions:list")
   .description("list all deployed functions in your Firebase project")
