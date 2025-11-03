@@ -59,27 +59,27 @@ describe("downloadDetails", () => {
   it("should select the right binary for the host environment", () => {
     let downloadDetails;
     sandbox.stub(process, "platform").value("linux");
-    downloadDetails = downloadableEmulators.generateDownloadDetails();
-    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+    downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.DATACONNECT);
+    expect(downloadDetails.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.linux.remoteUrl,
     );
 
     sandbox.stub(process, "platform").value("win32");
-    downloadDetails = downloadableEmulators.generateDownloadDetails();
-    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+    downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.DATACONNECT);
+    expect(downloadDetails.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.win32.remoteUrl,
     );
 
     sandbox.stub(process, "platform").value("darwin");
     sandbox.stub(process, "arch").value("x64");
-    downloadDetails = downloadableEmulators.generateDownloadDetails();
-    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+    downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.DATACONNECT);
+    expect(downloadDetails.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.darwin.remoteUrl,
     );
 
     sandbox.stub(process, "arch").value("arm64");
-    downloadDetails = downloadableEmulators.generateDownloadDetails();
-    expect(downloadDetails.dataconnect.opts.remoteUrl).to.equal(
+    downloadDetails = downloadableEmulators.getDownloadDetails(Emulators.DATACONNECT);
+    expect(downloadDetails.opts.remoteUrl).to.equal(
       emulatorUpdateDetails.dataconnect.darwin_arm64.remoteUrl,
     );
   });
