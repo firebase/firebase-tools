@@ -11,8 +11,8 @@
   "plugins": [
     {
       "name": "firebase",
-      "description": "Firebase Model Context Protocol (MCP) Server for interacting with Firebase services including Firestore, Authentication, Cloud Functions, Hosting, and more",
-      "version": "14.23.0",
+      "description": "Firebase Claude Plugin for easy installing the Firebase MCP Server, managing Firebase projects, adding backend service, deploying and hosting apps, and more",
+      "version": "1.0.0",
       "author": {
         "name": "Firebase",
         "url": "https://firebase.google.com/"
