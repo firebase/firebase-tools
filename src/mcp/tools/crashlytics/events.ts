@@ -19,10 +19,11 @@ import { mcpError } from "../../util";
 
 const DUMP_OPTIONS: DumpOptions = { lineWidth: 200 };
 
-function formatFrames(origFrames: Frame[]): string[] {
+function formatFrames(origFrames: Frame[], maxFrames = 20): string[] {
   const frames: Frame[] = origFrames || [];
-  const slicedFrames = frames.length > 20 ? frames.slice(0, 19) : frames;
-  const formatted = slicedFrames.map((frame) => {
+  const shouldTruncate = frames.length > maxFrames;
+  const framesToFormat = shouldTruncate ? frames.slice(0, maxFrames - 1) : frames;
+  const formatted = framesToFormat.map((frame) => {
     let line = `at`;
     if (frame.symbol) {
       line += ` ${frame.symbol}`;
@@ -36,7 +37,7 @@ function formatFrames(origFrames: Frame[]): string[] {
     }
     return line;
   });
-  if (frames.length > 20) {
+  if (shouldTruncate) {
     formatted.push("... frames omitted ...");
   }
   return formatted;
@@ -56,12 +57,10 @@ function toText(event: Event): Record<string, string> {
       const breadcrumbs = (value as Breadcrumb[]) || [];
       const slicedBreadcrumbs = breadcrumbs.length > 10 ? breadcrumbs.slice(-10) : breadcrumbs;
       const breadcrumbLines = slicedBreadcrumbs.map((b) => {
-        const params =
-          b.params && Object.keys(b.params).length > 0
-            ? ` { ${Object.entries(b.params)
-                .map(([k, v]) => `${k}: ${v}`)
-                .join(", ")} }`
-            : "";
+        const paramString = Object.entries(b.params)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ");
+        const params = paramString ? ` { ${paramString} }` : "";
         return `[${b.eventTime}] ${b.title}${params}`;
       });
       result["breadcrumbs"] = breadcrumbLines.join("\n");
