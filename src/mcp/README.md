@@ -56,6 +56,7 @@ gemini extensions install https://github.com/gemini-cli-extensions/firebase/
 The easiest way to set up the Firebase MCP server in Claude Code is to install the official Firebase plugin:
 
 1. Add the Firebase Claude Plugin marketplace:
+
    ```bash
    claude plugin marketplace add firebase/firebase-tools
    ```
@@ -66,6 +67,7 @@ The easiest way to set up the Firebase MCP server in Claude Code is to install t
    ```
 
 You can verify the installation by running:
+
 ```bash
 claude plugin
 ```
