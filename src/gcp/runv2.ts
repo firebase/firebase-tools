@@ -200,7 +200,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
-export async function listServices(projectId: string): Promise<Service[]> {
+export async function listServices(projectId: string, filter?: string): Promise<Service[]> {
   let allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -208,6 +208,9 @@ export async function listServices(projectId: string): Promise<Service[]> {
     const queryParams: Record<string, string> = {};
     if (pageToken) {
       queryParams["pageToken"] = pageToken;
+    }
+    if (filter) {
+      queryParams["labelSelector"] = filter;
     }
 
     const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(

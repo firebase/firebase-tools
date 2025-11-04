@@ -16,7 +16,9 @@ export const command = new Command("functions:list")
     let services: Service[] = [];
     try {
       logger.info(`Listing functions in project ${projectId}...`);
-      services = await listServices(projectId);
+      const v2Services = await listServices(projectId, "goog-managed-by=cloudfunctions");
+      const runServices = await listServices(projectId, "goog-managed-by=firebase-functions");
+      services = [...v2Services, ...runServices];
     } catch (err: any) {
       logger.debug(`Failed to list services:`, err);
       logger.error(
