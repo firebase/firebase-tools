@@ -44,16 +44,20 @@ function formatFrames(origFrames: Frame[], maxFrames = 20): string[] {
 }
 
 // Formats an event into more legible, token-efficient text content sections
+
 function toText(event: Event): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(event)) {
-    // Apply special case text formatting for some sections
     if (key === "logs") {
+      // [2025-01-01T00:00.000:00Z] Log message 1
+      // [2025-01-01T00:00.000:00Z] Log message 2
       const logs: Array<Log> = (value as Array<Log>) || [];
       const slicedLogs = logs.length > 100 ? logs.slice(logs.length - 100) : logs;
       const logLines = slicedLogs.map((log) => `[${log.logTime}] ${log.message}`);
       result["logs"] = logLines.join("\n");
     } else if (key === "breadcrumbs") {
+      // [2025-10-30T06:56:43.147Z] Event_Title1 { key1: value1, key2: value2 }                                                                               │
+      // [2025-10-30T06:56:50.328Z] Event_Title2 { key1: value1, key2: value2 }
       const breadcrumbs = (value as Breadcrumb[]) || [];
       const slicedBreadcrumbs = breadcrumbs.length > 10 ? breadcrumbs.slice(-10) : breadcrumbs;
       const breadcrumbLines = slicedBreadcrumbs.map((b) => {
@@ -65,6 +69,9 @@ function toText(event: Event): Record<string, string> {
       });
       result["breadcrumbs"] = breadcrumbLines.join("\n");
     } else if (key === "threads") {
+      // Thread: Name (crashed)                                                                                                                                                                     │
+      // at java.net.ClassName.methodName (Filename.java:123)
+      // at ...
       let threads = (value as Thread[]) || [];
       if (event.issue?.errorType === ErrorType.FATAL || event.issue?.errorType === ErrorType.ANR) {
         threads = threads.filter((t) => t.crashed || t.blamed);
@@ -76,6 +83,9 @@ function toText(event: Event): Record<string, string> {
       });
       result["threads"] = threadStrings.join("\n\n");
     } else if (key === "exceptions") {
+      // java.lang.IllegalArgumentException: something went wrong                                                                                                                                              │
+      // at java.net.ClassName.methodName (Filename.java:123)
+      // at ...
       const exceptions = (value as Exception[]) || [];
       const exceptionStrings = exceptions.map((exception) => {
         const header = exception.nested ? "Caused by: " : "";
@@ -85,6 +95,9 @@ function toText(event: Event): Record<string, string> {
       });
       result["exceptions"] = exceptionStrings.join("\n\n");
     } else if (key === "errors") {
+      // Error: error title
+      // at ClassName.method (Filename.cc:123)
+      // at ...
       const errors = (value as Error[]) || [];
       const errorStrings = errors.map((error) => {
         const header = `Error: ${error.title || "error"}`;
@@ -93,6 +106,8 @@ function toText(event: Event): Record<string, string> {
       });
       result["errors"] = errorStrings.join("\n\n");
     } else {
+      // field:
+      //   field: value
       result[key] = dump(value, DUMP_OPTIONS);
     }
   }
