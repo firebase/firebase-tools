@@ -39,7 +39,17 @@ export const command = new Command("functions:list")
       );
     }
 
-    const endpointsList = [...v1Endpoints, ...v2Endpoints].sort(backend.compareFunctions);
+    const endpointMap = new Map<string, backend.Endpoint>();
+    for (const endpoint of v1Endpoints) {
+      const key = `${endpoint.region}/${endpoint.id}`;
+      endpointMap.set(key, endpoint);
+    }
+    for (const endpoint of v2Endpoints) {
+      const key = `${endpoint.region}/${endpoint.id}`;
+      endpointMap.set(key, endpoint);
+    }
+
+    const endpointsList = Array.from(endpointMap.values()).sort(backend.compareFunctions);
 
     if (endpointsList.length === 0) {
       logger.info(`No functions found in project ${projectId}.`);
