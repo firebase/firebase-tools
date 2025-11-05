@@ -1,2 +1,3 @@
 - Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394).
 - Upgrades `@google-cloud/pubsub` to `v5` (#9428).
+- Updated to v2.16.0 of the Data Connect emulator, which includes internal improvements (#9361).
