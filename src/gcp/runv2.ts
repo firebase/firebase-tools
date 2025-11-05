@@ -201,7 +201,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
 }
 
 export async function listServices(projectId: string, filter?: string): Promise<Service[]> {
-  let allServices: Service[] = [];
+  const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
   do {
