@@ -66,6 +66,8 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   const adminAndWebApps = (
     await Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p)))
   ).flat();
+  console.log("packageJsonFiles", packageJsonFiles);
+  console.log("adminAndWebApps", adminAndWebApps);
 
   const flutterAppPromises = await Promise.all(
     pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f)),
@@ -188,7 +190,7 @@ async function packageJsonToAdminOrWebApp(
       directory: path.dirname(packageJsonFile),
     });
   }
-  if (allDeps.includes("firebase") || detectApps.length === 0) {
+  if (allDeps.includes("firebase") || detectedApps.length === 0) {
     detectedApps.push({
       platform: Platform.WEB,
       directory: path.dirname(packageJsonFile),

@@ -678,6 +678,7 @@ describe("appUtils", () => {
         {
           platform: Platform.WEB,
           directory: ".",
+          frameworks: [],
         },
       ]);
     });
