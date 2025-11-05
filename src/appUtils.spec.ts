@@ -620,6 +620,69 @@ describe("appUtils", () => {
       ]);
     });
 
+    it("should detect an admin app with firebase-admin dependency", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              "firebase-admin": "1.0.0",
+            },
+          }),
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.ADMIN_NODE,
+          directory: ".",
+        },
+      ]);
+    });
+
+    it("should detect an admin app with firebase-functions dependency", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              "firebase-functions": "1.0.0",
+            },
+          }),
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.ADMIN_NODE,
+          directory: ".",
+        },
+      ]);
+    });
+
+    it("should detect an admin and client app", async () => {
+      mockfs({
+        [testDir]: {
+          "package.json": JSON.stringify({
+            dependencies: {
+              "firebase-admin": "1.0.0",
+              firebase: "1.0.0",
+            },
+          }),
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.ADMIN_NODE,
+          directory: ".",
+        },
+        {
+          platform: Platform.WEB,
+          directory: ".",
+          frameworks: [],
+        },
+      ]);
+    });
+
     it("should detect angular web framework", async () => {
       mockfs({
         [testDir]: {

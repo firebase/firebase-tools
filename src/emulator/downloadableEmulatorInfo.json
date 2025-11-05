@@ -61,6 +61,14 @@
       "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-amd64-v2.16.0",
       "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.16.0"
     },
+    "darwin_arm64": {
+      "version": "2.16.0",
+      "expectedSize": 29442946,
+      "expectedChecksum": "15a6ee63f48021197df5395455666f29",
+      "expectedChecksumSHA256": "4a3933f55db380f20c478cd1a3cc4da8742da75bdcea589fc6e1f52b18943f48",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-arm64-v2.16.0",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.16.0"
+    },
     "win32": {
       "version": "2.16.0",
       "expectedSize": 30456320,
