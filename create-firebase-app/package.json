@@ -1,0 +1,29 @@
+{
+  "name": "create-firebase-app",
+  "version": "0.0.1",
+  "description": "Create a Firebase project with a single command",
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "bin": {
+    "create-firebase-app": "./dist/create-firebase-app/src/index.js"
+  },
+  "scripts": {
+    "build": "npx tsc --build",
+    "dev": "npm run build && node dist/create-firebase-app/index.js",
+    "dev:watch": "nodemon --watch dist --exec \"node dist/index.js\"",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "firebase",
+    "cli",
+    "create-app"
+  ],
+  "author": "Google Inc.",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@types/node": "^18.19.1",
+    "typescript": "^4.5.4"
+  }
+}

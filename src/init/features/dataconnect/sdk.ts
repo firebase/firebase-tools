@@ -68,7 +68,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     const choice = await select({
       message: `Do you want to create an app template?`,
       choices: [
-        // TODO: Create template tailored to FDC.
+        // TODO: Create template tailored to FDC for React.
         { name: `React${npxMissingWarning}`, value: "react" },
         { name: `Next.JS${npxMissingWarning}`, value: "next" },
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },

@@ -672,7 +672,7 @@ export class AgentProjectState extends ProjectState {
   ): Config {
     // Empty masks indicate a full update.
     if (!updateMask) {
-      this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
+      this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
       this.enableImprovedEmailPrivacy =
         update.emailPrivacyConfig?.enableImprovedEmailPrivacy ?? false;
