@@ -146,11 +146,18 @@ export interface Generate {
   swiftSdk?: SwiftSDK | SwiftSDK[];
   kotlinSdk?: KotlinSDK | KotlinSDK[];
   dartSdk?: DartSDK | DartSDK[];
+  adminNodeSdk?: AdminNodeSDK | AdminNodeSDK[];
 }
 
 export interface SupportedFrameworks {
   react?: boolean;
   angular?: boolean;
+}
+
+export interface AdminNodeSDK {
+  outputDir: string;
+  package: string;
+  packageJsonDir?: string;
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {

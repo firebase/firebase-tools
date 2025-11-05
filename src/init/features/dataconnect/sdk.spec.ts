@@ -108,6 +108,18 @@ describe("addSdkGenerateToConnectorYaml", () => {
       },
     ]);
   });
+
+  it("should add adminSdk for admin node platform", () => {
+    app.platform = Platform.ADMIN_NODE;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
+      {
+        outputDir: "../app/src/dataconnect-admin-generated",
+        package: "@dataconnect/admin-generated",
+        packageJsonDir: "../app",
+      },
+    ]);
+  });
 });
 
 describe("chooseApp", () => {

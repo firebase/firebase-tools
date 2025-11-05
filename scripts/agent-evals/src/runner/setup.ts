@@ -13,17 +13,3 @@ export async function buildFirebaseCli() {
   console.log(`Building Firebase CLI at ${firebaseCliRoot}`);
   await execPromise("./scripts/clean-install.sh", { cwd: firebaseCliRoot });
 }
-
-export async function clearUserMcpServers() {
-  console.log(`Clearing existing MCP servers...`);
-  try {
-    await execPromise("gemini extensions uninstall firebase");
-  } catch (_: any) {
-    /* This can fail if there's nothing installed, so ignore that */
-  }
-  try {
-    await execPromise("gemini mcp remove firebase");
-  } catch (_: any) {
-    /* This can fail if there's nothing installed, so ignore that */
-  }
-}
