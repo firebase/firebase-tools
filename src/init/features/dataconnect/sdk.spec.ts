@@ -82,7 +82,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
     expect(connectorYaml.generate?.dartSdk).to.deep.equal([
       {
         outputDir: "../app/lib/dataconnect_generated",
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       },
     ]);
   });

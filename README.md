@@ -1,6 +1,6 @@
-# Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwiZXhwZXJpbWVudGFsOm1jcCIsIi0tZGlyIiwiLiJdfQ==)
+# Firebase CLI and MCP Server [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwiZXhwZXBpbWVudGFsOm1jcCIsIi0tZGlyIiwiLiJdfQ==)
 
-The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line.
+The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line. This repository is also the home of the official Firebase MCP Server. For more information, please see the [Firebase MCP Server documentation](./src/mcp).
 
 - Deploy code and assets to your Firebase projects
 - Run a local web server for your Firebase Hosting site
@@ -87,9 +87,17 @@ These commands let you deploy and interact with your Firebase services.
 
 ### App Distribution Commands
 
-| Command                        | Description            |
-| ------------------------------ | ---------------------- |
-| **appdistribution:distribute** | Upload a distribution. |
+| Command                              | Description                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **appdistribution:distribute**       | Upload a release binary and optionally distribute it to testers and run automated tests. |
+| **appdistribution:testers:list**     | List testers in project.                                                                 |
+| **appdistribution:testers:add**      | Add testers to project (and group, if specified via flag).                               |
+| **appdistribution:testers:remove**   | Remove testers from a project (or group, if specified via flag).                         |
+| **appdistribution:groups:list**      | List groups (of testers).                                                                |
+| **appdistribution:groups:create**    | Create a group (of testers).                                                             |
+| **appdistribution:groups:delete**    | Delete a group (of testers).                                                             |
+| **appdistribution:testcases:export** | Export test cases as a YAML file.                                                        |
+| **appdistribution:testcases:import** | Import test cases from YAML file.                                                        |
 
 ### Auth Commands
 

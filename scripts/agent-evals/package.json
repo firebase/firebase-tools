@@ -2,18 +2,23 @@
   "name": "agent-evals",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
   "type": "module",
   "scripts": {
-    "test": "tsx ./main.ts"
+    "build": "tsc",
+    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
+    "test:dev": "SKIP_REBUILD=true npm run test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^24.9.0"
+  },
   "dependencies": {
+    "mocha": "^11.7.1",
     "node-pty": "^1.0.0",
     "strip-ansi": "^7.1.0",
-    "tsx": "^4.11.0",
-    "vitest": "^1.6.0"
+    "tsx": "^4.11.0"
   }
 }

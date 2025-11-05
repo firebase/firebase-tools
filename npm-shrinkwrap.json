@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "14.20.0",
+  "version": "14.23.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "14.20.0",
+      "version": "14.23.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.6",
@@ -14,7 +14,7 @@
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
-        "@google-cloud/pubsub": "^4.5.0",
+        "@google-cloud/pubsub": "^4.11.0",
         "@inquirer/prompts": "^7.4.0",
         "@modelcontextprotocol/sdk": "^1.10.2",
         "abort-controller": "^3.0.0",
@@ -119,7 +119,7 @@
         "@types/mock-fs": "4.13.4",
         "@types/multer": "^1.4.3",
         "@types/node": "^18.19.1",
-        "@types/node-fetch": "^2.5.12",
+        "@types/node-fetch": "^2.6.13",
         "@types/pg": "^8.11.2",
         "@types/progress": "^2.0.3",
         "@types/react": "^18.2.58",
@@ -2350,16 +2350,17 @@
       }
     },
     "node_modules/@google-cloud/pubsub": {
-      "version": "4.5.0",
-      "resolved": "https://registry.npmjs.org/@google-cloud/pubsub/-/pubsub-4.5.0.tgz",
-      "integrity": "sha512-ptRLLDrAp1rStD1n3ZrG8FdAfpccqI6M5rCaceF6PL7DU3hqJbvQ2Y91G8MKG7c7zK+jiWv655Qf5r2IvjTzwA==",
+      "version": "4.11.0",
+      "resolved": "https://registry.npmjs.org/@google-cloud/pubsub/-/pubsub-4.11.0.tgz",
+      "integrity": "sha512-xWxJAlyUGd6OPp97u8maMcI3xVXuHjxfwh6Dr7P/P+6NK9o446slJobsbgsmK0xKY4nTK8m5uuJrhEKapfZSmQ==",
+      "license": "Apache-2.0",
       "dependencies": {
         "@google-cloud/paginator": "^5.0.0",
         "@google-cloud/precise-date": "^4.0.0",
         "@google-cloud/projectify": "^4.0.0",
-        "@google-cloud/promisify": "^4.0.0",
-        "@opentelemetry/api": "~1.8.0",
-        "@opentelemetry/semantic-conventions": "~1.21.0",
+        "@google-cloud/promisify": "~4.0.0",
+        "@opentelemetry/api": "~1.9.0",
+        "@opentelemetry/semantic-conventions": "~1.30.0",
         "arrify": "^2.0.0",
         "extend": "^3.0.2",
         "google-auth-library": "^9.3.0",
@@ -4324,17 +4325,19 @@
       }
     },
     "node_modules/@opentelemetry/api": {
-      "version": "1.8.0",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.8.0.tgz",
-      "integrity": "sha512-I/s6F7yKUDdtMsoBWXJe8Qz40Tui5vsuKCWJEWVL+5q9sSWRzzx6v2KeNsOBEwd94j0eWkpWCH4yB6rZg9Mf0w==",
+      "version": "1.9.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.9.0.tgz",
+      "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==",
+      "license": "Apache-2.0",
       "engines": {
         "node": ">=8.0.0"
       }
     },
     "node_modules/@opentelemetry/semantic-conventions": {
-      "version": "1.21.0",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.21.0.tgz",
-      "integrity": "sha512-lkC8kZYntxVKr7b8xmjCVUgE0a8xgDakPyDo9uSWavXPyYqLgYYGdEd2j8NxihRyb6UwpX3G/hFUF4/9q2V+/g==",
+      "version": "1.30.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.30.0.tgz",
+      "integrity": "sha512-4VlGgo32k2EQ2wcCY3vEU28A0O13aOtHz3Xt2/2U5FAh9EfhD6t6DqL5Z6yAnRCntbTFDU4YfbpyzSlHNWycPw==",
+      "license": "Apache-2.0",
       "engines": {
         "node": ">=14"
       }
@@ -5075,27 +5078,14 @@
       }
     },
     "node_modules/@types/node-fetch": {
-      "version": "2.5.12",
-      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.5.12.tgz",
-      "integrity": "sha512-MKgC4dlq4kKNa/mYrwpKfzQMB5X3ee5U6fSprkKpToBqBmX4nFZL9cW5jl6sWn+xpRJ7ypWh2yyqqr8UUCstSw==",
+      "version": "2.6.13",
+      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.6.13.tgz",
+      "integrity": "sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==",
       "dev": true,
+      "license": "MIT",
       "dependencies": {
         "@types/node": "*",
-        "form-data": "^3.0.0"
-      }
-    },
-    "node_modules/@types/node-fetch/node_modules/form-data": {
-      "version": "3.0.2",
-      "resolved": "https://registry.npmjs.org/form-data/-/form-data-3.0.2.tgz",
-      "integrity": "sha512-sJe+TQb2vIaIyO783qN6BlMYWMw3WBOHA1Ay2qxsnjuafEOQFJ2JakedOQirT6D5XPRxDvS7AHYyem9fTpb4LQ==",
-      "dev": true,
-      "dependencies": {
-        "asynckit": "^0.4.0",
-        "combined-stream": "^1.0.8",
-        "mime-types": "^2.1.12"
-      },
-      "engines": {
-        "node": ">= 6"
+        "form-data": "^4.0.4"
       }
     },
     "node_modules/@types/normalize-package-data": {
@@ -9054,6 +9044,21 @@
         "node": ">= 0.4"
       }
     },
+    "node_modules/es-set-tostringtag": {
+      "version": "2.1.0",
+      "resolved": "https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz",
+      "integrity": "sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==",
+      "license": "MIT",
+      "dependencies": {
+        "es-errors": "^1.3.0",
+        "get-intrinsic": "^1.2.6",
+        "has-tostringtag": "^1.0.2",
+        "hasown": "^2.0.2"
+      },
+      "engines": {
+        "node": ">= 0.4"
+      }
+    },
     "node_modules/es6-error": {
       "version": "4.1.1",
       "resolved": "https://registry.npmjs.org/es6-error/-/es6-error-4.1.1.tgz",
@@ -10566,12 +10571,15 @@
       }
     },
     "node_modules/form-data": {
-      "version": "4.0.1",
-      "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.1.tgz",
-      "integrity": "sha512-tzN8e4TX8+kkxGPK8D5u0FNmjPUjw3lwC9lSLxxoB/+GtsJG91CO8bSWy73APlgAZzZbXEYZJuxjkHH2w+Ezhw==",
+      "version": "4.0.4",
+      "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.4.tgz",
+      "integrity": "sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==",
+      "license": "MIT",
       "dependencies": {
         "asynckit": "^0.4.0",
         "combined-stream": "^1.0.8",
+        "es-set-tostringtag": "^2.1.0",
+        "hasown": "^2.0.2",
         "mime-types": "^2.1.12"
       },
       "engines": {
@@ -11955,6 +11963,21 @@
       "resolved": "https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz",
       "integrity": "sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==",
       "license": "MIT",
+      "engines": {
+        "node": ">= 0.4"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/has-tostringtag": {
+      "version": "1.0.2",
+      "resolved": "https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz",
+      "integrity": "sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==",
+      "license": "MIT",
+      "dependencies": {
+        "has-symbols": "^1.0.3"
+      },
       "engines": {
         "node": ">= 0.4"
       },
@@ -23632,16 +23655,16 @@
       "integrity": "sha512-Orxzlfb9c67A15cq2JQEyVc7wEsmFBmHjZWZYQMUyJ1qivXyMwdyNOs9odi79hze+2zqdTtu1E19IM/FtqZ10g=="
     },
     "@google-cloud/pubsub": {
-      "version": "4.5.0",
-      "resolved": "https://registry.npmjs.org/@google-cloud/pubsub/-/pubsub-4.5.0.tgz",
-      "integrity": "sha512-ptRLLDrAp1rStD1n3ZrG8FdAfpccqI6M5rCaceF6PL7DU3hqJbvQ2Y91G8MKG7c7zK+jiWv655Qf5r2IvjTzwA==",
+      "version": "4.11.0",
+      "resolved": "https://registry.npmjs.org/@google-cloud/pubsub/-/pubsub-4.11.0.tgz",
+      "integrity": "sha512-xWxJAlyUGd6OPp97u8maMcI3xVXuHjxfwh6Dr7P/P+6NK9o446slJobsbgsmK0xKY4nTK8m5uuJrhEKapfZSmQ==",
       "requires": {
         "@google-cloud/paginator": "^5.0.0",
         "@google-cloud/precise-date": "^4.0.0",
         "@google-cloud/projectify": "^4.0.0",
-        "@google-cloud/promisify": "^4.0.0",
-        "@opentelemetry/api": "~1.8.0",
-        "@opentelemetry/semantic-conventions": "~1.21.0",
+        "@google-cloud/promisify": "~4.0.0",
+        "@opentelemetry/api": "~1.9.0",
+        "@opentelemetry/semantic-conventions": "~1.30.0",
         "arrify": "^2.0.0",
         "extend": "^3.0.2",
         "google-auth-library": "^9.3.0",
@@ -24937,14 +24960,14 @@
       }
     },
     "@opentelemetry/api": {
-      "version": "1.8.0",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.8.0.tgz",
-      "integrity": "sha512-I/s6F7yKUDdtMsoBWXJe8Qz40Tui5vsuKCWJEWVL+5q9sSWRzzx6v2KeNsOBEwd94j0eWkpWCH4yB6rZg9Mf0w=="
+      "version": "1.9.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.9.0.tgz",
+      "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
     },
     "@opentelemetry/semantic-conventions": {
-      "version": "1.21.0",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.21.0.tgz",
-      "integrity": "sha512-lkC8kZYntxVKr7b8xmjCVUgE0a8xgDakPyDo9uSWavXPyYqLgYYGdEd2j8NxihRyb6UwpX3G/hFUF4/9q2V+/g=="
+      "version": "1.30.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.30.0.tgz",
+      "integrity": "sha512-4VlGgo32k2EQ2wcCY3vEU28A0O13aOtHz3Xt2/2U5FAh9EfhD6t6DqL5Z6yAnRCntbTFDU4YfbpyzSlHNWycPw=="
     },
     "@pkgjs/parseargs": {
       "version": "0.11.0",
@@ -25618,26 +25641,13 @@
       }
     },
     "@types/node-fetch": {
-      "version": "2.5.12",
-      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.5.12.tgz",
-      "integrity": "sha512-MKgC4dlq4kKNa/mYrwpKfzQMB5X3ee5U6fSprkKpToBqBmX4nFZL9cW5jl6sWn+xpRJ7ypWh2yyqqr8UUCstSw==",
+      "version": "2.6.13",
+      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.6.13.tgz",
+      "integrity": "sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==",
       "dev": true,
       "requires": {
         "@types/node": "*",
-        "form-data": "^3.0.0"
-      },
-      "dependencies": {
-        "form-data": {
-          "version": "3.0.2",
-          "resolved": "https://registry.npmjs.org/form-data/-/form-data-3.0.2.tgz",
-          "integrity": "sha512-sJe+TQb2vIaIyO783qN6BlMYWMw3WBOHA1Ay2qxsnjuafEOQFJ2JakedOQirT6D5XPRxDvS7AHYyem9fTpb4LQ==",
-          "dev": true,
-          "requires": {
-            "asynckit": "^0.4.0",
-            "combined-stream": "^1.0.8",
-            "mime-types": "^2.1.12"
-          }
-        }
+        "form-data": "^4.0.4"
       }
     },
     "@types/normalize-package-data": {
@@ -28557,6 +28567,17 @@
         "es-errors": "^1.3.0"
       }
     },
+    "es-set-tostringtag": {
+      "version": "2.1.0",
+      "resolved": "https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz",
+      "integrity": "sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==",
+      "requires": {
+        "es-errors": "^1.3.0",
+        "get-intrinsic": "^1.2.6",
+        "has-tostringtag": "^1.0.2",
+        "hasown": "^2.0.2"
+      }
+    },
     "es6-error": {
       "version": "4.1.1",
       "resolved": "https://registry.npmjs.org/es6-error/-/es6-error-4.1.1.tgz",
@@ -29657,12 +29678,14 @@
       }
     },
     "form-data": {
-      "version": "4.0.1",
-      "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.1.tgz",
-      "integrity": "sha512-tzN8e4TX8+kkxGPK8D5u0FNmjPUjw3lwC9lSLxxoB/+GtsJG91CO8bSWy73APlgAZzZbXEYZJuxjkHH2w+Ezhw==",
+      "version": "4.0.4",
+      "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.4.tgz",
+      "integrity": "sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==",
       "requires": {
         "asynckit": "^0.4.0",
         "combined-stream": "^1.0.8",
+        "es-set-tostringtag": "^2.1.0",
+        "hasown": "^2.0.2",
         "mime-types": "^2.1.12"
       }
     },
@@ -30705,6 +30728,14 @@
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz",
       "integrity": "sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ=="
+    },
+    "has-tostringtag": {
+      "version": "1.0.2",
+      "resolved": "https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz",
+      "integrity": "sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==",
+      "requires": {
+        "has-symbols": "^1.0.3"
+      }
     },
     "has-unicode": {
       "version": "2.0.1",
