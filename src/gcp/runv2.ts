@@ -223,7 +223,7 @@ export async function listServices(projectId: string, filter?: string): Promise<
     }
 
     if (res.body.services) {
-      allServices = allServices.concat(res.body.services);
+      allServices.push(...res.body.services);
     }
     pageToken = res.body.nextPageToken;
   } while (pageToken);
