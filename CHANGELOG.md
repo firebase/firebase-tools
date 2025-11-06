@@ -1,2 +1,0 @@
-- Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394).
-- Upgrades `@google-cloud/pubsub` to `v5` (#9428).
