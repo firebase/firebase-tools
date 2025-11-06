@@ -5,7 +5,7 @@
     "email": "firebase-support@google.com"
   },
   "metadata": {
-    "description": "Official Firebase Claude plugin for managing Firebase projects",
+    "description": "Official Claude plugin for Firebase to help understand and manage your Firebase project, resources, and data",
     "version": "1.0.0"
   },
   "plugins": [
