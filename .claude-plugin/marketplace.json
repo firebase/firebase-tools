@@ -31,23 +31,12 @@
         "cli"
       ],
       "category": "development",
-      "tags": [
-        "firebase",
-        "backend",
-        "database",
-        "cloud-services"
-      ],
+      "tags": ["firebase", "backend", "database", "cloud-services"],
       "mcpServers": {
         "firebase": {
           "description": "Firebase MCP server for understanding and managing your Firebase project, resources, and data",
           "command": "npx",
-          "args": [
-            "-y",
-            "firebase-tools",
-            "mcp",
-            "--dir",
-            "."
-          ],
+          "args": ["-y", "firebase-tools", "mcp", "--dir", "."],
           "env": {
             "IS_FIREBASE_MCP": "true"
           }
