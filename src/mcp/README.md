@@ -66,11 +66,11 @@ The easiest way to set up the Firebase MCP server in Claude Code is to install t
    claude plugin install firebase@firebase
    ```
 
-You can verify the installation by running:
+3.  Verify the installation:
 
-```bash
-claude plugin
-```
+    ```bash
+    claude plugin
+    ```
 
 ##### Option 2: Manual MCP Server Configuration
 
