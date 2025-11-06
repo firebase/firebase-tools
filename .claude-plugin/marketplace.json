@@ -5,13 +5,13 @@
     "email": "firebase-support@google.com"
   },
   "metadata": {
-    "description": "Official Firebase Claude Plugin for managing Firebase projects",
+    "description": "Official Firebase Claude plugin for managing Firebase projects",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "firebase",
-      "description": "Firebase Claude Plugin for easy installing the Firebase MCP Server, managing Firebase projects, adding backend service, deploying and hosting apps, and more",
+      "description": "Firebase Claude plugin for easy installing the Firebase MCP Server, managing Firebase projects, adding backend service, deploying and hosting apps, and more",
       "version": "1.0.0",
       "author": {
         "name": "Firebase",
