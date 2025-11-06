@@ -39,7 +39,7 @@
       ],
       "mcpServers": {
         "firebase": {
-          "description": "Firebase MCP Server for managing Firebase projects and services",
+          "description": "Firebase MCP server for understanding and managing your Firebase project, resources, and data",
           "command": "npx",
           "args": [
             "-y",
