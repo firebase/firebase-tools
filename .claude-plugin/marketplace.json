@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "firebase",
-      "description": "Firebase Claude plugin for easy installing the Firebase MCP Server, managing Firebase projects, adding backend service, deploying and hosting apps, and more",
+      "description": "Claude plugin for Firebase that installs the Firebase MCP server and helps to manage Firebase projects, add backend services, add AI features, deploy & host apps, and more",
       "version": "1.0.0",
       "author": {
         "name": "Firebase",
