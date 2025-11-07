@@ -37,15 +37,12 @@ Here are a list of prerequisite steps that must be completed before running a te
 
 1. **Make sure this is an Android app**. The App Testing agent only works with Android apps. If 
    this is not an Android app, instruct the user that this command can't be used with this app.
-
 2. **Make sure the user is logged in. No App Testing tools will work if the user is not logged in.**
   a. Use the \`firebase_get_environment\` tool to verify that the user is logged in.
   b. If the Firebase 'Active user' is set to <NONE>, instruct the user to run \`firebase login\` 
       before continuing. Ignore other fields that are set to <NONE>. We are just making sure the
       user is logged in. 
-
 3. **Get the Firebase app ID.** 
-
   The \`firebase_get_environment\` tool should return a list of detected app IDs, where the app
   ID contains four colon (":") delimited parts: a version number (typically "1"), a project
   number, a platform type ("android", "ios", or "web"). Ask the user confirm if there is only
@@ -110,14 +107,21 @@ Here are a list of prerequisite steps that must be completed before running a te
     * The generated test case that as been confirmed by the user
     * An APK. If there is no APK present, build the app to produce one. Make sure to build the variant of the app
       with the same bundle ID as the Firebase app.
-    * Once the test has started, provide the developer a link to see the results of the test in the Firebase Console.
-      You should already know the value of \`appId\' and \`projectId\` from earlier (if you only know \`projectNumber\',
-      use the \`firebase_get_project\` tool to get \`projectId\`). \`packageName\` is the package name of the app we tested.
-      The \`apptesting_run_test\` tool returns a response
-      with field \`name\` in the form projects/{projectNumber}/apps/{appId}/releases/{releaseId}/tests/{releaseTestId}.
-      Extract the values for \'releaseId\' and \`releaseTestId\` and use provide a link to the results in the Firebase
-      Console in the format:
-      \`https://console.firebase.google.com/u/0/project/{projectId}/apptesting/app/android:{packageName}/releases/{releaseId}/tests/{releaseTestId}\`.
+    * The devices to test on. If the user doesn't specify any devices in the test description, you can leave this
+      blank and the test will run on a the default virtual device. If the user does specify a device,
+      Use the \`apptesting_check_status\` tool with \`getAvailableDevices\` set to true to get a list of available
+      devices.
+
+  Once the test has started, provide the developer a link to see the results of the test in the Firebase Console.
+  You should already know the value of \`appId\' and \`projectId\` from earlier (if you only know \`projectNumber\',
+  use the \`firebase_get_project\` tool to get \`projectId\`). \`packageName\` is the package name of the app we tested. 
+  The \`apptesting_run_test\` tool returns a response with field \`name\` in the form 
+  projects/{projectNumber}/apps/{appId}/releases/{releaseId}/tests/{releaseTestId}. Extract the values for \'releaseId\' 
+  and \`releaseTestId\` and use provide a link to the results in the Firebase Console in the format:
+  \`https://console.firebase.google.com/u/0/project/{projectId}/apptesting/app/android:{packageName}/releases/{releaseId}/tests/{releaseTestId}\`.
+
+  You can check the status of the test using the \`apptesting_check_status\` tool with \`release_test_name\' set to
+  the name of the release test returned by the \`run_test\` tool.
 `.trim(),
         },
       },

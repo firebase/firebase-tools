@@ -6,6 +6,8 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { toAppName } from "../../../appdistribution/options-parser-util";
 import { AppDistributionClient } from "../../../appdistribution/client";
+import { google } from "googleapis";
+import { getAccessToken } from "../../../apiv2";
 
 const TestDeviceSchema = z
   .object({
@@ -72,21 +74,49 @@ export const run_tests = tool(
   },
 );
 
-export const check_test = tool(
+export const check_status = tool(
   "apptesting",
   {
-    name: "check_test",
-    description: "Check the status of a remote test.",
+    name: "check_status",
+    description:
+      "Check the status of an apptesting release test and/or get available devices that can be used for automated tests ",
     inputSchema: z.object({
-      name: z.string().describe("The name of the release test returned by the run_test tool."),
+      release_test_name: z
+        .string()
+        .optional()
+        .describe(
+          "The name of the release test returned by the run_test tool. If set, the tool will fetch the release test",
+        ),
+      getAvailableDevices: z
+        .boolean()
+        .optional()
+        .describe(
+          "If set to true, the tool will get the available devices that can be used for automated tests using the app testing agent",
+        ),
     }),
     annotations: {
       title: "Check Remote Test",
       readOnlyHint: true,
     },
   },
-  async ({ name }) => {
-    const client = new AppDistributionClient();
-    return toContent(await client.getReleaseTest(name));
+  async ({ release_test_name, getAvailableDevices }) => {
+    let devices = undefined;
+    let releaseTest = undefined;
+    if (release_test_name) {
+      const client = new AppDistributionClient();
+      releaseTest = await client.getReleaseTest(release_test_name);
+    }
+    if (getAvailableDevices) {
+      const testing = google.testing("v1");
+      devices = await testing.testEnvironmentCatalog.get({
+        oauth_token: await getAccessToken(),
+        environmentType: "ANDROID",
+      });
+    }
+
+    return toContent({
+      devices,
+      releaseTest,
+    });
   },
 );

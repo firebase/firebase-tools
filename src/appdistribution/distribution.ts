@@ -15,6 +15,7 @@ export enum DistributionFileType {
   AAB = "aab",
 }
 
+/** Upload a distribution */
 export async function upload(
   requests: AppDistributionClient,
   appName: string,
@@ -119,6 +120,7 @@ export class Distribution {
   }
 }
 
+/** Wait for release tests to complete */
 export async function awaitTestResults(
   releaseTests: ReleaseTest[],
   requests: AppDistributionClient,
