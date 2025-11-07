@@ -7,7 +7,7 @@ import { Config } from "../config";
 import { FirebaseError } from "../error";
 import {
   toDatasource,
-  SCHEMA_ID,
+  MAIN_SCHEMA_ID,
   ConnectorYaml,
   DataConnectYaml,
   File,
@@ -101,7 +101,7 @@ export async function load(
     serviceName,
     sourceDirectory: resolvedDir,
     schema: {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       datasources: [
         toDatasource(projectId, dataConnectYaml.location, dataConnectYaml.schema.datasource),
       ],

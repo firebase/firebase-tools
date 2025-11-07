@@ -18,7 +18,7 @@ import {
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, SCHEMA_ID } from "../../../dataconnect/types";
+import { Schema, Service, File, MAIN_SCHEMA_ID } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -350,7 +350,7 @@ function schemasDeploySequence(
     // No Cloud SQL is being provisioned, just deploy the schema sources as a unlinked schema.
     return [
       {
-        name: `${serviceName}/schemas/${SCHEMA_ID}`,
+        name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
         datasources: [{ postgresql: {} }],
         source: {
           files: schemaFiles,
@@ -363,7 +363,7 @@ function schemasDeploySequence(
   // wait for Cloud SQL provision to finish and setup its initial SQL schemas.
   return [
     {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       datasources: [
         {
           postgresql: {
@@ -380,7 +380,7 @@ function schemasDeploySequence(
       },
     },
     {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       datasources: [
         {
           postgresql: {

@@ -1,5 +1,5 @@
-// Schema is a singleton, so we always call it 'main'
-export const SCHEMA_ID = "main";
+// The database schema ID is always 'main'
+export const MAIN_SCHEMA_ID = "main";
 
 // API Types
 interface BaseResource {
@@ -15,6 +15,7 @@ export interface Service extends BaseResource {
 
 export interface Schema extends BaseResource {
   name: string;
+  id?: string;
 
   datasources: Datasource[];
   source: Source;
@@ -26,7 +27,9 @@ export interface Connector extends BaseResource {
 }
 
 export interface Datasource {
+  // One of postgresql or httpGraphql must be set.
   postgresql?: PostgreSql;
+  httpGraphql?: HttpGraphql;
 }
 
 export type SchemaValidation = "STRICT" | "COMPATIBLE";
@@ -37,6 +40,11 @@ export interface PostgreSql {
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
+}
+
+export interface HttpGraphql {
+  uri: string;
+  timeout?: string;
 }
 
 export interface CloudSqlInstance {
@@ -183,7 +191,9 @@ export interface DartSDK {
 export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
-  schema: Schema;
+  // One of `schema` or `schemas` is required.
+  schema?: Schema;
+  schemas?: Schema[];
   connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
@@ -212,6 +222,17 @@ export function toDatasource(
     };
   }
   return {};
+}
+
+/** Returns the main schema for a service info */
+export function mainSchema(serviceInfo: ServiceInfo): Schema {
+  if (serviceInfo.schema) {
+    return serviceInfo.schema;
+  }
+  if (serviceInfo.schemas && serviceInfo.schemas.length > 0) {
+    return serviceInfo.schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`))!;
+  }
+  throw new Error(`Service ${serviceInfo.serviceName} has no schema defined`);
 }
 
 /** Start Dataplane Client Types */
