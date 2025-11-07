@@ -3,10 +3,11 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { AgentTestRunner } from "./agent-test-runner.js";
 import { GeminiCliRunner } from "./gemini-cli-runner.js";
-import { buildFirebaseCli, clearUserMcpServers } from "./setup.js";
+import { buildFirebaseCli } from "./setup.js";
 import { addCleanup } from "../helpers/cleanup.js";
 import { TemplateName, copyTemplate, buildTemplates } from "../template/index.js";
 import { ToolMockName } from "../mock/tool-mocks.js";
+import { RunDirectories } from "./paths.js";
 
 export * from "./agent-test-runner.js";
 
@@ -14,7 +15,6 @@ const dateName = new Date().toISOString().replace("T", "_").replace(/:/g, "-").r
 
 export async function setupEnvironment(): Promise<void> {
   await buildFirebaseCli();
-  await clearUserMcpServers();
   await buildTemplates();
 }
 
@@ -35,13 +35,13 @@ export async function startAgentTest(
     throw new Error("startAgentTest must be called inside of an `it` block of a Mocha test.");
   }
   const testName = mocha.test.fullTitle();
-  const { testDir, runDir } = createRunDirectory(testName);
+  const dirs = createRunDirectory(testName);
 
   if (options?.templateName) {
-    copyTemplate(options.templateName, runDir);
+    copyTemplate(options.templateName, dirs.runDir);
   }
 
-  const run = new GeminiCliRunner(testName, testDir, runDir, options?.toolMocks || []);
+  const run = new GeminiCliRunner(testName, dirs, options?.toolMocks || []);
   await run.waitForReadyPrompt();
 
   addCleanup(async () => {
@@ -51,12 +51,17 @@ export async function startAgentTest(
   return run;
 }
 
-function createRunDirectory(testName: string): { testDir: string; runDir: string } {
+function createRunDirectory(testName: string): RunDirectories {
   const sanitizedName = testName.toLowerCase().replace(/[^a-z0-9]/g, "-");
   const testDir = path.resolve(
     path.join("output", dateName, `${sanitizedName}-${randomBytes(8).toString("hex")}`),
   );
+
   const runDir = path.join(testDir, "repo");
   mkdirSync(runDir, { recursive: true });
-  return { testDir, runDir };
+
+  const userDir = path.join(testDir, "user");
+  mkdirSync(userDir, { recursive: true });
+
+  return { testDir, runDir, userDir };
 }

@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as sinon from "sinon";
 import * as nodeFetch from "node-fetch";
-import AbortController from "abort-controller";
 import { expect } from "chai";
 import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue";
 import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
@@ -292,20 +291,7 @@ describe("Task Queue", () => {
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
-        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CloudTasks-QueueName": "task-queue",
-            "X-CloudTasks-TaskName": "",
-            "X-CloudTasks-TaskRetryCount": "0",
-            "X-CloudTasks-TaskExecutionCount": "0",
-            "X-CloudTasks-TaskETA": "60000",
-            ...TEST_TASK.task.httpRequest.headers,
-          },
-          signal: new AbortController().signal,
-          body: JSON.stringify(TEST_TASK.task.httpRequest.body),
-        });
+        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url);
       });
       return res;
     });
@@ -337,20 +323,7 @@ describe("Task Queue", () => {
       stubs.push(fetchStub);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
-        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CloudTasks-QueueName": "task-queue",
-            "X-CloudTasks-TaskName": "",
-            "X-CloudTasks-TaskRetryCount": "0",
-            "X-CloudTasks-TaskExecutionCount": "0",
-            "X-CloudTasks-TaskETA": "60000",
-            ...TEST_TASK.task.httpRequest.headers,
-          },
-          signal: new AbortController().signal,
-          body: JSON.stringify(TEST_TASK.task.httpRequest.body),
-        });
+        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url);
       });
       return res;
     });

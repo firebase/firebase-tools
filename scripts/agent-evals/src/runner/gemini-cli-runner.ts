@@ -10,11 +10,12 @@ import {
 } from "./tool-matcher.js";
 import fs from "fs";
 import { throwFailure } from "./logging.js";
-import { getAgentEvalsRoot } from "./paths.js";
+import { getAgentEvalsRoot, RunDirectories } from "./paths.js";
 import { execSync } from "node:child_process";
 import { ToolMockName } from "../mock/tool-mocks.js";
 
 const READY_PROMPT = "Type your message";
+const INSTALL_ID = "238efa5b-efb2-44bd-9dce-9b081532681c";
 
 interface ParsedTelemetryLog {
   attributes?: {
@@ -44,15 +45,16 @@ export class GeminiCliRunner implements AgentTestRunner {
 
   constructor(
     private readonly testName: string,
-    testDir: string,
-    runDir: string,
+    dirs: RunDirectories,
     toolMocks: ToolMockName[],
   ) {
     // Create a settings file to point the CLI to a local telemetry log
-    this.telemetryPath = path.join(testDir, "telemetry.log");
+    this.telemetryPath = path.join(dirs.testDir, "telemetry.log");
     const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "lib/mock/mock-tools-main.js"));
     const firebasePath = execSync("which firebase").toString().trim();
-    const settings = {
+
+    // Write workspace Gemini Settings
+    this.writeGeminiSettings(dirs.runDir, {
       general: {
         disableAutoUpdate: true,
       },
@@ -71,15 +73,29 @@ export class GeminiCliRunner implements AgentTestRunner {
           },
         },
       },
-    };
-    const geminiDir = path.join(runDir, ".gemini");
-    mkdirSync(geminiDir, { recursive: true });
-    writeFileSync(path.join(geminiDir, "settings.json"), JSON.stringify(settings, null, 2));
+    });
+
+    // Write user Gemini Settings
+    this.writeGeminiSettings(dirs.userDir, {
+      security: {
+        auth: {
+          selectedType: "gemini-api-key",
+        },
+      },
+      hasSeenIdeIntegrationNudge: true,
+    });
+
+    this.writeGeminiInstallId(dirs.userDir);
 
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
-      cwd: runDir,
+      cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
       showOutput: true,
+      env: {
+        // Overwrite $HOME so that we can support GCLI features that only apply
+        // on a per-user basis, like memories and extensions
+        HOME: dirs.userDir,
+      },
     });
   }
 
@@ -99,6 +115,21 @@ export class GeminiCliRunner implements AgentTestRunner {
 
   async exit(): Promise<void> {
     await this.cli.kill();
+  }
+
+  writeGeminiSettings(dir: string, settings: any) {
+    const geminiDir = path.join(dir, ".gemini");
+    mkdirSync(geminiDir, { recursive: true });
+    writeFileSync(path.join(geminiDir, "settings.json"), JSON.stringify(settings, null, 2));
+  }
+
+  /**
+   * Writes a constant, real install ID so that we don't bump Gemini metrics
+   * with fake users
+   */
+  writeGeminiInstallId(userDir: string) {
+    const geminiDir = path.join(userDir, ".gemini");
+    writeFileSync(path.join(geminiDir, "installation_id"), INSTALL_ID);
   }
 
   /**
