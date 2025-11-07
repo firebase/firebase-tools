@@ -470,16 +470,19 @@ export class Fabricator {
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.updateFunction(apiFunction);
-        return await poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
-      })
+      .run(
+        async () => {
+          apiFunction.sourceToken = await scraper.getToken();
+          const op: { name: string } = await gcf.updateFunction(apiFunction);
+          return await poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
