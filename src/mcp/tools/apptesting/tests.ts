@@ -1,6 +1,8 @@
 import { z } from "zod";
+import * as fs from "fs-extra";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
 import { upload, Distribution } from "../../../appdistribution/distribution";
+import { toYaml } from "../../../appdistribution/yaml_helper";
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
@@ -71,6 +73,32 @@ export const run_tests = tool(
     const client = new AppDistributionClient();
     const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
     return toContent(await client.createReleaseTest(releaseName, devices, testCase));
+  },
+);
+
+export const testcase_export = tool(
+  "apptesting",
+  {
+    name: "testcase_export",
+    description: "Use this to export a testcases to a file.",
+    inputSchema: z.object({
+      outputFile: z.string().describe("The path to the file."),
+      testCases: z.array(
+        z.object({
+          displayName: z.string(),
+          aiInstructions: z.object({
+            steps: z.array(AIStepSchema),
+          }),
+        }),
+      ),
+    }),
+    annotations: {
+      title: "Export testcases to a file.",
+      readOnlyHint: false,
+    },
+  },
+  async ({ outputFile, testCases }) => {
+    return toContent(fs.writeFileSync(outputFile, toYaml(testCases), "utf8"));
   },
 );
 
