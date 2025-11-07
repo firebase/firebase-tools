@@ -1,1 +1,0 @@
-- Fixed issue where MCP server was blocked by console.log
