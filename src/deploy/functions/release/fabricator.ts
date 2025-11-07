@@ -578,16 +578,20 @@ export class Fabricator {
 
   async deleteV1Function(endpoint: backend.Endpoint): Promise<void> {
     const fnName = backend.functionName(endpoint);
+
     await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcf.deleteFunction(fnName);
-        const pollerOptions = {
-          ...gcfV1PollerOptions,
-          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        };
-        await poller.pollOperation<void>(pollerOptions);
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcf.deleteFunction(fnName);
+          const pollerOptions = {
+            ...gcfV1PollerOptions,
+            pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          };
+          await poller.pollOperation<void>(pollerOptions);
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs(endpoint, "delete"));
   }
 
