@@ -1,10 +1,9 @@
 import { isEnabled } from "../../../experiments";
 import type { ServerTool } from "../../tool";
-import { get_devices } from "./devices";
-import { check_test, run_tests } from "./tests";
+import { check_status, run_tests } from "./tests";
 
 export const apptestingTools: ServerTool[] = [];
 
 if (isEnabled("mcpalpha")) {
-  apptestingTools.push(...[run_tests, check_test, get_devices]);
+  apptestingTools.push(...[run_tests, check_status]);
 }
