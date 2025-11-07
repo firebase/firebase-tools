@@ -245,17 +245,20 @@ export class Fabricator {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        // try to get the source token right before deploying
-        apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.createFunction(apiFunction);
-        return poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
-      })
+      .run(
+        async () => {
+          // try to get the source token right before deploying
+          apiFunction.sourceToken = await scraper.getToken();
+          const op: { name: string } = await gcf.createFunction(apiFunction);
+          return poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
