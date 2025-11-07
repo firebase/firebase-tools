@@ -313,21 +313,24 @@ export class Fabricator {
     const topic = apiFunction.eventTrigger?.pubsubTopic;
     if (topic) {
       await this.executor
-        .run(async () => {
-          try {
-            await pubsub.createTopic({ name: topic });
-          } catch (err: any) {
-            // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
-            // ALREADY_EXISTS if the topic already exists.
-            if (err.status === 409) {
-              return;
+        .run(
+          async () => {
+            try {
+              await pubsub.createTopic({ name: topic });
+            } catch (err: any) {
+              // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
+              // ALREADY_EXISTS if the topic already exists.
+              if (err.status === 409) {
+                return;
+              }
+              throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
+                original: err as Error,
+                status: err.status,
+              });
             }
-            throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
-              original: err as Error,
-              status: err.status,
-            });
-          }
-        })
+          },
+          { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] },
+        )
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
