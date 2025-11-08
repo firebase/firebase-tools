@@ -9,6 +9,7 @@ import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { fdcSqlRoleMap } from "../gcp/cloudsql/permissionsSetup";
 import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
+import { mainSchema } from "../dataconnect/types";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
@@ -51,6 +52,6 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
-    await grantRoleToUserInSchema(options, serviceInfo.schema);
+    await grantRoleToUserInSchema(options, mainSchema(serviceInfo));
     return { projectId, serviceId };
   });

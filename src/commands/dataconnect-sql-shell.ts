@@ -17,6 +17,7 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
 import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive";
+import { mainSchema } from "../dataconnect/types";
 
 // Not a comprehensive list, used for keyword coloring.
 const sqlKeywords = [
@@ -91,7 +92,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
+    const { instanceId, databaseId } = getIdentifiers(mainSchema(serviceInfo));
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 

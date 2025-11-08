@@ -8,6 +8,7 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
+import { mainSchema } from "../dataconnect/types";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
@@ -32,7 +33,7 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
     }
     const diffs = await migrateSchema({
       options,
-      schema: serviceInfo.schema,
+      schema: mainSchema(serviceInfo),
       validateOnly: true,
       schemaValidation: serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
     });
