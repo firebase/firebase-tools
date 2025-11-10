@@ -1,13 +1,8 @@
 import { z } from "zod";
-<<<<<<< HEAD
 import * as fs from "fs-extra";
 import { ApplicationIdSchema } from "../../../crashlytics/filters";
 import { upload, Distribution } from "../../../appdistribution/distribution";
 import { toYaml } from "../../../appdistribution/yaml_helper";
-=======
-import { ApplicationIdSchema } from "../../../crashlytics/filters";
-import { upload, Distribution } from "../../../appdistribution/distribution";
->>>>>>> master
 
 import { tool } from "../../tool";
 import { toContent } from "../../util";
@@ -81,12 +76,11 @@ export const run_tests = tool(
   },
 );
 
-<<<<<<< HEAD
 export const testcase_export = tool(
   "apptesting",
   {
     name: "testcase_export",
-    description: "Use this to export a testcases to a file.",
+    description: "Use this to export a testcase to a file.",
     inputSchema: z.object({
       outputFile: z.string().describe("The path to the file."),
       testCases: z.array(
@@ -108,8 +102,6 @@ export const testcase_export = tool(
   },
 );
 
-=======
->>>>>>> master
 export const check_status = tool(
   "apptesting",
   {
