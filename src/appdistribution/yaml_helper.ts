@@ -32,7 +32,7 @@ function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
   return testCases.map((testCase) => ({
     displayName: testCase.displayName,
     ...(testCase.name && {
-      id: extractIdFromResourceName(testCase.name!), // resource name is retured by server
+      id: extractIdFromResourceName(testCase.name),
     }),
     ...(testCase.prerequisiteTestCase && {
       prerequisiteTestCaseId: extractIdFromResourceName(testCase.prerequisiteTestCase),
