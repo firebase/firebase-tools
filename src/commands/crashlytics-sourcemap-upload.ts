@@ -1,0 +1,161 @@
+import * as archiver from "archiver";
+import * as fs from "fs";
+import * as path from "path";
+import * as tmp from "tmp";
+import { statSync } from "fs-extra";
+import { readdirRecursive } from "../fsAsync";
+import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { logLabeledBullet, logLabeledWarning } from "../utils";
+import { needProjectId } from "../projectUtils";
+import * as gcs from "../gcp/storage";
+import { getProjectNumber } from "../getProjectNumber";
+import { Options } from "../options";
+
+interface CommandOptions extends Options {
+  app?: string;
+  bucketLocation?: string;
+  appVersion?: string;
+}
+
+export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>")
+  .description("upload javascript source maps to de-minify stack traces")
+  .option("--app <appID>", "the app id of your Firebase app")
+  .option("--bucket-location <bucketLocation>", "the location of the Google Cloud Storage bucket (default: \"US-CENTRAL1\"")
+  .option("--app-version <appVersion>", "the version of your Firebase app (defaults to Git commit hash, if available)")
+  .action(async (mappingFiles: string, options: CommandOptions) => {
+    const app = getGoogleAppID(options);
+    const debug = !!options.debug;
+
+    // App version
+    const appVersion = getAppVersion(options);
+
+    // Get project identifiers
+    const projectId = needProjectId(options);
+    const projectNumber = await getProjectNumber(options);
+
+    // Upsert default GCS bucket
+    const bucketName = await upsertBucket(projectId, projectNumber, options);
+
+    // Find and upload mapping files
+    const rootDir = options.projectRoot ?? process.cwd();
+    const filePath = path.relative(rootDir, mappingFiles);
+    let fstat: fs.Stats;
+    try {
+      fstat = statSync(filePath)
+    } catch (e) {
+      throw new FirebaseError(
+        "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
+      );
+    }
+    if (fstat.isFile()) {
+      await uploadMap(mappingFiles, bucketName, appVersion, options);
+    } else if (fstat.isDirectory()) {
+      logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
+      const files = (await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"] }))
+        .filter(f => f.name.endsWith('.js.map'));
+      for (const file of files) {
+        await uploadMap(file.name, bucketName, appVersion, options);        
+      }
+    } else {
+      throw new FirebaseError(
+        "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
+      );
+    }
+
+    // TODO: notify Firebase Telemetry service of the new mapping file
+  });
+
+function getGoogleAppID(options: CommandOptions): string {
+  if (!options.app) {
+    throw new FirebaseError(
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
+    );
+  }
+  return options.app;
+}
+
+function getAppVersion(options: CommandOptions): string {
+  // TODO: implement app version lookup
+  return "default";
+}
+
+async function upsertBucket(projectId: string, projectNumber: string, options: CommandOptions): Promise<string> {
+  let loc: string = 'US-CENTRAL1';
+  if (options.bucketLocation) {
+    loc = (options.bucketLocation as string).toUpperCase();
+  } else {
+    logLabeledBullet("crashlytics", "No Google Cloud Storage bucket location specified. Defaulting to US-CENTRAL1.");
+  }
+
+  const baseName = `firebasecrashlytics-sourcemaps-${projectNumber}-${loc.toLowerCase()}`;
+  return await gcs.upsertBucket({
+    product: "crashlytics",
+    createMessage: `Creating Cloud Storage bucket in ${loc} to store Crashlytics source maps at ${baseName}...`,
+    projectId,
+    req: {
+      baseName,
+      purposeLabel: `crashlytics-sourcemaps-${loc.toLowerCase()}`,
+      location: loc,
+      lifecycle: {
+        rule: [
+          {
+            action: {
+              type: "Delete",
+            },
+            condition: {
+              age: 30,
+            },
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function uploadMap(mappingFile: string, bucketName: string, appVersion: string, options: CommandOptions) {
+  logLabeledBullet("crashlytics", `Found mapping file ${mappingFile}...`);
+  try {
+    const tmpArchive = await createArchive(mappingFile, options);
+    const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(mappingFile)}.zip`
+
+    const { bucket, object } = await gcs.uploadObject(
+      {
+        file: gcsFile,
+        stream: fs.createReadStream(tmpArchive),
+      },
+      bucketName,
+    );
+    logLabeledBullet("crashlytics", `Uploaded to gs://${bucket}/${object}`);
+  } catch (e) {
+    logLabeledWarning("crashlytics", `Failed to upload mapping file ${mappingFile}:\n${e}`);
+  }
+}
+
+async function createArchive(mappingFile: string, options: CommandOptions): Promise<string> {
+  const tmpName = normalizeFileName(mappingFile);
+  const tmpFile = tmp.fileSync({ prefix: `${tmpName}-`, postfix: ".zip" }).name;
+  const fileStream = fs.createWriteStream(tmpFile, {
+    flags: "w",
+    encoding: "binary",
+  });
+  const archive = archiver("zip");
+  const rootDir = options.projectRoot ?? process.cwd();
+  const name = path.relative(rootDir, mappingFile);
+  archive.file(name, {name: 'mapping.js.map'});
+  await pipeAsync(archive, fileStream);
+  return tmpFile;
+}
+
+async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
+  from.pipe(to);
+  await from.finalize();
+  return new Promise((resolve, reject) => {
+    to.on("finish", resolve);
+    to.on("error", reject);
+  });
+}
+
+function normalizeFileName(fileName: string): string {
+  return fileName.replaceAll(/\//g, '-');
+}
