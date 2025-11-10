@@ -11,7 +11,9 @@ function renderServices(fdcServices: ServiceInfo[]) {
 
 The following is the up-to-date content of existing schema files (their paths are relative to the Data Connect source directory).
 
-${mainSchema(fdcServices[0]).source.files?.map((f) => `\`\`\`graphql ${f.path}\n${f.content}\n\`\`\``).join("\n\n")}`;
+${mainSchema(fdcServices[0])
+  .source.files?.map((f) => `\`\`\`graphql ${f.path}\n${f.content}\n\`\`\``)
+  .join("\n\n")}`;
 }
 
 function renderErrors(errors?: string) {
