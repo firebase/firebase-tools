@@ -6,8 +6,7 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { toAppName } from "../../../appdistribution/options-parser-util";
 import { AppDistributionClient } from "../../../appdistribution/client";
-import { google } from "googleapis";
-import { getAccessToken } from "../../../apiv2";
+import { testEnvironmentCatalog } from "../../../gcp/apptesting";
 
 const TestDeviceSchema = z
   .object({
@@ -98,8 +97,12 @@ export const check_status = tool(
       title: "Check Remote Test",
       readOnlyHint: true,
     },
+    _meta: {
+      requiresAuth: true,
+      requiresProject: true,
+    },
   },
-  async ({ release_test_name, getAvailableDevices }) => {
+  async ({ release_test_name, getAvailableDevices }, { projectId }) => {
     let devices = undefined;
     let releaseTest = undefined;
     if (release_test_name) {
@@ -107,11 +110,7 @@ export const check_status = tool(
       releaseTest = await client.getReleaseTest(release_test_name);
     }
     if (getAvailableDevices) {
-      const testing = google.testing("v1");
-      devices = await testing.testEnvironmentCatalog.get({
-        oauth_token: await getAccessToken(),
-        environmentType: "ANDROID",
-      });
+      devices = await testEnvironmentCatalog(projectId || "", "ANDROID");
     }
 
     return toContent({
