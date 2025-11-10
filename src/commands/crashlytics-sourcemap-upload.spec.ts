@@ -42,9 +42,9 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should throw an error if no app ID is provided", async () => {
-    await expect(command.runner()('filename', {})).to.be.rejectedWith(
+    await expect(command.runner()("filename", {})).to.be.rejectedWith(
       FirebaseError,
-      "set --app <appId> to a valid Firebase application id"
+      "set --app <appId> to a valid Firebase application id",
     );
   });
 
@@ -64,31 +64,33 @@ describe("crashlytics:sourcemap:upload", () => {
     await command.runner()(FILE_PATH, options);
     expect(gcsMock.upsertBucket).to.be.calledOnce;
     const args = gcsMock.upsertBucket.firstCall.args;
-    expect(args[0].req.baseName).to.equal("firebasecrashlytics-sourcemaps-12345-a-different-location");
+    expect(args[0].req.baseName).to.equal(
+      "firebasecrashlytics-sourcemaps-12345-a-different-location",
+    );
     expect(args[0].req.location).to.equal("A-DIFFERENT-LOCATION");
   });
 
   it("should throw an error if the mapping file path is invalid", async () => {
-    expect(
-      command.runner()("invalid/path", { app: "test-app" })
-    ).to.be.rejectedWith(FirebaseError, "provide a valid file path or directory");
+    expect(command.runner()("invalid/path", { app: "test-app" })).to.be.rejectedWith(
+      FirebaseError,
+      "provide a valid file path or directory",
+    );
   });
 
   it("should upload a single mapping file", async () => {
     await command.runner()(FILE_PATH, { app: "test-app" });
     expect(gcsMock.uploadObject).to.be.calledOnce;
-    expect(gcsMock.uploadObject).to.be.calledWith(
-      sinon.match.any,
-      BUCKET_NAME,
+    expect(gcsMock.uploadObject).to.be.calledWith(sinon.match.any, BUCKET_NAME);
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
+      /test-app-default-mockdata-mock_mapping\.js\.map\.zip/,
     );
-    expect(gcsMock.uploadObject.firstCall.args[0].file)
-      .to.match(/test-app-default-mockdata-mock_mapping\.js\.map\.zip/);
   });
 
   it("should find and upload mapping files in a directory", async () => {
     await command.runner()(DIR_PATH, { app: "test-app" });
     expect(gcsMock.uploadObject).to.be.calledOnce;
-    expect(gcsMock.uploadObject.firstCall.args[0].file)
-      .to.match(/test-app-default-mockdata-mock_mapping\.js\.map\.zip/);
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
+      /test-app-default-mockdata-mock_mapping\.js\.map\.zip/,
+    );
   });
 });
