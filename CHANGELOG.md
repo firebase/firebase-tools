@@ -1,0 +1,1 @@
+- Fixes MCP server issue where `googleapis` is not available. (#9443)
