@@ -38,6 +38,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
+  private readonly runDir: string;
 
   // Determines which tools to start from for this turn so we don't detect tool
   // calls from previous turns
@@ -87,6 +88,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
+    this.runDir = runDir;
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
@@ -213,7 +215,35 @@ export class GeminiCliRunner implements AgentTestRunner {
     return logs;
   }
 
-  // Implementation for this is borrowed from the Gemini CLI's test-helper
+  public async expectMemory(text: string | RegExp): Promise<void> {
+    const geminiMdPath = path.join(this.runDir, ".gemini", "GEMINI.md");
+    let messages: string[] = [];
+    const success = await poll(() => {
+      messages = [];
+      if (!fs.existsSync(geminiMdPath)) {
+        messages.push(`GEMINI.md file not found at ${geminiMdPath}`);
+        return false;
+      }
+      const content = readFileSync(geminiMdPath, "utf-8");
+      const found = content.match(text);
+      if (!found) {
+        messages.push(
+          `Did not find expected memory entry containing "${text.toString()}" in ${geminiMdPath}. File content:\n${content}`,
+        );
+        return false;
+      }
+      return true;
+    }, this.telemetryTimeout);
+
+    if (!success) {
+      throwFailure(messages.join("\n"));
+    }
+  }
+
+  public async expectTextContains(text: string | RegExp): Promise<void> {
+    return this.cli.expectText(text);
+  }
+
   private readAndParseTelemetryLog(): ParsedTelemetryLog[] {
     const logFilePath = this.telemetryPath;
     if (!logFilePath || !fs.existsSync(logFilePath)) {
