@@ -28,6 +28,7 @@ yarn.lock
 scripts/*.json
 
 lib/
+!scripts/agent-evals/templates/crashlytics-flutter/lib/
 dev/
 clean/
 .gemini/

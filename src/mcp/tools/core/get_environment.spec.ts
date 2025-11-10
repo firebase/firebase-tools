@@ -77,7 +77,7 @@ Detected App IDs: <NONE>
 Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
 
 No firebase.json file was found.
-      
+
 If this project does not use Firebase services that require a firebase.json file, no action is necessary.
 
 If this project uses Firebase services that require a firebase.json file, the user will most likely want to:

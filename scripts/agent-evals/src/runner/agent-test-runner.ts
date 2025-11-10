@@ -19,4 +19,10 @@ export interface AgentTestRunner {
    * an event is not found
    */
   expectToolCalls(tools: ToolDef[]): Promise<void>;
+
+  /**
+   * Reads the agent's memory and looks for the given entry. Throws if
+   * an event is not found
+   */
+  expectMemory(text: string | RegExp): Promise<void>;
 }
