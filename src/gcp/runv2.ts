@@ -210,7 +210,8 @@ export async function listServices(projectId: string, filter?: string): Promise<
       queryParams["pageToken"] = pageToken;
     }
     if (filter) {
-      queryParams["labelSelector"] = filter;
+      const parts = filter.split("=");
+      queryParams["filter"] = `labels."${parts[0]}"="${parts[1]}"`;
     }
 
     const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(

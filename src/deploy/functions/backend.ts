@@ -1,5 +1,6 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import { listServices, endpointFromService } from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
@@ -557,6 +558,21 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
     } else {
       throw err;
     }
+  }
+
+  try {
+    const runServices = await listServices(ctx.projectId, "goog-managed-by=cloudfunctions");
+    for (const service of runServices) {
+      const endpoint = endpointFromService(service);
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    }
+  } catch (err: any) {
+    utils.logLabeledWarning(
+      "functions",
+      `Failed to list Cloud Run services: ${err.message}. Ensure you have the Cloud Run Admin API enabled and the necessary permissions.`,
+    );
+    unreachableRegions.run = ["unknown"]; // Indicate that Run services could not be listed
   }
 
   ctx.existingBackend = existingBackend;

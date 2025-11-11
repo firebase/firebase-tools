@@ -515,5 +515,18 @@ describe("runv2", () => {
         expect(err.message).to.contain('Failed to list services: 500 "Internal Server Error"');
       }
     });
+
+    it("should filter by labelSelector", async () => {
+      const mockServices = [{ name: "service1" }];
+      getStub.resolves({ status: 200, body: { services: mockServices } });
+
+      const services = await runv2.listServices(PROJECT_ID, "foo=bar");
+
+      expect(services).to.deep.equal(mockServices);
+      expect(getStub).to.have.been.calledOnceWithExactly(
+        `/projects/${PROJECT_ID}/locations/-/services`,
+        { queryParams: { filter: 'labels."foo"="bar"' } },
+      );
+    });
   });
 });

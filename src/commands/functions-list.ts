@@ -1,12 +1,19 @@
 import { Command } from "../command";
 import * as args from "../deploy/functions/args";
 import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
 import { logger } from "../logger";
 import * as Table from "cli-table3";
-import { listServices, endpointFromService } from "../gcp/runv2";
+import { Options } from "../options";
+import { FunctionsPlatform } from "../deploy/functions/backend";
+
+type PLATFORM_DISPLAY_NAME = "v1" | "v2" | "run";
+const PLATFORM_TO_DISPLAY_NAME: Record<FunctionsPlatform, PLATFORM_DISPLAY_NAME> = {
+  gcfv1: "v1",
+  gcfv2: "v2",
+  run: "run",
+};
 
 export const command = new Command("functions:list")
   .description("list all deployed functions in your Firebase project")
@@ -28,30 +35,16 @@ export const command = new Command("functions:list")
       );
     }
 
-    let v2Endpoints: backend.Endpoint[] = [];
-    try {
-      const services = await listServices(projectId);
-      v2Endpoints = services.map((service) => endpointFromService(service));
-    } catch (err: any) {
-      logger.debug(`Failed to list v2 functions:`, err);
-      logger.warn(
-        `Failed to list v2 functions. Ensure you have the Cloud Run Admin API enabled and the necessary permissions.`,
-      );
-    }
-
     const endpointMap = new Map<string, backend.Endpoint>();
     for (const endpoint of v1Endpoints) {
       const key = `${endpoint.region}/${endpoint.id}`;
       endpointMap.set(key, endpoint);
     }
-    for (const endpoint of v2Endpoints) {
-      const key = `${endpoint.region}/${endpoint.id}`;
-      endpointMap.set(key, endpoint);
-    }
 
-    const endpointsList = Array.from(endpointMap.values()).sort(backend.compareFunctions);
+    const endpoints = Array.from(endpointMap.values());
+    endpoints.sort(backend.compareFunctions);
 
-    if (endpointsList.length === 0) {
+    if (endpoints.length === 0) {
       logger.info(`No functions found in project ${projectId}.`);
       return [];
     }
@@ -59,14 +52,14 @@ export const command = new Command("functions:list")
     const table = new Table({
       head: ["Function", "Version", "Trigger", "Location", "Memory", "Runtime"],
       style: { head: ["yellow"] },
-    });
+    }) as any;
 
-    for (const endpoint of endpointsList) {
+    for (const endpoint of endpoints) {
       const trigger = backend.endpointTriggerType(endpoint);
       const availableMemoryMb = endpoint.availableMemoryMb || "---";
       const entry = [
         endpoint.id,
-        endpoint.platform === "gcfv2" ? "v2" : endpoint.platform === "run" ? "run" : "v1",
+        PLATFORM_TO_DISPLAY_NAME[endpoint.platform] || "v1",
         trigger,
         endpoint.region,
         availableMemoryMb,
@@ -75,5 +68,5 @@ export const command = new Command("functions:list")
       table.push(entry);
     }
     logger.info(table.toString());
-    return endpointsList;
+    return endpoints;
   });

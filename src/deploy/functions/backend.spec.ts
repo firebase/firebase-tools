@@ -6,6 +6,7 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as runv2 from "../../gcp/runv2";
 import * as utils from "../../utils";
 import * as projectConfig from "../../functions/projectConfig";
 
@@ -126,17 +127,20 @@ describe("Backend", () => {
   describe("existing backend", () => {
     let listAllFunctions: sinon.SinonStub;
     let listAllFunctionsV2: sinon.SinonStub;
+    let listServices: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
 
     beforeEach(() => {
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
       listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
+      listServices = sinon.stub(runv2, "listServices").resolves([]);
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
     });
 
     afterEach(() => {
       listAllFunctions.restore();
       listAllFunctionsV2.restore();
+      listServices.restore();
       logLabeledWarning.restore();
     });
 
@@ -317,6 +321,21 @@ describe("Backend", () => {
         });
 
         expect(have).to.deep.equal(want);
+      });
+
+      it("should list services with correct filter", async () => {
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+
+        await backend.existingBackend(newContext());
+
+        expect(listServices).to.have.been.calledWith(sinon.match.any, "goog-managed-by=cloudfunctions");
       });
     });
 
