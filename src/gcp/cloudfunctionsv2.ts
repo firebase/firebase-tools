@@ -18,6 +18,7 @@ import {
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
 import { captureRuntimeValidationError } from "./cloudfunctions";
+import { mebibytes } from "./k8s";
 
 export const API_VERSION = "v2";
 
@@ -59,7 +60,7 @@ export interface BuildConfig {
 export interface StorageSource {
   bucket: string;
   object: string;
-  generation: number;
+  generation?: number;
 }
 
 export interface RepoSource {
@@ -207,43 +208,6 @@ interface GenerateUploadUrlResponse {
   storageSource: StorageSource;
 }
 
-// AvailableMemory suffixes and their byte count.
-type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
-const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
-  "": 1,
-  k: 1e3,
-  M: 1e6,
-  G: 1e9,
-  T: 1e12,
-  Ki: 1 << 10,
-  Mi: 1 << 20,
-  Gi: 1 << 30,
-  Ti: 1 << 40,
-};
-
-/**
- * Returns the float-precision number of Mega(not Mebi)bytes in a
- * Kubernetes-style quantity
- * Must serve the same results as
- * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
- */
-export function mebibytes(memory: string): number {
-  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
-  const matches = re.exec(memory);
-  if (!matches) {
-    throw new Error(`Invalid memory quantity "${memory}""`);
-  }
-  const quantity = Number.parseFloat(matches[1]);
-  let bytes: number;
-  if (matches[5]) {
-    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
-  } else {
-    const suffix = matches[3] || "";
-    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
-  }
-  return bytes / (1 << 20);
-}
-
 /**
  * Logs an error from a failed function deployment.
  * @param func The function that was unsuccessfully deployed.
@@ -366,21 +330,6 @@ export async function getFunction(
   const name = `projects/${projectId}/locations/${location}/functions/${functionId}`;
   const res = await client.get<OutputCloudFunction>(name);
   return res.body;
-}
-
-/**
- *  List all functions in a region.
- *  Customers should generally use backend.existingBackend.
- */
-export async function listFunctions(
-  projectId: string,
-  region: string,
-): Promise<OutputCloudFunction[]> {
-  const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable.includes(region)) {
-    throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
-  }
-  return res.functions;
 }
 
 /**

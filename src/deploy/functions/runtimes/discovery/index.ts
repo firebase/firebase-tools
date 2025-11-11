@@ -5,7 +5,7 @@ import * as yaml from "yaml";
 import { ChildProcess } from "child_process";
 
 import { logger } from "../../../../logger";
-import * as api from "../../.../../../../api";
+import * as api from "../../../../api";
 import * as build from "../../build";
 import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";

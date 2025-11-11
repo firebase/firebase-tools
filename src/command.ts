@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as path from "node:path";
 import { CommanderStatic } from "commander";
 import { first, last, size, head, keys, values } from "lodash";
 
@@ -223,12 +224,15 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4("command_execution", {
-            command_name: this.name,
-            result: "success",
+          const trackSuccess = trackGA4(
+            "command_execution",
+            {
+              command_name: this.name,
+              result: "success",
+              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+            },
             duration,
-            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-          });
+          );
           if (!isEmulator) {
             await withTimeout(5000, trackSuccess);
           } else {
@@ -294,16 +298,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async prepare(options: any): Promise<void> {
+  public async prepare(options: Options): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
-    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
+    if (
+      !process.stdin.isTTY ||
+      getInheritedOption(options, "nonInteractive") ||
+      getInheritedOption(options, "json") // --json implies --non-interactive.
+    ) {
       options.nonInteractive = true;
     }
+
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
-      options.interactive = true;
       options.nonInteractive = false;
     }
 
@@ -311,9 +319,7 @@ export class Command {
       options.debug = true;
     }
 
-    if (getInheritedOption(options, "json")) {
-      options.nonInteractive = true;
-    } else if (!options.isMCP) {
+    if (!getInheritedOption(options, "json") && !options.isMCP) {
       useConsoleLoggers();
     }
 
@@ -342,8 +348,8 @@ export class Command {
 
     await this.applyRC(options);
     if (options.project) {
-      await this.resolveProjectIdentifiers(options);
-      validateProjectId(options.projectId);
+      await this.resolveProjectIdentifiers(options); // Sets options.projectId.
+      validateProjectId(options.projectId!);
     }
   }
 
@@ -355,9 +361,7 @@ export class Command {
   private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    let activeProject = options.projectRoot
-      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
-      : undefined;
+    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
@@ -389,6 +393,21 @@ export class Command {
       // If there's an alias named 'default', default to that.
       options.projectAlias = "default";
       options.project = aliases["default"];
+    }
+  }
+
+  private configstoreProject(dir: string) {
+    const projectMap = configstore.get("activeProjects") ?? {};
+    let currentDir = path.resolve(dir);
+    while (true) {
+      if (projectMap[currentDir]) {
+        return projectMap[currentDir];
+      }
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) {
+        return null;
+      }
+      currentDir = parentDir;
     }
   }
 

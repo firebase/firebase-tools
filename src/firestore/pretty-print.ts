@@ -7,6 +7,7 @@ import { logger } from "../logger";
 import * as util from "./util";
 import { consoleUrl } from "../utils";
 import { Backup, BackupSchedule } from "../gcp/firestore";
+import { Operation } from "./api-types";
 
 export class PrettyPrint {
   /**
@@ -206,6 +207,46 @@ export class PrettyPrint {
   }
 
   /**
+   * Print a Firestore operation as an ASCII table.
+   */
+  prettyPrintOperation(operation: Operation) {
+    const table = new Table({
+      head: ["Operation", ""],
+    });
+
+    table.push(
+      ["Name", clc.yellow(operation.name)],
+      ["Done?", clc.yellow(operation.done ? "YES" : "NO")],
+      ["Metadata", clc.yellow(JSON.stringify(operation.metadata, undefined, 2))],
+    );
+
+    if (operation.response) {
+      table.push(["Response", clc.yellow(JSON.stringify(operation.response, undefined, 2))]);
+    }
+
+    logger.info(table.toString());
+  }
+
+  /**
+   * Print Firestore operations as an ASCII table.
+   */
+  prettyPrintOperations(operations: Operation[]) {
+    if (operations.length === 0) {
+      logger.info("No operations found.");
+      return;
+    }
+    const table = new Table({
+      head: ["Operation Name", "Done"],
+    });
+
+    for (const op of operations) {
+      table.push([clc.yellow(op.name), op.done ? clc.green("YES") : clc.yellow("NO")]);
+    }
+
+    logger.info(table.toString());
+  }
+
+  /**
    * Print an array of locations to the console in an ASCII table. Group multi regions together
    *  Example: United States: nam5
    * @param locations the array of locations.
@@ -285,6 +326,14 @@ export class PrettyPrint {
       }
       result += `(${field.fieldPath},${configString}) `;
     });
+
+    result += " -- ";
+    if (index.density !== undefined) {
+      result += clc.cyan(`Density:${index.density} `);
+    }
+    if (index.multikey !== undefined) {
+      result += clc.cyan(`Multikey:${index.multikey ? "YES" : "NO"}`);
+    }
 
     return result;
   }

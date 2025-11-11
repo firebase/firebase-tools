@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
-import { logLabeledWarning, logSuccess, logWarning } from "../../utils";
+import { logLabeledWarning, logLabeledSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
@@ -11,8 +11,10 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
+import * as experiments from "../../experiments";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
+import { getProjectNumber } from "../../getProjectNumber";
 
 setGracefulCleanup();
 
@@ -48,33 +50,88 @@ async function uploadSourceV1(
   return uploadUrl;
 }
 
-async function uploadSourceV2(
+// Trampoline to allow tests to mock out createStream.
+export function createReadStream(filePath: string): NodeJS.ReadableStream {
+  return fs.createReadStream(filePath);
+}
+
+export async function uploadSourceV2(
   projectId: string,
+  projectNumber: string,
   source: args.Source,
   wantBackend: backend.Backend,
 ): Promise<gcfv2.StorageSource | undefined> {
-  const v2Endpoints = backend.allEndpoints(wantBackend).filter((e) => e.platform === "gcfv2");
+  const v2Endpoints = backend
+    .allEndpoints(wantBackend)
+    .filter((e) => e.platform === "gcfv2" || e.platform === "run");
   if (v2Endpoints.length === 0) {
     return;
   }
+  // N.B. Should we upload to multiple regions? For now, just pick the first one.
+  // Uploading to multiple regions might slow upload and cost the user money if they
+  // pay their ISP for bandwidth, but having a bucket per region would avoid cross-region
+  // fees from GCP.
   const region = v2Endpoints[0].region; // Just pick a region to upload the source.
-  const res = await gcfv2.generateUploadUrl(projectId, region);
   const uploadOpts = {
     file: source.functionsSourceV2!,
-    stream: fs.createReadStream(source.functionsSourceV2!),
+    stream: (exports as { createReadStream: typeof createReadStream }).createReadStream(
+      source.functionsSourceV2!,
+    ),
   };
-  if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
-    logLabeledWarning(
-      "functions",
-      "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
-    );
+
+  // Legacy behavior: use the GCF API
+  if (!experiments.isEnabled("runfunctions")) {
+    if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
+      logLabeledWarning(
+        "functions",
+        "GOOGLE_CLOUD_QUOTA_PROJECT is not usable when uploading source for Cloud Functions.",
+      );
+    }
+    const res = await gcfv2.generateUploadUrl(projectId, region);
+    await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
+    return res.storageSource;
   }
-  await gcs.upload(uploadOpts, res.uploadUrl, undefined, true /* ignoreQuotaProject */);
-  return res.storageSource;
+
+  // Future behavior: BYO bucket if we're using the Cloud Run API directly because it does not provide a source upload API.
+  // We use this behavior whenever the "runfunctions" experiment is enabled for now just to help vet the codepath incrementally.
+  // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
+  const baseName = `firebase-functions-src-${projectNumber}`;
+  const bucketName = await gcs.upsertBucket({
+    product: "functions",
+    projectId,
+    createMessage: `Creating Cloud Storage bucket in ${region} to store Functions source code uploads at ${baseName}...`,
+    req: {
+      baseName,
+      location: region,
+      purposeLabel: `functions-source-${region.toLowerCase()}`,
+      lifecycle: {
+        rule: [
+          {
+            action: { type: "Delete" },
+            // Delete objects after 1 day. A safe default to avoid unbounded storage costs;
+            // consider making this configurable in the future.
+            condition: { age: 1 },
+          },
+        ],
+      },
+    },
+  });
+  const objectPath = `${source.functionsSourceV2Hash}.zip`;
+  await gcs.upload(
+    uploadOpts,
+    `${bucketName}/${objectPath}`,
+    undefined,
+    true /* ignoreQuotaProject */,
+  );
+  return {
+    bucket: bucketName,
+    object: objectPath,
+  };
 }
 
 async function uploadCodebase(
   context: args.Context,
+  projectNumber: string,
   codebase: string,
   wantBackend: backend.Backend,
 ): Promise<void> {
@@ -86,7 +143,7 @@ async function uploadCodebase(
   const uploads: Promise<unknown>[] = [];
   try {
     uploads.push(uploadSourceV1(context.projectId, source, wantBackend));
-    uploads.push(uploadSourceV2(context.projectId, source, wantBackend));
+    uploads.push(uploadSourceV2(context.projectId, projectNumber, source, wantBackend));
 
     const [sourceUrl, storage] = await Promise.all(uploads);
     if (sourceUrl) {
@@ -96,11 +153,10 @@ async function uploadCodebase(
       source.storage = storage as gcfv2.StorageSource;
     }
 
-    const sourceDir = configForCodebase(context.config!, codebase).source;
+    const cfg = configForCodebase(context.config!, codebase);
+    const label = cfg.source ?? cfg.remoteSource?.dir ?? "remote";
     if (uploads.length) {
-      logSuccess(
-        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`,
-      );
+      logLabeledSuccess("functions", `${clc.bold(label)} source uploaded successfully`);
     }
   } catch (err: any) {
     logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
@@ -132,7 +188,8 @@ export async function deploy(
       if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
         continue;
       }
-      uploads.push(uploadCodebase(context, codebase, wantBackend));
+      const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
+      uploads.push(uploadCodebase(context, projectNumber, codebase, wantBackend));
     }
     await Promise.all(uploads);
   }

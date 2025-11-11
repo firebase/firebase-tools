@@ -7,11 +7,25 @@ import { logger } from "./logger";
 import { isFirebaseStudio } from "./env";
 const pkg = require("../package.json");
 
+// Detect if the CLI was invoked by a coding agent, based on well-known env vars.
+function detectAIAgent(): string {
+  if (process.env.CLAUDECODE) return "claude_code";
+  if (process.env.CLINE_ACTIVE) return "cline";
+  if (process.env.CODEX_SANDBOX) return "codex_cli";
+  if (process.env.CURSOR_AGENT) return "cursor";
+  if (process.env.GEMINI_CLI) return "gemini_cli";
+  if (process.env.OPENCODE) return "open_code";
+  return "unknown";
+}
+
 type cliEventNames =
   | "command_execution"
   | "product_deploy"
   | "product_init"
   | "product_init_mcp"
+  | "dataconnect_init"
+  | "dataconnect_deploy"
+  | "dataconnect_cloud_sql"
   | "error"
   | "login"
   | "api_enabled"
@@ -24,7 +38,10 @@ type cliEventNames =
   | "function_deploy_group"
   | "mcp_tool_call"
   | "mcp_list_tools"
-  | "mcp_client_connected";
+  | "mcp_client_connected"
+  | "mcp_list_prompts"
+  | "mcp_get_prompt"
+  | "mcp_read_resource";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -81,6 +98,9 @@ const GA4_USER_PROPS = {
   },
   is_firebase_studio: {
     value: isFirebaseStudio().toString(),
+  },
+  ai_agent: {
+    value: detectAIAgent(),
   },
 };
 

@@ -4,10 +4,12 @@ import { mcpError, toContent } from "../../util";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps";
 
 export const get_sdk_config = tool(
+  "core",
   {
     name: "get_sdk_config",
     description:
-      "Retrieves the Firebase SDK configuration information for the specified platform. You must specify either a platform or an app_id.",
+      "Use this to retrieve the Firebase configuration information for a Firebase App. " +
+      "You must specify EITHER a platform OR the Firebase App ID for a Firebase App registered in the currently active Firebase Project.",
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web"])
@@ -43,7 +45,17 @@ export const get_sdk_config = tool(
         `Could not find an app for platform '${inputPlatform}' in project '${projectId}'`,
       );
     const sdkConfig = await getAppConfig(appId, platform);
-    // TODO: return as string with comment about filename for ios and android
+    if ("configFilename" in sdkConfig) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `SDK config content for \`${sdkConfig.configFilename}\`:\n\n\`\`\`\n${Buffer.from(sdkConfig.configFileContents, "base64").toString("utf-8")}\n\`\`\``,
+          },
+        ],
+      };
+    }
+
     return toContent(sdkConfig, { format: "json" });
   },
 );

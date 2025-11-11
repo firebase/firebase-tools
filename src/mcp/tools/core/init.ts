@@ -3,12 +3,23 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
+import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
+import { requireGeminiToS } from "../../errors";
+import { FirebaseError } from "../../../error";
+import {
+  parseAppId,
+  validateProjectNumberMatch,
+  validateAppExists,
+} from "../../../init/features/ailogic/utils";
+import { getFirebaseProject } from "../../../management/projects";
+import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
+  "core",
   {
     name: "init",
     description:
-      "Initializes selected Firebase features in the workspace (Firestore, Data Connect, Realtime Database). All features are optional; provide only the products you wish to set up. " +
+      "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase Data Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -58,6 +69,12 @@ export const init = tool(
           .describe("Provide this object to initialize Cloud Firestore in this project directory."),
         dataconnect: z
           .object({
+            app_description: z
+              .string()
+              .optional()
+              .describe(
+                "Provide a description of the app you are trying to build. If present, Gemini will help generate Data Connect Schema, Connector and seed data",
+              ),
             service_id: z
               .string()
               .optional()
@@ -67,23 +84,33 @@ export const init = tool(
             location_id: z
               .string()
               .optional()
-              .default("us-central1")
+              .default(FDC_DEFAULT_REGION)
               .describe("The GCP region ID to set up the Firebase Data Connect service."),
             cloudsql_instance_id: z
               .string()
               .optional()
               .describe(
-                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc.",
+                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc. " +
+                  "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
               ),
             cloudsql_database: z
               .string()
               .optional()
               .default("fdcdb")
               .describe("The Postgres database ID to use in the Firebase Data Connect service."),
+            provision_cloudsql: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe(
+                "If true, provision the Cloud SQL instance if `cloudsql_instance_id` does not exist already. " +
+                  `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
+              ),
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect in this project directory.",
+            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
+              "It installs Data Connect Generated SDKs in all detected apps in the folder.",
           ),
         storage: z
           .object({
@@ -102,6 +129,41 @@ export const init = tool(
           .optional()
           .describe(
             "Provide this object to initialize Firebase Storage in this project directory.",
+          ),
+        ailogic: z
+          .object({
+            app_id: z
+              .string()
+              .describe(
+                "Firebase app ID (format: 1:PROJECT_NUMBER:PLATFORM:APP_ID). Must be an existing app in your Firebase project.",
+              ),
+          })
+          .optional()
+          .describe("Enable Firebase AI Logic feature for existing app"),
+        hosting: z
+          .object({
+            site_id: z
+              .string()
+              .optional()
+              .describe(
+                "The ID of the hosting site to configure. If omitted and there is a default hosting site, that will be used.",
+              ),
+            public_directory: z
+              .string()
+              .optional()
+              .default("public")
+              .describe(
+                "The directory containing public files that will be served. If using a build tool, this likely should be the output directory of that tool.",
+              ),
+            single_page_app: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe("Configure as a single-page app."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Hosting in this project directory.",
           ),
       }),
     }),
@@ -140,17 +202,54 @@ export const init = tool(
       };
     }
     if (features.dataconnect) {
+      if (features.dataconnect.app_description) {
+        // If app description is provided, ensure the Gemini in Firebase API is enabled.
+        const err = await requireGeminiToS(projectId);
+        if (err) return err;
+      }
       featuresList.push("dataconnect");
+      featureInfo.dataconnectSource = "mcp_init";
       featureInfo.dataconnect = {
+        flow: "",
+        appDescription: features.dataconnect.app_description || "",
         serviceId: features.dataconnect.service_id || "",
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
         cloudSqlDatabase: features.dataconnect.cloudsql_database || "",
-        connectors: [], // TODO populate with GiF,
-        isNewInstance: false, // not used by actuate
-        isNewDatabase: false, // not used by actuate
-        schemaGql: [], // TODO populate with GiF
-        shouldProvisionCSQL: true, // Always try to provision Cloud SQL for MCP tool init.
+        shouldProvisionCSQL: !!features.dataconnect.provision_cloudsql,
+      };
+      featureInfo.dataconnectSdk = {
+        // Add FDC generated SDKs to all apps detected.
+        apps: [],
+      };
+    }
+    if (features.ailogic) {
+      // AI Logic requires a project
+      if (!projectId) {
+        throw new FirebaseError(
+          "AI Logic feature requires a Firebase project. Please specify a project ID.",
+          { exit: 1 },
+        );
+      }
+
+      // Validate AI Logic app for MCP flow
+      const appInfo = parseAppId(features.ailogic.app_id);
+      const projectInfo = await getFirebaseProject(projectId);
+      validateProjectNumberMatch(appInfo, projectInfo);
+      const appData = await validateAppExists(appInfo, projectId);
+
+      featuresList.push("ailogic");
+      featureInfo.ailogic = {
+        appId: features.ailogic.app_id,
+        displayName: appData.displayName,
+      };
+    }
+    if (features.hosting) {
+      featuresList.push("hosting");
+      featureInfo.hosting = {
+        newSiteId: features.hosting.site_id,
+        public: features.hosting.public_directory,
+        spa: features.hosting.single_page_app,
       };
     }
     const setup: Setup = {
@@ -159,14 +258,26 @@ export const init = tool(
       projectId: projectId,
       features: [...featuresList],
       featureInfo: featureInfo,
+      instructions: [],
     };
     // Set force to true to avoid prompting the user for confirmation.
     await actuate(setup, config, { force: true });
     config.writeProjectFile("firebase.json", setup.config);
     config.writeProjectFile(".firebaserc", setup.rcfile);
+
+    if (featureInfo.dataconnectSdk && !featureInfo.dataconnectSdk.apps.length) {
+      setup.instructions.push(
+        `No app is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool with the same input without app_description to add Data Connect SDKs to your apps.
+  Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
+      );
+    }
     return toContent(
-      `Successfully setup the project ${projectId} with those features: ${featuresList.join(", ")}` +
-        " To deploy them, you can run `firebase deploy` in command line.",
+      `Successfully setup those features: ${featuresList.join(", ")}
+
+To get started:
+
+- ${setup.instructions.join("\n\n- ")}
+`,
     );
   },
 );

@@ -1,10 +1,13 @@
-import { expect } from "chai";
 import * as path from "path";
+import * as fs from "fs";
+
+import { expect } from "chai";
 
 import { Config } from "./config";
 import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
 import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
 import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
+import { FIREBASE_JSON_PATH as EMPTY_CONFIG_PATH } from "./test/fixtures/empty-config";
 
 describe("Config", () => {
   describe("#load", () => {
@@ -15,9 +18,16 @@ describe("Config", () => {
         configPath: path.relative(cwd, VALID_CONFIG_PATH),
       });
       expect(config).to.not.be.null;
-      if (config) {
-        expect(config.get("database.rules")).to.eq("config/security-rules.json");
-      }
+      expect(config?.get("database.rules")).to.eq("config/security-rules.json");
+    });
+    it("should fall back to {} when the file is empty", () => {
+      const cwd = __dirname;
+      const config = Config.load({
+        cwd,
+        configPath: path.relative(cwd, EMPTY_CONFIG_PATH),
+      });
+      expect(config).to.not.be.null;
+      expect(config?.data).to.deep.eq({});
     });
   });
 
@@ -64,6 +74,116 @@ describe("Config", () => {
     it("should prevent top-level key duplication", () => {
       const config = new Config({ rules: "rules.json" }, { cwd: DUP_TOP_LEVEL_CONFIG_DIR });
       expect(config.materialize("rules")).to.deep.equal({ ".read": true });
+    });
+  });
+
+  describe("functions.source", () => {
+    it("injects default source when default dir exists but source is missing", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config({ functions: {} }, { cwd: tmpDir, projectDir: tmpDir });
+      expect(cfg.get("functions.source")).to.be.equal("functions");
+    });
+
+    it("does not injects default source when default dir is missing", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+
+      const cfg = new Config(
+        { functions: { runtime: "nodejs20" } },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+      expect(cfg.get("functions.source")).to.be.undefined;
+    });
+
+    it("does not inject source for remoteSource", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config(
+        {
+          functions: {
+            remoteSource: { repository: "https://github.com/org/repo", ref: "main" },
+            runtime: "nodejs20",
+          },
+        },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+      expect(cfg.get("functions.source")).to.be.undefined;
+    });
+
+    it("injects into the first empty entry only when default dir exists", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config(
+        {
+          functions: [
+            { source: "custom-functions" },
+            { runtime: "nodejs20" },
+            {
+              remoteSource: { repository: "https://github.com/org/repo", ref: "main" },
+              runtime: "nodejs20",
+            },
+          ],
+        },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+
+      expect(cfg.get("functions.[0].source")).to.equal("custom-functions");
+      expect(cfg.get("functions.[1].source")).to.equal("functions");
+      expect(cfg.get("functions.[2].source")).to.be.undefined;
+    });
+
+    it("injects only one entry when multiple are empty", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config(
+        {
+          functions: [{}, {}],
+        },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+
+      // Injects into the first empty entry only
+      expect(cfg.get("functions.[0].source")).to.equal("functions");
+      expect(cfg.get("functions.[1].source")).to.be.undefined;
+    });
+
+    it("does not inject when no entry is empty", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+      fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
+
+      const cfg = new Config(
+        {
+          functions: [
+            { source: "dir-a" },
+            {
+              remoteSource: { repository: "https://github.com/org/repo", ref: "main" },
+              runtime: "nodejs20",
+            },
+          ],
+        },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+
+      expect(cfg.get("functions.[0].source")).to.equal("dir-a");
+      expect(cfg.get("functions.[1].source")).to.be.undefined;
+    });
+
+    it("does not inject for arrays when default dir is missing", () => {
+      const tmpDir = fs.mkdtempSync("firebase-test");
+
+      const cfg = new Config(
+        {
+          functions: [{}, { source: "something" }],
+        },
+        { cwd: tmpDir, projectDir: tmpDir },
+      );
+
+      expect(cfg.get("functions.[0].source")).to.be.undefined;
+      expect(cfg.get("functions.[1].source")).to.equal("something");
     });
   });
 });

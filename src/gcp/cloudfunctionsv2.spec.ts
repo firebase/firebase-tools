@@ -7,7 +7,6 @@ import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
-import { FirebaseError } from "../error";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -62,30 +61,6 @@ describe("cloudfunctionsv2", () => {
     updateTime: new Date(),
   };
 
-  describe("megabytes", () => {
-    enum Bytes {
-      KB = 1e3,
-      MB = 1e6,
-      GB = 1e9,
-      KiB = 1 << 10,
-      MiB = 1 << 20,
-      GiB = 1 << 30,
-    }
-    it("Should handle decimal SI units", () => {
-      expect(cloudfunctionsv2.mebibytes("1000k")).to.equal((1000 * Bytes.KB) / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1.5M")).to.equal((1.5 * Bytes.MB) / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1G")).to.equal(Bytes.GB / Bytes.MiB);
-    });
-    it("Should handle binary SI units", () => {
-      expect(cloudfunctionsv2.mebibytes("1Mi")).to.equal(Bytes.MiB / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1Gi")).to.equal(Bytes.GiB / Bytes.MiB);
-    });
-    it("Should handle no unit", () => {
-      expect(cloudfunctionsv2.mebibytes("100000")).to.equal(100000 / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1e9")).to.equal(1e9 / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1.5E6")).to.equal((1.5 * 1e6) / Bytes.MiB);
-    });
-  });
   describe("functionFromEndpoint", () => {
     it("should guard against version mixing", () => {
       expect(() => {
@@ -822,27 +797,6 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: undefined,
         }),
       ).to.deep.equal(expectedEndpoint);
-    });
-  });
-
-  describe("listFunctions", () => {
-    it("should pass back an error with the correct status", async () => {
-      nock(functionsV2Origin())
-        .get("/v2/projects/foo/locations/-/functions")
-        .query({ filter: `environment="GEN_2"` })
-        .reply(403, { error: "You don't have permissions." });
-
-      let errCaught = false;
-      try {
-        await cloudfunctionsv2.listFunctions("foo", "-");
-      } catch (err: unknown) {
-        errCaught = true;
-        expect(err).instanceOf(FirebaseError);
-        expect(err).has.property("status", 403);
-      }
-
-      expect(errCaught, "should have caught an error").to.be.true;
-      expect(nock.isDone()).to.be.true;
     });
   });
 

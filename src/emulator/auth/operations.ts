@@ -38,6 +38,7 @@ import {
   BlockingFunctionEvents,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
+import { FirebaseError } from "../../error";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.
@@ -2220,9 +2221,23 @@ async function mfaSignInFinalize(
   const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
 
   let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
-  const enrollment = user.mfaInfo?.find(
-    (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber,
-  );
+  const enrollment = user.mfaInfo?.find((enrollment) => {
+    // All but firebase-ios-sdk finalize with unobfuscated phone number.
+    if (enrollment.unobfuscatedPhoneInfo === phoneNumber) {
+      return true;
+    }
+
+    // But firebase-ios-sdk finalizes with an obfuscated number. This works against
+    // cloud auth, so emulator should attempt to find enrollment obfuscated as well.
+    if (
+      !!enrollment.unobfuscatedPhoneInfo &&
+      obfuscatePhoneNumber(enrollment.unobfuscatedPhoneInfo) === phoneNumber
+    ) {
+      return true;
+    }
+
+    return false;
+  });
 
   const { updates, extraClaims } = await fetchBlockingFunction(
     state,
@@ -3116,11 +3131,16 @@ async function fetchBlockingFunction(
   let status: number;
   let text: string;
   try {
+    const signal = controller.signal as any;
+    signal.reason = "";
+    signal.throwIfAborted = () => {
+      throw new FirebaseError("Aborted");
+    };
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
-      signal: controller.signal,
+      signal,
     });
     ok = res.ok;
     status = res.status;

@@ -1,5 +1,6 @@
-import { Client, ClientResponse } from "../../apiv2";
+import { Client } from "../../apiv2";
 import { cloudSQLAdminOrigin } from "../../api";
+import * as clc from "colorette";
 import * as operationPoller from "../../operation-poller";
 import { Instance, Database, User, UserType, DatabaseFlag } from "./types";
 import { needProjectId } from "../../projectUtils";
@@ -47,7 +48,7 @@ export async function getInstance(projectId: string, instanceId: string): Promis
   const res = await client.get<Instance>(`projects/${projectId}/instances/${instanceId}`);
   if (res.body.state === "FAILED") {
     throw new FirebaseError(
-      `Cloud SQL instance ${instanceId} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
+      `Cloud SQL instance ${clc.bold(instanceId)} is in a failed state.\nGo to ${instanceConsoleLink(projectId, instanceId)} to repair or delete it.`,
     );
   }
   return res.body;
@@ -58,24 +59,25 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
   return `https://console.cloud.google.com/sql/instances/${instanceId}/overview?project=${projectId}`;
 }
 
+export type DataConnectLabel = "ft" | "nt";
+export const DEFAULT_DATABASE_VERSION = "POSTGRES_15";
+
 export async function createInstance(args: {
   projectId: string;
   location: string;
   instanceId: string;
   enableGoogleMlIntegration: boolean;
-  waitForCreation: boolean;
-  freeTrial: boolean;
-}): Promise<Instance | undefined> {
+  freeTrialLabel: DataConnectLabel;
+}): Promise<void> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
   }
-  let op: ClientResponse<Operation>;
   try {
-    op = await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
+    await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
       name: args.instanceId,
       region: args.location,
-      databaseVersion: "POSTGRES_15",
+      databaseVersion: DEFAULT_DATABASE_VERSION,
       settings: {
         tier: "db-f1-micro",
         edition: "ENTERPRISE",
@@ -85,7 +87,7 @@ export async function createInstance(args: {
         enableGoogleMlIntegration: args.enableGoogleMlIntegration,
         databaseFlags,
         storageAutoResize: false,
-        userLabels: { "firebase-data-connect": args.freeTrial ? "ft" : "nt" },
+        userLabels: { "firebase-data-connect": args.freeTrialLabel },
         insightsConfig: {
           queryInsightsEnabled: true,
           queryPlansPerMinute: 5, // Match the default settings
@@ -93,22 +95,11 @@ export async function createInstance(args: {
         },
       },
     });
+    return;
   } catch (err: any) {
     handleAllowlistError(err, args.location);
     throw err;
   }
-  if (!args.waitForCreation) {
-    return;
-  }
-  const opName = `projects/${args.projectId}/operations/${op.body.name}`;
-  const pollRes = await operationPoller.pollOperation<Instance>({
-    apiOrigin: cloudSQLAdminOrigin(),
-    apiVersion: API_VERSION,
-    operationResourceName: opName,
-    doneFn: (op: Operation) => op.status === "DONE",
-    masterTimeout: 1_200_000, // This operation frequently takes 5+ minutes
-  });
-  return pollRes;
 }
 
 /**
@@ -134,7 +125,8 @@ export async function updateInstanceForDataConnect(
     {
       settings: {
         ipConfiguration: {
-          ipv4Enabled: true,
+          enablePrivatePathForGoogleCloudServices:
+            !!instance?.settings?.ipConfiguration?.privateNetwork,
         },
         databaseFlags: dbFlags,
         enableGoogleMlIntegration,
@@ -226,6 +218,7 @@ export async function createUser(
   type: UserType,
   username: string,
   password?: string,
+  retryTimeout?: number,
 ): Promise<User> {
   const maxRetries = 3;
   let retries = 0;
@@ -257,7 +250,7 @@ export async function createUser(
       if (builtinRoleNotReady(err.message) && retries < maxRetries) {
         retries++;
         await new Promise((resolve) => {
-          setTimeout(resolve, 1000 * retries);
+          setTimeout(resolve, retryTimeout ?? 1000 * retries);
         });
       } else {
         throw err;

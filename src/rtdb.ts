@@ -29,7 +29,7 @@ export async function updateRules(
   );
   const client = new Client({ urlPrefix: origin });
 
-  return updateRulesWithClient(client, options);
+  return updateRulesWithClient(client, src, options);
 }
 
 export async function updateRulesWithClient(

@@ -1,4 +1,4 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { registerExecution } from "./execution/execution";
@@ -11,7 +11,6 @@ import {
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
-import { AuthService } from "../auth/service";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
@@ -31,14 +30,9 @@ import { registerWebview } from "../webview";
 import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
-import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
-import { emulators } from "../init/features";
-import { GCAToolClient } from "./ai-tools/gca-tool";
-import { GeminiToolController } from "./ai-tools/tool-controller";
-import {
-  registerFirebaseMCP,
-  writeToGeminiConfig,
-} from "./ai-tools/firebase-mcp";
+import { AnalyticsLogger } from "../analytics";
+import { registerFirebaseMCP } from "./ai-tools/firebase-mcp";
+import { ExecutionParamsService } from "./execution/execution-params";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -138,7 +132,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
 export function registerFdc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  authService: AuthService,
+  paramsService: ExecutionParamsService,
   emulatorController: EmulatorsController,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
@@ -157,10 +151,9 @@ export function registerFdc(
   );
 
   const fdcService = new FdcService(
-    authService,
     dataConnectToolkit,
     emulatorController,
-    context,
+    analyticsLogger,
   );
 
   // register codelens
@@ -226,6 +219,7 @@ export function registerFdc(
       context,
       broker,
       fdcService,
+      paramsService,
       analyticsLogger,
       emulatorController,
     ),
@@ -238,7 +232,6 @@ export function registerFdc(
     registerTerminalTasks(broker, analyticsLogger),
     registerFirebaseMCP(broker, analyticsLogger),
     operationCodeLensProvider,
-
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
       // inside the test_projects folder.

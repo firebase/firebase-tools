@@ -92,15 +92,16 @@ export function registerTerminalTasks(
   const startEmulatorsTask = () => {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
 
-    let cmd = `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`;
-
+    let cmd = `${settings.firebasePath} emulators:start`;
+    if (currentProjectId.value) {
+      cmd += ` --project ${currentProjectId.value}`;
+    }
     if (settings.importPath) {
       cmd += ` --import ${settings.importPath}`;
     }
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
-    vscode.window.showInformationMessage("Starting emulators... Please see terminal.");
     runTerminalTask(
       "firebase emulators",
       cmd,

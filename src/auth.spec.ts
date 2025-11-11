@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import {
+  assertAccount,
   getAdditionalAccounts,
   getAllAccounts,
   getGlobalDefaultAccount,
@@ -146,6 +147,32 @@ describe("auth", () => {
     it("prefers account flag to project root", () => {
       const account = selectAccount("test2@test.com", "/path/project1");
       expect(account).to.deep.equal(additionalUser2);
+    });
+  });
+
+  describe("assertAccount", () => {
+    const defaultAccount: Account = {
+      user: {
+        email: "test@test.com",
+      },
+      tokens: {
+        access_token: "abc1234",
+      },
+    };
+
+    beforeEach(() => {
+      configstore.set("user", defaultAccount.user);
+      configstore.set("tokens", defaultAccount.tokens);
+    });
+
+    it("should not throw an error if the account exists", () => {
+      expect(() => assertAccount("test@test.com")).to.not.throw();
+    });
+
+    it("should throw an error if the account does not exist", () => {
+      expect(() => assertAccount("nonexistent@test.com")).to.throw(
+        "Account nonexistent@test.com does not exist",
+      );
     });
   });
 });

@@ -28,7 +28,7 @@ export async function defaultServiceAccount(e: backend.Endpoint): Promise<string
   const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
-  } else if (e.platform === "gcfv2") {
+  } else if (e.platform === "gcfv2" || e.platform === "run") {
     return await getDefaultServiceAccount(metadata.projectNumber);
   }
   assertExhaustive(e.platform);

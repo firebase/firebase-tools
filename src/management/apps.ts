@@ -7,13 +7,12 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
 import { WebConfig } from "../fetchWebSetup";
-import { Platform } from "../dataconnect/types";
 import { needProjectId } from "../projectUtils";
-import * as prompt from "../prompt";
+import { input, select, confirm } from "../prompt";
 import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";
-import { getPlatformFromFolder } from "../dataconnect/fileUtils";
+import { getPlatformsFromFolder, Platform } from "../appUtils";
 import { logBullet, logSuccess, logWarning, promptForDirectory } from "../utils";
 import { AppsInitOptions } from "../commands/apps-init";
 
@@ -22,7 +21,7 @@ export const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 async function getDisplayName(): Promise<string> {
-  return await prompt.input("What would you like to call your app?");
+  return await input("What would you like to call your app?");
 }
 
 interface CreateFirebaseAppOptions {
@@ -46,19 +45,22 @@ interface CreateWebAppOptions extends CreateFirebaseAppOptions {
 
 export async function getPlatform(appDir: string, config: Config) {
   // Detect what platform based on current user
-  let targetPlatform = await getPlatformFromFolder(appDir);
-  if (targetPlatform === Platform.NONE) {
+  let targetPlatforms = await getPlatformsFromFolder(appDir);
+  let targetPlatform: Platform;
+
+  if (targetPlatforms.length === 0) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
     appDir = await promptForDirectory({
       config,
       relativeTo: appDir, // CWD is passed in as `appDir`, so we want it relative to the current directory instead of where firebase.json is.
       message: "We couldn't determine what kind of app you're using. Where is your app directory?",
     });
-    targetPlatform = await getPlatformFromFolder(appDir);
+    targetPlatforms = await getPlatformsFromFolder(appDir);
   }
-  if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
-    if (targetPlatform === Platform.NONE) {
-      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
+
+  if (targetPlatforms.length !== 1) {
+    if (targetPlatforms.length === 0) {
+      logBullet(`Couldn't automatically detect your app in directory ${appDir}.`);
     } else {
       logSuccess(`Detected multiple app platforms in directory ${appDir}`);
       // Can only setup one platform at a time, just ask the user
@@ -68,12 +70,16 @@ export async function getPlatform(appDir: string, config: Config) {
       { name: "Web (JavaScript)", value: Platform.WEB },
       { name: "Android (Kotlin)", value: Platform.ANDROID },
     ];
-    targetPlatform = await prompt.select<Platform>({
+    targetPlatform = await select<Platform>({
       message:
         "Which platform do you want to set up an SDK for? Note: We currently do not support automatically setting up C++ or Unity projects.",
       choices: platforms,
     });
-  } else if (targetPlatform === Platform.FLUTTER) {
+  } else {
+    targetPlatform = targetPlatforms[0];
+  }
+
+  if (targetPlatform === Platform.FLUTTER) {
     logWarning(`Detected ${targetPlatform} app in directory ${appDir}`);
     throw new FirebaseError(`Flutter is not supported by apps:configure.
 Please follow the link below to set up firebase for your Flutter app:
@@ -83,18 +89,15 @@ https://firebase.google.com/docs/flutter/setup
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
-  return targetPlatform === Platform.MULTIPLE
-    ? AppPlatform.PLATFORM_UNSPECIFIED
-    : (targetPlatform as unknown as AppPlatform);
+  return targetPlatform as unknown as AppPlatform;
 }
 
 async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
     options.displayName = options.displayName || (await getDisplayName());
-    options.bundleId =
-      options.bundleId || (await prompt.input("Please specify your iOS app bundle ID:"));
+    options.bundleId = options.bundleId || (await input("Please specify your iOS app bundle ID:"));
     options.appStoreId =
-      options.appStoreId || (await prompt.input("Please specify your iOS app App Store ID:"));
+      options.appStoreId || (await input("Please specify your iOS app App Store ID:"));
   }
   if (!options.bundleId) {
     throw new FirebaseError("Bundle ID for iOS app cannot be empty");
@@ -121,7 +124,7 @@ async function initiateAndroidAppCreation(
   if (!options.nonInteractive) {
     options.displayName = options.displayName || (await getDisplayName());
     options.packageName =
-      options.packageName || (await prompt.input("Please specify your Android app package name:"));
+      options.packageName || (await input("Please specify your Android app package name:"));
   }
   if (!options.packageName) {
     throw new FirebaseError("Package name for Android app cannot be empty");
@@ -197,7 +200,8 @@ export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): voi
   if (!apps.length) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project",
+        "associated with this Firebase project.\n" +
+        "You can create an app for this project with 'firebase apps:create'",
     );
   }
 }
@@ -217,7 +221,7 @@ async function selectAppInteractively(
     };
   });
 
-  return await prompt.select({
+  return await select({
     message:
       `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
       "app to get the configuration data:",
@@ -600,7 +604,7 @@ export async function writeConfigToFile(
     if (nonInteractive) {
       throw new FirebaseError(`${filename} already exists`);
     }
-    const overwrite = await prompt.confirm(`${filename} already exists. Do you want to overwrite?`);
+    const overwrite = await confirm(`${filename} already exists. Do you want to overwrite?`);
 
     if (!overwrite) {
       return false;

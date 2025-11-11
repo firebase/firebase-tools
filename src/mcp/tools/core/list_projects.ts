@@ -6,9 +6,11 @@ import { getFirebaseProjectPage } from "../../../management/projects";
 const PROJECT_LIST_PAGE_SIZE = 20;
 
 export const list_projects = tool(
+  "core",
   {
     name: "list_projects",
-    description: "Retrieves a list of Firebase projects up to the specified total count.",
+    description:
+      "Use this to retrieve a list of Firebase Projects that the signed-in user has access to.",
     inputSchema: z.object({
       page_size: z
         .number()

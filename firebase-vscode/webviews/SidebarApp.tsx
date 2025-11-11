@@ -277,14 +277,13 @@ export function SidebarApp() {
         <ConfigPicker />
       </PanelSection>
 
-      {user.value &&
-        (isInitialized.value ? (
-          <Content />
-        ) : (
-          <PanelSection isLast={true}>
-            <Welcome />
-          </PanelSection>
-        ))}
+      {isInitialized.value ? (
+        <Content />
+      ) : (
+        <PanelSection isLast={true}>
+          <Welcome />
+        </PanelSection>
+      )}
     </App>
   );
 }

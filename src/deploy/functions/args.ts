@@ -47,10 +47,11 @@ export interface Context {
 
   // Caching fields for backend.existingBackend()
   existingBackend?: backend.Backend;
-  loadedExistingBackend?: boolean;
+  existingBackendPromise?: Promise<backend.Backend>;
   unreachableRegions?: {
     gcfV1: string[];
     gcfV2: string[];
+    run: string[];
   };
 
   // Tracks metrics about codebase deployments to send to GA4

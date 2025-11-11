@@ -35,9 +35,7 @@ describe("Studio Management", () => {
       except: "",
       filteredTargets: [],
       force: false,
-      json: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: emptyConfig,
       rc: new RC(),
@@ -185,7 +183,7 @@ describe("Studio Management", () => {
     it("should log error if api call fails", async () => {
       process.env.WORKSPACE_SLUG = "test-workspace";
       clientRequestStub.rejects(new Error("API Error"));
-      const errorLogSpy = sandbox.spy(logger, "warn");
+      const errorLogSpy = sandbox.spy(logger, "debug");
 
       await studio.updateStudioFirebaseProject("new-project");
 

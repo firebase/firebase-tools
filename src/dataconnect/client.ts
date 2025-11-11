@@ -41,24 +41,31 @@ export async function createService(
   projectId: string,
   locationId: string,
   serviceId: string,
-): Promise<types.Service> {
-  const op = await dataconnectClient().post<types.Service, types.Service>(
-    `/projects/${projectId}/locations/${locationId}/services`,
-    {
-      name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-    },
-    {
-      queryParams: {
-        service_id: serviceId,
+): Promise<types.Service | undefined> {
+  try {
+    const op = await dataconnectClient().post<types.Service, types.Service>(
+      `/projects/${projectId}/locations/${locationId}/services`,
+      {
+        name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
       },
-    },
-  );
-  const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin(),
-    apiVersion: DATACONNECT_API_VERSION,
-    operationResourceName: op.body.name,
-  });
-  return pollRes;
+      {
+        queryParams: {
+          service_id: serviceId,
+        },
+      },
+    );
+    const pollRes = await operationPoller.pollOperation<types.Service>({
+      apiOrigin: dataconnectOrigin(),
+      apiVersion: DATACONNECT_API_VERSION,
+      operationResourceName: op.body.name,
+    });
+    return pollRes;
+  } catch (err: any) {
+    if (err.status !== 409) {
+      throw err;
+    }
+    return undefined; // Service already exists
+  }
 }
 
 export async function deleteService(serviceName: string): Promise<types.Service> {
@@ -93,7 +100,7 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
 export async function listSchemas(
   serviceName: string,
   fields: string[] = [],
-): Promise<types.Schema[] | undefined> {
+): Promise<types.Schema[]> {
   const schemas: types.Schema[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
@@ -118,6 +125,7 @@ export async function listSchemas(
 export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,
+  async: boolean = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
@@ -125,14 +133,14 @@ export async function upsertSchema(
       validateOnly: validateOnly ? "true" : "false",
     },
   });
-  if (validateOnly) {
+  if (validateOnly || async) {
     return;
   }
   return operationPoller.pollOperation<types.Schema>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 120000,
+    masterTimeout: 10000,
   });
 }
 
