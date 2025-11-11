@@ -16,6 +16,7 @@ import {
 } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
+import * as experiments from "../experiments";
 
 // pickService reads firebase.json and returns all services with a given serviceId.
 // If serviceID is not provided and there is a single service, return that.
@@ -77,8 +78,20 @@ export async function load(
   const resolvedDir = config.path(sourceDirectory);
   const dataConnectYaml = await readDataConnectYaml(resolvedDir);
   const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
-  const schemaDir = path.join(resolvedDir, dataConnectYaml.schema.source);
-  const schemaGQLs = await readGQLFiles(schemaDir);
+  const schemaYamls = dataConnectYaml.schema ? [dataConnectYaml.schema] : dataConnectYaml.schemas;
+  const schemas = await Promise.all(
+    schemaYamls!.map(async (yaml) => {
+      const schemaDir = path.join(resolvedDir, yaml.source);
+      const schemaGQLs = await readGQLFiles(schemaDir);
+      return {
+        name: `${serviceName}/schemas/${yaml.id || MAIN_SCHEMA_ID}`,
+        datasources: [toDatasource(projectId, dataConnectYaml.location, yaml.datasource)],
+        source: {
+          files: schemaGQLs,
+        },
+      };
+    }),
+  );
   const connectorInfo = await Promise.all(
     dataConnectYaml.connectorDirs.map(async (dir) => {
       const connectorDir = path.join(resolvedDir, dir);
@@ -100,15 +113,7 @@ export async function load(
   return {
     serviceName,
     sourceDirectory: resolvedDir,
-    schema: {
-      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
-      datasources: [
-        toDatasource(projectId, dataConnectYaml.location, dataConnectYaml.schema.datasource),
-      ],
-      source: {
-        files: schemaGQLs,
-      },
-    },
+    schemas: schemas,
     dataConnectYaml,
     connectorInfo,
   };
@@ -148,6 +153,12 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
   // TODO: Use json schema for validation here!
   if (!unvalidated["location"]) {
     throw new FirebaseError("Missing required field 'location' in dataconnect.yaml");
+  }
+  if (!experiments.isEnabled("fdcwebhooks") && unvalidated["schemas"]) {
+    throw new FirebaseError("Unsupported field 'schemas' in dataconnect.yaml");
+  }
+  if (!unvalidated["schema"] && !unvalidated["schemas"]) {
+    throw new FirebaseError("Either 'schema' or 'schemas' is required in dataconnect.yaml");
   }
   return unvalidated as DataConnectYaml;
 }

@@ -15,7 +15,6 @@ export interface Service extends BaseResource {
 
 export interface Schema extends BaseResource {
   name: string;
-  id?: string;
 
   datasources: Datasource[];
   source: Source;
@@ -124,13 +123,16 @@ export function requiresVector(dm?: DeploymentMetadata): boolean {
 export interface DataConnectYaml {
   specVersion?: string;
   serviceId: string;
-  schema: SchemaYaml;
+  // One of `schema` or `schemas` is required.
+  schema?: SchemaYaml;
+  schemas?: SchemaYaml[];
   location: string;
   connectorDirs: string[];
 }
 
 export interface SchemaYaml {
   source: string;
+  id?: string;
   datasource: DatasourceYaml;
 }
 
@@ -141,6 +143,10 @@ export interface DatasourceYaml {
       instanceId: string;
     };
     schemaValidation?: SchemaValidation;
+  };
+  httpGraphql?: {
+    uri: string;
+    timeout?: string;
   };
 }
 
@@ -191,9 +197,7 @@ export interface DartSDK {
 export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
-  // One of `schema` or `schemas` is required.
-  schema?: Schema;
-  schemas?: Schema[];
+  schemas: Schema[];
   connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
@@ -221,18 +225,36 @@ export function toDatasource(
       },
     };
   }
+  if (ds?.httpGraphql) {
+    return {
+      httpGraphql: {
+        uri: ds.httpGraphql.uri,
+        timeout: ds.httpGraphql.timeout,
+      },
+    };
+  }
   return {};
 }
 
 /** Returns the main schema for a service info */
+export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
+  if (dataconnectYaml.schema) {
+    return dataconnectYaml.schema;
+  }
+  const mainSch = dataconnectYaml.schemas?.find((s) => s.id === MAIN_SCHEMA_ID || !s.id);
+  if (!mainSch) {
+    throw new Error(`Service ${dataconnectYaml.serviceId} has no main schema defined`);
+  }
+  return mainSch;
+}
+
+/** Returns the main schema for a service info */
 export function mainSchema(serviceInfo: ServiceInfo): Schema {
-  if (serviceInfo.schema) {
-    return serviceInfo.schema;
+  const mainSch = serviceInfo.schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`));
+  if (!mainSch) {
+    throw new Error(`Service ${serviceInfo.serviceName} has no main schema defined`);
   }
-  if (serviceInfo.schemas && serviceInfo.schemas.length > 0) {
-    return serviceInfo.schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`))!;
-  }
-  throw new Error(`Service ${serviceInfo.serviceName} has no schema defined`);
+  return mainSch;
 }
 
 /** Start Dataplane Client Types */

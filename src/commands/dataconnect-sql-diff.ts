@@ -6,7 +6,7 @@ import { requirePermissions } from "../requirePermissions";
 import { pickService } from "../dataconnect/load";
 import { diffSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
-import { mainSchema } from "../dataconnect/types";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
 export const command = new Command("dataconnect:sql:diff [serviceId]")
   .description(
@@ -26,7 +26,7 @@ export const command = new Command("dataconnect:sql:diff [serviceId]")
     const diffs = await diffSchema(
       options,
       mainSchema(serviceInfo),
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+      mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.schemaValidation,
     );
     return { projectId, serviceId, diffs };
   });

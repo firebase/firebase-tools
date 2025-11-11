@@ -8,7 +8,7 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
-import { mainSchema } from "../dataconnect/types";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
 export const command = new Command("dataconnect:sql:migrate [serviceId]")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
@@ -24,8 +24,8 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const instanceId =
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
+    const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
+      .instanceId;
     if (!instanceId) {
       throw new FirebaseError(
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
@@ -35,7 +35,8 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
       options,
       schema: mainSchema(serviceInfo),
       validateOnly: true,
-      schemaValidation: serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+      schemaValidation: mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql
+        ?.schemaValidation,
     });
     if (diffs.length) {
       logLabeledSuccess(

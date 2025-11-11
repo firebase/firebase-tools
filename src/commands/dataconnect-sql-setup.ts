@@ -10,7 +10,7 @@ import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissi
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
-import { mainSchema } from "../dataconnect/types";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
 export const command = new Command("dataconnect:sql:setup [serviceId]")
   .description("set up your CloudSQL database")
@@ -25,8 +25,8 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const instanceId =
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
+    const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
+      .instanceId;
     if (!instanceId) {
       throw new FirebaseError(
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
