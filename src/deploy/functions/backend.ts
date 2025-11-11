@@ -561,7 +561,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
 
   try {
-    const runServices = await listServices(ctx.projectId, "goog-managed-by=cloudfunctions");
+    const runServices = await listServices(ctx.projectId);
     for (const service of runServices) {
       const endpoint = endpointFromService(service);
       existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};

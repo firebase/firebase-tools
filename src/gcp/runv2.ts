@@ -200,7 +200,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
-export async function listServices(projectId: string, labelSelector?: string): Promise<Service[]> {
+export async function listServices(projectId: string): Promise<Service[]> {
   const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -208,14 +208,6 @@ export async function listServices(projectId: string, labelSelector?: string): P
     const queryParams: Record<string, string> = {};
     if (pageToken) {
       queryParams["pageToken"] = pageToken;
-    }
-    if (labelSelector) {
-      const parts = labelSelector.split("=");
-      const key = parts.shift();
-      if (key) {
-        const value = parts.join("=");
-        queryParams["filter"] = `labels."${key}"="${value}"`;
-      }
     }
 
     const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
@@ -228,7 +220,14 @@ export async function listServices(projectId: string, labelSelector?: string): P
     }
 
     if (res.body.services) {
-      allServices.push(...res.body.services);
+      for (const service of res.body.services) {
+        if (
+          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
+        ) {
+          allServices.push(service);
+        }
+      }
     }
     pageToken = res.body.nextPageToken;
   } while (pageToken);

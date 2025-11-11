@@ -470,7 +470,16 @@ describe("runv2", () => {
     });
 
     it("should return a list of services", async () => {
-      const mockServices = [{ name: "service1" }, { name: "service2" }];
+      const mockServices = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+      ];
       getStub.resolves({ status: 200, body: { services: mockServices } });
 
       const services = await runv2.listServices(PROJECT_ID);
@@ -483,8 +492,18 @@ describe("runv2", () => {
     });
 
     it("should handle pagination", async () => {
-      const mockServices1 = [{ name: "service1" }];
-      const mockServices2 = [{ name: "service2" }];
+      const mockServices1 = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+      ];
+      const mockServices2 = [
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+      ];
       getStub
         .onFirstCall()
         .resolves({ status: 200, body: { services: mockServices1, nextPageToken: "nextPage" } });
@@ -516,29 +535,33 @@ describe("runv2", () => {
       }
     });
 
-    it("should filter by labelSelector", async () => {
-      const mockServices = [{ name: "service1" }];
+    it("should filter for gcfv2 and firebase-managed services", async () => {
+      const mockServices = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+        {
+          name: "service3",
+          labels: { "goog-managed-by": "other" },
+        },
+        {
+          name: "service4",
+          labels: {},
+        },
+      ];
       getStub.resolves({ status: 200, body: { services: mockServices } });
 
-      const services = await runv2.listServices(PROJECT_ID, "foo=bar");
+      const services = await runv2.listServices(PROJECT_ID);
 
-      expect(services).to.deep.equal(mockServices);
+      expect(services).to.deep.equal([mockServices[0], mockServices[1]]);
       expect(getStub).to.have.been.calledOnceWithExactly(
         `/projects/${PROJECT_ID}/locations/-/services`,
-        { queryParams: { filter: 'labels."foo"="bar"' } },
-      );
-    });
-
-    it("should filter by labelSelector with equals sign in value", async () => {
-      const mockServices = [{ name: "service1" }];
-      getStub.resolves({ status: 200, body: { services: mockServices } });
-
-      const services = await runv2.listServices(PROJECT_ID, "foo=bar=baz");
-
-      expect(services).to.deep.equal(mockServices);
-      expect(getStub).to.have.been.calledOnceWithExactly(
-        `/projects/${PROJECT_ID}/locations/-/services`,
-        { queryParams: { filter: 'labels."foo"="bar=baz"' } },
+        { queryParams: {} },
       );
     });
   });
