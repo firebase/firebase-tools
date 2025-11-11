@@ -24,24 +24,17 @@ export const command = new Command("functions:list")
       projectId,
     } as args.Context;
 
-    let v1Endpoints: backend.Endpoint[] = [];
+    let endpoints: backend.Endpoint[] = [];
     try {
       const existing = await backend.existingBackend(context);
-      v1Endpoints = backend.allEndpoints(existing);
+      endpoints = backend.allEndpoints(existing);
     } catch (err: any) {
-      logger.debug(`Failed to list v1 functions:`, err);
+      logger.debug(`Failed to list functions:`, err);
       logger.warn(
-        `Failed to list v1 functions. Ensure you have the Cloud Functions API enabled and the necessary permissions.`,
+        `Failed to list functions. Ensure you have the Cloud Functions and Cloud Run APIs enabled and the necessary permissions.`,
       );
     }
 
-    const endpointMap = new Map<string, backend.Endpoint>();
-    for (const endpoint of v1Endpoints) {
-      const key = `${endpoint.region}/${endpoint.id}`;
-      endpointMap.set(key, endpoint);
-    }
-
-    const endpoints = Array.from(endpointMap.values());
     endpoints.sort(backend.compareFunctions);
 
     if (endpoints.length === 0) {
