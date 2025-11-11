@@ -28,7 +28,7 @@ function getReportContent(
     }
     validateEventFilters(filter); // throws here if invalid filters
     const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
-    if (!reportResponse.groups?.length) {
+    if (!reportResponse.groups || reportResponse.groups.length === 0) {
       additionalPrompt = "This report response contains no results.";
     }
     if (additionalPrompt) {

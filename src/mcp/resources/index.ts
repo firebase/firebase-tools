@@ -1,16 +1,24 @@
 import { ReadResourceResult } from "@modelcontextprotocol/sdk/types";
 import { McpContext } from "../types";
 import { docs } from "./docs";
+import { app_id } from "./guides/app_id";
 import { init_ai } from "./guides/init_ai";
 import { init_auth } from "./guides/init_auth";
 import { init_backend } from "./guides/init_backend";
 import { init_firestore } from "./guides/init_firestore";
 import { init_firestore_rules } from "./guides/init_firestore_rules";
 import { init_hosting } from "./guides/init_hosting";
+import { crashlytics_investigations } from "./guides/crashlytics_investigations";
 import { ServerResource, ServerResourceTemplate } from "../resource";
 import { trackGA4 } from "../../track";
+import { crashlytics_issues } from "./guides/crashlytics_issues";
+import { crashlytics_reports } from "./guides/crashlytics_reports";
 
 export const resources = [
+  app_id,
+  crashlytics_investigations,
+  crashlytics_issues,
+  crashlytics_reports,
   init_backend,
   init_ai,
   init_firestore,
