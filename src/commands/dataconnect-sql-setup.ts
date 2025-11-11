@@ -33,7 +33,9 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
       );
     }
 
-    const { serviceName, instanceName, databaseId } = getIdentifiers(mainSchema(serviceInfo));
+    const { serviceName, instanceName, databaseId } = getIdentifiers(
+      mainSchema(serviceInfo.schemas),
+    );
     await ensureServiceIsConnectedToCloudSql(
       serviceName,
       instanceName,

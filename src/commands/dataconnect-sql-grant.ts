@@ -52,6 +52,6 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
 
-    await grantRoleToUserInSchema(options, mainSchema(serviceInfo));
+    await grantRoleToUserInSchema(options, mainSchema(serviceInfo.schemas));
     return { projectId, serviceId };
   });

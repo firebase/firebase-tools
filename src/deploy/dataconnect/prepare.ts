@@ -65,7 +65,7 @@ export default async function (context: Context, options: DeployOptions): Promis
     for (const si of serviceInfos) {
       await diffSchema(
         options,
-        mainSchema(si),
+        mainSchema(si.schemas),
         si.dataConnectYaml.schema?.datasource?.postgresql?.schemaValidation,
       );
     }
@@ -76,7 +76,7 @@ export default async function (context: Context, options: DeployOptions): Promis
           return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
         })
         .map(async (s) => {
-          const postgresDatasource = mainSchema(s).datasources.find((d) => d.postgresql);
+          const postgresDatasource = mainSchema(s.schemas).datasources.find((d) => d.postgresql);
           if (postgresDatasource) {
             const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
             const databaseId = postgresDatasource.postgresql?.database;

@@ -236,7 +236,7 @@ export function toDatasource(
   return {};
 }
 
-/** Returns the main schema for a service info */
+/** Returns the main schema YAML for a Data Connect YAML */
 export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
   if (dataconnectYaml.schema) {
     return dataconnectYaml.schema;
@@ -248,11 +248,11 @@ export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
   return mainSch;
 }
 
-/** Returns the main schema for a service info */
-export function mainSchema(serviceInfo: ServiceInfo): Schema {
-  const mainSch = serviceInfo.schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`));
+/** Returns the main schema from a list of schemas */
+export function mainSchema(schemas: Schema[]): Schema {
+  const mainSch = schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`));
   if (!mainSch) {
-    throw new Error(`Service ${serviceInfo.serviceName} has no main schema defined`);
+    throw new Error(`No main schema is defined`);
   }
   return mainSch;
 }

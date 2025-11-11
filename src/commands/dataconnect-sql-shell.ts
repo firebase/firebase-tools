@@ -92,7 +92,7 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     const projectId = needProjectId(options);
     await ensureApis(projectId);
     const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const { instanceId, databaseId } = getIdentifiers(mainSchema(serviceInfo));
+    const { instanceId, databaseId } = getIdentifiers(mainSchema(serviceInfo.schemas));
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 

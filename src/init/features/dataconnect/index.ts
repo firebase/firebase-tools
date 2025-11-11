@@ -9,16 +9,15 @@ import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
 import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
-import * as experiments from "../../../experiments";
 import {
   listLocations,
   listAllServices,
-  getSchema,
+  listSchemas,
   listConnectors,
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, MAIN_SCHEMA_ID } from "../../../dataconnect/types";
+import { Schema, Service, File, MAIN_SCHEMA_ID, mainSchema } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -45,9 +44,6 @@ import { trackGA4 } from "../../../track";
 export const FDC_DEFAULT_REGION = "us-east4";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
-const DATACONNECT_YAML_WEBHOOKS_EXPERIMENT_TEMPLATE = readTemplateSync(
-  "init/dataconnect/dataconnect-fdcwebhooks.yaml",
-);
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -482,9 +478,7 @@ function subDataconnectYamlValues(replacementValues: {
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorDirs: "__connectorDirs__",
   };
-  let replaced = experiments.isEnabled("fdcwebhooks")
-    ? DATACONNECT_YAML_WEBHOOKS_EXPERIMENT_TEMPLATE
-    : DATACONNECT_YAML_TEMPLATE;
+  let replaced = DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
@@ -527,8 +521,15 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
 }
 
 async function downloadService(info: RequiredInfo, serviceName: string): Promise<void> {
-  const schema = await getSchema(serviceName);
-  if (!schema) {
+  let schemas: Schema[] = [];
+  try {
+    schemas = await listSchemas(serviceName);
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  if (!schemas.length) {
     return;
   }
   info.serviceGql = {
@@ -541,13 +542,15 @@ async function downloadService(info: RequiredInfo, serviceName: string): Promise
       },
     ],
   };
-  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
+  const mainSch = mainSchema(schemas);
+  const primaryDatasource = mainSch.datasources.find((d) => d.postgresql);
   if (primaryDatasource?.postgresql?.cloudSql?.instance) {
     const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
     info.cloudSqlInstanceId = instanceName.instanceId;
   }
-  if (schema.source.files?.length) {
-    info.serviceGql.schemaGql = schema.source.files;
+  // TODO: Update dataconnect.yaml with downloaded secondary schemas as well.
+  if (mainSch.source.files?.length) {
+    info.serviceGql.schemaGql = mainSch.source.files;
   }
   info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
   const connectors = await listConnectors(serviceName, [

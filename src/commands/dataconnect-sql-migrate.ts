@@ -33,7 +33,7 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
     }
     const diffs = await migrateSchema({
       options,
-      schema: mainSchema(serviceInfo),
+      schema: mainSchema(serviceInfo.schemas),
       validateOnly: true,
       schemaValidation: mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql
         ?.schemaValidation,

@@ -1,5 +1,5 @@
 import * as utils from "../../utils";
-import { Connector, mainSchema, ServiceInfo } from "../../dataconnect/types";
+import { Connector, mainSchema, mainSchemaYaml, ServiceInfo } from "../../dataconnect/types";
 import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
@@ -35,8 +35,8 @@ export default async function (context: Context, options: Options): Promise<void
       );
     })
     .map((s) => ({
-      schema: mainSchema(s),
-      validationMode: s.dataConnectYaml?.schema?.datasource?.postgresql?.schemaValidation,
+      schema: mainSchema(s.schemas),
+      validationMode: mainSchemaYaml(s.dataConnectYaml).datasource?.postgresql?.schemaValidation,
     }));
   const wantConnectors = serviceInfos.flatMap((si) =>
     si.connectorInfo
