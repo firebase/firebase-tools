@@ -1,1 +1,2 @@
+- Removes support for running emulators with Java versions prior to 21.
 - [Added] support for new google-genai plugin during `init genkit` (#8957)
