@@ -1,1 +1,2 @@
+- [firestore] Changed `firestore:backups:list --json` to return a `listBackupsResponse` object instead of a raw array of backups. This is a breaking change that provides more information, including unreachable locations.
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
