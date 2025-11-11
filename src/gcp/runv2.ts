@@ -200,7 +200,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
-export async function listServices(projectId: string, filter?: string): Promise<Service[]> {
+export async function listServices(projectId: string, labelSelector?: string): Promise<Service[]> {
   const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -209,9 +209,13 @@ export async function listServices(projectId: string, filter?: string): Promise<
     if (pageToken) {
       queryParams["pageToken"] = pageToken;
     }
-    if (filter) {
-      const parts = filter.split("=");
-      queryParams["filter"] = `labels."${parts[0]}"="${parts[1]}"`;
+    if (labelSelector) {
+      const parts = labelSelector.split("=");
+      const key = parts.shift();
+      if (key) {
+        const value = parts.join("=");
+        queryParams["filter"] = `labels."${key}"="${value}"`;
+      }
     }
 
     const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
