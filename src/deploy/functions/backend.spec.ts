@@ -332,13 +332,11 @@ describe("Backend", () => {
           functions: [],
           unreachable: [],
         });
+        const context = { projectId: "project" } as args.Context;
 
-        await backend.existingBackend(newContext());
+        await backend.existingBackend(context);
 
-        expect(listServices).to.have.been.calledWith(
-          sinon.match.any,
-          "goog-managed-by=cloudfunctions",
-        );
+        expect(listServices).to.have.been.calledWith("project");
       });
     });
 
