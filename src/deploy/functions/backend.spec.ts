@@ -335,7 +335,10 @@ describe("Backend", () => {
 
         await backend.existingBackend(newContext());
 
-        expect(listServices).to.have.been.calledWith(sinon.match.any, "goog-managed-by=cloudfunctions");
+        expect(listServices).to.have.been.calledWith(
+          sinon.match.any,
+          "goog-managed-by=cloudfunctions",
+        );
       });
     });
 
