@@ -1,1 +1,1 @@
-- Upgraded functions::list command to use cloud run api (#9425)
+- Upgraded functions::list command to use cloud run api for v2 functions (#9425)
