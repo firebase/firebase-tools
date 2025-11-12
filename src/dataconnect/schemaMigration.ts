@@ -599,7 +599,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   databaseId: string,
   linkIfNotConnected: boolean,
 ): Promise<void> {
-  let currentSchema = await getSchema(serviceName);
+  let currentSchema = await getSchema(serviceName, MAIN_SCHEMA_ID);
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
   if (
     currentSchema?.reconciling && // active LRO

@@ -7,6 +7,7 @@ import { compileErrors } from "../../util/dataconnect/compile";
 function renderServices(fdcServices: ServiceInfo[]) {
   if (!fdcServices.length) return "Data Connect Status: <UNCONFIGURED>";
 
+  // TODO: Render secondary schemas as well.
   return `\n\n## Data Connect Schema
 
 The following is the up-to-date content of existing schema files (their paths are relative to the Data Connect source directory).

@@ -77,6 +77,19 @@ export default async function (context: Context, options: Options): Promise<void
     }),
   );
 
+  // Migrate main schemas.
+  for (const s of wantMainSchemas) {
+    await migrateSchema({
+      options,
+      schema: s.schema,
+      validateOnly: false,
+      schemaValidation: s.validationMode,
+      stats: dataconnect.deployStats,
+    });
+    utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
+  }
+
   // Upsert secondary schemas.
   const wantSecondarySchemas = serviceInfos
     .filter((si) => {
@@ -92,19 +105,6 @@ export default async function (context: Context, options: Options): Promise<void
   for (const schema of wantSecondarySchemas) {
     await upsertSchema(schema, false);
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${schema.name}`);
-    dataconnect.deployStats.numSchemaMigrated++;
-  }
-
-  // Migrate main schemas.
-  for (const s of wantMainSchemas) {
-    await migrateSchema({
-      options,
-      schema: s.schema,
-      validateOnly: false,
-      schemaValidation: s.validationMode,
-      stats: dataconnect.deployStats,
-    });
-    utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
     dataconnect.deployStats.numSchemaMigrated++;
   }
 

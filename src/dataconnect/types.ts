@@ -250,7 +250,7 @@ export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
 
 /** Returns the main schema from a list of schemas */
 export function mainSchema(schemas: Schema[]): Schema {
-  const mainSch = schemas.find((s) => s.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`));
+  const mainSch = schemas.find((s) => isMainSchema(s));
   if (!mainSch) {
     throw new Error(`No main schema is defined`);
   }

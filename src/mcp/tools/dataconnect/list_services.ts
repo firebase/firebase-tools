@@ -114,6 +114,7 @@ export const list_services = tool(
       for (const s of localServices) {
         const local = s.local!;
         output.push(dump(local.dataConnectYaml));
+        // TODO: Include secondary schema sources here as well.
         const schemaDir = path.join(
           local.sourceDirectory,
           mainSchemaYaml(local.dataConnectYaml).source,
