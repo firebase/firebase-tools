@@ -31,7 +31,7 @@ export const command = new Command("functions:list")
     } catch (err: any) {
       logger.debug(`Failed to list functions:`, err);
       logger.warn(
-        `Failed to list functions. Ensure you have the Cloud Functions and Cloud Run APIs enabled and the necessary permissions.`,
+        `Failed to list functions: ${err.message}. Ensure you have the Cloud Functions and Cloud Run APIs enabled and the necessary permissions.`,
       );
     }
 
