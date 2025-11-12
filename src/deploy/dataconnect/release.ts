@@ -1,6 +1,12 @@
 import * as utils from "../../utils";
-import { Connector, mainSchema, mainSchemaYaml, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertConnector } from "../../dataconnect/client";
+import {
+  Connector,
+  isMainSchema,
+  mainSchema,
+  mainSchemaYaml,
+  ServiceInfo,
+} from "../../dataconnect/types";
+import { listConnectors, upsertConnector, upsertSchema } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
@@ -25,7 +31,7 @@ export default async function (context: Context, options: Options): Promise<void
   const filters = dataconnect.filters;
 
   // First, figure out the schemas and connectors to deploy.
-  const wantSchemas = serviceInfos
+  const wantMainSchemas = serviceInfos
     .filter((si) => {
       return (
         !filters ||
@@ -71,8 +77,26 @@ export default async function (context: Context, options: Options): Promise<void
     }),
   );
 
-  // Migrate schemas.
-  for (const s of wantSchemas) {
+  // Upsert secondary schemas.
+  const wantSecondarySchemas = serviceInfos
+    .filter((si) => {
+      return (
+        !filters ||
+        filters.some((f) => {
+          return f.serviceId === si.dataConnectYaml.serviceId && (f.schemaOnly || f.fullService);
+        })
+      );
+    })
+    .map((s) => s.schemas.filter((s) => !isMainSchema(s)))
+    .flatMap((s) => s);
+  for (const schema of wantSecondarySchemas) {
+    await upsertSchema(schema, false);
+    utils.logLabeledSuccess("dataconnect", `Migrated schema ${schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
+  }
+
+  // Migrate main schemas.
+  for (const s of wantMainSchemas) {
     await migrateSchema({
       options,
       schema: s.schema,

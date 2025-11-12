@@ -257,6 +257,11 @@ export function mainSchema(schemas: Schema[]): Schema {
   return mainSch;
 }
 
+/** Returns true if the schema is the main schema */
+export function isMainSchema(schema: Schema): boolean {
+  return schema.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`);
+}
+
 /** Start Dataplane Client Types */
 export interface ExecuteGraphqlRequest {
   query: string;
