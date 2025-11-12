@@ -68,7 +68,7 @@ async function getRulesFromConsole(projectId: string): Promise<string | null> {
     return null;
   }
   const rules = await gcp.rules.getRulesetContent(name);
-  if (rules.length <= 0) {
+  if (rules.length === 0) {
     return utils.reject("Ruleset has no files", { exit: 1 });
   }
 
