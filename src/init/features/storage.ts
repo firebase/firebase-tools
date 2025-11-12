@@ -16,10 +16,6 @@ export interface RequiredInfo {
 
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
 const DEFAULT_RULES_FILE = "storage.rules";
-
-/**
- *
- */
 export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   logger.info();
   logger.info("Firebase Storage Security Rules allow you to define how and when to allow");
@@ -50,9 +46,6 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
   setup.featureInfo.storage = info;
 }
 
-/**
- *
- */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const info = setup.featureInfo?.storage;
   if (!info) {
