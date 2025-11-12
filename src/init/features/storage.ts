@@ -6,7 +6,8 @@ import { readTemplateSync } from "../../templates";
 import { Config } from "../../config";
 import { Setup } from "..";
 import { FirebaseError } from "../../error";
-
+import * as gcp from "../../gcp";
+import * as utils from "../../utils";
 export interface RequiredInfo {
   rulesFilename: string;
   rules: string;
@@ -16,6 +17,9 @@ export interface RequiredInfo {
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
 const DEFAULT_RULES_FILE = "storage.rules";
 
+/**
+ *
+ */
 export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   logger.info();
   logger.info("Firebase Storage Security Rules allow you to define how and when to allow");
@@ -32,12 +36,23 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     message: "What file should be used for Storage Rules?",
     default: DEFAULT_RULES_FILE,
   });
+  if (setup.projectId) {
+    const downloadedRules = await getRulesFromConsole(setup.projectId);
+    if (downloadedRules) {
+      info.rules = downloadedRules;
+      utils.logBullet(`Downloaded the existing Storage Security Rules from the Firebase console`);
+    }
+  }
+
   info.writeRules = await config.confirmWriteProjectFile(info.rulesFilename, info.rules);
   // Populate featureInfo for the actuate step later.
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.storage = info;
 }
 
+/**
+ *
+ */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const info = setup.featureInfo?.storage;
   if (!info) {
@@ -53,4 +68,19 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   if (info.writeRules) {
     config.writeProjectFile(info.rulesFilename, info.rules);
   }
+}
+async function getRulesFromConsole(projectId: string): Promise<string | null> {
+  const name = await gcp.rules.getLatestRulesetName(projectId, "firebase.storage");
+  if (!name) {
+    return null;
+  }
+  const rules = await gcp.rules.getRulesetContent(name);
+  if (rules.length <= 0) {
+    return utils.reject("Ruleset has no files", { exit: 1 });
+  }
+
+  if (rules.length > 1) {
+    return utils.reject(`Ruleset has too many files: ${rules.length}`, { exit: 1 });
+  }
+  return rules[0].content;
 }
