@@ -14,7 +14,7 @@ export interface PackageJSON {
   scripts?: Record<string, string>;
   engines?: Record<string, string>;
 }
-type PackageManager = "npm" | "yarn";
+type PackageManager = "npm" | "yarn" | "bun";
 
 const supportedNodeVersions: string[] = ["18"];
 const NODE_RUNTIME_ID = "nodejs";
@@ -61,6 +61,9 @@ export class NodejsRuntime implements Runtime {
       if (await fs.exists(YARN_LOCK)) {
         return "yarn";
       }
+      if (await fs.exists("bun.lock")) {
+        return "bun";
+      }
 
       return "npm";
     } catch (error: any) {
@@ -78,6 +81,9 @@ export class NodejsRuntime implements Runtime {
     if (packageManager === "yarn") {
       packages.push("yarn");
     }
+    if (packageManager === "bun") {
+      packages.push("bun");
+    }
     if (!packages.length) {
       return undefined;
     }
@@ -90,6 +96,9 @@ export class NodejsRuntime implements Runtime {
 
     if (packageManager === "yarn") {
       installCmd = "yarn install";
+    }
+    if (packageManager === "bun") {
+      installCmd = "bun install";
     }
 
     return installCmd;
@@ -115,6 +124,9 @@ export class NodejsRuntime implements Runtime {
   executeFrameworkCommand(packageManager: PackageManager, command: Command): Command {
     if (packageManager === "npm" || packageManager === "yarn") {
       command.cmd = "npx " + command.cmd;
+    }
+    if (packageManager === "bun") {
+      command.cmd = "bun x " + command.cmd;
     }
 
     return command;
