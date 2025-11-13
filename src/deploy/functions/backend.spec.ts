@@ -281,7 +281,7 @@ describe("Backend", () => {
             cpu: 1,
             httpsTrigger: {},
             runServiceId: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.service,
-            source: HAVE_CLOUD_FUNCTION_V2.buildConfig.source,
+            source: HAVE_CLOUD_FUNCTION_V2.buildConfig?.source,
             uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.uri,
           }),
         );

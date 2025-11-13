@@ -1,5 +1,9 @@
 ## NEXT
 
+## 1.10.1
+
+- Update internal `firebase-tools` dependency to 14.24.2
+
 ## 1.10.0
 
 - [Fixed] Populate correct default values of missing required variables.
