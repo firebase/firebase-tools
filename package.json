@@ -72,7 +72,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=20.0.0 || >=22.0.0"
+    "node": ">=20.0.0 || >=22.0.0 || >=24.0.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -165,7 +165,7 @@
     "sql-formatter": "^15.3.0",
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
-    "superstatic": "^9.2.0",
+    "superstatic": "^10.0.0",
     "tar": "^6.1.11",
     "tcp-port-used": "^1.0.2",
     "tmp": "^0.2.3",
