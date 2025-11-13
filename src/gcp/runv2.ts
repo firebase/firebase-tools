@@ -222,7 +222,9 @@ export async function listServices(projectId: string): Promise<Service[]> {
     );
 
     if (res.status !== 200) {
-      throw new FirebaseError(`Failed to list services. HTTP Error: ${res.status}`, { original: res.body as any });
+      throw new FirebaseError(`Failed to list services. HTTP Error: ${res.status}`, {
+        original: res.body as any,
+      });
     }
 
     if (res.body.services) {

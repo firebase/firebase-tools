@@ -32,8 +32,6 @@ describe("Backend", () => {
     runtime: "nodejs16",
   };
 
-  const GCF_URL = "https://region-project.cloudfunctions.net/id";
-
   const HAVE_CLOUD_FUNCTION: gcf.CloudFunction = {
     ...CLOUD_FUNCTION,
     buildId: "buildId",
@@ -191,8 +189,6 @@ describe("Backend", () => {
 
         expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
-
-
 
       it("should read v1 functions only when user is not allowlisted for v2", async () => {
         listAllFunctions.onFirstCall().resolves({
