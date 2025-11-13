@@ -29,6 +29,7 @@ export interface ScheduleAnnotation {
   schedule: string;
   timeZone?: string;
   retryConfig?: ScheduleRetryConfig;
+  attemptDeadlineSeconds?: number;
 }
 
 // Defined in firebase-functions/src/cloud-function.ts
@@ -286,37 +287,37 @@ export function addResourcesToBuild(
       api: "cloudscheduler.googleapis.com",
       reason: "Needed for scheduled functions.",
     });
-    triggered = {
-      scheduleTrigger: {
-        schedule: annotation.schedule.schedule,
-        timeZone: annotation.schedule.timeZone ?? null,
-        retryConfig: {},
-      },
+    const scheduleTrigger: build.ScheduleTrigger = {
+      schedule: annotation.schedule.schedule,
+      timeZone: annotation.schedule.timeZone ?? null,
+      retryConfig: {},
+      attemptDeadlineSeconds: annotation.schedule.attemptDeadlineSeconds,
     };
+    triggered = { scheduleTrigger };
     if (annotation.schedule.retryConfig) {
-      triggered.scheduleTrigger.retryConfig = {};
+      scheduleTrigger.retryConfig = {};
       proto.copyIfPresent(
-        triggered.scheduleTrigger.retryConfig,
+        scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
         "retryCount",
         "maxDoublings",
       );
       proto.convertIfPresent(
-        triggered.scheduleTrigger.retryConfig,
+        scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
         "maxRetrySeconds",
         "maxRetryDuration",
         toSeconds,
       );
       proto.convertIfPresent(
-        triggered.scheduleTrigger.retryConfig,
+        scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
         "minBackoffSeconds",
         "minBackoffDuration",
         toSeconds,
       );
       proto.convertIfPresent(
-        triggered.scheduleTrigger.retryConfig,
+        scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffDuration",

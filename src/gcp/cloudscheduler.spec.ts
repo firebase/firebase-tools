@@ -123,6 +123,24 @@ describe("cloudscheduler", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should update if a job exists with the same name but a different attemptDeadline", async () => {
+      const otherJob = cloneDeep(TEST_JOB);
+      otherJob.attemptDeadline = "123s";
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/${TEST_JOB.name}`)
+        .query(true)
+        .reply(200, TEST_JOB);
+      nock(api.cloudschedulerOrigin())
+        .patch(`/${VERSION}/${TEST_JOB.name}`)
+        .query(true)
+        .reply(200, otherJob);
+
+      const response = await cloudscheduler.createOrReplaceJob(otherJob);
+
+      expect(response.body).to.deep.equal(otherJob);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should error and exit if cloud resource location is not set", async () => {
       nock(api.cloudschedulerOrigin())
         .get(`/${VERSION}/${TEST_JOB.name}`)
@@ -283,5 +301,33 @@ describe("cloudscheduler", () => {
         },
       });
     });
+    it("should copy attemptDeadlineSeconds for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            scheduleTrigger: {
+              schedule: "every 1 minutes",
+              attemptDeadlineSeconds: 123,
+            },
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "123s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
   });
+
 });

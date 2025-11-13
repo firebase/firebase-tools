@@ -68,6 +68,7 @@ export interface Job {
     maxBackoffDuration?: string | null;
     maxDoublings?: number | null;
   };
+  attemptDeadline?: string | null;
 }
 
 const apiClient = new Client({ urlPrefix: cloudschedulerOrigin(), apiVersion: VERSION });
@@ -195,6 +196,9 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
   if (existingJob.timeZone !== newJob.timeZone) {
     return true;
   }
+  if (existingJob.attemptDeadline !== newJob.attemptDeadline) {
+    return true;
+  }
   if (newJob.retryConfig) {
     if (!existingJob.retryConfig) {
       return true;
@@ -291,6 +295,11 @@ export async function jobFromEndpoint(
     if (!Object.keys(job.retryConfig).length) {
       delete job.retryConfig;
     }
+  }
+  if (endpoint.scheduleTrigger.attemptDeadlineSeconds) {
+    job.attemptDeadline = proto.durationFromSeconds(
+      endpoint.scheduleTrigger.attemptDeadlineSeconds,
+    );
   }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
