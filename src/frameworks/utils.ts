@@ -1,4 +1,4 @@
-import { readJSON as originalReadJSON } from "fs-extra";
+import { readJSON as originalReadJSON, readJsonSync } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
@@ -290,8 +290,14 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
     { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES },
   );
   if (!result.stdout) return;
-  const json = JSON.parse(result.stdout.toString());
-  return scanDependencyTree(name, json.dependencies);
+  try {
+    const json = JSON.parse(result.stdout.toString());
+    return scanDependencyTree(name, json.dependencies);
+  } catch (e) {
+    // fallback to reading the version directly from package.json if npm list times out
+    const packageJson = readJsonSync(join(cwd, name, "package.json"), { throws: false });
+    return packageJson?.version ? { version: packageJson.version } : undefined;
+  }
 }
 
 export function relativeRequire(

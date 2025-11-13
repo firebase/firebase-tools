@@ -12,7 +12,7 @@ interface MfaEnrollment {
   unobfuscatedPhoneInfo?: string;
 }
 
-interface UserInfo {
+export interface UserInfo {
   uid?: string;
   localId?: string;
   email: string;
@@ -200,7 +200,7 @@ export async function listUsers(project: string, limit: number): Promise<UserInf
  * @param disabled sets whether the user is marked as disabled (true) or enabled (false).
  * @return the call succeeded (true).
  */
-export async function disableUser(
+export async function toggleUserEnablement(
   project: string,
   uid: string,
   disabled: boolean,

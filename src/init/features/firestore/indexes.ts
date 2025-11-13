@@ -2,16 +2,20 @@ import * as clc from "colorette";
 
 import { FirebaseError } from "../../../error";
 import * as api from "../../../firestore/api";
-import * as fsutils from "../../../fsutils";
-import { confirm, input } from "../../../prompt";
+import { input } from "../../../prompt";
+import * as utils from "../../../utils";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
+import { RequiredInfo } from ".";
+import { Setup } from "../..";
+import { Config } from "../../../config";
 
 const indexes = new api.FirestoreApi();
 
-const INDEXES_TEMPLATE = readTemplateSync("init/firestore/firestore.indexes.json");
+export const DEFAULT_INDEXES_FILE = "firestore.indexes.json";
+export const INDEXES_TEMPLATE = readTemplateSync("init/firestore/firestore.indexes.json");
 
-export async function initIndexes(setup: any, config: any): Promise<any> {
+export async function initIndexes(setup: Setup, config: Config, info: RequiredInfo): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
   logger.info("maintaining performance that scales with the size of the result");
@@ -19,49 +23,45 @@ export async function initIndexes(setup: any, config: any): Promise<any> {
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
 
-  const filename =
-    setup.config.firestore.indexes ||
+  info.indexesFilename =
+    info.indexesFilename ||
     (await input({
       message: "What file should be used for Firestore indexes?",
-      default: "firestore.indexes.json",
+      default: DEFAULT_INDEXES_FILE,
     }));
-  setup.config.firestore.indexes = filename;
 
-  if (fsutils.fileExistsSync(filename)) {
-    const msg =
-      "File " +
-      clc.bold(filename) +
-      " already exists." +
-      " Do you want to overwrite it with the Firestore Indexes from the Firebase Console?";
-    if (!(await confirm(msg))) {
-      return;
+  info.indexes = INDEXES_TEMPLATE;
+  if (setup.projectId) {
+    const downloadIndexes = await getIndexesFromConsole(setup.projectId, info.databaseId);
+    if (downloadIndexes) {
+      info.indexes = downloadIndexes;
+      utils.logBullet(`Downloaded the existing Firestore indexes from the Firebase console`);
     }
   }
 
-  if (!setup.projectId) {
-    return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
-  }
-
-  return getIndexesFromConsole(setup.projectId, setup.databaseId).then((contents: any) => {
-    return config.writeProjectFile(setup.config.firestore.indexes, contents);
-  });
+  info.writeRules = await config.confirmWriteProjectFile(info.indexesFilename, info.indexes);
 }
 
-function getIndexesFromConsole(projectId: any, databaseId: any): Promise<any> {
+async function getIndexesFromConsole(
+  projectId: string,
+  databaseId: string,
+): Promise<string | null> {
   const indexesPromise = indexes.listIndexes(projectId, databaseId);
   const fieldOverridesPromise = indexes.listFieldOverrides(projectId, databaseId);
 
-  return Promise.all([indexesPromise, fieldOverridesPromise])
-    .then((res) => {
-      return indexes.makeIndexSpec(res[0], res[1]);
-    })
-    .catch((e) => {
-      if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {
-        return INDEXES_TEMPLATE;
-      }
+  try {
+    const res = await Promise.all([indexesPromise, fieldOverridesPromise]);
+    return JSON.stringify(indexes.makeIndexSpec(res[0], res[1]), null, 2);
+  } catch (e: any) {
+    if (e.status === 404) {
+      return null; // Database is not found
+    }
+    if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {
+      return null;
+    }
 
-      throw new FirebaseError("Error fetching Firestore indexes", {
-        original: e,
-      });
+    throw new FirebaseError("Error fetching Firestore indexes", {
+      original: e,
     });
+  }
 }

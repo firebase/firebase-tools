@@ -7,6 +7,7 @@ import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
 import * as utils from "../utils";
+import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 export const command = new Command("functions:config:set [values...]")
   .description("set environment config with key=value syntax")
@@ -49,4 +50,5 @@ export const command = new Command("functions:config:set [values...]")
         "firebase deploy --only functions",
       )}\n`,
     );
+    logFunctionsConfigDeprecationWarning();
   });

@@ -1,0 +1,20 @@
+{
+  "name": "mcp-tests",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "tsx ./gemini-smoke-test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.5",
+    "tsx": "^4.19.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

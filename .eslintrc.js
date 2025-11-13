@@ -47,6 +47,7 @@ module.exports = {
 
         "@typescript-eslint/no-invalid-this": "error",
         "@typescript-eslint/no-unused-vars": "error", // Unused vars should not exist.
+        "@typescript-eslint/require-await": "off", // sometimes async functions don't do await stuff for valid reasons.
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
         eqeqeq: ["error", "always", { null: "ignore" }],
@@ -109,7 +110,7 @@ module.exports = {
       rules: {},
     },
     {
-      files: ["src/mcp/tools/**/*.ts"],
+      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
       rules: { camelcase: "off" },
     },
   ],
@@ -135,7 +136,6 @@ module.exports = {
   // TODO(jamesdaniels): add this to overrides instead
   ignorePatterns: [
     "src/dynamicImport.js",
-    "src/emulator/dataconnect/pg-gateway",
     "scripts/webframeworks-deploy-tests/nextjs/**",
     "scripts/webframeworks-deploy-tests/angular/**",
     "scripts/frameworks-tests/vite-project/**",

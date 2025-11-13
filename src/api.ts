@@ -91,8 +91,6 @@ export const functionsDefaultRegion = () =>
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
-export const cloudCompanionOrigin = () =>
-  utils.envOverride("CLOUD_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
 export const cloudschedulerOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDSCHEDULER_URL", "https://cloudscheduler.googleapis.com");
 export const cloudTasksOrigin = () =>
@@ -125,6 +123,10 @@ export const rtdbMetadataOrigin = () =>
   utils.envOverride("FIREBASE_RTDB_METADATA_URL", "https://metadata-dot-firebase-prod.appspot.com");
 export const remoteConfigApiOrigin = () =>
   utils.envOverride("FIREBASE_REMOTE_CONFIG_URL", "https://firebaseremoteconfig.googleapis.com");
+export const messagingApiOrigin = () =>
+  utils.envOverride("FIREBASE_MESSAGING_CONFIG_URL", "https://fcm.googleapis.com");
+export const crashlyticsApiOrigin = () =>
+  utils.envOverride("FIREBASE_CRASHLYTICS_URL", "https://firebasecrashlytics.googleapis.com");
 export const resourceManagerOrigin = () =>
   utils.envOverride("FIREBASE_RESOURCEMANAGER_URL", "https://cloudresourcemanager.googleapis.com");
 export const rulesOrigin = () =>
@@ -141,6 +143,8 @@ export const cloudRunApiOrigin = () =>
   utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com");
 export const serviceUsageOrigin = () =>
   utils.envOverride("FIREBASE_SERVICE_USAGE_URL", "https://serviceusage.googleapis.com");
+export const studioApiOrigin = () =>
+  utils.envOverride("FIREBASE_STUDIO_URL", "https://monospace-pa.googleapis.com");
 
 export const githubOrigin = () => utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = () => utils.envOverride("GITHUB_API_URL", "https://api.github.com");
@@ -165,6 +169,13 @@ export const cloudSQLAdminOrigin = () =>
   utils.envOverride("CLOUD_SQL_URL", "https://sqladmin.googleapis.com");
 export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
+export const cloudAiCompanionOrigin = () =>
+  utils.envOverride("CLOUD_AI_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
+
+export const appTestingOrigin = () =>
+  utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");
+export const cloudTestingOrigin = () =>
+  utils.envOverride("CLOUD_TESTING_URL", "https://testing.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {

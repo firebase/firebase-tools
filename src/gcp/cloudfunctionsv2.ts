@@ -17,6 +17,8 @@ import {
   HASH_LABEL,
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
+import { captureRuntimeValidationError } from "./cloudfunctions";
+import { mebibytes } from "./k8s";
 
 export const API_VERSION = "v2";
 
@@ -44,7 +46,7 @@ export type RetryPolicy =
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: supported.Runtime;
+  runtime?: supported.Runtime;
   entryPoint: string;
   source: Source;
   sourceToken?: string;
@@ -58,7 +60,7 @@ export interface BuildConfig {
 export interface StorageSource {
   bucket: string;
   object: string;
-  generation: number;
+  generation?: number;
 }
 
 export interface RepoSource {
@@ -156,7 +158,7 @@ export interface EventTrigger {
 interface CloudFunctionBase {
   name: string;
   description?: string;
-  buildConfig: BuildConfig;
+  buildConfig?: BuildConfig;
   serviceConfig?: ServiceConfig;
   eventTrigger?: EventTrigger;
   labels?: Record<string, string> | null;
@@ -170,6 +172,7 @@ export type OutputCloudFunction = CloudFunctionBase & {
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
+  buildConfig: BuildConfig;
   // serviceConfig is required.
   serviceConfig: ServiceConfig;
 };
@@ -206,43 +209,6 @@ interface GenerateUploadUrlResponse {
   storageSource: StorageSource;
 }
 
-// AvailableMemory suffixes and their byte count.
-type MemoryUnit = "" | "k" | "M" | "G" | "T" | "Ki" | "Mi" | "Gi" | "Ti";
-const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
-  "": 1,
-  k: 1e3,
-  M: 1e6,
-  G: 1e9,
-  T: 1e12,
-  Ki: 1 << 10,
-  Mi: 1 << 20,
-  Gi: 1 << 30,
-  Ti: 1 << 40,
-};
-
-/**
- * Returns the float-precision number of Mega(not Mebi)bytes in a
- * Kubernetes-style quantity
- * Must serve the same results as
- * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
- */
-export function mebibytes(memory: string): number {
-  const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
-  const matches = re.exec(memory);
-  if (!matches) {
-    throw new Error(`Invalid memory quantity "${memory}""`);
-  }
-  const quantity = Number.parseFloat(matches[1]);
-  let bytes: number;
-  if (matches[5]) {
-    bytes = quantity * Math.pow(10, Number.parseFloat(matches[5]));
-  } else {
-    const suffix = matches[3] || "";
-    bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
-  }
-  return bytes / (1 << 20);
-}
-
 /**
  * Logs an error from a failed function deployment.
  * @param func The function that was unsuccessfully deployed.
@@ -250,6 +216,11 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
+  // Sniff for runtime validation errors and log a more user-friendly warning.
+  if (err?.message?.includes("Runtime validation errors")) {
+    const capturedMessage = captureRuntimeValidationError(err.message);
+    utils.logLabeledWarning("functions", capturedMessage + " for function " + func.name);
+  }
   if (err?.message?.includes("maxScale may not exceed")) {
     const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
     utils.logLabeledWarning(
@@ -258,7 +229,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
         "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
         "at https://cloud.google.com/run/quotas.",
     );
-    const suggestedFix = func.buildConfig.runtime.startsWith("python")
+    const suggestedFix = func.buildConfig.runtime?.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
       : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
@@ -363,21 +334,6 @@ export async function getFunction(
 }
 
 /**
- *  List all functions in a region.
- *  Customers should generally use backend.existingBackend.
- */
-export async function listFunctions(
-  projectId: string,
-  region: string,
-): Promise<OutputCloudFunction[]> {
-  const res = await listFunctionsInternal(projectId, region);
-  if (res.unreachable.includes(region)) {
-    throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
-  }
-  return res.functions;
-}
-
-/**
  *  List all functions in all regions
  *  Customers should generally use backend.existingBackend and backend.checkAvailability.
  */
@@ -421,6 +377,18 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  cloudFunction.serviceConfig.environmentVariables = {
+    ...cloudFunction.serviceConfig.environmentVariables,
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    // Enable logging execution id by default for better debugging
+    LOG_EXECUTION_ID: "true",
+  };
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -428,22 +396,8 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     /* doNotRecurseIn...=*/ "labels",
     "serviceConfig.environmentVariables",
     "serviceConfig.secretEnvironmentVariables",
+    "buildConfig.environmentVariables",
   );
-
-  cloudFunction.buildConfig.environmentVariables = {
-    ...cloudFunction.buildConfig.environmentVariables,
-    // Disable GCF from automatically running npm run build script
-    // https://cloud.google.com/functions/docs/release-notes
-    GOOGLE_NODE_RUN_SCRIPTS: "",
-  };
-  fieldMasks.push("buildConfig.buildEnvironmentVariables");
-
-  cloudFunction.serviceConfig.environmentVariables = {
-    ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
-    // Enable logging execution id by default for better debugging
-    LOG_EXECUTION_ID: "true",
-  };
 
   try {
     const queryParams = {
@@ -483,7 +437,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
   }
 
-  if (!supported.isRuntime(endpoint.runtime)) {
+  if (endpoint.runtime && !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen",
@@ -493,7 +447,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   const gcfFunction: InputCloudFunction = {
     name: backend.functionName(endpoint),
     buildConfig: {
-      runtime: endpoint.runtime,
+      runtime: endpoint.runtime || undefined,
       entryPoint: endpoint.entryPoint,
       source: {
         storageSource: endpoint.source?.storageSource,
@@ -711,7 +665,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = { httpsTrigger: {} };
   }
 
-  if (!supported.isRuntime(gcfFunction.buildConfig.runtime)) {
+  if (gcfFunction.buildConfig?.runtime && !supported.isRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
@@ -721,9 +675,9 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     project,
     region,
     ...trigger,
-    entryPoint: gcfFunction.buildConfig.entryPoint,
-    runtime: gcfFunction.buildConfig.runtime,
-    source: gcfFunction.buildConfig.source,
+    entryPoint: gcfFunction.buildConfig?.entryPoint || "",
+    runtime: gcfFunction.buildConfig?.runtime || undefined,
+    source: gcfFunction.buildConfig?.source,
   };
   if (gcfFunction.serviceConfig) {
     proto.copyIfPresent(

@@ -2,6 +2,61 @@ import { FirestoreDocument, FirestoreValue } from "../../../gcp/firestore";
 import { logger } from "../../../logger";
 
 /**
+ * Takes an arbitrary value from a user and returns a FirestoreValue equivalent.
+ * @param {any} inputValue the JSON object input value.
+ * return FirestoreValue a firestorevalue object used in the Firestore API.
+ */
+export function convertInputToValue(inputValue: any): FirestoreValue {
+  if (inputValue === null) {
+    return { nullValue: null };
+  } else if (typeof inputValue === "boolean") {
+    return { booleanValue: inputValue };
+  } else if (typeof inputValue === "number") {
+    // Distinguish between integers and doubles
+    if (Number.isInteger(inputValue)) {
+      return { integerValue: inputValue.toString() }; // Represent integers as string for consistency with Firestore
+    } else {
+      return { doubleValue: inputValue };
+    }
+  } else if (typeof inputValue === "string") {
+    // This is a simplification. In a real-world scenario, you might want to
+    // check for specific string formats like timestamp, bytes, or referenceValue.
+    // For now, it defaults to stringValue.
+    return { stringValue: inputValue };
+  } else if (Array.isArray(inputValue)) {
+    const arrayValue: { values?: FirestoreValue[] } = {
+      values: inputValue.map((item) => convertInputToValue(item)),
+    };
+    return { arrayValue: arrayValue };
+  } else if (typeof inputValue === "object") {
+    // Check for LatLng structure
+    if (
+      inputValue.hasOwnProperty("latitude") &&
+      typeof inputValue.latitude === "number" &&
+      inputValue.hasOwnProperty("longitude") &&
+      typeof inputValue.longitude === "number"
+    ) {
+      return { geoPointValue: inputValue as { latitude: number; longitude: number } };
+    }
+
+    // Otherwise, treat as a MapValue
+    const mapValue: { fields?: Record<string, FirestoreValue> } = {
+      fields: {},
+    };
+    for (const key in inputValue) {
+      if (Object.prototype.hasOwnProperty.call(inputValue, key)) {
+        if (mapValue.fields) {
+          mapValue.fields[key] = convertInputToValue(inputValue[key]);
+        }
+      }
+    }
+    return { mapValue: mapValue };
+  }
+  // Fallback for unsupported types (e.g., undefined, functions, symbols)
+  return { nullValue: null };
+}
+
+/**
  * Converts a Firestore REST API Value object to a plain Javascript object,
  * applying special transformations for Reference and GeoPoint types, and
  * handling integer values potentially larger than JS MAX_SAFE_INTEGER.

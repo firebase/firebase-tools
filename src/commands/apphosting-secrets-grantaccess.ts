@@ -71,7 +71,9 @@ export const command = new Command("apphosting:secrets:grantaccess <secretNames>
       backend = await apphosting.getBackend(projectId, location, backendId);
     }
 
-    const accounts = secrets.toMulti(secrets.serviceAccountsForBackend(projectNumber, backend));
+    const accounts = secrets.toMulti(
+      await secrets.serviceAccountsForBackend(projectNumber, backend),
+    );
 
     await Promise.allSettled(
       secretList.map((secretName) =>

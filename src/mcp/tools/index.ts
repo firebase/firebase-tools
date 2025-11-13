@@ -1,22 +1,42 @@
-import { ServerTool } from "../tool.js";
-import { ServerFeature } from "../types.js";
-import { authTools } from "./auth/index.js";
-import { dataconnectTools } from "./dataconnect/index.js";
-import { firestoreTools } from "./firestore/index.js";
-import { directoryTools } from "./directory/index.js";
-import { coreTools } from "./core/index.js";
-import { storageTools } from "./storage/index.js";
+import { ServerTool } from "../tool";
+import { McpContext, ServerFeature } from "../types";
+import { authTools } from "./auth/index";
+import { dataconnectTools } from "./dataconnect/index";
+import { firestoreTools } from "./firestore/index";
+import { coreTools } from "./core/index";
+import { storageTools } from "./storage/index";
+import { messagingTools } from "./messaging/index";
+import { remoteConfigTools } from "./remoteconfig/index";
+import { crashlyticsTools } from "./crashlytics/index";
+import { appHostingTools } from "./apphosting/index";
+import { apptestingTools } from "./apptesting/index";
+import { realtimeDatabaseTools } from "./realtime_database/index";
+import { functionsTools } from "./functions/index";
 
 /** availableTools returns the list of MCP tools available given the server flags */
-export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeature[]): ServerTool[] {
-  // Core tools are always present.
-  const toolDefs: ServerTool[] = addPrefixToToolName("firebase_", coreTools);
-  if (!fixedRoot) {
-    // Present if the root is not fixed.
-    toolDefs.push(...directoryTools);
-  }
+export async function availableTools(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+): Promise<ServerTool[]> {
+  const allTools = getAllTools(activeFeatures);
+  const availabilities = await Promise.all(
+    allTools.map((t) => {
+      if (t.isAvailable) {
+        return t.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allTools.filter((_, i) => availabilities[i]);
+}
+
+function getAllTools(activeFeatures?: ServerFeature[]): ServerTool[] {
+  const toolDefs: ServerTool[] = [];
   if (!activeFeatures?.length) {
     activeFeatures = Object.keys(tools) as ServerFeature[];
+  }
+  if (!activeFeatures.includes("core")) {
+    activeFeatures.unshift("core");
   }
   for (const key of activeFeatures) {
     toolDefs.push(...tools[key]);
@@ -25,18 +45,51 @@ export function availableTools(fixedRoot: boolean, activeFeatures?: ServerFeatur
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  firestore: addPrefixToToolName("firestore_", firestoreTools),
-  auth: addPrefixToToolName("auth_", authTools),
-  dataconnect: addPrefixToToolName("dataconnect_", dataconnectTools),
-  storage: addPrefixToToolName("storage_", storageTools),
+  core: addFeaturePrefix("firebase", coreTools),
+  firestore: addFeaturePrefix("firestore", firestoreTools),
+  auth: addFeaturePrefix("auth", authTools),
+  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
+  storage: addFeaturePrefix("storage", storageTools),
+  messaging: addFeaturePrefix("messaging", messagingTools),
+  functions: addFeaturePrefix("functions", functionsTools),
+  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
+  crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
+  apptesting: addFeaturePrefix("apptesting", apptestingTools),
+  apphosting: addFeaturePrefix("apphosting", appHostingTools),
+  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
 };
 
-function addPrefixToToolName(prefix: string, tools: ServerTool[]): ServerTool[] {
+function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
     ...tool,
     mcp: {
       ...tool.mcp,
-      name: `${prefix}${tool.mcp.name}`,
+      name: `${feature}_${tool.mcp.name}`,
+      _meta: {
+        ...tool.mcp._meta,
+        feature,
+      },
     },
   }));
+}
+
+/**
+ * Generates a markdown table of all available tools and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfTools(): string {
+  const allTools = getAllTools([]);
+  let doc = `
+| Tool Name | Feature Group | Description |
+| --------- | ------------- | ----------- |`;
+  for (const tool of allTools) {
+    let feature = tool.mcp?._meta?.feature || "";
+    if (feature === "firebase") {
+      feature = "core";
+    }
+    const description = (tool.mcp?.description || "").replaceAll("\n", "<br>");
+    doc += `
+| ${tool.mcp.name} | ${feature} | ${description} |`;
+  }
+  return doc;
 }

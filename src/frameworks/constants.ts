@@ -2,7 +2,7 @@ import { SupportLevel } from "./interfaces";
 import * as clc from "colorette";
 import * as experiments from "../experiments";
 
-export const NPM_COMMAND_TIMEOUT_MILLIES = 10_000;
+export const NPM_COMMAND_TIMEOUT_MILLIES = 60_000;
 
 export const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(

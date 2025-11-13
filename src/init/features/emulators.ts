@@ -81,13 +81,10 @@ export async function doSetup(setup: Setup, config: Config) {
       });
 
       if (ui.enabled) {
-        ui.port = await number(
-          `Which port do you want to use for the ${clc.underline(uiDesc)} (leave empty to use any available port)?`,
-        );
-
-        // Parse the input as a number
-        const portNum = Number.parseInt(ui.port as any);
-        ui.port = isNaN(portNum) ? undefined : portNum;
+        ui.port = await number({
+          message: `Which port do you want to use for the ${clc.underline(uiDesc)} (leave empty to use any available port)?`,
+          required: false,
+        });
       }
     }
 

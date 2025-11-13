@@ -4,12 +4,15 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "1.3.1",
+  "version": "1.10.1",
   "engines": {
     "vscode": "^1.69.0"
   },
   "repository": "https://github.com/firebase/firebase-tools",
   "sideEffects": false,
+  "extensionDependencies": [
+    "graphql.vscode-graphql-syntax"
+  ],
   "categories": [
     "Other"
   ],
@@ -155,13 +158,8 @@
       "firebase-data-connect-execution-view": [
         {
           "type": "webview",
-          "id": "data-connect-execution-configuration",
-          "name": "Configuration",
-          "when": "firebase-vscode.fdc.enabled"
-        },
-        {
-          "id": "data-connect-execution-history",
-          "name": "History",
+          "id": "data-connect-execution-parameters",
+          "name": "Parameters",
           "when": "firebase-vscode.fdc.enabled"
         },
         {
@@ -169,6 +167,12 @@
           "id": "data-connect-execution-results",
           "name": "Results",
           "when": "firebase-vscode.fdc.enabled"
+        },
+        {
+          "id": "data-connect-execution-history",
+          "name": "History",
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -213,6 +217,8 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
+    "install:extensions": "code-server --install-extension graphql.vscode-graphql-syntax --extensions-dir ./prebuilt-extensions/",
+    "pretest:e2e": "curl -fsSL https://code-server.dev/install.sh | sh -s -- --edge && npm run install:extensions",
     "pretest:unit": "npm run test-compile && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "npm run test:e2e:empty && npm run test:e2e:fishfood",
@@ -228,8 +234,8 @@
     "@vscode/webview-ui-toolkit": "^1.2.1",
     "classnames": "^2.3.2",
     "exponential-backoff": "3.1.1",
-    "graphql-language-service": "file:graphql-language-service-5.2.0.tgz",
-    "graphql-language-service-server": "file:graphql-language-service-server-2.12.0.tgz",
+    "graphql-language-service": "file:graphql-language-service-5.4.0.tgz",
+    "graphql-language-service-server": "file:graphql-language-service-server-2.14.8.tgz",
     "js-yaml": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

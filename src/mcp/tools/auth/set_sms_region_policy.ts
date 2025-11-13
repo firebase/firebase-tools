@@ -1,13 +1,14 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { setAllowSmsRegionPolicy, setDenySmsRegionPolicy } from "../../../gcp/auth.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { setAllowSmsRegionPolicy, setDenySmsRegionPolicy } from "../../../gcp/auth";
 
 export const set_sms_region_policy = tool(
+  "auth",
   {
     name: "set_sms_region_policy",
     description:
-      "Sets an SMS Region Policy for Firebase Auth to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
+      "Use this to set an SMS region policy for Firebase Authentication to restrict the regions which can receive text messages based on an ALLOW or DENY list of country codes. This policy will override any existing policies when set.",
     inputSchema: z.object({
       policy_type: z
         .enum(["ALLOW", "DENY"])
@@ -19,7 +20,7 @@ export const set_sms_region_policy = tool(
         .describe("the country codes to allow or deny based on ISO 3166"),
     }),
     annotations: {
-      title: "Set the SMS Region Policy on your Firebase Project",
+      title: "Set SMS Region Policy",
       idempotentHint: true,
       destructiveHint: true,
     },
@@ -33,8 +34,8 @@ export const set_sms_region_policy = tool(
       return code.toUpperCase();
     });
     if (policy_type === "ALLOW") {
-      return toContent(await setAllowSmsRegionPolicy(projectId!, country_codes));
+      return toContent(await setAllowSmsRegionPolicy(projectId, country_codes));
     }
-    return toContent(await setDenySmsRegionPolicy(projectId!, country_codes));
+    return toContent(await setDenySmsRegionPolicy(projectId, country_codes));
   },
 );

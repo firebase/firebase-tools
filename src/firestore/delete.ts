@@ -28,6 +28,7 @@ export class FirestoreDelete {
     total: Number.MAX_SAFE_INTEGER,
   });
 
+  private urlPrefix: string;
   private apiClient: apiv2.Client;
 
   public isDocumentPath: boolean;
@@ -58,6 +59,7 @@ export class FirestoreDelete {
    *                 - options.recursive true if the delete should be recursive.
    *                 - options.shallow true if the delete should be shallow (non-recursive).
    *                 - options.allCollections true if the delete should universally remove all collections and docs.
+   *                 - options.urlPrefix if specified initializes the client to use the given url, otherwise determine from environment
    */
   constructor(
     project: string,
@@ -67,6 +69,7 @@ export class FirestoreDelete {
       shallow?: boolean;
       allCollections?: boolean;
       databaseId: string;
+      urlPrefix?: string;
     },
   ) {
     this.project = project;
@@ -75,6 +78,7 @@ export class FirestoreDelete {
     this.shallow = Boolean(options.shallow);
     this.allCollections = Boolean(options.allCollections);
     this.databaseId = options.databaseId;
+    this.urlPrefix = options.urlPrefix ?? firestoreOriginOrEmulator();
 
     // Tunable deletion parameters
     this.readBatchSize = 7500;
@@ -113,7 +117,7 @@ export class FirestoreDelete {
     this.apiClient = new apiv2.Client({
       auth: true,
       apiVersion: "v1",
-      urlPrefix: firestoreOriginOrEmulator(),
+      urlPrefix: this.urlPrefix,
     });
   }
 
@@ -394,7 +398,7 @@ export class FirestoreDelete {
 
       numPendingDeletes++;
       firestore
-        .deleteDocuments(this.project, toDelete, true)
+        .deleteDocuments(this.project, toDelete, this.databaseId, this.urlPrefix)
         .then((numDeleted) => {
           FirestoreDelete.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
@@ -499,7 +503,7 @@ export class FirestoreDelete {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
-      initialDelete = firestore.deleteDocument(doc, true).catch((err) => {
+      initialDelete = firestore.deleteDocument(doc, this.urlPrefix).catch((err) => {
         logger.debug("deletePath:initialDelete:error", err);
         if (this.allDescendants) {
           // On a recursive delete, we are insensitive to
@@ -526,7 +530,7 @@ export class FirestoreDelete {
    */
   public deleteDatabase(): Promise<any[]> {
     return firestore
-      .listCollectionIds(this.project, true)
+      .listCollectionIds(this.project, this.databaseId, this.urlPrefix)
       .catch((err) => {
         logger.debug("deleteDatabase:listCollectionIds:error", err);
         return utils.reject("Unable to list collection IDs");

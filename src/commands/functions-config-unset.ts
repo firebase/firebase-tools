@@ -8,6 +8,7 @@ import * as functionsConfig from "../functionsConfig";
 import * as runtimeconfig from "../gcp/runtimeconfig";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
+import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 export const command = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
@@ -44,4 +45,5 @@ export const command = new Command("functions:config:unset [keys...]")
         "firebase deploy --only functions",
       )}\n`,
     );
+    logFunctionsConfigDeprecationWarning();
   });

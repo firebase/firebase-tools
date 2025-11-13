@@ -174,9 +174,9 @@ describe("cloudscheduler", () => {
       uri: "https://my-uri.com",
     };
 
-    it("should copy minimal fields for v1 endpoints", () => {
+    it("should copy minimal fields for v1 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
+        await cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -190,9 +190,9 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy minimal fields for v2 endpoints", () => {
+    it("should copy minimal fields for v2 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
+        await cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -207,9 +207,9 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy optional fields for v1 endpoints", () => {
+    it("should copy optional fields for v1 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(
+        await cloudscheduler.jobFromEndpoint(
           {
             ...V1_ENDPOINT,
             scheduleTrigger: {
@@ -245,9 +245,9 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy optional fields for v2 endpoints", () => {
+    it("should copy optional fields for v2 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(
+        await cloudscheduler.jobFromEndpoint(
           {
             ...V2_ENDPOINT,
             scheduleTrigger: {

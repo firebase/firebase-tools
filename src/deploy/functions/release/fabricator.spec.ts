@@ -775,7 +775,7 @@ describe("Fabricator", () => {
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
-          gce.getDefaultServiceAccount(fab.projectNumber),
+          await gce.getDefaultServiceAccount(fab.projectNumber),
         ]);
       });
 

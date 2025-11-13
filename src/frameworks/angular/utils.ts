@@ -411,10 +411,13 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
     architectHost.getBuilderNameForTarget(buildOrBrowserTarget),
   ]);
 
-  assertIsString(targetOptions?.outputPath);
+  const buildOutputPath =
+    typeof targetOptions?.outputPath === "string"
+      ? targetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
 
   const outputPath = join(
-    targetOptions.outputPath,
+    buildOutputPath,
     buildTarget && getBuilderType(builderName) === BuilderType.APPLICATION ? "browser" : "",
   );
   return { locales, baseHref, outputPath, defaultLocale };
@@ -437,8 +440,13 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     throw new AssertionError({ message: "expected build or browser target to be defined" });
   }
   const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  assertIsString(browserTargetOptions?.outputPath);
-  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "")
+
+  const buildOutputPath =
+    typeof browserTargetOptions?.outputPath === "string"
+      ? browserTargetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
+
+  const browserOutputPath = join(buildOutputPath, buildTarget ? "browser" : "")
     .split(sep)
     .join(posix.sep);
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
@@ -468,8 +476,17 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     workspaceProject,
   );
   const serverTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
-  assertIsString(serverTargetOptions?.outputPath);
-  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "")
+  if (!serverTargetOptions) {
+    throw new AssertionError({
+      message: `expected "JsonObject" but got "${typeof serverTargetOptions}"`,
+    });
+  }
+  const serverTargetOutputPath =
+    typeof serverTargetOptions?.outputPath === "string"
+      ? serverTargetOptions.outputPath
+      : join("dist", buildOrServerTarget.project);
+
+  const serverOutputPath = join(serverTargetOutputPath, buildTarget ? "server" : "")
     .split(sep)
     .join(posix.sep);
   if (serverLocales && !defaultLocale) {

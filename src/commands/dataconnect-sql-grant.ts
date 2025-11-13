@@ -3,11 +3,12 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
+import { pickService } from "../dataconnect/load";
 import { grantRoleToUserInSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { fdcSqlRoleMap } from "../gcp/cloudsql/permissionsSetup";
+import { iamUserIsCSQLAdmin } from "../gcp/cloudsql/cloudsqladmin";
 
 const allowedRoles = Object.keys(fdcSqlRoleMap);
 
@@ -36,6 +37,14 @@ export const command = new Command("dataconnect:sql:grant [serviceId]")
 
     if (!allowedRoles.includes(role.toLowerCase())) {
       throw new FirebaseError(`Role should be one of ${allowedRoles.join(" | ")}.`);
+    }
+
+    // Make sure current user can perform this action.
+    const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
+    if (!userIsCSQLAdmin) {
+      throw new FirebaseError(
+        `Only users with 'roles/cloudsql.admin' can grant SQL roles. If you do not have this role, ask your database administrator to run this command or manually grant ${role} to ${email}`,
+      );
     }
 
     const projectId = needProjectId(options);

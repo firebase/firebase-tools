@@ -2,6 +2,7 @@ import * as clc from "colorette";
 
 import { Command } from "../command";
 import { getProject, listFirebaseProjects, ProjectInfo } from "../management/projects";
+import { updateStudioFirebaseProject } from "../management/studio";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { input, select } from "../prompt";
@@ -10,6 +11,7 @@ import { validateProjectId } from "../command";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";
+import { isFirebaseStudio } from "../env";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {
@@ -47,6 +49,11 @@ export async function setNewActive(
     project = await getProject(resolvedProject);
   } catch {
     throw new FirebaseError("Invalid project selection, " + verifyMessage(projectOrAlias));
+  }
+
+  // Only update if running in Firebase Studio
+  if (isFirebaseStudio()) {
+    await updateStudioFirebaseProject(resolvedProject);
   }
 
   if (aliasOpt) {
@@ -103,7 +110,6 @@ async function addAlias(options: UseOptions) {
     );
   }
   const projects = await listFirebaseProjects();
-  const results: { project?: string; alias?: string } = {};
   const project = await select({
     message: "Which project do you want to add?",
     choices: projects.map((p) => p.projectId).sort(),
@@ -114,6 +120,10 @@ async function addAlias(options: UseOptions) {
       return input && input.length > 0;
     },
   });
+  const results: { project: string; alias: string } = {
+    project,
+    alias,
+  };
   options.rc.addProjectAlias(alias, project);
   utils.makeActiveProject(options.projectRoot!, results.alias);
   logger.info();

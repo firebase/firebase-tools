@@ -1,5 +1,5 @@
 - Added Node 24 support.
-- Changed artifact registry cleanup policy error to warn for CI/CD workloads (#8513)
-- Enhance firebase init apphosting to support local source deploys. (#8479)
-- Fixed issue where `firebase init hosting:github` didn't correctly parse the repo input. (#8536)
-- Add GCP API client functions to support App Hosting deploy from source feature. (#8545)
+- Fixed a crash during parallel deployments when buildConfig is empty (#9455)
+- [Added] support for new google-genai plugin during `init genkit` (#8957)
+- Updated to v2.17.1 of the Data Connect emulator, which fixes an admin SDK bug for operation without argument #9449 (#9454).
+- Fixed "Precondition failed" error when updating GCFv2 functions in a FAILED state without code changes.

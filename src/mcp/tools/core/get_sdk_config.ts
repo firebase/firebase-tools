@@ -1,19 +1,26 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { mcpError, toContent } from "../../util.js";
-import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps.js";
+import { tool } from "../../tool";
+import { mcpError, toContent } from "../../util";
+import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps";
 
 export const get_sdk_config = tool(
+  "core",
   {
     name: "get_sdk_config",
     description:
-      "Retrieves the Firebase SDK configuration information for the specified platform. You must specify either a platform or an app_id.",
+      "Use this to retrieve the Firebase configuration information for a Firebase App. " +
+      "You must specify EITHER a platform OR the Firebase App ID for a Firebase App registered in the currently active Firebase Project.",
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web"])
-        .nullish()
-        .describe("the platform for which you want config"),
-      app_id: z.string().nullish().describe("the specific app id to fetch"),
+        .optional()
+        .describe(
+          "The platform for which you want config. One of 'platform' or 'app_id' must be provided.",
+        ),
+      app_id: z
+        .string()
+        .optional()
+        .describe("The specific app ID to fetch. One of 'platform' or 'app_id' must be provided."),
     }),
     annotations: {
       title: "Get Firebase SDK Config",
@@ -30,7 +37,7 @@ export const get_sdk_config = tool(
       return mcpError(
         "Must specify one of 'web', 'ios', or 'android' for platform or an app_id for get_sdk_config tool.",
       );
-    const apps = await listFirebaseApps(projectId!, platform ?? AppPlatform.ANY);
+    const apps = await listFirebaseApps(projectId, platform ?? AppPlatform.ANY);
     platform = platform || apps.find((app) => app.appId === appId)?.platform;
     appId = appId || apps.find((app) => app.platform === platform)?.appId;
     if (!appId)
@@ -38,7 +45,17 @@ export const get_sdk_config = tool(
         `Could not find an app for platform '${inputPlatform}' in project '${projectId}'`,
       );
     const sdkConfig = await getAppConfig(appId, platform);
-    // TODO: return as string with comment about filename for ios and android
+    if ("configFilename" in sdkConfig) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `SDK config content for \`${sdkConfig.configFilename}\`:\n\n\`\`\`\n${Buffer.from(sdkConfig.configFileContents, "base64").toString("utf-8")}\n\`\`\``,
+          },
+        ],
+      };
+    }
+
     return toContent(sdkConfig, { format: "json" });
   },
 );

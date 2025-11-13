@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/fileUtils";
+import { pickService } from "../dataconnect/load";
 import { FirebaseError } from "../error";
 import { migrateSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";

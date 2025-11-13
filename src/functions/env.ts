@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import { ParamValue } from "../deploy/functions/params";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -218,7 +219,7 @@ export function parseStrict(data: string): Record<string, string> {
 }
 
 function findEnvfiles(
-  functionsSource: string,
+  configDir: string,
   projectId: string,
   projectAlias?: string,
   isEmulator?: boolean,
@@ -233,13 +234,14 @@ function findEnvfiles(
   }
 
   return files
-    .map((f) => path.join(functionsSource, f))
+    .map((f) => path.join(configDir, f))
     .filter(fs.existsSync)
     .map((p) => path.basename(p));
 }
 
 export interface UserEnvsOpts {
   functionsSource: string;
+  configDir?: string;
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
@@ -250,13 +252,9 @@ export interface UserEnvsOpts {
  *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+export function hasUserEnvs(opts: UserEnvsOpts): boolean {
+  const configDir = opts.configDir || opts.functionsSource;
+  return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
 }
 
 /**
@@ -269,16 +267,17 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const { projectId, projectAlias, isEmulator } = envOpts;
+  const configDir = envOpts.configDir || envOpts.functionsSource;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const allEnvFiles = findEnvfiles(configDir, projectId, projectAlias, isEmulator);
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
   if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+    fs.writeFileSync(path.join(configDir, targetEnvFile), "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
         `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
@@ -303,7 +302,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   for (const k of Object.keys(toWrite)) {
     lines += formatUserEnvForWrite(k, toWrite[k]);
   }
-  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
+  fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
 }
 
 /**
@@ -363,23 +362,22 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * @return {Record<string, string>} Environment variables for the project.
  */
-export function loadUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): Record<string, string> {
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
+  const configDir = opts.configDir || opts.functionsSource;
+  const envFiles = findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
   if (envFiles.length === 0) {
     return {};
   }
 
   // Disallow setting both .env.<projectId> and .env.<projectAlias>
-  if (projectAlias) {
-    if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
+  if (opts.projectAlias) {
+    if (
+      envFiles.includes(`.env.${opts.projectId}`) &&
+      envFiles.includes(`.env.${opts.projectAlias}`)
+    ) {
       throw new FirebaseError(
-        `Can't have both dotenv files with projectId (env.${projectId}) ` +
-          `and projectAlias (.env.${projectAlias}) as extensions.`,
+        `Can't have both dotenv files with projectId (env.${opts.projectId}) ` +
+          `and projectAlias (.env.${opts.projectAlias}) as extensions.`,
       );
     }
   }
@@ -387,7 +385,7 @@ export function loadUserEnvs({
   let envs: Record<string, string> = {};
   for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
+      const data = fs.readFileSync(path.join(configDir, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
@@ -416,4 +414,25 @@ export function loadFirebaseEnvs(
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+}
+
+/**
+ * Writes newly resolved params to the appropriate .env file.
+ * Skips internal params and params that already exist in userEnvs.
+ */
+export function writeResolvedParams(
+  resolvedEnvs: Readonly<Record<string, ParamValue>>,
+  userEnvs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const paramName of Object.keys(resolvedEnvs)) {
+    const paramValue = resolvedEnvs[paramName];
+    if (!paramValue.internal && !Object.prototype.hasOwnProperty.call(userEnvs, paramName)) {
+      toWrite[paramName] = paramValue.toString();
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
 }

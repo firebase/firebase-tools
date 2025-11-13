@@ -10,7 +10,7 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "22"
+    "node": "{{RUNTIME}}"
   },
   "main": "lib/index.js",
   "dependencies": {
@@ -18,7 +18,7 @@
     "firebase-functions": "^6.0.1"
   },
   "devDependencies": {
-    "typescript": "^4.9.0",
+    "typescript": "^5.7.3",
     "firebase-functions-test": "^3.1.0"
   },
   "private": true

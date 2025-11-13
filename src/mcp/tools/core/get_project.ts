@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { getProject } from "../../../management/projects.js";
-import { toContent } from "../../util.js";
+import { tool } from "../../tool";
+import { getProject } from "../../../management/projects";
+import { toContent } from "../../util";
 
 export const get_project = tool(
+  "core",
   {
     name: "get_project",
-    description: "Retrieves information about the currently active Firebase project.",
+    description: "Use this to retrieve information about the currently active Firebase Project.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Current Firebase Project",
@@ -18,6 +19,6 @@ export const get_project = tool(
     },
   },
   async (_, { projectId }) => {
-    return toContent(await getProject(projectId!));
+    return toContent(await getProject(projectId));
   },
 );

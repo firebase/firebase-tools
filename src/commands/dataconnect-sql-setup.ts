@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/fileUtils";
+import { pickService } from "../dataconnect/load";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
@@ -9,8 +9,7 @@ import { ensureApis } from "../dataconnect/ensureApis";
 import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissionsSetup";
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
-import { getIAMUser } from "../gcp/cloudsql/connect";
-import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
+import { setupIAMUsers } from "../gcp/cloudsql/connect";
 
 export const command = new Command("dataconnect:sql:setup [serviceId]")
   .description("set up your CloudSQL database")
@@ -41,9 +40,8 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
       /* linkIfNotConnected=*/ true,
     );
 
-    // Create an IAM user for the current identity.
-    const { user, mode } = await getIAMUser(options);
-    await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+    // Setup the IAM user for the current identity.
+    await setupIAMUsers(instanceId, options);
 
     const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
     await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);

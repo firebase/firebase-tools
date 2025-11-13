@@ -2,7 +2,6 @@ import * as clc from "colorette";
 import { confirm, input, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
-import * as fsutils from "../../fsutils";
 import { Config } from "../../config";
 import {
   createInstance,
@@ -20,7 +19,15 @@ import { Client } from "../../apiv2";
 import { rtdbManagementOrigin } from "../../api";
 import { Setup } from "..";
 
-const DEFAULT_RULES = JSON.stringify(
+export interface RequiredInfo {
+  rulesFilename: string;
+  rules: string;
+  writeRules: boolean;
+}
+
+const DEFAULT_RULES_FILENAME = "database.rules.json";
+
+export const DEFAULT_RULES = JSON.stringify(
   { rules: { ".read": "auth != null", ".write": "auth != null" } },
   null,
   2,
@@ -43,18 +50,10 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   return await response.response.text();
 }
 
-function writeDBRules(
-  rules: string,
-  logMessagePrefix: string,
-  filename: string,
-  config: Config,
-): void {
+function writeDBRules(rules: string, filename: string, config: Config): void {
   config.writeProjectFile(filename, rules);
-  utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
   logger.info(
-    `Future modifications to ${clc.bold(
-      filename,
-    )} will update Realtime Database Security Rules when you run`,
+    `Future modifications to ${clc.bold(filename)} will update Realtime Database Security Rules when you run`,
   );
   logger.info(clc.bold("firebase deploy") + ".");
 }
@@ -111,7 +110,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
   await ensure(projectId, rtdbManagementOrigin(), "database", false);
   logger.info();
 
-  const instance = await getDefaultDatabaseInstance({ project: projectId });
+  const instance = await getDefaultDatabaseInstance(projectId);
   if (instance !== "") {
     return await getDatabaseInstanceDetails(projectId, instance);
   }
@@ -134,14 +133,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
  * @param setup information helpful for database setup
  * @param config legacy config parameter. not used for database setup.
  */
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
-  setup.config = setup.config || {};
-
-  let instanceDetails: DatabaseInstance | null = null;
-  if (setup.projectId) {
-    instanceDetails = await initializeDatabaseInstance(setup.projectId);
-  }
-
+export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   logger.info();
   logger.info(
     "Firebase Realtime Database Security Rules allow you to define how your data should be",
@@ -149,46 +141,54 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
-  const filename = await input({
+  const rulesFilename = await input({
     message: "What file should be used for Realtime Database Security Rules?",
-    default: "database.rules.json",
+    default: DEFAULT_RULES_FILENAME,
   });
-  if (!filename) {
+  if (!rulesFilename) {
     throw new FirebaseError("Must specify location for Realtime Database rules file.");
   }
-
-  // Add 'database' section to config
-  setup.config.database = { rules: filename };
-
-  let writeRules = true;
-  if (fsutils.fileExistsSync(filename)) {
-    const rulesDescription = instanceDetails
-      ? `the Realtime Database Security Rules for ${clc.bold(instanceDetails.name)} from the Firebase console`
-      : "default rules";
-    const msg = `File ${clc.bold(
-      filename,
-    )} already exists. Do you want to overwrite it with ${rulesDescription}?`;
-
-    writeRules = await confirm(msg);
-  }
-  if (writeRules) {
+  const info: RequiredInfo = {
+    rulesFilename,
+    rules: DEFAULT_RULES,
+    writeRules: true,
+  };
+  if (setup.projectId) {
+    const instanceDetails = await initializeDatabaseInstance(setup.projectId);
     if (instanceDetails) {
-      writeDBRules(
-        await getDBRules(instanceDetails),
-        `Database Rules for ${instanceDetails.name}`,
-        filename,
-        config,
+      info.rules = await getDBRules(instanceDetails);
+      utils.logBullet(
+        `Downloaded the existing Realtime Database Security Rules of database ${clc.bold(instanceDetails.name)} from the Firebase console`,
       );
-      return;
     }
-    writeDBRules(DEFAULT_RULES, "Default rules", filename, config);
-    return;
   }
-  logger.info("Skipping overwrite of Realtime Database Security Rules.");
-  logger.info(
-    `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
-      "firebase deploy",
-    )}.`,
-  );
-  return;
+  info.writeRules = await config.confirmWriteProjectFile(rulesFilename, info.rules);
+  // Populate featureInfo for the actuate step later.
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.database = info;
+}
+
+export async function actuate(setup: Setup, config: Config): Promise<void> {
+  const info = setup.featureInfo?.database;
+  if (!info) {
+    throw new FirebaseError("No database RequiredInfo found in setup actuate.");
+  }
+  // Populate defaults and update `firebase.json` config.
+  info.rules = info.rules || DEFAULT_RULES;
+  info.rulesFilename = info.rulesFilename || "database.rules.json";
+  setup.config.database = { rules: info.rulesFilename };
+
+  if (info.writeRules) {
+    if (info.rules === DEFAULT_RULES) {
+      writeDBRules(info.rules, info.rulesFilename, config);
+    } else {
+      writeDBRules(info.rules, info.rulesFilename, config);
+    }
+  } else {
+    logger.info("Skipping overwrite of Realtime Database Security Rules.");
+    logger.info(
+      `The security rules defined in ${clc.bold(info.rulesFilename)} will be published when you run ${clc.bold("firebase deploy")}.`,
+    );
+  }
+  return Promise.resolve();
 }

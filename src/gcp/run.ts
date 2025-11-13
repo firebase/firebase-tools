@@ -5,6 +5,7 @@ import * as proto from "./proto";
 import * as iam from "./iam";
 import { backoff } from "../throttler/throttler";
 import { logger } from "../logger";
+import { listEntries, LogEntry } from "./cloudlogging";
 
 const API_VERSION = "v1";
 
@@ -343,4 +344,26 @@ export async function setInvokerUpdate(
     version: 3,
   };
   await setIamPolicy(serviceName, policy, httpClient);
+}
+
+/**
+ * Fetches recent logs for a given Cloud Run service using the Cloud Logging API.
+ * @param projectId The Google Cloud project ID.
+ * @param serviceId The resource name of the Cloud Run service.
+ * @return A promise that resolves with the log entries.
+ */
+export async function fetchServiceLogs(projectId: string, serviceId: string): Promise<LogEntry[]> {
+  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${serviceId}"`;
+  const pageSize = 100;
+  const order = "desc";
+
+  try {
+    const { entries } = await listEntries(projectId, filter, pageSize, order);
+    return entries;
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
+      original: err,
+      status: (err as any)?.context?.response?.statusCode,
+    });
+  }
 }

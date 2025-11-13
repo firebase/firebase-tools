@@ -6,7 +6,6 @@ import * as _ from "lodash";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
-const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
@@ -78,15 +77,30 @@ export class Config {
       }
     });
 
-    // Inject default functions source if missing.
+    // Inject default functions source if missing, but only when a given entry has
+    // neither a local source nor a remoteSource configured.
     if (this.get("functions")) {
       if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-        if (Array.isArray(this.get("functions"))) {
-          if (!this.get("functions.[0].source")) {
-            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        const funcs = this.get("functions");
+        if (Array.isArray(funcs)) {
+          // Inject default source for exactly one empty entry (the first empty),
+          // preserving legacy convenience while avoiding ambiguity when multiple are empty.
+          let emptyIdx: number | undefined;
+          for (let i = 0; i < funcs.length; i++) {
+            const hasSource = this.get(`functions.[${i}].source`);
+            const hasRemote = this.get(`functions.[${i}].remoteSource`);
+            if (!hasSource && !hasRemote) {
+              emptyIdx = i;
+              break; // inject into the first empty entry only
+            }
+          }
+          if (emptyIdx !== undefined) {
+            this.set(`functions.[${emptyIdx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
-          if (!this.get("functions.source")) {
+          const hasSource = this.get("functions.source");
+          const hasRemote = this.get("functions.remoteSource");
+          if (!hasSource && !hasRemote) {
             this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         }
@@ -197,7 +211,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any = {}) {
+  readProjectFile(p: string, options: { json?: boolean; fallback?: any } = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");
@@ -216,13 +230,21 @@ export class Config {
     }
   }
 
-  writeProjectFile(p: string, content: any) {
-    if (typeof content !== "string") {
-      content = JSON.stringify(content, null, 2) + "\n";
+  writeProjectFile(p: string, content: any): void {
+    const path = this.path(p);
+    fs.ensureFileSync(path);
+    fs.writeFileSync(path, stringifyContent(content), "utf8");
+    switch (p) {
+      case "firebase.json":
+        utils.logSuccess("Wrote configuration info to " + clc.bold("firebase.json"));
+        break;
+      case ".firebaserc":
+        utils.logSuccess("Wrote project information to " + clc.bold(".firebaserc"));
+        break;
+      default:
+        utils.logSuccess("Wrote " + clc.bold(p));
+        break;
     }
-
-    fs.ensureFileSync(this.path(p));
-    fs.writeFileSync(this.path(p), content, "utf8");
   }
 
   projectFileExists(p: string): boolean {
@@ -233,45 +255,65 @@ export class Config {
     fs.removeSync(this.path(p));
   }
 
+  async confirmWriteProjectFile(
+    path: string,
+    content: any,
+    confirmByDefault?: boolean,
+  ): Promise<boolean> {
+    const writeTo = this.path(path);
+    if (!fsutils.fileExistsSync(writeTo)) {
+      return true;
+    }
+    const existingContent = fsutils.readFile(writeTo);
+    const newContent = stringifyContent(content);
+    if (existingContent === newContent) {
+      utils.logBullet(clc.bold(path) + " is unchanged");
+      return false;
+    }
+    const shouldWrite = await confirm({
+      message: "File " + clc.underline(path) + " already exists. Overwrite?",
+      default: !!confirmByDefault,
+    });
+    if (!shouldWrite) {
+      utils.logBullet("Skipping write of " + clc.bold(path));
+      return false;
+    }
+    return true;
+  }
+
   async askWriteProjectFile(
     path: string,
     content: any,
     force?: boolean,
     confirmByDefault?: boolean,
   ): Promise<void> {
-    const writeTo = this.path(path);
-    let next = true;
-    if (typeof content !== "string") {
-      content = JSON.stringify(content, null, 2) + "\n";
+    if (!force) {
+      const shouldWrite = await this.confirmWriteProjectFile(path, content, confirmByDefault);
+      if (!shouldWrite) {
+        return;
+      }
     }
-    let existingContent: string | undefined;
-    if (fsutils.fileExistsSync(writeTo)) {
-      existingContent = fsutils.readFile(writeTo);
-    }
-    if (existingContent && existingContent !== content && !force) {
-      next = await confirm({
-        message: "File " + clc.underline(path) + " already exists. Overwrite?",
-        default: !!confirmByDefault,
-      });
-    }
-
-    if (existingContent === content) {
-      utils.logBullet(clc.bold(path) + " is unchanged");
-    } else if (next) {
-      this.writeProjectFile(path, content);
-      utils.logSuccess("Wrote " + clc.bold(path));
-    } else {
-      utils.logBullet("Skipping write of " + clc.bold(path));
-    }
+    this.writeProjectFile(path, content);
   }
 
-  public static load(options: any, allowMissing?: boolean): Config | null {
+  public static load(options: { cwd?: string; configPath?: string }, allowMissing?: false): Config;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing: true,
+  ): Config | null;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing?: boolean,
+  ): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
-        const data = cjson.load(filePath);
+        let data: unknown = {};
+        if (fs.statSync(filePath).size > 0) {
+          data = loadCJSON(filePath);
+        }
 
         // Validate config against JSON Schema. For now we just print these to debug
         // logs but in a future CLI version they could be warnings and/or errors.
@@ -303,4 +345,11 @@ export class Config {
       status: 404,
     });
   }
+}
+
+function stringifyContent(content: any): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  return JSON.stringify(content, null, 2) + "\n";
 }

@@ -17,22 +17,15 @@ import {
   updateIdxSetting,
 } from "./utils/settings";
 import { registerFdc } from "./data-connect";
-import { AuthService } from "./auth/service";
-import {
-  AnalyticsLogger,
-  IDX_METRIC_NOTICE,
-} from "./analytics";
+import { ExecutionParamsService } from "./data-connect/execution/execution-params";
+import { AnalyticsLogger, IDX_METRIC_NOTICE } from "./analytics";
 import { env } from "./core/env";
 
-import { suggestGraphqlSyntaxExtension } from "./data-connect/graphql-syntax-highlighter";
 import { setIsVSCodeExtension } from "../../src/vsCodeUtils";
 
 // This method is called when your extension is activated
 export async function activate(context: vscode.ExtensionContext) {
   const analyticsLogger = new AnalyticsLogger(context);
-
-  // Suggest installing the GraphQL syntax highlighter extension
-  await suggestGraphqlSyntaxExtension();
 
   await setupFirebasePath(analyticsLogger);
   const settings = getSettings();
@@ -45,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.Webview
   >(new ExtensionBroker());
 
-  const authService = new AuthService(broker);
+  const paramsService = new ExecutionParamsService(broker, analyticsLogger);
 
   // show IDX data collection notice
   if (settings.shouldShowIdxMetricNotice && env.value.isMonospace) {
@@ -72,11 +65,11 @@ export async function activate(context: vscode.ExtensionContext) {
       broker,
       context,
     }),
-    authService,
+    paramsService,
     registerFdc(
       context,
       broker,
-      authService,
+      paramsService,
       emulatorsController,
       analyticsLogger,
     ),

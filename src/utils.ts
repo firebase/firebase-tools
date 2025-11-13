@@ -3,6 +3,7 @@ import * as tty from "tty";
 import * as path from "node:path";
 import * as yaml from "yaml";
 import { Socket } from "node:net";
+import * as crypto from "node:crypto";
 
 import * as _ from "lodash";
 import * as url from "url";
@@ -24,6 +25,8 @@ import { readTemplateSync } from "./templates";
 import { isVSCodeExtension } from "./vsCodeUtils";
 import { Config } from "./config";
 import { dirExistsSync, fileExistsSync } from "./fsutils";
+import { platform } from "node:os";
+import { execSync } from "node:child_process";
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
@@ -196,6 +199,14 @@ export function logWarning(
   data: LogDataOrUndefined = undefined,
 ): void {
   logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
+}
+
+/**
+ * Log a warning statement to stderr, regardless of logger configuration.
+ */
+export function logWarningToStderr(message: string): void {
+  const prefix = clc.bold(`${WARNING_CHAR} `);
+  process.stderr.write(clc.yellow(prefix + message) + "\n");
 }
 
 /**
@@ -555,7 +566,12 @@ export function datetimeString(d: Date): string {
  * Indicates whether the end-user is running the CLI from a cloud-based environment.
  */
 export function isCloudEnvironment() {
-  return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
+  return (
+    !!process.env.CODESPACES ||
+    !!process.env.GOOGLE_CLOUD_WORKSTATIONS ||
+    !!process.env.CLOUD_SHELL ||
+    !!process.env.GOOGLE_CLOUD_SHELL
+  );
 }
 
 /**
@@ -848,8 +864,38 @@ export function generateId(n = 6): string {
 }
 
 /**
+ * Generate a password meeting the following criterias:
+ *  - At least one lowercase, one uppercase, one number, and one special character.
+ */
+export function generatePassword(n = 20): string {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const all = lower + upper + numbers + special;
+
+  let pw = "";
+  pw += lower[crypto.randomInt(lower.length)];
+  pw += upper[crypto.randomInt(upper.length)];
+  pw += numbers[crypto.randomInt(numbers.length)];
+  pw += special[crypto.randomInt(special.length)];
+
+  for (let i = 4; i < n; i++) {
+    pw += all[crypto.randomInt(all.length)];
+  }
+
+  // Shuffle the password to randomize character order using Fisher-Yates shuffle
+  const pwArray = pw.split("");
+  for (let i = pwArray.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i);
+    [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
+  }
+  return pwArray.join("");
+}
+
+/**
  * Reads a secret value from either a file or a prompt.
- * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is falsy and this is a tty, uses prompt. Otherwise reads from dataFile.
  * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
  */
 export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
@@ -922,4 +968,70 @@ export async function promptForDirectory(args: {
     }
   }
   return dir;
+}
+
+/*
+ * Deeply compares two JSON-serializable objects.
+ * It's a simplified version of a deep equal function, sufficient for comparing the structure
+ * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
+ */
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
+    return false;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Returns a unique ID that's either `recommended` or `recommended-{i}`.
+ * Avoid existing IDs.
+ */
+export function newUniqueId(recommended: string, existingIDs: string[]): string {
+  let id = recommended;
+  let i = 1;
+  while (existingIDs.includes(id)) {
+    id = `${recommended}-${i}`;
+    i++;
+  }
+  return id;
+}
+
+/**
+ * Checks if a command exists in the system.
+ */
+export function commandExistsSync(command: string): boolean {
+  try {
+    const isWindows = platform() === "win32";
+    // For Windows, `where` is more appropriate. It also often outputs the path.
+    // For Unix-like systems, `which` is standard.
+    // The `2> nul` (Windows) or `2>/dev/null` (Unix) redirects stderr to suppress error messages.
+    // The `>` nul / `>/dev/null` redirects stdout as we only care about the exit code.
+    const commandToCheck = isWindows
+      ? `where "${command}" > nul 2> nul`
+      : `which "${command}" > /dev/null 2> /dev/null`;
+
+    execSync(commandToCheck);
+    return true; // If execSync doesn't throw, the command was found (exit code 0)
+  } catch (error) {
+    // If the command is not found, execSync will throw an error (non-zero exit code)
+    return false;
+  }
 }

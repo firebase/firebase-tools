@@ -49,63 +49,69 @@ export const RUNTIMES = runtimes({
   },
   nodejs10: {
     friendly: "Node.js 10",
-    status: "GA",
+    status: "decommissioned",
     deprecationDate: "2024-01-30",
     decommissionDate: "2025-01-30",
   },
   nodejs12: {
     friendly: "Node.js 12",
-    status: "GA",
+    status: "decommissioned",
     deprecationDate: "2024-01-30",
     decommissionDate: "2025-01-30",
   },
   nodejs14: {
     friendly: "Node.js 14",
-    status: "GA",
+    status: "decommissioned",
     deprecationDate: "2024-01-30",
     decommissionDate: "2025-01-30",
   },
   nodejs16: {
     friendly: "Node.js 16",
-    status: "GA",
+    status: "decommissioned",
     deprecationDate: "2024-01-30",
     decommissionDate: "2025-01-30",
   },
   nodejs18: {
     friendly: "Node.js 18",
-    status: "GA",
+    status: "deprecated",
     deprecationDate: "2025-04-30",
-    decommissionDate: "2025-10-31",
+    decommissionDate: "2025-10-30",
   },
   nodejs20: {
     friendly: "Node.js 20",
     status: "GA",
     deprecationDate: "2026-04-30",
-    decommissionDate: "2026-10-31",
+    decommissionDate: "2026-10-30",
   },
   nodejs22: {
     friendly: "Node.js 22",
     status: "GA",
     deprecationDate: "2027-04-30",
-    decommissionDate: "2027-10-31",
+    decommissionDate: "2028-10-31",
   },
   python310: {
     friendly: "Python 3.10",
     status: "GA",
     deprecationDate: "2026-10-04",
-    decommissionDate: "2027-04-30",
+    decommissionDate: "2027-04-04",
   },
   python311: {
     friendly: "Python 3.11",
     status: "GA",
     deprecationDate: "2027-10-24",
-    decommissionDate: "2028-04-30",
+    decommissionDate: "2028-04-24",
   },
   python312: {
     friendly: "Python 3.12",
     status: "GA",
     deprecationDate: "2028-10-02",
-    decommissionDate: "2029-04-30",
+    decommissionDate: "2029-04-02",
+  },
+  python313: {
+    friendly: "Python 3.13",
+    status: "GA",
+    deprecationDate: "2029-10-10",
+    decommissionDate: "2030-04-10",
   },
 });
 
@@ -116,3 +122,5 @@ export type DecommissionedRuntime = {
     ? R
     : never;
 }[keyof typeof RUNTIMES];
+
+export type ActiveRuntime = Exclude<Runtime, DecommissionedRuntime>;

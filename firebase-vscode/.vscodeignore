@@ -21,3 +21,4 @@ dist/test/
 *.tgz
 package-lock.json
 .wdio-vscode-service/
+prebuilt-extensions/

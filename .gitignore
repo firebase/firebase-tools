@@ -3,6 +3,7 @@ src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/pa
 src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/package-lock.json
 scripts/functions-deploy-tests/**/package-lock.json
 scripts/functions-discover-tests/**/**/package-lock.json
+scripts/agent-evals/output
 .dataconnect
 *-debug.log
 
@@ -15,6 +16,8 @@ firebase-debug.log
 firebase-debug.*.log
 npm-debug.log
 ui-debug.log
+test_output.log
+scripts/emulator-tests/functions/index.js
 yarn.lock
 .npmrc
 
@@ -27,3 +30,4 @@ scripts/*.json
 lib/
 dev/
 clean/
+.gemini/

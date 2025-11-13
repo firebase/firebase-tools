@@ -19,6 +19,11 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
 export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
+export const GENKIT_MONITORING_ROLES = [
+  "roles/monitoring.metricWriter",
+  "roles/cloudtrace.agent",
+  "roles/logging.logWriter",
+];
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -69,7 +74,7 @@ export async function checkHttpIam(
   if (!payload.functions) {
     return;
   }
-  const filters = context.filters || getEndpointFilters(options);
+  const filters = context.filters || getEndpointFilters(options, context.config!);
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
     .filter(backend.isHttpsTriggered)
@@ -133,6 +138,13 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
   return services;
 }
 
+/** Checks whether the given endpoint is a Genkit callable function. */
+function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
+  return (
+    backend.isCallableTriggered(endpoint) && endpoint.callableTrigger.genkitAction !== undefined
+  );
+}
+
 /**
  * Finds the required project level IAM bindings for the Pub/Sub service agent.
  * If the user enabled Pub/Sub on or before April 8, 2021, then we must enable the token creator role.
@@ -153,8 +165,10 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param projectNumber project number
  * @param existingPolicy the project level IAM policy
  */
-export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = `serviceAccount:${gce.getDefaultServiceAccount(projectNumber)}`;
+export async function obtainDefaultComputeServiceAgentBindings(
+  projectNumber: string,
+): Promise<iam.Binding[]> {
+  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],
@@ -164,6 +178,53 @@ export function obtainDefaultComputeServiceAgentBindings(projectNumber: string):
     members: [defaultComputeServiceAgent],
   };
   return [runInvokerBinding, eventarcEventReceiverBinding];
+}
+
+/**
+ * Checks and sets the roles for any genkit deployed functions that are required
+ * for Firebase Genkit Monitoring.
+ * @param projectId human readable project id
+ * @param projectNumber project number
+ * @param want backend that we want to deploy
+ * @param have backend that we have currently deployed
+ */
+export async function ensureGenkitMonitoringRoles(
+  projectId: string,
+  projectNumber: string,
+  want: backend.Backend,
+  have: backend.Backend,
+  dryRun?: boolean,
+): Promise<void> {
+  const wantEndpoints = backend.allEndpoints(want).filter(isGenkitEndpoint);
+  const newEndpoints = wantEndpoints.filter(backend.missingEndpoint(have));
+
+  if (newEndpoints.length === 0) {
+    return;
+  }
+
+  const serviceAccounts = newEndpoints
+    .map((endpoint) => endpoint.serviceAccount || "")
+    .filter((value, index, self) => self.indexOf(value) === index);
+  const defaultServiceAccountIndex = serviceAccounts.indexOf("");
+  if (defaultServiceAccountIndex !== -1) {
+    serviceAccounts[defaultServiceAccountIndex] = await gce.getDefaultServiceAccount(projectNumber);
+  }
+
+  const members = serviceAccounts.filter((sa) => !!sa).map((sa) => `serviceAccount:${sa}`);
+  const requiredBindings: iam.Binding[] = [];
+  for (const monitoringRole of GENKIT_MONITORING_ROLES) {
+    requiredBindings.push({
+      role: monitoringRole,
+      members: members,
+    });
+  }
+  await ensureBindings(
+    projectId,
+    projectNumber,
+    requiredBindings,
+    newEndpoints.map((endpoint) => endpoint.id),
+    dryRun,
+  );
 }
 
 /**
@@ -199,12 +260,27 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...obtainDefaultComputeServiceAgentBindings(projectNumber));
+    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
   }
   if (requiredBindings.length === 0) {
     return;
   }
+  await ensureBindings(
+    projectId,
+    projectNumber,
+    requiredBindings,
+    newServices.map((service) => service.api),
+    dryRun,
+  );
+}
 
+async function ensureBindings(
+  projectId: string,
+  projectNumber: string,
+  requiredBindings: iam.Binding[],
+  newServicesOrEndpoints: string[],
+  dryRun?: boolean,
+): Promise<void> {
   // get the full project iam policy
   let policy: iam.Policy;
   try {
@@ -214,7 +290,7 @@ export async function ensureServiceAgentRoles(
     utils.logLabeledBullet(
       "functions",
       "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
-        `${newServices.map((service) => service.api).join(", ")}` +
+        `${newServicesOrEndpoints.join(", ")}` +
         ". Deployment may fail.",
       "warn",
     );

@@ -34,9 +34,9 @@ describe("dialogs", () => {
   };
 
   describe("toMetadata", () => {
-    it("handles explicit account", () => {
+    it("handles explicit account", async () => {
       // Note: passing in out of order to verify the results are sorted.
-      const metadata = dialogs.toMetadata("number", [modernA2, modernA]);
+      const metadata = await dialogs.toMetadata("number", [modernA2, modernA]);
 
       expect(metadata).to.deep.equal([
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
@@ -44,26 +44,26 @@ describe("dialogs", () => {
       ]);
     });
 
-    it("handles fallback for legacy SAs", () => {
-      const metadata = dialogs.toMetadata("number", [modernA, legacy]);
+    it("handles fallback for legacy SAs", async () => {
+      const metadata = await dialogs.toMetadata("number", [modernA, legacy]);
 
       expect(metadata).to.deep.equal([
         {
           location: "l",
           id: "legacy",
-          ...secrets.serviceAccountsForBackend("number", legacy),
+          ...(await secrets.serviceAccountsForBackend("number", legacy)),
         },
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
       ]);
     });
 
-    it("sorts by location first and id second", () => {
-      const metadata = dialogs.toMetadata("number", [legacy, modernA, modernA2]);
+    it("sorts by location first and id second", async () => {
+      const metadata = await dialogs.toMetadata("number", [legacy, modernA, modernA2]);
       expect(metadata).to.deep.equal([
         {
           location: "l",
           id: "legacy",
-          ...secrets.serviceAccountsForBackend("number", legacy),
+          ...(await secrets.serviceAccountsForBackend("number", legacy)),
         },
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
         { location: "l2", id: "modernA2", buildServiceAccount: "a", runServiceAccount: "a" },
@@ -81,8 +81,10 @@ describe("dialogs", () => {
   });
 
   describe("tableForBackends", () => {
-    it("uses 'service account' header if all backends use one service account", () => {
-      const table = dialogs.tableForBackends(dialogs.toMetadata("number", [modernA, modernB]));
+    it("uses 'service account' header if all backends use one service account", async () => {
+      const table = dialogs.tableForBackends(
+        await dialogs.toMetadata("number", [modernA, modernB]),
+      );
       expect(table[0]).to.deep.equal(["location", "backend", "service account"]);
       expect(table[1]).to.deep.equal([
         ["l", "modernA", "a"],
@@ -90,9 +92,9 @@ describe("dialogs", () => {
       ]);
     });
 
-    it("uses 'service accounts' header if any backend uses more than one service accont", () => {
-      const table = dialogs.tableForBackends(dialogs.toMetadata("number", [legacy, modernA]));
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+    it("uses 'service accounts' header if any backend uses more than one service account", async () => {
+      const table = dialogs.tableForBackends(await dialogs.toMetadata("number", [legacy, modernA]));
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
       expect(table[1]).to.deep.equal([
         [
@@ -219,7 +221,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(true);
-      const accounts = secrets.serviceAccountsForBackend("number", legacy);
+      const accounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
@@ -248,7 +250,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(false);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
@@ -337,7 +339,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.checkbox.resolves(["a", "b"]);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
@@ -365,7 +367,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.checkbox.resolves([]);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),

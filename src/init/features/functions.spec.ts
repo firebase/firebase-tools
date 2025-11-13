@@ -26,6 +26,7 @@ function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
       },
       rcfile: { projects: {}, targets: {}, etags: {} },
       featureArg: true,
+      instructions: [],
     },
     config: new Config({ functions: [cbconfig] }, { projectDir: "test", cwd: "test" }),
   };
@@ -52,9 +53,7 @@ describe("functions", () => {
       except: "",
       filteredTargets: [],
       force: false,
-      json: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: emptyConfig,
       rc: new RC(),
@@ -86,6 +85,7 @@ describe("functions", () => {
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
           predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+          disallowLegacyRuntimeConfig: true,
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
@@ -115,6 +115,7 @@ describe("functions", () => {
             'npm --prefix "$RESOURCE_DIR" run lint',
             'npm --prefix "$RESOURCE_DIR" run build',
           ],
+          disallowLegacyRuntimeConfig: true,
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
           `${TEST_SOURCE_DEFAULT}/package.json`,
@@ -169,6 +170,7 @@ describe("functions", () => {
               "*.local",
             ],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+            disallowLegacyRuntimeConfig: true,
           },
         ]);
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([

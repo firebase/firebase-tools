@@ -1,9 +1,25 @@
 export { doSetup as account } from "./account";
-export { doSetup as database } from "./database";
-export { doSetup as firestore } from "./firestore";
+export {
+  askQuestions as databaseAskQuestions,
+  RequiredInfo as DatabaseInfo,
+  actuate as databaseActuate,
+} from "./database";
+export {
+  askQuestions as firestoreAskQuestions,
+  RequiredInfo as FirestoreInfo,
+  actuate as firestoreActuate,
+} from "./firestore";
 export { doSetup as functions } from "./functions";
-export { doSetup as hosting } from "./hosting";
-export { doSetup as storage } from "./storage";
+export {
+  askQuestions as hostingAskQuestions,
+  actuate as hostingActuate,
+  RequiredInfo as HostingInfo,
+} from "./hosting";
+export {
+  askQuestions as storageAskQuestions,
+  RequiredInfo as StorageInfo,
+  actuate as storageActuate,
+} from "./storage";
 export { doSetup as emulators } from "./emulators";
 export { doSetup as extensions } from "./extensions";
 // always runs, sets up .firebaserc
@@ -13,9 +29,24 @@ export { initGitHub as hostingGithub } from "./hosting/github";
 export {
   askQuestions as dataconnectAskQuestions,
   RequiredInfo as DataconnectInfo,
+  Source as DataconnectSource,
   actuate as dataconnectActuate,
-  postSetup as dataconnectPostSetup,
 } from "./dataconnect";
-export { doSetup as dataconnectSdk } from "./dataconnect/sdk";
+export {
+  askQuestions as dataconnectSdkAskQuestions,
+  SdkRequiredInfo as DataconnectSdkInfo,
+  actuate as dataconnectSdkActuate,
+} from "./dataconnect/sdk";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
+export {
+  askQuestions as apptestingAskQuestions,
+  RequiredInfo as ApptestingInfo,
+  actuate as apptestingAcutate,
+} from "./apptesting";
+export { doSetup as aitools } from "./aitools";
+export {
+  askQuestions as aiLogicAskQuestions,
+  AiLogicInfo,
+  actuate as aiLogicActuate,
+} from "./ailogic";

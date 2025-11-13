@@ -13,10 +13,11 @@ import * as fsAsync from "./fsAsync";
 //   visible
 //   subdir/
 //     subfile
-//       nesteddir/
-//         nestedfile
-//       node_modules/
-//         nestednodemodules
+//     nesteddir/
+//       nestedfile
+//       nestedfile2
+//     node_modules/
+//       nestednodemodules
 //   node_modules
 //     subfile
 describe("fsAsync", () => {
@@ -26,6 +27,7 @@ describe("fsAsync", () => {
     "visible",
     "subdir/subfile",
     "subdir/nesteddir/nestedfile",
+    "subdir/nesteddir/nestedfile2",
     "subdir/node_modules/nestednodemodules",
     "node_modules/subfile",
   ];
@@ -90,6 +92,21 @@ describe("fsAsync", () => {
       const expectFiles = files
         .filter((file) => file === "visible")
         .map((file) => path.join(baseDir, file))
+        .sort();
+      return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
+    it("should support .gitignore rules via options", async () => {
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignore: ["subdir/nesteddir/*", "!subdir/nesteddir/nestedfile"],
+        isGitIgnore: true,
+      });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = files
+        .map((file) => path.join(baseDir, file))
+        .filter((file) => file !== path.join(baseDir, "subdir/nesteddir/nestedfile2"))
         .sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });

@@ -3,7 +3,7 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { Config } from "../../config";
-import { doSetup } from "./storage";
+import { askQuestions, actuate } from "./storage";
 import * as prompt from "../../prompt";
 
 describe("storage", () => {
@@ -12,7 +12,7 @@ describe("storage", () => {
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
-    askWriteProjectFileStub = sandbox.stub(Config.prototype, "askWriteProjectFile");
+    askWriteProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
     promptStub = sandbox.stub(prompt, "input");
   });
 
@@ -24,14 +24,17 @@ describe("storage", () => {
     it("should set up the correct properties in the project", async () => {
       const setup = {
         config: {},
-        rcfile: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "my-project-123",
         projectLocation: "us-central",
+        instructions: [],
       };
+      const config = new Config({}, { projectDir: "test", cwd: "test" });
       promptStub.returns("storage.rules");
       askWriteProjectFileStub.resolves();
 
-      await doSetup(setup, new Config("/path/to/src", {}));
+      await askQuestions(setup, config);
+      await actuate(setup, config);
 
       expect(_.get(setup, "config.storage.rules")).to.deep.equal("storage.rules");
     });

@@ -100,17 +100,6 @@ export interface DeviceExecution {
   inconclusiveReason?: string;
 }
 
-export function mapDeviceToExecution(device: TestDevice): DeviceExecution {
-  return {
-    device: {
-      model: device.model,
-      version: device.version,
-      orientation: device.orientation,
-      locale: device.locale,
-    },
-  };
-}
-
 export interface FieldHints {
   usernameResourceName?: string;
   passwordResourceName?: string;
@@ -127,4 +116,50 @@ export interface ReleaseTest {
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
   testCase?: string;
+  aiInstructions?: AIInstruction;
+}
+
+export interface AIInstruction {
+  steps: AIStep[];
+}
+
+export interface AIStep {
+  goal: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+export interface AiStep {
+  goal: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+export interface AiInstructions {
+  steps: AiStep[];
+}
+
+export interface TestCase {
+  name?: string;
+  displayName: string;
+  prerequisiteTestCase?: string;
+  aiInstructions: AiInstructions;
+}
+
+export interface ListTestCasesResponse {
+  testCases: TestCase[];
+  nextPageToken?: string;
+}
+
+export interface UpdateTestCaseRequest {
+  testCase: TestCase;
+  allowMissing?: boolean;
+}
+
+export interface BatchUpdateTestCasesRequest {
+  requests: UpdateTestCaseRequest[];
+}
+
+export interface BatchUpdateTestCasesResponse {
+  testCases: TestCase[];
 }

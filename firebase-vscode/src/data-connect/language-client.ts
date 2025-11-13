@@ -141,15 +141,5 @@ export function setupLanguageClient(
     outputChannel.appendLine("Firebase GraphQL Language Server restarted");
   });
 
-  // ** DISABLED FOR NOW WHILE WE TEST GENERATED YAML **
-  // restart server whenever config file changes
-  // const watcher = vscode.workspace.createFileSystemWatcher(
-  //   "**/.graphqlrc.*", // TODO: extend to schema files, and other config types
-  //   false,
-  //   false,
-  //   false,
-  // );
-  // watcher.onDidChange(() => restartGraphqlLSP());
-
   return client;
 }

@@ -22,169 +22,139 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 import * as process from "process";
+import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
-const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
-  database: {
-    version: "4.11.2",
-    expectedSize: 34495935,
-    expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
-  },
-  firestore: {
-    version: "1.19.8",
-    expectedSize: 63634791,
-    expectedChecksum: "9b43a6daa590678de9b7df6d68260395",
-  },
-  storage: {
-    version: "1.1.3",
-    expectedSize: 52892936,
-    expectedChecksum: "2ca11ec1193003bea89f806cc085fa25",
-  },
-  ui: experiments.isEnabled("emulatoruisnapshot")
-    ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
-    : {
-        version: "1.15.0",
-        expectedSize: 3538469,
-        expectedChecksum: "2f13d5aea9524564c8b7adaa9cfa2128",
-      },
-  pubsub: {
-    version: "0.8.14",
-    expectedSize: 66786933,
-    expectedChecksum: "a9025b3e53fdeafd2969ccb3ba1e1d38",
-  },
-  dataconnect:
-    process.platform === "darwin" // macos
-      ? {
-          version: "2.5.0",
-          expectedSize: 27378432,
-          expectedChecksum: "d18bc3a07be90886f6ec212f3393b66e",
-        }
-      : process.platform === "win32" // windows
-        ? {
-            version: "2.5.0",
-            expectedSize: 27836416,
-            expectedChecksum: "d335e9295b00381eb12682bc944ffef7",
-          }
-        : {
-            version: "2.5.0", // linux
-            expectedSize: 27295896,
-            expectedChecksum: "dc44dbfd972a9b3608794909df517077",
-          },
-};
-
-export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
-  database: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
-    ),
-    version: EMULATOR_UPDATE_DETAILS.database.version,
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.database.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.database.expectedChecksum,
-      namePrefix: "firebase-database-emulator",
-    },
-  },
-  firestore: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
-    ),
-    version: EMULATOR_UPDATE_DETAILS.firestore.version,
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.firestore.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.firestore.expectedChecksum,
-      namePrefix: "cloud-firestore-emulator",
-    },
-  },
-  storage: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
-    ),
-    version: EMULATOR_UPDATE_DETAILS.storage.version,
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.storage.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.storage.expectedChecksum,
-      namePrefix: "cloud-storage-rules-emulator",
-    },
-  },
+const EMULATOR_UPDATE_DETAILS: {
+  database: EmulatorUpdateDetails;
+  firestore: EmulatorUpdateDetails;
+  storage: EmulatorUpdateDetails;
+  pubsub: EmulatorUpdateDetails;
   ui: {
-    version: EMULATOR_UPDATE_DETAILS.ui.version,
-    downloadPath: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`),
-    unzipDir: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`),
-    binaryPath: path.join(
-      CACHE_DIR,
-      `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
-      "server",
-      "server.mjs",
-    ),
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.ui.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.ui.expectedChecksum,
-      skipCache: experiments.isEnabled("emulatoruisnapshot"),
-      skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
-      namePrefix: "ui",
-    },
-  },
-  pubsub: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
-    ),
-    version: EMULATOR_UPDATE_DETAILS.pubsub.version,
-    unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
-    binaryPath: path.join(
-      CACHE_DIR,
-      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`,
-      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
-    ),
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.pubsub.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.pubsub.expectedChecksum,
-      namePrefix: "pubsub-emulator",
-    },
-  },
+    main: EmulatorUpdateDetails;
+    snapshot: EmulatorUpdateDetails;
+  };
   dataconnect: {
-    downloadPath: path.join(
-      CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
-    ),
-    version: EMULATOR_UPDATE_DETAILS.dataconnect.version,
-    binaryPath: path.join(
-      CACHE_DIR,
-      `dataconnect-emulator-${EMULATOR_UPDATE_DETAILS.dataconnect.version}${process.platform === "win32" ? ".exe" : ""}`,
-    ),
-    opts: {
-      cacheDir: CACHE_DIR,
-      remoteUrl:
-        process.platform === "darwin"
-          ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-          : process.platform === "win32"
-            ? `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`
-            : `https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v${EMULATOR_UPDATE_DETAILS.dataconnect.version}`,
-      expectedSize: EMULATOR_UPDATE_DETAILS.dataconnect.expectedSize,
-      expectedChecksum: EMULATOR_UPDATE_DETAILS.dataconnect.expectedChecksum,
-      skipChecksumAndSize: false,
-      namePrefix: "dataconnect-emulator",
-      auth: false,
-    },
-  },
-};
+    darwin: EmulatorUpdateDetails;
+    darwin_arm64: EmulatorUpdateDetails;
+    win32: EmulatorUpdateDetails;
+    linux: EmulatorUpdateDetails;
+  };
+} = emulatorUpdateDetails;
+
+/**
+ * generate download details for a single emulator, based on the host environment.
+ * pulls data from `downloadableEmulatorInfo.json`.
+ * @param emulator The name of the downloadable emulator to get details for.
+ * @returns The download details for the specified emulator.
+ */
+function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
+  const emulatorUiDetails = experiments.isEnabled("emulatoruisnapshot")
+    ? EMULATOR_UPDATE_DETAILS.ui.snapshot
+    : EMULATOR_UPDATE_DETAILS.ui.main;
+
+  const dataconnectDetails =
+    process.platform === "darwin"
+      ? process.arch === "arm64"
+        ? EMULATOR_UPDATE_DETAILS.dataconnect.darwin_arm64
+        : EMULATOR_UPDATE_DETAILS.dataconnect.darwin
+      : process.platform === "win32"
+        ? EMULATOR_UPDATE_DETAILS.dataconnect.win32
+        : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
+
+  switch (emulator) {
+    case "database":
+      return {
+        downloadPath: path.join(
+          CACHE_DIR,
+          EMULATOR_UPDATE_DETAILS.database.downloadPathRelativeToCacheDir,
+        ),
+        version: EMULATOR_UPDATE_DETAILS.database.version,
+        opts: {
+          ...EMULATOR_UPDATE_DETAILS.database,
+          cacheDir: CACHE_DIR,
+          namePrefix: "firebase-database-emulator",
+        },
+      };
+    case "firestore":
+      return {
+        downloadPath: path.join(
+          CACHE_DIR,
+          EMULATOR_UPDATE_DETAILS.firestore.downloadPathRelativeToCacheDir,
+        ),
+        version: EMULATOR_UPDATE_DETAILS.firestore.version,
+        opts: {
+          ...EMULATOR_UPDATE_DETAILS.firestore,
+          cacheDir: CACHE_DIR,
+          namePrefix: "cloud-firestore-emulator",
+        },
+      };
+    case "storage":
+      return {
+        downloadPath: path.join(
+          CACHE_DIR,
+          EMULATOR_UPDATE_DETAILS.storage.downloadPathRelativeToCacheDir,
+        ),
+        version: EMULATOR_UPDATE_DETAILS.storage.version,
+        opts: {
+          ...EMULATOR_UPDATE_DETAILS.storage,
+          cacheDir: CACHE_DIR,
+          namePrefix: "cloud-storage-rules-emulator",
+        },
+      };
+    case "ui":
+      return {
+        version: emulatorUiDetails.version,
+        downloadPath: path.join(CACHE_DIR, emulatorUiDetails.downloadPathRelativeToCacheDir),
+        unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
+        binaryPath: path.join(CACHE_DIR, emulatorUiDetails.binaryPathRelativeToCacheDir!),
+        opts: {
+          ...emulatorUiDetails,
+          cacheDir: CACHE_DIR,
+          skipCache: experiments.isEnabled("emulatoruisnapshot"),
+          skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
+          namePrefix: "ui",
+        },
+      };
+    case "pubsub":
+      return {
+        downloadPath: path.join(
+          CACHE_DIR,
+          EMULATOR_UPDATE_DETAILS.pubsub.downloadPathRelativeToCacheDir,
+        ),
+        version: EMULATOR_UPDATE_DETAILS.pubsub.version,
+        unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
+        binaryPath: path.join(
+          CACHE_DIR,
+          EMULATOR_UPDATE_DETAILS.pubsub.binaryPathRelativeToCacheDir!,
+        ),
+        opts: {
+          ...EMULATOR_UPDATE_DETAILS.pubsub,
+          cacheDir: CACHE_DIR,
+          namePrefix: "pubsub-emulator",
+        },
+      };
+    case "dataconnect":
+      return {
+        downloadPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
+        version: dataconnectDetails.version,
+        binaryPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
+        opts: {
+          ...dataconnectDetails,
+          cacheDir: CACHE_DIR,
+          skipChecksumAndSize: false,
+          namePrefix: "dataconnect-emulator",
+          auth: false,
+        },
+      };
+    default:
+      throw new Error(`Invalid downloadable emulator: ${emulator}`);
+  }
+}
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
   database: {
@@ -534,7 +504,7 @@ async function _runBinary(
  * @param emulator
  */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
-  const details = DownloadDetails[emulator];
+  const details = generateDownloadDetails(emulator);
   const pathOverride = process.env[`${emulator.toUpperCase()}_EMULATOR_BINARY_PATH`];
   if (pathOverride) {
     const logger = EmulatorLogger.forEmulator(emulator);

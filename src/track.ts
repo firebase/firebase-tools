@@ -4,11 +4,28 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
+import { isFirebaseStudio } from "./env";
 const pkg = require("../package.json");
+
+// Detect if the CLI was invoked by a coding agent, based on well-known env vars.
+function detectAIAgent(): string {
+  if (process.env.CLAUDECODE) return "claude_code";
+  if (process.env.CLINE_ACTIVE) return "cline";
+  if (process.env.CODEX_SANDBOX) return "codex_cli";
+  if (process.env.CURSOR_AGENT) return "cursor";
+  if (process.env.GEMINI_CLI) return "gemini_cli";
+  if (process.env.OPENCODE) return "open_code";
+  return "unknown";
+}
 
 type cliEventNames =
   | "command_execution"
   | "product_deploy"
+  | "product_init"
+  | "product_init_mcp"
+  | "dataconnect_init"
+  | "dataconnect_deploy"
+  | "dataconnect_cloud_sql"
   | "error"
   | "login"
   | "api_enabled"
@@ -20,7 +37,11 @@ type cliEventNames =
   | "codebase_deploy"
   | "function_deploy_group"
   | "mcp_tool_call"
-  | "mcp_list_tools";
+  | "mcp_list_tools"
+  | "mcp_client_connected"
+  | "mcp_list_prompts"
+  | "mcp_get_prompt"
+  | "mcp_read_resource";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -55,7 +76,9 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return !!process.env.IS_FIREBASE_CLI && !!configstore.get("usage");
+  return (
+    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
+  );
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
@@ -72,6 +95,12 @@ const GA4_USER_PROPS = {
   },
   firepit_version: {
     value: process.env.FIREPIT_VERSION || "none",
+  },
+  is_firebase_studio: {
+    value: isFirebaseStudio().toString(),
+  },
+  ai_agent: {
+    value: detectAIAgent(),
   },
 };
 

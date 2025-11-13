@@ -6,7 +6,7 @@
 import { isIPv4 } from "net";
 import * as clc from "colorette";
 import { checkListenable } from "../portUtils";
-import { detectStartCommand } from "./developmentServer";
+import { detectPackageManager, detectPackageManagerStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
 import { spawnWithCommandString } from "../../init/spawn";
 import { logger } from "./developmentServer";
@@ -17,33 +17,20 @@ import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
 import { FirebaseError } from "../../error";
 import * as secrets from "../../gcp/secretManager";
-import { logLabeledError } from "../../utils";
+import { logLabeledError, logLabeledWarning } from "../../utils";
+import * as apphosting from "../../gcp/apphosting";
+import { Constants } from "../constants";
+import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
+import { AppPlatform, getAppConfig } from "../../management/apps";
+import { spawnSync } from "child_process";
+import { gte as semverGte } from "semver";
 
 interface StartOptions {
   projectId?: string;
+  backendId?: string;
   port?: number;
   startCommand?: string;
   rootDirectory?: string;
-}
-
-/**
- * Spins up a project locally by running the project's dev command.
- *
- * Assumptions:
- *  - Dev server runs on "localhost" when the package manager's dev command is
- *    run
- *  - Dev server will respect the PORT environment variable
- */
-export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
-  const hostname = DEFAULT_HOST;
-  let port = options?.port ?? DEFAULT_PORTS.apphosting;
-  while (!(await availablePort(hostname, port))) {
-    port += 1;
-  }
-
-  await serve(options?.projectId, port, options?.startCommand, options?.rootDirectory);
-
-  return { hostname, port };
 }
 
 // Matches a fully qualified secret or version name, e.g.
@@ -98,53 +85,96 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
 }
 
 /**
- * Runs the development server in a child process.
+ * Spins up a project locally by running the project's dev command.
+ *
+ * Assumptions:
+ *  - Dev server runs on "localhost" when the package manager's dev command is
+ *    run
+ *  - Dev server will respect the PORT environment variable
+ *    - This is not the case for Angular. When an `ng serve`
+ *       custom command is detected, we add --port <PORT> instead.
  */
-async function serve(
-  projectId: string | undefined,
-  port: number,
-  startCommand?: string,
-  backendRelativeDir?: string,
-): Promise<void> {
-  backendRelativeDir = backendRelativeDir ?? "./";
+export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
+  const hostname = DEFAULT_HOST;
+  let port = options?.port ?? DEFAULT_PORTS.apphosting;
+  while (!(await availablePort(hostname, port))) {
+    port += 1;
+  }
 
-  const backendRoot = resolveProjectPath({}, backendRelativeDir);
-  const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
-  const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
-    key,
-    value.value ? value.value : await loadSecret(projectId, value.secret!),
-  ]);
+  const backendRoot = resolveProjectPath({}, options?.rootDirectory ?? "./");
 
-  const environmentVariablesToInject = {
-    ...getEmulatorEnvs(),
-    ...Object.fromEntries(await Promise.all(resolveEnv)),
-    PORT: port.toString(),
-  };
-  if (startCommand) {
+  let startCommand;
+  if (options?.startCommand) {
+    startCommand = options?.startCommand;
+    // Angular and nextjs CLIs allow for specifying port options but the emulator is setting and
+    // specifying specific ports rather than use framework defaults or w/e the user has set, so we
+    // need to reject such custom commands.
+    // NOTE: this is not robust, a command could be a wrapper around another command and we cannot
+    // detect --port there.
+    if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
+      throw new FirebaseError(
+        "Specifying a port in the start command is not supported by the apphosting emulator",
+      );
+    }
+    // Angular does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
+    // set directly in the CLI.
+    if (startCommand.includes("ng serve")) {
+      startCommand += ` --port ${port}`;
+    }
     logger.logLabeled(
       "BULLET",
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
-
-    // NOTE: Development server should not block main emulator process.
-    spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject)
-      .catch((err) => {
-        logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
-      })
-      .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
-    return;
+  } else {
+    // TODO: port may be specified in an underlying command. But we will need to parse the package.json
+    // file to be sure.
+    startCommand = await detectPackageManagerStartCommand(backendRoot);
+    logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${startCommand}'`);
   }
 
-  const detectedStartCommand = await detectStartCommand(backendRoot);
-  logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${detectedStartCommand}'`);
+  const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
+  const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
+    key,
+    value.value ? value.value : await loadSecret(options?.projectId, value.secret!),
+  ]);
+
+  const environmentVariablesToInject: NodeJS.ProcessEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    ...getEmulatorEnvs(),
+    ...Object.fromEntries(await Promise.all(resolveEnv)),
+    FIREBASE_APP_HOSTING: "1",
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    GCLOUD_PROJECT: options?.projectId,
+    PROJECT_ID: options?.projectId,
+    PORT: port.toString(),
+  };
+
+  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
+  if (packageManager === "pnpm") {
+    // TODO(jamesdaniels) look into pnpm support for autoinit
+    logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
+  } else {
+    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
+    if (webappConfig) {
+      environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
+      environmentVariablesToInject["FIREBASE_CONFIG"] ||= JSON.stringify({
+        databaseURL: webappConfig.databaseURL,
+        storageBucket: webappConfig.storageBucket,
+        projectId: webappConfig.projectId,
+      });
+    }
+    await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
+  }
 
   // NOTE: Development server should not block main emulator process.
-  spawnWithCommandString(detectedStartCommand, backendRoot, environmentVariablesToInject)
+  spawnWithCommandString(startCommand, backendRoot, environmentVariablesToInject)
     .catch((err) => {
       logger.logLabeled("ERROR", Emulators.APPHOSTING, `failed to start Dev Server: ${err}`);
     })
     .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
+
+  return { hostname, port };
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
@@ -166,4 +196,90 @@ export function getEmulatorEnvs(): Record<string, string> {
   setEnvVarsForEmulators(envs, emulatorInfos);
 
   return envs;
+}
+
+type Dependency = {
+  name: string;
+  version: string;
+  path: string;
+  dependencies?: Record<string, Dependency>;
+};
+
+async function tripFirebasePostinstall(
+  rootDirectory: string,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const npmLs = spawnSync("npm", ["ls", "@firebase/util", "--json", "--long"], {
+    cwd: rootDirectory,
+    shell: process.platform === "win32",
+  });
+  if (!npmLs.stdout) {
+    return;
+  }
+  const npmLsResults = JSON.parse(npmLs.stdout.toString().trim());
+  const dependenciesToSearch: Dependency[] = Object.values(npmLsResults.dependencies || {});
+  const firebaseUtilPaths: string[] = [];
+  for (const dependency of dependenciesToSearch) {
+    if (
+      dependency.name === "@firebase/util" &&
+      semverGte(dependency.version, "1.11.0") &&
+      firebaseUtilPaths.indexOf(dependency.path) === -1
+    ) {
+      firebaseUtilPaths.push(dependency.path);
+    }
+    if (dependency.dependencies) {
+      dependenciesToSearch.push(...Object.values(dependency.dependencies));
+    }
+  }
+
+  await Promise.all(
+    firebaseUtilPaths.map(
+      (path) =>
+        new Promise<void>((resolve) => {
+          spawnSync("npm", ["run", "postinstall"], {
+            cwd: path,
+            env,
+            stdio: "ignore",
+            shell: process.platform === "win32",
+          });
+          resolve();
+        }),
+    ),
+  );
+}
+
+async function getBackendAppConfig(
+  projectId?: string,
+  backendId?: string,
+): Promise<WebConfig | undefined> {
+  if (!projectId) {
+    return undefined;
+  }
+
+  if (Constants.isDemoProject(projectId)) {
+    return constructDefaultWebSetup(projectId);
+  }
+
+  if (!backendId) {
+    return undefined;
+  }
+
+  const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
+  const backend = backendsList?.backends.find(
+    (b) => apphosting.parseBackendName(b.name).id === backendId,
+  );
+
+  if (!backend) {
+    logLabeledWarning(
+      "apphosting",
+      `Unable to lookup details for backend ${backendId}. Firebase SDK autoinit will not be available.`,
+    );
+    return undefined;
+  }
+
+  if (!backend.appId) {
+    return undefined;
+  }
+
+  return (await getAppConfig(backend.appId, AppPlatform.WEB)) as WebConfig;
 }

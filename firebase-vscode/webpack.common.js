@@ -184,6 +184,10 @@ const extensionConfig = {
     new CopyPlugin({
       patterns: [
         {
+          from: "../prompts",
+          to: "./prompts",
+        },
+        {
           from: "../templates",
           to: "./templates",
         },

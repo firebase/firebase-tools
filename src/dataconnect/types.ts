@@ -32,9 +32,11 @@ export interface Datasource {
 export type SchemaValidation = "STRICT" | "COMPATIBLE";
 
 export interface PostgreSql {
-  database: string;
-  cloudSql: CloudSqlInstance;
+  ephemeral?: boolean;
+  database?: string;
+  cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
+  schemaMigration?: "MIGRATE_COMPATIBLE";
 }
 
 export interface CloudSqlInstance {
@@ -140,15 +142,22 @@ export interface ConnectorYaml {
 }
 
 export interface Generate {
-  javascriptSdk?: JavascriptSDK;
-  swiftSdk?: SwiftSDK;
-  kotlinSdk?: KotlinSDK;
-  dartSdk?: DartSDK;
+  javascriptSdk?: JavascriptSDK | JavascriptSDK[];
+  swiftSdk?: SwiftSDK | SwiftSDK[];
+  kotlinSdk?: KotlinSDK | KotlinSDK[];
+  dartSdk?: DartSDK | DartSDK[];
+  adminNodeSdk?: AdminNodeSDK | AdminNodeSDK[];
 }
 
 export interface SupportedFrameworks {
   react?: boolean;
   angular?: boolean;
+}
+
+export interface AdminNodeSDK {
+  outputDir: string;
+  package: string;
+  packageJsonDir?: string;
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
@@ -168,15 +177,6 @@ export interface KotlinSDK {
 export interface DartSDK {
   outputDir: string;
   package: string;
-}
-
-export enum Platform {
-  NONE = "NONE",
-  ANDROID = "ANDROID",
-  WEB = "WEB",
-  IOS = "IOS",
-  FLUTTER = "FLUTTER",
-  MULTIPLE = "MULTIPLE",
 }
 
 // Helper types && converters
@@ -216,7 +216,6 @@ export function toDatasource(
 
 /** Start Dataplane Client Types */
 export interface ExecuteGraphqlRequest {
-  name: string;
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };
@@ -242,9 +241,11 @@ export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g
 
 interface ImpersonationAuthenticated {
   authClaims: any;
+  includeDebugDetails?: boolean;
 }
 interface ImpersonationUnauthenticated {
   unauthenticated: boolean;
+  includeDebugDetails?: boolean;
 }
 export type Impersonation = ImpersonationAuthenticated | ImpersonationUnauthenticated;
 

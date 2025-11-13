@@ -1,16 +1,18 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { AppPlatform, listFirebaseApps } from "../../../management/apps.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { AppPlatform, listFirebaseApps } from "../../../management/apps";
 
 export const list_apps = tool(
+  "core",
   {
     name: "list_apps",
-    description: "Retrieves apps registered in the current Firebase project.",
+    description:
+      "Use this to retrieve a list of the Firebase Apps registered in the currently active Firebase project. Firebase Apps can be iOS, Android, or Web.",
     inputSchema: z.object({
       platform: z
-        .enum(["ios", "android", "web"])
-        .nullish()
+        .enum(["ios", "android", "web", "all"])
+        .optional()
         .describe("the specific platform to list (omit to list all platforms)"),
     }),
     annotations: {
@@ -23,10 +25,15 @@ export const list_apps = tool(
     },
   },
   async ({ platform }, { projectId }) => {
-    const apps = await listFirebaseApps(
-      projectId!,
-      (platform?.toUpperCase() as AppPlatform) ?? AppPlatform.ANY,
-    );
-    return toContent(apps);
+    try {
+      const apps = await listFirebaseApps(
+        projectId!,
+        !platform || platform === "all" ? AppPlatform.ANY : (platform.toUpperCase() as AppPlatform),
+      );
+      return toContent(apps);
+    } catch (err: any) {
+      const originalMessage = err.original ? `: ${err.original.message}` : "";
+      throw new Error(`Failed to list Firebase apps${originalMessage}`);
+    }
   },
 );

@@ -68,63 +68,84 @@ jobs:
       - uses: codecov/codecov-action@v3
         if: matrix.node-version == '20'
 
-  vscode_integration:
-    runs-on: macos-latest
+  # vscode_integration:
+  #   runs-on: macos-latest
+  #   strategy:
+  #     matrix:
+  #       node-version:
+  #         - "20"
+
+  #   env:
+  #     FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+  #     # This overrides the binary which runs firebase commands in the extension tasks such as emulator start.
+  #     # Currently, CI fails to start with npx so we change it to the global firebase binary.
+  #     FIREBASE_BINARY: firebase
+
+  #   steps:
+  #     - name: Setup Java JDK
+  #       uses: actions/setup-java@v3.3.0
+  #       with:
+  #         java-version: 17
+  #         distribution: temurin
+
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Chrome
+  #       uses: browser-actions/setup-chrome@v1.7.2
+  #       with:
+  #         install-dependencies: true
+  #         install-chromedriver: true
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: npm
+  #         cache-dependency-path: firebase-vscode/package-lock.json
+
+  #       # TODO temporary workaround for GitHub Actions CI issue:
+  #       # npm ERR! Your cache folder contains root-owned files, due to a bug in
+  #       # npm ERR! previous versions of npm which has since been addressed.
+  #     - run: sudo chown -R 501:20 "/Users/runner/.npm" || exit 1
+  #     - run: npm ci
+  #     - run: npm install
+  #       working-directory: firebase-vscode
+  #     - run: npm run build
+  #       working-directory: firebase-vscode
+
+  #     - run: npm i -g firebase-tools@latest
+
+  #     - uses: GabrielBB/xvfb-action@v1
+  #       with:
+  #         run: npm run test:e2e
+  #         working-directory: firebase-vscode
+
+  #     - uses: actions/upload-artifact@v4
+  #       if: failure()
+  #       with:
+  #         name: screenshots
+  #         path: firebase-vscode/src/test/screenshots
+
+  #     - uses: codecov/codecov-action@v3
+  #       if: matrix.node-version == '20'
+
+  agent_evals_build:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version:
-          - "20"
-
-    env:
-      FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
-      # This overrides the binary which runs firebase commands in the extension tasks such as emulator start.
-      # Currently, CI fails to start with npx so we change it to the global firebase binary.
-      FIREBASE_BINARY: firebase
-
+          - "22"
     steps:
-      - name: Setup Java JDK
-        uses: actions/setup-java@v3.3.0
-        with:
-          java-version: 17
-          distribution: temurin
-
       - uses: actions/checkout@v4
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1.7.2
-        with:
-          install-dependencies: true
-          install-chromedriver: true
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: firebase-vscode/package-lock.json
+          cache-dependency-path: scripts/agent-evals/package-lock.json
 
-        # TODO temporary workaround for GitHub Actions CI issue:
-        # npm ERR! Your cache folder contains root-owned files, due to a bug in
-        # npm ERR! previous versions of npm which has since been addressed.
-      - run: sudo chown -R 501:20 "/Users/runner/.npm" || exit 1
+      - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
-        working-directory: firebase-vscode
+        working-directory: scripts/agent-evals
       - run: npm run build
-        working-directory: firebase-vscode
-
-      - run: npm i -g firebase-tools@latest
-
-      - uses: GabrielBB/xvfb-action@v1
-        with:
-          run: npm run test:e2e
-          working-directory: firebase-vscode
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: screenshots
-          path: firebase-vscode/src/test/screenshots
-
-      - uses: codecov/codecov-action@v3
-        if: matrix.node-version == '20'
+        working-directory: scripts/agent-evals
 
   unit:
     runs-on: ubuntu-latest

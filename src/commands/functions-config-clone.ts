@@ -8,6 +8,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
 import { functionsConfigClone } from "../functionsConfigClone";
 import * as utils from "../utils";
+import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 export const command = new Command("functions:config:clone")
   .description("clone environment config from another project")
@@ -56,4 +57,5 @@ export const command = new Command("functions:config:clone")
         "firebase deploy --only functions",
       )}\n`,
     );
+    logFunctionsConfigDeprecationWarning();
   });

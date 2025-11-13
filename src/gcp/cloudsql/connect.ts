@@ -34,39 +34,21 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let pool: pg.Pool;
+  let authType: AuthTypes;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.IAM;
       break;
     }
     case "CLOUD_IAM_SERVICE_ACCOUNT": {
       connector = new Connector();
+      authType = AuthTypes.IAM;
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
       break;
     }
     default: {
@@ -77,19 +59,24 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        password: opts.password,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.PASSWORD;
       break;
     }
   }
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+      ? IpAddressTypes.PUBLIC
+      : IpAddressTypes.PRIVATE,
+    authType: authType,
+  };
+  const pool = new pg.Pool({
+    ...(await connector.getOptions(connectionOpts)),
+    connectionTimeoutMillis: 1000,
+    password: opts.password,
+    user: opts.username,
+    database: opts.databaseId,
+  });
 
   const cleanUpFn = async () => {
     conn.release();
@@ -105,7 +92,7 @@ export async function execute(
     sqlStatements.push("COMMIT;");
   }
   for (const s of sqlStatements) {
-    logFn(`Executing: '${s}'`);
+    logFn(`> ${s}`);
     try {
       results.push(await conn.query(s));
     } catch (err) {
@@ -117,6 +104,7 @@ export async function execute(
   }
 
   await cleanUpFn();
+  logFn(``);
   return results;
 }
 
@@ -155,7 +143,7 @@ export async function executeSqlCmdsAsSuperUser(
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
+  const temporaryPassword = utils.generatePassword(20);
   await cloudSqlAdminClient.createUser(
     projectId,
     instanceId,
@@ -194,11 +182,7 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
 // Steps:
 // 1. Create an IAM user for the current identity
 // 2. Create an IAM user for FDC P4SA
-export async function setupIAMUsers(
-  instanceId: string,
-  databaseId: string,
-  options: Options,
-): Promise<string> {
+export async function setupIAMUsers(instanceId: string, options: Options): Promise<string> {
   // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
   const projectId = needProjectId(options);
 

@@ -6,7 +6,6 @@ import * as spawn from "cross-spawn";
 import * as downloadUtils from "../downloadUtils";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { rmSync } from "node:fs";
 import * as utils from "../utils";
 
 const JAR_CACHE_DIR =
@@ -39,7 +38,7 @@ export async function fetchBuildtoolsJar(): Promise<string> {
     logger.debug(
       `Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`,
     );
-    rmSync(JAR_CACHE_DIR, { recursive: true });
+    fs.rmSync(JAR_CACHE_DIR, { recursive: true, force: true });
   }
   utils.logBullet("Downloading crashlytics-buildtools.jar to " + jarPath);
   utils.logBullet(

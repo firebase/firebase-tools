@@ -13,10 +13,8 @@ marked.use(markedTerminal() as any);
 
 import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
-import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
@@ -1136,20 +1134,6 @@ export function displayReleaseNotes(args: {
     releaseNotesMessage +
     `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
-}
-
-/**
- * Display list of all official extensions and prompt user to select one.
- * @param message The prompt message to display
- * @return Promise that resolves to the extension name (e.g. storage-resize-images)
- */
-export async function promptForOfficialExtension(message: string): Promise<string> {
-  const officialExts = await getExtensionRegistry(true);
-  return await select<string>({
-    message,
-    choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: Object.keys(officialExts).length,
-  });
 }
 
 // TODO(inlined): Fix prompt library so that a choices array doesn't assume all values

@@ -1,13 +1,13 @@
 import { bold } from "colorette";
 
 import { Command } from "../command";
-import { interactiveCreateHostingSite } from "../hosting/interactive";
-import { last, logLabeledSuccess } from "../utils";
+import { pickHostingSiteName } from "../hosting/interactive";
+import { logLabeledSuccess } from "../utils";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
-import { Site } from "../hosting/api";
+import { createSite, Site } from "../hosting/api";
 import { FirebaseError } from "../error";
 
 const LOG_TAG = "hosting:sites";
@@ -16,16 +16,16 @@ export const command = new Command("hosting:sites:create [siteId]")
   .description("create a Firebase Hosting site")
   .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .action(async (siteId: string, options: Options & { app: string }): Promise<Site> => {
+  .action(async (siteId: string | undefined, options: Options & { app: string }): Promise<Site> => {
     const projectId = needProjectId(options);
     const appId = options.app;
 
     if (options.nonInteractive && !siteId) {
-      throw new FirebaseError(`${bold(siteId)} is required in a non-interactive environment`);
+      throw new FirebaseError(`${bold("siteId")} is required in a non-interactive environment`);
     }
 
-    const site = await interactiveCreateHostingSite(siteId, appId, options);
-    siteId = last(site.name.split("/"));
+    siteId = await pickHostingSiteName(siteId ?? "", options);
+    const site = await createSite(projectId, siteId, appId);
 
     logger.info();
     logLabeledSuccess(

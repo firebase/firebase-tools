@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
 import { Kind, parse } from "graphql";
-import { OperationLocation } from "./types";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { ExecutionInput, GenerateOperationInput } from "./execution/execution";
+import { findCommentsBlocks } from "../utils/find_comments";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -71,8 +72,8 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    const projectId = this.watch(firebaseRC)?.tryReadValue?.projects.default;
+    if (!fdcConfigs) {
       return [];
     }
 
@@ -85,40 +86,76 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     for (let i = 0; i < documentNode.definitions.length; i++) {
       const x = documentNode.definitions[i];
       if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
+        // startToken.line is 1-indexed, range is 0-indexed
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const position = new vscode.Position(line, 0);
-        const operationLocation: OperationLocation = {
-          document: documentText,
-          documentPath: document.fileName,
-          position: position,
-        };
-        const service = fdcConfigs.findEnclosingServiceForPath(
-          document.fileName,
-        );
-
+        const service = fdcConfigs.findEnclosingServiceForPath(document.fileName);
         if (service) {
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (local)`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
-            }),
-          );
+          {
+            const arg: ExecutionInput = {
+              operationAst: x,
+              document: documentText,
+              documentPath: document.fileName,
+              position: position,
+              instance: InstanceType.LOCAL,
+            };
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (local)`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [arg],
+              }),
+            );
+          }
 
-          codeLenses.push(
-            new vscode.CodeLens(range, {
-              title: `$(play) Run (Production – Project: ${rc.projects.default})`,
-              command: "firebase.dataConnect.executeOperation",
-              tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.PRODUCTION],
-            }),
-          );
+          if (projectId) {
+            const arg: ExecutionInput = {
+              operationAst: x,
+              document: documentText,
+              documentPath: document.fileName,
+              position: position,
+              instance: InstanceType.PRODUCTION,
+            };
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `$(play) Run (Production – Project: ${projectId})`,
+                command: "firebase.dataConnect.executeOperation",
+                tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
+                arguments: [arg],
+              }),
+            );
+          }
         }
       }
     }
 
+    const comments = findCommentsBlocks(documentText);
+    for (let i = 0; i < comments.length; i++) {
+      const c = comments[i];
+      const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
+      const queryDoc = documentNode.definitions.find((d) =>
+        d.kind === Kind.OPERATION_DEFINITION &&
+        // startToken.line is 1-indexed, endLine is 0-indexed
+        d.loc?.startToken.line === c.endLine + 2
+      );
+      const arg: GenerateOperationInput = {
+        projectId,
+        document: document,
+        description: c.text,
+        insertPosition: c.endIndex + 1,
+        existingQuery: queryDoc?.loc ? documentText.substring(c.endIndex + 1, queryDoc.loc.endToken.end) : '',
+      };
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
+          command: "firebase.dataConnect.generateOperation",
+          tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+          arguments: [arg],
+        }),
+      );
+    }
     return codeLenses;
   }
 }
@@ -145,6 +182,18 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const documentPath = document.fileName;
+
+        // Add only at top of document
+        // if (line === 0) {
+        //   codeLenses.push(
+        //     new vscode.CodeLens(range, {
+        //       title: `Generate Schema`,
+        //       command: "firebase.dataConnect.generateSchema",
+        //       tooltip: "Generate a new schema",
+        //       arguments: [document.getText(), documentPath],
+        //     }),
+        //   );
+        // }
 
         codeLenses.push(
           new vscode.CodeLens(range, {
@@ -179,8 +228,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    if (!fdcConfigs) {
       return [];
     }
 

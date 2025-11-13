@@ -1,42 +1,42 @@
 import { z } from "zod";
-import { tool } from "../../tool.js";
-import { toContent } from "../../util.js";
-import { generateOperation } from "../../../gif/fdcExperience.js";
-import { pickService } from "../../../dataconnect/fileUtils.js";
+import { tool } from "../../tool";
+import { toContent } from "../../util";
+import { generateOperation } from "../../../gemini/fdcExperience";
+import { pickService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
+  "dataconnect",
   {
     name: "generate_operation",
     description:
-      "Generates a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
+      "Use this to generate a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
     inputSchema: z.object({
       // Lifted guidance from : https://cloud.google.com/gemini/docs/discover/write-prompts
       prompt: z
         .string()
         .describe(
-          "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users requst",
+          "Write the prompt like you're talking to a person, describe the task you're trying to accomplish and give details that are specific to the users request",
         ),
-      serviceId: z
+      service_id: z
         .string()
-        .nullish()
+        .optional()
         .describe(
-          "Optional: Uses the serviceId from the firebase.json file if nothing provided. The serviceId of the deployed Firebase resource.",
+          "Optional: Uses the service ID from the firebase.json file if nothing provided. The service ID of the deployed Firebase resource.",
         ),
     }),
     annotations: {
-      title:
-        "Generate a Firebase Data Connect Operation on a deployed Firebase Data Connect Schema.",
+      title: "Generate Data Connect Operation",
       readOnlyHint: true,
     },
     _meta: {
       requiresProject: true,
       requiresAuth: true,
-      // TODO: Create an endpoint to check for GiF activiation.
+      requiresGemini: true,
     },
   },
-  async ({ prompt, serviceId }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId!, config!, serviceId || undefined);
-    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId!);
+  async ({ prompt, service_id }, { projectId, config }) => {
+    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+    const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId);
     return toContent(schema);
   },
 );

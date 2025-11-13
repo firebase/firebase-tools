@@ -53,8 +53,9 @@ import {
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
-import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
+import * as runtimes from "../deploy/functions/runtimes";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
@@ -84,9 +85,11 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  */
 export interface EmulatableBackend {
   functionsDir: string;
+  configDir?: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
+  prefix?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   runtime?: Runtime;
   bin?: string;
@@ -220,6 +223,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private staticBackends: EmulatableBackend[] = [];
   private dynamicBackends: EmulatableBackend[] = [];
+  private watchers: chokidar.FSWatcher[] = [];
 
   debugMode = false;
 
@@ -482,6 +486,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         persistent: true,
       });
 
+      this.watchers.push(watcher);
+
       const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
       watcher.on("change", (filePath) => {
         this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
@@ -509,6 +515,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const pool of Object.values(this.workerPools)) {
       pool.exit();
     }
+
+    for (const watcher of this.watchers) {
+      await watcher.close();
+    }
+    this.watchers = [];
+
     if (this.destroyServer) {
       await this.destroyServer();
     }
@@ -553,6 +565,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
         isEmulator: true,
+        configDir: emulatableBackend.configDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
@@ -563,14 +576,16 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
+      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
-        userEnvOpt,
         userEnvs,
         nonInteractive: false,
         isEmulator: true,
       });
+
+      functionsEnv.writeResolvedParams(resolution.envs, userEnvs, userEnvOpt);
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
@@ -1373,8 +1388,9 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
-    const projectInfo = {
+    const projectInfo: functionsEnv.UserEnvsOpts = {
       functionsSource: backend.functionsDir,
+      configDir: backend.configDir,
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,

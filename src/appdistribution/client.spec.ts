@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 import * as tmp from "tmp";
 
 import { AppDistributionClient } from "./client";
-import { BatchRemoveTestersResponse, Group, TestDevice } from "./types";
+import { BatchRemoveTestersResponse, Group, TestCase, TestDevice } from "./types";
 import { appDistributionOrigin } from "../api";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
@@ -100,7 +100,7 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve with ListTestersResponse when request succeeds - no filter", async () => {
+    it("should resolve with array of testers when request succeeds - no filter", async () => {
       const testerListing = [
         {
           name: "tester_1",
@@ -119,22 +119,20 @@ describe("distribution", () => {
       nock(appDistributionOrigin()).get(`/v1/${projectName}/testers`).reply(200, {
         testers: testerListing,
       });
-      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq({
-        testers: [
-          {
-            name: "tester_1",
-            displayName: "Tester 1",
-            groups: [],
-            lastActivityTime: new Date("2024-08-27T02:37:19.539865Z"),
-          },
-          {
-            name: "tester_2",
-            displayName: "Tester 2",
-            groups: [`${projectName}/groups/beta-team`, `${projectName}/groups/alpha-team`],
-            lastActivityTime: new Date("2024-08-26T02:37:19Z"),
-          },
-        ],
-      });
+      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq([
+        {
+          name: "tester_1",
+          displayName: "Tester 1",
+          groups: [],
+          lastActivityTime: new Date("2024-08-27T02:37:19.539865Z"),
+        },
+        {
+          name: "tester_2",
+          displayName: "Tester 2",
+          groups: [`${projectName}/groups/beta-team`, `${projectName}/groups/alpha-team`],
+          lastActivityTime: new Date("2024-08-26T02:37:19Z"),
+        },
+      ]);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -157,25 +155,21 @@ describe("distribution", () => {
         });
       await expect(
         appDistributionClient.listTesters(projectName, "beta-team"),
-      ).to.eventually.deep.eq({
-        testers: [
-          {
-            name: "tester_2",
-            displayName: "Tester 2",
-            groups: [`${projectName}/groups/beta-team`],
-            lastActivityTime: new Date("2024-08-26T02:37:19Z"),
-          },
-        ],
-      });
+      ).to.eventually.deep.eq([
+        {
+          name: "tester_2",
+          displayName: "Tester 2",
+          groups: [`${projectName}/groups/beta-team`],
+          lastActivityTime: new Date("2024-08-26T02:37:19Z"),
+        },
+      ]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("should gracefully handle no testers", async () => {
       nock(appDistributionOrigin()).get(`/v1/${projectName}/testers`).reply(200, {});
 
-      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq({
-        testers: [],
-      });
+      await expect(appDistributionClient.listTesters(projectName)).to.eventually.deep.eq([]);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -403,8 +397,8 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve with ListGroupsResponse when request succeeds", async () => {
-      const groupListing: Group[] = [
+    it("should resolve with array of groups when request succeeds", async () => {
+      const groups: Group[] = [
         {
           name: "group_1",
           displayName: "Group 1",
@@ -419,11 +413,9 @@ describe("distribution", () => {
       ];
 
       nock(appDistributionOrigin()).get(`/v1/${projectName}/groups`).reply(200, {
-        groups: groupListing,
+        groups: groups,
       });
-      await expect(appDistributionClient.listGroups(projectName)).to.eventually.deep.eq({
-        groups: groupListing,
-      });
+      await expect(appDistributionClient.listGroups(projectName)).to.eventually.deep.eq(groups);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -506,6 +498,93 @@ describe("distribution", () => {
       await expect(appDistributionClient.getReleaseTest(releaseTestName)).to.be.eventually.deep.eq(
         mockReleaseTest,
       );
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("listTestCases", () => {
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .get(`/v1alpha/${appName}/testCases`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.listTestCases(appName)).to.be.rejectedWith(
+        FirebaseError,
+        "Client failed to list test cases",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with array of test cases when request succeeds", async () => {
+      const testCases: TestCase[] = [
+        {
+          name: `${appName}/testCases/tc_1`,
+          displayName: "Test Case 1",
+          aiInstructions: {
+            steps: [
+              {
+                goal: "Win at all costs",
+              },
+            ],
+          },
+        },
+        {
+          name: `${appName}/testCases/tc_2`,
+          displayName: "Test Case 2",
+          aiInstructions: { steps: [] },
+        },
+      ];
+
+      nock(appDistributionOrigin()).get(`/v1alpha/${appName}/testCases`).reply(200, {
+        testCases: testCases,
+      });
+      await expect(appDistributionClient.listTestCases(appName)).to.eventually.deep.eq(testCases);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createTestCase", () => {
+    const mockTestCase = { displayName: "Case", aiInstructions: { steps: [] } };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.createTestCase(appName, mockTestCase)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create test case",
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with TestCase when request succeeds", async () => {
+      nock(appDistributionOrigin()).post(`/v1alpha/${appName}/testCases`).reply(200, mockTestCase);
+      await expect(
+        appDistributionClient.createTestCase(appName, mockTestCase),
+      ).to.be.eventually.deep.eq(mockTestCase);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("batchUpsertTestCases", () => {
+    const mockTestCase = { displayName: "Case", aiInstructions: { steps: [] } };
+
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases:batchUpdate`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(
+        appDistributionClient.batchUpsertTestCases(appName, [mockTestCase]),
+      ).to.be.rejectedWith(FirebaseError, "Failed to upsert test cases");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with TestCase when request succeeds", async () => {
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${appName}/testCases:batchUpdate`)
+        .reply(200, { testCases: [mockTestCase] });
+      await expect(
+        appDistributionClient.batchUpsertTestCases(appName, [mockTestCase]),
+      ).to.be.eventually.deep.eq([mockTestCase]);
       expect(nock.isDone()).to.be.true;
     });
   });

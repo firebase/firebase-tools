@@ -1,6 +1,5 @@
 import { RC } from "../../src/rc";
 import { Options } from "../../src/options";
-import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";
@@ -27,9 +26,7 @@ const defaultOptions: Readonly<VsCodeOptions> = {
   projectNumber: "",
   projectRoot: "",
   account: "",
-  json: true,
   nonInteractive: true,
-  interactive: false,
   debug: false,
   rc: new RC(),
   exportOnExit: false,

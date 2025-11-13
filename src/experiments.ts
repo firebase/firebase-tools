@@ -57,6 +57,11 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  runfunctions: {
+    shortDescription:
+      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -133,6 +138,15 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
     default: true,
     public: false,
+  },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: true,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
   },
 });
 

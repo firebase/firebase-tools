@@ -14,6 +14,7 @@ import {
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
 import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
+import * as supported from "../../../deploy/functions/runtimes/supported";
 
 const MAX_ATTEMPTS = 5;
 
@@ -119,6 +120,8 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   setup.config.functions.push({
     source,
     codebase,
+    // Disable legacy runtime config for new codebases by default
+    disallowLegacyRuntimeConfig: true,
   });
   setup.functions.source = source;
   setup.functions.codebase = codebase;
@@ -198,6 +201,9 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       break;
     case "python":
       cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"];
+      // In practical sense, latest supported runtime will not be a decomissioned runtime,
+      // but in theory this doesn't have to be the case.
+      cbconfig.runtime = supported.latest("python") as supported.ActiveRuntime;
       break;
   }
   setup.functions.languageChoice = language;

@@ -8,6 +8,7 @@ import { RCData } from "../rc";
 import { Config } from "../config";
 import { FirebaseConfig } from "../firebaseConfig";
 import { Options } from "../options";
+import { trackGA4 } from "../track";
 
 export interface Setup {
   config: FirebaseConfig;
@@ -15,6 +16,11 @@ export interface Setup {
   features?: string[];
   featureArg?: boolean;
   featureInfo?: SetupInfo;
+
+  // Each feature init flow may add instructions.
+  // They will be displayed at the end of `firebase init` or
+  // return back to `firebase_init` MCP tools.
+  instructions: string[];
 
   /** Basic Project information */
   project?: Record<string, any>;
@@ -26,11 +32,20 @@ export interface Setup {
 }
 
 export interface SetupInfo {
+  database?: features.DatabaseInfo;
+  firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
+  dataconnectSdk?: features.DataconnectSdkInfo;
+  dataconnectSource?: features.DataconnectSource;
+  storage?: features.StorageInfo;
+  apptesting?: features.ApptestingInfo;
+  ailogic?: features.AiLogicInfo;
+  hosting?: features.HostingInfo;
 }
 
 interface Feature {
   name: string;
+  displayName?: string;
   // OLD WAY: A single setup function to ask questions and actuate the setup.
   doSetup?: (setup: Setup, config: Config, options: Options) => Promise<unknown>;
 
@@ -45,33 +60,64 @@ interface Feature {
 
 const featuresList: Feature[] = [
   { name: "account", doSetup: features.account },
-  { name: "database", doSetup: features.database },
-  { name: "firestore", doSetup: features.firestore },
+  {
+    name: "database",
+    askQuestions: features.databaseAskQuestions,
+    actuate: features.databaseActuate,
+  },
+  {
+    name: "firestore",
+    askQuestions: features.firestoreAskQuestions,
+    actuate: features.firestoreActuate,
+  },
   {
     name: "dataconnect",
-    // doSetup is split into 2 phases - ask questions and then actuate files and API calls based on those answers.
     askQuestions: features.dataconnectAskQuestions,
     actuate: features.dataconnectActuate,
-    postSetup: features.dataconnectPostSetup,
   },
-  { name: "dataconnect:sdk", doSetup: features.dataconnectSdk },
+  {
+    name: "dataconnect:sdk",
+    askQuestions: features.dataconnectSdkAskQuestions,
+    actuate: features.dataconnectSdkActuate,
+  },
   { name: "functions", doSetup: features.functions },
-  { name: "hosting", doSetup: features.hosting },
-  { name: "storage", doSetup: features.storage },
+  {
+    name: "hosting",
+    askQuestions: features.hostingAskQuestions,
+    actuate: features.hostingActuate,
+  },
+  {
+    name: "storage",
+    askQuestions: features.storageAskQuestions,
+    actuate: features.storageActuate,
+  },
   { name: "emulators", doSetup: features.emulators },
   { name: "extensions", doSetup: features.extensions },
   { name: "project", doSetup: features.project }, // always runs, sets up .firebaserc
   { name: "remoteconfig", doSetup: features.remoteconfig },
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
-  { name: "apphosting", doSetup: features.apphosting },
+  { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
+  {
+    name: "apptesting",
+    askQuestions: features.apptestingAskQuestions,
+    actuate: features.apptestingAcutate,
+  },
+  {
+    name: "ailogic",
+    askQuestions: features.aiLogicAskQuestions,
+    actuate: features.aiLogicActuate,
+  },
+  { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
-export async function init(setup: Setup, config: any, options: any): Promise<any> {
+export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
+    const start = process.uptime();
+
     const f = featureMap.get(nextFeature);
     if (!f) {
       const availableFeatures = Object.keys(features)
@@ -82,7 +128,9 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       );
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup`));
+    logger.info(
+      clc.bold(`\n${clc.white("===")} ${f.displayName || capitalize(nextFeature)} Setup`),
+    );
 
     if (f.doSetup) {
       await f.doSetup(setup, config, options);
@@ -97,6 +145,49 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
     if (f.postSetup) {
       await f.postSetup(setup, config, options);
     }
+
+    const duration = Math.floor((process.uptime() - start) * 1000);
+    void trackGA4("product_init", { feature: nextFeature }, duration);
+
     return init(setup, config, options);
   }
+}
+
+/** Actuate the feature init flow from firebase_init MCP tool. */
+export async function actuate(setup: Setup, config: Config, options: any): Promise<any> {
+  const nextFeature = setup.features?.shift();
+  if (nextFeature) {
+    const start = process.uptime();
+
+    const f = lookupFeature(nextFeature);
+    logger.info(clc.bold(`\n${clc.white("===")} ${capitalize(nextFeature)} Setup Actuation`));
+
+    if (f.doSetup) {
+      throw new FirebaseError(
+        `The feature ${nextFeature} does not support actuate yet. Please run ${clc.bold("firebase init " + nextFeature)} instead.`,
+      );
+    } else {
+      if (f.actuate) {
+        await f.actuate(setup, config, options);
+      }
+    }
+
+    const duration = Math.floor((process.uptime() - start) * 1000);
+    void trackGA4("product_init_mcp", { feature: nextFeature }, duration);
+
+    return actuate(setup, config, options);
+  }
+}
+
+function lookupFeature(feature: string): Feature {
+  const f = featureMap.get(feature);
+  if (!f) {
+    const availableFeatures = Object.keys(features)
+      .filter((f) => f !== "project")
+      .join(", ");
+    throw new FirebaseError(
+      `${clc.bold(feature)} is not a valid feature. Must be one of ${availableFeatures}`,
+    );
+  }
+  return f;
 }

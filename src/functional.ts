@@ -18,6 +18,7 @@ export function* flattenObject<T extends object>(obj: T): Generator<[string, unk
       }
     }
   }
+
   yield* helper([], obj);
 }
 
@@ -146,3 +147,19 @@ export const nullsafeVisitor =
     }
     return func(first, ...rest);
   };
+
+/**
+ * Returns true if the given values match. If either one is undefined, the default value is used for comparison.
+ * @param lhs the first value.
+ * @param rhs the second value.
+ * @param defaultValue the value to use if either input is undefined.
+ */
+export function optionalValueMatches<T>(
+  lhs: T | undefined,
+  rhs: T | undefined,
+  defaultValue: T,
+): boolean {
+  lhs = lhs === undefined ? defaultValue : lhs;
+  rhs = rhs === undefined ? defaultValue : rhs;
+  return lhs === rhs;
+}

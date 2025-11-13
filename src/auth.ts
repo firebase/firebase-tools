@@ -106,6 +106,23 @@ export function getAllAccounts(): Account[] {
 }
 
 /**
+ * Throw an error if the provided email is not a signed-in user.
+ */
+export function assertAccount(email: string, options?: { mcp?: boolean }) {
+  const allAccounts = getAllAccounts();
+  const accountExists = allAccounts.some((a) => a.user.email === email);
+  if (!accountExists) {
+    throw new FirebaseError(
+      `Account ${email} does not exist, ${
+        options?.mcp
+          ? `use the 'firebase_get_environment' tool to see available accounts or instruct the user to use the 'firebase login:add' terminal command to add a new account.`
+          : `run "${clc.bold("firebase login:list")} to see valid accounts`
+      }`,
+    );
+  }
+}
+
+/**
  * Set the globally active account. Modifies the options object
  * and sets global refresh token state.
  * @param options options object.
@@ -210,7 +227,19 @@ export function setProjectAccount(projectDir: string, email: string) {
 /**
  * Set the global default account.
  */
-export function setGlobalDefaultAccount(account: Account) {
+export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
+  let account: Account;
+  if (typeof accountOrEmail === "string") {
+    const accountFromEmail = getAllAccounts().find((acc) => acc.user.email === accountOrEmail)!;
+    if (!accountFromEmail)
+      throw new FirebaseError(
+        `Account '${accountOrEmail}' is not a signed-in user on this device.`,
+      );
+    account = accountFromEmail;
+  } else {
+    account = accountOrEmail;
+  }
+
   configstore.set("user", account.user);
   configstore.set("tokens", account.tokens);
 
@@ -396,7 +425,13 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(): Promise<UserCredentials> {
+interface PrototyperRes {
+  uri: string;
+  sessionId: string;
+  authorize: (authorizationCode: string) => Promise<UserCredentials>;
+}
+
+export async function loginPrototyper(): Promise<PrototyperRes> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin(),
     auth: false,
@@ -412,6 +447,55 @@ async function loginRemotely(): Promise<UserCredentials> {
       session_id: sessionId,
     })
   ).body?.token;
+
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}&studio_prototyper=true}`;
+  return {
+    uri: loginUrl,
+    sessionId: sessionId.substring(0, 5).toUpperCase(),
+    authorize: async (code: string) => {
+      const tokens = await getTokensFromAuthorizationCode(
+        code,
+        `${authProxyOrigin()}/complete`,
+        codeVerifier,
+      );
+
+      const creds = {
+        user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+        tokens: tokens,
+        scopes: SCOPES,
+      };
+      recordCredentials(creds);
+      return creds;
+    },
+  };
+}
+
+// recordCredentials saves credentials to configstore to be used in future command runs.
+export function recordCredentials(creds: UserCredentials) {
+  configstore.set("user", creds.user);
+  configstore.set("tokens", creds.tokens);
+  // store login scopes in case mandatory scopes grow over time
+  configstore.set("loginScopes", creds.scopes);
+  // remove old session token, if it exists
+  configstore.delete("session");
+}
+
+async function loginRemotely(): Promise<UserCredentials> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: authProxyOrigin(),
+    auth: false,
+  });
+
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body.token;
 
   const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 

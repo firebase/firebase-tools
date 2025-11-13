@@ -73,51 +73,63 @@ async function awaitTlsReady(url: string): Promise<void> {
  */
 export async function doSetup(
   projectId: string,
-  webAppName: string | null,
-  serviceAccount: string | null,
+  nonInteractive: boolean,
+  webAppName?: string,
+  backendId?: string,
+  serviceAccount?: string,
+  primaryRegion?: string,
+  rootDir?: string,
 ): Promise<void> {
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-    ensure(projectId, iamOrigin(), "apphosting", true),
-  ]);
+  await ensureRequiredApisEnabled(projectId);
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
-  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
+  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount ? serviceAccount : null);
 
   // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
   // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
   // the variables and API methods we're calling under the hood when fetching "primary region".
-  const location = await promptLocation(
+  let location = primaryRegion;
+  let gitRepositoryLink: GitRepositoryLink | undefined;
+  let branch: string | undefined;
+  if (nonInteractive) {
+    if (!backendId || !primaryRegion) {
+      throw new FirebaseError("nonInteractive mode requires a backendId and primaryRegion");
+    }
+  } else {
+    if (!location) {
+      location = await promptLocation(projectId, "Select a primary region to host your backend:\n");
+    }
+    if (!backendId) {
+      logBullet(`${clc.yellow("===")} Set up your backend`);
+      backendId = await promptNewBackendId(projectId, location);
+      logSuccess(`Name set to ${backendId}\n`);
+    }
+    if (!rootDir) {
+      rootDir = await input({
+        default: "/",
+        message: "Specify your app's root directory relative to your repository",
+      });
+    }
+
+    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
+    // TODO: Once tag patterns are implemented, prompt which method the user
+    // prefers. We could reduce the number of questions asked by letting people
+    // enter tag:<pattern>?
+    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+    logSuccess(`Repo linked successfully!\n`);
+  }
+  // Confirm both backendId and location are set at this point
+  if (!location || !backendId) {
+    // This should not happen based on the logic above, but it satisfies the type checker.
+    throw new FirebaseError("Internal error: location or backendId is not defined.");
+  }
+
+  const webApp = await webApps.getOrCreateWebApp(
     projectId,
-    "Select a primary region to host your backend:\n",
+    webAppName ? webAppName : null,
+    backendId,
   );
-
-  const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
-    projectId,
-    location,
-  );
-
-  const rootDir = await input({
-    default: "/",
-    message: "Specify your app's root directory relative to your repository",
-  });
-
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
-  logSuccess(`Repo linked successfully!\n`);
-
-  logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location);
-  logSuccess(`Name set to ${backendId}\n`);
-
-  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
@@ -127,12 +139,22 @@ export async function doSetup(
     projectId,
     location,
     backendId,
-    serviceAccount,
+    serviceAccount ? serviceAccount : null,
     gitRepositoryLink,
     webApp?.id,
     rootDir,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+
+  // In non-interactive mode, we never connected the backend to a github repo. Return
+  // early and skip the rollout and setting default traffic policy.
+  if (nonInteractive) {
+    return;
+  }
+
+  if (!branch) {
+    throw new FirebaseError("Branch was not set while connecting to a github repo.");
+  }
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
@@ -180,6 +202,47 @@ export async function doSetup(
 }
 
 /**
+ * Setup up a new App Hosting backend to deploy from source.
+ */
+export async function doSetupSourceDeploy(
+  projectId: string,
+  backendId: string,
+): Promise<{ backend: Backend; location: string }> {
+  const location = await promptLocation(
+    projectId,
+    "Select a primary region to host your backend:\n",
+  );
+  const webAppSpinner = ora("Creating a new web app...\n").start();
+  const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
+  webAppSpinner.stop();
+
+  const createBackendSpinner = ora("Creating your new backend...").start();
+  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+  return {
+    backend,
+    location,
+  };
+}
+
+/**
+ * Check that all GCP APIs required for App Hosting are enabled.
+ */
+export async function ensureRequiredApisEnabled(projectId: string): Promise<void> {
+  await Promise.all([
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
+  ]);
+}
+
+/**
  * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
  */
 export async function createGitRepoLink(
@@ -212,8 +275,8 @@ export async function createGitRepoLink(
 /**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
- * check fails, this returns an error. If the permission check fails with a
- * "not found" error, this attempts to provision the service account.
+ * check fails, this returns an error. Otherwise, it attempts to provision the
+ * service account.
  */
 export async function ensureAppHostingComputeServiceAccount(
   projectId: string,
@@ -233,15 +296,19 @@ export async function ensureAppHostingComputeServiceAccount(
     if (!(err instanceof FirebaseError)) {
       throw err;
     }
-    if (err.status === 404) {
-      await provisionDefaultComputeServiceAccount(projectId);
-    } else if (err.status === 403) {
+    if (err.status === 403) {
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
       );
+    } else if (err.status !== 404) {
+      throw new FirebaseError(
+        "Unexpected error occurred while testing for IAM service account permissions",
+        { original: err },
+      );
     }
   }
+  await provisionDefaultComputeServiceAccount(projectId);
 }
 
 /**
@@ -326,16 +393,27 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       throw err;
     }
   }
-  await addServiceAccountToRoles(
-    projectId,
-    defaultComputeServiceAccountEmail(projectId),
-    [
-      "roles/firebaseapphosting.computeRunner",
-      "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.readTokenAccessor",
-    ],
-    /* skipAccountLookup= */ true,
-  );
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      defaultComputeServiceAccountEmail(projectId),
+      [
+        "roles/firebaseapphosting.computeRunner",
+        "roles/firebase.sdkAdminServiceAgent",
+        "roles/developerconnect.readTokenAccessor",
+        "roles/storage.objectViewer",
+      ],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 400) {
+      logWarning(
+        "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      );
+    } else {
+      throw err;
+    }
+  }
 }
 
 /**
