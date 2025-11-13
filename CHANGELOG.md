@@ -1,2 +1,2 @@
-- Fixes a crash during parallel deployments when buildConfig is empty (#9455)
+- Fixed a crash during parallel deployments when buildConfig is empty (#9455)
 - [Added] support for new google-genai plugin during `init genkit` (#8957)
