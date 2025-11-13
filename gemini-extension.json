@@ -1,0 +1,16 @@
+{
+  "name": "firebase",
+  "description": "Prototype, build & run modern apps users love with Firebase's backend, AI, and operational infrastructure.",
+  "version": "1.0.0",
+  "contextFileName": "FIREBASE.md",
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"],
+      "env": {
+        "IS_GEMINI_CLI_EXTENSION": "true"
+      }
+    }
+  }
+}
+
