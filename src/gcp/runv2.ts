@@ -565,7 +565,7 @@ export function serviceFromEndpoint(
 ): Omit<Service, ServiceOutputFields> {
   const labels: Record<string, string> = {
     ...endpoint.labels,
-    [RUNTIME_LABEL]: endpoint.runtime,
+    ...(endpoint.runtime ? { [RUNTIME_LABEL]: endpoint.runtime } : {}),
     [CLIENT_NAME_LABEL]: "firebase-functions",
   };
 
