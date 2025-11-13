@@ -294,6 +294,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  dataDir?: string;
 };
 
 export type ExtensionsConfig = Record<string, string>;
