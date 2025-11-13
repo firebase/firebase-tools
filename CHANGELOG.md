@@ -1,2 +1,2 @@
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
-- Removes support for running emulators with Java versions prior to 21.
+- [BREAKING] Removes support for running emulators with Java versions prior to 21.
