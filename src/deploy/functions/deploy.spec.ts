@@ -66,7 +66,7 @@ describe("deploy", () => {
       haveBackend = backend.of(endpoint1InHaveBackend, endpoint2InHaveBackend);
     });
 
-    it("should skip if all endpoints are identical", () => {
+    it("should skip if all endpoints are identical and ACTIVE", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";
       endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
@@ -154,19 +154,6 @@ describe("deploy", () => {
       const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
 
       expect(result).to.be.false;
-    });
-
-    it("should skip if all endpoints are identical and ACTIVE", () => {
-      endpoint1InWantBackend.hash = "1";
-      endpoint2InWantBackend.hash = "2";
-      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
-      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
-      endpoint1InHaveBackend.state = "ACTIVE";
-      endpoint2InHaveBackend.state = "ACTIVE";
-
-      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
-
-      expect(result).to.be.true;
     });
   });
 
