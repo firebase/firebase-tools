@@ -1,2 +1,2 @@
-- [Fixed] Fixed a crash during parallel deployments where `runtime` could be undefined (#9455)
+- Fixes a crash during parallel deployments when buildConfig is empty (#9455)
 - [Added] support for new google-genai plugin during `init genkit` (#8957)
