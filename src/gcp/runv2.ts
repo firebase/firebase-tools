@@ -200,6 +200,12 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
+/**
+ * Lists Cloud Run services in the given project.
+ *
+ * This method only returns services with the "goog-managed-by" label set to
+ * "cloud-functions" or "firebase-functions".
+ */
 export async function listServices(projectId: string): Promise<Service[]> {
   const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;

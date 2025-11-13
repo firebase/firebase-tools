@@ -6,6 +6,7 @@ import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -542,7 +543,6 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-
   try {
     const runServices = await run.listServices(ctx.projectId);
     for (const service of runServices) {
@@ -551,10 +551,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
   } catch (err: any) {
-    utils.logLabeledWarning(
-      "functions",
-      `Failed to list Cloud Run services: ${err.message}. Ensure you have the Cloud Run Admin API enabled and the necessary permissions.`,
-    );
+    logger.debug(err.message);
     unreachableRegions.run = ["unknown"]; // Indicate that Run services could not be listed
   }
 

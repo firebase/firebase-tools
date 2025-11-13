@@ -30,9 +30,7 @@ export const command = new Command("functions:list")
       endpoints = backend.allEndpoints(existing);
     } catch (err: any) {
       logger.debug(`Failed to list functions:`, err);
-      logger.warn(
-        `Failed to list functions: ${err.message}. Ensure you have the Cloud Functions and Cloud Run APIs enabled and the necessary permissions.`,
-      );
+      logger.warn(err.message);
     }
 
     endpoints.sort(backend.compareFunctions);

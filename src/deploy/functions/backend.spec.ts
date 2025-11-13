@@ -32,41 +32,7 @@ describe("Backend", () => {
     runtime: "nodejs16",
   };
 
-  const CLOUD_FUNCTION_V2_SOURCE: gcfV2.StorageSource = {
-    bucket: "sample",
-    object: "source.zip",
-    generation: 42,
-  };
-
-  const CLOUD_FUNCTION_V2: gcfV2.InputCloudFunction = {
-    name: "projects/project/locations/region/functions/id",
-    buildConfig: {
-      entryPoint: "function",
-      runtime: "nodejs16",
-      source: {
-        storageSource: CLOUD_FUNCTION_V2_SOURCE,
-      },
-      environmentVariables: {},
-    },
-    serviceConfig: {
-      service: "projects/project/locations/region/services/service",
-      availableCpu: "1",
-      maxInstanceRequestConcurrency: 80,
-    },
-  };
   const GCF_URL = "https://region-project.cloudfunctions.net/id";
-  const HAVE_CLOUD_FUNCTION_V2: gcfV2.OutputCloudFunction = {
-    ...CLOUD_FUNCTION_V2,
-    serviceConfig: {
-      service: "service",
-      uri: GCF_URL,
-      availableCpu: "1",
-      maxInstanceRequestConcurrency: 80,
-    },
-    url: GCF_URL,
-    state: "ACTIVE",
-    updateTime: new Date(),
-  };
 
   const HAVE_CLOUD_FUNCTION: gcf.CloudFunction = {
     ...CLOUD_FUNCTION,
@@ -193,18 +159,18 @@ describe("Backend", () => {
         expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
-      it("should throw an error if v2 list api throws an error", async () => {
+      it("should handle v2 list api errors gracefully", async () => {
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
         });
-        listServices.throws(
-          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }),
-        );
+        listServices.throws(new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }));
 
-        await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
-          "HTTP Error: 500, Internal Error",
-        );
+        const context = newContext();
+        const have = await backend.existingBackend(context);
+
+        expect(have).to.deep.equal(backend.empty());
+        expect(context.unreachableRegions?.run).to.deep.equal(["unknown"]);
       });
 
       it("should read v1 functions only when user is not allowlisted for v2", async () => {
@@ -226,19 +192,7 @@ describe("Backend", () => {
         expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
-      it("should throw an error if v2 list api throws an error", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
-        listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }),
-        );
 
-        await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
-          "HTTP Error: 500, Internal Error",
-        );
-      });
 
       it("should read v1 functions only when user is not allowlisted for v2", async () => {
         listAllFunctions.onFirstCall().resolves({
@@ -359,7 +313,7 @@ describe("Backend", () => {
         const context = newContext();
 
         await backend.existingBackend(context);
-        
+
         // Manually set the run region as unreachable to test the warning
         if (!context.unreachableRegions) {
           context.unreachableRegions = { gcfV1: [], run: [] };
