@@ -1,4 +1,5 @@
 - Added Node 24 support.
+- Updated superstatic to v10.
 - Fixed a crash during parallel deployments when buildConfig is empty (#9455)
 - [Added] support for new google-genai plugin during `init genkit` (#8957)
 - Updated to v2.17.1 of the Data Connect emulator, which fixes an admin SDK bug for operation without argument #9449 (#9454).
