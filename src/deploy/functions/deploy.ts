@@ -221,6 +221,11 @@ export function shouldUploadBeSkipped(
     if (!haveEndpoint) {
       return false;
     }
-    return haveEndpoint.hash && wantEndpoint.hash && haveEndpoint.hash === wantEndpoint.hash;
+    return (
+      haveEndpoint.hash &&
+      wantEndpoint.hash &&
+      haveEndpoint.hash === wantEndpoint.hash &&
+      haveEndpoint.state === "ACTIVE"
+    );
   });
 }
